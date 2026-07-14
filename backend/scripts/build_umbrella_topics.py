@@ -160,11 +160,11 @@ async def _llm_event_multi(rows, *, min_confidence: float) -> dict[int, list[int
     async with httpx.AsyncClient(timeout=90.0) as client:
         raw = await call_llm(
             "deepseek", system=SAME_EVENT_SYSTEM, user=same_event_user(topics),
-            client=client, max_tokens=2000, temperature=0.0, json_mode=True,
+            client=client, max_tokens=4000, temperature=0.0, json_mode=True,
         )
     events = parse_same_event_response(raw)
-    if not events:
-        raise RuntimeError("same-event judge returned no parseable groups")
+    if events is None:  # unparseable/empty response — abort, never wipe
+        raise RuntimeError("same-event judge response was unparseable")
     plans = plan_event_umbrellas(topics, events, min_confidence=min_confidence)
     return plans_to_index_groups([int(r["id"]) for r in rows], plans)
 
@@ -222,6 +222,15 @@ async def main() -> None:
             except Exception as exc:  # LLM/network/parse failure — NEVER wipe umbrellas
                 print(f"llm-event grouping FAILED ({exc!r}) — aborting before the "
                       f"destructive rebuild; existing parent_id/umbrellas untouched",
+                      file=sys.stderr)
+                sys.exit(3)
+            # An EMPTY grouping from a parseable verdict is treated as a DEGRADED
+            # response (all ids hallucinated / below confidence / single-child),
+            # NOT a genuine flatten — aborting here is what actually protects the
+            # hierarchy from a silent full wipe (adversarial review 2026-07-14).
+            if not multi:
+                print("llm-event judge grounded 0 umbrella groups — aborting before "
+                      "the destructive rebuild; existing parent_id/umbrellas untouched",
                       file=sys.stderr)
                 sys.exit(3)
             basis = "llm-same-event-v1"

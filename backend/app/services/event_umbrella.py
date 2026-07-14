@@ -52,12 +52,14 @@ def same_event_user(topics: list[dict]) -> str:
     return "Active threads (id, label, category):\n" + "\n".join(lines)
 
 
-def parse_same_event_response(raw: str) -> list[dict]:
-    """Tolerantly parse the judge's JSON into an events list. Handles fenced
-    code blocks and surrounding prose; returns [] on any parse failure (the
-    caller must never wipe umbrellas on a malformed/empty LLM response)."""
+def parse_same_event_response(raw: str) -> list[dict] | None:
+    """Tolerantly parse the judge's JSON into an events list. Handles fenced code
+    blocks and surrounding prose. Returns [] for a VALID but empty verdict
+    ({"events":[]}, a genuine no-groups day) and None for a PARSE FAILURE
+    (unparseable/empty raw) — the caller aborts on None (never wipes umbrellas on
+    a broken response) but can treat [] as a real result."""
     if not raw or not raw.strip():
-        return []
+        return None
     for candidate in (raw, _first_json_object(raw)):
         if not candidate:
             continue
@@ -69,7 +71,7 @@ def parse_same_event_response(raw: str) -> list[dict]:
             events = data.get("events")
             if isinstance(events, list):
                 return [e for e in events if isinstance(e, dict)]
-    return []
+    return None
 
 
 def _first_json_object(text: str) -> str | None:
@@ -112,6 +114,28 @@ def _dominant(values: list) -> object | None:
     return Counter(vals).most_common(1)[0][0]
 
 
+def _coerce_id(tid: object) -> int | None:
+    """Normalize a topic id from the LLM to int. Handles the common case where
+    the judge emits ids as JSON strings ("121"); returns None for anything that
+    is not an integer id (bool/null/garbage) so it is silently skipped."""
+    if isinstance(tid, bool):
+        return None
+    if isinstance(tid, int):
+        return tid
+    try:
+        return int(str(tid).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_float(v: object) -> float:
+    """A malformed confidence field must skip its event, not crash the pass."""
+    try:
+        return float(v)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def plan_event_umbrellas(
     topics: list[dict],
     events: list[dict],
@@ -124,14 +148,19 @@ def plan_event_umbrellas(
     plans: list[UmbrellaPlan] = []
 
     for ev in events:
-        conf = float(ev.get("confidence") or 0.0)
+        conf = _safe_float(ev.get("confidence"))
         if conf < min_confidence:
             continue
         child_ids: list[int] = []
-        for tid in ev.get("topic_ids", []):
-            t = by_id.get(tid)
-            if t is None or t.get("is_umbrella") or tid in claimed:
+        seen: set[int] = set()
+        for tid_raw in ev.get("topic_ids", []):
+            tid = _coerce_id(tid_raw)
+            if tid is None:
                 continue
+            t = by_id.get(tid)
+            if t is None or t.get("is_umbrella") or tid in claimed or tid in seen:
+                continue
+            seen.add(tid)
             child_ids.append(tid)
         if len(child_ids) < min_size:
             continue

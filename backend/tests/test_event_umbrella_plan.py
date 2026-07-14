@@ -112,6 +112,52 @@ def test_empty_inputs():
     assert plan_event_umbrellas([_t(1, "a")], []) == []
 
 
+# --- adversarial-review hardening: degraded LLM verdicts must not fabricate or crash ---
+
+def test_string_topic_ids_still_resolve():
+    # LLMs commonly emit ids as JSON strings; "121" must resolve to topic 121,
+    # else every child is dropped -> empty grouping -> (upstream) hierarchy wipe.
+    topics = [_t(121, "a"), _t(583, "b"), _t(881, "c")]
+    events = [{"name": "e", "topic_ids": ["121", "583", "881"], "confidence": 0.9}]
+    plans = plan_event_umbrellas(topics, events)
+    assert len(plans) == 1
+    assert set(plans[0].child_ids) == {121, 583, 881}
+
+
+def test_duplicate_ids_within_a_group_do_not_fabricate_umbrella_of_one():
+    topics = [_t(121, "a"), _t(583, "b")]
+    # [121,121] is ONE distinct child -> below min_size -> no umbrella
+    assert plan_event_umbrellas(topics, [{"name": "e", "topic_ids": [121, 121], "confidence": 0.9}]) == []
+    # [121,121,583] -> two distinct children, deduped
+    plans = plan_event_umbrellas(topics, [{"name": "e", "topic_ids": [121, 121, 583], "confidence": 0.9}])
+    assert set(plans[0].child_ids) == {121, 583}
+    assert plans[0].child_ids.count(121) == 1
+
+
+def test_non_numeric_confidence_skips_event_without_crashing():
+    topics = [_t(1, "a"), _t(2, "b"), _t(3, "c"), _t(4, "d")]
+    events = [
+        {"name": "bad", "topic_ids": [1, 2], "confidence": "high"},   # malformed → skip
+        {"name": "good", "topic_ids": [3, 4], "confidence": 0.9},     # valid → kept
+    ]
+    plans = plan_event_umbrellas(topics, events)
+    names = {p.event_name for p in plans}
+    assert names == {"good"}
+
+
+def test_garbage_ids_yield_no_plans_not_a_crash():
+    topics = [_t(1, "a"), _t(2, "b")]
+    events = [{"name": "e", "topic_ids": ["not-an-id", None, 9991], "confidence": 0.9}]
+    assert plan_event_umbrellas(topics, events) == []
+
+
+def test_parse_distinguishes_valid_empty_from_malformed():
+    # valid empty verdict -> [] (a real "no groups"); malformed -> None (parse failure)
+    assert parse_same_event_response('{"events":[]}') == []
+    assert parse_same_event_response("total garbage {{{") is None
+    assert parse_same_event_response("") is None
+
+
 # --- prompt + response parsing + index mapping (the LLM-call boundary) ---
 
 def test_same_event_system_forbids_same_theme_merges():
@@ -142,9 +188,11 @@ def test_parse_same_event_response_tolerates_fenced_json_and_junk():
     assert events[0]["topic_ids"] == [1, 2]
 
 
-def test_parse_same_event_response_bad_json_returns_empty():
-    assert parse_same_event_response("not json at all") == []
-    assert parse_same_event_response("") == []
+def test_parse_same_event_response_bad_json_returns_none():
+    # None signals a PARSE FAILURE (must abort, never wipe); distinct from a
+    # valid empty {"events":[]} which returns [].
+    assert parse_same_event_response("not json at all") is None
+    assert parse_same_event_response("") is None
 
 
 def test_plans_to_index_groups_maps_topic_ids_to_row_indices():

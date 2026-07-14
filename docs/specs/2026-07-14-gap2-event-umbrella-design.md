@@ -99,3 +99,45 @@ with no shared actors merged correctly. The design is sound.
    row over 121/583/881.
 
 Probe: `backend/scripts/gap2_event_judge_probe.py` (read-only, repeatable).
+
+## Adversarial review (2026-07-14) — fixed + deferred
+
+An 18-agent adversarial review (find → verify) ran against the wired mechanism.
+CONFIRMED correctness bugs, all FIXED with tests:
+
+- **Dissolve-hierarchy on a degraded verdict (CRITICAL).** A parseable-but-
+  degraded judge response (ids as JSON strings `"121"`, all groups below the
+  confidence floor, hallucinated ids) resolved to an empty grouping, and the
+  write path treated empty as "flatten everything" — wiping every `parent_id` and
+  DELETEing all umbrellas, then exiting 0 (silent). Fixed three ways: `_coerce_id`
+  accepts numeric-string ids; `plan_event_umbrellas` dedups ids within a group so
+  `[121,121]` can't fabricate an umbrella-of-one; and `main()` now **aborts
+  (exit 3) on an empty grouping in llm-event mode** — an empty result is treated
+  as a degraded verdict, never a flatten, so the hierarchy is never silently
+  dissolved.
+- **Malformed vs valid-empty (MEDIUM).** `parse_same_event_response` now returns
+  `None` on a true parse failure and `[]` on a valid `{"events":[]}`; both route
+  to the never-wipe abort (a genuine no-groups day keeps the prior umbrellas and
+  self-heals next pass — safe over silently dissolving).
+- **Non-numeric confidence (MEDIUM).** `_safe_float` skips a malformed
+  `confidence` field instead of crashing the whole rebuild.
+
+DEFERRED (pre-existing umbrella properties or enhancements, not regressions):
+
+- **id-churn / identity rebind** — `identity_key='umbrella:<min_child_id>'`
+  encodes child position, not event identity, so a regroup can churn the umbrella
+  id (dangling pins) or silently rebind a stable id to a different event. This is
+  the SAME behavior the semantic umbrella builder already had. Mitigation for a
+  future pass: cache the verdict by the sorted active-id set (re-judge only on
+  change) and/or a content-based umbrella id.
+- **scale >60 active** — the judge is one unbounded call; `max_tokens` raised to
+  4000 for headroom. A centroid prefilter to bound the candidate set (design §1)
+  is deferred until the active set grows past a single-call budget.
+- **per-umbrella receipt** — the write path derives the umbrella label/category
+  from the dominant child (not the LLM event name), so `umbrella_basis` records
+  only the method, not the specific "why grouped". Acceptable v1; a per-umbrella
+  event-name receipt is a follow-up.
+- **same-theme over-merge** — the prompt + confidence floor are the only guard
+  (the semantic 0.95 cut is gone in this mode); validated by the probe (Iran ≠
+  Ukraine, no chaining), and `umbrella_basis='llm-same-event-v1'` makes every
+  llm-formed umbrella auditable.

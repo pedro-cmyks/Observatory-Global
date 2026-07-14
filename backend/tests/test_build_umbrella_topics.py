@@ -1,6 +1,21 @@
+import inspect
+
 import numpy as np
 
+from scripts import build_umbrella_topics as _bu
 from scripts.build_umbrella_topics import _shared_actor_edges, _union_find_groups
+
+
+def test_llm_event_aborts_on_empty_grouping_before_the_wipe():
+    # Adversarial review 2026-07-14: a degraded-but-parseable verdict (string ids,
+    # all-below-confidence, hallucinated ids) can resolve to an empty grouping;
+    # in llm-event mode that MUST abort before the destructive parent_id wipe, not
+    # flatten the whole hierarchy. Guard lives in main() before the transaction.
+    src = inspect.getsource(_bu.main)
+    wipe = src.index("SET parent_id = NULL")
+    guard = src.index("if not multi:")
+    assert guard < wipe  # the empty-grouping abort precedes the destructive wipe
+    assert "sys.exit(3)" in src[guard:wipe]
 
 
 def test_shared_distinctive_actor_reconnects_event_fragments():
