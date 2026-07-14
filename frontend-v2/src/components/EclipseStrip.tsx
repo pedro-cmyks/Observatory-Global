@@ -17,6 +17,19 @@ interface Props {
   onOpenTopic: (topicId: string, label: string) => void
 }
 
+// Topic labels can arrive HTML-entity-encoded (e.g. '&#x936;…' for non-Latin
+// scripts). Decode for display via a textarea — RCDATA, so no script executes and
+// we only read back textContent-equivalent text. Browser-only (guarded for SSR).
+function decodeEntities(s: string): string {
+  if (typeof document === 'undefined' || !s.includes('&')) return s
+  // Drop a trailing incomplete entity ('…लगा&#') left by a mid-entity label
+  // truncation, then decode the complete ones.
+  const trimmed = s.replace(/&#[0-9a-fx]*$/i, '')
+  const el = document.createElement('textarea')
+  el.innerHTML = trimmed
+  return el.value
+}
+
 export function EclipseStrip({ data, onOpenTopic }: Props) {
   if (!shouldShowEclipse(data)) return null
   const d = data as EclipseData
@@ -29,7 +42,7 @@ export function EclipseStrip({ data, onOpenTopic }: Props) {
         >
           Meanwhile, off the front page
         </h3>
-        <p className="brief-eclipse-lede">{eclipseDominantLine(d)}</p>
+        <p className="brief-eclipse-lede">{decodeEntities(eclipseDominantLine(d))}</p>
         <div className="brief-eclipse-list">
           {d.selected.map(item => {
             const f = formatEclipseItem(item)
@@ -40,7 +53,7 @@ export function EclipseStrip({ data, onOpenTopic }: Props) {
                 onClick={() => onOpenTopic(item.topic_id, item.label)}
               >
                 <span className="brief-eclipse-main">
-                  <span className="brief-eclipse-label">{item.label}</span>
+                  <span className="brief-eclipse-label">{decodeEntities(item.label)}</span>
                   {f.rising && (
                     <span className="brief-eclipse-rising" data-tip="Coverage is rising despite the eclipse — a fresh under-the-radar story.">
                       ▲ rising
