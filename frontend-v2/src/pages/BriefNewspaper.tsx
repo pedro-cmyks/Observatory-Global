@@ -14,6 +14,8 @@ import { TranslatableHeadline } from '../components/TranslatableHeadline'
 import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
+import { EclipseStrip } from '../components/EclipseStrip'
+import type { EclipseData } from '../lib/attentionEclipse'
 import {
     assessDailyPublication,
     publicationThreads,
@@ -238,6 +240,7 @@ export function BriefNewspaper() {
     const countryInputRef = useRef<HTMLInputElement>(null)
     const [now] = useState(new Date())
     const [dailyEdition, setDailyEdition] = useState<DailyPublicationArtifact | null>(null)
+    const [eclipse, setEclipse] = useState<EclipseData | null>(null)
 
     // #239 keep-alive: the Brief stays mounted across App↔Brief switches, so
     // URL params must keep driving state after mount (the useState initializers
@@ -339,6 +342,20 @@ export function BriefNewspaper() {
             .finally(() => clearTimeout(timer))
         return () => { clearTimeout(timer); ctrl.abort() }
     }, [])
+
+    // Attention-eclipse: only surfaces when the day's coverage is concentrated on
+    // one dominant event. Best-effort + silent-degrade (endpoint 404 before deploy,
+    // or a diffuse day, simply renders no strip).
+    useEffect(() => {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 12000)
+        fetch(`/api/v2/attention/eclipse?hours=${hours}`, { signal: ctrl.signal })
+            .then(response => response.ok ? response.json() : null)
+            .then(payload => { if (payload) setEclipse(payload as EclipseData) })
+            .catch(() => { /* no strip when unavailable */ })
+            .finally(() => clearTimeout(timer))
+        return () => { clearTimeout(timer); ctrl.abort() }
+    }, [hours])
 
     useEffect(() => {
         if (!countryFilter) {
@@ -856,6 +873,13 @@ export function BriefNewspaper() {
                                     <div className="brief-rule thin" />
                                 </>
                             )}
+
+                            {/* MEANWHILE, OFF THE FRONT PAGE — consequential stories
+                                eclipsed by a dominant event (renders only under an eclipse) */}
+                            <EclipseStrip
+                                data={eclipse}
+                                onOpenTopic={(id) => goToAtlas(`theme=${encodeURIComponent(id)}`, 'eclipse')}
+                            />
 
                             {/* STANDFIRST — AI insight when real, one factual line otherwise */}
                             {(displayInsight || standfirstFallback) && (

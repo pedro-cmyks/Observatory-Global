@@ -1,0 +1,41 @@
+/* L1 attention-eclipse strip — mirrors the gap-box / heat-strip idiom, with a
+   distinct "under the radar" accent so it reads as its own beat. */
+.brief-eclipse-strip { margin: 8px 0; }
+
+.brief-eclipse-lede {
+    font-size: 0.82rem;
+    color: var(--color-text-muted, #8a8f98);
+    margin: 0 0 8px;
+    line-height: 1.4;
+}
+
+.brief-eclipse-list { display: flex; flex-direction: column; }
+
+.brief-eclipse-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    width: 100%; background: transparent; border: none;
+    border-bottom: 1px dotted rgba(120, 120, 120, 0.25);
+    padding: 7px 2px; cursor: pointer; text-align: left;
+    font-family: inherit; color: inherit; gap: 12px;
+}
+.brief-eclipse-row:hover .brief-eclipse-label { text-decoration: underline; }
+
+.brief-eclipse-main { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.brief-eclipse-label { font-weight: 600; font-size: 0.9rem; }
+
+.brief-eclipse-rising {
+    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
+    font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase;
+    color: #10b981; white-space: nowrap;
+}
+
+.brief-eclipse-meta {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    font-size: 0.72rem; color: var(--color-text-muted, #8a8f98); white-space: nowrap;
+}
+.brief-eclipse-share { font-variant-numeric: tabular-nums; opacity: 0.85; }
+
+@media (max-width: 640px) {
+    .brief-eclipse-meta { font-size: 0.68rem; }
+    .brief-eclipse-label { font-size: 0.85rem; }
+}
