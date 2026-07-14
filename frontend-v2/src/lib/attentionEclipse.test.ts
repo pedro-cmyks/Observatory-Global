@@ -3,7 +3,9 @@ import {
   shouldShowEclipse,
   eclipseDominantLine,
   formatEclipseItem,
+  buildEclipsePin,
   type EclipseData,
+  type EclipseItem,
 } from './attentionEclipse'
 
 const eclipseOn: EclipseData = {
@@ -50,5 +52,33 @@ describe('formatEclipseItem', () => {
   it('marks a rising story so a fresh eclipsed story is distinguishable', () => {
     expect(formatEclipseItem({ ...eclipseOn.selected[0], velocity: 0.46 }).rising).toBe(true)
     expect(formatEclipseItem({ ...eclipseOn.selected[0], velocity: -0.2 }).rising).toBe(false)
+  })
+})
+
+describe('buildEclipsePin', () => {
+  const item: EclipseItem = eclipseOn.selected[0]
+
+  it('builds a workbench pin that reuses the shared theme/l2_params ramp', () => {
+    const pin = buildEclipsePin(item, ' 2026-07-14T00:00:00Z')
+    expect(pin.anchorId).toBe('eclipse-dynamic-topic-42')
+    expect(pin.anchorType).toBe('theme')
+    expect(pin.label).toBe('EU launches $1bn Gaza aid')
+    // opens the same console theme surface every other pin uses
+    expect(pin.open?.surface).toBe('l2_params')
+    expect(pin.open?.params.urlParams).toBe('?theme=dynamic-topic-42&entry=eclipse')
+  })
+
+  it('freezes an honest snapshot (why it was under the radar)', () => {
+    const pin = buildEclipsePin(item, '2026-07-14T00:00:00Z')
+    expect(pin.snapshot?.capturedAt).toBe('2026-07-14T00:00:00Z')
+    expect(pin.snapshot?.summary).toContain('under the radar')
+    expect(pin.snapshot?.summary).toContain('18 countries')
+    expect(pin.snapshot?.metrics?.attention_share).toBe(0.001)
+    expect(pin.snapshot?.metrics?.consequence).toBe(0.67)
+  })
+
+  it('encodes topic ids safely into the deep link', () => {
+    const pin = buildEclipsePin({ ...item, topic_id: 'a b&c' }, 't')
+    expect(pin.open?.params.urlParams).toBe('?theme=a%20b%26c&entry=eclipse')
   })
 })

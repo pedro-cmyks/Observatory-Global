@@ -9,25 +9,13 @@ import {
   shouldShowEclipse,
   eclipseDominantLine,
   formatEclipseItem,
+  decodeEntities,
 } from '../lib/attentionEclipse'
 import './EclipseStrip.css'
 
 interface Props {
   data: EclipseData | null
   onOpenTopic: (topicId: string, label: string) => void
-}
-
-// Topic labels can arrive HTML-entity-encoded (e.g. '&#x936;…' for non-Latin
-// scripts). Decode for display via a textarea — RCDATA, so no script executes and
-// we only read back textContent-equivalent text. Browser-only (guarded for SSR).
-function decodeEntities(s: string): string {
-  if (typeof document === 'undefined' || !s.includes('&')) return s
-  // Drop a trailing incomplete entity ('…लगा&#') left by a mid-entity label
-  // truncation, then decode the complete ones.
-  const trimmed = s.replace(/&#[0-9a-fx]*$/i, '')
-  const el = document.createElement('textarea')
-  el.innerHTML = trimmed
-  return el.value
 }
 
 export function EclipseStrip({ data, onOpenTopic }: Props) {

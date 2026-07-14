@@ -31,6 +31,19 @@ export function shouldShowEclipse(data: EclipseData | null | undefined): boolean
   return Boolean(data && data.eclipse && Array.isArray(data.selected) && data.selected.length > 0)
 }
 
+// Topic labels can arrive HTML-entity-encoded (e.g. '&#x936;…' for non-Latin
+// scripts). Decode for display via a textarea — RCDATA, so no script executes and
+// we only read back textContent-equivalent text. Also drops a trailing incomplete
+// entity ('…लगा&#') left by a mid-entity label truncation. Browser-only (guarded
+// for SSR/test envs with no document — returns the string unchanged).
+export function decodeEntities(s: string): string {
+  if (typeof document === 'undefined' || !s.includes('&')) return s
+  const trimmed = s.replace(/&#[0-9a-fx]*$/i, '')
+  const el = document.createElement('textarea')
+  el.innerHTML = trimmed
+  return el.value
+}
+
 export function eclipseDominantLine(data: EclipseData): string {
   const label = data.dominant?.label ?? 'one story'
   const pct = Math.round((data.dominant?.share ?? data.window?.top1_share ?? 0) * 100)
@@ -41,6 +54,47 @@ export interface FormattedEclipseItem {
   breadthLabel: string
   sharePct: string
   rising: boolean
+}
+
+// A workbench pin built from an eclipsed story — the L3 ramp. Structurally a
+// WorkbenchPin (minus pinnedAt, stamped by addPin); typed loosely here so the
+// pure lib stays decoupled from the workbench store. Reuses the same theme /
+// l2_params surface every other console pin uses (one pool, one ramp), and freezes
+// an honest snapshot of WHY the story was under the radar.
+export interface EclipsePin {
+  anchorId: string
+  anchorType: string
+  label: string
+  open: { surface: string; params: { urlParams: string } }
+  snapshot: {
+    capturedAt: string
+    summary: string
+    metrics: Record<string, number>
+  }
+}
+
+export function buildEclipsePin(item: EclipseItem, capturedAt: string): EclipsePin {
+  const { sharePct, breadthLabel } = formatEclipseItem(item)
+  return {
+    anchorId: `eclipse-${item.topic_id}`,
+    anchorType: 'theme',
+    label: item.label,
+    open: {
+      surface: 'l2_params',
+      params: { urlParams: `?theme=${encodeURIComponent(item.topic_id)}&entry=eclipse` },
+    },
+    snapshot: {
+      capturedAt,
+      summary: `${item.label} · under the radar · ${sharePct} of coverage · ${breadthLabel}`,
+      metrics: {
+        attention_share: item.attention_share,
+        consequence: item.consequence,
+        language_breadth: item.language_breadth,
+        country_breadth: item.country_breadth,
+        velocity: item.velocity,
+      },
+    },
+  }
 }
 
 export function formatEclipseItem(item: EclipseItem): FormattedEclipseItem {

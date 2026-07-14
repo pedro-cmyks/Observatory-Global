@@ -41,7 +41,7 @@ import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
 import { getThemeLabel, resolveThreadLabel } from './lib/themeLabels'
-import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery } from './lib/workbench'
+import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addPin } from './lib/workbench'
 // #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
 // children with CSS transforms — panels are NEVER unmounted by layout changes,
 // which is what the keep-alive architecture requires.
@@ -68,6 +68,8 @@ import { CountryFocusWalkthrough, COUNTRY_WALKTHROUGH_KEY } from './components/C
 import { DayEvidencePanel } from './components/DayEvidencePanel'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
+import { EclipseLens } from './components/EclipseLens'
+import { buildEclipsePin, type EclipseItem } from './lib/attentionEclipse'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { ChokepointPanel } from './components/ChokepointPanel'
@@ -303,7 +305,7 @@ function AppContent() {
   // Bottom dock active tab (#228 §3): anomaly | sources. The HEAT tab was
   // removed (#231) — heat is a map property (drives country color), not a
   // bottom list. The composite now colors the map directly.
-  const [dockTab, setDockTab] = useState<'anomaly' | 'sources'>('anomaly')
+  const [dockTab, setDockTab] = useState<'anomaly' | 'sources' | 'eclipse'>('anomaly')
 
   // X0 (L2 review 2026-07-05): the stream slot is L2's core state machine and
   // it was invisible to telemetry — panel_swap makes the middle of the
@@ -593,6 +595,18 @@ function AppContent() {
     setRightPanelThemeCountry(null)
     setThemeBackStack([])
     setWorkbenchOpen(false)
+  }
+
+  // L3 ramp for an eclipsed story: seed an investigation + pin (frozen snapshot of
+  // why it was under the radar), then open the Workbench — reusing the exact
+  // create+pin recipe every other surface uses (one pool, one ramp).
+  function handleEclipseInvestigate(item: EclipseItem) {
+    const inv = createInvestigation(item.label, item.label)
+    addPin(inv.id, buildEclipsePin(item, new Date().toISOString()))
+    setResearchQuery(item.label)
+    track('workbench_open', { via: 'eclipse' })
+    setWorkbenchOpen(true)
+    setWbRefresh(t => t + 1)
   }
 
   function handleResearchOpenCountry(countryCode: string) {
@@ -1941,6 +1955,13 @@ function AppContent() {
               >
                 SOURCE INTEGRITY
               </button>
+              <button
+                className={`dock-tab ${dockTab === 'eclipse' ? 'active' : ''}`}
+                onClick={() => { track('dock_tab', { tab: 'eclipse' }); setDockTab('eclipse') }}
+                data-tip="Under the radar: consequential stories being drowned out when one event dominates coverage"
+              >
+                UNDER THE RADAR
+              </button>
             </div>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               {dockTab === 'anomaly' && <PanelHelpButton panel="anomaly-attention" />}
@@ -1972,6 +1993,14 @@ function AppContent() {
                     ?? selectedChokepoint?.name
                     ?? null
                   }
+                />
+              </PanelErrorBoundary>
+            )}
+            {dockTab === 'eclipse' && (
+              <PanelErrorBoundary panelName="UNDER THE RADAR">
+                <EclipseLens
+                  onOpenTopic={(id, label) => handleResearchOpenThread(id, label)}
+                  onInvestigate={handleEclipseInvestigate}
                 />
               </PanelErrorBoundary>
             )}

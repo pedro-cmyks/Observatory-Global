@@ -1,0 +1,101 @@
+/* L2 console "Under the Radar" eclipse lens — terminal idiom, dock tab. */
+.eclipse-lens {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 10px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.eclipse-lens-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--color-text-muted, #8a8f98);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    padding: 18px;
+}
+
+.eclipse-lens-banner {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--color-text, #e6e6e6);
+    border-left: 2px solid var(--color-accent, #10b981);
+    padding-left: 8px;
+}
+
+.eclipse-lens-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.eclipse-lens-row {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    border-bottom: 1px dotted rgba(120, 120, 120, 0.22);
+}
+
+.eclipse-lens-open {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    padding: 7px 2px;
+    cursor: pointer;
+    color: inherit;
+    font-family: inherit;
+}
+.eclipse-lens-open:hover .eclipse-lens-label { text-decoration: underline; }
+
+.eclipse-lens-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text, #e6e6e6);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.eclipse-lens-rising {
+    color: var(--color-accent, #10b981);
+    font-size: 0.7rem;
+}
+
+.eclipse-lens-meta {
+    font-size: 0.7rem;
+    color: var(--color-text-muted, #8a8f98);
+    font-variant-numeric: tabular-nums;
+}
+
+.eclipse-lens-investigate {
+    flex: 0 0 auto;
+    align-self: center;
+    background: transparent;
+    border: 1px solid rgba(120, 120, 120, 0.3);
+    border-radius: 3px;
+    color: var(--color-text-muted, #8a8f98);
+    font-size: 0.85rem;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+.eclipse-lens-investigate:hover {
+    color: var(--color-accent, #10b981);
+    border-color: var(--color-accent, #10b981);
+}
+
+.eclipse-lens-foot {
+    margin: 4px 0 0;
+    font-size: 0.66rem;
+    color: var(--color-text-muted, #8a8f98);
+    opacity: 0.8;
+    line-height: 1.4;
+}
