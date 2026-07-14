@@ -166,7 +166,7 @@ from app.routers import (
     geo, workspace, briefing, indicators, wiki, events, narratives, heat,
     nlp_corrections, threads, emergent, translate, waitlist, research,
     voice_mix, public_attention, telemetry, attention_threads, universe,
-    dossier, delight, archive_search, investigation,
+    dossier, delight, archive_search, investigation, attention_eclipse,
 )
 
 app.include_router(stats.router)
@@ -175,6 +175,7 @@ app.include_router(trends.router)
 app.include_router(signals.router)
 app.include_router(public_attention.router)
 app.include_router(attention_threads.router)
+app.include_router(attention_eclipse.router)
 app.include_router(universe.router)
 app.include_router(telemetry.router)
 app.include_router(themes.router)
