@@ -68,6 +68,8 @@ class DailyCandidate(BaseModel):
     prior_signals: int = 0
     source_breadth: int = 0
     source_origins: int = 0
+    language_breadth: int = 0
+    country_breadth: int = 0
     fallback_changed_10h: int | None = None
     coherence: float | None = None
     noise_rate: float | None = None
@@ -85,19 +87,41 @@ def apply_sample_coverage(
     *,
     sources_by_topic: dict[str, set[str]],
     origins_by_topic: dict[str, set[str]],
+    languages_by_topic: dict[str, set[str]] | None = None,
+    countries_by_topic: dict[str, set[str]] | None = None,
 ) -> list[DailyCandidate]:
     """Attach measured receipt-sample breadth without mutating candidates.
 
-    The counts are confidence dimensions, not importance or exhaustive source
-    counts. The sampling method and completion travel with the package.
+    Source/origin counts are confidence dimensions. Language and country breadth
+    are the consequence proxy — a genuinely global event is covered in many
+    languages and countries; the counts come from the current receipt sample, so
+    a stale thread with no current members scores zero. The sampling method and
+    completion travel with the package.
     """
+    languages_by_topic = languages_by_topic or {}
+    countries_by_topic = countries_by_topic or {}
     return [
         candidate.model_copy(update={
             "source_breadth": len(sources_by_topic.get(candidate.thread_id, set())),
             "source_origins": len(origins_by_topic.get(candidate.thread_id, set())),
+            "language_breadth": len(languages_by_topic.get(candidate.thread_id, set())),
+            "country_breadth": len(countries_by_topic.get(candidate.thread_id, set())),
         })
         for candidate in candidates
     ]
+
+
+def global_breadth_signal(language_count: int, country_count: int) -> float:
+    """Consequence proxy that is NOT raw volume: a genuinely global event is
+    covered across many languages and many countries; a national, single-outlet,
+    or stale story is not. Rewards breadth only — a same-language domestic
+    firehose cannot inflate it, so the volume≠importance guard stays intact. This
+    is the signal that lets a resumed US-Iran war outrank a national football
+    result without reopening the US-media-firehose bias.
+    """
+    lang = min(1.0, max(0, language_count) / 5.0)
+    geo = min(1.0, max(0, country_count) / 6.0)
+    return round(0.5 * lang + 0.5 * geo, 6)
 
 
 class DailyLedgerRow(BaseModel):
@@ -230,12 +254,16 @@ def _candidate_state(
             first_seen = first_seen.replace(tzinfo=timezone.utc)
         persistence_days = max(0.0, (measured_at - first_seen).total_seconds() / 86_400)
     persistence = min(1.0, persistence_days / 7.0)
+    global_breadth = global_breadth_signal(row.language_breadth, row.country_breadth)
+    if row.language_breadth >= 3 or row.country_breadth >= 6:
+        reasons.append("global_breadth")
     state = {
         "movement_magnitude": movement_now,
         "surprise": surprise_now,
         "measurement_confidence": uncertainty_confidence,
         "evidence_quality": evidence_quality,
         "coverage_breadth": source_confidence,
+        "global_breadth": global_breadth,
         "persistence": persistence,
     }
     components = {
@@ -251,6 +279,9 @@ def _candidate_state(
         "category_weight": 0.0,
         "crisis_relevant_weight": 0.0,
         "raw_volume_importance_weight": 0.0,
+        "language_breadth": row.language_breadth,
+        "country_breadth": row.country_breadth,
+        "global_breadth": round(global_breadth, 6),
     }
     return state, components, reasons
 

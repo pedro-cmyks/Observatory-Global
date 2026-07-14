@@ -5,6 +5,7 @@ from app.services.daily_edition import (
     DailyCandidate,
     apply_sample_coverage,
     fetch_daily_candidates,
+    global_breadth_signal,
     order_spine_by_publishability,
     select_daily_edition,
 )
@@ -260,3 +261,19 @@ def test_spine_preserves_editorial_order_within_a_tier():
     }
     ordered = order_spine_by_publishability(selected_ids, publishability)
     assert [tid for tid, _ in ordered] == ["a", "b", "c"]
+
+
+def test_global_breadth_rewards_multilingual_multicountry_over_local():
+    war = global_breadth_signal(3, 23)      # Hormuz-like global event
+    national = global_breadth_signal(1, 1)  # single-country story
+    local = global_breadth_signal(0, 0)     # stale/local noise, no current breadth
+    assert war > national > local
+    assert local == 0.0
+    assert war >= 0.7
+
+
+def test_global_breadth_is_breadth_not_volume():
+    # identical breadth scores regardless of any volume — it is diversity, not size
+    assert global_breadth_signal(4, 5) == global_breadth_signal(4, 5)
+    # a single-language firehose cannot outscore a genuinely multilingual story
+    assert global_breadth_signal(1, 2) < global_breadth_signal(5, 2)

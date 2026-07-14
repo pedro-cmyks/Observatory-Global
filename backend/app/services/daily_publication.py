@@ -491,6 +491,8 @@ async def fetch_daily_publication(
         by_topic: dict[str, list[dict[str, Any]]] = {}
         sources_by_topic: dict[str, set[str]] = {}
         origins_by_topic: dict[str, set[str]] = {}
+        languages_by_topic: dict[str, set[str]] = {}
+        countries_by_topic: dict[str, set[str]] = {}
         subject_receipts_by_topic: dict[str, list[dict[str, Any]]] = {}
         label_receipts_by_topic: dict[str, list[dict[str, Any]]] = {}
         evidence_counts: dict[str, int] = {}
@@ -533,6 +535,12 @@ async def fetch_daily_publication(
                 origin = row.get("source_origin_country")
                 if origin:
                     origins_by_topic.setdefault(topic_id, set()).add(str(origin).upper())
+                lang = row.get("source_lang")
+                if lang:
+                    languages_by_topic.setdefault(topic_id, set()).add(str(lang).lower())
+                country = row.get("country_code")
+                if country:
+                    countries_by_topic.setdefault(topic_id, set()).add(str(country).upper())
                 if row.get("persons"):
                     subject_receipts_by_topic.setdefault(topic_id, []).append(dict(row))
                 label_receipts_by_topic.setdefault(topic_id, []).append(dict(row))
@@ -565,6 +573,8 @@ async def fetch_daily_publication(
         current_labeled_candidates,
         sources_by_topic=sources_by_topic,
         origins_by_topic=origins_by_topic,
+        languages_by_topic=languages_by_topic,
+        countries_by_topic=countries_by_topic,
     )
     selection = select_daily_edition(
         enriched_candidates,
