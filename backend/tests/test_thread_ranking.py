@@ -91,3 +91,43 @@ def test_lane_damp_does_not_touch_real_news_ordering():
     assert lane_rank_multiplier({"label": "Ukraine War Updates"}) == 1.0
     assert lane_rank_multiplier({"label": "World Cup 2026 Live Streams"}) < 1.0
     assert lane_rank_multiplier({"label": "Las Vegas Travel Guide"}) < 1.0
+
+
+def _tb(label, *, sc, ch, conf, langs, countries):
+    return {"label": label, "signal_count": sc, "changed_10h": ch,
+            "avg_confidence": conf, "language_count": langs, "country_count": countries}
+
+
+def test_global_breadth_lifts_a_multilingual_multicountry_story_over_a_local_volume_bin():
+    # A genuinely global event (many languages + countries) outranks a bigger but
+    # local, single-language thread — L2 now carries the L1 consequence signal.
+    war = _tb("US-Iran war", sc=40, ch=10, conf=0.8, langs=5, countries=8)
+    local = _tb("Local telco outage", sc=200, ch=8, conf=0.8, langs=1, countries=1)
+    ranked = [t["label"] for t in rank_threads([local, war])]
+    assert ranked[0] == "US-Iran war"
+
+
+def test_thread_ranking_without_breadth_fields_still_ranks():
+    a = {"label": "a", "signal_count": 100, "changed_10h": 20, "avg_confidence": 0.5}
+    b = {"label": "b", "signal_count": 40, "changed_10h": 2, "avg_confidence": 0.5}
+    ranked = [t["label"] for t in rank_threads([b, a])]
+    assert ranked[0] == "a"
+
+
+def test_correctly_typed_sport_is_damped_below_news_despite_global_breadth():
+    # A World Cup match is genuinely multi-country/-language — the HIGHEST volume
+    # and breadth here — but the semantic damp keeps it off the front page, so it
+    # lands last behind the two real-news threads.
+    football = {"label": "Suiza Elimina a Colombia", "signal_count": 60, "changed_10h": 20,
+                "avg_confidence": 0.9, "language_count": 5, "country_count": 20,
+                "crisis_relevant": False, "category": "Sports / World Cup"}
+    war = {"label": "US-Iran war", "signal_count": 40, "changed_10h": 15,
+           "avg_confidence": 0.8, "language_count": 2, "country_count": 6,
+           "crisis_relevant": False, "category": "Armed conflict escalation"}
+    election = {"label": "Election dispute", "signal_count": 30, "changed_10h": 10,
+                "avg_confidence": 0.7, "language_count": 1, "country_count": 3,
+                "crisis_relevant": False, "category": "Elections & Politics"}
+    ranked = [t["label"] for t in rank_threads([football, war, election])]
+    assert ranked[0] == "US-Iran war"  # real news leads, not the football
+    # the sport is damped below the war despite carrying the highest breadth+volume
+    assert ranked.index("Suiza Elimina a Colombia") > ranked.index("US-Iran war")

@@ -21,11 +21,16 @@ from __future__ import annotations
 
 import math
 
+from app.services.daily_edition import global_breadth_signal
 from app.services.stream_relevance import classify_stream_lane
 
-_W_VOLUME = 0.45
-_W_MOVEMENT = 0.35
+# L2 shares the L1 consequence signal: raw volume is damped hard (a local firehose
+# must not lead) and cross-language + multi-country breadth carries the weight a
+# genuinely global event earns. Same global_breadth_signal as the daily selector.
+_W_VOLUME = 0.30
+_W_MOVEMENT = 0.25
 _W_COHERENCE = 0.20
+_W_BREADTH = 0.25
 
 # Editorial-lane DAMP (2026-06-29, spec §4.0/§4(b)). The "Las Vegas Travel Guide
 # ranks #1" pathology is low-news-value lifestyle/sport/entertainment copy, NOT
@@ -33,10 +38,13 @@ _W_COHERENCE = 0.20
 # classifies into a noise lane is multiplicatively damped — it still appears
 # (input, never a gate), it just stops out-ranking real news. Real-news labels
 # carry no sports/lifestyle keyword → "general"/"analyst" → multiplier 1.0.
+# Damp hard: a World Cup match or a celebrity meal is genuinely covered in many
+# languages and countries, so the breadth signal PROMOTES it — only a firm
+# semantic damp keeps non-news off the front page however globally it is covered.
 _LANE_RANK_MULTIPLIER = {
-    "sports": 0.5,
-    "entertainment": 0.45,
-    "lifestyle": 0.45,
+    "sports": 0.15,
+    "entertainment": 0.15,
+    "lifestyle": 0.20,
 }
 
 
@@ -76,8 +84,10 @@ def _minmax(values: list[float]) -> list[float]:
     return [(v - lo) / rng for v in values]
 
 
-def thread_score_components(thread: dict) -> tuple[float, float, float]:
-    """Raw (pre-normalisation) volume / movement / coherence for one thread."""
+def thread_score_components(thread: dict) -> tuple[float, float, float, float]:
+    """Raw (pre-normalisation) volume / movement / coherence / breadth for one
+    thread. Breadth is the shared consequence signal (cross-language + multi-
+    country), zero when the thread carries no breadth fields."""
     sc = max(int(thread.get("signal_count") or 0), 0)
     ch = int(thread.get("changed_10h") or 0)
     conf = float(thread.get("avg_confidence") or 0.0)
@@ -86,7 +96,11 @@ def thread_score_components(thread: dict) -> tuple[float, float, float]:
     # and volume-confidence-damped so a freak swing on a tiny base can't lead.
     movement_raw = max(-2.0, min(2.0, ch / sc)) if sc > 0 else 0.0
     movement = movement_raw * min(1.0, sc / _MOVEMENT_VOL_FLOOR)
-    return volume, movement, conf
+    breadth = global_breadth_signal(
+        int(thread.get("language_count") or 0),
+        int(thread.get("country_count") or 0),
+    )
+    return volume, movement, conf, breadth
 
 
 def rank_threads(threads: list[dict]) -> list[dict]:
@@ -98,9 +112,10 @@ def rank_threads(threads: list[dict]) -> list[dict]:
     nv = _minmax([c[0] for c in comps])
     nm = _minmax([c[1] for c in comps])
     nc = _minmax([c[2] for c in comps])
+    nb = _minmax([c[3] for c in comps])
     scored = []
-    for idx, (t, v, m, c) in enumerate(zip(threads, nv, nm, nc)):
-        score = _W_VOLUME * v + _W_MOVEMENT * m + _W_COHERENCE * c
+    for idx, (t, v, m, c, b) in enumerate(zip(threads, nv, nm, nc, nb)):
+        score = _W_VOLUME * v + _W_MOVEMENT * m + _W_COHERENCE * c + _W_BREADTH * b
         # Editorial-lane damp: lifestyle/sport/entertainment threads stop
         # out-ranking real news (still present — input, not gate).
         score *= lane_rank_multiplier(t)
