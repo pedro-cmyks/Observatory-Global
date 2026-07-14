@@ -27,6 +27,7 @@ import os
 import sys
 
 import asyncpg
+import json
 import numpy as np
 
 # Children pool = the served set. Only active, non-umbrella topics with a centroid.
@@ -37,6 +38,17 @@ _LOAD = """
     FROM dynamic_topics
     WHERE state = 'active' AND is_umbrella = false AND centroid_vec IS NOT NULL
     ORDER BY id
+"""
+
+# Per-topic actors (NER persons over the topic's current members) — the shared
+# distinctive actor is what reconnects event fragments the semantic cut misses.
+_ACTORS = """
+    SELECT tm.topic_id, s.persons
+    FROM topic_members tm
+    JOIN signals_v2 s ON s.id = tm.signal_id
+    WHERE tm.topic_id = ANY($1::text[])
+      AND s.timestamp > now() - INTERVAL '48 hours'
+      AND s.persons IS NOT NULL
 """
 
 
@@ -67,10 +79,67 @@ def _complete_linkage(sims: "np.ndarray", threshold: float) -> dict[int, list[in
     return {root: idxs for root, idxs in members.items() if len(idxs) >= 2}
 
 
+def _union_find_groups(n: int, edges: list[tuple[int, int]]) -> dict[int, list[int]]:
+    """Union-find over precise edges → groups of >=2. Safe here (unlike the
+    single-link-on-similarity that made garbage megagroups) because the edges are
+    shared-DISTINCTIVE-actor links, which do not chain unrelated topics."""
+    parent = list(range(n))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for i, j in edges:
+        parent[find(i)] = find(j)
+    groups: dict[int, list[int]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    return {root: idxs for root, idxs in groups.items() if len(idxs) >= 2}
+
+
+def _shared_actor_edges(
+    topic_actors: list[set],
+    sims: "np.ndarray",
+    *,
+    max_actor_df: int = 2,
+    centroid_floor: float = 0.88,
+    min_shared: int = 1,
+) -> list[tuple[int, int]]:
+    """Edges between topics that share a DISTINCTIVE actor — one appearing in at
+    most ``max_actor_df`` topics, so ubiquitous names (Trump) never connect — and
+    whose centroids clear a floor, so a coincidental shared rare name cannot merge
+    two semantically unrelated topics. This reconnects the event fragments (US
+    strikes / Hormuz blockade / drone attack) that share Araghchi/Khamenei/Hormuz
+    into one umbrella, which the semantic complete-linkage at 0.95 keeps missing.
+    """
+    from collections import Counter
+    df: Counter = Counter()
+    for actors in topic_actors:
+        for a in actors:
+            df[a] += 1
+    distinctive = {a for a, c in df.items() if c <= max_actor_df}
+    edges: list[tuple[int, int]] = []
+    n = len(topic_actors)
+    for i in range(n):
+        for j in range(i + 1, n):
+            shared = topic_actors[i] & topic_actors[j] & distinctive
+            if len(shared) >= min_shared and float(sims[i][j]) >= centroid_floor:
+                edges.append((i, j))
+    return edges
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser(description="R2: build umbrella topics over active centroids.")
     ap.add_argument("--threshold", type=float, default=0.95,
                     help="cosine similarity to merge two topics into one umbrella (same-event cut)")
+    ap.add_argument("--max-actor-df", type=int, default=2,
+                    help="an actor in >this many topics is not distinctive (won't connect)")
+    ap.add_argument("--centroid-floor", type=float, default=0.88,
+                    help="shared-actor edges also require this centroid similarity (anti-chain guard)")
+    ap.add_argument("--min-shared-actors", type=int, default=1,
+                    help="require at least this many shared distinctive actors per edge")
     ap.add_argument("--dry-run", action="store_true", help="measure only, no write")
     args = ap.parse_args()
 
@@ -92,6 +161,17 @@ async def main() -> None:
         V /= (np.linalg.norm(V, axis=1, keepdims=True) + 1e-9)
         sims = V @ V.T
 
+        # NOTE (2026-07-14): shared-distinctive-actor linkage (the fragmentation
+        # fix for reconnecting US-strikes / Hormuz-blockade / drone-attack into one
+        # US-Iran-war umbrella) is IMPLEMENTED and unit-tested below as
+        # `_shared_actor_edges` + `_union_find_groups`, but NOT wired in: on live
+        # data raw NER persons chain garbage (US-Iran fell under "Côte d'Ivoire"),
+        # and verified subjects come back empty / garbage ("cross ormuz") /
+        # ubiquitous ("donald trump"). The distinctive actors that would connect
+        # the fragments are not cleanly extracted — the umbrella-by-actor is
+        # blocked on NER/entity data quality (#184), the same root as the L2
+        # sport mis-typing and the "who" lane. Serving stays on the semantic cut
+        # until #184 lands; the mechanism is ready to wire then.
         multi = _complete_linkage(sims, args.threshold)
         n_children = sum(len(v) for v in multi.values())
 
