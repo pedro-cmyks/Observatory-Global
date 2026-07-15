@@ -922,7 +922,9 @@ def assemble_emergent_thread(
       trend / why_now  = reuse the atlas helpers on velocity.
     """
     cluster_id = int(_record_get(cluster_row, "id"))
-    label_text = str(_record_get(cluster_row, "label") or f"cluster {cluster_id}")
+    label_text = clean_thread_label(
+        _record_get(cluster_row, "label"), sample_signals, f"cluster {cluster_id}"
+    )
     description = _record_get(cluster_row, "description")
     signal_count = int(_record_get(cluster_row, "n_signals") or 0)
     velocity_raw = _record_get(cluster_row, "velocity")
@@ -1220,9 +1222,57 @@ WHERE dt.id = $1
 """
 
 
+# --- #204: thread-label hygiene (serving-layer) -----------------------------
+# DeepSeek's "(label failed)" stub and other placeholders were persisted into
+# dynamic_topics.label / emergent_clusters.label (snapshot_emergent_topics.py)
+# and then served verbatim, so they reached the Brief front page and the
+# console. Clean at the serving choke point both story paths pass through: a
+# real label passes through (HTML-unescaped); a placeholder falls back to a
+# representative evidence headline (mirrors build_unified_topics' creation-time
+# "Emerging: <headline>" fallback). Non-English title *translation* is a
+# separate follow-up (#204 part b).
+_PLACEHOLDER_LABELS = {"", "(no label)", "(label failed)", "(label failed.)", "none", "null"}
+_LABEL_MAX = 90
+
+
+def _is_placeholder_label(label: str | None) -> bool:
+    if not label:
+        return True
+    s = html.unescape(str(label)).strip()
+    if not s:
+        return True
+    low = s.lower()
+    return low in _PLACEHOLDER_LABELS or low.startswith("(label failed")
+
+
+def clean_thread_label(raw_label: Any, sample_signals: list[Any], fallback: str) -> str:
+    """Return a real thread title. A real label is returned HTML-unescaped. If
+    the stored label is a placeholder/failed stub, compose ``Emerging:
+    <headline>`` from the first non-junk sample headline; if none is clean, use
+    the generic ``fallback`` (e.g. 'dynamic topic 42')."""
+    label = None if raw_label is None else str(raw_label)
+    if not _is_placeholder_label(label):
+        return html.unescape(label).strip()
+    try:
+        from app.services.research_semantic import is_junk_headline
+    except Exception:  # pragma: no cover - never break serving on an import hiccup
+        def is_junk_headline(h: Any) -> bool:
+            return not h or len([w for w in str(h).split() if any(c.isalpha() for c in w)]) < 3
+    for sig in sample_signals or []:
+        headline = _record_get(sig, "headline")
+        if headline and not is_junk_headline(str(headline)):
+            clean = html.unescape(str(headline)).strip()
+            if len(clean) > _LABEL_MAX:
+                clean = clean[: _LABEL_MAX - 1].rstrip() + "…"
+            return f"Emerging: {clean}"
+    return fallback
+
+
 def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[str, Any]:
     topic_id = int(_record_get(topic_row, "id"))
-    label_text = str(_record_get(topic_row, "label") or f"dynamic topic {topic_id}")
+    label_text = clean_thread_label(
+        _record_get(topic_row, "label"), sample_signals, f"dynamic topic {topic_id}"
+    )
     # current-window volume (#224); lifetime aggregate kept as metadata
     signal_count = int(
         _record_get(topic_row, "recent_n_signals")
