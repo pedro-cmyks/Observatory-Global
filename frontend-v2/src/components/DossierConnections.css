@@ -190,3 +190,16 @@
   color: var(--color-text-muted, #64748b);
   margin-top: -4px;
 }
+
+/* R3c defect 16 — emerald: dark-tuned legend/role literals (#7dd3fc pin,
+   #a78bfa public role, #f59e0b caution/text-mention amber). Scoped; the
+   noir literals in the base rules stay byte-identical. */
+[data-theme^='emerald'] .dcx-k-pin { color: var(--color-info); }
+[data-theme^='emerald'] .dcx-role-public,
+[data-theme^='emerald'] .dcx-sw-public { background: var(--color-subj-person); }
+[data-theme^='emerald'] .dcx-cluster-badge--caution {
+    color: var(--color-severity-notable);
+    background: color-mix(in srgb, var(--color-severity-notable) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-severity-notable) 40%, transparent);
+}
+[data-theme^='emerald'] .dcx-k-text-edge { border-top-color: var(--color-severity-notable); }

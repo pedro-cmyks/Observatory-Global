@@ -30,7 +30,10 @@ const RingSwatch: React.FC<{ color: string; label: string; tip?: string }> = ({ 
 
 const Swatch: React.FC<{ color: string; label: string; tip?: string }> = ({ color, label, tip }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} data-tip={tip}>
-        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 5px ${color}55` }} />
+        {/* R3c defect 17: hairline ink keyline so light swatches (white cruise
+            aircraft) stay visible on the light legend card; imperceptible on
+            the dark themes at this alpha. */}
+        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `inset 0 0 0 1px rgba(var(--color-ink-rgb),0.25), 0 0 5px ${color}55` }} />
         <span style={{ fontSize: '11px', color: 'var(--color-text-primary)' }}>{label}</span>
     </div>
 )

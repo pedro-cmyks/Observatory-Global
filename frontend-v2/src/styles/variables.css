@@ -160,6 +160,96 @@
     --color-bg-overlay: rgba(238, 241, 239, 0.86);
 }
 
+/* ── R3c P1: pre-hydration emerald tokens ──────────────────────────────────
+   The index.html inline script stamps data-theme BEFORE any JS bundle runs;
+   these static blocks make the very first paint (AtlasLoader shell) match the
+   resolved theme instead of flashing the intel-noir defaults above. They are
+   a mechanical MIRROR of src/styles/themes.ts (the source of truth) — once
+   ThemeContext mounts, its inline custom properties (identical values) win. */
+[data-theme="emerald-light"] {
+    color-scheme: light;
+    --color-bg-primary: #eef1ef;
+    --color-bg-secondary: #f4f6f4;
+    --color-bg-tertiary: #e6ebe7;
+    --color-bg-panel: #ffffff;
+    --color-text-primary: #14201b;
+    --color-text-secondary: #3a4842;
+    --color-text-muted: #5a6861;
+    --color-border-subtle: #d6dcd7;
+    --color-border-medium: #c2ccc4;
+    --color-border-strong: rgba(15, 123, 90, 0.55);
+    --color-accent-primary: #0f7b5a;
+    --color-accent-secondary: #8f5b0a;
+    --color-accent-highlight: #0d6b4f;
+    --color-severity-normal: #6b7772;
+    --color-severity-notable: #8f5b0a;
+    --color-severity-elevated: #9d4f16;
+    --color-severity-critical: #a8412a;
+    --color-sentiment-positive: #0f7b5a;
+    --color-sentiment-neutral: #6b7772;
+    --color-sentiment-negative: #a8412a;
+    --color-info: #0e8fa8;
+    --color-on-accent: #ffffff;
+    --color-info-rgb: 14, 143, 168;
+    --color-neutral-rgb: 44, 56, 50;
+    --color-subj-person: #7a5aa6;
+    --color-ink-rgb: 20, 32, 27;
+    --color-accent-deep-rgb: 15, 123, 90;
+    --color-accent-bright-rgb: 15, 123, 90;
+    --color-shell-rgb: 238, 241, 239;
+    --color-raise-rgb: 255, 255, 255;
+    --fam-conflict: #c23f2e;
+    --fam-governance: #a3791f;
+    --fam-health: #1789a8;
+    --fam-economy: #3d7fd1;
+    --fam-society: #c9528a;
+    --fam-culture: #5b6472;
+    --fam-other: #8a938c;
+    --panel-radius: 12px;
+}
+
+[data-theme="emerald-dark"] {
+    color-scheme: dark;
+    --color-bg-primary: #0d1512;
+    --color-bg-secondary: #0f1a15;
+    --color-bg-tertiary: #1b2620;
+    --color-bg-panel: linear-gradient(180deg, rgba(19, 30, 25, 0.96) 0%, rgba(13, 21, 18, 0.93) 100%);
+    --color-text-primary: #e7ece8;
+    --color-text-secondary: #b9c4bd;
+    --color-text-muted: #8a988f;
+    --color-border-subtle: #243029;
+    --color-border-medium: #2f3d34;
+    --color-border-strong: rgba(47, 208, 160, 0.5);
+    --color-accent-primary: #2fd0a0;
+    --color-accent-secondary: #e0a54c;
+    --color-accent-highlight: #68dbae;
+    --color-severity-normal: #8a988f;
+    --color-severity-notable: #e0a54c;
+    --color-severity-elevated: #e08c55;
+    --color-severity-critical: #e07a5f;
+    --color-sentiment-positive: #2fd0a0;
+    --color-sentiment-neutral: #8a988f;
+    --color-sentiment-negative: #e07a5f;
+    --color-info: #49b6d0;
+    --color-on-accent: #0d1512;
+    --color-info-rgb: 73, 182, 208;
+    --color-neutral-rgb: 138, 152, 143;
+    --color-subj-person: #b79ad6;
+    --color-ink-rgb: 231, 236, 232;
+    --color-accent-deep-rgb: 29, 158, 117;
+    --color-accent-bright-rgb: 47, 208, 160;
+    --color-shell-rgb: 13, 21, 18;
+    --color-raise-rgb: 19, 30, 25;
+    --fam-conflict: #cc5d47;
+    --fam-governance: #b58733;
+    --fam-health: #0f92b0;
+    --fam-economy: #5183cc;
+    --fam-society: #c8659a;
+    --fam-culture: #8a949c;
+    --fam-other: #64748b;
+    --panel-radius: 12px;
+}
+
 /* Retro Radar theme extras */
 [data-theme="retro-radar"] .panel {
     box-shadow:

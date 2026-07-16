@@ -193,17 +193,18 @@
     background: rgba(var(--color-info-rgb), 0.22);
 }
 
+/* R3c defect 8: --color-subj-person's noir value IS #a78bfa (identity swap). */
 .sdp-person-tag {
     font-size: 11px;
     padding: 3px 8px;
-    background: rgba(167, 139, 250, 0.1);
-    color: #a78bfa;
+    background: color-mix(in srgb, var(--color-subj-person) 10%, transparent);
+    color: var(--color-subj-person);
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.15s;
 }
 .sdp-person-tag:hover {
-    background: rgba(167, 139, 250, 0.22);
+    background: color-mix(in srgb, var(--color-subj-person) 22%, transparent);
 }
 
 .sdp-footer {

@@ -818,3 +818,17 @@ Interactive elements should expose clear hover/focus states. Any icon-only contr
 Use the tokens above as literal values when recreating this visual system in another tool or generated UI. Do not substitute a bright cyberpunk palette, rounded SaaS cards, large pastel gradients, or marketing-page spacing inside the app console.
 
 The system works best when it feels like a quiet command center: dark, editorial when needed, precise, and connected end to end from brief to console to workspace.
+
+## Deep-Field Canvas Policy (R3c, 2026-07-16)
+
+Three console surfaces are **dark-by-design in every theme**, including emerald-light:
+
+- **Equal Earth basemap** (`EqualEarthMap.tsx`): the G1 weather-radar heat ramp was CVD-validated for monotonic effective luminance *over the dark ocean/land*; its max-heat core is near-white and would vanish on a light basemap. Theming the basemap requires re-deriving that validated ramp — until then the map is a deliberate dark viewport, framed by a hairline inset border in emerald-light.
+- **Universe field** (`UniverseView.tsx/.css`): the semantic starfield and its SVG mark palette are a dark-space metaphor.
+- **Orbital story system** (`OrbitalThreadView.tsx/.css`): same family as the universe field.
+
+Rules that follow from the policy:
+
+1. Text rendered **on** a dark-by-design canvas (body labels, hover cards, in-canvas readouts) is **pinned to fixed light literals — never theme vars** (a light-theme var is dark ink and goes illegible on the canvas).
+2. The **chrome around** the canvas (panel ground, scrubbers, legends, filters, loading/empty states) themes normally through ThemeContext vars.
+3. The ShareCard export canvas stays dark-by-design as well — it reads as a deliberate branded card.

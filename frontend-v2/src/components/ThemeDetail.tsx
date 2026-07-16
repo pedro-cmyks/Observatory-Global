@@ -426,8 +426,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         setInsight(isDynamicTopic && data ? buildDynamicTopicInsight(data) : null)
     }, [isDynamicTopic, isQueryThread, data])
 
+    // R3c defect 7: theme vars, not dark literals — noir's var values ARE
+    // these literals (#4ade80 / #f87171 / #fbbf24), so noir is byte-identical.
     const getSentimentColor = (s: number) =>
-        s > 0.1 ? '#4ade80' : s < -0.1 ? '#f87171' : '#fbbf24'
+        s > 0.1 ? 'var(--color-sentiment-positive)' : s < -0.1 ? 'var(--color-sentiment-negative)' : 'var(--color-severity-notable)'
 
     const sentimentWord = (s: number): string => {
         if (s > 2) return 'Very positive'
@@ -477,8 +479,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
     // Sentiment bar color for framing cards
     const getFramingSentimentColor = (s: number): string => {
-        if (s > 0.5) return '#4ade80'
-        if (s > -0.5) return '#94a3b8'
+        if (s > 0.5) return 'var(--color-sentiment-positive)'
+        if (s > -0.5) return 'var(--color-sentiment-neutral)'
         if (s > -2.0) return '#f59e0b'
         return '#ef4444'
     }
@@ -539,7 +541,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                     <button
                         onClick={handlePin}
                         data-tip={pinned ? "Unpin Theme" : "Pin Theme to Workspace"}
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: pinned ? '#10b981' : '#94a3b8', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                        style={{ background: 'rgba(var(--color-ink-rgb),0.05)', border: '1px solid rgba(var(--color-ink-rgb),0.1)', color: pinned ? '#10b981' : 'var(--color-sentiment-neutral)', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
                     >
                         {pinned ? <PinOff size={14} /> : <Pin size={14} />}
                     </button>
@@ -892,7 +894,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
                                         >
                                             <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#10b981', marginBottom: '4px' }}>{c.label}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.4 }}>{c.description}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-sentiment-neutral)', lineHeight: 1.4 }}>{c.description}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -1138,9 +1140,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     ))}
                                 </div>
                                 <div style={{ display: 'flex', gap: '12px', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '8px', justifyContent: 'center' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#4ade80' }}></span> Positive</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#fbbf24' }}></span> Neutral</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#f87171' }}></span> Negative</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--color-sentiment-positive)' }}></span> Positive</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--color-severity-notable)' }}></span> Neutral</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--color-sentiment-negative)' }}></span> Negative</span>
                                 </div>
                             </div>
                         )}

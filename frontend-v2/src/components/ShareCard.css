@@ -24,7 +24,10 @@
   box-sizing: border-box;
   padding: 40px;
   background: #0b0e13;
-  color: var(--color-text-primary);
+  /* R3c canvas policy: the export card is dark-by-design (deliberate branded
+     card) — text pins a light literal, never a theme var (a light-theme var
+     would export dark-on-dark). */
+  color: #e7ece8;
   font-family: 'Fraunces', Georgia, serif;
 }
 .share-card-kicker {

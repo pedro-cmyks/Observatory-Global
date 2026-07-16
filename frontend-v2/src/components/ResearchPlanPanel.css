@@ -385,3 +385,17 @@
   .rp-section-title, .rp-tray-toggle { font-size: 11px; }
   .rp-ledger { font-size: 10px; }
 }
+
+/* R3c defect 10 — emerald: GAP badge / error text were dark-tuned pastels
+   (≈1.6:1 on the amber tint). Scoped; noir exact. */
+[data-theme^='emerald'] .rp-badge--gap {
+  background: color-mix(in srgb, var(--color-severity-notable) 14%, transparent);
+  color: var(--color-severity-notable);
+}
+[data-theme^='emerald'] .rp-badge--direct {
+  background: rgba(var(--color-accent-deep-rgb), 0.14);
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .rp-status--error {
+  color: var(--color-sentiment-negative);
+}

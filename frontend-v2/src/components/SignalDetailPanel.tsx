@@ -78,10 +78,12 @@ interface Props {
     isPinned?: boolean
 }
 
+// R3c defect 8: theme vars — noir's var values ARE these literals
+// (#4ade80 / #f87171 / #94a3b8), so intel-noir renders byte-identically.
 const getSentimentColor = (s: number) => {
-    if (s > 0.1) return '#4ade80'
-    if (s < -0.1) return '#f87171'
-    return '#94a3b8'
+    if (s > 0.1) return 'var(--color-sentiment-positive)'
+    if (s < -0.1) return 'var(--color-sentiment-negative)'
+    return 'var(--color-sentiment-neutral)'
 }
 
 const getSentimentLabel = (s: number) => {

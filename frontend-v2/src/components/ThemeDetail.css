@@ -1534,3 +1534,32 @@
     color: var(--color-text-muted, #64748b);
     margin: 2px 0 8px;
 }
+
+/* R3c defect 6 — emerald: typed-subject badge text was pastel-on-tint
+   (≈1.2-1.5:1 on white). Same var set as EntityPanel.css/CountryBrief.css
+   (the already-themed recipe). Scoped; noir keeps its pastels. */
+[data-theme^='emerald'] .subject-badge[data-type="person"] {
+    background: color-mix(in srgb, var(--color-subj-person) 16%, transparent);
+    color: var(--color-subj-person);
+}
+[data-theme^='emerald'] .subject-badge[data-type="place"] {
+    background: rgba(var(--color-info-rgb), 0.14);
+    color: var(--color-info);
+}
+[data-theme^='emerald'] .subject-badge[data-type="organization"] {
+    background: color-mix(in srgb, var(--color-severity-notable) 14%, transparent);
+    color: var(--color-severity-notable);
+}
+[data-theme^='emerald'] .subject-badge[data-type="event"] {
+    background: color-mix(in srgb, var(--color-sentiment-negative) 14%, transparent);
+    color: var(--color-sentiment-negative);
+}
+[data-theme^='emerald'] .subject-badge[data-type="group"] {
+    background: rgba(var(--color-accent-deep-rgb), 0.14);
+    color: var(--color-accent-highlight);
+}
+
+/* R3c defect 7 — emerald: source-intel chip text (#cbd5e0 dark-tuned). */
+[data-theme^='emerald'] .source-intel-chip {
+    color: var(--color-text-secondary);
+}

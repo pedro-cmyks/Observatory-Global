@@ -137,3 +137,17 @@
         max-height: 60vh;
     }
 }
+
+/* R3c verify residual — emerald: dark-theme ink literals were invisible /
+   low-contrast on the themed light shell (title #f3f4f6 on #eef1ef).
+   Scoped so intel-noir keeps its exact literals. */
+[data-theme^='emerald'] .cep-title { color: var(--color-text-primary); }
+[data-theme^='emerald'] .cep-context-label { color: var(--color-text-secondary); }
+[data-theme^='emerald'] .cep-thread-label { color: var(--color-text-primary); }
+[data-theme^='emerald'] .cep-pin,
+[data-theme^='emerald'] .cep-close,
+[data-theme^='emerald'] .cep-empty,
+[data-theme^='emerald'] .cep-thread-count { color: var(--color-text-secondary); }
+[data-theme^='emerald'] .cep-pin { border-color: rgba(var(--color-ink-rgb), 0.3); }
+[data-theme^='emerald'] .cep-pin:hover { color: var(--color-text-primary); border-color: rgba(var(--color-ink-rgb), 0.5); }
+[data-theme^='emerald'] .cep-country-link { color: var(--color-accent-primary); }

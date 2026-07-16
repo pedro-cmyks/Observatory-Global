@@ -336,3 +336,29 @@
         opacity: 1;
     }
 }
+
+/* R3c defect 4 — emerald: contrast band / scope band / loading shimmer used
+   hardcoded dark grounds and washes under themed text. Scoped; noir exact. */
+[data-theme^='emerald'] .pap-contrast-band {
+    background:
+        linear-gradient(90deg, rgba(var(--color-info-rgb), 0.08), transparent 46%),
+        rgba(var(--color-ink-rgb), 0.04);
+}
+
+[data-theme^='emerald'] .pap-scope-band {
+    background: rgba(var(--color-info-rgb), 0.08);
+}
+
+[data-theme^='emerald'] .pap-scope-band p {
+    color: var(--color-text-secondary);
+}
+
+/* R3c verify residual: same wash class as the scope-band para — #8fb6c7
+   was near-invisible on the light shell. Noir keeps its literal. */
+[data-theme^='emerald'] .pap-contrast-note {
+    color: var(--color-text-secondary);
+}
+
+[data-theme^='emerald'] .pap-loading span {
+    background: linear-gradient(90deg, rgba(var(--color-ink-rgb), 0.06), rgba(var(--color-ink-rgb), 0.16), rgba(var(--color-ink-rgb), 0.06));
+}

@@ -49,3 +49,23 @@
 @media (max-width: 768px) {
     .day-evidence { width: calc(100% - 20px); right: 10px; left: 10px; max-height: 60%; }
 }
+
+/* R3c defect 2 — emerald: the receipts card themes (was a hardcoded dark
+   ground under themed ink text → dark-on-dark in emerald-light). Scoped so
+   intel-noir keeps its exact dark literal. */
+[data-theme^='emerald'] .day-evidence {
+    background: rgba(var(--color-raise-rgb), 0.96);
+    border-color: var(--color-border-medium);
+    box-shadow: var(--shadow-depth);
+}
+[data-theme^='emerald'] .day-evidence-tier {
+    color: var(--color-severity-notable);
+    border-color: color-mix(in srgb, var(--color-severity-notable) 40%, transparent);
+}
+[data-theme^='emerald'] .day-evidence-tier--hot {
+    color: var(--color-accent-primary);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.4);
+}
+[data-theme^='emerald'] .day-evidence-list li {
+    border-bottom-color: rgba(var(--color-ink-rgb), 0.15);
+}

@@ -391,3 +391,85 @@
   stroke: rgba(11, 14, 19, 0.85);
   stroke-width: 2.5px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   R3c defect 1 — emerald canvas policy (audit 2026-07-15).
+   POLICY: the field CANVAS is dark-by-design (a starfield is a dark surface;
+   the SVG mark palette in UniverseView.tsx is calibrated for it) — so every
+   text that renders ON the canvas (labels, hover card, footprint/heating
+   readouts) is PINNED to fixed light literals, never theme vars. The CHROME
+   around the canvas (panel ground, scrubber, legend, filters, empty/loading
+   states) themes normally via ThemeContext vars. Scoped to emerald so
+   intel-noir/retro stay byte-identical.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* — chrome: themed ground so loading/empty/legend/scrubber are legible — */
+[data-theme^='emerald'] .universe-panel {
+  background: var(--color-bg-primary);
+}
+[data-theme^='emerald'] .universe-overlay {
+  background: rgba(var(--color-shell-rgb), 0.97);
+}
+[data-theme^='emerald'] .universe-overlay-close {
+  border-color: var(--color-border-medium);
+}
+[data-theme^='emerald'] .universe-overlay-close:hover {
+  border-color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .universe-canvas {
+  border-color: var(--color-border-medium);
+}
+[data-theme^='emerald'] .universe-scrubber input[type='range'] {
+  accent-color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .universe-scrubber-stats {
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .universe-legend-dot {
+  background: var(--color-subj-person);
+}
+[data-theme^='emerald'] .universe-legend-edge {
+  background: var(--color-info);
+}
+[data-theme^='emerald'] .universe-legend-crisis {
+  border-color: color-mix(in srgb, var(--color-sentiment-negative) 85%, transparent);
+}
+[data-theme^='emerald'] .universe-filter {
+  border-color: var(--color-border-medium);
+  color: var(--color-text-secondary);
+}
+[data-theme^='emerald'] .universe-filter.active {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .universe-orbit-back {
+  border-color: var(--color-border-medium);
+  color: var(--color-info);
+}
+[data-theme^='emerald'] .universe-orbit-back:hover {
+  border-color: var(--color-info);
+}
+
+/* — canvas overlays: dark grounds keep PINNED light text (never vars) — */
+[data-theme^='emerald'] .universe-constellation {
+  fill: rgba(148, 163, 184, 0.28);
+}
+[data-theme^='emerald'] .universe-body-label {
+  fill: rgba(226, 232, 240, 0.68);
+}
+[data-theme^='emerald'] .universe-hover {
+  color: rgba(203, 213, 224, 0.9);
+}
+[data-theme^='emerald'] .universe-hover strong {
+  color: #e7ece8;
+}
+[data-theme^='emerald'] .universe-hover em {
+  color: rgba(226, 232, 240, 0.6);
+}
+[data-theme^='emerald'] .universe-hover-cta {
+  color: #34d399 !important; /* pinned: sits on the dark hover card */
+}
+[data-theme^='emerald'] .universe-footprint-stat,
+[data-theme^='emerald'] .universe-heating-top {
+  color: rgba(226, 232, 240, 0.65);
+}

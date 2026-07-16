@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, useRef, type ReactNode } from 'react';
 import type { Theme } from '../styles/themes';
 import { THEMES, DEFAULT_THEME_ID } from '../styles/themes';
 import {
@@ -70,7 +70,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const theme = THEMES[themeId] || THEMES[DEFAULT_THEME_ID];
 
-    useEffect(() => {
+    // Layout effect (R3c P1): applying vars AFTER paint let the first frame
+    // render the static variables.css tokens, then flip — a visible dark→light
+    // loader flash in emerald-light. Before-paint application closes the React
+    // half of the gap (index.html's inline stamp covers the pre-JS half).
+    useLayoutEffect(() => {
         applyThemeToCSS(theme);
     }, [theme]);
 

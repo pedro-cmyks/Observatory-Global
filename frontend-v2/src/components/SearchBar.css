@@ -469,3 +469,40 @@
     border-radius: 3px;
     letter-spacing: 0.06em;
 }
+
+/* R3c defect 5 — emerald: dropdown row/banner/badge literals were dark-tuned
+   (#cbd5e0 on white ≈1.6:1). Scoped; intel-noir keeps its literals. */
+[data-theme^='emerald'] .search-item-name {
+    color: var(--color-text-primary);
+}
+[data-theme^='emerald'] .search-query-thread-cta--muted .search-query-thread-text {
+    color: var(--color-text-secondary);
+}
+[data-theme^='emerald'] .search-more-toggle:hover {
+    color: var(--color-text-secondary);
+}
+[data-theme^='emerald'] .search-context-banner {
+    color: var(--color-info);
+    border-bottom-color: rgba(var(--color-info-rgb), 0.15);
+    background: rgba(var(--color-info-rgb), 0.05);
+}
+[data-theme^='emerald'] .search-country-badge {
+    color: var(--color-info);
+    background: rgba(var(--color-info-rgb), 0.1);
+    border-color: rgba(var(--color-info-rgb), 0.3);
+}
+[data-theme^='emerald'] .search-suggestion-banner {
+    border-bottom-color: color-mix(in srgb, var(--color-subj-person) 14%, transparent);
+    background: color-mix(in srgb, var(--color-subj-person) 5%, transparent);
+}
+[data-theme^='emerald'] .search-suggestion-chip {
+    color: var(--color-subj-person);
+    border-color: color-mix(in srgb, var(--color-subj-person) 30%, transparent);
+    background: color-mix(in srgb, var(--color-subj-person) 10%, transparent);
+}
+[data-theme^='emerald'] .search-suggestion-chip:hover {
+    background: color-mix(in srgb, var(--color-subj-person) 18%, transparent);
+}
+[data-theme^='emerald'] .region-tag {
+    color: var(--color-accent-primary);
+}

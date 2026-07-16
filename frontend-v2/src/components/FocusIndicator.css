@@ -76,3 +76,13 @@
         z-index: 9550;
     }
 }
+
+/* R3c verify residual — emerald: the chip value was a dark-theme literal
+   (#d8e0ea) on the themed light shell → focus target near-invisible.
+   Scoped; intel-noir keeps its exact literal. */
+[data-theme^='emerald'] .focus-value {
+    color: var(--color-text-primary);
+}
+[data-theme^='emerald'] .focus-clear {
+    color: var(--color-text-secondary);
+}

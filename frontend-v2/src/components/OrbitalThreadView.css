@@ -229,3 +229,52 @@
   cursor: pointer;
 }
 .orbital-reset:hover { border-color: rgba(255, 255, 255, 0.4); }
+
+/* ── R3c defect 15 — emerald canvas policy (same as UniverseView.css) ──────
+   The orbital CANVAS is dark-by-design; text ON it pins fixed light literals
+   (never vars — light-theme vars are dark ink). Chrome around it (scrubber,
+   legend, empty state) themes via vars. Scoped; noir/retro byte-identical. */
+
+/* — chrome — */
+[data-theme^='emerald'] .orbital-canvas {
+  border-color: var(--color-border-medium);
+}
+[data-theme^='emerald'] .orbital-scrubber input[type='range'] {
+  accent-color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .orbital-scrubber-entrants {
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .orbital-empty {
+  border-color: rgba(var(--color-ink-rgb), 0.18);
+}
+
+/* — canvas overlays: pinned light text on the dark field — */
+[data-theme^='emerald'] .orbital-ring-label {
+  fill: rgba(148, 163, 184, 0.4);
+}
+[data-theme^='emerald'] .orbital-ring-label--far {
+  fill: rgba(148, 163, 184, 0.28);
+}
+[data-theme^='emerald'] .orbital-ring {
+  stroke: rgba(148, 163, 184, 0.14);
+}
+[data-theme^='emerald'] .orbital-hover-link {
+  stroke: rgba(226, 232, 240, 0.35);
+}
+[data-theme^='emerald'] .orbital-hover-link-label,
+[data-theme^='emerald'] .orbital-body-label {
+  fill: rgba(226, 232, 240, 0.68);
+}
+[data-theme^='emerald'] .orbital-hover {
+  color: rgba(203, 213, 224, 0.9);
+}
+[data-theme^='emerald'] .orbital-hover strong {
+  color: #e7ece8;
+}
+[data-theme^='emerald'] .orbital-hover em {
+  color: rgba(226, 232, 240, 0.6);
+}
+[data-theme^='emerald'] .orbital-reset {
+  color: rgba(226, 232, 240, 0.8); /* sits on the dark canvas — pinned */
+}

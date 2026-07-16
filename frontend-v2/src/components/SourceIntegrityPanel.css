@@ -187,3 +187,10 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* R3c defect 12 — emerald: rgba(0,0,0,.3) washes read as muddy gray blocks
+   on paper; ink-tint reads as the same "raised strip" in both schemes. */
+[data-theme^='emerald'] .source-header,
+[data-theme^='emerald'] .metric-box {
+    background: rgba(var(--color-ink-rgb), 0.06);
+}

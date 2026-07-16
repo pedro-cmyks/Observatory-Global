@@ -323,3 +323,9 @@
 .dossier-corrob-chip--contested { color: var(--color-severity-notable); border: 1px solid rgba(251, 191, 36, 0.45); background: rgba(251, 191, 36, 0.08); }
 .dossier-corrob-chip--unverified { color: var(--color-text-muted); border: 1px solid rgba(139, 151, 166, 0.45); background: rgba(139, 151, 166, 0.08); }
 .dossier-corrob-chip--not_applicable { color: var(--color-text-muted); border: 1px dashed rgba(var(--color-neutral-rgb), 0.5); background: rgba(var(--color-neutral-rgb), 0.06); }
+
+/* R3c defect 16 — emerald: title-edit hint was rgba(243,244,246,.35) — a
+   near-white ghost, invisible on the white dossier page. Scoped; noir exact. */
+[data-theme^='emerald'] .dossier-title-edit {
+    color: rgba(var(--color-ink-rgb), 0.4);
+}

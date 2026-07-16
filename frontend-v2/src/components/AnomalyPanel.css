@@ -65,7 +65,8 @@
 .ap-focus-stream--critical { color: var(--color-severity-critical); border: 1px solid rgba(239, 68, 68, 0.4); }
 .ap-focus-stream--elevated { color: var(--color-severity-elevated); border: 1px solid rgba(249, 115, 22, 0.4); }
 .ap-focus-stream--trend    { color: var(--color-severity-notable); border: 1px solid rgba(251, 191, 36, 0.4); }
-.ap-focus-stream--person   { color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.4); }
+/* R3c defect 14: --color-subj-person's noir value IS #a78bfa (identity swap). */
+.ap-focus-stream--person   { color: var(--color-subj-person); border: 1px solid color-mix(in srgb, var(--color-subj-person) 40%, transparent); }
 .ap-focus-stream--maritime { color: var(--color-info); border: 1px solid rgba(var(--color-info-rgb), 0.4); }
 
 /* ── Two-column body ── */
@@ -329,3 +330,10 @@
     font-size: 12px;
 }
 .ap-forum-link:hover { opacity: 1; }
+
+/* R3c defect 14 — emerald: dark-tuned blue count (#60a5fa ≈2.5:1 on white).
+   (oceanConsole.css also themes .ap-ctry-count; kept here so the fix does not
+   depend on import order.) */
+[data-theme^='emerald'] .ap-ctry-count {
+    color: var(--color-info);
+}

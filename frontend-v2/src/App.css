@@ -1911,3 +1911,11 @@
   .workbench-suggest-label { font-size: 11px; }
   .workbench-suggest-query { font-size: 12px; }
 }
+
+/* R3c defect 3 — emerald: globe scrubber pill themes (hardcoded dark ground
+   under themed neutral text → dark-on-dark in emerald-light). Noir keeps its
+   literal via the base rule above. */
+[data-theme^='emerald'] .globe-scrubber {
+  background: rgba(var(--color-raise-rgb), 0.92);
+  border-color: var(--color-border-medium);
+}

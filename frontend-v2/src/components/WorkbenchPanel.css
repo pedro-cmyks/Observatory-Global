@@ -278,3 +278,17 @@
 
 /* P0.6b: the web-corroboration ramp next to REPORT */
 .wb-action--corroborate { border-color: rgba(96, 165, 250, 0.35); color: rgba(147, 197, 253, 0.85); }
+
+/* R3c defect 9 — emerald: action-button text was pastel dark-tuned
+   (CORROBORATE ≈1.9:1, DELETE ≈1.7:1 on white). Scoped; noir exact. */
+[data-theme^='emerald'] .wb-action--corroborate {
+  color: var(--color-info);
+  border-color: rgba(var(--color-info-rgb), 0.35);
+}
+[data-theme^='emerald'] .wb-action--danger {
+  color: var(--color-sentiment-negative);
+  border-color: color-mix(in srgb, var(--color-sentiment-negative) 30%, transparent);
+}
+[data-theme^='emerald'] .wb-pin-remove:hover {
+  color: var(--color-sentiment-negative);
+}

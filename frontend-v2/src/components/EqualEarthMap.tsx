@@ -26,6 +26,15 @@ import './EqualEarthMap.css'
 // on ocean — the contrast fix.
 // Land brighter than the (greyer, lighter) ocean so countries stand out — the
 // Mercator basemap reads as grey sea + lighter land; match that contrast.
+//
+// R3c defect 13 — CANVAS POLICY DECISION (see DESIGN.md "Deep-field canvas
+// policy"): the basemap is DARK-BY-DESIGN in every theme. The G1 heat ramp
+// (lib/countryHeatStates.heatFillColor) was CVD-validated for monotonic
+// effective luminance OVER THIS DARK GROUND — its max-heat core is near-white
+// [255,226,205], which would vanish on a light basemap. Theming the ocean/land
+// without re-deriving that validated ramp would silently break the heat
+// encoding, so the map stays a deliberate dark viewport inside light chrome
+// (emerald-light frames it via EqualEarthMap.css).
 const LAND_RGB: [number, number, number] = [58, 76, 100]
 const OCEAN = '#1b2531'
 

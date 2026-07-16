@@ -99,7 +99,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                 {insight && (
                     <p style={{
                         fontSize: '12.5px', lineHeight: '1.65',
-                        color: 'rgba(255,255,255,0.75)',
+                        color: 'rgba(var(--color-ink-rgb),0.75)',
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
                         borderLeft: '2px solid #1D9E75',
                         paddingLeft: '12px',

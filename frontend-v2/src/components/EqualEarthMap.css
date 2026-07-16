@@ -117,3 +117,11 @@
     margin-top: 3px;
     opacity: 0.85;
 }
+
+/* R3c defect 13 — emerald-light: the basemap is dark-by-design (the G1 heat
+   ramp's luminance is validated over the dark ocean; see the palette note in
+   EqualEarthMap.tsx). A hairline inset frame makes the dark viewport read as
+   a deliberate card inside the light panel, not an unthemed leftover. */
+[data-theme='emerald-light'] .equal-earth-map {
+    box-shadow: inset 0 0 0 1px rgba(20, 32, 27, 0.18);
+}
