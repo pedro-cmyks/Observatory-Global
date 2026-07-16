@@ -22,7 +22,7 @@ export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
     // the raw id — while GDELT theme codes still route through getThemeLabel.
     const displayLabel = (focus.type === 'theme' || focus.type === 'thread')
         ? resolveThreadLabel(focus.label)
-        : focus.type === 'country'
+        : focus.type === 'country' && focus.label
             ? resolveCountryName(focus.label)   // "Australia", never a raw "AU"
             : focus.label
 
