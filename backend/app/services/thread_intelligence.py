@@ -635,7 +635,11 @@ def build_thread_label(*, anchor_label: str, top_countries: list[str]) -> str:
     return f"{anchor_label} in {place}"
 
 
-def _why_now(changed_10h: int, country_names: list[str]) -> str:
+def _why_now(
+    changed_10h: int,
+    subject_countries: list[str] | None = None,
+    subject_status: str | None = None,
+) -> str:
     """One-line 'why is this moving now' for a thread card.
 
     `changed_10h` is a NET change: count(last 10h) - count(prior 10h). It is
@@ -643,23 +647,25 @@ def _why_now(changed_10h: int, country_names: list[str]) -> str:
     `signal_count` when the serving window is shorter than the 20h span the
     delta is measured over (#214: a reader saw "+53 in 10h" against a window
     total of 28). So the copy must read explicitly as a net up/down vs the
-    PRIOR 10h, never as "N more signals than the thread has". "signals" is
-    qualified as a rate ("more signals than the prior 10h") rather than an
-    absolute that invites comparison against the window total.
+    PRIOR 10h, never as "N more signals than the thread has".
+
+    #238 (subject vs coverage geography): the old template appended
+    "concentrated in {top coverage countries}" — a coverage-proxy presented as
+    a subject claim (live case: a verified-IT thread reading "concentrated in
+    Iran and Russia"). The geo clause now appears ONLY when subject geography
+    is VERIFIED from the receipts ("centered on X" — a subject claim we can
+    stand behind); otherwise the sentence is movement-only. Coverage countries
+    still serve as labeled chips — they never masquerade as the subject here.
     """
-    resolved = [resolve_country_name(c) for c in country_names[:2]]
-    place = " and ".join(resolved) if resolved else "multiple regions"
+    place = ""
+    if subject_status == "verified" and subject_countries:
+        resolved = [resolve_country_name(c) for c in subject_countries[:2]]
+        place = ", centered on " + " and ".join(resolved)
     if changed_10h > 0:
-        return (
-            f"Up {changed_10h} vs the prior 10h "
-            f"(net new coverage), concentrated in {place}."
-        )
+        return f"Up {changed_10h} vs the prior 10h (net new coverage){place}."
     if changed_10h < 0:
-        return (
-            f"Down {abs(changed_10h)} vs the prior 10h "
-            f"(coverage cooling), concentrated in {place}."
-        )
-    return f"Signal volume is steady vs the prior 10h, concentrated in {place}."
+        return f"Down {abs(changed_10h)} vs the prior 10h (coverage cooling){place}."
+    return f"Signal volume is steady vs the prior 10h{place}."
 
 
 def _trend_label(changed_10h: int, signal_count: int) -> str:
@@ -829,7 +835,9 @@ def assemble_thread(
             geo_count=country_count,
             assignment_confidence=avg_confidence,
         ),
-        "why_now": _why_now(changed_10h, country_names),
+        # #238: atlas path computes no receipt-subject inference — movement-only,
+        # never a coverage-country clause dressed as a subject claim.
+        "why_now": _why_now(changed_10h),
         "subthreads": [],
         "related_threads": _as_list(_record_get(row, "related_topics")),
         "evidence_samples": evidence_samples or [],
@@ -1017,7 +1025,8 @@ def assemble_emergent_thread(
             geo_count=country_count,
             assignment_confidence=avg_conf_for_band,
         ),
-        "why_now": _why_now(velocity, country_codes),
+        # #238: emergent path computes no receipt-subject inference — movement-only.
+        "why_now": _why_now(velocity),
         "subthreads": [],
         "related_threads": [],
         "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],
@@ -1390,7 +1399,11 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
             geo_count=country_count,
             assignment_confidence=avg_conf if avg_conf is not None else 0.0,
         ),
-        "why_now": _why_now(changed_10h, country_codes),
+        "why_now": _why_now(
+            changed_10h,
+            subject_countries=subject_countries,
+            subject_status=subject_geography.get("status"),
+        ),
         "subthreads": [],
         "related_threads": [],
         "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],

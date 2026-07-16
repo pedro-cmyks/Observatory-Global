@@ -923,8 +923,10 @@ _NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'Иран'), "IR"),
     (_native_word('İran'), "IR"),                       # Turkish
     (_native_bengali('ইরান'), "IR"),                    # Bengali
-    # Russia — before Ukraine
-    (re.compile(r'Росси|Москв|Кремл|Путин'), "RU"),
+    # Russia — before Ukraine. Both Russian (Росси/Путин) and Ukrainian
+    # (Росія→Росі, Путін) orthographies (#238): Ukrainian-language headlines
+    # spell Russia with і, so the Russian-only stems never matched them.
+    (re.compile(r'Росси|Росі|Москв|Кремл|Путин|Путін'), "RU"),
     (re.compile(r'俄罗斯|ロシア|러시아'), "RU"),
     (_native_arabic('روسیه', 'روسيا', 'روس'), "RU"),
     (re.compile(r'रूस'), "RU"),
@@ -990,8 +992,10 @@ _NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'Германи'), "DE"),
     (_native_arabic('آلمان', 'ألمانيا'), "DE"),
     (_native_word('Almanya'), "DE"),                    # Turkish
-    # ── Ukraine (after Russia) ──
-    (re.compile(r'Украин|Киев|Зеленск'), "UA"),
+    # ── Ukraine (after Russia) ── Russian (Украин/Киев/Зеленск) AND Ukrainian
+    # (Україн/Київ/Зеленськ) orthographies (#238): the stems were Russian-only,
+    # so Ukrainian-language receipts about Ukraine yielded no subject evidence.
+    (re.compile(r'Украин|Україн|Киев|Київ|Зеленск|Зеленськ'), "UA"),
     (re.compile(r'乌克兰|ウクライナ|우크라이나'), "UA"),
     (_native_arabic('اوکراین', 'أوكرانيا', 'یوکرین'), "UA"),
     (re.compile(r'यूक्रेन'), "UA"),

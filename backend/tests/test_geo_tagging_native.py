@@ -116,6 +116,17 @@ RECALL_CASES: list[tuple[str, str, str]] = [
     ("ru Russia>Ukraine", "Россия и Украина продолжают войну", "RU"),
     ("hi India", "भारत में चुनाव की तैयारी", "IN"),
 
+    # ── Ukrainian orthography (#238): the UA/RU Cyrillic stems were written in
+    # RUSSIAN spelling only (Украин/Киев, Росси) — Ukrainian-language headlines
+    # (ї/і/є forms) matched nothing, so Ukrainian receipts about Ukraine came
+    # back "no explicit subject geography". These are real prod headline forms.
+    ("uk Ukraine noun", "25 країн готові відправити війська до України", "UA"),
+    ("uk Ukraine dative", "Франція дозволила Україні ліцензійне виробництво ракет", "UA"),
+    ("uk Kyiv", "Київ отримає нові системи протиповітряної оборони", "UA"),
+    ("uk Zelensky", "Зеленський зустрівся з Макроном у Парижі", "UA"),
+    ("uk Russia spelled uk", "Росія відкидає умови припинення вогню", "RU"),
+    ("uk Putin spelled uk", "Путін відповів на ультиматум", "RU"),
+
     # ── Regression: Latin still works ──
     ("en Iran>USA", "Iran strikes US base in overnight raid", "IR"),
     ("es Colombia", "Elecciones presidenciales en Colombia", "CO"),
