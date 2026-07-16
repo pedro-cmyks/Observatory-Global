@@ -363,10 +363,21 @@ def _priority_select_sql(target_column: str) -> str:
             ) ASC
             LIMIT (SELECT hot_limit FROM budgets)
         ),
+        sample_pool AS (
+            -- Bounded pool (#184 ops 2026-07-16): the unbounded join hashed
+            -- ALL {target_column}-pending signals (~170K heap fetches, 83s
+            -- measured under IO pressure) — the same disease the hot/backlog
+            -- pools already guard against. Oldest-first keeps the queue's
+            -- drain order; 5000 ids join via the signals_v2 pkey in ms.
+            SELECT id, enqueued_at
+            FROM nlp_sample_queue
+            ORDER BY enqueued_at ASC
+            LIMIT 5000
+        ),
         sample_lane AS (
             SELECT s.id, s.headline, s.source_lang, s.source_family,
                    s.country_code, s.geo_confidence, s.timestamp
-            FROM nlp_sample_queue q
+            FROM sample_pool q
             JOIN signals_v2 s ON s.id = q.id
             WHERE s.{target_column} IS NULL
               AND s.headline IS NOT NULL AND LENGTH(s.headline) > 10
