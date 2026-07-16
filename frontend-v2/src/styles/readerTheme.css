@@ -1,0 +1,240 @@
+/* ============================================================================
+   ATLAS READER THEME — the emerald reader identity (R1 re-skin foundation).
+   Visual spec: artifact-backups atlas-edition-l1.html / landing-l0.html /
+   docs-atlas.html.
+
+   SCOPING RULE (load-bearing): the keep-alive shell mounts the console (dark
+   Intel-Noir, ThemeContext writes inline vars on documentElement) and the
+   reader pages in the SAME document. These tokens therefore live ONLY on the
+   .atlas-reader page wrapper — never on :root — and theming is driven by
+   data-rtheme (set by useReaderTheme in src/lib/readerTheme.tsx), never by a
+   prefers-color-scheme media query here (the JS resolver already blends the
+   OS preference with the 19-7 clock and the stored override).
+
+   Usage: <div className="atlas-reader" data-rtheme={theme}> ... </div>
+   ========================================================================= */
+
+.atlas-reader {
+  /* ---- light (day) tokens: the defaults ---- */
+  --r-paper: #eef1ef;
+  --r-surface: #ffffff;
+  --r-ink: #14201b;
+  --r-ink-soft: #3a4842;
+  --r-muted: #5a6861;
+  --r-line: #d6dcd7;
+  --r-chip: #e6ebe7;
+  --r-accent: #0f7b5a;   /* atlas signal emerald */
+  --r-accent-2: #a86a0c; /* under the radar / gaps — ochre */
+  --r-accent-3: #6c4a86; /* culture, sport & life — plum */
+  --r-critical: #a8412a; /* asymmetry / warning */
+  --r-on-accent: #ffffff;
+
+  /* section color slot: sections override --r-sec to accent-2/-3 */
+  --r-sec: var(--r-accent);
+
+  /* ---- type stacks ---- */
+  --r-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --r-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --r-mono: "SF Mono", "IBM Plex Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+
+  /* ---- page base ---- */
+  background: var(--r-paper);
+  color: var(--r-ink);
+  font-family: var(--r-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+  min-height: 100vh;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+.atlas-reader[data-rtheme="dark"] {
+  --r-paper: #0d1512;
+  --r-surface: #131e19;
+  --r-ink: #e7ece8;
+  --r-ink-soft: #b9c4bd;
+  --r-muted: #8a988f;
+  --r-line: #243029;
+  --r-chip: #1b2620;
+  --r-accent: #2fd0a0;
+  --r-accent-2: #e0a54c;
+  --r-accent-3: #b79ad6;
+  --r-critical: #e07a5f;
+  --r-on-accent: #0d1512;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-reader {
+    transition: none;
+  }
+}
+
+.atlas-reader a {
+  color: inherit;
+}
+
+.atlas-reader :focus-visible {
+  outline: 2.5px solid var(--r-sec);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ----------------------------------------------------------------------------
+   MASTHEAD type rules
+   ------------------------------------------------------------------------- */
+
+.reader-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px 26px;
+  padding: 30px 0 16px;
+  border-bottom: 2px solid var(--r-ink);
+}
+
+.reader-eyebrow {
+  font-family: var(--r-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--r-muted);
+  margin: 0 0 6px 3px;
+}
+
+.reader-wordmark {
+  font-family: var(--r-serif);
+  font-weight: 700;
+  font-size: clamp(3.1rem, 11vw, 6.6rem);
+  line-height: 0.86;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--r-ink);
+}
+
+.reader-wordmark .dot {
+  color: var(--r-accent);
+}
+
+.reader-tagline {
+  font-family: var(--r-serif);
+  font-style: italic;
+  font-size: clamp(0.92rem, 2.3vw, 1.12rem);
+  color: var(--r-ink-soft);
+  margin: 10px 0 0 3px;
+  max-width: 44ch;
+}
+
+.reader-dateline {
+  font-family: var(--r-mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: var(--r-ink-soft);
+}
+
+.reader-dateline b {
+  color: var(--r-ink);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------------------------------
+   CHIP + MEASURED PILL (furniture: mono, uppercase, letter-spaced)
+   ------------------------------------------------------------------------- */
+
+.reader-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--r-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 6px 11px;
+  border: 1px solid var(--r-line);
+  border-radius: 999px;
+  background: var(--r-chip);
+  color: var(--r-ink-soft);
+  white-space: nowrap;
+}
+
+/* live dot inside a chip: <span class="live"/> */
+.reader-chip .live {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--r-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--r-accent) 22%, transparent);
+}
+
+/* chips are sometimes buttons (theme toggle, share): strip button chrome */
+button.reader-chip {
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+button.reader-chip:hover {
+  border-color: var(--r-sec);
+  color: var(--r-ink);
+}
+
+.reader-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--r-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--r-line);
+  background: var(--r-chip);
+  color: var(--r-ink-soft);
+}
+
+/* honesty label variant: "MEASURED · LAST 24H" */
+.reader-pill.measured {
+  letter-spacing: 0.14em;
+}
+
+/* ----------------------------------------------------------------------------
+   SECTION KICKER (mono label with the colored dash) + item kicker
+   ------------------------------------------------------------------------- */
+
+.reader-section-kicker {
+  font-family: var(--r-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--r-sec);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.reader-section-kicker::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  background: var(--r-sec);
+}
+
+/* per-item kicker row (above a headline) */
+.reader-kicker {
+  font-family: var(--r-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--r-sec);
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.reader-kicker .cat {
+  color: var(--r-muted);
+}

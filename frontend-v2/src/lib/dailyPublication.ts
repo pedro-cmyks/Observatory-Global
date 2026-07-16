@@ -63,6 +63,11 @@ export interface DailyPublicationThread {
   top_countries?: string[]
   why_now?: string
   edition_role?: string
+  // Edition sectioning (briefEdition.ts): the sealed graph does not carry a
+  // category today — optional so the Brief's culture-lane split type-checks
+  // and simply falls back to label keywords for shared-package threads.
+  category?: string | null
+  parent_domain?: string | null
   changed_10h?: number
   trend?: string
   hourly_timeline?: Array<{ hour: string; count: number; avg_sentiment: number }>

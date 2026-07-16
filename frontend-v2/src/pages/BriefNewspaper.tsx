@@ -8,6 +8,7 @@ import { Flag } from '../components/Flag'
 import { readBriefingCache, writeBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { selectLeadThread } from '../lib/briefLead'
+import { splitEditionThreads, buildShareCaption } from '../lib/briefEdition'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
 import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline } from '../components/TranslatableHeadline'
@@ -17,11 +18,13 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
 import type { EclipseData } from '../lib/attentionEclipse'
+import { useReaderTheme, ReaderThemeToggle } from '../lib/readerTheme'
 import {
     assessDailyPublication,
     publicationThreads,
     type DailyPublicationArtifact,
 } from '../lib/dailyPublication'
+import '../styles/readerTheme.css'
 import './BriefNewspaper.css'
 
 // Natural Earth 110m with ISO_A2 country properties
@@ -46,12 +49,20 @@ const NUMERIC_TO_ISO2: Record<string, string> = {
     '858':'UY','860':'UZ','704':'VN','887':'YE','894':'ZM','716':'ZW',
 }
 
-function signalColor(intensity: number): string {
-    const r = Math.round(26 + (29 - 26) * intensity)
-    const g = Math.round(37 + (158 - 37) * intensity)
-    const b = Math.round(53 + (117 - 53) * intensity)
-    return `rgb(${r},${g},${b})`
+// Map density ramp lives on the reader palette now: paper-chip -> emerald,
+// per theme (SVG fills need concrete colors, var() is unreliable in
+// react-simple-maps attribute context).
+function lerpHex(a: string, b: string, t: number): string {
+    const pa = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16))
+    const pb = [1, 3, 5].map(i => parseInt(b.slice(i, i + 2), 16))
+    const c = pa.map((v, i) => Math.round(v + (pb[i] - v) * t))
+    return `rgb(${c[0]},${c[1]},${c[2]})`
 }
+
+const MAP_RAMP = {
+    light: { zero: '#e6ebe7', low: '#d9e3dc', high: '#0f7b5a', stroke: '#c9d2cb' },
+    dark: { zero: '#131e19', low: '#1b2620', high: '#2fd0a0', stroke: '#243029' },
+} as const
 
 interface ThreadEvidence {
     id?: string | number
@@ -80,6 +91,8 @@ interface TopThread {
     changed_10h?: number
     trend?: string
     why_now?: string
+    category?: string | null
+    parent_domain?: string | null
     top_countries?: string[]
     top_country_names?: string[]
     evidence_samples?: ThreadEvidence[]
@@ -220,6 +233,14 @@ function Sparkline({ timeline }: { timeline?: TimelinePoint[] }) {
     )
 }
 
+// Edition sections. Index is the tab order; accent slots come from the reader
+// palette (emerald / ochre / plum) via the panel's --r-sec override in CSS.
+const SECTIONS = [
+    { id: 'world', label: 'The World', kicker: 'Serious geopolitics' },
+    { id: 'radar', label: 'Under the Radar', kicker: 'The Atlas edge' },
+    { id: 'culture', label: 'Culture, Sport & Life', kicker: 'Where the rest of us live' },
+] as const
+
 export function BriefNewspaper() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
@@ -242,6 +263,37 @@ export function BriefNewspaper() {
     const [now] = useState(new Date())
     const [dailyEdition, setDailyEdition] = useState<DailyPublicationArtifact | null>(null)
     const [eclipse, setEclipse] = useState<EclipseData | null>(null)
+
+    // Reader identity: SCOPED theme on the page wrapper (never :root — the
+    // keep-alive shell shares the document with the console's Intel-Noir).
+    const { theme: readerTheme, toggle: toggleReaderTheme } = useReaderTheme()
+
+    // Edition tabs (roving tabindex; panels stay mounted so translations and
+    // scroll state survive tab flips).
+    const [section, setSection] = useState(0)
+    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+    const selectSection = (i: number, focus = false) => {
+        setSection(i)
+        track('brief_section_click', { section: `tab_${SECTIONS[i].id}` })
+        if (focus) tabRefs.current[i]?.focus()
+    }
+    const onTabKeyDown = (e: React.KeyboardEvent, i: number) => {
+        let n: number | null = null
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') n = (i + 1) % SECTIONS.length
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') n = (i - 1 + SECTIONS.length) % SECTIONS.length
+        else if (e.key === 'Home') n = 0
+        else if (e.key === 'End') n = SECTIONS.length - 1
+        if (n !== null) {
+            e.preventDefault()
+            selectSection(n, true)
+        }
+    }
+
+    // Share dialog (LinkedIn card + copy-caption).
+    const shareDialogRef = useRef<HTMLDialogElement>(null)
+    const shareFallbackRef = useRef<HTMLTextAreaElement>(null)
+    const [shareCopied, setShareCopied] = useState('')
+    const [shareFallbackOpen, setShareFallbackOpen] = useState(false)
 
     // #239 keep-alive: the Brief stays mounted across App↔Brief switches, so
     // URL params must keep driving state after mount (the useState initializers
@@ -474,10 +526,10 @@ export function BriefNewspaper() {
         setWbTick(x => x + 1)
     }
 
-    const goToAtlas = (params?: string, section?: string) => {
+    const goToAtlas = (params?: string, sectionName?: string) => {
         // B1 (2026-07-05): per-section engagement — answers whether the front
         // page satisfies at the surface or fails to invite depth (12.5% ramp).
-        if (section) track('brief_section_click', { section })
+        if (sectionName) track('brief_section_click', { section: sectionName })
         const next = new URLSearchParams(params)
         next.set('entry', 'brief')
         navigate(`/app?${next.toString()}`)
@@ -501,7 +553,8 @@ export function BriefNewspaper() {
     const moodLabel = (s: number) => s > 0.15 ? 'POSITIVE' : s < -0.15 ? 'NEGATIVE' : 'NEUTRAL'
     const moodClass = (s: number) => s > 0.15 ? 'mood-positive' : s < -0.15 ? 'mood-negative' : 'mood-neutral'
 
-    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    const weekday = now.toLocaleDateString('en-US', { weekday: 'long' })
+    const dayLine = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
     const dailyGate = assessDailyPublication(dailyEdition)
     const allThreads = dailyGate.useSharedPackage ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
@@ -512,13 +565,18 @@ export function BriefNewspaper() {
     const leadThread = dailyGate.useSharedPackage
         ? allThreads.find(thread => thread.edition_role === 'lead') ?? selectLeadThread(allThreads, countryFilter)
         : selectLeadThread(allThreads, countryFilter)
-    const watchlistThreads = leadThread
-        ? (dailyGate.useSharedPackage
-            ? allThreads.filter(t => t.thread_id !== leadThread.thread_id)
-            : allThreads.filter(t => t.thread_id !== leadThread.thread_id).slice(0, 8))
-        : (dailyGate.useSharedPackage ? allThreads : allThreads.slice(0, 8))
+    const restThreads = leadThread
+        ? allThreads.filter(t => t.thread_id !== leadThread.thread_id)
+        : allThreads
+    // Edition sections: culture/sport/lifestyle threads get their OWN section
+    // (nothing dropped); the ranked lead stays the lead regardless of lane.
+    const { world: worldRest, culture: cultureRest } = splitEditionThreads(restThreads)
+    const worldCards = dailyGate.useSharedPackage ? worldRest : worldRest.slice(0, 8)
+    const cultureCards = dailyGate.useSharedPackage ? cultureRest : cultureRest.slice(0, 6)
 
     const heatStrip = (data?.heat_countries ?? []).slice(0, 4)
+    const coverageGaps = data?.coverage_gaps ?? []
+    const maxGapRaw = Math.max(1, ...coverageGaps.map(g => g.raw_signals))
 
     // Honest standfirst: AI insight when the service produced one; otherwise a
     // single factual line. No template essay variants — an editorial that
@@ -541,529 +599,682 @@ export function BriefNewspaper() {
     const maxSignals = data
         ? Math.max(1, ...data.top_countries.map(c => c.signals), countryDetail?.totalSignals ?? 0)
         : 1
+    const mapRamp = MAP_RAMP[readerTheme]
 
-    const renderThreadRow = (t: TopThread, country?: string | null) => {
-        const arrow = trendArrow(t.trend, t.changed_10h)
+    // ---- share dialog ----
+    const shareCaption = data
+        ? buildShareCaption({
+            leadLabel: leadThread?.label ?? null,
+            signals: data.stats.total_signals,
+            countries: data.stats.countries,
+            sources: data.stats.sources,
+        })
+        : ''
+
+    const openShare = () => {
+        track('brief_section_click', { section: 'share_open' })
+        setShareCopied('')
+        setShareFallbackOpen(false)
+        const dlg = shareDialogRef.current
+        if (!dlg) return
+        if (typeof dlg.showModal === 'function') dlg.showModal()
+        else dlg.setAttribute('open', '')
+    }
+    const closeShare = () => {
+        const dlg = shareDialogRef.current
+        if (!dlg) return
+        if (typeof dlg.close === 'function') dlg.close()
+        else dlg.removeAttribute('open')
+        setShareCopied('')
+    }
+    const showShareFallback = () => {
+        setShareFallbackOpen(true)
+        setTimeout(() => {
+            shareFallbackRef.current?.focus()
+            shareFallbackRef.current?.select()
+        }, 0)
+    }
+    const copyShareCaption = () => {
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(shareCaption).then(
+                () => setShareCopied('Caption copied ✓'),
+                showShareFallback,
+            )
+        } else {
+            showShareFallback()
+        }
+    }
+
+    // ---- render helpers ----
+
+    // Receipts: REAL LINKS. Evidence urls render as <a href> (the whole point
+    // of a receipt); rows without a url degrade to a plain row.
+    const renderReceipt = (ev: ThreadEvidence, i: number) => {
+        const head = (
+            <span className="brief-receipt-head" dir="auto">
+                {ev.id != null
+                    ? <TranslatableHeadline signalId={Number(ev.id)} original={ev.headline} sourceLang={ev.source_lang} />
+                    : ev.headline}
+            </span>
+        )
+        const meta = (
+            <span className="brief-receipt-meta">
+                {ev.source && <span className="brief-receipt-src">{ev.source}</span>}
+                {ev.country_code && (
+                    <span className="brief-receipt-cc" data-tip={coverageChipTip(resolveCountryName(ev.country_code, ev.country_code))}>
+                        {ev.country_code}
+                    </span>
+                )}
+                {ev.url && <span className="brief-receipt-ext" aria-hidden="true">↗</span>}
+            </span>
+        )
+        return ev.url ? (
+            <a
+                key={ev.id ?? i}
+                className="brief-receipt"
+                href={ev.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+            >
+                {head}
+                {meta}
+            </a>
+        ) : (
+            <div key={ev.id ?? i} className="brief-receipt">
+                {head}
+                {meta}
+            </div>
+        )
+    }
+
+    const renderSaveChip = (t: TopThread) => {
+        const theme = resolveThreadThemeTarget(t)?.theme
+        const saved = savedIds.has(`theme-${theme}`)
+        return (
+            <span
+                role="button"
+                tabIndex={0}
+                className={`brief-save-btn ${saved ? 'saved' : ''}`}
+                data-tip={saved ? 'Remove from investigation' : 'Save to investigation (Workbench)'}
+                onClick={e => toggleSaveThread(t, e)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); toggleSaveThread(t) } }}
+            >
+                {saved ? '◆ Saved' : '◇ Save'}
+            </span>
+        )
+    }
+
+    const renderCoverageChips = (t: TopThread, country?: string | null, max = 3) => {
         // In country view every thread is already scoped — repeating the
         // country chip on each row is noise.
-        const chips = (t.top_countries ?? []).filter(cc => cc !== country).slice(0, 2)
-        const evidence = t.evidence_samples?.[0]
+        const chips = (t.top_countries ?? []).filter(cc => cc !== country).slice(0, max)
+        if (chips.length === 0) return null
         return (
-            <button
-                key={t.thread_id}
-                className="brief-thread-row"
-                onClick={() => openThread(t, country)}
-            >
-                <span className="brief-thread-main">
-                    <span className="brief-thread-label"><TranslatableText text={t.label} /></span>
-                    {evidence?.headline && (
-                        <span className="brief-thread-headline">
-                            {evidence.id != null
-                                ? <TranslatableHeadline signalId={Number(evidence.id)} original={evidence.headline} sourceLang={evidence.source_lang} />
-                                : evidence.headline}
-                        </span>
-                    )}
-                </span>
-                <span className="brief-thread-meta">
-                    <span
-                        role="button"
-                        tabIndex={0}
-                        className={`brief-save-btn ${savedIds.has(`theme-${resolveThreadThemeTarget(t)?.theme}`) ? 'saved' : ''}`}
-                        data-tip={savedIds.has(`theme-${resolveThreadThemeTarget(t)?.theme}`) ? 'Remove from investigation' : 'Save to investigation'}
-                        onClick={e => toggleSaveThread(t, e)}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); toggleSaveThread(t) } }}
-                    >
-                        {savedIds.has(`theme-${resolveThreadThemeTarget(t)?.theme}`) ? '◆' : '◇'}
-                    </span>
-                    <Sparkline timeline={t.hourly_timeline} />
-                    <span className="brief-thread-count">{t.signal_count.toLocaleString()}</span>
+            <span className="brief-chiprow">
+                <span className="brief-chip-caption">{COVERAGE_CHIP_LABEL}:</span>
+                {chips.map(cc => {
+                    const name = resolveCountryName(cc, cc)
+                    return <span key={cc} className="brief-thread-chip" data-tip={coverageChipTip(name)}>{name}</span>
+                })}
+            </span>
+        )
+    }
+
+    const renderThreadCard = (t: TopThread, opts?: { country?: string | null; wide?: boolean }) => {
+        const arrow = trendArrow(t.trend, t.changed_10h)
+        const receipts = (t.evidence_samples ?? []).slice(0, opts?.wide ? 3 : 2)
+        const category = t.category ?? t.parent_domain
+        return (
+            <article key={t.thread_id} className={`brief-card${opts?.wide ? ' wide' : ''}`}>
+                <div className="reader-kicker">
+                    <span>{category || 'Narrative thread'}</span>
+                    <span className="cat">{t.signal_count.toLocaleString()} signals</span>
+                </div>
+                <h3 className="brief-card-headline">
+                    <button className="brief-headline-btn" onClick={() => openThread(t, opts?.country)}>
+                        <TranslatableText text={t.label} />
+                    </button>
+                </h3>
+                <div className="brief-vitals-line">
+                    {t.source_count != null && <span><b>{t.source_count}</b> sources</span>}
                     {arrow && (
                         <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`} data-tip={arrow.tip}>
                             {arrow.glyph} {arrow.label}
                         </span>
                     )}
-                    {chips.map(cc => {
-                        const name = resolveCountryName(cc, cc)
-                        return (
-                            <span key={cc} className="brief-thread-chip" data-tip={coverageChipTip(name)}>{name}</span>
-                        )
-                    })}
-                </span>
-            </button>
+                    <Sparkline timeline={t.hourly_timeline} />
+                </div>
+                {receipts.length > 0 && (
+                    <>
+                        <div className="brief-rc-lab">Receipts</div>
+                        <div className="brief-receipts">{receipts.map(renderReceipt)}</div>
+                    </>
+                )}
+                <div className="brief-card-foot">
+                    {renderCoverageChips(t, opts?.country, 2)}
+                    <span className="brief-card-actions">
+                        {renderSaveChip(t)}
+                        <button className="brief-theme-link" onClick={() => openThread(t, opts?.country)}>Open thread →</button>
+                    </span>
+                </div>
+            </article>
         )
     }
 
     return (
-        <div className="brief-page">
+        <div className={`atlas-reader brief-page${countryFilter ? '' : ` brief-sec-${SECTIONS[section].id}`}`} data-rtheme={readerTheme}>
             <OfflineBanner />
-            <header className="brief-masthead">
-                <div className="brief-nav-actions">
-                    <button className="brief-back" onClick={() => navigate('/')}>← Home</button>
-                    <button className="brief-back brief-back-primary" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'masthead_console')}>Open Console</button>
-                </div>
-                <div className="brief-masthead-center">
-                    <div className="brief-edition-flag">INTELLIGENCE BRIEF</div>
-                    <h1 className="brief-title">ATLAS</h1>
-                    <div className="brief-dateline">{dateStr}</div>
-                </div>
-                <div className="brief-range-selector">
-                    <span className="brief-range-fixed" data-tip="The Brief is the day's edition — always the last 24 hours. For other time windows, open the console.">
-                        LAST 24 HOURS
-                    </span>
-                </div>
-            </header>
+            <div className="brief-wrap">
+                <div className="brief-topbar" aria-hidden="true" />
 
-            <div className="brief-rule" />
-
-            {loading ? (
-                <div className="brief-loading">
-                    <div className="brief-loading-lines">
-                        {[90, 75, 60, 80, 45].map((w, i) => (
-                            <div key={i} className="brief-loading-line" style={{ width: `${w}%` }} />
-                        ))}
+                {/* ============ MASTHEAD ============ */}
+                <header className="reader-masthead brief-masthead">
+                    <div className="brief-brand">
+                        <p className="reader-eyebrow">The Daily Instrument · Global Edition</p>
+                        <h1 className="reader-wordmark">ATLAS<span className="dot">.</span></h1>
+                        <p className="reader-tagline">Narrative intelligence — measured from coverage, not editorialized.</p>
                     </div>
-                    <p>Loading brief…</p>
-                    <LoadingMoment compact />
-                </div>
-            ) : data ? (
-                <main className="brief-content">
-
-                    {(showingStale || briefError) && (
-                        <div className="brief-cache-note" role="status">
-                            <span>
-                                {showingStale
-                                    ? 'Showing cached brief while Atlas refreshes live data.'
-                                    : briefError}
-                            </span>
-                            <button onClick={() => fetchData(hours)}>Retry live refresh</button>
-                        </div>
-                    )}
-
-                    {dailyEdition && (
-                        <section
-                            className={`brief-publication-state ${dailyGate.useSharedPackage ? 'is-ready' : 'is-rebuilding'}`}
-                            aria-label="Daily Investigation status"
+                    <div className="brief-masthead-right">
+                        <div className="reader-dateline">{weekday}, <b>{dayLine}</b></div>
+                        <span
+                            className="reader-chip"
+                            data-tip="The Brief is the day's edition — always the last 24 hours. For other time windows, open the console."
                         >
-                            <div>
-                                <span className="brief-publication-kicker">
-                                    {dailyGate.useSharedPackage ? 'SEALED DAILY INVESTIGATION' : 'LIVE BRIEF FALLBACK'}
+                            <span className="live" />Measured · Last 24 hours
+                        </span>
+                        <div className="brief-masthead-actions">
+                            <button className="reader-chip" onClick={() => navigate('/')}>← Home</button>
+                            <button
+                                className="reader-chip"
+                                onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'masthead_console')}
+                            >
+                                Open Console
+                            </button>
+                            <button
+                                className="reader-chip"
+                                onClick={openShare}
+                                aria-haspopup="dialog"
+                            >
+                                ↑ Share
+                            </button>
+                            <ReaderThemeToggle theme={readerTheme} onToggle={toggleReaderTheme} />
+                        </div>
+                    </div>
+                </header>
+
+                {loading ? (
+                    <div className="brief-loading">
+                        <div className="brief-loading-lines">
+                            {[90, 75, 60, 80, 45].map((w, i) => (
+                                <div key={i} className="brief-loading-line" style={{ width: `${w}%` }} />
+                            ))}
+                        </div>
+                        <p>Loading brief…</p>
+                        <LoadingMoment compact />
+                    </div>
+                ) : data ? (
+                    <main className="brief-content">
+
+                        {(showingStale || briefError) && (
+                            <div className="brief-cache-note" role="status">
+                                <span>
+                                    {showingStale
+                                        ? 'Showing cached brief while Atlas refreshes live data.'
+                                        : briefError}
                                 </span>
-                                <strong>
-                                    {dailyGate.useSharedPackage
-                                        ? `${dailyEdition.completion.rows_scanned ?? dailyEdition.completion.candidate_count ?? 0} candidates reconciled — shared L1/L3 package active`
-                                        : 'Daily Investigation is still rebuilding — the live newspaper remains active'}
-                                </strong>
+                                <button onClick={() => fetchData(hours)}>Retry live refresh</button>
                             </div>
-                            <span className="brief-publication-cutoff">
-                                {dailyEdition.completion.edition_end
-                                    ? `cutoff ${new Date(dailyEdition.completion.edition_end).toLocaleString()}`
-                                    : dailyEdition.edition_date}
-                                {!dailyGate.useSharedPackage && dailyGate.reasonCodes.length > 0
-                                    ? ` · ${dailyGate.reasonCodes.join(' · ').replaceAll('_', ' ')}`
-                                    : ''}
-                            </span>
-                        </section>
-                    )}
+                        )}
 
-                    {dailyGate.useSharedPackage && dailyEdition && (
-                        <section className="brief-readiness-rail" aria-label="Editorial readiness">
-                            {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
-                                const item = dailyEdition.package.readiness[key]
-                                return (
-                                    <div key={key} className={`brief-readiness-cell is-${item.status}`}>
-                                        <span>{key}</span>
-                                        <strong>{item.status}</strong>
-                                        <small>{item.values.slice(0, 2).join(' · ') || item.reason_codes.join(' · ').replaceAll('_', ' ')}</small>
-                                    </div>
-                                )
-                            })}
-                        </section>
-                    )}
-
-                    {historicalCoverage?.source === 'historical_processed' && (
-                        <div
-                            className="brief-coverage-note"
-                            data-tip="This long-window brief is served from compact processed historical aggregates synced from the local archive, not from raw historical rows."
-                        >
-                            <span>Historical processed</span>
-                            {typeof historicalCoverage.topicCoverage === 'number' && (
-                                <span>{Math.round(historicalCoverage.topicCoverage * 100)}% topic coverage</span>
-                            )}
-                            {typeof historicalCoverage.sentimentCoverage === 'number' && (
-                                <span>{Math.round(historicalCoverage.sentimentCoverage * 100)}% NLP sentiment</span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* COUNTRY FILTER */}
-                    {(() => {
-                        const signalCounts = new Map(data.top_countries.map(c => [c.code, c.signals]))
-                        if (countryFilter && countryDetail) {
-                            signalCounts.set(countryFilter, countryDetail.totalSignals)
-                        }
-                        const apiNames = new Map(data.top_countries.map(c => [c.code, c.name]))
-                        if (countryFilter && countryDetail) {
-                            apiNames.set(countryFilter, countryDetail.name)
-                        }
-                        const allCountries = COUNTRY_OPTIONS.map(c => ({
-                            code: c.code,
-                            name: resolveCountryName(c.code, apiNames.get(c.code) ?? c.name),
-                            signals: signalCounts.get(c.code) ?? 0,
-                        }))
-                        const q = countryQuery.toLowerCase().trim()
-                        const suggestions = q
-                            ? allCountries.filter(c =>
-                                resolveCountryName(c.code, c.name).toLowerCase().includes(q) ||
-                                c.code.toLowerCase().includes(q)
-                              )
-                            : allCountries
-                        suggestions.sort((a, b) => {
-                            if (b.signals !== a.signals) return b.signals - a.signals
-                            return a.name.localeCompare(b.name)
-                        })
-                        const activeCountry = countryFilter
-                            ? allCountries.find(c => c.code === countryFilter)
-                            : null
-
-                        return (
-                            <section className="brief-filter-row">
-                                <span className="brief-filter-label">Country:</span>
-                                {activeCountry ? (
-                                    <div className="brief-filter-active">
-                                        <span className="brief-filter-chip active">
-                                            {resolveCountryName(activeCountry.code, activeCountry.name)}
-                                        </span>
-                                        <button
-                                            className="brief-filter-clear"
-                                            onClick={() => selectCountry(null)}
-                                        >
-                                            x
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="brief-filter-search-wrap">
-                                        <input
-                                            ref={countryInputRef}
-                                            className="brief-filter-input"
-                                            placeholder="Search country…"
-                                            value={countryQuery}
-                                            onChange={e => { setCountryQuery(e.target.value); setShowCountryDropdown(true) }}
-                                            onFocus={() => setShowCountryDropdown(true)}
-                                            onBlur={() => setTimeout(() => setShowCountryDropdown(false), 150)}
-                                        />
-                                        {showCountryDropdown && suggestions.length > 0 && (
-                                            <div className="brief-country-dropdown">
-                                                {suggestions.slice(0, 10).map(c => (
-                                                    <button
-                                                        key={c.code}
-                                                        className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
-                                                        onMouseDown={e => e.preventDefault()}
-                                                        onClick={() => selectCountry(c.code)}
-                                                    >
-                                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                                        <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'not in top countries'}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </section>
-                        )
-                    })()}
-
-                    {/* ===== GLOBAL FRONT PAGE ===== */}
-                    {!countryFilter && (
-                        <>
-                            {/* LEAD STORY — top thread with evidence */}
-                            {leadThread ? (
-                                <section
-                                    className="brief-lead-story"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => openThread(leadThread)}
-                                    onKeyDown={event => {
-                                        if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault()
-                                            openThread(leadThread)
-                                        }
-                                    }}
-                                >
-                                    <div className="brief-section-tag" data-tip="Top-ranked narrative thread in this window (movement, volume and coherence). Sample evidence headlines shown when available.">LEAD STORY</div>
-                                    <h2 className="brief-lead-headline"><TranslatableText text={leadThread.label} /></h2>
-                                    <div className="brief-lead-meta">
-                                        <span className="brief-lead-count">{leadThread.signal_count.toLocaleString()} signals</span>
-                                        {leadThread.source_count != null && (
-                                            <span className="brief-lead-sub">{leadThread.source_count} sources</span>
-                                        )}
-                                        {(() => {
-                                            const arrow = trendArrow(leadThread.trend, leadThread.changed_10h)
-                                            return arrow ? (
-                                                <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`} data-tip={arrow.tip}>
-                                                    {arrow.glyph} {arrow.label}
-                                                </span>
-                                            ) : null
-                                        })()}
-                                        <Sparkline timeline={leadThread.hourly_timeline} />
-                                    </div>
-                                    {leadThread.why_now && (
-                                        <p className="brief-lead-whynow">{leadThread.why_now}</p>
-                                    )}
-                                    {(leadThread.evidence_samples ?? []).slice(0, 3).length > 0 && (
-                                        <ul className="brief-headlines">
-                                            {(leadThread.evidence_samples ?? []).slice(0, 3).map((s, i) => (
-                                                <li key={s.id ?? i} className="brief-headline-item">
-                                                    <span className="brief-headline-text">
-                                                        {s.id != null
-                                                            ? <TranslatableHeadline signalId={Number(s.id)} original={s.headline} sourceLang={s.source_lang} />
-                                                            : s.headline}
-                                                    </span>
-                                                    <span className="brief-headline-meta">
-                                                        {s.country_code && (
-                                                            <span className="brief-headline-country">{resolveCountryName(s.country_code, s.country_code)}</span>
-                                                        )}
-                                                        {s.source && <span className="brief-headline-source">{s.source}</span>}
-                                                    </span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                    {(leadThread.top_countries ?? []).length > 0 && (
-                                        <div className="brief-article-countries">
-                                            <span className="brief-chip-caption">{COVERAGE_CHIP_LABEL}:</span>
-                                            {(leadThread.top_countries ?? []).slice(0, 4).map(cc => {
-                                                const name = resolveCountryName(cc, cc)
-                                                return (
-                                                    <span key={cc} className="brief-thread-chip" data-tip={coverageChipTip(name)}>{name}</span>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                    <span className="brief-lead-actions">
-                                        <span className="brief-theme-link">Open thread →</span>
-                                        <span
-                                            role="button"
-                                            tabIndex={0}
-                                            className={`brief-save-btn ${leadThread && savedIds.has(`theme-${resolveThreadThemeTarget(leadThread)?.theme}`) ? 'saved' : ''}`}
-                                            data-tip="Save this story into your investigation (Workbench)"
-                                            onClick={e => { e.stopPropagation(); toggleSaveThread(leadThread) }}
-                                            onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); toggleSaveThread(leadThread) } }}
-                                        >
-                                            {leadThread && savedIds.has(`theme-${resolveThreadThemeTarget(leadThread)?.theme}`) ? '◆ Saved' : '◇ Save'}
-                                        </span>
+                        {dailyEdition && (
+                            <section
+                                className={`brief-publication-state ${dailyGate.useSharedPackage ? 'is-ready' : 'is-rebuilding'}`}
+                                aria-label="Daily Investigation status"
+                            >
+                                <div>
+                                    <span className="brief-publication-kicker">
+                                        {dailyGate.useSharedPackage ? 'SEALED DAILY INVESTIGATION' : 'LIVE BRIEF FALLBACK'}
                                     </span>
-                                </section>
-                            ) : (
-                                <section className="brief-lead-story brief-lead-empty">
-                                    <div className="brief-section-tag">LEAD STORY</div>
-                                    <p>No narrative thread cleared the quality gate in this window. Open the console to inspect raw coverage.</p>
-                                </section>
-                            )}
-
-                            <div className="brief-rule thin" />
-
-                            {/* WATCHLIST — remaining threads */}
-                            {watchlistThreads.length > 0 && (
-                                <>
-                                    <section className="brief-watchlist">
-                                        <h3 className="brief-bottom-heading">Watchlist</h3>
-                                        <div className="brief-thread-list">
-                                            {watchlistThreads.map(t => renderThreadRow(t))}
-                                        </div>
-                                    </section>
-                                    <div className="brief-rule thin" />
-                                </>
-                            )}
-
-                            {/* MEANWHILE, OFF THE FRONT PAGE — consequential stories
-                                eclipsed by a dominant event (renders only under an eclipse) */}
-                            <EclipseStrip
-                                data={eclipse}
-                                onOpenTopic={(id) => goToAtlas(`theme=${encodeURIComponent(id)}`, 'eclipse')}
-                            />
-
-                            {/* STANDFIRST — AI insight when real, one factual line otherwise */}
-                            {(displayInsight || standfirstFallback) && (
-                                <>
-                                    <section className="brief-lead">
-                                        {displayInsight ? (
-                                            <>
-                                                <div
-                                                    className="brief-section-tag"
-                                                    data-tip="AI-generated pattern reading based on signal volume, sentiment shifts, and narrative spread. Describes observable coverage patterns — does not reflect Atlas editorial opinion."
-                                                >
-                                                    EDITOR'S ANALYSIS
-                                                </div>
-                                                <p className="brief-lead-text">{displayInsight}</p>
-                                            </>
-                                        ) : (
-                                            <p className="brief-standfirst">{standfirstFallback}</p>
-                                        )}
-                                    </section>
-                                    <div className="brief-rule thin" />
-                                </>
-                            )}
-
-                            {/* HEATING UP — country heat strip */}
-                            {heatStrip.length > 0 && (
-                                <>
-                                    <section className="brief-heat-strip">
-                                        <h3
-                                            className="brief-bottom-heading"
-                                            data-tip="Countries with the strongest anomaly heat right now. The tag names the dominant component: velocity (volume acceleration), surprise (off-baseline), diversity (many themes), voice (source spread), polyphony (many actors)."
-                                        >
-                                            Heating Up
-                                        </h3>
-                                        <div className="brief-heat-row">
-                                            {heatStrip.map(h => {
-                                                const comp = dominantHeatComponent(h.components)
-                                                return (
-                                                    <button
-                                                        key={h.code}
-                                                        className="brief-heat-card"
-                                                        onClick={() => goToAtlas(`country=${h.code}`, 'heating_up')}
-                                                    >
-                                                        <span className="brief-heat-name"><Flag code={h.code} /> {resolveCountryName(h.code, h.name)}</span>
-                                                        <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
-                                                        {comp && <span className="brief-heat-comp">{comp}</span>}
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
-                                    </section>
-                                    <div className="brief-rule thin" />
-                                </>
-                            )}
-
-                            {/* B3 GAP BOX (#225 reserved slot, fed 2026-07-05): attention
-                                without verified coverage — the wedge's "what is missing". */}
-                            {(data.coverage_gaps ?? []).length > 0 && (
-                                <>
-                                    <section className="brief-gapbox">
-                                        <h3
-                                            className="brief-bottom-heading"
-                                            data-tip="Categories with real coverage in the last 24h where NOTHING cleared the quality gate — attention without verified evidence. 'gate pending' means not yet scored, not rejected."
-                                        >
-                                            Coverage Gaps — unverified attention
-                                        </h3>
-                                        {data.coverage_gaps!.map(g => (
-                                            <button
-                                                key={g.slug}
-                                                className="brief-gap-row"
-                                                onClick={() => goToAtlas(`theme=${encodeURIComponent(g.slug)}`, 'gap_box')}
-                                            >
-                                                <span className="brief-gap-label">{g.label}</span>
-                                                <span className="brief-gap-meta">
-                                                    {g.raw_signals.toLocaleString()} signals · 0 verified ·{' '}
-                                                    <span className={`brief-gap-status brief-gap-status--${g.status}`}>
-                                                        {g.status === 'gate_pending' ? 'gate pending' : 'none cleared the gate'}
-                                                    </span>
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </section>
-                                    <div className="brief-rule thin" />
-                                </>
-                            )}
-
-                            {/* MAP — demoted to half-width beside Most Active (surfaces review §4.7) */}
-                            <section className="brief-map-row">
-                                <div className="brief-minimap brief-minimap-demoted">
-                                    <div
-                                        className="brief-minimap-label"
-                                        data-tip="Signal density: how many media signals Atlas captured per country in this window. Darker = more coverage. Coverage volume reflects media attention, not geopolitical importance."
-                                    >
-                                        Signal density — last 24h
-                                    </div>
-                                    <ComposableMap
-                                        projection="geoEqualEarth"
-                                        projectionConfig={{ scale: 150, center: [0, 5] }}
-                                        width={800}
-                                        height={400}
-                                    >
-                                        <Geographies geography={GEO_URL}>
-                                            {({ geographies }) =>
-                                                geographies.map(geo => {
-                                                    const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
-                                                    const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
-                                                    // B6 (dataviz audit): linear normalize over a heavy-tailed
-                                                    // distribution saturated the US and left ~90% of countries in
-                                                    // the bottom 10% of the ramp reading as "no data" — sqrt spreads
-                                                    // the mid-range without lying about rank order.
-                                                    const intensity = Math.sqrt(count / maxSignals)
-                                                    return (
-                                                        <Geography
-                                                            key={geo.rsmKey}
-                                                            geography={geo}
-                                                            fill={count > 0 ? signalColor(intensity) : '#12202e'}
-                                                            stroke="#0c1017"
-                                                            strokeWidth={0.5}
-                                                            onClick={() => iso2 && selectCountry(iso2)}
-                                                            style={{
-                                                                default: { outline: 'none' },
-                                                                hover: { outline: 'none' },
-                                                                pressed: { outline: 'none' },
-                                                            }}
-                                                        />
-                                                    )
-                                                })
-                                            }
-                                        </Geographies>
-                                    </ComposableMap>
+                                    <strong>
+                                        {dailyGate.useSharedPackage
+                                            ? `${dailyEdition.completion.rows_scanned ?? dailyEdition.completion.candidate_count ?? 0} candidates reconciled — shared L1/L3 package active`
+                                            : 'Daily Investigation is still rebuilding — the live newspaper remains active'}
+                                    </strong>
                                 </div>
-                                <div className="brief-bottom-col brief-map-side">
-                                    <h3 className="brief-bottom-heading">Most Active</h3>
-                                    {data.top_countries.slice(0, 8).map(c => (
+                                <span className="brief-publication-cutoff">
+                                    {dailyEdition.completion.edition_end
+                                        ? `cutoff ${new Date(dailyEdition.completion.edition_end).toLocaleString()}`
+                                        : dailyEdition.edition_date}
+                                    {!dailyGate.useSharedPackage && dailyGate.reasonCodes.length > 0
+                                        ? ` · ${dailyGate.reasonCodes.join(' · ').replaceAll('_', ' ')}`
+                                        : ''}
+                                </span>
+                            </section>
+                        )}
+
+                        {dailyGate.useSharedPackage && dailyEdition && (
+                            <section className="brief-readiness-rail" aria-label="Editorial readiness">
+                                {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
+                                    const item = dailyEdition.package.readiness[key]
+                                    return (
+                                        <div key={key} className={`brief-readiness-cell is-${item.status}`}>
+                                            <span>{key}</span>
+                                            <strong>{item.status}</strong>
+                                            <small>{item.values.slice(0, 2).join(' · ') || item.reason_codes.join(' · ').replaceAll('_', ' ')}</small>
+                                        </div>
+                                    )
+                                })}
+                            </section>
+                        )}
+
+                        {historicalCoverage?.source === 'historical_processed' && (
+                            <div
+                                className="brief-coverage-note"
+                                data-tip="This long-window brief is served from compact processed historical aggregates synced from the local archive, not from raw historical rows."
+                            >
+                                <span>Historical processed</span>
+                                {typeof historicalCoverage.topicCoverage === 'number' && (
+                                    <span>{Math.round(historicalCoverage.topicCoverage * 100)}% topic coverage</span>
+                                )}
+                                {typeof historicalCoverage.sentimentCoverage === 'number' && (
+                                    <span>{Math.round(historicalCoverage.sentimentCoverage * 100)}% NLP sentiment</span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ============ INSTRUMENT STRIP — real vitals ============ */}
+                        <section className="brief-instrument" aria-label="Today's measured vitals">
+                            <div className="brief-vital">
+                                <div className="k">Signals</div>
+                                <div className="v">{data.stats.total_signals.toLocaleString()}</div>
+                                <div className="sub">ingested in the last 24h</div>
+                            </div>
+                            <div className="brief-vital">
+                                <div className="k">Countries</div>
+                                <div className="v">{data.stats.countries}</div>
+                                <div className="sub">with coverage in-window</div>
+                            </div>
+                            <div className="brief-vital">
+                                <div className="k">Sources</div>
+                                <div className="v">{data.stats.sources.toLocaleString()}</div>
+                                <div className="sub">outlet domains · raw 24h feed</div>
+                            </div>
+                            <div className="brief-vital">
+                                <div className="k">Avg sentiment</div>
+                                <div className="v">{data.stats.avg_sentiment > 0 ? '+' : ''}{data.stats.avg_sentiment.toFixed(2)}</div>
+                                <div className="sub">normalized ±1 scale · window aggregate</div>
+                            </div>
+                            <div className="brief-vital">
+                                <div className="k">Tracked stories</div>
+                                <div className="v">{allThreads.length}</div>
+                                <div className="sub">ranked narrative threads served this window</div>
+                            </div>
+                            <div className="brief-vital">
+                                <div className="k">Coverage gaps</div>
+                                <div className="v">{coverageGaps.length}</div>
+                                <div className="sub">categories with attention but zero verified rows</div>
+                            </div>
+                        </section>
+
+                        {/* ============ COUNTRY FILTER ============ */}
+                        {(() => {
+                            const signalCounts = new Map(data.top_countries.map(c => [c.code, c.signals]))
+                            if (countryFilter && countryDetail) {
+                                signalCounts.set(countryFilter, countryDetail.totalSignals)
+                            }
+                            const apiNames = new Map(data.top_countries.map(c => [c.code, c.name]))
+                            if (countryFilter && countryDetail) {
+                                apiNames.set(countryFilter, countryDetail.name)
+                            }
+                            const allCountries = COUNTRY_OPTIONS.map(c => ({
+                                code: c.code,
+                                name: resolveCountryName(c.code, apiNames.get(c.code) ?? c.name),
+                                signals: signalCounts.get(c.code) ?? 0,
+                            }))
+                            const q = countryQuery.toLowerCase().trim()
+                            const suggestions = q
+                                ? allCountries.filter(c =>
+                                    resolveCountryName(c.code, c.name).toLowerCase().includes(q) ||
+                                    c.code.toLowerCase().includes(q)
+                                  )
+                                : allCountries
+                            suggestions.sort((a, b) => {
+                                if (b.signals !== a.signals) return b.signals - a.signals
+                                return a.name.localeCompare(b.name)
+                            })
+                            const activeCountry = countryFilter
+                                ? allCountries.find(c => c.code === countryFilter)
+                                : null
+
+                            return (
+                                <section className="brief-filter-row">
+                                    <span className="brief-filter-label">Country:</span>
+                                    {activeCountry ? (
+                                        <div className="brief-filter-active">
+                                            <span className="reader-chip brief-filter-chip">
+                                                {resolveCountryName(activeCountry.code, activeCountry.name)}
+                                            </span>
+                                            <button
+                                                className="brief-filter-clear"
+                                                onClick={() => selectCountry(null)}
+                                            >
+                                                x
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="brief-filter-search-wrap">
+                                            <input
+                                                ref={countryInputRef}
+                                                className="brief-filter-input"
+                                                placeholder="Search country…"
+                                                value={countryQuery}
+                                                onChange={e => { setCountryQuery(e.target.value); setShowCountryDropdown(true) }}
+                                                onFocus={() => setShowCountryDropdown(true)}
+                                                onBlur={() => setTimeout(() => setShowCountryDropdown(false), 150)}
+                                            />
+                                            {showCountryDropdown && suggestions.length > 0 && (
+                                                <div className="brief-country-dropdown">
+                                                    {suggestions.slice(0, 10).map(c => (
+                                                        <button
+                                                            key={c.code}
+                                                            className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
+                                                            onMouseDown={e => e.preventDefault()}
+                                                            onClick={() => selectCountry(c.code)}
+                                                        >
+                                                            <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
+                                                            <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'not in top countries'}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </section>
+                            )
+                        })()}
+
+                        {/* ===== GLOBAL EDITION — three color-coded sections ===== */}
+                        {!countryFilter && (
+                            <>
+                                <div className="brief-tablist" role="tablist" aria-label="Sections of today's edition">
+                                    {SECTIONS.map((s, i) => (
                                         <button
-                                            key={c.code}
-                                            className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`country=${c.code}`, 'most_active')}
+                                            key={s.id}
+                                            ref={el => { tabRefs.current[i] = el }}
+                                            className={`brief-tab brief-tab-${s.id}`}
+                                            id={`brief-tab-${s.id}`}
+                                            role="tab"
+                                            aria-selected={section === i}
+                                            aria-controls={`brief-panel-${s.id}`}
+                                            tabIndex={section === i ? 0 : -1}
+                                            onClick={() => selectSection(i)}
+                                            onKeyDown={e => onTabKeyDown(e, i)}
                                         >
-                                            <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                            <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
+                                            <span className="swatch" aria-hidden="true" />
+                                            <span>{s.label}</span>
+                                            <span className="num">{String(i + 1).padStart(2, '0')}</span>
                                         </button>
                                     ))}
                                 </div>
-                            </section>
-                        </>
-                    )}
 
-                    {/* ===== COUNTRY VIEW ===== */}
-                    {countryFilter && (
-                        <>
-                            {countryDetail && (
-                                <section className="brief-stats-bar">
-                                    <div className="brief-stat">
-                                        <span className="brief-stat-value">{countryDetail.totalSignals.toLocaleString()}</span>
-                                        <span className="brief-stat-label">signals</span>
-                                    </div>
-                                    <div className="brief-stat-divider" />
-                                    <div className="brief-stat">
-                                        <span className="brief-stat-value">{countryThreads?.length ?? 0}</span>
-                                        <span className="brief-stat-label">threads</span>
-                                    </div>
-                                    <div className="brief-stat-divider" />
-                                    <div
-                                        className={`brief-stat ${moodClass(countryDetail.sentiment)}`}
-                                        data-tip="Aggregate sentiment across this country's signals in the window."
-                                    >
-                                        <span className="brief-stat-value">{moodLabel(countryDetail.sentiment)}</span>
-                                        <span className="brief-stat-label">country mood</span>
-                                    </div>
+                                {/* ---------- PANEL 1 · THE WORLD ---------- */}
+                                <section
+                                    className="brief-panel brief-panel-world"
+                                    id="brief-panel-world"
+                                    role="tabpanel"
+                                    aria-labelledby="brief-tab-world"
+                                    tabIndex={0}
+                                    hidden={section !== 0}
+                                >
+                                    <span className="reader-section-kicker">{SECTIONS[0].kicker}</span>
+                                    <h2 className="brief-section-title">The World</h2>
+                                    <p className="brief-section-lede">
+                                        The day's hardest news, ranked by measured coverage. One lead, then the rest of
+                                        the desk — each with its own receipts. Coverage counts are the volume of press,
+                                        not a judgement of importance.
+                                    </p>
+
+                                    {/* LEAD */}
+                                    {leadThread ? (
+                                        <article className="brief-lead">
+                                            <div className="reader-kicker">
+                                                <span>Lead{(leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}</span>
+                                                <span className="cat" data-tip="Top-ranked narrative thread in this window (movement, volume and coherence). Sample evidence headlines shown when available.">
+                                                    top-ranked thread · 24h window
+                                                </span>
+                                            </div>
+                                            <h3 className="brief-lead-headline">
+                                                <button className="brief-headline-btn" onClick={() => openThread(leadThread)}>
+                                                    <TranslatableText text={leadThread.label} />
+                                                </button>
+                                            </h3>
+                                            <div className="brief-metarow">
+                                                {(() => {
+                                                    const arrow = trendArrow(leadThread.trend, leadThread.changed_10h)
+                                                    return arrow ? (
+                                                        <span className={`reader-pill brief-pill-trend brief-thread-trend-${arrow.cls}`} data-tip={arrow.tip}>
+                                                            {arrow.glyph} {arrow.label}
+                                                        </span>
+                                                    ) : null
+                                                })()}
+                                                <span className="reader-pill measured">Measured · last 24h</span>
+                                                <span className="reader-pill">{leadThread.signal_count.toLocaleString()} signals</span>
+                                                {leadThread.source_count != null && (
+                                                    <span className="reader-pill">{leadThread.source_count} sources</span>
+                                                )}
+                                            </div>
+                                            {leadThread.why_now && (
+                                                <p className="brief-whynow">
+                                                    <span className="lab">Why now</span>
+                                                    {leadThread.why_now}
+                                                </p>
+                                            )}
+                                            <div className="brief-vitals-line">
+                                                <Sparkline timeline={leadThread.hourly_timeline} />
+                                                {renderCoverageChips(leadThread, null, 4)}
+                                            </div>
+                                            {(leadThread.evidence_samples ?? []).length > 0 && (
+                                                <>
+                                                    <div className="brief-rc-lab">Receipts — real source · {COVERAGE_CHIP_LABEL.toLowerCase()}</div>
+                                                    <div className="brief-receipts">
+                                                        {(leadThread.evidence_samples ?? []).slice(0, 3).map(renderReceipt)}
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="brief-card-foot">
+                                                <span className="brief-card-actions">
+                                                    {renderSaveChip(leadThread)}
+                                                    <button className="brief-theme-link" onClick={() => openThread(leadThread)}>Open thread →</button>
+                                                </span>
+                                            </div>
+                                        </article>
+                                    ) : (
+                                        <article className="brief-lead brief-lead-empty">
+                                            <div className="reader-kicker"><span>Lead</span></div>
+                                            <p>No narrative thread cleared the quality gate in this window. Open the console to inspect raw coverage.</p>
+                                        </article>
+                                    )}
+
+                                    {/* STANDFIRST — AI insight when real, one factual line otherwise */}
+                                    {(displayInsight || standfirstFallback) && (
+                                        <div className="brief-standfirst-box">
+                                            {displayInsight ? (
+                                                <>
+                                                    <span
+                                                        className="lab"
+                                                        data-tip="AI-generated pattern reading based on signal volume, sentiment shifts, and narrative spread. Describes observable coverage patterns — does not reflect Atlas editorial opinion."
+                                                    >
+                                                        Editor's analysis
+                                                    </span>
+                                                    <p>{displayInsight}</p>
+                                                </>
+                                            ) : (
+                                                <p className="brief-standfirst">{standfirstFallback}</p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* THE REST OF THE DESK */}
+                                    {worldCards.length > 0 && (
+                                        <div className="brief-cards">
+                                            {worldCards.map((t, i) => renderThreadCard(t, { wide: i === 0 }))}
+                                        </div>
+                                    )}
+
+                                    {/* HEATING UP — country heat strip */}
+                                    {heatStrip.length > 0 && (
+                                        <section className="brief-heat-strip">
+                                            <h3
+                                                className="brief-bottom-heading"
+                                                data-tip="Countries with the strongest anomaly heat right now. The tag names the dominant component: velocity (volume acceleration), surprise (off-baseline), diversity (many themes), voice (source spread), polyphony (many actors)."
+                                            >
+                                                Heating Up
+                                            </h3>
+                                            <div className="brief-heat-row">
+                                                {heatStrip.map(h => {
+                                                    const comp = dominantHeatComponent(h.components)
+                                                    return (
+                                                        <button
+                                                            key={h.code}
+                                                            className="brief-heat-card"
+                                                            onClick={() => goToAtlas(`country=${h.code}`, 'heating_up')}
+                                                        >
+                                                            <span className="brief-heat-name"><Flag code={h.code} /> {resolveCountryName(h.code, h.name)}</span>
+                                                            <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
+                                                            {comp && <span className="brief-heat-comp">{comp}</span>}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </section>
+                                    )}
                                 </section>
-                            )}
 
-                            <div className="brief-rule thin" />
+                                {/* ---------- PANEL 2 · UNDER THE RADAR ---------- */}
+                                <section
+                                    className="brief-panel brief-panel-radar"
+                                    id="brief-panel-radar"
+                                    role="tabpanel"
+                                    aria-labelledby="brief-tab-radar"
+                                    tabIndex={0}
+                                    hidden={section !== 1}
+                                >
+                                    <span className="reader-section-kicker">{SECTIONS[1].kicker}</span>
+                                    <h2 className="brief-section-title">Under the Radar</h2>
+                                    <p className="brief-section-lede">
+                                        What the ranked front page leaves out: stories the pipeline <em>sees</em> but has
+                                        not verified, and stories eclipsed by the day's dominant coverage. Nothing is
+                                        deleted — it is surfaced with its honest status.
+                                    </p>
 
-                            <section className="brief-watchlist">
-                                <h3 className="brief-bottom-heading">
-                                    Narrative Threads — <Flag code={countryFilter} /> {resolveCountryName(countryFilter, countryDetail?.name)}
-                                </h3>
+                                    {coverageGaps.length > 0 ? (
+                                        <>
+                                            <span className="reader-section-kicker brief-sub-kicker">What is missing</span>
+                                            <div className="brief-gapgrid">
+                                                {coverageGaps.map(g => (
+                                                    <button
+                                                        key={g.slug}
+                                                        className="brief-gap"
+                                                        onClick={() => goToAtlas(`theme=${encodeURIComponent(g.slug)}`, 'gap_box')}
+                                                        data-tip="Category with real coverage in the last 24h where NOTHING cleared the quality gate — attention without verified evidence. 'gate pending' means not yet scored, not rejected."
+                                                    >
+                                                        <span className="brief-gap-label">{g.label}</span>
+                                                        <span className="brief-gap-cat">Coverage gap</span>
+                                                        <span className="brief-gauge">
+                                                            <span><span className="num raw">{g.raw_signals.toLocaleString()}</span><span className="lbl">raw signals</span></span>
+                                                            <span><span className="num ver">{g.verified}</span><span className="lbl">verified</span></span>
+                                                        </span>
+                                                        <span className="brief-gbar" aria-hidden="true" style={{ width: `${Math.max(8, Math.round((g.raw_signals / maxGapRaw) * 100))}%` }}>
+                                                            <i style={{ width: g.raw_signals > 0 ? `${Math.round((g.verified / g.raw_signals) * 100)}%` : '0%' }} />
+                                                        </span>
+                                                        <span className={`brief-gap-status brief-gap-status--${g.status}`}>
+                                                            <span className="d" />
+                                                            {g.status === 'gate_pending' ? 'gate pending — not yet scored' : `${g.verified} of ${g.raw_signals.toLocaleString()} admitted — none cleared the quality gate`}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="brief-footref">
+                                                Gap bars: track length ∝ raw signals on a shared scale; the admitted fill is drawn
+                                                from the verified count — 0% clearance is an empty bar, not a sliver.
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="brief-empty-note">No coverage gaps in this window — every scored category cleared at least one verified row.</p>
+                                    )}
+
+                                    {/* MEANWHILE, OFF THE FRONT PAGE — consequential stories
+                                        eclipsed by a dominant event (renders only under an eclipse) */}
+                                    <EclipseStrip
+                                        data={eclipse}
+                                        onOpenTopic={(id) => goToAtlas(`theme=${encodeURIComponent(id)}`, 'eclipse')}
+                                    />
+                                </section>
+
+                                {/* ---------- PANEL 3 · CULTURE, SPORT & LIFE ---------- */}
+                                <section
+                                    className="brief-panel brief-panel-culture"
+                                    id="brief-panel-culture"
+                                    role="tabpanel"
+                                    aria-labelledby="brief-tab-culture"
+                                    tabIndex={0}
+                                    hidden={section !== 2}
+                                >
+                                    <span className="reader-section-kicker">{SECTIONS[2].kicker}</span>
+                                    <h2 className="brief-section-title">Culture, Sport &amp; Life</h2>
+                                    <p className="brief-section-lede">
+                                        A celebrity obituary or a World Cup semifinal is not noise — someone is reading
+                                        it, and a soft label can hide a hard story folded inside it. Nothing here was
+                                        judged unimportant by a machine; it simply has its own section instead of
+                                        crowding out the front page. You decide what matters.
+                                    </p>
+                                    {cultureCards.length > 0 ? (
+                                        <div className="brief-cards">
+                                            {cultureCards.map((t, i) => renderThreadCard(t, { wide: i === 0 }))}
+                                        </div>
+                                    ) : (
+                                        <p className="brief-empty-note">
+                                            No culture, sport or lifestyle thread cleared the quality gate in this window —
+                                            the section stays honestly empty rather than filled.
+                                        </p>
+                                    )}
+                                </section>
+                            </>
+                        )}
+
+                        {/* ===== COUNTRY VIEW ===== */}
+                        {countryFilter && (
+                            <section className="brief-panel brief-panel-country">
+                                {countryDetail && (
+                                    <div className="brief-instrument brief-instrument-country">
+                                        <div className="brief-vital">
+                                            <div className="k">Signals</div>
+                                            <div className="v">{countryDetail.totalSignals.toLocaleString()}</div>
+                                            <div className="sub">in the last 24h</div>
+                                        </div>
+                                        <div className="brief-vital">
+                                            <div className="k">Threads</div>
+                                            <div className="v">{countryThreads?.length ?? 0}</div>
+                                            <div className="sub">country-scoped narrative threads</div>
+                                        </div>
+                                        <div className={`brief-vital ${moodClass(countryDetail.sentiment)}`}>
+                                            <div className="k">Country mood</div>
+                                            <div className="v" data-tip="Aggregate sentiment across this country's signals in the window.">{moodLabel(countryDetail.sentiment)}</div>
+                                            <div className="sub">window aggregate</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <span className="reader-section-kicker brief-sub-kicker">Country edition</span>
+                                <h2 className="brief-section-title">
+                                    <Flag code={countryFilter} /> {resolveCountryName(countryFilter, countryDetail?.name)}
+                                </h2>
                                 {countryLoading ? (
                                     <p className="brief-country-note">Checking this country's narrative threads for the selected window…</p>
                                 ) : (countryThreads?.length ?? 0) > 0 ? (
-                                    <div className="brief-thread-list">
-                                        {countryThreads!.map(t => renderThreadRow(t, countryFilter))}
+                                    <div className="brief-cards">
+                                        {countryThreads!.map((t, i) => renderThreadCard(t, { country: countryFilter, wide: i === 0 }))}
                                     </div>
                                 ) : (
                                     <div className="brief-country-note">
@@ -1081,175 +1292,329 @@ export function BriefNewspaper() {
                                     </div>
                                 )}
                             </section>
-                        </>
-                    )}
+                        )}
 
-                    <div className="brief-rule" />
+                        <div className="brief-rule" />
 
-                    {/* BACK-MATTER — sentiment + sources + theme index */}
-                    <section className="brief-bottom-row">
-                        {/* B3 (dataviz audit): ONE user-facing tone scale everywhere — raw
-                            GDELT ±10 (the scale ThemeDetail already explains). The API serves
-                            ÷10 values for the internal ±0.1 thresholds; multiply back for
-                            display and label the unit. */}
-                        <div className="brief-bottom-col">
-                            <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Negative</h3>
-                            {data.negative_sentiment.slice(0, 4).map(c => (
-                                <button
-                                    key={c.code}
-                                    className="brief-bottom-country"
-                                    onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
+                        {/* BACK-MATTER — map + most active + sentiment + sources + index */}
+                        <section className="brief-map-row">
+                            <div className="brief-minimap">
+                                <div
+                                    className="brief-bottom-heading"
+                                    data-tip="Signal density: how many media signals Atlas captured per country in this window. Darker = more coverage. Coverage volume reflects media attention, not geopolitical importance."
                                 >
-                                    <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                    <span className="brief-bottom-num negative" data-tip={`Avg tone ${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
-                                        {(c.sentiment * 10).toFixed(1)}
-                                        <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
-                                    </span>
-                                </button>
-                            ))}
-                            <div className="brief-scale-note">GDELT tone · −10…+10</div>
-                        </div>
-                        <div className="brief-bottom-col">
-                            <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Positive</h3>
-                            {data.positive_sentiment.slice(0, 4).map(c => (
-                                <button
-                                    key={c.code}
-                                    className="brief-bottom-country"
-                                    onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
-                                >
-                                    <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                    <span className="brief-bottom-num positive" data-tip={`Avg tone +${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
-                                        +{(c.sentiment * 10).toFixed(1)}
-                                        <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
-                                    </span>
-                                </button>
-                            ))}
-                            <div className="brief-scale-note">GDELT tone · −10…+10</div>
-                        </div>
-                        <div className="brief-bottom-col">
-                            <h3 className="brief-bottom-heading">Sources</h3>
-                            {data.top_sources.slice(0, 5).map(s => (
-                                <div key={s.source} className="brief-source-row">
-                                    <span className="brief-source-name">{s.source}</span>
-                                    <span className="brief-source-count">{s.count}</span>
+                                    Signal density — last 24h
                                 </div>
-                            ))}
-                        </div>
-                        <div className="brief-bottom-col">
-                            {(data.category_counts?.length ?? 0) > 0 ? (
-                                /* #249: Atlas's OWN R3.1 categories — the GDELT
-                                   taxonomy index retired once every story carries
-                                   a category. Search opens the category term. */
-                                <>
-                                    <h3 className="brief-bottom-heading" data-tip="Atlas category index — every live story is typed into an open category (crisis anchors + emergent).">By Category</h3>
-                                    {data.category_counts!.slice(0, 6).map(c => (
-                                        <button
-                                            key={c.category}
-                                            className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`q=${encodeURIComponent(c.category)}`, 'by_category')}
-                                        >
-                                            <span>{c.category}</span>
-                                            <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
-                                        </button>
-                                    ))}
-                                </>
-                            ) : (
-                                <>
-                                    <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Narrative Threads above are the editorial unit.">By Theme</h3>
-                                    {data.top_themes.slice(0, 6).map(t => (
-                                        <button
-                                            key={t.theme}
-                                            className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`theme=${encodeURIComponent(t.theme)}${countryFilter ? `&country=${countryFilter}` : ''}`, 'by_theme')}
-                                        >
-                                            <span>{getThemeIcon(t.theme)} {getThemeLabel(t.theme)}</span>
-                                            <span className="brief-bottom-num">{t.count.toLocaleString()}</span>
-                                        </button>
-                                    ))}
-                                </>
-                            )}
-                        </div>
-                    </section>
-
-                    {watches.length > 0 && (
-                        <>
-                            <div className="brief-rule" />
-                            <section className="brief-watches">
-                                <div className="brief-section-tag">SAVED WATCHES</div>
-                                <div className="brief-watches-grid">
-                                    {watches.map(w => {
-                                        const parts: string[] = []
-                                        if (w.filter.country) parts.push(resolveCountryName(w.filter.country))
-                                        if (w.filter.concept) parts.push(w.filter.concept.label)
-                                        else if (w.filter.theme) parts.push(getThemeLabel(w.filter.theme))
-                                        if (w.filter.person) parts.push(w.filter.person)
-                                        if (w.filter.region) parts.push(w.filter.region.label)
-                                        const atlasParams = [
-                                            w.filter.country ? `country=${w.filter.country}` : null,
-                                            w.filter.theme ? `theme=${encodeURIComponent(w.filter.theme)}` : null,
-                                            w.filter.person ? `person=${encodeURIComponent(w.filter.person)}` : null,
-                                        ].filter(Boolean).join('&')
-                                        const currentCount = watchCounts[w.id] ?? null
-                                        const prevCount = w.lastSeenCount ?? null
-                                        const delta = currentCount !== null && prevCount !== null ? currentCount - prevCount : null
-                                        return (
-                                            <div key={w.id} className="brief-watch-card">
-                                                <div className="brief-watch-name">{w.name}</div>
-                                                <div className="brief-watch-scope">{parts.join(' · ') || 'Global'}</div>
-                                                <div className="brief-watch-stats">
-                                                    {currentCount === null ? (
-                                                        <span className="brief-watch-count loading">—</span>
-                                                    ) : (
-                                                        <span className="brief-watch-count">{currentCount.toLocaleString()} signals today</span>
-                                                    )}
-                                                    {delta !== null && delta !== 0 && (
-                                                        <span className={`brief-watch-delta ${delta > 0 ? 'up' : 'down'}`}>
-                                                            {delta > 0 ? '↑' : '↓'}{Math.abs(delta)} vs last check
-                                                        </span>
-                                                    )}
-                                                    {delta === 0 && prevCount !== null && (
-                                                        <span className="brief-watch-delta neutral">no change</span>
-                                                    )}
-                                                </div>
-                                                <div className="brief-watch-date">
-                                                    Saved {new Date(w.createdAt).toLocaleDateString()}
-                                                    {w.lastSeenAt && ` · checked ${new Date(w.lastSeenAt).toLocaleDateString()}`}
-                                                </div>
-                                                <div className="brief-watch-actions">
-                                                    <button
-                                                        className="brief-watch-open"
-                                                        onClick={() => {
-                                                            if (currentCount !== null) markSeen(w.id, currentCount)
-                                                            goToAtlas(atlasParams || undefined)
+                                <ComposableMap
+                                    projection="geoEqualEarth"
+                                    projectionConfig={{ scale: 150, center: [0, 5] }}
+                                    width={800}
+                                    height={400}
+                                >
+                                    <Geographies geography={GEO_URL}>
+                                        {({ geographies }) =>
+                                            geographies.map(geo => {
+                                                const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
+                                                const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
+                                                // B6 (dataviz audit): linear normalize over a heavy-tailed
+                                                // distribution saturated the US and left ~90% of countries in
+                                                // the bottom 10% of the ramp reading as "no data" — sqrt spreads
+                                                // the mid-range without lying about rank order.
+                                                const intensity = Math.sqrt(count / maxSignals)
+                                                return (
+                                                    <Geography
+                                                        key={geo.rsmKey}
+                                                        geography={geo}
+                                                        fill={count > 0 ? lerpHex(mapRamp.low, mapRamp.high, intensity) : mapRamp.zero}
+                                                        stroke={mapRamp.stroke}
+                                                        strokeWidth={0.5}
+                                                        onClick={() => iso2 && selectCountry(iso2)}
+                                                        style={{
+                                                            default: { outline: 'none' },
+                                                            hover: { outline: 'none' },
+                                                            pressed: { outline: 'none' },
                                                         }}
-                                                    >Open in Atlas →</button>
-                                                    <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} data-tip="Remove watch">×</button>
+                                                    />
+                                                )
+                                            })
+                                        }
+                                    </Geographies>
+                                </ComposableMap>
+                            </div>
+                            <div className="brief-bottom-col brief-map-side">
+                                <h3 className="brief-bottom-heading">Most Active</h3>
+                                {data.top_countries.slice(0, 8).map(c => (
+                                    <button
+                                        key={c.code}
+                                        className="brief-bottom-country"
+                                        onClick={() => goToAtlas(`country=${c.code}`, 'most_active')}
+                                    >
+                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
+                                        <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+
+                        <div className="brief-rule" />
+
+                        <section className="brief-bottom-row">
+                            {/* B3 (dataviz audit): ONE user-facing tone scale everywhere — raw
+                                GDELT ±10 (the scale ThemeDetail already explains). The API serves
+                                ÷10 values for the internal ±0.1 thresholds; multiply back for
+                                display and label the unit. */}
+                            <div className="brief-bottom-col">
+                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Negative</h3>
+                                {data.negative_sentiment.slice(0, 4).map(c => (
+                                    <button
+                                        key={c.code}
+                                        className="brief-bottom-country"
+                                        onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
+                                    >
+                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
+                                        <span className="brief-bottom-num negative" data-tip={`Avg tone ${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
+                                            {(c.sentiment * 10).toFixed(1)}
+                                            <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
+                                        </span>
+                                    </button>
+                                ))}
+                                <div className="brief-scale-note">GDELT tone · −10…+10</div>
+                            </div>
+                            <div className="brief-bottom-col">
+                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Positive</h3>
+                                {data.positive_sentiment.slice(0, 4).map(c => (
+                                    <button
+                                        key={c.code}
+                                        className="brief-bottom-country"
+                                        onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
+                                    >
+                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
+                                        <span className="brief-bottom-num positive" data-tip={`Avg tone +${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
+                                            +{(c.sentiment * 10).toFixed(1)}
+                                            <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
+                                        </span>
+                                    </button>
+                                ))}
+                                <div className="brief-scale-note">GDELT tone · −10…+10</div>
+                            </div>
+                            <div className="brief-bottom-col">
+                                <h3 className="brief-bottom-heading">Sources</h3>
+                                {data.top_sources.slice(0, 5).map(s => (
+                                    <div key={s.source} className="brief-source-row">
+                                        <span className="brief-source-name">{s.source}</span>
+                                        <span className="brief-source-count">{s.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="brief-bottom-col">
+                                {(data.category_counts?.length ?? 0) > 0 ? (
+                                    /* #249: Atlas's OWN R3.1 categories — the GDELT
+                                       taxonomy index retired once every story carries
+                                       a category. Search opens the category term. */
+                                    <>
+                                        <h3 className="brief-bottom-heading" data-tip="Atlas category index — every live story is typed into an open category (crisis anchors + emergent).">By Category</h3>
+                                        {data.category_counts!.slice(0, 6).map(c => (
+                                            <button
+                                                key={c.category}
+                                                className="brief-bottom-country"
+                                                onClick={() => goToAtlas(`q=${encodeURIComponent(c.category)}`, 'by_category')}
+                                            >
+                                                <span>{c.category}</span>
+                                                <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
+                                            </button>
+                                        ))}
+                                    </>
+                                ) : (
+                                    <>
+                                        <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Narrative Threads above are the editorial unit.">By Theme</h3>
+                                        {data.top_themes.slice(0, 6).map(t => (
+                                            <button
+                                                key={t.theme}
+                                                className="brief-bottom-country"
+                                                onClick={() => goToAtlas(`theme=${encodeURIComponent(t.theme)}${countryFilter ? `&country=${countryFilter}` : ''}`, 'by_theme')}
+                                            >
+                                                <span>{getThemeIcon(t.theme)} {getThemeLabel(t.theme)}</span>
+                                                <span className="brief-bottom-num">{t.count.toLocaleString()}</span>
+                                            </button>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </section>
+
+                        {watches.length > 0 && (
+                            <>
+                                <div className="brief-rule" />
+                                <section className="brief-watches">
+                                    <span className="reader-section-kicker brief-sub-kicker">Saved watches</span>
+                                    <div className="brief-watches-grid">
+                                        {watches.map(w => {
+                                            const parts: string[] = []
+                                            if (w.filter.country) parts.push(resolveCountryName(w.filter.country))
+                                            if (w.filter.concept) parts.push(w.filter.concept.label)
+                                            else if (w.filter.theme) parts.push(getThemeLabel(w.filter.theme))
+                                            if (w.filter.person) parts.push(w.filter.person)
+                                            if (w.filter.region) parts.push(w.filter.region.label)
+                                            const atlasParams = [
+                                                w.filter.country ? `country=${w.filter.country}` : null,
+                                                w.filter.theme ? `theme=${encodeURIComponent(w.filter.theme)}` : null,
+                                                w.filter.person ? `person=${encodeURIComponent(w.filter.person)}` : null,
+                                            ].filter(Boolean).join('&')
+                                            const currentCount = watchCounts[w.id] ?? null
+                                            const prevCount = w.lastSeenCount ?? null
+                                            const delta = currentCount !== null && prevCount !== null ? currentCount - prevCount : null
+                                            return (
+                                                <div key={w.id} className="brief-watch-card">
+                                                    <div className="brief-watch-name">{w.name}</div>
+                                                    <div className="brief-watch-scope">{parts.join(' · ') || 'Global'}</div>
+                                                    <div className="brief-watch-stats">
+                                                        {currentCount === null ? (
+                                                            <span className="brief-watch-count loading">—</span>
+                                                        ) : (
+                                                            <span className="brief-watch-count">{currentCount.toLocaleString()} signals today</span>
+                                                        )}
+                                                        {delta !== null && delta !== 0 && (
+                                                            <span className={`brief-watch-delta ${delta > 0 ? 'up' : 'down'}`}>
+                                                                {delta > 0 ? '↑' : '↓'}{Math.abs(delta)} vs last check
+                                                            </span>
+                                                        )}
+                                                        {delta === 0 && prevCount !== null && (
+                                                            <span className="brief-watch-delta neutral">no change</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="brief-watch-date">
+                                                        Saved {new Date(w.createdAt).toLocaleDateString()}
+                                                        {w.lastSeenAt && ` · checked ${new Date(w.lastSeenAt).toLocaleDateString()}`}
+                                                    </div>
+                                                    <div className="brief-watch-actions">
+                                                        <button
+                                                            className="brief-watch-open"
+                                                            onClick={() => {
+                                                                if (currentCount !== null) markSeen(w.id, currentCount)
+                                                                goToAtlas(atlasParams || undefined)
+                                                            }}
+                                                        >Open in Atlas →</button>
+                                                        <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} data-tip="Remove watch">×</button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )
-                                    })}
+                                            )
+                                        })}
+                                    </div>
+                                </section>
+                            </>
+                        )}
+
+                        {/* METHOD FOOTER + CTA */}
+                        <footer className="brief-method">
+                            <div className="brief-method-text">
+                                <p>
+                                    <b>Positions and prominence are measured from coverage volume, languages and countries.</b>{' '}
+                                    Nothing is hidden — every story has a section. "Surging / fading" is the change in
+                                    signals versus the prior 10 hours of the raw feed; coverage-country is where an
+                                    outlet's row is geo-tagged, not necessarily the story's subject. Receipts link to
+                                    the source. Where a verification gate found no admissible row, we say so plainly
+                                    rather than fill the space.
+                                </p>
+                                <button className="brief-cta-btn" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'final_cta')}>
+                                    Enter Atlas — full intelligence terminal →
+                                </button>
+                            </div>
+                            <div className="brief-method-meta">
+                                <div className="brief-wordmark-sm">ATLAS<span className="dot">.</span></div>
+                                <div>The Atlas Edition · L1</div>
+                                <div>Generated {dayLine}</div>
+                                <div>Measured · last 24 hours</div>
+                            </div>
+                        </footer>
+
+                    </main>
+                ) : (
+                    <div className="brief-error">
+                        <p>{briefError ?? 'Failed to load briefing data.'}</p>
+                        <button onClick={() => fetchData(hours)}>Retry briefing</button>
+                    </div>
+                )}
+
+                {/* ============ SHARE DIALOG ============ */}
+                <dialog
+                    ref={shareDialogRef}
+                    className="brief-share-dialog"
+                    aria-labelledby="brief-share-title"
+                    onClick={e => { if (e.target === shareDialogRef.current) closeShare() }}
+                    onClose={() => setShareCopied('')}
+                >
+                    <div className="brief-share-shell">
+                        <div className="brief-share-top">
+                            <h2 className="brief-share-title" id="brief-share-title">Share today's edition</h2>
+                            <button className="brief-share-close" type="button" onClick={closeShare} aria-label="Close share panel">
+                                ✕ Close
+                            </button>
+                        </div>
+
+                        <div className="brief-share-cardwrap">
+                            <div
+                                className="brief-share-card"
+                                role="img"
+                                aria-label={`Shareable preview card: ATLAS, ${weekday} ${dayLine}.${leadThread ? ` Lead — ${leadThread.label}.` : ''} The Atlas Edition — the news of the world, measured.`}
+                            >
+                                <div className="sc-head">
+                                    <span className="sc-mark">ATLAS<span className="dot">.</span></span>
+                                    <span className="sc-date">{weekday} · {dayLine}</span>
                                 </div>
-                            </section>
-                        </>
-                    )}
+                                <p className="sc-kicker">
+                                    Lead{leadThread && (leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}
+                                </p>
+                                <p className="sc-headline">{leadThread?.label ?? 'No lead story cleared the gate today'}</p>
+                                {leadThread?.why_now && <p className="sc-stand">{leadThread.why_now}</p>}
+                                {worldCards.length > 0 && (
+                                    <div className="sc-secondaries">
+                                        <p className="sc-lab">Also in today's edition</p>
+                                        {worldCards.slice(0, 2).map(t => (
+                                            <p key={t.thread_id}>{t.label}</p>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="sc-bottom">
+                                    {data && (
+                                        <div className="sc-vitals">
+                                            <span><b>{data.stats.total_signals.toLocaleString()}</b> signals</span>
+                                            <span><b>{data.stats.countries}</b> countries</span>
+                                            <span><b>{data.stats.sources.toLocaleString()}</b> sources</span>
+                                            <span>measured · last 24h</span>
+                                        </div>
+                                    )}
+                                    <div className="sc-foot">The Atlas Edition<span className="dot"> — </span>the news of the world, measured</div>
+                                </div>
+                            </div>
+                        </div>
 
-                    <div className="brief-rule" />
-
-                    {/* CTA — enter Atlas */}
-                    <section className="brief-cta">
-                        <p className="brief-cta-label">Full intelligence terminal</p>
-                        <button className="brief-cta-btn" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'final_cta')}>
-                            Enter Atlas →
-                        </button>
-                    </section>
-
-                </main>
-            ) : (
-                <div className="brief-error">
-                    <p>{briefError ?? 'Failed to load briefing data.'}</p>
-                    <button onClick={() => fetchData(hours)}>Retry briefing</button>
-                </div>
-            )}
+                        <p className="brief-share-hint">
+                            <b>Screenshot the card</b>, or copy the caption — then paste both into your LinkedIn post.
+                            Replace <span className="mono">&lt;your link&gt;</span> with the link to the full edition.
+                        </p>
+                        <div className="brief-share-actions">
+                            <button className="brief-share-copy" type="button" onClick={copyShareCaption}>
+                                ⧉ Copy caption
+                            </button>
+                            <span className="brief-share-copied" role="status" aria-live="polite">{shareCopied}</span>
+                        </div>
+                        {shareFallbackOpen && (
+                            <>
+                                <p className="brief-share-fallback-lab">Clipboard blocked — select and copy the caption below</p>
+                                <textarea
+                                    ref={shareFallbackRef}
+                                    className="brief-share-fallback"
+                                    readOnly
+                                    rows={6}
+                                    value={shareCaption}
+                                    aria-label="LinkedIn caption text, select all and copy"
+                                    onFocus={e => e.currentTarget.select()}
+                                />
+                            </>
+                        )}
+                    </div>
+                </dialog>
+            </div>
         </div>
     )
 }
