@@ -313,7 +313,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                     continue
                 try:
                     ext_rows = await conn.fetch("""
-                        SELECT s.headline, s.source_name AS source, s.url,
+                        SELECT s.headline, s.source_name AS source,
+                               s.source_url AS url,
                                a.gate_score::float AS gate_score
                         FROM signal_topic_assignments a
                         JOIN atlas_topics t ON t.id = a.topic_id
