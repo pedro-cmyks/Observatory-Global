@@ -1,6 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import type { TimeRange } from '../lib/timeRanges'
 
 export type FocusType = 'thread' | 'theme' | 'entity' | 'person' | 'country' | 'source' | null
 export type LockedBy = 'radar' | 'stream' | 'matrix' | 'anomaly' | null
@@ -33,7 +32,8 @@ export interface GlobalFilter {
     person: string | null
     concept: ConceptFilter | null
     region: RegionFilter | null
-    timeRange: TimeRange
+    // timeRange REMOVED (2026-07-15): the VIEW selector is gone — the map
+    // scrubber is time; each surface owns its fixed window.
     lockedBy: LockedBy
     streamLevel: StreamLevel
 }
@@ -48,7 +48,6 @@ interface FocusContextValue {
     setPerson: (person: string | null) => void
     setConcept: (concept: ConceptFilter | null) => void
     setRegion: (region: RegionFilter | null) => void
-    setTimeRange: (range: TimeRange) => void
     setStreamLevel: (level: StreamLevel) => void
     clearFilter: () => void
     // Map fly hint: set a country code to trigger a map flyTo
@@ -70,7 +69,6 @@ const defaultFilter: GlobalFilter = {
     person: null,
     concept: null,
     region: null,
-    timeRange: '24h',
     lockedBy: null,
     streamLevel: 'notable',
 }
@@ -124,11 +122,6 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             lockedBy: theme ? source : prev.country ? prev.lockedBy : null 
         }))
         console.log(`[GlobalFilter] Set theme=${theme} by ${source || 'unknown'}`)
-    }, [])
-
-    const setTimeRange = useCallback((timeRange: TimeRange) => {
-        setFilter(prev => ({ ...prev, timeRange }))
-        console.log(`[GlobalFilter] Set timeRange=${timeRange}`)
     }, [])
 
     const setEntity = useCallback((entity: string | null) => {
@@ -243,7 +236,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return (
         <FocusContext.Provider value={{
-            filter, setThread, setCountry, setTheme, setEntity, setPerson, setConcept, setRegion, setTimeRange, setStreamLevel, clearFilter,
+            filter, setThread, setCountry, setTheme, setEntity, setPerson, setConcept, setRegion, setStreamLevel, clearFilter,
             mapFlyCountry, setMapFlyCountry,
             focus, setFocus, clearFocus, isActive
         }}>

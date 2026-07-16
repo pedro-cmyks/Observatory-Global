@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
-import { timeRangeToHours } from '../lib/timeRanges'
 import { buildSourceIntegrityScopeLabel } from '../lib/sourceIntegrityScope'
 import './SourceIntegrityPanel.css'
 
@@ -22,7 +21,7 @@ interface SourceIntegrityPanelProps {
 
 export const SourceIntegrityPanel: React.FC<SourceIntegrityPanelProps> = ({ viewingLabel }) => {
     const { filter } = useFocus()
-    const { summary, timeRange, loading: focusLoading } = useFocusData()
+    const { summary, loading: focusLoading } = useFocusData()
     const [globalData, setGlobalData] = useState<GlobalBriefing | null>(null)
     const [loading, setLoading] = useState(false)
     const hasScopedFilter = !!(filter.country || filter.theme || filter.person || filter.entity)
@@ -45,8 +44,9 @@ export const SourceIntegrityPanel: React.FC<SourceIntegrityPanelProps> = ({ view
         const fetchGlobal = async () => {
             setLoading(true)
             try {
-                const hours = timeRangeToHours(timeRange)
-                const res = await fetch(`/api/v2/briefing?hours=${hours}`)
+                // Global source health = the live day (selector retired
+                // 2026-07-15; this matches the ambient picture above it).
+                const res = await fetch(`/api/v2/briefing?hours=24`)
                 if (!res.ok) throw new Error(`briefing ${res.status}`)
                 const data = await res.json()
                 if (isMounted) setGlobalData(data)
@@ -59,7 +59,7 @@ export const SourceIntegrityPanel: React.FC<SourceIntegrityPanelProps> = ({ view
         fetchGlobal()
 
         return () => { isMounted = false }
-    }, [hasScopedFilter, timeRange])
+    }, [hasScopedFilter])
 
     // Compute metrics
     const isLoading = focusLoading || loading

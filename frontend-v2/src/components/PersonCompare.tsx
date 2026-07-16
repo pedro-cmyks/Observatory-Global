@@ -1,18 +1,16 @@
 import { EntityPanel } from './EntityPanel'
 import { CompareDashboard } from './CompareDashboard'
-import { type TimeRange } from '../lib/timeRanges'
 
 interface PersonCompareProps {
     personA: string
     personB: string
-    timeRange: TimeRange
     onClose: () => void
     onThemeSelect?: (theme: string) => void
     onCountrySelect?: (code: string) => void
     onSourceClick?: (domain: string) => void
 }
 
-export function PersonCompare({ personA, personB, timeRange, onClose, onThemeSelect, onCountrySelect, onSourceClick }: PersonCompareProps) {
+export function PersonCompare({ personA, personB, onClose, onThemeSelect, onCountrySelect, onSourceClick }: PersonCompareProps) {
     return (
         <CompareDashboard
             modeLabel="Person Compare"
@@ -25,7 +23,6 @@ export function PersonCompare({ personA, personB, timeRange, onClose, onThemeSel
                 inline
                 focusType="person"
                 focusValue={personA}
-                timeRange={timeRange}
                 onClose={onClose}
                 onThemeSelect={onThemeSelect}
                 onCountrySelect={onCountrySelect}
@@ -35,7 +32,6 @@ export function PersonCompare({ personA, personB, timeRange, onClose, onThemeSel
                 inline
                 focusType="person"
                 focusValue={personB}
-                timeRange={timeRange}
                 onClose={onClose}
                 onThemeSelect={onThemeSelect}
                 onCountrySelect={onCountrySelect}

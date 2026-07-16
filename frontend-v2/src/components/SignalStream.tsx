@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useFocus } from '../contexts/FocusContext'
-import { useFocusData } from '../contexts/FocusDataContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { TranslatableHeadline } from './TranslatableHeadline'
-import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
 import { Pin, PinOff } from '../lib/icons'
@@ -132,7 +130,8 @@ const isNoiseLane = (signal: Signal): boolean =>
 
 export const SignalStream: React.FC = () => {
     const { filter, setTheme, setCountry, setPerson, setStreamLevel } = useFocus()
-    const { timeRange } = useFocusData()
+    // The stream is ambient — the live day (VIEW selector retired 2026-07-15).
+    const STREAM_HOURS = 24
     const [items, setItems] = useState<StreamItem[]>([])
     const [nowTs, setNowTs] = useState(() => Date.now())
     const [velocity, setVelocity] = useState<Velocity | null>(null)
@@ -174,7 +173,7 @@ export const SignalStream: React.FC = () => {
         return ''
     }
 
-    // Fetch initial signals when filter or timeRange changes
+    // Fetch initial signals when the filter changes
     useEffect(() => {
         let isMounted = true
 
@@ -191,7 +190,7 @@ export const SignalStream: React.FC = () => {
             try {
                 const params = new URLSearchParams()
                 params.append('limit', '50')
-                params.append('hours', timeRangeToHours(timeRange).toString())
+                params.append('hours', String(STREAM_HOURS))
                 params.append('sort', 'relevance')  // analyst-grade ranking (#177)
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
@@ -281,7 +280,7 @@ export const SignalStream: React.FC = () => {
             isMounted = false
             if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null }
         }
-    }, [filter.country, filter.theme, filter.person, timeRange])
+    }, [filter.country, filter.theme, filter.person])
 
     // Poll for new signals
     useEffect(() => {
@@ -293,7 +292,7 @@ export const SignalStream: React.FC = () => {
             try {
                 const params = new URLSearchParams()
                 params.append('limit', '50')
-                params.append('hours', timeRangeToHours(timeRange).toString())
+                params.append('hours', String(STREAM_HOURS))
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
                 if (filter.person) params.append('person', filter.person)
@@ -337,7 +336,7 @@ export const SignalStream: React.FC = () => {
             isMounted = false
             clearInterval(interval)
         }
-    }, [filter.country, filter.theme, filter.person, isHovered, timeRange])
+    }, [filter.country, filter.theme, filter.person, isHovered])
 
     // Drip-reveal: pop one queued signal every ~1 second for a live-stream feel
     useEffect(() => {

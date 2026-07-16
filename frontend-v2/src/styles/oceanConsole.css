@@ -54,12 +54,8 @@
   [data-theme^='emerald'] .brand-tag { display: none; }
 }
 
-/* Measured chips: controls read as quiet mono furniture, accent only when on */
-[data-theme^='emerald'] .time-controls {
-  background: var(--color-bg-secondary);
-  border-color: var(--color-border-subtle);
-  border-radius: 7px;
-}
+/* Measured chips: controls read as quiet mono furniture, accent only when on
+   (.time-btn = the WORKBENCH pill; the VIEW selector retired 2026-07-15) */
 [data-theme^='emerald'] .time-btn {
   color: var(--color-text-secondary);
   text-transform: uppercase;
@@ -72,11 +68,6 @@
   background: var(--color-accent-primary);
   box-shadow: none;
 }
-[data-theme^='emerald'] .time-view-chip {
-  color: var(--color-text-muted);
-  border-color: var(--color-border-subtle);
-}
-
 [data-theme^='emerald'] .cmd-btn {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-subtle);
@@ -102,9 +93,6 @@
   color: var(--color-on-accent);
   background: var(--color-accent-primary);
   border-color: var(--color-accent-primary);
-}
-[data-theme^='emerald'] .time-compact-trigger {
-  border-color: var(--color-border-subtle);
 }
 [data-theme^='emerald'] .cmd-count {
   background: color-mix(in srgb, var(--color-accent-primary) 22%, transparent);

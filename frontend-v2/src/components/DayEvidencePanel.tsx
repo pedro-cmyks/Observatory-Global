@@ -50,7 +50,9 @@ export function DayEvidencePanel({ day, country, onClose, onOpenLive }: {
 
     const name = resolveCountryName(country, country)
     const dateLabel = new Date(day + 'T00:00:00Z')
-        .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        // timeZone UTC: `day` is a UTC archive day — local rendering shifted
+        // it a day west of the scrubber label (caught 2026-07-15).
+        .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 
     return (
         <div className="day-evidence">

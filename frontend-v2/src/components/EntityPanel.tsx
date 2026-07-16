@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel, resolveThreadLabel } from '../lib/themeLabels'
-import { timeRangeToHours } from '../lib/timeRanges'
-import { type TimeRange } from '../lib/timeRanges'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 
@@ -34,7 +32,6 @@ interface FocusData {
 interface EntityPanelProps {
     focusType: 'person' | 'theme'
     focusValue: string
-    timeRange: TimeRange
     onClose: () => void
     onThemeSelect?: (theme: string) => void
     onCountrySelect?: (code: string) => void
@@ -63,12 +60,14 @@ function formatCount(n: number): string {
     return String(n)
 }
 
-export function EntityPanel({ focusType, focusValue, timeRange, onClose, onThemeSelect, onCountrySelect, onSourceClick, onCompareClick, onPersonSelect, inline }: EntityPanelProps) {
+export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onCountrySelect, onSourceClick, onCompareClick, onPersonSelect, inline }: EntityPanelProps) {
     const cls = `entity-panel${inline ? ' entity-panel--inline' : ''}`
     const [data, setData] = useState<FocusData | null>(null)
     const [loading, setLoading] = useState(true)
     const [showCompareModal, setShowCompareModal] = useState(false)
-    const hours = timeRangeToHours(timeRange)
+    // The panel owns its window now (VIEW selector retired 2026-07-15):
+    // entity focus reads the live day, like the map it re-scopes.
+    const hours = 24
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
     useEffect(() => {
@@ -126,7 +125,7 @@ export function EntityPanel({ focusType, focusValue, timeRange, onClose, onTheme
                     <span className="entity-type-tag">
                         {focusType === 'person' ? 'PERSON' : 'THEME'}
                     </span>
-                    <span className="entity-timerange">{timeRange}</span>
+                    <span className="entity-timerange">{hours}h</span>
                 </div>
                 <button className="entity-close" onClick={onClose}>×</button>
             </div>

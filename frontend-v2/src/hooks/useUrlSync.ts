@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useFocus } from '../contexts/FocusContext'
-import type { TimeRange } from '../lib/timeRanges'
 
 /**
  * Bidirectional sync between FocusContext filter state and URL search params.
@@ -10,12 +9,15 @@ import type { TimeRange } from '../lib/timeRanges'
  * On filter change: pushes filter state to URL (replace, not push to avoid history spam).
  *
  * URL format:
- *   /app?theme=ARMEDCONFLICT&country=CO&time=24h
+ *   /app?theme=ARMEDCONFLICT&country=CO
  *   /app?concept=blood-diamonds&region=africa
- *   /app?person=petro&time=1w
+ *   /app?person=petro
+ *
+ * `time=` is no longer read or written (2026-07-15): the VIEW selector is
+ * gone — the map scrubber is time and it is session-local, not URL state.
  */
 export function useUrlSync() {
-    const { filter, setCountry, setTheme, setPerson, setTimeRange } = useFocus()
+    const { filter, setCountry, setTheme, setPerson } = useFocus()
     const [searchParams, setSearchParams] = useSearchParams()
     const isHydrating = useRef(true)
     const prevFilterRef = useRef<string>('')
@@ -25,16 +27,11 @@ export function useUrlSync() {
         const theme = searchParams.get('theme')
         const country = searchParams.get('country')
         const person = searchParams.get('person')
-        const time = searchParams.get('time') as TimeRange | null
 
         let hydrated = false
         if (theme) { setTheme(theme); hydrated = true }
         if (country) { setCountry(country); hydrated = true }
         if (person) { setPerson(person); hydrated = true }
-        if (time && ['24h', '1w', '1m', '3m', 'record'].includes(time)) {
-            setTimeRange(time)
-            hydrated = true
-        }
 
         // Small delay to let hydration settle before enabling write-back
         setTimeout(() => { isHydrating.current = false }, 500)
@@ -49,12 +46,11 @@ export function useUrlSync() {
         if (filter.theme) params.set('theme', filter.theme)
         if (filter.country) params.set('country', filter.country)
         if (filter.person) params.set('person', filter.person)
-        if (filter.timeRange && filter.timeRange !== '24h') params.set('time', filter.timeRange)
 
         const serialized = params.toString()
         if (serialized !== prevFilterRef.current) {
             prevFilterRef.current = serialized
             setSearchParams(params, { replace: true })
         }
-    }, [filter.theme, filter.country, filter.person, filter.timeRange, setSearchParams])
+    }, [filter.theme, filter.country, filter.person, setSearchParams])
 }

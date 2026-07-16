@@ -47,8 +47,9 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
+    /* Softened ~35% (2026-07-15): was rgba(2,6,12,0.5) from 58%. */
     background:
-        radial-gradient(125% 95% at 50% 42%, rgba(2, 6, 12, 0) 58%, rgba(2, 6, 12, 0.5) 100%);
+        radial-gradient(125% 95% at 50% 42%, rgba(2, 6, 12, 0) 64%, rgba(2, 6, 12, 0.32) 100%);
 }
 
 /* ocean / sphere backdrop */

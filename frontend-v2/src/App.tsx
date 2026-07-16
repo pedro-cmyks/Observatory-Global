@@ -32,8 +32,8 @@ import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { FocusIndicator } from './components/FocusIndicator'
-import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, ambientRange, timeRangeToViewDays } from './lib/timeRanges'
-import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown, Sun, Moon } from './lib/icons'
+import { maxReplayDays, farEdgeKind, positionForDaysBack, snapDaysBack, isoDayForDaysBack, REPLAY_ENDPOINT_CAP_DAYS } from './lib/scrubberScale'
+import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, Sun, Moon } from './lib/icons'
 import { useTheme } from './contexts/ThemeContext'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
@@ -98,6 +98,20 @@ interface FeatureCollection {
 }
 
 const emptyFeatureCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
+
+// ── The scrubber is time (2026-07-15, supersedes the S4 VIEW selector) ──
+// The command-bar time selector is GONE: looking back happens on the map
+// scrubber (one log-scale bar, whole history inside). Former selector
+// consumers each own a sensible fixed window now:
+//   · ambient (nodes/flows/heat/threads/brief) — 24h, unchanged (S4 doctrine)
+//   · investigative panels (theme/country/person/chokepoint/compare/source/
+//     briefing/universe/conflict-event) — DAY_WINDOW_HOURS: the live day;
+//     deeper look-back = the scrubber + deep-history, not a re-filter
+//   · research plans (story panel + workbench) — RESEARCH_WINDOW_HOURS:
+//     they already floored the lens at a week
+const DAY_WINDOW_HOURS = 24
+const RESEARCH_WINDOW_HOURS = 168
+
 const DEG_TO_RAD = Math.PI / 180
 // Gutter between grid panels (px) — also the container padding.
 const GRID_GAP = 6
@@ -303,11 +317,11 @@ function AppContent() {
   const countryWalkthroughDone = useRef<boolean>(
     (() => { try { return !!localStorage.getItem(COUNTRY_WALKTHROUGH_KEY) } catch { return true } })()
   )
-  // #152 command-bar layout: overflow "···" menu (TOUR + Settings), controlled
-  // settings panel, and compact time-range dropdown for narrow viewports.
+  // #152 command-bar layout: overflow "···" menu (TOUR + Settings) and
+  // controlled settings panel. (The compact time-range dropdown died with
+  // the VIEW selector, 2026-07-15 — the scrubber is time.)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [timeMenuOpen, setTimeMenuOpen] = useState(false)
   // Bottom dock active tab (#228 §3): anomaly | sources. The HEAT tab was
   // removed (#231) — heat is a map property (drives country color), not a
   // bottom list. The composite now colors the map directly.
@@ -326,17 +340,16 @@ function AppContent() {
   const { theme: consoleTheme, toggleDayNight } = useTheme()
 
   useEffect(() => {
-    if (!moreMenuOpen && !timeMenuOpen) return
+    if (!moreMenuOpen) return
     const onDown = (e: MouseEvent) => {
       const el = e.target as HTMLElement
-      if (!el.closest('.cmd-more-wrap') && !el.closest('.time-compact')) {
+      if (!el.closest('.cmd-more-wrap')) {
         setMoreMenuOpen(false)
-        setTimeMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
-  }, [moreMenuOpen, timeMenuOpen])
+  }, [moreMenuOpen])
   const { watches, add: addWatch } = useSavedWatches()
   const [watchNamePrompt, setWatchNamePrompt] = useState<string | null>(null)
   const entrySource = useMemo(() => {
@@ -729,40 +742,109 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, location.pathname])
 
-  // Focus-aware data from provider - auto-refetches when focus/range changes
-  const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, timeRange, setTimeRange, meta: focusMeta } = useFocusData()
+  // Focus-aware data from provider - auto-refetches when focus changes
+  const { nodes, flows, unfilteredFlows, acledConflicts, loading, isRefetching, refetch, meta: focusMeta } = useFocusData()
 
-  // S4: the VIEW selector drives the scrubber SPAN (7d floor … 90d cap).
-  const viewSpanDays = timeRangeToViewDays(timeRange)
-  const replayDays = useMemo(() => {
-    const out: string[] = []
-    for (let i = viewSpanDays - 1; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000)
-      out.push(d.toISOString().slice(0, 10))
-    }
-    return out
-  }, [viewSpanDays])
-  const replayLoadedSpanRef = useRef(0)
+  // THE SCRUBBER IS TIME (2026-07-15): one log-scale bar carries the WHOLE
+  // replayable history — right half ≈ the last 7-10 days at day granularity,
+  // deep past compresses left, edge = the honest data bound (archive floor
+  // May 3 until it recedes past the endpoint's 90-day cap).
+  const scrubMaxDays = useMemo(() => maxReplayDays(), [])
+  const replayRequestedRef = useRef(false)
+  // Fetch the replay window ONCE at the full span; every scrub after that is
+  // local (the payload already carries all days for all countries).
   const ensureReplayData = useCallback(() => {
-    if (replayData && replayLoadedSpanRef.current >= viewSpanDays) return
-    replayLoadedSpanRef.current = viewSpanDays
-    fetch(`/api/v2/map/replay?days=${viewSpanDays}`)
+    if (replayRequestedRef.current) return
+    replayRequestedRef.current = true
+    fetch(`/api/v2/map/replay?days=${scrubMaxDays}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.series) setReplayData(d.series) })
-      .catch(() => { /* scrubber degrades to no-op */ })
-  }, [replayData, viewSpanDays])
+      .catch(() => { replayRequestedRef.current = false /* scrubber degrades to no-op; retry on next scrub */ })
+  }, [scrubMaxDays])
 
-  // #231: fetch the baseline-normalized heat composite for map color (after
-  // timeRange is in scope). Falls back silently to volume if unavailable.
+  // Scrubber drag state. Whole days from NOW for the current scrub position
+  // (0 = live); the continuous position lives in a ref so Shift-fine deltas
+  // accumulate without re-render churn.
+  const scrubDaysBack = replayDay
+    ? Math.max(0, Math.floor((Date.now() - Date.parse(replayDay + 'T00:00:00Z')) / 86400000))
+    : 0
+  const scrubThumbPos = replayDay ? positionForDaysBack(scrubDaysBack, scrubMaxDays) : 1
+  const scrubPosRef = useRef(1)
+  const scrubDragRef = useRef<{ lastX: number } | null>(null)
+
+  const applyScrubPosition = useCallback((p: number) => {
+    const clamped = Math.min(1, Math.max(0, p))
+    scrubPosRef.current = clamped
+    const snapped = snapDaysBack(clamped, scrubMaxDays)
+    // Snap to whole days everywhere except the live edge (0 = NOW).
+    setReplayDay(snapped <= 0 ? null : isoDayForDaysBack(snapped))
+  }, [scrubMaxDays])
+
+  const onScrubPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    trackOnce('scrubber_used', { surface: 'globe' })
+    ensureReplayData()
+    // Capture must never abort the scrub (it throws for exotic/synthetic
+    // pointers) — without it the drag still works while the pointer stays
+    // over the track.
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* uncaptured drag */ }
+    const rect = e.currentTarget.getBoundingClientRect()
+    scrubDragRef.current = { lastX: e.clientX }
+    if (e.shiftKey) {
+      // Shift = FINE from the start: grab the CURRENT position (no absolute
+      // jump), then nudge with damped deltas.
+      scrubPosRef.current = replayDay ? positionForDaysBack(
+        Math.max(0, Math.floor((Date.now() - Date.parse(replayDay + 'T00:00:00Z')) / 86400000)),
+        scrubMaxDays,
+      ) : 1
+    } else {
+      applyScrubPosition((e.clientX - rect.left) / rect.width)
+    }
+  }, [ensureReplayData, applyScrubPosition, replayDay, scrubMaxDays])
+
+  const onScrubPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubDragRef.current) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (e.shiftKey) {
+      // FINE control (hold Shift): pointer deltas damped 4× — slower time
+      // per pixel, for day-precise picking in the compressed deep past.
+      // Fancier option (deliberately not built — Pedro: just the bar): scale
+      // damping continuously by the pointer's VERTICAL distance from the
+      // bar, so pulling away from the track smoothly increases granularity.
+      const dx = e.clientX - scrubDragRef.current.lastX
+      applyScrubPosition(scrubPosRef.current + (dx / Math.max(rect.width, 1)) * 0.25)
+    } else {
+      applyScrubPosition((e.clientX - rect.left) / rect.width)
+    }
+    scrubDragRef.current.lastX = e.clientX
+  }, [applyScrubPosition])
+
+  const onScrubPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    scrubDragRef.current = null
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* already released */ }
+  }, [])
+
+  const scrubStepDays = useCallback((delta: number) => {
+    ensureReplayData()
+    const current = replayDay
+      ? Math.max(0, Math.floor((Date.now() - Date.parse(replayDay + 'T00:00:00Z')) / 86400000))
+      : 0
+    const next = Math.min(scrubMaxDays, Math.max(0, current + delta))
+    scrubPosRef.current = positionForDaysBack(next, scrubMaxDays)
+    setReplayDay(next <= 0 ? null : isoDayForDaysBack(next))
+  }, [ensureReplayData, replayDay, scrubMaxDays])
+
+  // #231: fetch the baseline-normalized heat composite for map color.
+  // Falls back silently to volume if unavailable.
   // Fetch ALL countries (not a top-N) and min-max normalize the real value
   // band onto [0.1, 1.0] so the full blue→red gradient is used — the raw
   // composite clusters in a narrow band (~0.36–0.72), which mapped to a flat
   // orange and left most of the world dark (#231 follow-up, Pedro's review).
   useEffect(() => {
     let cancelled = false
-    // S4: heat is ambient — live 24h picture (also matches country_heat_v2's
-    // hardcoded 24h window, which the old code silently ignored at 1w+).
-    const h = timeRangeToHours(ambientRange(timeRange))
+    // Heat is ambient — the live 24h picture (matches country_heat_v2's
+    // hardcoded 24h window). Selector retired 2026-07-15; this was already
+    // pinned to 24h under S4.
+    const h = DAY_WINDOW_HOURS
     fetch(`/api/v2/heat/countries?hours=${h}&limit=250`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -787,7 +869,7 @@ function AppContent() {
       })
       .catch(() => { /* map falls back to volume-intensity if composite unavailable */ })
     return () => { cancelled = true }
-  }, [timeRange])
+  }, [])
 
   // Initial map stays global. The hotspot reset button performs focused fly-to on demand.
 
@@ -1186,10 +1268,12 @@ function AppContent() {
     coverage: focusMeta.coverage,
   })
   const openBrief = () => {
+    // The Brief is the DAY's edition (fixed 24h since 2026-07-05) — the old
+    // `range` param was already ignored there; dropped with the selector.
     const params = new URLSearchParams()
-    params.set('range', timeRange)
     if (selectedCountryCode) params.set('country', selectedCountryCode)
-    navigate(`/brief?${params.toString()}`)
+    const qs = params.toString()
+    navigate(qs ? `/brief?${qs}` : '/brief')
   }
 
   // Data coverage start date
@@ -1206,20 +1290,18 @@ function AppContent() {
       .catch(() => { })
   }, [])
 
-  // Prefetch briefing data so the modal opens instantly — keyed to current timeRange
+  // Prefetch briefing data so the modal opens instantly — the Brief and the
+  // Briefing modal are both the DAY's edition (fixed 24h).
   const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
   const [prefetchedInsight, setPrefetchedInsight] = useState<string | null>(null)
   const [prefetchedHours, setPrefetchedHours] = useState<number>(0)
   const [externalSearchQuery, setExternalSearchQuery] = useState<{ q: string; id: number } | undefined>(undefined)
   useEffect(() => {
-    const h = timeRangeToHours(timeRange)
-    setPrefetchedBriefing(null)
-    setPrefetchedInsight(null)
     // The Brief is the DAY's edition (fixed 24h, 2026-07-05) — prefetch matches.
-    prefetchBriefing(24) // warm sessionStorage so /brief loads without spinner
-    fetch(`/api/v2/briefing?hours=24`).then(r => r.json()).then(d => { setPrefetchedBriefing(d); setPrefetchedHours(24) }).catch(() => { })
-    fetch(`/api/v2/briefing/insight?hours=${h}`).then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
-  }, [timeRange])
+    prefetchBriefing(DAY_WINDOW_HOURS) // warm sessionStorage so /brief loads without spinner
+    fetch(`/api/v2/briefing?hours=${DAY_WINDOW_HOURS}`).then(r => r.json()).then(d => { setPrefetchedBriefing(d); setPrefetchedHours(DAY_WINDOW_HOURS) }).catch(() => { })
+    fetch(`/api/v2/briefing/insight?hours=${DAY_WINDOW_HOURS}`).then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
+  }, [])
 
   // Show loader until nodes AND map are ready; hard cap at 10s
   const [appReady, setAppReady] = useState(false)
@@ -1324,43 +1406,10 @@ function AppContent() {
               externalQuery={externalSearchQuery}
             />
           </div>
-          <div className="time-controls">
-            <span className="time-view-chip" data-tip="VIEW lens (S4): the map, threads and heat always show the LIVE picture. This lens sets the globe scrubber's look-back span and the window of the surfaces you open to investigate (thread detail, country view, focus). Looking back = scrubbing, not re-filtering the present.">VIEW</span>
-            {TIME_RANGE_OPTIONS.map(range => (
-              <button
-                key={range}
-                className={`time-btn ${timeRange === range ? 'active' : ''}`}
-                data-tip="VIEW lens (S4): the map, threads and heat always show the LIVE picture. This lens sets the globe scrubber's look-back span and the window of the surfaces you open to investigate (thread detail, country view, focus). Looking back = scrubbing, not re-filtering the present."
-                onClick={() => setTimeRange(range)}
-              >
-                {TIME_RANGE_LABELS[range]}
-              </button>
-            ))}
-          </div>
-          {/* Compact range dropdown — replaces the button row on narrow
-              viewports (#152) so it can never collide with the search bar. */}
-          <div className="time-compact">
-            <button
-              className="time-btn active time-compact-trigger"
-              onClick={() => setTimeMenuOpen(open => !open)}
-              data-tip="VIEW lens (S4): the map, threads and heat always show the LIVE picture. This lens sets the globe scrubber's look-back span and the window of the surfaces you open to investigate (thread detail, country view, focus). Looking back = scrubbing, not re-filtering the present."
-            >
-              {TIME_RANGE_LABELS[timeRange]} <ChevronDown size={11} />
-            </button>
-            {timeMenuOpen && (
-              <div className="cmd-menu time-compact-menu">
-                {TIME_RANGE_OPTIONS.map(range => (
-                  <button
-                    key={range}
-                    className={`cmd-menu-item ${timeRange === range ? 'active' : ''}`}
-                    onClick={() => { setTimeRange(range); setTimeMenuOpen(false) }}
-                  >
-                    {TIME_RANGE_LABELS[range]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* The VIEW time selector is GONE (2026-07-15): the scrubber is
+              time — one log-scale bar on the map carries the whole history.
+              The UNIVERSE shortcut is gone too: the GLOBE|UNIVERSE tab in
+              the map panel is the single equal-billing home. */}
           <button
             className={`time-btn workbench-btn ${workbenchOpen ? 'active' : ''}`}
             data-tour="workspace-button"
@@ -1369,13 +1418,6 @@ function AppContent() {
           >
             WORKBENCH
             {workspaceItems.length > 0 && <span className="cmd-count">{workspaceItems.length}</span>}
-          </button>
-          <button
-            className={`time-btn workbench-btn ${universeOpen ? 'active' : ''}`}
-            data-tip="Universe: every living story as a body — semantic relations, categories as constellations, time as motion"
-            onClick={() => setUniverseOpen(open => !open)}
-          >
-            UNIVERSE
           </button>
         </div>
         <div className="command-bar-right">
@@ -1628,27 +1670,49 @@ function AppContent() {
                 />
               )}
               {!universeOpen && (
-                <div className="globe-scrubber" data-tip="Scrub the last 30 days — country intensity replays that day's signal VOLUME (the composite heat has no history). NOW restores live heat.">
+                /* THE SCRUBBER IS TIME (2026-07-15): one bar, the whole
+                   replayable history inside. Log scale — the right half is
+                   the last ~7-10 days at day granularity, the deep past
+                   compresses toward the left edge (archive floor / 90d cap,
+                   honestly labeled). Hold Shift while dragging for fine
+                   control. Follow-up: the UNIVERSE scrubber still runs its
+                   own linear 30d scale (topic tracks) — unify it onto
+                   lib/scrubberScale when its history deepens. */
+                <div className="globe-scrubber" data-tip={`The scrubber is time — the whole replayable history in one bar. Recent days are wide on the right; the deep past compresses left (log scale). Hold SHIFT while dragging for fine control. Country intensity replays that day's signal VOLUME (the composite heat has no history); scrubber reaches back ${scrubMaxDays} days to the archive. NOW restores live heat.`}>
                   <button
                     className={`globe-scrubber-now ${replayDay ? '' : 'active'}`}
-                    onClick={() => setReplayDay(null)}
+                    onClick={() => { scrubPosRef.current = 1; setReplayDay(null) }}
                   >NOW</button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={replayDays.length - 1}
-                    value={replayDay ? replayDays.indexOf(replayDay) : replayDays.length - 1}
-                    onChange={e => {
-                      trackOnce('scrubber_used', { surface: 'globe' })
-                      ensureReplayData()
-                      const idx = Number(e.target.value)
-                      setReplayDay(idx >= replayDays.length - 1 ? null : replayDays[idx])
+                  <div
+                    className="globe-scrubber-track"
+                    role="slider"
+                    tabIndex={0}
+                    aria-label="Time scrubber — whole history, log scale"
+                    aria-valuemin={0}
+                    aria-valuemax={scrubMaxDays}
+                    aria-valuenow={scrubDaysBack}
+                    aria-valuetext={replayDay ? `${scrubDaysBack} days back (${replayDay})` : 'now'}
+                    onPointerDown={onScrubPointerDown}
+                    onPointerMove={onScrubPointerMove}
+                    onPointerUp={onScrubPointerUp}
+                    onPointerCancel={onScrubPointerUp}
+                    onKeyDown={e => {
+                      if (e.key === 'ArrowLeft') { e.preventDefault(); scrubStepDays(1) }
+                      else if (e.key === 'ArrowRight') { e.preventDefault(); scrubStepDays(-1) }
+                      else if (e.key === 'Home') { e.preventDefault(); scrubStepDays(scrubMaxDays) }
+                      else if (e.key === 'End') { e.preventDefault(); scrubPosRef.current = 1; setReplayDay(null) }
                     }}
-                    aria-label="Globe time scrubber"
-                  />
+                  >
+                    <div className="globe-scrubber-fill" style={{ width: `${scrubThumbPos * 100}%` }} />
+                    <div className="globe-scrubber-thumb" style={{ left: `${scrubThumbPos * 100}%` }} />
+                  </div>
                   <span className="globe-scrubber-label">
                     {replayDay
-                      ? `${new Date(replayDay + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · volume replay`
+                      ? `${new Date(replayDay + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}${
+                          scrubDaysBack >= scrubMaxDays
+                            ? (farEdgeKind() === 'archive-floor' ? ' · archive floor' : ` · ${REPLAY_ENDPOINT_CAP_DAYS}d replay cap`)
+                            : ''
+                        } · volume replay`
                       : 'NOW · live heat'}
                   </span>
                 </div>
@@ -1688,7 +1752,7 @@ function AppContent() {
                   onThemeSelect={(themeId) => handleThemeSelect(themeId)}
                   activeTheme={selectedTheme?.theme ?? null}
                   activeThemeLabel={selectedTheme ? (selectedTheme.thread?.label ?? getThemeLabel(selectedTheme.theme)) : undefined}
-                  hours={timeRangeToHours(timeRange)}
+                  hours={DAY_WINDOW_HOURS} /* universe field = live day (ambient) */
                   focusKind={focus.type === 'person' ? 'person' : filter.country ? 'country' : null}
                   focusValue={focus.type === 'person' ? focus.value : (filter.country ?? null)}
                   onPersonSelect={(name) => { setFocus('person', name, name); setMapFlyCountry(null) }}
@@ -1817,14 +1881,14 @@ function AppContent() {
                 {isStory ? (
                   <ResearchPlanPanel
                     query={storyQuery!}
-                    hours={Math.max(timeRangeToHours(timeRange), 168)}
+                    hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
                     countryCode={filter.country}
                     onOpenThread={(id, label) => { setStoryQuery(null); handleResearchOpenThread(id, label) }}
                     onOpenCountry={(cc) => { setStoryQuery(null); handleResearchOpenCountry(cc) }}
                     onBranchQuery={(q) => setStoryQuery(q)}
                   />
                 ) : isPerson ? (
-                  <EntityPanel inline focusType="person" focusValue={focus.value!} timeRange={timeRange}
+                  <EntityPanel inline focusType="person" focusValue={focus.value!}
                     onClose={closeAll}
                     onThemeSelect={(theme) => handleThemeSelect(theme)}
                     onCountrySelect={(code) => { clearFocus(); handleCountryClick(code); setMapFlyCountry(code) }}
@@ -1835,7 +1899,6 @@ function AppContent() {
                 ) : isPublicAttention ? (
                   <PublicAttentionPanel
                     item={selectedPublicAttention!}
-                    timeRange={timeRange}
                     onClose={closeAll}
                     onThemeSelect={(theme, attentionContext) => handleThemeSelect(theme, undefined, undefined, attentionContext)}
                     onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
@@ -1843,7 +1906,7 @@ function AppContent() {
                 ) : isThread ? (
                   <ThreadFocusPanel
                     thread={selectedThread!}
-                    hours={timeRangeToHours(timeRange)}
+                    hours={DAY_WINDOW_HOURS} /* investigative default = the day */
                     onClose={closeAll}
                     onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
                     onSourceClick={(source) => setSelectedSourceProfile(source)}
@@ -1852,7 +1915,7 @@ function AppContent() {
                   <CountryBrief inline
                     countryCode={selectedCountryCode!}
                     countryName={selectedCountryName}
-                    timeWindow={timeRangeToHours(timeRange)}
+                    timeWindow={DAY_WINDOW_HOURS} /* country brief = the day; deeper history lives in deep-history/scrubber */
                     onClose={handleStreamBack}
                     onThemeSelect={(theme) => { handleThemeSelect(theme, selectedCountryCode!, selectedCountryName); setMapFlyCountry(selectedCountryCode!) }}
                     onSourceClick={(domain) => {
@@ -1869,7 +1932,7 @@ function AppContent() {
                     originAttention={selectedTheme!.originAttention}
                     threadContext={selectedTheme!.thread}
                     initialDrillCountry={selectedTheme!.originCountry}
-                    hours={timeRangeToHours(timeRange)}
+                    hours={DAY_WINDOW_HOURS} /* investigative default = the day */
                     onClose={closeAll}
                     onThemeSelect={(theme, attentionContext) => handleThemeSelect(theme, undefined, undefined, attentionContext ?? selectedTheme!.originAttention)}
                     onCountryCardClick={(code, name) => { setMapFlyCountry(code); setRightPanelThemeCountry({ code, name }) }}
@@ -1885,7 +1948,7 @@ function AppContent() {
                   <ChokepointPanel
                     chokepoint={selectedChokepoint!}
                     vesselCount={chokepointCounts[selectedChokepoint!.id] || 0}
-                    hours={timeRangeToHours(timeRange)}
+                    hours={DAY_WINDOW_HOURS} /* investigative default = the day */
                     onCountryClick={(code) => {
                       setPrevStreamCtx({ type: 'chokepoint', cp: selectedChokepoint! })
                       handleCountryClick(code); setMapFlyCountry(code)
@@ -2112,7 +2175,7 @@ function AppContent() {
       {selectedConflictEvent && (
         <ConflictEventPanel
           event={selectedConflictEvent}
-          timeRangeHours={timeRangeToHours(timeRange)}
+          timeRangeHours={DAY_WINDOW_HOURS} /* event context threads = the day */
           onClose={() => setSelectedConflictEvent(null)}
           onThemeSelect={(threadId) => { setSelectedConflictEvent(null); handleThemeSelect(threadId) }}
           onCountrySelect={(code) => { setSelectedConflictEvent(null); handleCountryClick(code); setMapFlyCountry(code) }}
@@ -2122,9 +2185,9 @@ function AppContent() {
       {/* Briefing Modal */}
       {showBriefing && (
         <Briefing
-          hours={timeRangeToHours(timeRange)}
-          prefetchedData={prefetchedHours === timeRangeToHours(timeRange) ? prefetchedBriefing : null}
-          prefetchedInsight={prefetchedHours === timeRangeToHours(timeRange) ? prefetchedInsight : null}
+          hours={DAY_WINDOW_HOURS} /* investigative default = the day */
+          prefetchedData={prefetchedHours === DAY_WINDOW_HOURS ? prefetchedBriefing : null}
+          prefetchedInsight={prefetchedHours === DAY_WINDOW_HOURS ? prefetchedInsight : null}
           onClose={() => setShowBriefing(false)}
           onCountrySelect={(code) => {
             setSelectedTheme(null)
@@ -2177,7 +2240,7 @@ function AppContent() {
                   </div>
                   <ResearchPlanPanel
                     query={researchQuery}
-                    hours={Math.max(timeRangeToHours(timeRange), 168)}
+                    hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
                     onOpenThread={handleResearchOpenThread}
                     onOpenCountry={handleResearchOpenCountry}
                     onBranchQuery={(q) => setResearchQuery(q)}
@@ -2203,7 +2266,7 @@ function AppContent() {
           theme={selectedTheme.theme}
           countryCode={rightPanelThemeCountry.code}
           countryName={rightPanelThemeCountry.name}
-          hours={timeRangeToHours(timeRange)}
+          hours={DAY_WINDOW_HOURS} /* investigative default = the day */
           onClose={() => setRightPanelThemeCountry(null)}
           onBackToCountry={() => {
             if (rightPanelThemeCountry && selectedTheme) {
@@ -2220,7 +2283,7 @@ function AppContent() {
       {selectedSourceProfile && (
         <SourceProfile 
           domain={selectedSourceProfile}
-          hours={timeRangeToHours(timeRange)}
+          hours={DAY_WINDOW_HOURS} /* investigative default = the day */
           onClose={() => setSelectedSourceProfile(null)}
           onThemeSelect={(theme) => { setSelectedSourceProfile(null); handleThemeSelect(theme); }}
           onCountrySelect={(code) => { setSelectedSourceProfile(null); handleCountryClick(code); setMapFlyCountry(code); }}
@@ -2234,7 +2297,6 @@ function AppContent() {
         <PersonCompare
           personA={comparePerson.a}
           personB={comparePerson.b}
-          timeRange={timeRange}
           onClose={() => setComparePerson(null)}
           onThemeSelect={(theme) => { setComparePerson(null); handleThemeSelect(theme); }}
           onCountrySelect={(code) => { setComparePerson(null); handleCountryClick(code); setMapFlyCountry(code); }}
@@ -2246,7 +2308,7 @@ function AppContent() {
         <ThemeCompare
           themeA={compareTheme.a}
           themeB={compareTheme.b}
-          hours={timeRangeToHours(timeRange)}
+          hours={DAY_WINDOW_HOURS} /* investigative default = the day */
           onClose={() => setCompareTheme(null)}
           onThemeSelect={(theme) => { setCompareTheme(null); handleThemeSelect(theme); }}
           onCountryCardClick={(code) => { setCompareTheme(null); handleCountryClick(code); setMapFlyCountry(code); }}

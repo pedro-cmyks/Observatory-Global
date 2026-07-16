@@ -1,8 +1,9 @@
 import type { FocusType } from '../contexts/FocusContext'
-import type { TimeRange } from './timeRanges'
 
+// The time range left this key 2026-07-15 (the VIEW selector is gone; the
+// ambient fetch is always the live 24h picture) — focus identity is the only
+// thing that can differentiate concurrent requests now.
 interface FocusRequestKeyInput {
-  timeRange: TimeRange
   isActive: boolean
   focusType: FocusType
   focusValue: string | null
@@ -13,5 +14,5 @@ export function buildFocusRequestKey(input: FocusRequestKeyInput): string {
     ? `${input.focusType}:${input.focusValue}`
     : 'global'
 
-  return `range=${input.timeRange}|focus=${focus}`
+  return `focus=${focus}`
 }

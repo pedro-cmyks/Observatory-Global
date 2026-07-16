@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useFocus } from '../contexts/FocusContext'
-import { useFocusData } from '../contexts/FocusDataContext'
-import { timeRangeToHours } from '../lib/timeRanges'
 import { getThemeLabel } from '../lib/themeLabels'
 
 function matrixAbbrev(label: string): string {
@@ -35,9 +33,9 @@ export const CorrelationMatrix: React.FC = () => {
     const [tooltipData, setTooltipData] = useState<MatrixTooltip | null>(null)
     
     const { setCountry, setFocus } = useFocus()
-    const { timeRange } = useFocusData()
 
-    const hours = timeRangeToHours(timeRange)
+    // Correlations read the live day (VIEW selector retired 2026-07-15).
+    const hours = 24
 
     const fetchMatrix = useCallback(async () => {
         setLoading(true)

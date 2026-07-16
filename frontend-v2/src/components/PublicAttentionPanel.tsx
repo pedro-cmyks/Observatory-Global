@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, Pin, PinOff } from '../lib/icons'
 import { getThemeLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
-import { timeRangeToHours, type TimeRange } from '../lib/timeRanges'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import { buildPublicAttentionScopeLabel } from '../lib/publicAttentionScope'
 import { useWorkspace } from '../contexts/WorkspaceContext'
@@ -44,7 +43,6 @@ interface WikiSummary {
 
 interface PublicAttentionPanelProps {
     item: PublicAttentionSelection
-    timeRange: TimeRange
     onClose: () => void
     onThemeSelect?: (theme: string, context?: PublicAttentionOrigin) => void
     onCountrySelect?: (code: string) => void
@@ -72,7 +70,7 @@ function timeAgo(iso: string): string {
     return `${hours}h`
 }
 
-export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, onCountrySelect }: PublicAttentionPanelProps) {
+export function PublicAttentionPanel({ item, onClose, onThemeSelect, onCountrySelect }: PublicAttentionPanelProps) {
     const title = cleanTitle(item.title)
     const attentionContext: PublicAttentionOrigin = {
         title,
@@ -81,7 +79,8 @@ export function PublicAttentionPanel({ item, timeRange, onClose, onThemeSelect, 
         query: item.query ?? title,
     }
     const pinnedId = `public-attention-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-    const hours = timeRangeToHours(timeRange)
+    // Attention context reads the live day (VIEW selector retired 2026-07-15).
+    const hours = 24
     const { pinItem, unpinItem, isPinned } = useWorkspace()
     const pinned = isPinned(pinnedId)
     const requestKey = `${title}:${hours}`

@@ -206,23 +206,8 @@
   text-transform: uppercase;
 }
 
-/* Time Range Controls in Command Bar */
-.time-controls {
-  display: flex;
-  gap: 2px;
-  background: rgba(var(--color-raise-rgb), 0.78);
-  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.12);
-  border-radius: 4px;
-  padding: 2px;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.time-controls::-webkit-scrollbar {
-  display: none;
-}
-
+/* .time-btn survives the retired VIEW selector (2026-07-15) — the
+   WORKBENCH pill wears it. */
 .time-btn {
   padding: 4px 10px;
   border: none;
@@ -928,12 +913,6 @@
     margin: 6px auto 4px;
   }
 
-  .time-controls {
-    width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
   .time-btn {
     flex: 0 0 auto;
     white-space: nowrap;
@@ -941,10 +920,6 @@
 
   .search-container {
     width: 100%;
-  }
-
-  .time-controls::-webkit-scrollbar {
-    display: none;
   }
 
   .terminal-layout {
@@ -1272,11 +1247,13 @@
   inset: 0;
   pointer-events: none;
   z-index: 2;
+  /* Softened ~35% (2026-07-15, Pedro: keep the deep-field frame, less
+     dark at the edges) — was 0.36 @78% / 0.78 @100% from 55%. */
   background: radial-gradient(
     ellipse at center,
-    transparent 55%,
-    rgba(var(--color-shell-rgb), 0.36) 78%,
-    rgba(var(--color-shell-rgb), 0.78) 100%
+    transparent 60%,
+    rgba(var(--color-shell-rgb), 0.22) 80%,
+    rgba(var(--color-shell-rgb), 0.5) 100%
   );
 }
 /* ── HELP MODE ────────────────────────────────────────── */
@@ -1588,7 +1565,7 @@
 
 /* ===== #152 command-bar layout: overflow menu, compact range, icon-only labels ===== */
 
-/* WORKBENCH outside .time-controls needs its own pill chrome */
+/* WORKBENCH pill chrome (standalone in the command bar) */
 .command-bar-center > .workbench-btn {
   background: rgba(var(--color-raise-rgb), 0.78);
   border: 1px solid rgba(var(--color-accent-deep-rgb), 0.24);
@@ -1598,20 +1575,6 @@
 .command-bar-center > .workbench-btn.active {
   color: var(--color-on-accent);
   background: var(--color-accent-primary);
-}
-
-/* Compact time-range dropdown: hidden on wide screens */
-.time-compact {
-  position: relative;
-  display: none;
-  flex: 0 0 auto;
-}
-
-.time-compact-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.24);
 }
 
 /* Shared command-bar dropdown menu */
@@ -1661,13 +1624,6 @@
 
 .cmd-more-wrap {
   position: relative;
-}
-
-/* Narrow viewports: swap range buttons for the compact dropdown (#152
-   acceptance: no collision with the search bar, no horizontal scroll) */
-@media (max-width: 1380px) {
-  .time-controls { display: none; }
-  .time-compact { display: block; }
 }
 
 /* Icon-only action buttons below 1200px */
@@ -1793,7 +1749,8 @@
 
 .map-lazy-placeholder { position:absolute; inset:0; background:var(--color-bg-secondary); }
 
-/* X2/S1 (2026-07-05): globe time scrubber — volume replay, honestly labeled */
+/* The scrubber IS time (2026-07-15): one log-scale bar, whole history
+   inside — volume replay, honestly labeled. */
 .globe-scrubber {
   position: absolute;
   bottom: 10px;
@@ -1809,7 +1766,49 @@
   z-index: 30;
   backdrop-filter: blur(4px);
 }
-.globe-scrubber input[type="range"] { width: 160px; accent-color: var(--color-accent-primary); }
+.globe-scrubber-track {
+  position: relative;
+  width: 200px;
+  height: 14px;
+  cursor: ew-resize;
+  touch-action: none; /* pointer-capture drag owns the gesture */
+}
+.globe-scrubber-track::before {
+  /* the rail */
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: rgba(var(--color-neutral-rgb), 0.25);
+}
+.globe-scrubber-fill {
+  position: absolute;
+  left: 0; top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--color-accent-primary);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.globe-scrubber-thumb {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  box-shadow: 0 0 6px rgba(var(--color-accent-bright-rgb), 0.5);
+  pointer-events: none;
+}
+.globe-scrubber-track:focus-visible {
+  outline: 1px solid var(--color-accent-primary);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
 .globe-scrubber-now {
   background: transparent;
   border: 1px solid rgba(var(--color-neutral-rgb), 0.3);
@@ -1829,21 +1828,7 @@
 }
 @media (max-width: 768px) {
   .globe-scrubber { bottom: 6px; padding: 3px 8px; }
-  .globe-scrubber input[type="range"] { width: 110px; }
-}
-
-/* S4 (2026-07-05): time is a VIEW lens, not a data filter */
-.time-view-chip {
-  font-size: 8px;
-  letter-spacing: 0.14em;
-  font-weight: 700;
-  color: rgba(var(--color-accent-deep-rgb), 0.75);
-  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.3);
-  border-radius: 3px;
-  padding: 2px 4px;
-  margin-right: 4px;
-  align-self: center;
-  cursor: default;
+  .globe-scrubber-track { width: 130px; }
 }
 
 /* ── Workbench overlay UX pass (2026-07-11): mental-model strip, ATLAS SUGGESTS

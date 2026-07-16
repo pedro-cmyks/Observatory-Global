@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useFocus } from '../contexts/FocusContext'
-import { useFocusData } from '../contexts/FocusDataContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { timeRangeToHours } from '../lib/timeRanges'
 import { resolveCountryName } from '../lib/countryNames'
 import { Flag } from './Flag'
 import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
@@ -170,15 +168,14 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // say "unavailable — retrying" instead.
     const [feedError, setFeedError] = useState(false)
     const { filter, setCountry, setMapFlyCountry, setPerson } = useFocus()
-    const { timeRange } = useFocusData()
     // W4 (2026-07-05): thread rows are pinnable into the active investigation.
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
-    // Cap to 24h when browsing globally (spread_pct becomes meaningless at wider windows);
-    // when a country is selected, use the full range so client-side filtering has real data.
-    const rawHours = timeRangeToHours(timeRange)
-    const cappedHours = filter.country ? rawHours : Math.min(rawHours, 24)
-    const isCapped = !filter.country && rawHours > 24
+    // Threads are ambient — the live day (the VIEW selector is gone,
+    // 2026-07-15; the global list was already capped to 24h because
+    // spread_pct is meaningless at wider windows). Looking back = the map
+    // scrubber / deep-history, not a re-windowed list.
+    const cappedHours = 24
 
     // Fetch enough rows for the panel to use the available vertical space.
     const fetchLimit = getNarrativeFetchLimit(!!filter.country)
@@ -389,11 +386,6 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     </div>
                 )
             })()}
-            {isCapped && !filter.country && (
-                <div className="narrative-cap-notice">
-                    Showing last 24h: narratives are most meaningful at shorter windows
-                </div>
-            )}
             {effectiveHours != null && effectiveHours < cappedHours && (
                 <div className="narrative-cap-notice">
                     Thread details show last {effectiveHours}h · counts reflect full {cappedHours}h window

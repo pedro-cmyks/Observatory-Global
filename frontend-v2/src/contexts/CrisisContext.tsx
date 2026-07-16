@@ -1,7 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useFocus } from './FocusContext'
-import { timeRangeToHours } from '../lib/timeRanges'
 
 interface AnomalyData {
     country_code: string
@@ -57,9 +55,9 @@ export const CrisisProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const [overallSeverity, setOverallSeverity] = useState<'normal' | 'notable' | 'elevated' | 'critical'>('normal')
     const [loading, setLoading] = useState(false)
 
-    // Use global time range for anomaly queries
-    const { filter } = useFocus()
-    const hours = Math.min(timeRangeToHours(filter.timeRange), 168) // Anomaly endpoint caps at 168h
+    // Anomalies read the live day (VIEW selector retired 2026-07-15; the
+    // endpoint caps at 168h anyway).
+    const hours = 24
 
     const fetchAnomalies = useCallback(async () => {
         setLoading(true)

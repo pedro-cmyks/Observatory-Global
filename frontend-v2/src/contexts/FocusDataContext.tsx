@@ -7,7 +7,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
-import { type TimeRange, timeRangeToHours, ambientRange } from '../lib/timeRanges'
 import { buildFocusRequestKey } from '../lib/focusRequestKey'
 
 // Types
@@ -90,12 +89,10 @@ interface FocusDataState {
     error: string | null
 }
 
+// The VIEW time selector is GONE (2026-07-15, the scrubber is time): this
+// provider serves the AMBIENT live picture at a fixed 24h window; former
+// timeRange/setTimeRange/timeWindow plumbing deleted with it.
 interface FocusDataContextValue extends FocusDataState {
-    timeRange: TimeRange
-    setTimeRange: (range: TimeRange) => void
-    // Deprecated: for backward compatibility
-    timeWindow: number
-    setTimeWindow: (hours: number) => void
     refetch: () => void
 }
 
@@ -122,8 +119,7 @@ const defaultState: FocusDataState = {
 const FocusDataContext = createContext<FocusDataContextValue | undefined>(undefined)
 
 export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { focus, filter, isActive, setTimeRange: setGlobalTimeRange } = useFocus()
-    const timeRange = filter.timeRange
+    const { focus, isActive } = useFocus()
     const [state, setState] = useState<FocusDataState>(defaultState)
     const previousFlows = useRef<FlowData[]>([])
     const activeRequestKey = useRef<string | null>(null)
@@ -132,7 +128,6 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     const fetchData = useCallback(async () => {
         const requestKey = buildFocusRequestKey({
-            timeRange,
             isActive,
             focusType: focus.type,
             focusValue: focus.value,
@@ -153,10 +148,10 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
 
         try {
             // Build base params - use range for new API.
-            // S4 (2026-07-05): nodes/flows are AMBIENT — pinned to the live
-            // picture; the selector is a VIEW lens (scrubber span + the
-            // investigative surfaces below, which keep timeRange).
-            const baseParams = new URLSearchParams({ range: ambientRange(timeRange) })
+            // Nodes/flows are AMBIENT — always the live 24h picture (S4
+            // doctrine, now the only mode: the selector is gone, looking
+            // back happens on the map scrubber).
+            const baseParams = new URLSearchParams({ range: '24h' })
             
             // Add explicit fields filter for payload reduction
             baseParams.set('fields', 'id,name,lat,lon,signalCount,sentiment,intensity,heat,anomalyLevel')
@@ -224,10 +219,12 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             let summaryData: FocusSummary | null = null
             if (isActive && focus.type && focus.value) {
                 try {
+                    // Focus summary = the live day (matches the ambient
+                    // picture the summary annotates).
                     const summaryParams = new URLSearchParams({
                         focus_type: focus.type,
                         value: focus.value,
-                        hours: timeRangeToHours(timeRange).toString()
+                        hours: '24'
                     })
                     const summaryRes = await fetch(`/api/v2/focus?${summaryParams}`, { signal: controller.signal })
                     if (summaryRes.ok) {
@@ -241,9 +238,8 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             // Fetch conflict markers (ACLED if configured, GDELT Events fallback)
             let acledData: AcledConflict[] = []
             try {
-                const hours = timeRangeToHours(timeRange)
-                const days = Math.max(1, Math.min(30, Math.ceil(hours / 24)))
-                const markersParams = new URLSearchParams({ days: days.toString(), limit: '500' })
+                // Conflict markers = the live day, like the map they sit on.
+                const markersParams = new URLSearchParams({ days: '1', limit: '500' })
                 const markersRes = await fetch(`/api/v2/conflict-markers?${markersParams}`, { signal: controller.signal })
                 if (markersRes.ok) {
                     const data = await markersRes.json()
@@ -278,7 +274,7 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             }))
         }
 
-    }, [focus.type, focus.value, isActive, timeRange])
+    }, [focus.type, focus.value, isActive])
 
     // Use a native debounce to prevent rapid-click API thrashing
     const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -296,21 +292,8 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
     }, [fetchData])
 
-    // Backward compatibility: convert hours to range
-    const setTimeWindow = useCallback((hours: number) => {
-        if (hours <= 24) setGlobalTimeRange('24h')
-        else if (hours <= 168) setGlobalTimeRange('1w')
-        else if (hours <= 720) setGlobalTimeRange('1m')
-        else if (hours <= 2160) setGlobalTimeRange('3m')
-        else setGlobalTimeRange('record')
-    }, [setGlobalTimeRange])
-
     const value: FocusDataContextValue = {
         ...state,
-        timeRange,
-        setTimeRange: setGlobalTimeRange,
-        timeWindow: timeRangeToHours(timeRange),
-        setTimeWindow,
         refetch: fetchData
     }
 
