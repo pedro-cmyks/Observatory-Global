@@ -1,0 +1,4766 @@
+[
+ {
+  "id": 13205304,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "connecticut"
+  ]
+ },
+ {
+  "id": 13205489,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13205511,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "connecticut"
+  ]
+ },
+ {
+  "id": 13205822,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "connecticut"
+  ]
+ },
+ {
+  "id": 13205927,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13206037,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13206233,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13206337,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13206375,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13208878,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13208893,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13209021,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13209160,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13209305,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "new york"
+  ]
+ },
+ {
+  "id": 13209393,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13209407,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13209445,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "california"
+  ]
+ },
+ {
+  "id": 13209526,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13209561,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211001,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211002,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211141,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "los angeles"
+  ]
+ },
+ {
+  "id": 13211313,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "los angeles"
+  ]
+ },
+ {
+  "id": 13211451,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211467,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211546,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211687,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211707,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "los angeles"
+  ]
+ },
+ {
+  "id": 13211756,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "california"
+  ]
+ },
+ {
+  "id": 13211789,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13211863,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13212179,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "new jersey"
+  ]
+ },
+ {
+  "id": 13212942,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13213136,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13213151,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "braintree"
+  ]
+ },
+ {
+  "id": 13213227,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13214976,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13216584,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13216728,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13216872,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13216924,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "richmond"
+  ]
+ },
+ {
+  "id": 13216958,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13217125,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13217357,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13217543,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13217546,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13217557,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13217591,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13219446,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13220134,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "san diego"
+  ]
+ },
+ {
+  "id": 13220202,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "san diego"
+  ]
+ },
+ {
+  "id": 13220207,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "new mexico"
+  ]
+ },
+ {
+  "id": 13220232,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13222950,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13223425,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13223614,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "new york"
+  ]
+ },
+ {
+  "id": 13223919,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13223942,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "new york"
+  ]
+ },
+ {
+  "id": 13224015,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13224649,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13224820,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13224947,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13226804,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13227256,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13227367,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13227438,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "philadelphia"
+  ]
+ },
+ {
+  "id": 13227465,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13227623,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13227692,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13228058,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13228138,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13231058,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "hudson"
+  ]
+ },
+ {
+  "id": 13231075,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13231358,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13231387,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13231430,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13231559,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "hudson"
+  ]
+ },
+ {
+  "id": 13231630,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13232870,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13233386,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13233429,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13233578,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13233620,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13236617,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13236648,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13236815,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "california"
+  ]
+ },
+ {
+  "id": 13236846,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "kentucky"
+  ]
+ },
+ {
+  "id": 13236932,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "california"
+  ]
+ },
+ {
+  "id": 13237101,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13237260,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13237351,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran"
+  ]
+ },
+ {
+  "id": 13237626,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13239060,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13239310,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13241730,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "strait of hormuz"
+  ]
+ },
+ {
+  "id": 13241912,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13242128,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13242139,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "connecticut"
+  ]
+ },
+ {
+  "id": 13242282,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "u.s.",
+   "michigan"
+  ]
+ },
+ {
+  "id": 13242369,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13242376,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "u.s.",
+   "iran",
+   "the strait of"
+  ]
+ },
+ {
+  "id": 13242437,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13242459,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13242463,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13242529,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13242551,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13242598,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran",
+   "the strait of hormuz"
+  ]
+ },
+ {
+  "id": 13242805,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "ohio",
+   "west virginia",
+   "kentucky"
+  ]
+ },
+ {
+  "id": 13242854,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13244043,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13244154,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13244339,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13244439,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "tehran"
+  ]
+ },
+ {
+  "id": 13244860,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13246530,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "france"
+  ]
+ },
+ {
+  "id": 13247583,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13247638,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "tehran"
+  ]
+ },
+ {
+  "id": 13247895,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13247908,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13247955,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13248079,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13248110,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13248116,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13248152,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13248180,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "u.s."
+  ]
+ },
+ {
+  "id": 13249499,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13249528,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13249552,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13249716,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz"
+  ]
+ },
+ {
+  "id": 13249727,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13249964,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "louisiana"
+  ]
+ },
+ {
+  "id": 13250071,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13251866,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran"
+  ]
+ },
+ {
+  "id": 13252142,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13252323,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13252577,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "the strait of hormuz"
+  ]
+ },
+ {
+  "id": 13252579,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "kansas"
+  ]
+ },
+ {
+  "id": 13252674,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "strait"
+  ]
+ },
+ {
+  "id": 13252680,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "france"
+  ]
+ },
+ {
+  "id": 13254064,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13254143,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13254263,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "u.s."
+  ]
+ },
+ {
+  "id": 13254373,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13254563,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13254674,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "north carolina"
+  ]
+ },
+ {
+  "id": 13257046,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran",
+   "the strait of hormuz"
+  ]
+ },
+ {
+  "id": 13257069,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13257101,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain"
+  ]
+ },
+ {
+  "id": 13257147,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain"
+  ]
+ },
+ {
+  "id": 13257212,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13257231,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13257282,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13257387,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13257397,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13257452,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "san francisco's",
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13257743,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13257847,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13257899,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13258107,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13258207,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "philadelphia"
+  ]
+ },
+ {
+  "id": 13258447,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13260500,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13260570,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13260630,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "ohio"
+  ]
+ },
+ {
+  "id": 13260646,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13260702,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco bay"
+  ]
+ },
+ {
+  "id": 13260736,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13260757,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran",
+   "strait"
+  ]
+ },
+ {
+  "id": 13260778,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island"
+  ]
+ },
+ {
+  "id": 13260924,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13260979,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13260988,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13261116,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13261203,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13261230,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "idaho"
+  ]
+ },
+ {
+  "id": 13261392,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13261503,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "spain",
+   "france"
+  ]
+ },
+ {
+  "id": 13261569,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13262735,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "france"
+  ]
+ },
+ {
+  "id": 13264149,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island"
+  ]
+ },
+ {
+  "id": 13264247,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13264419,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13264576,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "san fransisco"
+  ]
+ },
+ {
+  "id": 13264631,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13265063,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13265186,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran"
+  ]
+ },
+ {
+  "id": 13266127,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13266267,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran",
+   "tehran"
+  ]
+ },
+ {
+  "id": 13266274,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13266344,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island"
+  ]
+ },
+ {
+  "id": 13266362,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "wisconsin"
+  ]
+ },
+ {
+  "id": 13266469,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "san francisco bay"
+  ]
+ },
+ {
+  "id": 13266484,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran"
+  ]
+ },
+ {
+  "id": 13266543,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran",
+   "tehran"
+  ]
+ },
+ {
+  "id": 13266599,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13266718,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "michigan"
+  ]
+ },
+ {
+  "id": 13266826,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island"
+  ]
+ },
+ {
+  "id": 13266836,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13267003,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "michigan"
+  ]
+ },
+ {
+  "id": 13267008,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13267067,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13267086,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "strait"
+  ]
+ },
+ {
+  "id": 13267193,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran"
+  ]
+ },
+ {
+  "id": 13267269,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island"
+  ]
+ },
+ {
+  "id": 13269633,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13269654,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13269674,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13269746,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "iran",
+   "tehran",
+   "the strait of hormuz"
+  ]
+ },
+ {
+  "id": 13269813,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13269855,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13269873,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "u.s.",
+   "iran",
+   "strait"
+  ]
+ },
+ {
+  "id": 13269961,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13269963,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13270027,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "alcatraz island",
+   "san francisco"
+  ]
+ },
+ {
+  "id": 13270041,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "u.s.",
+   "iran",
+   "the strait of"
+  ]
+ },
+ {
+  "id": 13365272,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13365275,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "new york"
+  ]
+ },
+ {
+  "id": 13365598,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13365637,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "u.s."
+  ]
+ },
+ {
+  "id": 13365835,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "rhode island"
+  ]
+ },
+ {
+  "id": 13372940,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "windsor-essex"
+  ]
+ },
+ {
+  "id": 13373418,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "massachusetts"
+  ]
+ },
+ {
+  "id": 13375647,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "michigan"
+  ]
+ },
+ {
+  "id": 13375984,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13376273,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13379061,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13379220,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13379309,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13381379,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "york region"
+  ]
+ },
+ {
+  "id": 13381607,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "ohio valley"
+  ]
+ },
+ {
+  "id": 13382236,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13385573,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13385608,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "michigan"
+  ]
+ },
+ {
+  "id": 13387292,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "toronto"
+  ]
+ },
+ {
+  "id": 13387553,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "america"
+  ]
+ },
+ {
+  "id": 13388057,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "midwest",
+   "northeast"
+  ]
+ },
+ {
+  "id": 13388078,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "michigan"
+  ]
+ },
+ {
+  "id": 13388696,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13389775,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13390077,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "hampshire county"
+  ]
+ },
+ {
+  "id": 13390483,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "wisconsin"
+  ]
+ },
+ {
+  "id": 13390527,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13391974,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "america"
+  ]
+ },
+ {
+  "id": 13392056,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13392106,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13393887,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "ohio"
+  ]
+ },
+ {
+  "id": 13394150,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13394277,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13394349,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13394376,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": []
+ },
+ {
+  "id": 13394445,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "toronto",
+   "u.s."
+  ]
+ },
+ {
+  "id": 13394629,
+  "lang": "en",
+  "model": "spacy-en",
+  "places": [
+   "toronto",
+   "ontario"
+  ]
+ },
+ {
+  "id": 13082637,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13103051,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13106093,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13108878,
+  "lang": "it",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13109560,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13115023,
+  "lang": "it",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13115266,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "grande joão pessoa"
+  ]
+ },
+ {
+  "id": 13115716,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13120789,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13120794,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13120795,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13120796,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13120992,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": [
+   "백령도",
+   "대청도"
+  ]
+ },
+ {
+  "id": 13120994,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13121413,
+  "lang": "it",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13121677,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "br-230"
+  ]
+ },
+ {
+  "id": 13121954,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13127207,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13127208,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "uruguay"
+  ]
+ },
+ {
+  "id": 13127209,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "paraguay"
+  ]
+ },
+ {
+  "id": 13127210,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "perú"
+  ]
+ },
+ {
+  "id": 13127211,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "nicaragua"
+  ]
+ },
+ {
+  "id": 13127212,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "méxico"
+  ]
+ },
+ {
+  "id": 13127213,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "guatemala"
+  ]
+ },
+ {
+  "id": 13127214,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "honduras"
+  ]
+ },
+ {
+  "id": 13127407,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13136759,
+  "lang": "id",
+  "model": "davlan-xlm",
+  "places": [
+   "eropa",
+   "prancis",
+   "spanyol"
+  ]
+ },
+ {
+  "id": 13146224,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13152561,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13152562,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13152565,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13152566,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13152568,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13152748,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13152750,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13153378,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "goiânia"
+  ]
+ },
+ {
+  "id": 13153398,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "bahia"
+  ]
+ },
+ {
+  "id": 13153883,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13164497,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13164504,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": [
+   "남양주"
+  ]
+ },
+ {
+  "id": 13164507,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13164884,
+  "lang": "it",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13165148,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13165163,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "taubaté"
+  ]
+ },
+ {
+  "id": 13165167,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "centro de campinas"
+  ]
+ },
+ {
+  "id": 13165181,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "sp-101",
+   "hortolândia"
+  ]
+ },
+ {
+  "id": 13165321,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13173368,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13173369,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13174017,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "mogi das cruzes"
+  ]
+ },
+ {
+  "id": 13181464,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13204481,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13204570,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13204746,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13204750,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": [
+   "librazhdin",
+   "kabul"
+  ]
+ },
+ {
+  "id": 13207413,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13207476,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13207492,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13207541,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13207606,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13207634,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "república dominicana"
+  ]
+ },
+ {
+  "id": 13207815,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13207888,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13208498,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13208512,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13208522,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13210012,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "santa fe"
+  ]
+ },
+ {
+  "id": 13210694,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13210980,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13210981,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13210986,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": [
+   "bruksel"
+  ]
+ },
+ {
+  "id": 13213723,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13213886,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13213938,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13213981,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13213985,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13213987,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13214360,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13214535,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13214537,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13214589,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13214597,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13215638,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "amapá"
+  ]
+ },
+ {
+  "id": 13215648,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "feira de santana"
+  ]
+ },
+ {
+  "id": 13216081,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13216088,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13218012,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13218137,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13218414,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13218709,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13218781,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13219021,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13219022,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13219025,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13219028,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13219043,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13219059,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13219262,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13220498,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13220974,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221024,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221099,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221102,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221104,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221109,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221119,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221252,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa",
+   "francia"
+  ]
+ },
+ {
+  "id": 13221393,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13221969,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13222416,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "teresina"
+  ]
+ },
+ {
+  "id": 13222818,
+  "lang": "sq",
+  "model": "davlan-xlm",
+  "places": [
+   "surrel"
+  ]
+ },
+ {
+  "id": 13225159,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13225302,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13225511,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "españa"
+  ]
+ },
+ {
+  "id": 13225615,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "campo grande"
+  ]
+ },
+ {
+  "id": 13225626,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13228678,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13228687,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13228707,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13228713,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13228725,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13228871,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13229165,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13229379,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13229787,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "españa",
+   "francia"
+  ]
+ },
+ {
+  "id": 13229939,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13230083,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13230321,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13230336,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13230476,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13230479,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13231704,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "hudson"
+  ]
+ },
+ {
+  "id": 13231796,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13232414,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13232438,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13232439,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13232460,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13232800,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13233956,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13233983,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13234164,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13234519,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa",
+   "francia"
+  ]
+ },
+ {
+  "id": 13234620,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13234672,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13234708,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa"
+  ]
+ },
+ {
+  "id": 13234735,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa"
+  ]
+ },
+ {
+  "id": 13234848,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "francia"
+  ]
+ },
+ {
+  "id": 13235217,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13235632,
+  "lang": "id",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13235806,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "maceió"
+  ]
+ },
+ {
+  "id": 13235953,
+  "lang": "uk",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13236570,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238462,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238471,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238474,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238477,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238479,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238483,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238499,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238505,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238511,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238517,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238529,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13238586,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13238617,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13238715,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa"
+  ]
+ },
+ {
+  "id": 13238899,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13240131,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13240380,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13240391,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13240431,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa"
+  ]
+ },
+ {
+  "id": 13240466,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13240482,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13240902,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol"
+  ]
+ },
+ {
+  "id": 13240907,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13241274,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13243109,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13243113,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13243658,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13243867,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13243901,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13243938,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245157,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245162,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245223,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13245249,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245270,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245547,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245559,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245853,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13245854,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13246132,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248211,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248220,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol"
+  ]
+ },
+ {
+  "id": 13248230,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248263,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "perancis",
+   "inggris",
+   "argentina"
+  ]
+ },
+ {
+  "id": 13248269,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol"
+  ]
+ },
+ {
+  "id": 13248289,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248293,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13248295,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa",
+   "francia"
+  ]
+ },
+ {
+  "id": 13248314,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13248483,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248493,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248502,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248541,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13248552,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13248565,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa",
+   "francia"
+  ]
+ },
+ {
+  "id": 13248606,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13248609,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa"
+  ]
+ },
+ {
+  "id": 13249215,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13249263,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13250252,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250253,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250275,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13250431,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13250500,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250567,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250604,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250628,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250643,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13250652,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250708,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13250737,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13251164,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13251471,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13251476,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": [
+   "강원 화천"
+  ]
+ },
+ {
+  "id": 13251635,
+  "lang": "id",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13253007,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13253437,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13253817,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa",
+   "francia"
+  ]
+ },
+ {
+  "id": 13253920,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13254754,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "inggris",
+   "argentina"
+  ]
+ },
+ {
+  "id": 13254771,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13254810,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13254988,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13255174,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13255320,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13255420,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13255452,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13255969,
+  "lang": "ko",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13256652,
+  "lang": "id",
+  "model": "davlan-xlm",
+  "places": [
+   "inggris",
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13258606,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13258835,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13258901,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "venezuela"
+  ]
+ },
+ {
+  "id": 13259374,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13259521,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13259530,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "prancis",
+   "spanyol"
+  ]
+ },
+ {
+  "id": 13260057,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": [
+   "inglaterra",
+   "argentina"
+  ]
+ },
+ {
+  "id": 13262402,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13262413,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13262620,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13263465,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13263684,
+  "lang": "id",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13263689,
+  "lang": "id",
+  "model": "davlan-xlm",
+  "places": [
+   "prancis",
+   "spanyol"
+  ]
+ },
+ {
+  "id": 13265942,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13267301,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13267312,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13267316,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13267513,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "spanyol",
+   "prancis"
+  ]
+ },
+ {
+  "id": 13267736,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13316122,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "teresina"
+  ]
+ },
+ {
+  "id": 13316495,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "afrique du sud"
+  ]
+ },
+ {
+  "id": 13316499,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "guibéroua"
+  ]
+ },
+ {
+  "id": 13316500,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13318526,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13319176,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13319353,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "zona sul de aracaju"
+  ]
+ },
+ {
+  "id": 13319358,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "ceará"
+  ]
+ },
+ {
+  "id": 13319381,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13319744,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "grands ponts"
+  ]
+ },
+ {
+  "id": 13325851,
+  "lang": "it",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13325959,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": [
+   "fran",
+   "ucrainei"
+  ]
+ },
+ {
+  "id": 13326128,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13326129,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "jundiaí"
+  ]
+ },
+ {
+  "id": 13326142,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "amazonas"
+  ]
+ },
+ {
+  "id": 13326514,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13326516,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "guinée-bissau",
+   "sénégal"
+  ]
+ },
+ {
+  "id": 13329858,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13330452,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13330453,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "yamoussoukro"
+  ]
+ },
+ {
+  "id": 13330454,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13346218,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13346251,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "centro-norte",
+   "piauí"
+  ]
+ },
+ {
+  "id": 13346256,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "amapá"
+  ]
+ },
+ {
+  "id": 13346661,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13346662,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "nawa"
+  ]
+ },
+ {
+  "id": 13346663,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "aip"
+  ]
+ },
+ {
+  "id": 13355247,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13355250,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": [
+   "rusia"
+  ]
+ },
+ {
+  "id": 13355439,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "piauí"
+  ]
+ },
+ {
+  "id": 13355844,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "kouego"
+  ]
+ },
+ {
+  "id": 13355845,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13355849,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13355850,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "lakota"
+  ]
+ },
+ {
+  "id": 13364004,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13364032,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": [
+   "românia",
+   "portul constanţa"
+  ]
+ },
+ {
+  "id": 13364035,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": [
+   "românia ucrainei"
+  ]
+ },
+ {
+  "id": 13364038,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13364039,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": [
+   "bucureşti"
+  ]
+ },
+ {
+  "id": 13364576,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13364577,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "soudan"
+  ]
+ },
+ {
+  "id": 13364578,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "nahio"
+  ]
+ },
+ {
+  "id": 13364579,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "soubré"
+  ]
+ },
+ {
+  "id": 13364585,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire"
+  ]
+ },
+ {
+  "id": 13366438,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "italia"
+  ]
+ },
+ {
+  "id": 13366460,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "italia"
+  ]
+ },
+ {
+  "id": 13366905,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13367183,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13367208,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "ucraina"
+  ]
+ },
+ {
+  "id": 13367209,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "serbiei",
+   "kiev"
+  ]
+ },
+ {
+  "id": 13367230,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13367265,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13369960,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370184,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370696,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370716,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370801,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370868,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370882,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370885,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370915,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370941,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "reggio emilia"
+  ]
+ },
+ {
+  "id": 13370975,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13370999,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13371017,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13371095,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "francia"
+  ]
+ },
+ {
+  "id": 13371728,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13372229,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13372703,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "sandégué"
+  ]
+ },
+ {
+  "id": 13372707,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "parc national d’azagny"
+  ]
+ },
+ {
+  "id": 13372709,
+  "lang": "fr",
+  "model": "davlan-xlm",
+  "places": [
+   "côte d’ivoire",
+   "burkina faso"
+  ]
+ },
+ {
+  "id": 13374074,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374136,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374161,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374207,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374389,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374545,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374612,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374676,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374695,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374698,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13374842,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "bruxelles",
+   "româniei"
+  ]
+ },
+ {
+  "id": 13374851,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "românia",
+   "ucraina"
+  ]
+ },
+ {
+  "id": 13375057,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13375127,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13375130,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13375134,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13375181,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13375564,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13375578,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13376743,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13377370,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "vale do aço"
+  ]
+ },
+ {
+  "id": 13379579,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "vicentino"
+  ]
+ },
+ {
+  "id": 13379594,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "milano"
+  ]
+ },
+ {
+  "id": 13380254,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "românia",
+   "ucraina"
+  ]
+ },
+ {
+  "id": 13380258,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13380261,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "crainei"
+  ]
+ },
+ {
+  "id": 13380404,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "américa"
+  ]
+ },
+ {
+  "id": 13380438,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13381090,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13381100,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13381101,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13381133,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13382420,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13382438,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13382867,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13383021,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13383069,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "españa"
+  ]
+ },
+ {
+  "id": 13383359,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13383406,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13384197,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13384233,
+  "lang": "ro",
+  "model": "davlan-xlm",
+  "places": [
+   "românia",
+   "rusiei",
+   "ucraina"
+  ]
+ },
+ {
+  "id": 13384332,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13385992,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13385995,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386003,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386017,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386021,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386180,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386444,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386531,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "centro"
+  ]
+ },
+ {
+  "id": 13386560,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386667,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "riminese"
+  ]
+ },
+ {
+  "id": 13386721,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "rimini",
+   "coriano"
+  ]
+ },
+ {
+  "id": 13386732,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386742,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386743,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13386748,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "emilia-romagna",
+   "lombardia"
+  ]
+ },
+ {
+  "id": 13386842,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "românia",
+   "ucraina",
+   "republica moldova"
+  ]
+ },
+ {
+  "id": 13386853,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "românia"
+  ]
+ },
+ {
+  "id": 13387056,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13387072,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13387073,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13387089,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13387107,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13388649,
+  "lang": "it",
+  "model": "davlan-xlm",
+  "places": [
+   "riminese"
+  ]
+ },
+ {
+  "id": 13388827,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13390848,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13390911,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13390924,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13390953,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13391048,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "românia"
+  ]
+ },
+ {
+  "id": 13391055,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "kiev"
+  ]
+ },
+ {
+  "id": 13391056,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "românia",
+   "crainei"
+  ]
+ },
+ {
+  "id": 13391669,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13391673,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13392743,
+  "lang": "es",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13393309,
+  "lang": "pt",
+  "model": "davlan-xlm",
+  "places": [
+   "montes claros"
+  ]
+ },
+ {
+  "id": 13394812,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13394978,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": [
+   "argentina",
+   "inglaterra"
+  ]
+ },
+ {
+  "id": 13395108,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13395128,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13395274,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13395275,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13395524,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13395652,
+  "lang": "xx",
+  "model": "davlan-xlm",
+  "places": []
+ },
+ {
+  "id": 13092060,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13092072,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13092454,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13096999,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13105135,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13108573,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13203890,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13203937,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13215308,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13230047,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13371937,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13371948,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13372419,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13377211,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13383991,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13388674,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13388885,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ },
+ {
+  "id": 13393396,
+  "lang": "ru",
+  "model": "wikineural",
+  "places": []
+ }
+]

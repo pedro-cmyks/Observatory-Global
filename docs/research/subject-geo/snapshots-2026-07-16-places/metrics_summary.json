@@ -1,0 +1,45 @@
+{
+  "noplaces_vs_baseline_judge (should reproduce cap-sim)": {
+    "n": 31,
+    "judged": 31,
+    "judge_named": 31,
+    "verified": 15,
+    "precision": "13/15 = 86.7%",
+    "recall_strict": "13/31 = 41.9%",
+    "recall_lenient": "15/31 = 48.4%",
+    "status_distribution": {
+      "verified": 15,
+      "partial": 11,
+      "unavailable": 5
+    }
+  },
+  "places_vs_baseline_judge (measurement of record)": {
+    "n": 31,
+    "judged": 31,
+    "judge_named": 31,
+    "verified": 22,
+    "precision": "19/22 = 86.4%",
+    "recall_strict": "19/31 = 61.3%",
+    "recall_lenient": "22/31 = 71.0%",
+    "status_distribution": {
+      "verified": 22,
+      "partial": 9
+    }
+  },
+  "places_vs_fresh_judge (secondary)": {
+    "n": 31,
+    "judged": 31,
+    "judge_named": 30,
+    "verified": 22,
+    "precision": "15/22 = 68.2%",
+    "recall_strict": "15/30 = 50.0%",
+    "recall_lenient": "21/30 = 70.0%",
+    "status_distribution": {
+      "verified": 22,
+      "partial": 9
+    }
+  },
+  "receipt_ids": 686,
+  "rows_with_places_nonnull": 686,
+  "rows_with_ge1_place": 270
+}
