@@ -130,16 +130,20 @@ export interface ReaderThemeToggleProps {
  */
 export function ReaderThemeToggle({ theme, onToggle }: ReaderThemeToggleProps) {
   const toLight = theme === 'dark'
+  const label = toLight ? 'Switch to light theme' : 'Switch to dark theme'
+  // Icon-only by request (Pedro 2026-07-16): the "DARK" text read louder than
+  // the masthead and pulled the eye — the moon/sun glyph alone carries it;
+  // the label lives in aria-label + data-tip.
   return (
     <button
       type="button"
       className="reader-chip reader-theme-toggle"
       onClick={onToggle}
-      aria-label={toLight ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-label={label}
       aria-pressed={theme === 'dark'}
+      data-tip={label}
     >
-      <span aria-hidden="true">{toLight ? '☀' : '☾'}</span>
-      <span>{toLight ? 'Light' : 'Dark'}</span>
+      <span aria-hidden="true" className="reader-theme-glyph">{toLight ? '☀' : '☾'}</span>
     </button>
   )
 }

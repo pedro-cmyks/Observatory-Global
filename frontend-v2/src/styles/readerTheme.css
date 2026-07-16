@@ -238,3 +238,13 @@ button.reader-chip:hover {
 .reader-kicker .cat {
   color: var(--r-muted);
 }
+
+/* Icon-only theme toggle (Pedro 2026-07-16: the DARK text pulled the eye —
+   glyph only; label in aria-label/data-tip). Square, comfortably tappable. */
+.reader-theme-toggle {
+  padding: 0.42em 0.66em;
+  line-height: 1;
+}
+.reader-theme-toggle .reader-theme-glyph {
+  font-size: 1.02rem;
+}
