@@ -11,8 +11,10 @@ from __future__ import annotations
 from collections import defaultdict
 import html
 import re
+import unicodedata
 from typing import Any, Sequence
 
+from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.ingest_rss import _COUNTRY_PATTERNS, _NATIVE_COUNTRY_PATTERNS
 
 
@@ -109,25 +111,78 @@ def headline_country_evidence(headline: Any) -> dict[str, set[str]]:
     return dict(methods)
 
 
+# ── Place → country gazetteer (C-clean slice 2, #238) ─────────────────────────
+# GeoNames-derived {normalized place: ISO2}, built by
+# scripts/build_place_gazetteer.py (cities15000 + admin-1 regions, CC-BY —
+# attribution in the JSON _meta). Lazy-loaded once per process, same pattern as
+# the scope-gate extended thresholds. Missing/corrupt file → {} = gazetteer
+# disabled; the country-pattern fallback still works.
+_PLACE_GAZETTEER: dict[str, str] | None = None
+
+_PLACE_WS = re.compile(r"\s+")
+
+_COUNTRY_NAME_TO_ISO: dict[str, str] = {
+    name.casefold(): code for code, name in ISO_COUNTRY_NAMES.items()
+}
+
+
+def _normalize_place(value: str) -> str:
+    """Must stay in sync with scripts/build_place_gazetteer.py:normalize_place."""
+    return _PLACE_WS.sub(" ", unicodedata.normalize("NFC", value).casefold()).strip()
+
+
+def _place_gazetteer() -> dict[str, str]:
+    global _PLACE_GAZETTEER
+    if _PLACE_GAZETTEER is None:
+        import json as _json
+        from pathlib import Path as _Path
+        p = _Path(__file__).resolve().parents[1] / "data" / "place_to_country.json"
+        try:
+            doc = _json.loads(p.read_text(encoding="utf-8"))
+            _PLACE_GAZETTEER = dict(doc.get("places") or {})
+        except Exception:
+            _PLACE_GAZETTEER = {}
+    return _PLACE_GAZETTEER
+
+
+def _alias(code: Any) -> str:
+    return _SUBJECT_COUNTRY_ALIASES.get(str(code).upper(), str(code).upper())
+
+
 def resolve_place_to_country(place: Any) -> str | None:
     """Resolve a NER-extracted place name to an ISO subject country.
 
     A place named in the story (via NER over the body) is genuine subject
     signal — not coverage — so it can verify geography for a headline that names
-    only a local entity. Reuses the shared country patterns (which include
-    capitals and major cities) plus the native-script table. Returns None for
-    places outside the known geography (e.g. "Bondi Beach"): the gazetteer
-    ceiling a fuller geocoder would lift, never a guess.
+    only a local entity. Resolution order:
+
+    1. country NAMES themselves (ISO_COUNTRY_NAMES reverse map: France→FR);
+    2. the GeoNames gazetteer (cities >=15k + admin-1 regions; ascii/Latin
+       forms only, ambiguous multi-country names pre-dropped at build time);
+    3. the shared country patterns (Latin + native-script lexicons) — this
+       keeps native-script country mentions (Херсон→UA-class tokens) working.
+
+    Returns None for places outside the known geography (e.g. "Bondi Beach"):
+    the gazetteer ceiling a fuller geocoder would lift, never a guess.
     """
     text = decode_headline(place)
     if not text:
         return None
+    normalized = _normalize_place(text)
+    if not normalized:
+        return None
+    code = _COUNTRY_NAME_TO_ISO.get(normalized)
+    if code:
+        return _alias(code)
+    code = _place_gazetteer().get(normalized)
+    if code:
+        return _alias(code)
     for pattern, code in _COUNTRY_PATTERNS:
         if pattern.search(text):
-            return _SUBJECT_COUNTRY_ALIASES.get(str(code).upper(), str(code).upper())
+            return _alias(code)
     for pattern, code in _NATIVE_COUNTRY_PATTERNS:
         if pattern.search(text):
-            return _SUBJECT_COUNTRY_ALIASES.get(str(code).upper(), str(code).upper())
+            return _alias(code)
     return None
 
 
