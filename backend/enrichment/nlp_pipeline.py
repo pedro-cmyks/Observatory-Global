@@ -21,6 +21,7 @@ import logging
 import os
 import time
 from collections.abc import Sequence
+from typing import Any
 from datetime import datetime, timezone
 
 import asyncpg
@@ -409,6 +410,62 @@ def _priority_select_sql(target_column: str) -> str:
     """
 
 
+def _hot_only_select_sql(target_column: str) -> str:
+    """Hot-lane-only selector — the resilience fallback (#184 ops 2026-07-16).
+
+    The full mixed-priority selector is ONE statement: when the backlog_pool
+    15-day scan crawls under DB IO pressure, the whole query hits the
+    statement timeout and every phase gets zero rows (the fleet starved ~9h
+    while the hot lane alone answered in 1.3s). This builder keeps just the
+    created_at-indexed 24h pool + the same priority expression.
+    """
+    target_column = _validate_target_column(target_column)
+    shard = f"AND (id % {SHARD_COUNT}) = {SHARD_INDEX}" if SHARD_COUNT > 1 else ""
+    return f"""
+        WITH hot_pool AS (
+            SELECT id, headline, source_lang, source_family,
+                   country_code, geo_confidence, timestamp, created_at
+            FROM signals_v2
+            WHERE {target_column} IS NULL
+              AND headline IS NOT NULL AND LENGTH(headline) > 10
+              AND created_at > NOW() - INTERVAL '24 hours'
+              {shard}
+            ORDER BY created_at DESC
+            LIMIT 5000
+        )
+        SELECT id, headline, source_lang, source_family,
+               country_code, geo_confidence, timestamp
+        FROM hot_pool
+        ORDER BY (
+            EXTRACT(EPOCH FROM (NOW() - timestamp)) / 86400.0
+            + CASE WHEN source_lang IS NOT NULL AND source_lang <> 'en' THEN -2 ELSE 0 END
+            + CASE WHEN source_family IN ('api', 'social') THEN -1 ELSE 0 END
+            + CASE WHEN geo_confidence IS NOT NULL AND geo_confidence > 0.8 THEN -0.5 ELSE 0 END
+        ) ASC
+        LIMIT $1
+    """
+
+
+async def _fetch_priority_rows(conn: Any, target_column: str, limit: int) -> list:
+    """Fetch an NLP batch with timeout resilience: full mixed-priority selector
+    first; on QueryCanceledError fall back to hot-only; a second timeout
+    degrades to an empty batch (the worker lives to try next cycle). Any
+    non-timeout error propagates unchanged."""
+    from asyncpg.exceptions import QueryCanceledError
+    try:
+        return await conn.fetch(_priority_select_sql(target_column), limit)
+    except QueryCanceledError:
+        logger.warning(
+            "priority selector timed out (backlog pressure) — falling back to hot-only for %s",
+            target_column,
+        )
+    try:
+        return await conn.fetch(_hot_only_select_sql(target_column), limit)
+    except QueryCanceledError:
+        logger.error("hot-only selector also timed out for %s — empty batch this cycle", target_column)
+        return []
+
+
 # Stratified sample refresh — populate nlp_sample_queue (issue #164, ADR-0004).
 # Coarse buckets (country, theme_top, day) with K=3 per bucket keeps the queue
 # under ~300K rows in the 15-day window.
@@ -539,7 +596,7 @@ def processed_target_column() -> str:
 # ── Phase runners (each loads, runs, unloads its model) ─────────────────────
 async def _run_sentiment_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) -> int:
     cols = _columns()
-    rows = await conn.fetch(_priority_select_sql(cols["processed_at_target"]), limit)
+    rows = await _fetch_priority_rows(conn, cols["processed_at_target"], limit)
     if not rows:
         return 0
 
@@ -589,7 +646,7 @@ async def _run_sentiment_phase(conn: asyncpg.Connection, limit: int, dry_run: bo
 async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) -> int:
     started_at = time.monotonic()
     cols = _columns()
-    rows = await conn.fetch(_priority_select_sql(cols["persons_target"]), limit)
+    rows = await _fetch_priority_rows(conn, cols["persons_target"], limit)
     if not rows:
         return 0
 
@@ -701,7 +758,7 @@ async def _run_framing_phase(conn: asyncpg.Connection, limit: int, dry_run: bool
         return 0
     cols = _columns()
     effective_limit = min(limit, FRAMING_LIMIT_CAP) if FRAMING_LIMIT_CAP > 0 else limit
-    rows = await conn.fetch(_priority_select_sql(cols["framing_target"]), effective_limit)
+    rows = await _fetch_priority_rows(conn, cols["framing_target"], effective_limit)
     if not rows:
         return 0
 
