@@ -154,6 +154,28 @@ lift after whitening?).
   already settled (AUC 0.985); this measures whether the density *estimator*
   benefits from the de-compressed scale.
 
+**Result — gap-pool relevance measured (2026-07-16): what the gate hides in
+coverage gaps is now a number.** The Brief's `coverage_gaps` (categories with
+raw≥20 and 0 gate-kept/24h) were audited with a DeepSeek relevance judge
+(temp 0, candidate-v2 canonical includes/excludes as the rubric) over the two
+live gap categories: **telecom-internet-shutdown (232-pool): ~6% judge-YES**
+(est. ~13 real items — Crimea 16h/day mobile shutdowns, Telegram t.me global
+outage, Kerch blackout); **mining-royalty-risk (70-pool, full census): 4%
+YES**. The per-topic ≥90%-precision gate policy is therefore hiding a small
+but real relevant tail in exactly the categories the product flags as gaps —
+and the **extended tier partially recovers it**: the telecom extended-threshold
+census (7 rows ≥ 0.8031) contained 2 YES + 1 borderline (~43% precision incl.
+borderline), so the product now serves **top-3 extended-tier receipts inside
+the gap box, labeled UNVERIFIED·EXTENDED** (`baa7428d`,
+`backend/app/services/gap_receipts.py` + BriefNewspaper render) — the gap box
+stopped being an empty assertion and carries its own evidence, tier-labeled.
+For the paper: this is the measured cost of the precision-first gate at the
+category level (companion to the 2026-07-04 recall diagnosis) AND the honest
+recovery pattern (two-tier serving reaches into the hidden pool without
+touching the gate). Artifact:
+`docs/research/gap-pool/2026-07-16-gap-pool-relevance.md` (judge cost $0.004;
+syndication caveat on the borderline band documented in-artifact).
+
 **Target venues:** EMNLP industry, ACL Findings, NLP4PI workshop.
 
 ---
@@ -212,6 +234,31 @@ not yet measured.
 - #217 credibility-tier ablation: does the tier weight change analyst-useful
   ranking beyond `source_family` + `is_state_media` alone.
 
+**Result — C7 voice-asymmetry detector: input-quality coupling measured
+(2026-07-12 → 2026-07-16).** The thread-level operationalization of this
+paper's who-speaks-vs-who-is-spoken-about axis — the C7 detector
+(`backend/scripts/voice_asymmetry_report.py`, `voice-asymmetry-v0`: flags
+topics whose subject country is voiced almost entirely by foreign-origin
+outlets) — produced a methods finding the paper must carry: **the detector's
+validity is bounded by its subject-geography input, and the coupling is
+measurable.** The 07-12 pilot (100 topics, coverage-proxy geo =
+`emergent_clusters.top_country_codes[1]`) scored **5/7 mismatch (71%)**
+against an independent DeepSeek judge, with absurd proxy-class hits (Greek
+heatwave→JP, Belgian heatwave→PK). After the #238 subject-geography fix pass
+(ingest-side lexicon recall only — the serving-side demotion/cap never
+reaches the proxy path), the unchanged detector re-ran at **2/30 mismatch
+(6.7%)**, review-hit rate 36.7%→9.7%, and surfaced a genuine C7-target live:
+Ukraine ZNPP death — UA-subject, ~95% RU-origin voices
+(`docs/research/subject-geo/2026-07-16-c7-reconsideration.md`, `e976de15`).
+Verdict adopted: review-only surface unblocked; **ranking stays blocked until
+the geo source is the serving inference, not the coverage proxy** — the swap
+shipped in `55abeddc` (`resolve_topic_subject`,
+`voice_asymmetry_report.py:309`). Paper framing: detector claims over derived
+axes (voice asymmetry) inherit the measured error of their weakest input
+(subject geography), and the honest protocol is judge-referenced re-measure
+after each input fix, not one-time validation. Prior artifact:
+`docs/research/voice-asymmetry/2026-07-12-c7-pilot.md`.
+
 **Target venues:** ICWSM, JCDL, ACL Findings.
 
 ---
@@ -257,6 +304,22 @@ full blue→cyan→amber→red ramp (the raw 0.36-0.72 band rendered flat-orange
 This is the live, eyeballed (Vercel-confirmed) demonstration that the composite
 re-orders the world away from raw counts — the qualitative half of the paper's
 per-component ablation claim, on the production surface.
+
+**Encoding correction (2026-07-15, supersedes the ramp above):** the
+blue→cyan→amber→red rainbow was itself found faulty by the dataviz expert
+audit and replaced (`15a47552`, G1/G3): the old ramp **peaked in luminance at
+yellow (~0.64)**, so a mid-heat country out-popped max heat, and
+deutan/protan viewers lost the green→orange half entirely. The live ramp is
+now **monotonic in effective luminance** (transparent → deep blue → teal →
+dark amber → vermilion → near-white hot core), validated numerically with
+Machado-2009 severity-1.0 CVD matrices alpha-composited over the dark map
+(monotonic under normal, deuteranopia, and protanopia; adjacent stops ≥66
+sRGB units apart; a test freezes the monotonicity, not the exact colors),
+with the legend gradient mirroring the exact stops+alphas and a mid anchor.
+For the paper: the composite-vs-volume claim was right and the first encoding
+of it was still misleading — measured-encoding validation is part of the heat
+story, not a separate concern (method shared with P7's honest-encoding
+audit).
 
 **Evidence to collect:**
 - Per-component ablation: drop each component, measure ranking shift.
@@ -459,6 +522,45 @@ class that produced them.
   vs gate-passing, before and after the gated-count + UNVERIFIED-tray fix —
   i.e. the rate at which "critical" was a sampling artifact. Pair with a
   list↔detail count-agreement check (gated vs raw across the two surfaces).
+
+**Result — subject geography measured and fixed with a judge-controlled
+replay (2026-07-16, #238): the thread contract now separates WHO REPORTS from
+WHAT IT IS ABOUT, and the inference quality is a four-point trajectory, not a
+claim.** The contract half: `subject_countries` (verified, from receipt
+evidence) is served separately from coverage-oriented `top_countries`
+(#257 slice 1); `why_now` may only assert a subject claim or movement, never
+coverage-as-subject (`ca93b885`). The measurement half is the P4 methods
+contribution — **judge-controlled replay**: one frozen front-page window
+(31 threads / 686 receipts, verified byte-identical across pulls), ONE set of
+baseline DeepSeek judgments, and each code iteration re-scored by replaying
+the serving function (`infer_receipt_subject_geography`, reproduced served
+output 31/31) over the same receipts against the same judgments — a
+controlled experiment on live serving data:
+
+| Metric | Baseline | Fixes as shipped | + dominance cap | + NER places |
+|---|---|---|---|---|
+| Precision of `verified` | 75.0% | 66.7% | 86.7% | **86.4%** |
+| Recall strict | 38.7% | 32.3% | 41.9% | **61.3%** |
+| Recall lenient | 51.6% | 48.4% | 48.4% | **71.0%** |
+| verified/partial/unavailable | 16/8/7 | 15/11/5 | 15/11/5 | **22/9/0** |
+
+Mechanism findings the paper keeps: (a) **person-proxy demotion** — leader
+names (Putin→RU, Trump→US) were verify-grade subject evidence and produced
+systematic inversions (Romanian domestic politics verified RU); demoted to
+non-verifying support (`0a981e54`). (b) **The honest dip**: the targeted
+fixes alone LOWERED both headline numbers (66.7/32.3) while flipping every
+targeted error class correctly — new exposed classes required the dominance
+cap; the artifact reports the dip rather than burying it. (c) **NER places
+as an evidence tier**: GPE/LOC entities persisted per signal in the same NER
+pass (mig 078 `nlp_places`, `9c19e5f1`) + a GeoNames place→country gazetteer
+(`21a7bf46`, `backend/app/data/place_to_country.json`) plumbed into serving
+as `ner_place` evidence (`4dd5f54c`) — 270/686 receipts (39%) carry ≥1 place;
+this is what bought recall 41.9→61.3 and took `unavailable` to 0 (cities and
+oblasts name the subject when the country word never appears — the Ukrainian
+war-coverage class). Artifacts:
+`docs/research/subject-geo/2026-07-16-{inference-quality,post-fix-remeasure,remeasure-with-places}.md`
++ versioned snapshots. Still open (tracked #238): cross-language same-event
+dedup (upstream e5 centroid threshold) and the strict-recall ceiling.
 
 **Target venues:** ICWSM main, EMNLP industry, CSCW.
 
@@ -804,6 +906,33 @@ the seven analyst questions than commodity dashboards.
   misleading > illegible > wasteful, code-cited, 3 smallest honesty fixes
   applied same commit. P7's evaluation-method contribution: honest-encoding
   audits + cold-reader tests as the analyst-workflow QA loop.
+- **Honest-encoding fixes EXECUTED + a canvas policy (2026-07-15/16; the
+  dataviz audit stopped being a list and became shipped rules).** Three
+  encoding classes killed, each a named anti-pattern the paper can generalize:
+  (1) **hash-to-hue is dead** — category color was a label-hash rainbow
+  (adjacent hues meaningless, CVD-hostile); replaced by a deterministic
+  keyword→family map (`famOf()`, `lib/categoryFamily.ts`, 9 tests) over a
+  CVD-validated `--fam-*` token palette; NarrativeThreads borders color by
+  category family, **not row index** (color-by-rank encoded list position as
+  meaning). (2) **growth-is-not-danger** — accelerating/surging trend styles
+  moved off the critical-red token to accent; red is reserved for real
+  severity (`d9d4f7be`); same rule earlier made acceleration teal/neutral
+  unless crisis-relevant (`24e3484d`). (3) **heat ramp luminance made
+  monotonic under CVD** (`15a47552`, detail in P3). Two workflow-honesty
+  patterns joined them: the **focus BAND** replaced the occluding focus chip
+  (scope state as a persistent non-occluding band, `66ceb609`) and
+  **honest degrade states** are now systematic (nullable measured confidence
+  renders `unscored` not a fake percentage; Brief serves stale-labeled cache
+  + retry on failure; empty = labeled absence). And a standing rule was
+  written into DESIGN.md: the **Deep-Field Canvas Policy** (`1bf7d0f1`) —
+  the deep-field canvas treatment is scoped, themed surfaces may not
+  improvise their own backgrounds (loader first-paint flash killed the same
+  commit). Product-wide identity note: the emerald day/night presets became
+  the DEFAULT across reader pages + console (`7c893af3`/`4ee4d652`), with the
+  entire console skin expressed as ThemeContext-var overrides
+  (`frontend-v2/src/styles/oceanConsole.css` — zero raw hexes), i.e. the
+  token system carrying a full re-skin is itself evidence for the
+  design-token half of this paper's workflow claims.
 
 **Evidence to collect:**
 - Analyst task-completion study (10-15 analysts, structured tasks).
@@ -1097,6 +1226,23 @@ papers absorb, never constraints on what Atlas builds next.
 | **Whitening head-to-head, clustering substrate** (`8e6b78ed` sweep + `9d1b04e7` verdict): whitened HDBSCAN is blob-resistant + purity-preserving but shows NO reliable recall-cliff crossing; whitening-as-purity-replacement DISPROVED (grab-bags are topically TIGHT — whitening helps formation recall, not purity). ADOPTED where it wins (`243410d3`): dossier pin↔pin edges gate on whitened cosine (tau 0.50; spurious Cepeda edges dropped, Keiko↔Milei survives) + #224 coherence guard in whitened space (**blob-vs-clean gap ~11× wider: 0.126 vs 0.011 raw**). OpenAI-space + LLM verifier NOT adopted (math-first). Artifacts `docs/research/embedding-whitening/2026-07-07-whitening-findings.md` | **P1** (the whitening story gets its boundary conditions: de-compression ≠ recall cure; consumer-by-consumer adoption is the honest method) | P1 "Substrate finding" section — head-to-head addendum |
 | **Basis-weighted connection verdict + text_mention edges** (`a12a1ef8`+`cbac24c1`): dossier verdict no longer over-claims — strong edge = shared actor/place, weak = semantic-only (same-language artifact risk); CONFIRMED ✓ vs CAUTION ⚠ 'similar in topic — treat as hypothesis'; weak edges never weight-scaled (higher cosine must not read as stronger link). text_mention basis: token cross-ref of one pin's evidence headlines vs the other's key-tokens/actors (math-only) → tier strong > text > weak through verdict/graph/export/synthesis | **P4** (typed relation evidence: connection claims carry their BASIS; the correlation≠causation guard as a serving contract) + **P7** (visual encoding follows epistemics — dashed/undimmed weak edges) | P4 spec relation layer; P7 evidence |
 | **Dossier honesty stack + Frank test as eval protocol** (`b69bdfc3` Frank v2 + `cbac24c1` six blockers + `d82173ee` dataviz audit): cold-reader "report must stand alone" test re-run as a REPEATABLE protocol — v2 verdict usable-with-caveats, 6 precise blockers found, all fixed same week (text_mention isolation-contradiction, junk-actor filter w/ glass-box naming rule, dates everywhere, metadata-only pins named, umbrella-fold divergence guard, coverage lens note). Dataviz expert audit (`docs/specs/2026-07-11-dataviz-expert-audit.md`) ranks findings misleading > illegible > wasteful, code-cited | **P7** (the Frank test = the analyst-workflow eval protocol: adversarial cold-read → enumerated blockers → fix → re-test; dataviz audit = the honesty-of-encoding companion) | P7 method section — evaluation protocol |
+
+## 2026-07-13→16 evolution (subject-geography measured arc + honest-encoding execution)
+
+| Atlas evolution (shipped, measured) | Paper home | Where it lands |
+|---|---|---|
+| **Subject geography measured + fixed, judge-controlled replay** (#238): frozen 31-thread/686-receipt window, one baseline judge set, four measurement points — precision 75→86.4%, strict recall 38.7→61.3%, unavailable→0; person-proxy demotion + dominance cap + NER `ner_place` evidence tier (mig 078 `nlp_places` + GeoNames gazetteer); honest dip reported (fixes-as-shipped went DOWN before the cap). `subject_countries` served separately from coverage `top_countries` (#257 slice 1) | **P4** (contract + replay method — full block added above) + **P1** (judge-referenced eval discipline) | P4 section "Result — subject geography"; artifacts `docs/research/subject-geo/2026-07-16-*` |
+| **Gap-pool relevance audit**: DeepSeek judge over the two live coverage-gap categories — gate hides ~4-6% relevant (telecom ~6%, mining 4%); extended-tier census 43% precision → gap box now serves top-3 receipts labeled UNVERIFIED·EXTENDED (`baa7428d`, `gap_receipts.py`) | **P1** (measured cost of the precision-first gate + two-tier recovery — block added above) + **P7** (gap box carries evidence, not assertion) | P1 section "Result — gap-pool relevance"; artifact `docs/research/gap-pool/2026-07-16-gap-pool-relevance.md` |
+| **C7 voice-asymmetry input-coupling**: unchanged detector, judged mismatch 71%→6.7% after upstream geo fixes; geo source swapped from coverage proxy to serving inference (`55abeddc`); review-only unblocked, ranking stays gated; genuine hit found live (UA ZNPP, ~95% RU-origin voices) | **P2** (detector-input dependency as method — block added above) + **P8** (derived-axis detectors inherit input error; re-measure per input fix) | P2 section "Result — C7"; artifacts `docs/research/subject-geo/2026-07-16-c7-reconsideration.md`, `docs/research/voice-asymmetry/2026-07-12-c7-pilot.md` |
+| **Honest-encoding execution**: hash-to-hue dead (CVD-validated `--fam-*` family palette, `d9d4f7be`), color-by-rank dead, growth≠danger, monotonic-luminance CVD heat ramp (`15a47552`), focus BAND replaces occluding chip, Deep-Field Canvas Policy in DESIGN.md, emerald day/night default via pure token overrides (`oceanConsole.css`, zero raw hexes) | **P7** (audit→shipped-rules arc — block added above) + **P3** (ramp correction — encoding validation is part of the heat claim) | P7 evidence bullet; P3 "Encoding correction" |
+| **ANN index recovery under real constraints**: HNSW infeasible on the shared 1 GB instance (m=16/8/4 all stalled or spilled); hot halfvec(768) corpus cut to IVFFlat 327 lists — recall@10 0.915/0.955/1.000 at probes 5/10/20, writes 1,485 rows/s vs HNSW >120 s/batch; mig 076 idempotent, probes pinned in both semantic lanes. Recurring chain now DB-verified fresh (07-16: embed→members→movement autonomous, 116K embeds/24h; publication leg still stale = the open residue, #241) | **P6** (hot-store index ops under serving+batch co-tenancy) + **P1** (substrate reliability conditions for every semantic claim) | `docs/state/2026-07-13-ann-index-recovery.md`; #241 thread |
+| **NER batched throughput**: model-residency hypothesis REJECTED by measurement (loads were seconds; inference dominated); batch-16 token classification → 16,216 rows/h vs 4,848/h inflow, 1.07 GB RSS; selector statement-timeout resilience (hot-only fallback, `f8525b16`) ended the starved-cycle failure mode | **P5** (multilingual NLP throughput calibration — negative result first) + **P4** (the places substrate feeding subject geography) | #253 thread (`17576de2`); mig 078 |
+| **Label hygiene at serving**: placeholder "(label failed)" titles never served — `clean_thread_label` falls back to real evidence headlines (`ab33760d`, thread_intelligence.py:1262); non-English thread titles translate for the viewer (`77043446`, `POST /api/v2/translate/text` + TranslatableText) | **P4** (serving honesty: the label is part of the evidence contract) + **P7** (reader-facing translation affordance) | #257/#204 threads |
+| **Attention-eclipse surfaces**: under-the-radar signal (`78a8ebb8` backend TDD → L1 "Meanwhile, off the front page" strip `45c25642` → L2 dock lens + L3 investigate ramp `86af9027`) — attention-vs-coverage divergence as a product lens across all three levels | **P3** (attention/coverage divergence is the heat family's "what's buried" claim) + **P7** (one signal, three level-appropriate presentations) | eclipse commits; L1/L2/L3 surfaces |
+| **LLM same-event umbrella + fast non-crisis typing**: `--linkage llm-event` grouper (mig 077, `953cd411`→hardened `8fa4756d` against degraded verdicts) + `type_noncrisis` on the 30-min cron — event-level grouping moves from lexical/centroid linkage to verdict-gated LLM grouping with adversarial-review hardening | **P8** (event-level taxonomy lane 2: canonical-event grouping method) + **P1** (typing cadence: fresh stories categorized within a cycle) | mig 077; `build_umbrella_topics.py` lineage |
+
+Governance note (standing): Atlas rules the papers — these are RESULTS the
+papers absorb, never constraints on what Atlas builds next.
 
 ## Next action
 

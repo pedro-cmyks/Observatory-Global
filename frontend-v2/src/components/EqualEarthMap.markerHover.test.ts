@@ -64,4 +64,24 @@ describe('markerHoverContent', () => {
         expect(out.title).toBe('Strait of Hormuz')
         expect(out.meta).toContain('Active vessel traffic')
     })
+
+    it('anomaly: derived-signal receipt — multiplier, z, count, level, honest hint', () => {
+        const out = markerHoverContent('anomaly', {
+            country_code: 'AR', country_name: 'Argentina',
+            multiplier: 2.63, zscore: 5.04, current_count: 4913, level: 'elevated',
+        })
+        expect(out.title).toBe('Baseline spike · Argentina')
+        expect(out.meta).toContain('2.6× its own baseline volume')
+        expect(out.meta).toContain('z-score 5.0')
+        expect(out.meta).toContain('4,913 signals in the window')
+        expect(out.meta).toContain('Level: elevated')
+        expect(out.hint).toMatch(/Derived attention signal/)
+        expect(out.hint).toMatch(/not a discrete event/)
+    })
+
+    it('anomaly: missing fields degrade to absence, never fabricate', () => {
+        const out = markerHoverContent('anomaly', { country_code: 'DZ' })
+        expect(out.title).toBe('Baseline spike · DZ')
+        expect(out.meta).toEqual([])
+    })
 })

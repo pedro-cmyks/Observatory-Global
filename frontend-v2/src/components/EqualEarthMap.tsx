@@ -75,7 +75,7 @@ const CONFLICT_CLASS_LABELS: Record<ConflictClass, string> = {
     coercion: 'Coercion / posture',
 }
 
-type MarkerKind = 'chokepoint' | 'acled' | 'disaster'
+type MarkerKind = 'chokepoint' | 'acled' | 'disaster' | 'anomaly'
 
 /** Hover card state: country shape hover vs marker (hazard/conflict/chokepoint). */
 type HoverState =
@@ -117,6 +117,26 @@ export function markerHoverContent(
         const src = String(p.source || '').toUpperCase()
         if (src) meta.push(`Source: ${src}`)
         return { title, meta, hint: `Click opens the ${src || 'official'} event page` }
+    }
+    if (kind === 'anomaly') {
+        // #255: the baseline ring is a DERIVED attention signal, not a discrete
+        // real-world event — the receipt must say so (the honest answer to
+        // "why is this country pinging").
+        const name = String(p.country_name || p.country_code || 'Country')
+        const meta: string[] = []
+        const mult = Number(p.multiplier)
+        if (Number.isFinite(mult) && mult > 0) meta.push(`${mult.toFixed(1)}× its own baseline volume`)
+        const z = Number(p.zscore)
+        if (Number.isFinite(z) && z !== 0) meta.push(`z-score ${z.toFixed(1)}`)
+        const cur = Number(p.current_count)
+        if (Number.isFinite(cur) && cur > 0) meta.push(`${cur.toLocaleString()} signals in the window`)
+        const level = String(p.level || '')
+        if (level && level !== 'normal') meta.push(`Level: ${level}`)
+        return {
+            title: `Baseline spike · ${name}`,
+            meta,
+            hint: 'Derived attention signal (volume vs this country’s own norm) — not a discrete event. Click opens the country.',
+        }
     }
     if (kind === 'acled') {
         const cls = conflictClass(String(p.type || ''))
@@ -444,6 +464,13 @@ export function EqualEarthMap({
         for (const f of overlay.chokepoints.features) {
             if (near(f.geometry.coordinates, 14)) return { kind: 'chokepoint', properties: f.properties }
         }
+        // Anomaly rings LAST (largest + background — never steal a point marker's
+        // hover). Tolerance follows the drawn core-ring radius.
+        for (const f of overlay.anomaly.features) {
+            const r = typeof f.properties.radius === 'number' ? f.properties.radius : 8
+            const tol = Math.min(Math.max(r, 8), 24) + 4
+            if (near(f.geometry.coordinates, tol)) return { kind: 'anomaly', properties: f.properties }
+        }
         return null
     }, [ee, overlay, applied])
 
@@ -454,7 +481,9 @@ export function EqualEarthMap({
         const rect = containerRef.current?.getBoundingClientRect()
         if (!rect) return
         const hit = findMarkerAt(e.clientX - rect.left, e.clientY - rect.top)
-        if (hit) {
+        // Anomaly rings are hover-receipt only (#255): the click falls through
+        // to the country path — opening the country IS the right action.
+        if (hit && hit.kind !== 'anomaly') {
             e.stopPropagation()
             onMarkerClick(hit.kind, hit.properties)
         }

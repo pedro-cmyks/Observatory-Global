@@ -49,6 +49,11 @@ from backend.scripts.snapshot_emergent_topics import (
 
 _ID_OFFSET = 100000  # per-country cluster_id block (>> max clusters/country)
 
+# Attempts per country before it counts as failed (transient Supabase
+# connection drops on the heaviest fetches — US/EG class — killed three
+# consecutive nightly passes via the all-or-nothing guard, 2026-07-13→16).
+_COUNTRY_ATTEMPTS = 3
+
 _COUNTRIES = """
     SELECT s.country_code, COUNT(*) AS n
     FROM signal_embeddings e JOIN signals_v2 s ON s.id = e.signal_id
@@ -182,30 +187,44 @@ async def main() -> None:
         base = 0
         for cc in ccs:
             done += 1
-            # Resilience for the unattended ~1.5h run: if the connection dropped
-            # (Supabase can close a long-lived one), reconnect before this country
-            # so a single blip doesn't fail every remaining country.
-            if conn.is_closed():
-                conn = await asyncpg.connect(db)
-                await conn.execute("SET statement_timeout = '600s'")
-            try:
-                res = await _country_clusters(conn, cc, args.hours, args.per_country_cap,
-                                              args.mcs, args.ms, gate, args.min_kept,
-                                              args.top_per_country,
-                                              whiten_k=args.whiten_k)
-            except Exception as ex:
+            # Resilience for the unattended ~1.5h run: a single transient
+            # connection blip must not discard the whole staged snapshot (the
+            # all-or-nothing guard below is for PERSISTENT failures). Each
+            # country gets up to 3 attempts; every retry starts from a fresh
+            # connection because "connection was closed in the middle of
+            # operation" leaves the old one unusable.
+            res = None
+            last_ex: Exception | None = None
+            for attempt in range(1, _COUNTRY_ATTEMPTS + 1):
+                if conn.is_closed():
+                    conn = await asyncpg.connect(db)
+                    await conn.execute("SET statement_timeout = '600s'")
+                try:
+                    res = await _country_clusters(conn, cc, args.hours, args.per_country_cap,
+                                                  args.mcs, args.ms, gate, args.min_kept,
+                                                  args.top_per_country,
+                                                  whiten_k=args.whiten_k)
+                    last_ex = None
+                    break
+                except Exception as ex:
+                    last_ex = ex
+                    try:
+                        if not conn.is_closed():
+                            await conn.close()  # retry from a clean connection
+                    except Exception:
+                        pass
+                    if attempt < _COUNTRY_ATTEMPTS:
+                        print(f"  [{done}/{len(ccs)}] {cc}: attempt {attempt} failed ({ex}) "
+                              f"— retrying", file=sys.stderr, flush=True)
+                        await asyncio.sleep(5 * attempt)
+            if last_ex is not None:
                 failed += 1
-                print(f"  [{done}/{len(ccs)}] {cc}: FETCH/CLUSTER failed ({ex})",
+                print(f"  [{done}/{len(ccs)}] {cc}: FETCH/CLUSTER failed after "
+                      f"{_COUNTRY_ATTEMPTS} attempts ({last_ex})",
                       file=sys.stderr, flush=True)
                 if args.dump_json:
-                    dump_countries.append({"country": cc, "error": str(ex),
+                    dump_countries.append({"country": cc, "error": str(last_ex),
                                            "clusters": []})
-                try:
-                    if not conn.is_closed() and isinstance(
-                            ex, (asyncpg.PostgresConnectionError, ConnectionError, OSError)):
-                        await conn.close()  # force a fresh reconnect next iteration
-                except Exception:
-                    pass
                 continue
             if res is None:
                 print(f"  [{done}/{len(ccs)}] {cc}: no gated clusters", file=sys.stderr, flush=True)

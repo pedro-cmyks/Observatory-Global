@@ -293,12 +293,30 @@ async def run(hours: int, assign_t: float, gate_t: float, max_n: int, dry_run: b
         # residual so v2 recovers the recall that assign-to-existing sheds. 'leaf'
         # selection (anti-mega-blob); the companion spec warns this is a cliff, so
         # the A/B MEASURES whether recall actually recovers or shatters into noise.
+        #
+        # F2 guard (2026-07-16): social never SEEDS here either. The F2 no-social-
+        # seed rule covered the snapshot HDBSCAN pull but not this residual lane,
+        # so Bluesky/Lemmy posts clustered together and were PERSISTED as real
+        # topics ("Emerging: <post text>" — dt-2209/2551/2088-class, all-discussion
+        # membership) which then classify silent-risk in the relationship endpoint.
+        # Social still attaches in Pass 1 as discussion; it just cannot form
+        # topics. Same measured-exception knob as snapshot_emergent_topics.
+        allow_social_seed = os.getenv(
+            "ATLAS_CLUSTER_ALLOW_SOCIAL_SEED", "").strip().lower() in {
+            "1", "true", "yes", "on"}
+        seed_idx = skipped_idx if allow_social_seed else [
+            i for i in skipped_idx
+            if (sig_rows[i]["source_family"] or "") != "social"
+        ]
+        if len(seed_idx) < len(skipped_idx):
+            print(f"  new-topic formation: {len(skipped_idx) - len(seed_idx)} social "
+                  f"residuals excluded from seeding (F2 guard)")
         new_topics = new_members = 0
-        if not no_new_topics and len(skipped_idx) >= new_mcs:
-            sk = sig_vecs[skipped_idx]
+        if not no_new_topics and len(seed_idx) >= new_mcs:
+            sk = sig_vecs[seed_idx]
             labels = _cluster_leaf(sk, new_mcs, new_ms)
             for lab in sorted(set(int(x) for x in labels) - {-1}):
-                local = [skipped_idx[j] for j, l in enumerate(labels) if int(l) == lab]
+                local = [seed_idx[j] for j, l in enumerate(labels) if int(l) == lab]
                 cvecs = _normalize(sig_vecs[local])
                 centroid = cvecs.mean(axis=0)
                 cn = np.linalg.norm(centroid)

@@ -286,3 +286,23 @@ unassigned, with unassigned split into syndication-dup ‖ junk-headline ‖
 real-unclustered — the **unclassifiable floor** below which no open-set system
 should claim coverage. Artifacts: `docs/state/2026-07-08-clustering-recall-fix.md`,
 `docs/state/2026-07-09-useful-coverage-gate.md`.
+
+## 2026-07-16 addendum — derived-axis detectors + the LLM event lane
+
+1. **Detector-input coupling (C7 voice-asymmetry)**: an unchanged detector's
+   judged mismatch went 71% → 6.7% purely from upstream subject-geography
+   fixes (#238) — open-set detectors over DERIVED axes inherit the measured
+   error of their weakest input, and the honest protocol is judge-referenced
+   re-measure after each input fix. C7's geo source was then swapped from the
+   cluster coverage proxy to the serving inference (`55abeddc`); review-only
+   unblocked, ranking still gated. Artifacts:
+   `docs/research/subject-geo/2026-07-16-c7-reconsideration.md`,
+   `docs/research/voice-asymmetry/2026-07-12-c7-pilot.md`. (Method block in
+   the master plan under P2.)
+
+2. **Event-level grouping moved to a verdict-gated LLM lane**: `--linkage
+   llm-event` same-event umbrella grouper (mig 077, `953cd411`, hardened
+   against degraded verdicts `8fa4756d`) + `type_noncrisis` fast typing on
+   the 30-min cron — lane 2 (canonical-event) of the robot taxonomy now has
+   a production method beyond lexical/centroid linkage; adversarial-review
+   hardening is part of the method, not an afterthought.
