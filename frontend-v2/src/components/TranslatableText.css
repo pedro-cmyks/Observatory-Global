@@ -1,0 +1,15 @@
+/* #204b free-text translation toggle. Mirrors the TranslatableHeadline
+   affordance (SignalStream.css .th-toggle) but scoped + self-imported so
+   translated LABELS render correctly on routes that never mount the stream. */
+.translatable-headline .th-toggle {
+    background: none;
+    border: none;
+    padding: 0 0 0 6px;
+    margin: 0;
+    color: var(--accent-blue, #60a5fa);
+    font-size: 0.72em;
+    cursor: pointer;
+    opacity: 0.85;
+    white-space: nowrap;
+}
+.translatable-headline .th-toggle:hover { opacity: 1; text-decoration: underline; }

@@ -11,6 +11,7 @@ import { selectLeadThread } from '../lib/briefLead'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
 import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline } from '../components/TranslatableHeadline'
+import { TranslatableText } from '../components/TranslatableText'
 import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
@@ -554,7 +555,7 @@ export function BriefNewspaper() {
                 onClick={() => openThread(t, country)}
             >
                 <span className="brief-thread-main">
-                    <span className="brief-thread-label">{t.label}</span>
+                    <span className="brief-thread-label"><TranslatableText text={t.label} /></span>
                     {evidence?.headline && (
                         <span className="brief-thread-headline">
                             {evidence.id != null
@@ -789,7 +790,7 @@ export function BriefNewspaper() {
                                     }}
                                 >
                                     <div className="brief-section-tag" data-tip="Top-ranked narrative thread in this window (movement, volume and coherence). Sample evidence headlines shown when available.">LEAD STORY</div>
-                                    <h2 className="brief-lead-headline">{leadThread.label}</h2>
+                                    <h2 className="brief-lead-headline"><TranslatableText text={leadThread.label} /></h2>
                                     <div className="brief-lead-meta">
                                         <span className="brief-lead-count">{leadThread.signal_count.toLocaleString()} signals</span>
                                         {leadThread.source_count != null && (

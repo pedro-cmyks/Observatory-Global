@@ -88,7 +88,7 @@ def _llm_flag(request: Request) -> bool:
 _RULE_SPECS: list[tuple[str, str, object]] = [
     (r"^/api/v2/theme/[^/]+/external-depth$", "slow", None),
     (r"^/api/v2/research/plan$", "paid", None),
-    (r"^/api/v2/translate(?:/batch)?$", "paid", None),
+    (r"^/api/v2/translate(?:/batch|/text)?$", "paid", None),
     (r"^/api/v2/theme/[^/]+/insight$", "paid", None),
     (r"^/api/v2/briefing/insight$", "paid", None),
     (r"^/api/v2/signal/[^/]+/context$", "paid", None),

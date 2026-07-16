@@ -9,6 +9,14 @@ in signal_translations (mig 047) until the signal is pruned.
 Endpoints:
   GET  /api/v2/translate?signal_id=N&to=en
   POST /api/v2/translate/batch   {"signal_ids": [...], "to": "en"}
+  POST /api/v2/translate/text    {"text": "...", "target_lang": "en"}
+
+/translate/text (#204b) serves free TEXT with no signal id — dynamic-topic
+LABELS ("Peluncuran Program B50") reaching the Brief/console untranslated
+because TranslatableHeadline is signal_id-bound. Cache = Redis (app.state,
+same client the research router uses) keyed sha1(text|target_lang), 7-day
+TTL. NEVER 500s: provider failure degrades to the original text with
+`degraded: true`.
 
 Backed by deepseek-chat (V3). Cost is trivial (~30 in / ~35 out
 tokens per headline; cache makes repeat reads free). Degrades to
@@ -22,6 +30,7 @@ Spec: docs/superpowers/specs/2026-05-29-emergent-topic-discovery-design.md
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import html
 import json as _json
 import logging
@@ -46,7 +55,8 @@ def _build_prompt(headline: str, target_lang: str) -> str:
     return (
         f"Translate this news headline to {target_lang} (ISO 639-1). "
         "Preserve named entities, dates, and numbers verbatim. Do not "
-        "add commentary or quotation marks.\n\n"
+        "add commentary or quotation marks. If the headline is already "
+        f"in {target_lang}, return it unchanged.\n\n"
         'Return JSON only: {"translated": "..."}\n\n'
         f"Headline:\n{headline}"
     )
@@ -233,3 +243,85 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
 
         results = await asyncio.gather(*(_task(sid) for sid in req.signal_ids))
     return {"target_lang": target_lang, "translations": results}
+
+
+# --------------------------------------------------------------------------
+# Free-TEXT translation (#204b): thread/topic labels have no signal_id, so
+# the signal_translations cache can't serve them. Redis-cached instead.
+# --------------------------------------------------------------------------
+
+TEXT_CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days
+
+
+def _redis():
+    """The shared app Redis client (same one the research router uses).
+
+    Lazy import to avoid a circular import at module load (main_v2 imports
+    this router); returns None when Redis is unavailable so callers degrade.
+    """
+    try:
+        from app.main_v2 import app as _app
+        return getattr(_app.state, "redis", None)
+    except Exception:  # pragma: no cover - import-order edge
+        return None
+
+
+def _text_cache_key(text: str, target_lang: str) -> str:
+    digest = hashlib.sha1(
+        f"{html.unescape(text).strip()}|{target_lang.lower()}".encode("utf-8")
+    ).hexdigest()
+    return f"ttext:v1:{digest}"
+
+
+class TranslateTextRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=300)
+    target_lang: str = Field(..., min_length=2, max_length=2)
+
+
+@router.post("/api/v2/translate/text")
+async def post_translate_text(req: TranslateTextRequest) -> dict:
+    target_lang = req.target_lang.lower()
+    cleaned = html.unescape(req.text).strip()
+    key = _text_cache_key(req.text, target_lang)
+
+    redis = _redis()
+    if redis:
+        try:
+            cached = await redis.get(key)
+            if cached:
+                data = _json.loads(cached)
+                return {
+                    "translated": data["translated"],
+                    "same": bool(data.get("same", data["translated"] == cleaned)),
+                    "cached": True,
+                }
+        except Exception:
+            pass  # cache is best-effort; fall through to the provider
+
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    translated: Optional[str] = None
+    if api_key and cleaned:
+        try:
+            async with httpx.AsyncClient() as client:
+                translated = await _deepseek_translate(client, cleaned, target_lang, api_key)
+        except Exception as exc:  # never 500 — degrade to the original text
+            logger.warning("translate/text provider error: %s", exc)
+            translated = None
+
+    if not translated:
+        # Degraded truth: no key, provider down, or empty text. Never cached
+        # (a transient failure must not pin the untranslated text for 7 days).
+        return {"translated": cleaned, "same": True, "cached": False, "degraded": True}
+
+    translated = html.unescape(translated).strip()
+    same = translated == cleaned
+    if redis:
+        try:
+            await redis.setex(
+                key, TEXT_CACHE_TTL_SECONDS,
+                _json.dumps({"translated": translated, "same": same}),
+            )
+        except Exception:
+            pass  # cache write is best-effort
+
+    return {"translated": translated, "same": same, "cached": False}
