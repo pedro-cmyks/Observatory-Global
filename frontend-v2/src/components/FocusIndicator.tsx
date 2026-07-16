@@ -1,5 +1,6 @@
 import { useFocus } from '../contexts/FocusContext'
 import { resolveThreadLabel } from '../lib/themeLabels'
+import { resolveCountryName } from '../lib/countryNames'
 import './FocusIndicator.css'
 
 const typeLabels: Record<string, string> = {
@@ -21,13 +22,19 @@ export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
     // the raw id — while GDELT theme codes still route through getThemeLabel.
     const displayLabel = (focus.type === 'theme' || focus.type === 'thread')
         ? resolveThreadLabel(focus.label)
-        : focus.label
+        : focus.type === 'country'
+            ? resolveCountryName(focus.label)   // "Australia", never a raw "AU"
+            : focus.label
 
     return (
-        <div className="focus-indicator">
+        <div className="focus-indicator" role="status">
             <span className="focus-dot" aria-hidden="true" />
-            <span className="focus-meta">{typeLabels[focus.type]}</span>
+            <span className="focus-meta">{typeLabels[focus.type]} focus</span>
             <span className="focus-value">{displayLabel}</span>
+            {/* Pedro 2026-07-16: the floating chip covered the layer chips.
+                Now a full-width in-flow band — and since EVERY surface
+                re-scopes to the focus, the band says so. */}
+            <span className="focus-scope-note">map · threads · stream · universe re-scoped</span>
             <button
                 className="focus-clear"
                 data-tour="focus-clear"

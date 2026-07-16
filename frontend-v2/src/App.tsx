@@ -61,6 +61,7 @@ import {
   loadSavedLayouts,
   rowHeightFor,
   saveLayout,
+  snapResizedItem,
   type LayoutBucket,
 } from './lib/consoleLayout'
 
@@ -1257,6 +1258,18 @@ function AppContent() {
       return { ...prev, [gridBucket]: next }
     })
   }
+  // Resize-end snap: the released panel clips to the alignment lines the grid
+  // already draws (neighbor edges / container edge) and absorbs 1-unit dead
+  // gaps — easy alignment instead of pixel nudging. Drag-stop is untouched.
+  // RGL v2 fires onLayoutChange with the RAW layout synchronously right after
+  // onResizeStop, so the snapped layout is applied one tick later to win the
+  // write (the controlled `layout` prop then re-syncs the grid).
+  const handleGridResizeStop = (layout: Layout, _oldItem: LayoutItem | null, newItem: LayoutItem | null) => {
+    if (!newItem) return
+    const snapped = snapResizedItem(layout, newItem.i)
+    if (JSON.stringify(snapped) === JSON.stringify(layout)) return
+    window.setTimeout(() => handleGridLayoutChange(snapped), 0)
+  }
   const resetGridLayout = () => {
     clearSavedLayouts()
     setSavedGridLayouts({})
@@ -2050,6 +2063,7 @@ function AppContent() {
               dragConfig={{ handle: '.panel-header', cancel: 'button, input, a, select, textarea' }}
               resizeConfig={{ handles: ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'] }}
               onLayoutChange={handleGridLayoutChange}
+              onResizeStop={handleGridResizeStop}
             >
               <div key="radar" className="grid-slot">{radarPanel}</div>
               <div key="stream" className="grid-slot">{streamPanel}</div>

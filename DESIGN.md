@@ -819,6 +819,16 @@ Use the tokens above as literal values when recreating this visual system in ano
 
 The system works best when it feels like a quiet command center: dark, editorial when needed, precise, and connected end to end from brief to console to workspace.
 
+## Console Layout Coherence: Buckets, Presets, Snap (2026-07-16)
+
+The L2 console grid (`frontend-v2/src/lib/consoleLayout.ts`, wired in `App.tsx`) keeps one coherent arrangement across resolutions and aspect ratios through three mechanisms:
+
+**Width buckets.** The viewport width maps to exactly one bucket — `laptop` (<1600), `desktop` (1600–2399), `big` (≥2400). Laptop and desktop share the SAME Ocean-v2 schema (map hero top-left, Signal Stream reading under it, Narrative Threads full-height right column, Intel Dock full-width strip below) with only column-split tweaks; `big` switches to four full-height columns so the dock earns a column instead of a mostly-empty strip. The arrangement therefore survives a monitor change or window resize: crossing a bucket boundary swaps to that bucket's preset or its own saved layout, never to a stretched version of another bucket's.
+
+**Per-bucket presets and persistence.** Each bucket has its own default preset and its own saved slot in localStorage (`atlas.console-layout.v2`). Customizations made at 4K never distort the laptop layout and vice versa. Saved layouts that no longer span the full 24-column grid (stale presets) are discarded in favor of the current preset rather than persisting a dead strip. "Reset panel layout" clears all buckets back to the presets.
+
+**Resize snap.** On resize-end (`snapResizedItem`), the released panel's right/bottom edges clip to the alignment lines the grid already draws — any neighboring panel edge or the container edge within 1 grid unit — and a 1-unit dead gap against the next obstacle is absorbed (the panel expands to fill it). The snap never moves or shrinks other panels, respects panel minimums, and never creates overlap; drag behavior is untouched. The intent is that alignment is the easy default: panels land flush against their neighbors and the frame, so the console keeps reading as one mounted instrument cluster rather than a drift of off-by-one gutters. The snap is purely behavioral and theme-independent — identical in emerald and noir.
+
 ## Deep-Field Canvas Policy (R3c, 2026-07-16)
 
 Three console surfaces are **dark-by-design in every theme**, including emerald-light:

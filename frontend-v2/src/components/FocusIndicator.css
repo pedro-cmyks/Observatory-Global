@@ -1,25 +1,48 @@
+/* Focus BAND (Pedro 2026-07-16): the old floating chip sat fixed over the map
+   toolbar and covered the layer chips. Desktop is now a full-width IN-FLOW
+   strip between the command bar and the console — it pushes content down
+   (the grid measures shell height at runtime, #233) and covers nothing.
+   Mobile keeps the floating above-tab-bar pill (deliberate, spec §7). */
 .focus-indicator {
-    position: fixed;
-    top: 58px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: inline-flex;
+    position: static;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    max-width: 80vw;
-    padding: 3px 5px 3px 9px;
-    background: rgba(var(--color-shell-rgb), 0.94);
-    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.32);
-    border-radius: 6px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
-    z-index: 1000;
+    gap: 8px;
+    width: 100%;
+    /* The command bar is position:absolute (h=48) — the first in-flow element
+       starts under it, so the band clears it explicitly. */
+    margin-top: 48px;
+    padding: 5px 14px;
+    background: linear-gradient(
+        90deg,
+        rgba(var(--color-accent-deep-rgb), 0.14),
+        rgba(var(--color-accent-deep-rgb), 0.05) 55%,
+        transparent
+    );
+    border: none;
+    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
+    border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.35);
+    border-radius: 0;
+    box-shadow: none;
+    z-index: 20;
     font-family: 'SF Mono', 'Fira Mono', monospace;
     animation: focusFade 0.18s ease-out;
 }
 
+.focus-scope-note {
+    margin-left: auto;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted, #8b97a6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 @keyframes focusFade {
-    from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
-    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    from { opacity: 0; transform: translateY(-3px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 .focus-dot {
@@ -69,12 +92,24 @@
 }
 
 @media (max-width: 768px) {
-    /* Float just above the bottom tab bar, on top of any open panel. */
+    /* Mobile keeps the floating pill just above the bottom tab bar, on top of
+       any open panel (deliberate — deselect matters most there, spec §7). */
     .focus-indicator {
+        position: fixed;
         top: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        max-width: 86vw;
+        padding: 3px 5px 3px 9px;
+        background: rgba(var(--color-shell-rgb), 0.94);
+        border: 1px solid rgba(var(--color-accent-deep-rgb), 0.32);
+        border-radius: 6px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
         bottom: calc(62px + env(safe-area-inset-bottom, 0px));
         z-index: 9550;
     }
+    .focus-scope-note { display: none; }
 }
 
 /* R3c verify residual — emerald: the chip value was a dark-theme literal

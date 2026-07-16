@@ -9,7 +9,9 @@ export type LayoutBucket = 'laptop' | 'desktop' | 'big'
 
 export const GRID_COLS = 24
 export const GRID_ROWS = 24
-export const LAYOUT_STORAGE_KEY = 'atlas.console-layout.v2'
+// v3 (2026-07-16): the default arrangement changed to Ocean-v2 (Pedro's pick)
+// — bump the key once so stale 3-column saved layouts reset to the new preset.
+export const LAYOUT_STORAGE_KEY = 'atlas.console-layout.v3'
 export const PANEL_IDS = ['radar', 'stream', 'threads', 'dock'] as const
 
 const MIN_W = 3
@@ -146,6 +148,106 @@ export function layoutForBucket(
   const candidate = saved[bucket]
   if (isValidLayout(candidate) && layoutFillsWidth(candidate)) return candidate
   return defaultLayoutFor(bucket)
+}
+
+// --- Resize snap ------------------------------------------------------------
+// When a panel resize ends, its right/bottom edges "clip" to the alignment
+// lines the rest of the grid already draws: any neighboring panel edge or the
+// container edge within `threshold` grid units. A small dead gap (<= threshold)
+// against the next obstacle gets absorbed — the panel expands to fill it.
+// Pure: only the resized item ever changes; neighbors are never moved or
+// shrunk; minW/minH and the grid bounds are respected; never creates overlap.
+
+export interface SnapOptions {
+  threshold?: number
+}
+
+interface Rect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+function rectsOverlap(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
+// Pick the best snap target for one edge (right or bottom). Candidates are
+// neighbor edges + the container edge; nearest wins, ties prefer expansion
+// (fill over shrink). A candidate that would push the item below its minimum,
+// past the container, or into another panel is skipped. When nothing within
+// threshold qualifies, the current edge stays — which also makes the snap
+// idempotent (a snapped edge sits at delta 0 of its own candidate line).
+function snapEdge(
+  currentEdge: number,
+  fixedStart: number,
+  minSize: number,
+  containerEnd: number,
+  candidates: readonly number[],
+  fits: (edge: number) => boolean,
+  threshold: number,
+): number {
+  let best = currentEdge
+  let bestDelta = Number.POSITIVE_INFINITY
+  for (const c of candidates) {
+    if (c - fixedStart < minSize) continue
+    if (c > containerEnd) continue
+    const delta = Math.abs(c - currentEdge)
+    if (delta > threshold) continue
+    if (!fits(c)) continue
+    if (delta < bestDelta || (delta === bestDelta && c > best)) {
+      best = c
+      bestDelta = delta
+    }
+  }
+  return best
+}
+
+export function snapResizedItem(
+  layout: readonly LayoutItem[],
+  itemId: string,
+  opts: SnapOptions = {},
+): LayoutItem[] {
+  const threshold = opts.threshold ?? 1
+  const out = layout.map(l => ({ ...l }))
+  const item = out.find(l => l.i === itemId)
+  if (!item) return out
+  const others = out.filter(l => l.i !== itemId)
+
+  const noOverlap = (rect: Rect) => others.every(o => !rectsOverlap(rect, o))
+
+  // Right edge: neighbor left/right edges + the container's last column.
+  const xCandidates: number[] = [GRID_COLS]
+  for (const o of others) xCandidates.push(o.x, o.x + o.w)
+  const newRight = snapEdge(
+    item.x + item.w,
+    item.x,
+    item.minW ?? 1,
+    GRID_COLS,
+    xCandidates,
+    edge => noOverlap({ x: item.x, y: item.y, w: edge - item.x, h: item.h }),
+    threshold,
+  )
+  const newW = newRight - item.x
+
+  // Bottom edge: neighbor top/bottom edges + the container's last row. Uses
+  // the already-snapped width so the combined rect stays overlap-free.
+  const yCandidates: number[] = [GRID_ROWS]
+  for (const o of others) yCandidates.push(o.y, o.y + o.h)
+  const newBottom = snapEdge(
+    item.y + item.h,
+    item.y,
+    item.minH ?? 1,
+    GRID_ROWS,
+    yCandidates,
+    edge => noOverlap({ x: item.x, y: item.y, w: newW, h: edge - item.y }),
+    threshold,
+  )
+
+  item.w = newW
+  item.h = newBottom - item.y
+  return out
 }
 
 // Row height so GRID_ROWS rows + margins + padding exactly fill the available
