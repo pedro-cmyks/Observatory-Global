@@ -31,6 +31,19 @@
     --color-sentiment-neutral: #94a3b8;
     --color-sentiment-negative: #f87171;
 
+    /* Category-FAMILY palette (dataviz audit 2026-07-13) — CVD-validated on
+       the dark surface #0c182b. Assignment lives in lib/categoryFamily.ts
+       (deterministic keyword map, fixed order — never hashed, never by rank);
+       FAMILY_HEX there mirrors these as the var() fallbacks. Every family-
+       colored mark must also carry a text label (secondary encoding). */
+    --fam-conflict: #cc5d47;
+    --fam-governance: #b58733;
+    --fam-health: #0f92b0;
+    --fam-economy: #5183cc;
+    --fam-society: #c8659a;
+    --fam-culture: #8a949c;
+    --fam-other: #64748b;
+
     --font-display: 'Fraunces', Georgia, serif;
     --font-sans: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-technical: 'Geist Mono Variable', 'Geist Mono', 'SF Mono', monospace;

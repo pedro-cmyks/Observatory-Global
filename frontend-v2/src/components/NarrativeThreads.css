@@ -88,7 +88,9 @@
 .sentiment-dot.neg { background-color: #f87171; }
 .sentiment-dot.neu { background-color: #94a3b8; }
 
-.trend-arrow.accelerating { color: var(--color-severity-critical, #ef4444); }
+/* Dataviz audit fix 3: growth is NOT danger — accelerating renders in the
+   positive/accent family; critical red stays reserved for real severity. */
+.trend-arrow.accelerating { color: var(--color-accent-highlight, #4ade80); }
 .trend-arrow.stable { color: var(--color-text-secondary, #94a3b8); }
 .trend-arrow.fading { color: var(--color-text-muted, #64748b); }
 
@@ -305,7 +307,8 @@
     flex-shrink: 0;
 }
 
-.trend-label.accelerating { color: var(--color-severity-critical, #ef4444); }
+/* Growth ≠ danger (dataviz audit fix 3): positive/accent, never critical red. */
+.trend-label.accelerating { color: var(--color-accent-highlight, #4ade80); }
 .trend-label.stable { color: var(--color-text-secondary, #94a3b8); }
 .trend-label.fading { color: var(--color-text-muted, #64748b); }
 

@@ -75,7 +75,8 @@ const Sparkline = ({ data, trend }: { data: Array<{ hour: string; count: number 
         const y = 34 - (point.count / max) * 30
         return `${x},${y}`
     }).join(' ')
-    const stroke = trend === 'accelerating' ? '#ef4444' : trend === 'fading' ? '#64748b' : '#60a5fa'
+    // Growth ≠ danger (dataviz audit fix 3): accelerating = positive accent, not critical red.
+    const stroke = trend === 'accelerating' ? '#4ade80' : trend === 'fading' ? '#64748b' : '#60a5fa'
     return (
         <svg className="thread-focus-chart" viewBox="0 0 100 36" preserveAspectRatio="none">
             <polyline points={points} stroke={stroke} />

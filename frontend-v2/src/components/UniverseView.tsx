@@ -612,7 +612,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             <polyline
                                 points={screen.join(' ')}
                                 fill="none"
-                                stroke={categoryColor(n.category)}
+                                /* family palette returns a var() expression — SVG
+                                   presentation attrs don't substitute var(), so style. */
+                                style={{ stroke: categoryColor(n.category) }}
                                 strokeOpacity={0.45}
                                 strokeWidth={1.2}
                                 strokeDasharray="2 3"
@@ -706,7 +708,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 <circle
                                     cx={p.sx} cy={p.sy}
                                     r={r}
-                                    fill={categoryColor(n.category)}
+                                    style={{ fill: categoryColor(n.category) }}
                                     fillOpacity={0.85}
                                     stroke={n.crisis_relevant ? 'rgba(248,113,113,0.85)' : orphan ? 'rgba(226,232,240,0.8)' : 'rgba(226,232,240,0.35)'}
                                     strokeWidth={n.crisis_relevant ? 1.4 : orphan ? 1.1 : 0.6}

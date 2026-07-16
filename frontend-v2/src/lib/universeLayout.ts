@@ -7,6 +7,8 @@
  * backend (positions approximate by design; edges measured in full space).
  */
 
+import { familyColor } from './categoryFamily'
+
 export interface UniverseNode {
   id: string
   label: string
@@ -90,12 +92,15 @@ export function universeRadius(n: number): number {
   return Math.max(2.5, Math.min(13, 2 + Math.log2(1 + n) * 1.15))
 }
 
-/** Deterministic category color — stable hue per category label. */
+/**
+ * Deterministic category color — the FAMILY palette (dataviz audit fix 1).
+ * Was a hash-to-hue rainbow (colors changed whenever the data changed); now
+ * delegates to the fixed keyword-map families in lib/categoryFamily.ts.
+ * Returns a CSS var() expression — consume via inline `style` (SVG
+ * presentation attributes do not substitute var()).
+ */
 export function categoryColor(category: string): string {
-  let hash = 0
-  for (let i = 0; i < category.length; i++) hash = (hash * 31 + category.charCodeAt(i)) | 0
-  const hue = Math.abs(hash) % 360
-  return `hsl(${hue}, 62%, 62%)`
+  return familyColor(category)
 }
 
 /** Edge stroke opacity from full-space similarity: 0.90 → faint, 0.99+ → strong. */

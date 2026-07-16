@@ -525,7 +525,8 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
               {showLabel && nb.bridge && rel < -8 && (
                 <line x1={0} y1={-4} x2={0} y2={rel + 2} stroke="#475569" strokeWidth={0.4} />
               )}
-              <circle r={nb.bridge ? 3.5 : 3} fill={nb.category ? categoryColor(nb.category) : '#64748b'}
+              {/* family palette returns a var() expression — SVG attrs don't substitute var(), so style */}
+              <circle r={nb.bridge ? 3.5 : 3} style={{ fill: nb.category ? categoryColor(nb.category) : '#64748b' }}
                 fillOpacity={nb.bridge ? 0.6 : 0.5}
                 stroke={nb.bridge ? '#e2e8f0' : '#475569'} strokeWidth={nb.bridge ? 1.2 : 0.5} />
               {showLabel && (
@@ -565,7 +566,7 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
               {rel < -r - 8 && (
                 <line x1={0} y1={-r - 2} x2={0} y2={rel + 2} stroke={clusterColor(ci)} strokeWidth={0.5} strokeOpacity={0.5} />
               )}
-              <circle r={r} fill={n.category ? categoryColor(n.category) : '#7dd3fc'}
+              <circle r={r} style={{ fill: n.category ? categoryColor(n.category) : '#7dd3fc' }}
                       stroke={isolated ? '#64748b' : clusterColor(ci)}
                       strokeWidth={active ? 2.5 : 1.5} />
               <text y={rel} textAnchor="middle" className="dcx-node-label">
