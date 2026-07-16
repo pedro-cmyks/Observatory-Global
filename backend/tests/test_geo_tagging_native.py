@@ -456,6 +456,53 @@ def test_subject_geography_ignores_unresolvable_ner_places():
     assert result["verified_subject_countries"] == []
 
 
+def test_subject_geography_verifies_domestic_story_from_gazetteer_city():
+    # The #238 structural-miss class: a small-town US story whose headlines
+    # never name the country. Three receipts, three outlets, NER pulled the
+    # city (GeoNames gazetteer: Roseburg -> US) -> verified US via ner_place.
+    receipts = [
+        {"id": 1, "headline": "Fire crews contain fairgrounds blaze", "source_name": "R", "places": ["roseburg"]},
+        {"id": 2, "headline": "Evacuation order lifted downtown", "source_name": "A", "places": ["Roseburg"]},
+        {"id": 3, "headline": "School closures extend into next week", "source_name": "B", "places": ["roseburg"]},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    assert result["status"] == "verified"
+    assert result["verified_subject_countries"] == ["US"]
+    us = next(c for c in result["candidates"] if c["country"] == "US")
+    assert "ner_place" in us["methods"]
+
+
+def test_subject_geography_places_combine_with_headline_evidence():
+    # One receipt names the country in the headline, the other only carries a
+    # NER place — the two evidence kinds corroborate the same country.
+    receipts = [
+        {"id": 1, "headline": "United States announces new tariffs", "source_name": "R"},
+        {"id": 2, "headline": "Port operators brace for the change", "source_name": "A", "places": ["Roseburg"]},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    assert result["status"] == "verified"
+    assert result["verified_subject_countries"] == ["US"]
+    us = next(c for c in result["candidates"] if c["country"] == "US")
+    assert "ner_place" in us["methods"]
+    assert len(us["methods"]) >= 2  # headline method + ner_place
+
+
+def test_subject_geography_one_place_receipt_does_not_clear_bar_with_proxy_only():
+    # Person-proxy demotion still governs: two receipts whose US evidence is
+    # ONLY the Trump proxy + one place receipt = 1 non-proxy receipt, below
+    # the 2-receipt/2-outlet verified bar. Candidate, never verified.
+    receipts = [
+        {"id": 1, "headline": "Trump comments on the summit", "source_name": "R"},
+        {"id": 2, "headline": "Trump repeats the claim at rally", "source_name": "A"},
+        {"id": 3, "headline": "Local crowd gathers at fairgrounds", "source_name": "B", "places": ["roseburg"]},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    assert result["verified_subject_countries"] == []
+    us = next(c for c in result["candidates"] if c["country"] == "US")
+    assert us["status"] == "candidate"
+    assert us["non_proxy_receipt_count"] == 1
+
+
 # ── #238 lexicon-form gaps (measured 2026-07-16,
 # docs/research/subject-geo/2026-07-16-inference-quality.md) ───────────────────
 # Each form below was probed against live front-page receipts and matched

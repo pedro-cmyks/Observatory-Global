@@ -874,6 +874,10 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
         single_receipt_geo = infer_receipt_subject_geography([{
             "headline": headline,
             "source_name": _record_get(row, "source_name"),
+            # NER places are derived from the frozen story text (not mutable
+            # ingestion metadata), so they are a valid disambiguator here too
+            # (e.g. body names Dakar → SN).
+            "places": _as_list(_record_get(row, "nlp_places")),
         }])
         candidate_codes = {
             candidate.get("country")
@@ -1044,6 +1048,7 @@ _EMERGENT_SAMPLE_SIGNALS_SQL = """
            timestamp,
            persons,
            themes,
+           nlp_places,
            sentiment        AS nlp_sentiment,
            1::int           AS syndication_count,
            NULL::float      AS confidence
@@ -1339,6 +1344,11 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         {
             "headline": _record_get(sig, "headline"),
             "source_name": _record_get(sig, "source_name"),
+            # #238 C-clean slice 2: NER places from the story body (mig 078
+            # nlp_places, JSONB → may arrive as a JSON string from asyncpg).
+            # Location evidence for the domestic-story class whose headlines
+            # never name the country; empty until the M1 fleet backfills.
+            "places": _as_list(_record_get(sig, "nlp_places")),
         }
         for sig in sample_signals
     ])
