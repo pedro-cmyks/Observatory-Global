@@ -4,22 +4,22 @@
     height: 100%;
     width: 100%;
     overflow: hidden;
-    background: rgba(10, 15, 20, 0.5);
-    color: var(--color-text-primary, #e2e8f0);
+    background: rgba(var(--color-shell-rgb), 0.5);
+    color: var(--color-text-primary);
 }
 
 .matrix-controls {
     display: flex;
     padding: 8px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.05);
     gap: 8px;
     background: rgba(0, 0, 0, 0.2);
 }
 
 .matrix-toggle {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--color-text-secondary, #94a3b8);
+    background: rgba(var(--color-ink-rgb), 0.05);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.1);
+    color: var(--color-text-secondary);
     font-size: 10px;
     padding: 4px 10px;
     border-radius: 4px;
@@ -29,14 +29,14 @@
 }
 
 .matrix-toggle:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(var(--color-ink-rgb), 0.1);
     color: white;
 }
 
 .matrix-toggle.active {
-    background: rgba(29, 158, 117, 0.2);
-    border-color: rgba(29, 158, 117, 0.5);
-    color: #34d399;
+    background: rgba(var(--color-accent-deep-rgb), 0.2);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.5);
+    color: var(--color-accent-primary);
 }
 
 .matrix-grid-wrapper {
@@ -69,11 +69,11 @@
     transform: scale(1.1);
     z-index: 10;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.8);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.8);
 }
 
 .matrix-cell.diagonal {
-    background: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(var(--color-ink-rgb), 0.1) !important;
     cursor: default;
 }
 
@@ -126,7 +126,7 @@
 .matrix-grid.hover-active .matrix-col-header.highlight,
 .matrix-grid.hover-active .matrix-row-header.highlight {
     opacity: 1;
-    color: #e2e8f0;
+    color: var(--color-text-primary);
     font-weight: bold;
 }
 
@@ -142,7 +142,7 @@
 .skeleton-cell {
     width: 24px;
     height: 24px;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(var(--color-ink-rgb), 0.03);
     border-radius: 2px;
     animation: pulse 1.5s infinite ease-in-out alternate;
 }
@@ -152,7 +152,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-severity-critical, #ef4444);
+    color: var(--color-severity-critical);
     font-size: 11px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }

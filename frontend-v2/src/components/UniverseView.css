@@ -25,7 +25,7 @@
 }
 
 .universe-constellation {
-  fill: rgba(148, 163, 184, 0.28);
+  fill: rgba(var(--color-neutral-rgb), 0.28);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -38,7 +38,7 @@
 }
 
 .universe-body-label {
-  fill: #cbd5e1;
+  fill: var(--color-text-secondary);
   font-size: 9.5px;
   text-anchor: middle;
   pointer-events: none;
@@ -67,12 +67,12 @@
 }
 
 .universe-hover strong {
-  color: #e2e8f0;
+  color: var(--color-text-primary);
   font-size: 12.5px;
 }
 
 .universe-hover em {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 10px;
   font-style: normal;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
@@ -96,7 +96,7 @@
 
 .universe-scrubber-time {
   min-width: 96px;
-  color: #cbd5e1;
+  color: var(--color-text-secondary);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 10.5px;
 }
@@ -114,7 +114,7 @@
   align-items: center;
   gap: 14px;
   margin-top: 8px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 9.5px;
 }
 
@@ -149,7 +149,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1.5px dashed rgba(226, 232, 240, 0.8);
+  border: 1.5px dashed rgba(var(--color-ink-rgb), 0.8);
 }
 
 /* Map-panel mode: universe mounts OVER the map container (map stays mounted
@@ -179,7 +179,7 @@
   background: none;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 5px;
-  color: #94a3b8;
+  color: var(--color-sentiment-neutral);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   padding: 3px 9px;
@@ -219,7 +219,7 @@
 }
 
 .universe-orbit-title {
-  color: #e2e8f0;
+  color: var(--color-text-primary);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -236,7 +236,7 @@
 
 .universe-empty {
   padding: 40px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 12px;
   text-align: center;
 }
@@ -259,14 +259,14 @@
 }
 
 .universe-overlay-title {
-  color: #e2e8f0;
+  color: var(--color-text-primary);
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .universe-overlay-sub {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 10.5px;
   margin-left: 12px;
 }
@@ -275,7 +275,7 @@
   background: none;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 6px;
-  color: #cbd5e1;
+  color: var(--color-text-secondary);
   font-size: 15px;
   line-height: 1;
   padding: 4px 9px;
@@ -333,7 +333,7 @@
 }
 
 .universe-footprint-stat {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
 }
@@ -346,7 +346,7 @@
   pointer-events: auto;
 }
 
-.universe-footprint-shape--cross-cutting { color: #fbbf24; }
+.universe-footprint-shape--cross-cutting { color: var(--color-severity-notable); }
 .universe-footprint-shape--concentrated { color: #7dd3fc; }
 .universe-footprint-shape--mixed { color: #a78bfa; }
 
@@ -373,7 +373,7 @@
 }
 
 .universe-heating-top {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 9.5px;
 }
 

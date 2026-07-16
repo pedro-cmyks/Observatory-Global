@@ -32,8 +32,8 @@
 .panel-error-retry {
   margin-top: 8px;
   padding: 4px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--color-ink-rgb), 0.04);
+  border: 1px solid rgba(var(--color-ink-rgb), 0.08);
   border-radius: 3px;
   color: var(--color-text-muted);
   font-size: 10px;
@@ -44,13 +44,13 @@
 }
 
 .panel-error-retry:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #94a3b8;
+  background: rgba(var(--color-ink-rgb), 0.08);
+  color: var(--color-sentiment-neutral);
 }
 
 .panel-error-detail {
   font-size: 9px;
-  color: #f87171;
+  color: var(--color-sentiment-negative);
   max-width: 280px;
   text-align: center;
   word-break: break-word;

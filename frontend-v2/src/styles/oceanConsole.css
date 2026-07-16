@@ -1,0 +1,417 @@
+/* ============================================================================
+   R3 — Ocean console surface language (reference: console-l2.html).
+   EVERY rule here is scoped to the emerald presets ([data-theme^='emerald'],
+   stamped on <html> by ThemeContext) so Intel-Noir and Retro-Radar keep their
+   exact current look. All colors come from ThemeContext vars — no raw emerald
+   hexes, so a future preset restyles this skin for free.
+
+   Language: serif wordmark + panel titles · mono uppercase measured chips ·
+   honest vitals · category-family left borders · dashed = unverified ·
+   semantic good/warn/crit reserved for real severity.
+   ========================================================================= */
+
+/* ---------- command bar (masthead) ---------- */
+
+[data-theme^='emerald'] .command-bar {
+  background: rgba(var(--color-raise-rgb), 0.88);
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: none;
+}
+
+[data-theme^='emerald'] .command-bar-left .brand {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--color-text-primary);
+  text-shadow: none;
+}
+[data-theme^='emerald'] .command-bar-left .brand:hover {
+  color: var(--color-accent-primary);
+  text-shadow: none;
+}
+[data-theme^='emerald'] .command-bar-left .brand svg {
+  color: var(--color-accent-primary);
+}
+
+[data-theme^='emerald'] .brand-tag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 99px;
+  padding: 2px 7px;
+  transform: translateY(-1px);
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  [data-theme^='emerald'] .brand-tag { display: none; }
+}
+
+/* Measured chips: controls read as quiet mono furniture, accent only when on */
+[data-theme^='emerald'] .time-controls {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-subtle);
+  border-radius: 7px;
+}
+[data-theme^='emerald'] .time-btn {
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+[data-theme^='emerald'] .time-btn:hover {
+  background: var(--color-bg-tertiary);
+}
+[data-theme^='emerald'] .time-btn.active {
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+  box-shadow: none;
+}
+[data-theme^='emerald'] .time-view-chip {
+  color: var(--color-text-muted);
+  border-color: var(--color-border-subtle);
+}
+
+[data-theme^='emerald'] .cmd-btn {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+[data-theme^='emerald'] .cmd-btn:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  box-shadow: none;
+}
+[data-theme^='emerald'] .command-bar-center > .workbench-btn {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+}
+[data-theme^='emerald'] .command-bar-center > .workbench-btn:hover {
+  border-color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .command-bar-center > .workbench-btn.active {
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .time-compact-trigger {
+  border-color: var(--color-border-subtle);
+}
+[data-theme^='emerald'] .cmd-count {
+  background: color-mix(in srgb, var(--color-accent-primary) 22%, transparent);
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .time-btn.active .cmd-count,
+[data-theme^='emerald'] .workbench-btn.active .cmd-count {
+  background: color-mix(in srgb, #000 20%, transparent);
+  color: var(--color-on-accent);
+}
+
+/* WATCH keeps its warn identity, mapped through the semantic var */
+[data-theme^='emerald'] .cmd-btn--watch {
+  color: var(--color-severity-notable);
+  border-color: color-mix(in srgb, var(--color-severity-notable) 35%, transparent);
+}
+[data-theme^='emerald'] .cmd-btn--watch:hover {
+  background: color-mix(in srgb, var(--color-severity-notable) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-severity-notable) 60%, transparent);
+  color: var(--color-severity-notable);
+}
+
+/* Honest vitals: live pill + archive-start + clock in the measured voice */
+[data-theme^='emerald'] .live-pill {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 34%, transparent);
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, transparent);
+}
+[data-theme^='emerald'] .data-since-pill {
+  border-color: var(--color-border-subtle);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .utc-clock {
+  color: var(--color-text-muted);
+}
+
+[data-theme^='emerald'] .cmd-menu {
+  background: rgba(var(--color-raise-rgb), 0.98);
+  border-color: var(--color-border-medium);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  border-radius: 8px;
+}
+[data-theme='emerald-dark'] .cmd-menu {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* Coverage disclaimer → honest-chip voice (was amber-on-dark hardcode) */
+[data-theme^='emerald'] .coverage-disclaimer {
+  background: rgba(var(--color-raise-rgb), 0.85);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .coverage-disclaimer::before {
+  content: '◆ ';
+  color: var(--color-accent-primary);
+}
+
+/* ---------- panel chrome ---------- */
+
+[data-theme^='emerald'] .terminal-panel {
+  background: var(--color-bg-panel);
+  border-color: var(--color-border-subtle);
+  box-shadow: none;
+}
+
+/* One header treatment across radar / stream / threads / dock / matrix:
+   serif title + mono sub-label (the deferred shared-PanelHeader refactor stays
+   deferred — this is CSS-level consistency over the per-panel markup). */
+[data-theme^='emerald'] .terminal-panel .panel-header,
+[data-theme^='emerald'] .terminal-panel.radar .panel-header,
+[data-theme^='emerald'] .terminal-panel.dock .panel-header,
+[data-theme^='emerald'] .terminal-panel.matrix .panel-header {
+  background: transparent;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  min-height: 34px;
+  padding: 5px 12px;
+}
+
+[data-theme^='emerald'] .panel-subtitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Header context labels (drill states) inherit the theme voice */
+[data-theme^='emerald'] .ph-ctx { color: var(--color-text-secondary); }
+[data-theme^='emerald'] .ph-ctx--story { color: var(--color-severity-notable); }
+[data-theme^='emerald'] .ph-ctx--live { color: var(--color-accent-primary); }
+[data-theme^='emerald'] .ph-ctx--person { color: var(--color-subj-person); }
+
+/* Layer chips (HEAT/FLOW/PLANE/SHIPS) → Ocean toggle pills */
+[data-theme^='emerald'] .layer-btn {
+  font-family: var(--font-mono, monospace);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 99px;
+  padding: 2px 9px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+[data-theme^='emerald'] .layer-btn:hover {
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+[data-theme^='emerald'] .layer-btn.active {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-on-accent);
+}
+[data-theme^='emerald'] .layer-btn.layer-btn-error { color: var(--color-severity-notable); }
+[data-theme^='emerald'] .layer-btn.layer-btn-hint { color: var(--color-accent-primary); }
+[data-theme^='emerald'] .layer-btn.layer-btn--reset {
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--color-border-subtle);
+  border-radius: 0;
+}
+
+/* Dock / map-view tabs → Ocean segmented pills */
+[data-theme^='emerald'] .dock-tabs {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  padding: 2px;
+}
+[data-theme^='emerald'] .dock-tab {
+  font-family: var(--font-mono, monospace);
+  border-bottom: 2px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .dock-tab:hover { color: var(--color-text-primary); }
+[data-theme^='emerald'] .dock-tab.active {
+  background: rgba(var(--color-raise-rgb), 1);
+  color: var(--color-text-primary);
+  border-bottom-color: transparent;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- narrative threads rows ---------- */
+/* Left border = category family (famOf inline, untouched) · movement arrow in
+   accent (growth ≠ danger, shipped) · summary-first de-densify preserved. */
+
+[data-theme^='emerald'] .narrative-row {
+  border-bottom-color: var(--color-border-subtle);
+}
+[data-theme^='emerald'] .narrative-row:hover {
+  background: var(--color-bg-secondary);
+}
+[data-theme^='emerald'] .narrative-row.focused {
+  background: color-mix(in srgb, var(--color-accent-primary) 8%, transparent);
+}
+[data-theme^='emerald'] .narrative-count-lineage {
+  font-family: var(--font-mono, monospace);
+}
+[data-theme^='emerald'] .country-pip--active {
+  background: color-mix(in srgb, var(--color-accent-primary) 12%, transparent);
+  color: var(--color-accent-primary);
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 32%, transparent);
+}
+[data-theme^='emerald'] .country-pip--btn:hover {
+  background: color-mix(in srgb, var(--color-accent-primary) 16%, transparent);
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .person-pip {
+  background: color-mix(in srgb, var(--color-subj-person) 12%, transparent);
+  color: var(--color-subj-person);
+}
+[data-theme^='emerald'] .narrative-sibling-reason {
+  background: rgba(var(--color-info-rgb), 0.12);
+  color: var(--color-info);
+}
+[data-theme^='emerald'] .narrative-scope-strip,
+[data-theme^='emerald'] .stream-scope-strip {
+  color: var(--color-info);
+  background: rgba(var(--color-info-rgb), 0.08);
+  border-bottom-color: rgba(var(--color-info-rgb), 0.2);
+}
+[data-theme^='emerald'] .narrative-scope-clear,
+[data-theme^='emerald'] .stream-scope-clear {
+  border-color: rgba(var(--color-info-rgb), 0.35);
+  color: var(--color-info);
+}
+[data-theme^='emerald'] .narrative-scope-clear:hover,
+[data-theme^='emerald'] .stream-scope-clear:hover {
+  background: rgba(var(--color-info-rgb), 0.12);
+  color: var(--color-text-primary);
+}
+[data-theme^='emerald'] .narrative-country-filter-notice {
+  color: var(--color-info);
+  border-bottom-color: rgba(var(--color-info-rgb), 0.15);
+}
+[data-theme^='emerald'] .narrative-tier-badge--aggregate {
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .attention-badge.search {
+  background: rgba(var(--color-info-rgb), 0.12);
+  color: var(--color-info);
+}
+[data-theme^='emerald'] .attention-badge.forum {
+  color: var(--color-severity-elevated);
+  background: color-mix(in srgb, var(--color-severity-elevated) 12%, transparent);
+}
+[data-theme^='emerald'] .narrative-empty--error {
+  color: var(--color-severity-notable);
+}
+
+/* ---------- signal stream rows ---------- */
+
+[data-theme^='emerald'] .stream-filter-bar {
+  background: rgba(var(--color-ink-rgb), 0.04);
+}
+[data-theme^='emerald'] .signal-row:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--color-border-medium);
+}
+[data-theme='emerald-light'] .signal-row:hover {
+  box-shadow: 0 6px 18px rgba(var(--color-ink-rgb), 0.10), 0 0 0 1px var(--color-border-medium);
+}
+[data-theme^='emerald'] .stream-live-dot.paused {
+  background: var(--color-text-muted);
+}
+
+/* Typed / source-family badges in the Ocean chip voice */
+[data-theme^='emerald'] .source,
+[data-theme^='emerald'] .country-chip,
+[data-theme^='emerald'] .theme-tag,
+[data-theme^='emerald'] .person-tag {
+  font-family: var(--font-mono, monospace);
+}
+[data-theme^='emerald'] .person-tag {
+  background: color-mix(in srgb, var(--color-subj-person) 12%, transparent);
+  color: var(--color-subj-person);
+}
+[data-theme^='emerald'] .person-tag.clickable:hover {
+  background: color-mix(in srgb, var(--color-subj-person) 20%, transparent);
+}
+[data-theme^='emerald'] .source.source-trusted {
+  color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, transparent);
+}
+[data-theme^='emerald'] .source.source-tabloid {
+  color: var(--color-sentiment-negative);
+  background: color-mix(in srgb, var(--color-sentiment-negative) 10%, transparent);
+}
+[data-theme^='emerald'] .stream-lane-badge--entertainment {
+  background: color-mix(in srgb, var(--fam-society, #c8659a) 12%, transparent);
+  color: var(--fam-society, #c8659a);
+  border-color: color-mix(in srgb, var(--fam-society, #c8659a) 30%, transparent);
+}
+[data-theme^='emerald'] .th-toggle {
+  color: var(--color-info);
+}
+
+/* Service failure stays amber-loud — mapped through the semantic warn var */
+[data-theme^='emerald'] .empty-state.stream-feed-error,
+[data-theme^='emerald'] .stream-live-dot.feed-error + .stream-status-text {
+  color: var(--color-severity-notable);
+}
+[data-theme^='emerald'] .stream-feed-error-dot,
+[data-theme^='emerald'] .stream-live-dot.feed-error {
+  background: var(--color-severity-notable);
+  box-shadow: 0 0 6px var(--color-severity-notable);
+}
+
+/* ---------- intel dock rows ---------- */
+/* Severity pills (critical/elevated/notable) already read the semantic vars —
+   real severity keeps its color; everything decorative goes measured-neutral. */
+
+[data-theme^='emerald'] .ap-focus-badge {
+  font-family: var(--font-mono, monospace);
+}
+[data-theme^='emerald'] .ap-focus-theme {
+  color: var(--color-info);
+  border-color: rgba(var(--color-info-rgb), 0.4);
+  background: rgba(var(--color-info-rgb), 0.08);
+}
+[data-theme^='emerald'] .ap-focus-stream--person {
+  color: var(--color-subj-person);
+  border-color: color-mix(in srgb, var(--color-subj-person) 40%, transparent);
+}
+[data-theme^='emerald'] .ap-ctry-count { color: var(--color-info); }
+[data-theme^='emerald'] .ap-anom-id { color: var(--color-severity-notable); }
+[data-theme^='emerald'] .ap-forum-divider,
+[data-theme^='emerald'] .ap-forum-link {
+  color: var(--color-severity-elevated);
+}
+[data-theme^='emerald'] .ap-row--selected {
+  background: rgba(var(--color-info-rgb), 0.08);
+  outline: 1px solid rgba(var(--color-info-rgb), 0.25);
+}
+[data-theme^='emerald'] .ap-row--conflict {
+  border-left-color: color-mix(in srgb, var(--color-severity-critical) 45%, transparent);
+}
+[data-theme^='emerald'] .ap-row--theme {
+  border-left-color: color-mix(in srgb, var(--color-severity-notable) 45%, transparent);
+}
+[data-theme^='emerald'] .ap-row--trend {
+  border-left-color: rgba(var(--color-info-rgb), 0.35);
+}

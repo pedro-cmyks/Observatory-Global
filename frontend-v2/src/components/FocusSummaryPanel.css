@@ -48,14 +48,14 @@
 .focus-summary-title {
     margin: 8px 0 0;
     font-size: 18px;
-    color: #fff;
+    color: var(--color-text-primary);
 }
 
 .focus-method-note {
     margin: 8px 0 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #fbbf24;
+    color: var(--color-severity-notable);
 }
 
 .focus-summary-loading {
@@ -73,7 +73,7 @@
 }
 
 .focus-summary-stats strong {
-    color: #4ade80;
+    color: var(--color-accent-highlight);
 }
 
 .focus-summary-content {
@@ -124,7 +124,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.05);
 }
 
 .focus-source-row:last-child {
@@ -133,7 +133,7 @@
 
 .focus-source-name {
     font-size: 12px;
-    color: #e2e8f0;
+    color: var(--color-text-primary);
 }
 
 .focus-source-count {
@@ -144,7 +144,7 @@
 .focus-headline-link {
     display: block;
     padding: 8px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.05);
     text-decoration: none;
     color: inherit;
 }
@@ -154,7 +154,7 @@
 }
 
 .focus-headline-link:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(var(--color-ink-rgb), 0.02);
 }
 
 .focus-headline-source {

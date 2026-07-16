@@ -5,8 +5,8 @@
     width: 100%;
     overflow-x: hidden;
     overflow-y: auto;
-    background: rgba(10, 15, 20, 0.5);
-    color: var(--color-text-primary, #e2e8f0);
+    background: rgba(var(--color-shell-rgb), 0.5);
+    color: var(--color-text-primary);
 }
 
 .narrative-threads-container::-webkit-scrollbar {
@@ -16,7 +16,7 @@
     background: transparent;
 }
 .narrative-threads-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(var(--color-ink-rgb), 0.1);
     border-radius: 2px;
 }
 
@@ -24,7 +24,7 @@
 .narrative-row {
     flex: 0 0 auto;
     padding: 12px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.04);
     cursor: pointer;
     transition: background 0.2s, border-left 0.15s;
     border-left: 3px solid transparent;
@@ -33,7 +33,7 @@
 }
 
 .narrative-row:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--color-ink-rgb), 0.04);
 }
 
 .narrative-row.focused {
@@ -84,21 +84,21 @@
 }
 
 /* Glows removed (de-densify batch A): color alone carries the signal. */
-.sentiment-dot.pos { background-color: #4ade80; }
-.sentiment-dot.neg { background-color: #f87171; }
-.sentiment-dot.neu { background-color: #94a3b8; }
+.sentiment-dot.pos { background-color: var(--color-accent-highlight); }
+.sentiment-dot.neg { background-color: var(--color-sentiment-negative); }
+.sentiment-dot.neu { background-color: var(--color-sentiment-neutral); }
 
 /* Dataviz audit fix 3: growth is NOT danger — accelerating renders in the
    positive/accent family; critical red stays reserved for real severity. */
-.trend-arrow.accelerating { color: var(--color-accent-highlight, #4ade80); }
-.trend-arrow.stable { color: var(--color-text-secondary, #94a3b8); }
+.trend-arrow.accelerating { color: var(--color-accent-highlight); }
+.trend-arrow.stable { color: var(--color-text-secondary); }
 .trend-arrow.fading { color: var(--color-text-muted, #64748b); }
 
 /* Prominent signal count */
 .narrative-count {
     font-size: 15px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--color-text-primary);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     min-width: 32px;
     text-align: right;
@@ -134,7 +134,7 @@
 
 .narrative-cluster-label {
     margin-left: 6px;
-    color: rgba(148, 163, 184, 0.72);
+    color: rgba(var(--color-neutral-rgb), 0.72);
     font-size: 9px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-weight: 700;
@@ -148,7 +148,7 @@
     margin-left: 6px;
     padding: 1px 5px;
     border-radius: 6px;
-    background: rgba(56, 189, 248, 0.14);
+    background: rgba(var(--color-info-rgb), 0.14);
     color: rgba(125, 211, 252, 0.95);
     font-size: 9px;
     font-weight: 700;
@@ -160,7 +160,7 @@
 .narrative-stats {
     font-size: 10px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    color: var(--color-text-secondary, #94a3b8);
+    color: var(--color-text-secondary);
     white-space: nowrap;
     margin-left: 8px;
     flex-shrink: 0;
@@ -188,8 +188,8 @@
     font-weight: 600;
     padding: 1px 5px;
     border-radius: 3px;
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--color-text-secondary, #94a3b8);
+    background: rgba(var(--color-ink-rgb), 0.06);
+    color: var(--color-text-secondary);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
@@ -215,7 +215,7 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(148, 163, 184, 0.5);
+    color: rgba(var(--color-neutral-rgb), 0.5);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
@@ -249,8 +249,8 @@
 }
 
 .attention-badge.wiki {
-    background: rgba(20, 184, 166, 0.12);
-    color: #2dd4bf;
+    background: rgba(var(--color-accent-deep-rgb), 0.12);
+    color: var(--color-accent-primary);
 }
 
 .narrative-age {
@@ -268,7 +268,7 @@
 .spread-track {
     flex: 1;
     height: 4px;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--color-ink-rgb), 0.06);
     border-radius: 2px;
     overflow: hidden;
 }
@@ -277,7 +277,7 @@
 .narrative-grad-bar-track {
     flex: 1;
     height: 3px;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--color-ink-rgb), 0.06);
     border-radius: 2px;
     overflow: hidden;
 }
@@ -290,7 +290,7 @@
 .spread-label {
     font-size: 9px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    color: var(--color-text-secondary, #94a3b8);
+    color: var(--color-text-secondary);
     white-space: nowrap;
     min-width: 36px;
     text-align: right;
@@ -308,8 +308,8 @@
 }
 
 /* Growth ≠ danger (dataviz audit fix 3): positive/accent, never critical red. */
-.trend-label.accelerating { color: var(--color-accent-highlight, #4ade80); }
-.trend-label.stable { color: var(--color-text-secondary, #94a3b8); }
+.trend-label.accelerating { color: var(--color-accent-highlight); }
+.trend-label.stable { color: var(--color-text-secondary); }
 .trend-label.fading { color: var(--color-text-muted, #64748b); }
 
 /* Sparkline */
@@ -332,12 +332,12 @@
 /* Loading skeleton */
 .narrative-skeleton {
     padding: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.04);
 }
 
 .skeleton-line {
     height: 10px;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--color-ink-rgb), 0.06);
     border-radius: 3px;
     margin-bottom: 8px;
     animation: skeletonPulse 1.5s ease-in-out infinite;
@@ -358,7 +358,7 @@
     padding: 4px 12px;
     font-size: 9px;
     color: var(--color-text-muted, #64748b);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.03);
     font-style: italic;
 }
 
@@ -385,7 +385,7 @@
 }
 
 .narrative-scope-label strong {
-    color: #dbeafe;
+    color: var(--color-text-primary);
     font-weight: 700;
 }
 
@@ -404,7 +404,7 @@
 
 .narrative-scope-clear:hover {
     background: rgba(147, 197, 253, 0.15);
-    color: #fff;
+    color: var(--color-text-primary);
 }
 
 /* Empty state */
@@ -425,11 +425,11 @@
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    color: var(--color-text-secondary, #94a3b8);
+    color: var(--color-text-secondary);
 }
 
 .narrative-empty-title {
-    color: var(--color-text-primary, #e2e8f0);
+    color: var(--color-text-primary);
     font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
@@ -442,10 +442,10 @@
 }
 
 .narrative-empty-action {
-    border: 1px solid rgba(45, 212, 191, 0.3);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.3);
     border-radius: 4px;
-    background: rgba(45, 212, 191, 0.1);
-    color: #5eead4;
+    background: rgba(var(--color-accent-deep-rgb), 0.1);
+    color: var(--color-accent-highlight);
     cursor: pointer;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
@@ -456,8 +456,8 @@
 }
 
 .narrative-empty-action:hover {
-    background: rgba(45, 212, 191, 0.16);
-    border-color: rgba(45, 212, 191, 0.48);
+    background: rgba(var(--color-accent-deep-rgb), 0.16);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.48);
 }
 
 /* Two-tier honesty (#229/#228): living curated threads vs taxonomy aggregates */
@@ -473,15 +473,15 @@
 }
 
 .narrative-tier-badge--living {
-    background: rgba(104, 219, 174, 0.14);
-    color: #68dbae;
-    border: 1px solid rgba(104, 219, 174, 0.3);
+    background: rgba(var(--color-accent-bright-rgb), 0.14);
+    color: var(--color-accent-primary);
+    border: 1px solid rgba(var(--color-accent-bright-rgb), 0.3);
 }
 
 .narrative-tier-badge--aggregate {
-    background: rgba(148, 163, 184, 0.1);
+    background: rgba(var(--color-neutral-rgb), 0.1);
     color: #7d8da1;
-    border: 1px solid rgba(148, 163, 184, 0.22);
+    border: 1px solid rgba(var(--color-neutral-rgb), 0.22);
 }
 
 /* Forum discussion badge — people-side, never evidence (orange forum lane). */
@@ -528,7 +528,7 @@
 .narrative-pin {
     background: transparent;
     border: none;
-    color: rgba(148, 163, 184, 0.45);
+    color: rgba(var(--color-neutral-rgb), 0.45);
     cursor: pointer;
     font-size: 10px;
     padding: 2px 4px;
@@ -536,9 +536,9 @@
     flex-shrink: 0;
     transition: color 0.15s;
 }
-.narrative-pin:hover { color: rgba(226, 232, 240, 0.9); }
-.narrative-pin--active { color: #10b981; }
-.narrative-pin--active:hover { color: #34d399; }
+.narrative-pin:hover { color: rgba(var(--color-ink-rgb), 0.9); }
+.narrative-pin--active { color: var(--color-accent-primary); }
+.narrative-pin--active:hover { color: var(--color-accent-primary); }
 
 
 /* T3: sparkline peak annotation — the magnitude anchor for self-normalized rows */

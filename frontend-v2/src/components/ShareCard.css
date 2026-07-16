@@ -1,6 +1,6 @@
 .share-thread-btn {
   background: transparent;
-  border: 1px solid rgba(29, 158, 117, 0.4);
+  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.4);
   color: #1D9E75;
   font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-size: 11px;
@@ -11,7 +11,7 @@
   white-space: nowrap;
 }
 .share-thread-btn:hover:not(:disabled) {
-  background: rgba(29, 158, 117, 0.1);
+  background: rgba(var(--color-accent-deep-rgb), 0.1);
 }
 .share-thread-btn:disabled { opacity: 0.6; cursor: default; }
 
@@ -24,7 +24,7 @@
   box-sizing: border-box;
   padding: 40px;
   background: #0b0e13;
-  color: #e2e8f0;
+  color: var(--color-text-primary);
   font-family: 'Fraunces', Georgia, serif;
 }
 .share-card-kicker {
@@ -43,13 +43,13 @@
 .share-card-why {
   font-size: 17px;
   font-style: italic;
-  color: #94a3b8;
+  color: var(--color-sentiment-neutral);
   margin-bottom: 20px;
 }
 .share-card-headline {
   font-size: 15px;
   line-height: 1.45;
-  color: #cbd5e1;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 .share-card-url {

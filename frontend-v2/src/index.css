@@ -4,8 +4,10 @@
   font-family: var(--font-sans, 'Geist Variable', -apple-system, sans-serif);
   line-height: 1.5;
   font-weight: 400;
-  color: white;
-  background-color: #0a0a0a;
+  /* Theme-driven (ThemeContext writes the vars on documentElement); the
+     fallbacks keep the pre-hydration frame dark like the app loader. */
+  color: var(--color-text-primary, white);
+  background-color: var(--color-bg-primary, #0a0a0a);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

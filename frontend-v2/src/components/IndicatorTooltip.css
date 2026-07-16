@@ -3,8 +3,8 @@
 :root {
   --indicator-good: #22c55e;
   --indicator-warning: #eab308;
-  --indicator-warning-high: #f97316;
-  --indicator-danger: #ef4444;
+  --indicator-warning-high: var(--color-severity-elevated);
+  --indicator-danger: var(--color-severity-critical);
   --indicator-blue: #3b82f6;
   --indicator-neutral: #6b7280;
   --indicator-muted: #9ca3af;

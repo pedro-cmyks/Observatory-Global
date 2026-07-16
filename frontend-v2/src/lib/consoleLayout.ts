@@ -27,21 +27,25 @@ function item(i: string, x: number, y: number, w: number, h: number): LayoutItem
 }
 
 const PRESETS: Record<LayoutBucket, LayoutItem[]> = {
-  // Mirrors today's cockpit: map | stream | threads over a full-width dock.
+  // Ocean arrangement (Pedro 2026-07-16, from the reference console he chose):
+  // the MAP is the hero — wide, top-left — with Narrative Threads reading
+  // directly under it; the Signal Stream is a full-height right column; the
+  // Intel Dock is a full-width strip below. Presets are starting points —
+  // drag/resize/persist/reset all still apply; reset returns HERE.
   laptop: [
-    item('radar', 0, 0, 9, 16),
-    item('stream', 9, 0, 9, 16),
-    item('threads', 18, 0, 6, 16),
-    item('dock', 0, 16, 24, 8),
+    item('radar', 0, 0, 14, 12),
+    item('threads', 0, 12, 14, 6),
+    item('stream', 14, 0, 10, 18),
+    item('dock', 0, 18, 24, 6),
   ],
   desktop: [
-    item('radar', 0, 0, 10, 16),
-    item('stream', 10, 0, 8, 16),
-    item('threads', 18, 0, 6, 16),
-    item('dock', 0, 16, 24, 8),
+    item('radar', 0, 0, 15, 12),
+    item('threads', 0, 12, 15, 6),
+    item('stream', 15, 0, 9, 18),
+    item('dock', 0, 18, 24, 6),
   ],
   // Big monitors: four full-height columns — the dock earns a column instead
-  // of a mostly-empty strip.
+  // of a mostly-empty strip (matches the reference console at 4K).
   big: [
     item('radar', 0, 0, 9, GRID_ROWS),
     item('stream', 9, 0, 6, GRID_ROWS),

@@ -15,9 +15,9 @@
     border-radius: 4px;
     background: linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0.05) 25%,
-        rgba(255, 255, 255, 0.11) 50%,
-        rgba(255, 255, 255, 0.05) 75%
+        rgba(var(--color-ink-rgb), 0.05) 25%,
+        rgba(var(--color-ink-rgb), 0.11) 50%,
+        rgba(var(--color-ink-rgb), 0.05) 75%
     );
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.6s ease-in-out infinite;
@@ -34,9 +34,9 @@
     border-radius: 6px;
     background: linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0.04) 25%,
-        rgba(255, 255, 255, 0.09) 50%,
-        rgba(255, 255, 255, 0.04) 75%
+        rgba(var(--color-ink-rgb), 0.04) 25%,
+        rgba(var(--color-ink-rgb), 0.09) 50%,
+        rgba(var(--color-ink-rgb), 0.04) 75%
     );
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.6s ease-in-out infinite;
@@ -52,8 +52,8 @@
     right: 10px;
     width: 14px;
     height: 14px;
-    border: 2px solid rgba(16, 185, 129, 0.3);
-    border-top-color: #10b981;
+    border: 2px solid rgba(var(--color-accent-deep-rgb), 0.3);
+    border-top-color: var(--color-accent-primary);
     border-radius: 50%;
     animation: skeleton-spin 0.8s linear infinite;
     pointer-events: none;

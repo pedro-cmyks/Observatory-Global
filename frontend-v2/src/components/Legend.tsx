@@ -53,9 +53,11 @@ const ArcSwatch: React.FC<{ tip?: string }> = ({ tip }) => (
         <svg width="28" height="10" viewBox="0 0 28 10" style={{ flexShrink: 0 }}>
             <path d="M2 9 Q14 1 26 9" stroke="url(#arcgrad)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
             <defs>
+                {/* Theme-var stops: noir resolves to its own accents; the
+                    emerald pair gets a visible arc on the light ground. */}
                 <linearGradient id="arcgrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#68dbae" />
-                    <stop offset="100%" stopColor="#22d3ee" />
+                    <stop offset="0%" stopColor="var(--color-accent-primary, #68dbae)" />
+                    <stop offset="100%" stopColor="var(--color-info, #22d3ee)" />
                 </linearGradient>
             </defs>
         </svg>
@@ -66,7 +68,7 @@ const ArcSwatch: React.FC<{ tip?: string }> = ({ tip }) => (
 const SectionHeader: React.FC<{ label: string; tip?: string }> = ({ label, tip }) => (
     <div
         data-tip={tip}
-        style={{ color: 'var(--color-accent-primary)', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', cursor: tip ? 'help' : undefined }}
+        style={{ color: 'var(--color-accent-primary)', fontFamily: 'var(--font-mono, monospace)', fontSize: '9.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '7px', cursor: tip ? 'help' : undefined }}
     >
         {label}
     </div>
@@ -130,7 +132,7 @@ export const Legend: React.FC<LegendProps> = ({
             style={{ position: 'absolute', bottom: '14px', left: '14px', minWidth: '210px', maxWidth: '250px', maxHeight: 'calc(100% - 28px)', overflowY: 'auto', zIndex: 800, padding: '12px 14px' }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-secondary)' }}>Map Key</span>
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-secondary)' }}>Map Key</span>
                 <button
                     onClick={() => setCollapsed(true)}
                     style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', lineHeight: 1, padding: '0 2px', fontSize: '14px' }}
@@ -141,7 +143,7 @@ export const Legend: React.FC<LegendProps> = ({
             </div>
 
             {contextLabel && (
-                <div style={{ marginBottom: '10px', padding: '5px 8px', borderRadius: '4px', background: 'rgba(104, 219, 174, 0.08)', border: '1px solid rgba(104, 219, 174, 0.18)', fontSize: '11px', color: '#68dbae' }}>
+                <div style={{ marginBottom: '10px', padding: '5px 8px', borderRadius: '4px', background: 'rgba(var(--color-accent-deep-rgb), 0.08)', border: '1px solid rgba(var(--color-accent-deep-rgb), 0.22)', fontSize: '11px', color: 'var(--color-accent-primary)' }}>
                     ◎ Filtered: {contextLabel}
                 </div>
             )}
@@ -261,7 +263,7 @@ export const Legend: React.FC<LegendProps> = ({
                 </div>
             )}
 
-            <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '8px', marginTop: '4px' }}>
+            <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', letterSpacing: '0.03em', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '8px', marginTop: '4px' }}>
                 Sources: {activeSources.join(' · ')}
             </div>
         </div>

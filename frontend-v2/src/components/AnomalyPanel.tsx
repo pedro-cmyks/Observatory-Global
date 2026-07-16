@@ -11,10 +11,10 @@ import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './AnomalyPanel.css'
 
 const SEVERITY_COLORS: Record<string, string> = {
-    critical: '#ef4444',
-    elevated: '#f97316',
-    notable:  '#fbbf24',
-    normal:   '#4ade80',
+    critical: 'var(--color-severity-critical)',
+    elevated: 'var(--color-severity-elevated)',
+    notable:  'var(--color-severity-notable)',
+    normal:   'var(--color-accent-highlight)',
 }
 
 interface AnomalyPanelProps {

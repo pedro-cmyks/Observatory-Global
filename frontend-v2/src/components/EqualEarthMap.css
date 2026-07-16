@@ -64,7 +64,7 @@
 }
 
 .equal-earth-country:hover {
-    fill: rgba(104, 219, 174, 0.18);
+    fill: rgba(var(--color-accent-bright-rgb), 0.18);
 }
 
 /* hover tooltip — Mercator parity (country name on hover) */
@@ -72,9 +72,9 @@
     position: fixed;
     z-index: 50;
     pointer-events: none;
-    background: rgba(7, 13, 23, 0.92);
-    border: 1px solid var(--color-border-medium, rgba(29, 158, 117, 0.28));
-    color: var(--color-text-primary, #e2e8f0);
+    background: rgba(var(--color-shell-rgb), 0.92);
+    border: 1px solid var(--color-border-medium, rgba(var(--color-accent-deep-rgb), 0.28));
+    color: var(--color-text-primary);
     font-family: var(--font-mono, monospace);
     font-size: 11px;
     padding: 3px 8px;
@@ -85,7 +85,7 @@
 /* A5: the color's MEANING at the point of hover — "why is this country blue
    while news is breaking there": blue = at ITS OWN baseline, not "calm". */
 .equal-earth-tooltip-heat {
-    color: var(--color-text-muted, #94a3b8);
+    color: var(--color-text-muted);
     font-size: 10px;
 }
 
@@ -101,18 +101,18 @@
 .equal-earth-tooltip-title {
     font-weight: 700;
     font-size: 11px;
-    color: var(--color-text-primary, #e2e8f0);
+    color: var(--color-text-primary);
     margin-bottom: 2px;
 }
 
 .equal-earth-tooltip-meta {
-    color: var(--color-text-muted, #94a3b8);
+    color: var(--color-text-muted);
     font-size: 10px;
     line-height: 1.45;
 }
 
 .equal-earth-tooltip-hint {
-    color: var(--color-accent, #68dbae);
+    color: var(--color-accent);
     font-size: 9.5px;
     margin-top: 3px;
     opacity: 0.85;

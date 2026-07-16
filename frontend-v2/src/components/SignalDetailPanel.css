@@ -11,8 +11,8 @@
 .signal-detail-panel {
     width: 420px;
     max-width: 90vw;
-    background: #0d1117;
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--color-bg-secondary);
+    border-left: 1px solid rgba(var(--color-ink-rgb), 0.08);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -29,8 +29,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.06);
+    background: rgba(var(--color-ink-rgb), 0.02);
     flex-shrink: 0;
 }
 
@@ -55,8 +55,8 @@
     transition: color 0.15s, background 0.15s;
 }
 .sdp-close:hover {
-    color: #e2e8f0;
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--color-text-primary);
+    background: rgba(var(--color-ink-rgb), 0.06);
 }
 
 .sdp-body {
@@ -70,13 +70,13 @@
 
 .sdp-body::-webkit-scrollbar { width: 4px; }
 .sdp-body::-webkit-scrollbar-track { background: transparent; }
-.sdp-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+.sdp-body::-webkit-scrollbar-thumb { background: rgba(var(--color-ink-rgb), 0.1); border-radius: 2px; }
 
 .sdp-headline {
     font-size: 15px;
     font-weight: 600;
     line-height: 1.45;
-    color: #f8fafc;
+    color: var(--color-text-primary);
 }
 
 .sdp-meta-row {
@@ -90,30 +90,30 @@
     font-size: 10px;
     font-weight: 700;
     padding: 3px 7px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(var(--color-ink-rgb), 0.1);
     border-radius: 3px;
-    color: #cbd5e1;
+    color: var(--color-text-secondary);
     letter-spacing: 0.04em;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
 .sdp-source {
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--color-sentiment-neutral);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 3px 6px;
     border-radius: 3px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--color-ink-rgb), 0.04);
 }
 
 .sdp-source.source-trusted {
-    color: #4ade80;
+    color: var(--color-accent-highlight);
     background: rgba(74, 222, 128, 0.1);
 }
 
 .sdp-source.source-tabloid {
-    color: #f87171;
+    color: var(--color-sentiment-negative);
     background: rgba(248, 113, 113, 0.1);
 }
 
@@ -142,7 +142,7 @@
 .sdp-sentiment-bar-track {
     flex: 1;
     height: 4px;
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(var(--color-ink-rgb), 0.07);
     border-radius: 2px;
     overflow: hidden;
     position: relative;
@@ -159,7 +159,7 @@
 .sdp-sentiment-value {
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
-    color: #94a3b8;
+    color: var(--color-sentiment-neutral);
     flex-shrink: 0;
     width: 40px;
     text-align: right;
@@ -183,14 +183,14 @@
 .sdp-theme-tag {
     font-size: 11px;
     padding: 3px 8px;
-    background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
+    background: rgba(var(--color-info-rgb), 0.1);
+    color: var(--color-info);
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.15s;
 }
 .sdp-theme-tag:hover {
-    background: rgba(56, 189, 248, 0.22);
+    background: rgba(var(--color-info-rgb), 0.22);
 }
 
 .sdp-person-tag {
@@ -208,7 +208,7 @@
 
 .sdp-footer {
     padding: 14px 18px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid rgba(var(--color-ink-rgb), 0.06);
     display: flex;
     gap: 8px;
     flex-shrink: 0;
@@ -221,10 +221,10 @@
     justify-content: center;
     gap: 6px;
     padding: 10px;
-    background: rgba(56, 189, 248, 0.12);
-    border: 1px solid rgba(56, 189, 248, 0.25);
+    background: rgba(var(--color-info-rgb), 0.12);
+    border: 1px solid rgba(var(--color-info-rgb), 0.25);
     border-radius: 6px;
-    color: #38bdf8;
+    color: var(--color-info);
     font-size: 12px;
     font-weight: 600;
     text-decoration: none;
@@ -232,13 +232,13 @@
     transition: background 0.15s, border-color 0.15s;
 }
 .sdp-read-btn:hover {
-    background: rgba(56, 189, 248, 0.2);
-    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(var(--color-info-rgb), 0.2);
+    border-color: rgba(var(--color-info-rgb), 0.4);
 }
 
 .sdp-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(var(--color-ink-rgb), 0.05);
 }
 
 .sdp-related-list {
@@ -249,15 +249,15 @@
 
 .sdp-related-row {
     padding: 7px 10px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(var(--color-ink-rgb), 0.03);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.06);
     border-radius: 5px;
     cursor: default;
 }
 
 .sdp-related-headline {
     font-size: 11.5px;
-    color: #cbd5e1;
+    color: var(--color-text-secondary);
     line-height: 1.35;
     display: block;
     margin-bottom: 4px;
@@ -273,8 +273,8 @@
     font-size: 9px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-weight: 700;
-    color: #94a3b8;
-    background: rgba(255,255,255,0.07);
+    color: var(--color-sentiment-neutral);
+    background: rgba(var(--color-ink-rgb), 0.07);
     padding: 2px 5px;
     border-radius: 2px;
 }
@@ -288,10 +288,10 @@
 
 .sdp-pin-btn {
     padding: 10px 14px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(var(--color-ink-rgb), 0.05);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.1);
     border-radius: 6px;
-    color: #94a3b8;
+    color: var(--color-sentiment-neutral);
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
@@ -299,20 +299,20 @@
     white-space: nowrap;
 }
 .sdp-pin-btn:hover {
-    background: rgba(255,255,255,0.1);
-    color: #e2e8f0;
+    background: rgba(var(--color-ink-rgb), 0.1);
+    color: var(--color-text-primary);
 }
 .sdp-pin-btn.pinned {
-    background: rgba(16,185,129,0.15);
-    border-color: rgba(16,185,129,0.35);
-    color: #10b981;
+    background: rgba(var(--color-accent-deep-rgb), 0.15);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.35);
+    color: var(--color-accent-primary);
 }
 
 .sdp-snippet {
     margin: 8px 0 0;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--color-text-secondary, #cbd5e1);
+    color: var(--color-text-secondary, var(--color-text-secondary));
 }
 
 /* ===== #228 §2.3 rebuild: thread chips primary, taxonomy demoted, semantic neighbors ===== */
@@ -320,9 +320,9 @@
 .sdp-thread-tag {
     font-size: 11px;
     padding: 3px 8px;
-    background: rgba(104, 219, 174, 0.12);
-    color: #68dbae;
-    border: 1px solid rgba(104, 219, 174, 0.25);
+    background: rgba(var(--color-accent-bright-rgb), 0.12);
+    color: var(--color-accent-primary);
+    border: 1px solid rgba(var(--color-accent-bright-rgb), 0.25);
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.15s;
@@ -332,7 +332,7 @@
 }
 
 .sdp-thread-tag:hover {
-    background: rgba(104, 219, 174, 0.24);
+    background: rgba(var(--color-accent-bright-rgb), 0.24);
 }
 
 .sdp-thread-tag--belowgate {
@@ -348,7 +348,7 @@
     padding: 1px 4px;
     border-radius: 3px;
     background: rgba(251, 191, 36, 0.14);
-    color: #fbbf24;
+    color: var(--color-severity-notable);
 }
 
 /* Basis badge on a "Where this fits" thread chip: how the link was made. */
@@ -359,16 +359,16 @@
     letter-spacing: 0.06em;
     padding: 1px 4px;
     border-radius: 3px;
-    background: rgba(104, 219, 174, 0.16);
-    color: #68dbae;
+    background: rgba(var(--color-accent-bright-rgb), 0.16);
+    color: var(--color-accent-primary);
 }
 .sdp-basis-badge--semantic {
     background: rgba(129, 140, 248, 0.16);
     color: #a5b4fc;
 }
 .sdp-basis-badge--keyword {
-    background: rgba(148, 163, 184, 0.14);
-    color: #94a3b8;
+    background: rgba(var(--color-neutral-rgb), 0.14);
+    color: var(--color-sentiment-neutral);
 }
 
 /* Honest empty: signal not yet connected to a living thread. Surfaced, not
@@ -377,7 +377,7 @@
     font-size: 11px;
     color: #6b7689;
     padding: 6px 8px;
-    border: 1px dashed rgba(148, 163, 184, 0.22);
+    border: 1px dashed rgba(var(--color-neutral-rgb), 0.22);
     border-radius: 4px;
     font-style: italic;
 }
@@ -404,12 +404,12 @@
 }
 
 .sdp-tags--taxonomy .sdp-theme-tag {
-    background: rgba(148, 163, 184, 0.08);
+    background: rgba(var(--color-neutral-rgb), 0.08);
     color: #7d8da1;
 }
 
 .sdp-tags--taxonomy .sdp-theme-tag:hover {
-    background: rgba(148, 163, 184, 0.18);
+    background: rgba(var(--color-neutral-rgb), 0.18);
 }
 
 .sdp-related-row--link {
@@ -420,15 +420,15 @@
 }
 
 .sdp-related-row--link:hover {
-    background: rgba(104, 219, 174, 0.07);
-    border-color: rgba(104, 219, 174, 0.25);
+    background: rgba(var(--color-accent-bright-rgb), 0.07);
+    border-color: rgba(var(--color-accent-bright-rgb), 0.25);
 }
 
 .sdp-similarity {
     font-size: 9px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-weight: 700;
-    color: #68dbae;
+    color: var(--color-accent-primary);
     font-variant-numeric: tabular-nums;
 }
 

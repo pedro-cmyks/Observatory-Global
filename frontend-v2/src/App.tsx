@@ -5,6 +5,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 // display:none crash class that blocked the keep-alive shell (#239 slice 2).
 // EqualEarthMap has full parity (flows/aircraft/vessels/terminator/markers).
 import './App.css'
+// R3 Ocean surface language — emerald-scoped overrides ONLY ([data-theme^=
+// 'emerald']); must load AFTER App.css and the panel CSS so ties resolve to
+// the skin. Intel-noir/retro never match its selectors.
+import './styles/oceanConsole.css'
 import { useCrisis } from './contexts/CrisisContext'
 import { SearchBar } from './components/SearchBar'
 import { Briefing } from './components/Briefing'
@@ -29,7 +33,8 @@ import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { FocusIndicator } from './components/FocusIndicator'
 import { TIME_RANGE_OPTIONS, TIME_RANGE_LABELS, timeRangeToHours, ambientRange, timeRangeToViewDays } from './lib/timeRanges'
-import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown } from './lib/icons'
+import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, ChevronDown, Sun, Moon } from './lib/icons'
+import { useTheme } from './contexts/ThemeContext'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
 import { conflictCountryCode } from './lib/conflictEvents'
@@ -315,6 +320,9 @@ function AppContent() {
   // stream (the L2 value). Desktop ignores this.
   const isMobile = useIsMobile()
   const [mobileTab, setMobileTab] = useState<'map' | 'stream' | 'threads' | 'pulse'>('stream')
+  // R3 emerald foundation: compact day/night flip in the command bar (full
+  // theme selection, incl. Intel Noir, stays in Settings).
+  const { theme: consoleTheme, toggleDayNight } = useTheme()
 
   useEffect(() => {
     if (!moreMenuOpen && !timeMenuOpen) return
@@ -1260,7 +1268,7 @@ function AppContent() {
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">
-          <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} data-tip="Back to home"><Globe size={16} /> ATLAS</h1>
+          <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} data-tip="Back to home"><Globe size={16} /> Atlas <span className="brand-tag">L2 · Analyst console</span></h1>
           <span className="live-pill" data-tip="Live open signals from media, curated feeds, public attention, humanitarian sources, and NLP enrichment. Source cadences vary.">
             <span className="live-pill-dot" />
             LIVE DATA
@@ -1377,6 +1385,15 @@ function AppContent() {
           <button className="cmd-btn" data-tour="brief-button" onClick={openBrief} data-tip="Open the intelligence brief">
             <ClipboardList size={13} /> <span className="cmd-btn-label">BRIEF</span>
             {watches.length > 0 && <span className="cmd-count">{watches.length}</span>}
+          </button>
+          <button
+            className="cmd-btn"
+            onClick={toggleDayNight}
+            aria-label={consoleTheme.scheme === 'dark' ? 'Switch to day theme' : 'Switch to night theme'}
+            aria-pressed={consoleTheme.scheme === 'dark'}
+            data-tip={consoleTheme.scheme === 'dark' ? 'Day theme' : 'Night theme'}
+          >
+            {consoleTheme.scheme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
           </button>
           {/* TOUR + Settings live in a "···" overflow menu (#152) so the bar
               keeps only primary actions visible. */}
@@ -1711,7 +1728,7 @@ function AppContent() {
           let panelTitle = isBlankState ? (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                SIGNAL STREAM
+                Signal stream
                 <PanelHelpButton panel="signal-stream" />
               </span>
               <span className="panel-subtitle">notable open signals</span>
@@ -1719,7 +1736,7 @@ function AppContent() {
           ) : (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                SIGNAL STREAM
+                Signal stream
                 <PanelHelpButton panel="signal-stream" />
               </span>
               <span className="panel-subtitle">notable open signals</span>
@@ -1729,31 +1746,31 @@ function AppContent() {
             <button className="drill-back-btn" onClick={themeBackStack.length > 0 ? handleThemeBack : handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>
               {themeBackStack.length > 0 ? `← ${themeBackStack[0].theme.replace(/_/g, ' ').slice(0, 20)}` : '← STREAM'}
             </button>
-            <span style={{ color: '#94a3b8' }}>{resolveThreadLabel(selectedTheme!.theme, selectedTheme!.thread?.label).slice(0, 32)}</span>
+            <span className="ph-ctx">{resolveThreadLabel(selectedTheme!.theme, selectedTheme!.thread?.label).slice(0, 32)}</span>
           </>
           if (isStory) panelTitle = <>
             <button className="drill-back-btn" onClick={() => setStoryQuery(null)} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
-            <span style={{ color: '#fbbf24' }}>STORY · {storyQuery!.slice(0, 30)}</span>
+            <span className="ph-ctx ph-ctx--story">STORY · {storyQuery!.slice(0, 30)}</span>
           </>
           if (isThread) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
-            <span style={{ color: '#2dd4bf' }}>{selectedThread!.label.slice(0, 32)}</span>
+            <span className="ph-ctx ph-ctx--live">{selectedThread!.label.slice(0, 32)}</span>
           </>
           if (isCountry) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>{backLabel}</button>
-            <span style={{ color: '#94a3b8' }}>{selectedCountryName}</span>
+            <span className="ph-ctx">{selectedCountryName}</span>
           </>
           if (isPerson) panelTitle = <>
             <button className="drill-back-btn" onClick={handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
-            <span style={{ color: '#a78bfa' }}>{focus.value}</span>
+            <span className="ph-ctx ph-ctx--person">{focus.value}</span>
           </>
           if (isPublicAttention) panelTitle = <>
             <button className="drill-back-btn" onClick={closeAll} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
-            <span style={{ color: '#2dd4bf' }}>{selectedPublicAttention!.title.slice(0, 28)}</span>
+            <span className="ph-ctx ph-ctx--live">{selectedPublicAttention!.title.slice(0, 28)}</span>
           </>
           if (isChokepoint) panelTitle = <>
             <button className="drill-back-btn" onClick={() => setSelectedChokepoint(null)} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
-            <span style={{ color: '#2dd4bf' }}>{selectedChokepoint!.name}</span>
+            <span className="ph-ctx ph-ctx--live">{selectedChokepoint!.name}</span>
           </>
           // A3 scope strip: the blank SignalStream silently re-scopes to an
           // active country/person focus — name it and make it reversible.
@@ -1863,11 +1880,12 @@ function AppContent() {
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                NARRATIVE THREADS
+                Narrative threads
                 <PanelHelpButton panel="narrative-threads" />
               </span>
               <span className="panel-subtitle">how topics spread over time</span>
             </div>
+            <span className="honesty-chip" data-tip="Rank = composite of volume (log-damped) + movement + coherence — measured, never a raw count or source bias. Left border color = category family.">MEASURED · COMPOSITE RANK</span>
           </div>
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
@@ -1919,7 +1937,7 @@ function AppContent() {
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                CORRELATION MATRIX
+                Correlation matrix
                 <PanelHelpButton panel="correlation-matrix" />
               </span>
               <span className="panel-subtitle">which countries share narratives</span>
@@ -1964,6 +1982,7 @@ function AppContent() {
               </button>
             </div>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {dockTab === 'anomaly' && <span className="honesty-chip" data-tip="Alerts are deviations vs each country's own 7-day baseline — never a raw volume ranking.">MEASURED · VS 7-DAY BASELINE</span>}
               {dockTab === 'anomaly' && <PanelHelpButton panel="anomaly-attention" />}
               {dockTab === 'sources' && <PanelHelpButton panel="source-integrity" />}
             </span>

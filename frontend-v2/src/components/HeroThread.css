@@ -21,7 +21,7 @@
 
 .ht-route {
   fill: none;
-  stroke: #68dbae;
+  stroke: var(--color-accent-primary);
   stroke-width: 1.4;
   stroke-dasharray: 3 6;
   opacity: 0.55;

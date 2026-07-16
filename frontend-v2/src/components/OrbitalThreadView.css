@@ -21,7 +21,7 @@
 }
 
 .orbital-ring-label {
-  fill: rgba(148, 163, 184, 0.4);
+  fill: rgba(var(--color-neutral-rgb), 0.4);
   font-size: 8.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -30,17 +30,17 @@
 }
 
 .orbital-ring-label--far {
-  fill: rgba(148, 163, 184, 0.28);
+  fill: rgba(var(--color-neutral-rgb), 0.28);
 }
 
 .orbital-hover-link {
-  stroke: rgba(226, 232, 240, 0.35);
+  stroke: rgba(var(--color-ink-rgb), 0.35);
   stroke-width: 1;
   stroke-dasharray: 4 4;
 }
 
 .orbital-hover-link-label {
-  fill: #cbd5e1;
+  fill: var(--color-text-secondary);
   font-size: 9px;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   text-anchor: middle;
@@ -49,7 +49,7 @@
 
 .orbital-ring {
   fill: none;
-  stroke: rgba(148, 163, 184, 0.14);
+  stroke: rgba(var(--color-neutral-rgb), 0.14);
   stroke-width: 1;
   stroke-dasharray: 3 5;
 }
@@ -79,7 +79,7 @@
 }
 
 .orbital-body-label {
-  fill: #cbd5e1;
+  fill: var(--color-text-secondary);
   font-size: 9.5px;
   text-anchor: middle;
   pointer-events: none;
@@ -114,12 +114,12 @@
 }
 
 .orbital-hover strong {
-  color: #e2e8f0;
+  color: var(--color-text-primary);
   font-size: 12px;
 }
 
 .orbital-hover em {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 10px;
   font-style: normal;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
@@ -139,7 +139,7 @@
 
 .orbital-scrubber-time {
   min-width: 108px;
-  color: #cbd5e1;
+  color: var(--color-text-secondary);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
 }
@@ -157,7 +157,7 @@
   align-items: center;
   gap: 12px;
   margin-top: 8px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 9.5px;
   text-transform: capitalize;
 }
@@ -173,12 +173,12 @@
 
 .orbital-legend-comet {
   background: transparent;
-  border: 1.5px dashed rgba(226, 232, 240, 0.75);
+  border: 1.5px dashed rgba(var(--color-ink-rgb), 0.75);
   border-radius: 50% !important;
 }
 
 .orbital-legend-tail {
-  background: linear-gradient(90deg, #e2e8f0, transparent);
+  background: linear-gradient(90deg, var(--color-text-primary), transparent);
   border-radius: 2px !important;
   width: 14px !important;
   height: 3px !important;
@@ -192,7 +192,7 @@
 
 .orbital-empty {
   padding: 18px 12px;
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 11px;
   border: 1px dashed rgba(255, 255, 255, 0.12);
   border-radius: 10px;
@@ -210,7 +210,7 @@
   width: 5px !important;
   height: 5px !important;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: var(--color-text-primary);
   opacity: 0.8;
 }
 
@@ -222,7 +222,7 @@
   background: rgba(11, 14, 19, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 6px;
-  color: #cbd5e1;
+  color: var(--color-text-secondary);
   font-size: 13px;
   line-height: 1;
   padding: 4px 7px;

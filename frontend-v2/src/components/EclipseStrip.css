@@ -26,7 +26,7 @@
 .brief-eclipse-rising {
     font-family: var(--font-mono, 'Geist Mono Variable', monospace);
     font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase;
-    color: #10b981; white-space: nowrap;
+    color: var(--color-accent-primary); white-space: nowrap;
 }
 
 .brief-eclipse-meta {

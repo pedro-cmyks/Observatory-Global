@@ -31,6 +31,23 @@
     --color-sentiment-neutral: #94a3b8;
     --color-sentiment-negative: #f87171;
 
+    /* RGB channel triplets (R3 emerald foundation) — component CSS themes
+       alpha-varied colors via rgba(var(--color-ink-rgb), .55) instead of
+       hardcoding intel-noir literals. ThemeContext overwrites these per
+       preset; the fallbacks here ARE the intel-noir literals (identity). */
+    --color-ink-rgb: 226, 232, 240;
+    --color-accent-deep-rgb: 29, 158, 117;
+    --color-accent-bright-rgb: 104, 219, 174;
+    --color-shell-rgb: 7, 13, 23;
+    --color-raise-rgb: 12, 24, 43;
+    --color-info: #38bdf8;
+    --color-info-rgb: 56, 189, 248;
+    --color-neutral-rgb: 148, 163, 184;
+    --color-on-accent: #003827;
+    /* Typed-subject PERSON badge (Ocean --subj-person). Fallback = the violet
+       literal the console always used; ThemeContext overwrites per preset. */
+    --color-subj-person: #a78bfa;
+
     /* Category-FAMILY palette (dataviz audit 2026-07-13) — CVD-validated on
        the dark surface #0c182b. Assignment lives in lib/categoryFamily.ts
        (deterministic keyword map, fixed order — never hashed, never by rank);
@@ -133,6 +150,14 @@
     background: var(--color-severity-critical);
     border-color: var(--color-severity-critical);
     box-shadow: 0 0 8px var(--color-severity-critical);
+}
+
+/* Emerald Day: dark drop-shadows and emerald glows read heavy on paper —
+   soften at the theme hook (ThemeContext stamps data-theme on the root). */
+[data-theme="emerald-light"] {
+    --shadow-glow: 0 0 22px rgba(15, 123, 90, 0.10);
+    --shadow-depth: 0 10px 30px rgba(20, 32, 27, 0.12);
+    --color-bg-overlay: rgba(238, 241, 239, 0.86);
 }
 
 /* Retro Radar theme extras */

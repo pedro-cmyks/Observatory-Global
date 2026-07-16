@@ -12,7 +12,7 @@
 
 .briefing-panel {
     background: rgba(15, 15, 20, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.1);
     border-radius: 16px;
     width: 100%;
     max-width: 500px;
@@ -26,7 +26,7 @@
     right: 12px;
     width: 32px;
     height: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.2);
     background: transparent;
     color: white;
     font-size: 18px;
@@ -70,8 +70,8 @@
 }
 
 .stat-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(var(--color-ink-rgb), 0.03);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.06);
     border-radius: 10px;
     padding: 12px 8px;
     text-align: center;
@@ -116,14 +116,14 @@
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(var(--color-ink-rgb), 0.02);
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.15s;
 }
 
 .country-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--color-ink-rgb), 0.06);
 }
 
 .country-item span:first-child {
@@ -145,12 +145,12 @@
 }
 
 .negative {
-    color: #f87171;
+    color: var(--color-sentiment-negative);
     font-size: 11px;
 }
 
 .positive {
-    color: #4ade80;
+    color: var(--color-accent-highlight);
     font-size: 11px;
 }
 
@@ -165,8 +165,8 @@
     align-items: center;
     gap: 5px;
     padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(var(--color-ink-rgb), 0.03);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.06);
     border-radius: 16px;
     font-size: 11px;
     cursor: pointer;
@@ -174,7 +174,7 @@
 }
 
 .theme-chip:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(var(--color-ink-rgb), 0.08);
 }
 
 .chip-count {
@@ -194,8 +194,8 @@
     letter-spacing: 0.03em;
     text-transform: uppercase;
     color: var(--color-accent-primary, #1D9E75);
-    background: rgba(29, 158, 117, 0.12);
-    border: 1px solid rgba(29, 158, 117, 0.35);
+    background: rgba(var(--color-accent-deep-rgb), 0.12);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.35);
     border-radius: 10px;
     padding: 2px 7px;
     cursor: help;
@@ -213,14 +213,14 @@
     justify-content: space-between;
     gap: 10px;
     padding: 7px 10px;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(var(--color-ink-rgb), 0.02);
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.15s;
 }
 
 .atlas-topic-row:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--color-ink-rgb), 0.06);
 }
 
 .atlas-topic-label {
@@ -265,11 +265,11 @@
 }
 
 .atlas-topic-vel-up {
-    color: #4ade80;
+    color: var(--color-accent-highlight);
 }
 
 .atlas-topic-vel-down {
-    color: #f87171;
+    color: var(--color-sentiment-negative);
 }
 
 .theme-country-map {
@@ -289,7 +289,7 @@
     width: 120px;
     font-size: 10px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(var(--color-ink-rgb), 0.55);
     text-align: right;
     background: none;
     border: none;
@@ -319,23 +319,23 @@
     align-items: center;
     gap: 4px;
     padding: 3px 8px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(var(--color-ink-rgb), 0.04);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.08);
     border-radius: 20px;
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(var(--color-ink-rgb), 0.75);
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
 }
 
 .tcm-country-pill:hover {
-    background: rgba(29, 158, 117, 0.15);
-    border-color: rgba(29, 158, 117, 0.4);
-    color: #fff;
+    background: rgba(var(--color-accent-deep-rgb), 0.15);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.4);
+    color: var(--color-text-primary);
 }
 
 .tcm-count {
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(var(--color-ink-rgb), 0.35);
     font-size: 9px;
 }
 
@@ -348,7 +348,7 @@
 .source-tag {
     font-size: 10px;
     padding: 4px 8px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--color-ink-rgb), 0.04);
     border-radius: 4px;
     color: #aaa;
 }

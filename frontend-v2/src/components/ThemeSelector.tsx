@@ -30,7 +30,7 @@ export const ThemeSelector: React.FC = () => {
                 }}
             >
                 {availableThemes.map((t) => (
-                    <option key={t.id} value={t.id} style={{ background: '#1a1a2e' }}>
+                    <option key={t.id} value={t.id} style={{ background: 'var(--color-bg-secondary)' }}>
                         {t.name}
                     </option>
                 ))}

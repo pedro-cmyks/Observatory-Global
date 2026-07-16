@@ -1,7 +1,7 @@
 .connections-section {
     margin-top: 14px;
     padding-top: 12px;
-    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    border-top: 1px solid rgba(var(--color-neutral-rgb), 0.18);
 }
 
 .connections-label {
@@ -31,8 +31,8 @@
     gap: 8px;
     width: 100%;
     text-align: left;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(var(--color-ink-rgb), 0.025);
+    border: 1px solid rgba(var(--color-neutral-rgb), 0.16);
     border-radius: 6px;
     padding: 7px 9px;
     cursor: pointer;
@@ -40,8 +40,8 @@
 }
 
 .connections-thread:hover {
-    background: rgba(29, 158, 117, 0.08);
-    border-color: rgba(29, 158, 117, 0.35);
+    background: rgba(var(--color-accent-deep-rgb), 0.08);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.35);
 }
 
 .connections-basis {
@@ -55,8 +55,8 @@
 
 .connections-basis--member {
     color: #1D9E75;
-    background: rgba(29, 158, 117, 0.14);
-    border: 1px solid rgba(29, 158, 117, 0.4);
+    background: rgba(var(--color-accent-deep-rgb), 0.14);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.4);
 }
 
 .connections-basis--semantic {
@@ -103,7 +103,7 @@
 }
 
 .connections-neighbor:hover .connections-neighbor-headline {
-    color: #fff;
+    color: var(--color-text-primary);
     text-decoration: underline;
 }
 
@@ -135,14 +135,14 @@
 /* Keyword match — the lexical fallback (no embedding); neutral slate, lower
    confidence than member/semantic, with the shared term shown. */
 .connections-basis--keyword {
-    color: #94a3b8;
-    background: rgba(148, 163, 184, 0.1);
-    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: var(--color-sentiment-neutral);
+    background: rgba(var(--color-neutral-rgb), 0.1);
+    border: 1px solid rgba(var(--color-neutral-rgb), 0.3);
 }
 .connections-shared {
     flex-shrink: 0;
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--color-sentiment-neutral);
     font-style: italic;
 }
 
@@ -156,8 +156,8 @@
 .connections-head .connections-label { margin-bottom: 0; }
 .connections-pin {
     flex-shrink: 0;
-    background: rgba(29, 158, 117, 0.1);
-    border: 1px solid rgba(29, 158, 117, 0.35);
+    background: rgba(var(--color-accent-deep-rgb), 0.1);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.35);
     border-radius: 5px;
     color: #1D9E75;
     font-family: inherit;
@@ -166,5 +166,5 @@
     padding: 3px 8px;
     cursor: pointer;
 }
-.connections-pin:hover { background: rgba(29, 158, 117, 0.18); }
+.connections-pin:hover { background: rgba(var(--color-accent-deep-rgb), 0.18); }
 .connections-pin--done { opacity: 0.7; cursor: default; }

@@ -2,7 +2,7 @@
 
 .narrative-drift {
     background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.05);
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1.5rem;
@@ -39,8 +39,8 @@
         linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.18), transparent),
         repeating-linear-gradient(
             90deg,
-            rgba(148, 163, 184, 0.05) 0,
-            rgba(148, 163, 184, 0.05) 1px,
+            rgba(var(--color-neutral-rgb), 0.05) 0,
+            rgba(var(--color-neutral-rgb), 0.05) 1px,
             transparent 1px,
             transparent 38px
         );
@@ -58,7 +58,7 @@
 }
 
 .narrative-drift.error {
-    color: #ef4444;
+    color: var(--color-severity-critical);
 }
 
 .narrative-drift-header {
@@ -69,7 +69,7 @@
     margin: 0;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #cbd5e1;
+    color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -79,8 +79,8 @@
 }
 
 .drift-tooltip {
-    background: rgba(15, 23, 42, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(var(--color-raise-rgb), 0.95);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.1);
     border-radius: 6px;
     padding: 8px 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
@@ -90,7 +90,7 @@
 .drift-tooltip-date {
     margin: 0 0 4px 0;
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--color-sentiment-neutral);
     font-weight: 500;
 }
 

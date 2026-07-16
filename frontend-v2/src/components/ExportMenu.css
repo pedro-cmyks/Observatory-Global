@@ -6,9 +6,9 @@
 }
 
 .export-menu-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #e2e8f0;
+    background: rgba(var(--color-ink-rgb), 0.05);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.1);
+    color: var(--color-text-primary);
     padding: 6px 10px;
     border-radius: 6px;
     cursor: pointer;
@@ -20,14 +20,14 @@
 }
 
 .export-menu-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(var(--color-ink-rgb), 0.1);
 }
 
 .export-menu-dropdown {
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
-    background: #0f172a;
+    background: var(--color-bg-tertiary);
     border: 1px solid #334155;
     border-radius: 8px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
@@ -47,7 +47,7 @@
     text-align: left;
     background: transparent;
     border: none;
-    color: #cbd5e1;
+    color: var(--color-text-secondary);
     padding: 10px 14px;
     font-size: 0.8125rem;
     cursor: pointer;
@@ -58,8 +58,8 @@
 }
 
 .export-menu-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #f8fafc;
+    background: rgba(var(--color-ink-rgb), 0.05);
+    color: var(--color-text-primary);
 }
 
 .export-menu-item svg {

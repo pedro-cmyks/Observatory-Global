@@ -24,7 +24,7 @@
     font-size: 0.82rem;
     line-height: 1.4;
     color: var(--color-text, #e6e6e6);
-    border-left: 2px solid var(--color-accent, #10b981);
+    border-left: 2px solid var(--color-accent, var(--color-accent-primary));
     padding-left: 8px;
 }
 
@@ -66,7 +66,7 @@
 }
 
 .eclipse-lens-rising {
-    color: var(--color-accent, #10b981);
+    color: var(--color-accent, var(--color-accent-primary));
     font-size: 0.7rem;
 }
 
@@ -88,8 +88,8 @@
     cursor: pointer;
 }
 .eclipse-lens-investigate:hover {
-    color: var(--color-accent, #10b981);
-    border-color: var(--color-accent, #10b981);
+    color: var(--color-accent, var(--color-accent-primary));
+    border-color: var(--color-accent, var(--color-accent-primary));
 }
 
 .eclipse-lens-foot {

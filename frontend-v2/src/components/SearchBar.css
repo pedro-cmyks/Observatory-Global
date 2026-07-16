@@ -6,8 +6,8 @@
 .search-input-wrapper {
     display: flex;
     align-items: center;
-    background: rgba(12, 24, 43, 0.78);
-    border: 1px solid rgba(29, 158, 117, 0.14);
+    background: rgba(var(--color-raise-rgb), 0.78);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.14);
     border-radius: 6px;
     padding: 6px 10px;
     gap: 6px;
@@ -15,8 +15,8 @@
 }
 
 .search-input-wrapper:focus-within {
-    border-color: rgba(104, 219, 174, 0.44);
-    background: rgba(12, 24, 43, 0.94);
+    border-color: rgba(var(--color-accent-bright-rgb), 0.44);
+    background: rgba(var(--color-raise-rgb), 0.94);
 }
 
 .search-icon {
@@ -30,7 +30,7 @@
     flex: 1;
     background: transparent;
     border: none;
-    color: #e2e8f0;
+    color: var(--color-text-primary);
     font-size: 12px;
     font-family: inherit;
     outline: none;
@@ -38,11 +38,11 @@
 }
 
 .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.25);
+    color: rgba(var(--color-ink-rgb), 0.25);
 }
 
 .search-loading {
-    color: var(--color-accent-primary, #68dbae);
+    color: var(--color-accent-primary);
     font-size: 18px;
     line-height: 1;
     animation: pulse 0.8s ease-in-out infinite;
@@ -56,7 +56,7 @@
 .search-clear {
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(var(--color-ink-rgb), 0.3);
     cursor: pointer;
     font-size: 14px;
     padding: 0;
@@ -65,7 +65,7 @@
 }
 
 .search-clear:hover {
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(var(--color-ink-rgb), 0.7);
 }
 
 .search-dropdown {
@@ -73,8 +73,8 @@
     top: calc(100% + 6px);
     left: 0;
     right: 0;
-    background: rgba(10, 18, 32, 0.98);
-    border: 1px solid rgba(29, 158, 117, 0.18);
+    background: rgba(var(--color-raise-rgb), 0.98);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
     border-radius: 6px;
     max-height: 420px;
     overflow-y: auto;
@@ -85,7 +85,7 @@
 
 .search-section {
     padding: 8px 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.05);
 }
 
 .search-section:last-child {
@@ -112,7 +112,7 @@
 }
 
 .search-item:hover {
-    background: rgba(29, 158, 117, 0.1);
+    background: rgba(var(--color-accent-deep-rgb), 0.1);
 }
 
 @media (max-width: 768px) {
@@ -151,14 +151,14 @@
 
 .concept-tag {
     background: rgba(251, 191, 36, 0.12);
-    color: #fbbf24;
+    color: var(--color-severity-notable);
     border: 1px solid rgba(251, 191, 36, 0.25);
 }
 
 .wiki-tag {
-    background: rgba(20, 184, 166, 0.12);
-    color: #2dd4bf;
-    border: 1px solid rgba(20, 184, 166, 0.25);
+    background: rgba(var(--color-accent-deep-rgb), 0.12);
+    color: var(--color-accent-primary);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
 }
 
 .search-item--concept {
@@ -231,8 +231,8 @@
     text-align: left;
     padding: 10px 12px;
     border: none;
-    border-bottom: 1px solid rgba(45, 212, 191, 0.18);
-    background: linear-gradient(90deg, rgba(20, 184, 166, 0.12), rgba(20, 184, 166, 0.02));
+    border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
+    background: linear-gradient(90deg, rgba(var(--color-accent-deep-rgb), 0.12), rgba(var(--color-accent-deep-rgb), 0.02));
     font-family: inherit;
     font-size: 12px;
     cursor: pointer;
@@ -240,17 +240,17 @@
 }
 
 .search-query-thread-cta:hover {
-    background: linear-gradient(90deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
+    background: linear-gradient(90deg, rgba(var(--color-accent-deep-rgb), 0.2), rgba(var(--color-accent-deep-rgb), 0.05));
 }
 
 /* "Go to <Country>" — the primary action when a search resolves to a country.
    Cyan accent distinguishes going to the place from opening the story. */
 .search-query-thread-cta--country {
-    background: linear-gradient(90deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.02));
-    border-left: 2px solid rgba(56, 189, 248, 0.55);
+    background: linear-gradient(90deg, rgba(var(--color-info-rgb), 0.14), rgba(var(--color-info-rgb), 0.02));
+    border-left: 2px solid rgba(var(--color-info-rgb), 0.55);
 }
 .search-query-thread-cta--country:hover {
-    background: linear-gradient(90deg, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.05));
+    background: linear-gradient(90deg, rgba(var(--color-info-rgb), 0.22), rgba(var(--color-info-rgb), 0.05));
 }
 
 .search-query-thread-icon {
@@ -260,11 +260,11 @@
 
 .search-query-thread-text {
     flex: 1;
-    color: #e2e8f0;
+    color: var(--color-text-primary);
 }
 
 .search-query-thread-text strong {
-    color: var(--color-accent-primary, #68dbae);
+    color: var(--color-accent-primary);
     font-weight: 600;
 }
 
@@ -279,13 +279,13 @@
    tools — reachable but demoted so the primary CTA reads as the one obvious
    move. Flatter background, quieter text, thinner divider. */
 .search-query-thread-cta--muted {
-    background: rgba(255, 255, 255, 0.015);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(var(--color-ink-rgb), 0.015);
+    border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.05);
     padding: 8px 12px;
     opacity: 0.82;
 }
 .search-query-thread-cta--muted:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(var(--color-ink-rgb), 0.05);
     opacity: 1;
 }
 .search-query-thread-cta--muted .search-query-thread-icon {
@@ -307,7 +307,7 @@
 
 /* "More actions" — a subtle affordance hiding the power tools. */
 .search-more {
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(var(--color-ink-rgb), 0.05);
 }
 .search-more-toggle {
     display: block;
@@ -326,7 +326,7 @@
 }
 .search-more-toggle:hover {
     color: #cbd5e0;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(var(--color-ink-rgb), 0.03);
 }
 
 .search-expansion-banner {
@@ -337,14 +337,14 @@
     padding: 8px 12px;
     font-size: 10px;
     color: var(--color-text-muted);
-    border-bottom: 1px solid rgba(45, 212, 191, 0.12);
-    background: rgba(20, 184, 166, 0.04);
+    border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.12);
+    background: rgba(var(--color-accent-deep-rgb), 0.04);
 }
 
 .search-expansion-chip {
-    border: 1px solid rgba(45, 212, 191, 0.25);
-    background: rgba(20, 184, 166, 0.08);
-    color: #2dd4bf;
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
+    background: rgba(var(--color-accent-deep-rgb), 0.08);
+    color: var(--color-accent-primary);
     border-radius: 3px;
     padding: 2px 6px;
     font-size: 10px;
@@ -353,7 +353,7 @@
 }
 
 .search-expansion-chip:hover {
-    background: rgba(20, 184, 166, 0.16);
+    background: rgba(var(--color-accent-deep-rgb), 0.16);
 }
 
 .search-suggestion-banner {
@@ -363,7 +363,7 @@
     gap: 6px;
     padding: 8px 12px;
     font-size: 10px;
-    color: #94a3b8;
+    color: var(--color-sentiment-neutral);
     border-bottom: 1px solid rgba(167, 139, 250, 0.14);
     background: rgba(167, 139, 250, 0.05);
 }
@@ -395,21 +395,21 @@
 }
 
 .region-tag {
-    background: rgba(29, 158, 117, 0.15);
+    background: rgba(var(--color-accent-deep-rgb), 0.15);
     color: #1D9E75;
-    border: 1px solid rgba(29, 158, 117, 0.25);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
     font-size: 12px;
     padding: 2px 4px;
 }
 
 .search-item--region {
-    border-left: 2px solid rgba(29, 158, 117, 0.4);
+    border-left: 2px solid rgba(var(--color-accent-deep-rgb), 0.4);
     margin-left: 4px;
 }
 
 .custom-concept-tag {
     background: rgba(234, 179, 8, 0.15);
-    color: #fbbf24;
+    color: var(--color-severity-notable);
     border: 1px solid rgba(234, 179, 8, 0.3);
     font-size: 11px;
     padding: 2px 5px;
@@ -431,11 +431,11 @@
     flex-shrink: 0;
 }
 
-.search-item-remove-concept:hover { color: #ef4444; }
+.search-item-remove-concept:hover { color: var(--color-severity-critical); }
 
 .search-create-concept-row {
     padding: 8px 12px 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(var(--color-ink-rgb), 0.05);
 }
 
 .search-create-concept-btn {
@@ -461,9 +461,9 @@
 
 /* Live-thread results (#245): the served stories, first section in the list */
 .search-item--thread .thread-tag {
-    background: rgba(104, 219, 174, 0.14);
-    color: #68dbae;
-    border: 1px solid rgba(104, 219, 174, 0.35);
+    background: rgba(var(--color-accent-bright-rgb), 0.14);
+    color: var(--color-accent-primary);
+    border: 1px solid rgba(var(--color-accent-bright-rgb), 0.35);
     font-size: 9px;
     padding: 1px 5px;
     border-radius: 3px;

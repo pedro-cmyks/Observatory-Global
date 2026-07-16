@@ -1,7 +1,7 @@
 /* Workbench mini-constellation — compact live universe above the pinned route. */
 .wbc {
   margin-top: 10px;
-  border: 1px solid rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(var(--color-info-rgb), 0.14);
   border-radius: 6px;
   padding: 8px 10px;
   background: rgba(11, 17, 25, 0.6);
@@ -17,15 +17,15 @@
 .wbc-title {
   font-size: 9px;
   letter-spacing: 0.12em;
-  color: rgba(125, 211, 252, 0.8);
+  color: var(--color-info);
 }
 
 .wbc-status {
   font-size: 9px;
-  color: rgba(148, 163, 184, 0.7);
+  color: rgba(var(--color-neutral-rgb), 0.7);
 }
 
-.wbc-status--muted { color: rgba(100, 116, 139, 0.55); padding: 4px 0; }
+.wbc-status--muted { color: rgba(var(--color-neutral-rgb), 0.55); padding: 4px 0; }
 
 .wbc-countries {
   display: flex;
@@ -39,7 +39,7 @@
   font-size: 8px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(100, 116, 139, 0.7);
+  color: rgba(var(--color-neutral-rgb), 0.7);
   margin-right: 2px;
 }
 
@@ -47,7 +47,7 @@
   font-size: 9px;
   padding: 1px 6px;
   border-radius: 3px;
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.18);
+  background: rgba(var(--color-info-rgb), 0.1);
+  border: 1px solid rgba(var(--color-info-rgb), 0.18);
   color: rgba(165, 216, 245, 0.9);
 }
