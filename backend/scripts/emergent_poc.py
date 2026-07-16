@@ -295,6 +295,10 @@ def _apply_gate(clusters: list[dict], embs: np.ndarray, gate: dict, min_kept: in
         c["kept_size"] = int(keep_mask.sum())
         c["kept_ratio"] = round(c["kept_size"] / max(c["raw_size"], 1), 3)
         c["gate_threshold"] = thr
+        # Full kept-member local indices (additive; consumers read explicit
+        # keys). Needed by dry-run diagnostics that compare kept membership
+        # across configurations — top_signal_idxs alone caps at top_k.
+        c["kept_idxs"] = [int(i) for i in kept_idxs.tolist()]
 
         if c["kept_size"] < min_kept:
             continue  # drop — cannot honestly claim 90% precision on a thin keep

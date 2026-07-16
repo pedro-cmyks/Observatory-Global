@@ -37,6 +37,7 @@ import numpy as np
 
 from backend.scripts.emergent_poc import (
     _apply_gate, _clean_and_dedupe, _cluster, _cluster_stats, _label_all, _load_gate,
+    whiten_all_but_top,
 )
 from backend.scripts.snapshot_emergent_topics import (
     SAMPLE_TOP_K,
@@ -73,7 +74,30 @@ def _parse_vec(t: str) -> list[float]:
     return [float(x) for x in t.strip().lstrip("[").rstrip("]").split(",") if x]
 
 
-async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n):
+def _env_whiten_k() -> int:
+    """ATLAS_CLUSTER_WHITEN_K → int; garbage/negative fall to 0 (off)."""
+    try:
+        k = int(os.environ.get("ATLAS_CLUSTER_WHITEN_K", "0"))
+    except ValueError:
+        return 0
+    return k if k > 0 else 0
+
+
+def _whiten_input(embs: np.ndarray, k: int) -> np.ndarray:
+    """All-but-top(k) whitening for the HDBSCAN INPUT only.
+
+    k=0 returns the SAME object (zero-cost, byte-identical default path).
+    Whitening is a clustering-geometry lever (docs/research/recall-229/
+    2026-07-16-whitening-recall-harness.md) — centroids, the precision gate
+    and everything persisted stay in the RAW e5 space.
+    """
+    if k <= 0:
+        return embs
+    return whiten_all_but_top(embs, k)
+
+
+async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n,
+                            whiten_k: int = 0):
     """Scoped pull → cluster → gate → top-N. Returns (clusters, embs, rows) or None."""
     recs = await conn.fetch(_FETCH, cc, hours, cap)
     if len(recs) < mcs * 2:
@@ -85,7 +109,7 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
     if len(rows) < mcs * 2:
         return None
     embs = np.array([emb_by_id[int(r["id"])] for r in rows], dtype=np.float32)
-    labels = _cluster(embs, mcs, ms, "leaf")
+    labels = _cluster(_whiten_input(embs, whiten_k), mcs, ms, "leaf")
     all_clusters = _cluster_stats(labels, embs, rows, top_k=SAMPLE_TOP_K)
     if not all_clusters:
         return None
@@ -112,6 +136,12 @@ async def main() -> None:
     ap.add_argument("--limit-countries", type=int, default=0, help="only first N (test)")
     ap.add_argument("--skip-label", action="store_true", help="headline fallback labels")
     ap.add_argument("--dry-run", action="store_true", help="no INSERT")
+    ap.add_argument("--whiten-k", type=int, default=_env_whiten_k(),
+                    help="all-but-top(k) whitening of the HDBSCAN input "
+                         "(env ATLAS_CLUSTER_WHITEN_K; 0 = off, byte-identical)")
+    ap.add_argument("--dump-json", default="",
+                    help="write per-country cluster payloads (members, cohesion, "
+                         "gate verdicts) to this path — diagnostic, works with --dry-run")
     args = ap.parse_args()
 
     db = os.environ.get("DATABASE_URL")
@@ -143,10 +173,12 @@ async def main() -> None:
             f"latest {args.per_country_cap}/country"
         )
         print(f"snapshot_at={snapshot_at.isoformat()} · {len(ccs)} countries · "
-              f"{scope} · {corpus} · dry_run={args.dry_run}", file=sys.stderr)
+              f"{scope} · {corpus} · dry_run={args.dry_run} · "
+              f"whiten_k={args.whiten_k}", file=sys.stderr)
 
         total_written = total_clusters = done = failed = 0
         prepared_rows = []
+        dump_countries: list[dict] = []
         base = 0
         for cc in ccs:
             done += 1
@@ -159,11 +191,15 @@ async def main() -> None:
             try:
                 res = await _country_clusters(conn, cc, args.hours, args.per_country_cap,
                                               args.mcs, args.ms, gate, args.min_kept,
-                                              args.top_per_country)
+                                              args.top_per_country,
+                                              whiten_k=args.whiten_k)
             except Exception as ex:
                 failed += 1
                 print(f"  [{done}/{len(ccs)}] {cc}: FETCH/CLUSTER failed ({ex})",
                       file=sys.stderr, flush=True)
+                if args.dump_json:
+                    dump_countries.append({"country": cc, "error": str(ex),
+                                           "clusters": []})
                 try:
                     if not conn.is_closed() and isinstance(
                             ex, (asyncpg.PostgresConnectionError, ConnectionError, OSError)):
@@ -173,6 +209,8 @@ async def main() -> None:
                 continue
             if res is None:
                 print(f"  [{done}/{len(ccs)}] {cc}: no gated clusters", file=sys.stderr, flush=True)
+                if args.dump_json:
+                    dump_countries.append({"country": cc, "clusters": []})
                 base += _ID_OFFSET
                 continue
             clusters, embs, rows = res
@@ -198,6 +236,46 @@ async def main() -> None:
             lbls = ", ".join((d.get("label") or "?")[:24] for d in ds_labels[:2])
             print(f"  [{done}/{len(ccs)}] {cc}: n={len(rows)} clusters={len(clusters)} "
                   f"e.g. [{lbls}]", file=sys.stderr, flush=True)
+            if args.dump_json:
+                dump_countries.append({
+                    "country": cc,
+                    "n_signals": len(rows),
+                    "clusters": [{
+                        "cluster_id": int(c["cluster_id"]),
+                        "label": (dl.get("label") or "")[:120],
+                        "raw_size": c.get("raw_size"),
+                        "kept_size": c.get("kept_size"),
+                        "kept_ratio": c.get("kept_ratio"),
+                        "gate_threshold": c.get("gate_threshold"),
+                        "cohesion": c.get("cohesion"),
+                        "members": [
+                            {"signal_id": int(rows[i]["id"]),
+                             "headline": rows[i]["headline"]}
+                            for i in c.get("kept_idxs", c["all_idxs"])
+                        ],
+                    } for c, dl in zip(clusters, ds_labels)],
+                })
+
+        if args.dump_json:
+            from pathlib import Path as _P
+            payload = {
+                "meta": {
+                    "snapshot_at": snapshot_at.isoformat(),
+                    "hours": args.hours,
+                    "whiten_k": args.whiten_k,
+                    "mcs": args.mcs, "ms": args.ms, "min_kept": args.min_kept,
+                    "dry_run": args.dry_run,
+                    "countries_attempted": len(ccs),
+                    "failed": failed,
+                    "elapsed_s": round(time.time() - t0),
+                },
+                "countries": dump_countries,
+            }
+            out = _P(args.dump_json)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            print(f"dump written: {out} ({len(dump_countries)} countries)",
+                  file=sys.stderr, flush=True)
 
         if failed:
             raise RuntimeError(
