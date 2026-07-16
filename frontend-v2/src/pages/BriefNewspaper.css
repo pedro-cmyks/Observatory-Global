@@ -986,6 +986,12 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   .brief-gapgrid { grid-template-columns: 1fr; }
 }
 
+.brief-gap-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .brief-gap {
   appearance: none;
   cursor: pointer;
@@ -1000,6 +1006,57 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   color: inherit;
   font-family: var(--r-sans);
   transition: border-color 0.16s ease;
+  flex: 1;
+}
+
+/* Extended-tier receipts recovered from the gap's raw pool (measured
+   2026-07-16: gap-slice precision 29-43% -> K<=3, always tier-labeled). */
+.brief-gap-receipts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px 12px;
+  background: color-mix(in srgb, var(--r-accent-2) 6%, var(--r-surface));
+  border: 1px dashed color-mix(in srgb, var(--r-accent-2) 45%, var(--r-line));
+  border-radius: 4px;
+}
+
+.brief-gap-receipts-label {
+  font-family: var(--r-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--r-accent-2);
+  font-weight: 600;
+}
+
+.brief-gap-receipt {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.brief-gap-receipt:hover .brief-gap-receipt-headline {
+  color: var(--r-accent-2);
+  text-decoration: underline;
+}
+
+.brief-gap-receipt-headline {
+  font-family: var(--r-serif);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: var(--r-ink);
+  overflow-wrap: anywhere;
+}
+
+.brief-gap-receipt-meta {
+  font-family: var(--r-mono);
+  font-size: 0.62rem;
+  color: var(--r-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .brief-gap:hover {

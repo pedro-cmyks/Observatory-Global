@@ -125,6 +125,17 @@ interface BriefingData {
         verified: number
         scored: number
         status: 'gate_pending' | 'none_verified'
+        // measured 2026-07-16 (docs/research/gap-pool): top-K (<=3) receipts
+        // above the topic's extended (~75%) threshold — the recoverable
+        // newsworthy hits buried in the raw pool; gap-slice precision 29-43%,
+        // so always rendered with the unverified-extended label.
+        extended_receipts?: {
+            headline: string
+            source?: string | null
+            url?: string | null
+            gate_score: number
+            tier: 'extended'
+        }[]
     }[]
     category_counts?: { category: string; topics: number; signals: number }[]
     negative_sentiment: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number }[]
@@ -1173,26 +1184,46 @@ export function BriefNewspaper() {
                                             <span className="reader-section-kicker brief-sub-kicker">What is missing</span>
                                             <div className="brief-gapgrid">
                                                 {coverageGaps.map(g => (
-                                                    <button
-                                                        key={g.slug}
-                                                        className="brief-gap"
-                                                        onClick={() => goToAtlas(`theme=${encodeURIComponent(g.slug)}`, 'gap_box')}
-                                                        data-tip="Category with real coverage in the last 24h where NOTHING cleared the quality gate — attention without verified evidence. 'gate pending' means not yet scored, not rejected."
-                                                    >
-                                                        <span className="brief-gap-label">{g.label}</span>
-                                                        <span className="brief-gap-cat">Coverage gap</span>
-                                                        <span className="brief-gauge">
-                                                            <span><span className="num raw">{g.raw_signals.toLocaleString()}</span><span className="lbl">raw signals</span></span>
-                                                            <span><span className="num ver">{g.verified}</span><span className="lbl">verified</span></span>
-                                                        </span>
-                                                        <span className="brief-gbar" aria-hidden="true" style={{ width: `${Math.max(8, Math.round((g.raw_signals / maxGapRaw) * 100))}%` }}>
-                                                            <i style={{ width: g.raw_signals > 0 ? `${Math.round((g.verified / g.raw_signals) * 100)}%` : '0%' }} />
-                                                        </span>
-                                                        <span className={`brief-gap-status brief-gap-status--${g.status}`}>
-                                                            <span className="d" />
-                                                            {g.status === 'gate_pending' ? 'gate pending — not yet scored' : `${g.verified} of ${g.raw_signals.toLocaleString()} admitted — none cleared the quality gate`}
-                                                        </span>
-                                                    </button>
+                                                    <div key={g.slug} className="brief-gap-cell">
+                                                        <button
+                                                            className="brief-gap"
+                                                            onClick={() => goToAtlas(`theme=${encodeURIComponent(g.slug)}`, 'gap_box')}
+                                                            data-tip="Category with real coverage in the last 24h where NOTHING cleared the quality gate — attention without verified evidence. 'gate pending' means not yet scored, not rejected."
+                                                        >
+                                                            <span className="brief-gap-label">{g.label}</span>
+                                                            <span className="brief-gap-cat">Coverage gap</span>
+                                                            <span className="brief-gauge">
+                                                                <span><span className="num raw">{g.raw_signals.toLocaleString()}</span><span className="lbl">raw signals</span></span>
+                                                                <span><span className="num ver">{g.verified}</span><span className="lbl">verified</span></span>
+                                                            </span>
+                                                            <span className="brief-gbar" aria-hidden="true" style={{ width: `${Math.max(8, Math.round((g.raw_signals / maxGapRaw) * 100))}%` }}>
+                                                                <i style={{ width: g.raw_signals > 0 ? `${Math.round((g.verified / g.raw_signals) * 100)}%` : '0%' }} />
+                                                            </span>
+                                                            <span className={`brief-gap-status brief-gap-status--${g.status}`}>
+                                                                <span className="d" />
+                                                                {g.status === 'gate_pending' ? 'gate pending — not yet scored' : `${g.verified} of ${g.raw_signals.toLocaleString()} admitted — none cleared the quality gate`}
+                                                            </span>
+                                                        </button>
+                                                        {(g.extended_receipts?.length ?? 0) > 0 && (
+                                                            <div className="brief-gap-receipts">
+                                                                <span className="brief-gap-receipts-label" data-tip="The strongest rows the ~75%-precision extended model recovers from this gap's raw pool (measured slice precision 29-43% — read as leads, not verified evidence).">
+                                                                    UNVERIFIED · EXTENDED (~75% MODEL)
+                                                                </span>
+                                                                {g.extended_receipts!.map(r => (
+                                                                    <a
+                                                                        key={r.headline}
+                                                                        className="brief-gap-receipt"
+                                                                        href={r.url ?? undefined}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                    >
+                                                                        <span className="brief-gap-receipt-headline">{r.headline}</span>
+                                                                        <span className="brief-gap-receipt-meta">{r.source ?? 'source unknown'} · score {r.gate_score.toFixed(2)} ↗</span>
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 ))}
                                             </div>
                                             <p className="brief-footref">

@@ -295,6 +295,41 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             LIMIT 6
         """, hours)
 
+        # Gap-box extended receipts (measured 2026-07-16, docs/research/gap-pool):
+        # the 2-3 most newsworthy hits in a gap category sit above its extended
+        # (~75%) threshold and are recoverable now — max K=3, tier-labeled,
+        # never below the topic threshold. Best-effort PER GAP (the delight
+        # lesson: one shared failure must not kill the section — each query is
+        # guarded separately and a failure just means no receipts for that row).
+        gap_receipts_by_slug: dict = {}
+        if coverage_gaps:
+            from app.routers.themes import _extended_gate_thresholds
+            from app.services.gap_receipts import GAP_RECEIPTS_K, pick_extended_receipts
+            per_topic_ext, _global_ext = _extended_gate_thresholds()
+            for gap_row in coverage_gaps:
+                gap_slug = gap_row["slug"]
+                ext_thr = per_topic_ext.get(gap_slug)
+                if ext_thr is None:
+                    continue
+                try:
+                    ext_rows = await conn.fetch("""
+                        SELECT s.headline, s.source_name AS source, s.url,
+                               a.gate_score::float AS gate_score
+                        FROM signal_topic_assignments a
+                        JOIN atlas_topics t ON t.id = a.topic_id
+                        JOIN signals_v2 s ON s.id = a.signal_id
+                        WHERE t.slug = $1
+                          AND a.assigned_at > NOW() - ($2::int * INTERVAL '1 hour')
+                          AND a.gate_score >= $3
+                        ORDER BY a.gate_score DESC
+                        LIMIT 40
+                    """, gap_slug, hours, float(ext_thr))
+                    gap_receipts_by_slug[gap_slug] = pick_extended_receipts(
+                        [dict(r) for r in ext_rows], float(ext_thr), GAP_RECEIPTS_K
+                    )
+                except Exception:
+                    logger.exception("gap receipts query failed for %s", gap_slug)
+
         # Long windows should use compact processed historical tables, not raw
         # historical scans. For hot windows, theme_hourly_v2 remains the live
         # pre-agg populated by ingest_v2.refresh. The legacy
@@ -766,6 +801,9 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                     "verified": int(r["verified"]),
                     "scored": int(r["scored"]),
                     "status": "gate_pending" if int(r["scored"]) == 0 else "none_verified",
+                    # measured gap-slice precision of this tier is 29-43% —
+                    # hence K<=3 and the mandatory unverified-extended label.
+                    "extended_receipts": gap_receipts_by_slug.get(r["slug"], []),
                 }
                 for r in coverage_gaps
             ],
