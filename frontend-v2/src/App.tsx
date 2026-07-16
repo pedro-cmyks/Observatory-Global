@@ -1049,14 +1049,25 @@ function AppContent() {
       } : emptyFeatureCollection(),
       anomaly: {
         type: 'FeatureCollection' as const,
-        features: enhancedNodes.filter((node: any) => node.isAnomaly).map((node: any) => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [node.lon, node.lat] },
-          properties: {
-            signalCount: node.signalCount || 0,
-            radius: Math.min(Math.max(6, Math.sqrt(node.signalCount || 1) * (sizeBoost ? 1.5 : 0.8)), 24),
-          },
-        })),
+        features: enhancedNodes.filter((node: any) => node.isAnomaly).map((node: any) => {
+          // #255 hover receipt: carry the anomaly's measured fields so the ring
+          // can explain itself (multiplier/z/current vs baseline), not just ping.
+          const a = anomalies.find((x: any) => x.country_code === node.id)
+          return {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [node.lon, node.lat] },
+            properties: {
+              signalCount: node.signalCount || 0,
+              radius: Math.min(Math.max(6, Math.sqrt(node.signalCount || 1) * (sizeBoost ? 1.5 : 0.8)), 24),
+              country_code: node.id,
+              country_name: a?.country_name || node.label || node.id,
+              multiplier: a?.multiplier ?? node.anomalyMultiplier ?? null,
+              zscore: a?.zscore ?? null,
+              current_count: a?.current_count ?? null,
+              level: a?.level ?? null,
+            },
+          }
+        }),
       },
       chokepoints: showVessels ? {
         type: 'FeatureCollection' as const,
@@ -1162,6 +1173,7 @@ function AppContent() {
     vesselData,
     visibleFlows,
     crisisEnabled,
+    anomalies,
   ])
 
   // (MapLibre overlay-push + native layer-handler effects removed with the
