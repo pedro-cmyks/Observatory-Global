@@ -156,6 +156,37 @@ def _entity_valid(text: str, source_lang: str | None = None) -> bool:
     return (non_ascii / max(len(t), 1)) < threshold
 
 
+# Place-typed entity labels projected into nlp_places. spaCy en emits GPE/LOC;
+# the HF xlm path maps everything location-shaped to LOC (_HF_NER_LABEL_MAP).
+_PLACE_TYPES = {"GPE", "LOC"}
+_PLACES_CAP = 10
+
+
+def places_from_entities(entities) -> list[str]:
+    """Project place-typed entities into the nlp_places payload.
+
+    Pure hygiene mirror of the persons lane: lowercase + strip, drop 1-2 char
+    tokens, case-insensitive dedupe preserving extraction order, cap at
+    _PLACES_CAP per signal. Consumed by subject_geography.resolve_place_to_country
+    (method "ner_place"), which is case-insensitive — lowercase is safe.
+    """
+    if not entities:
+        return []
+    seen: set[str] = set()
+    places: list[str] = []
+    for ent in entities:
+        if ent.get("type") not in _PLACE_TYPES:
+            continue
+        name = str(ent.get("name") or "").strip().lower()
+        if len(name) < 3 or name in seen:
+            continue
+        seen.add(name)
+        places.append(name)
+        if len(places) >= _PLACES_CAP:
+            break
+    return places
+
+
 # ── Inference helpers ─────────────────────────────────────────────────────────
 def _map_sentiment(label_scores: list[dict]) -> tuple[float, float]:
     """Map sentiment label/score list to (signed score [-5, 5], confidence [0, 1]).
@@ -487,6 +518,7 @@ def _columns() -> dict[str, str]:
             "confidence_target": "nlp_confidence_xlm",
             "framing_target": "nlp_framing_xlm",
             "persons_target": "nlp_persons_xlm",
+            "places_target": "nlp_places_xlm",
             "processed_at_target": "nlp_processed_at_xlm",
         }
     return {
@@ -494,6 +526,7 @@ def _columns() -> dict[str, str]:
         "confidence_target": "nlp_confidence",
         "framing_target": "nlp_framing",
         "persons_target": "nlp_persons",
+        "places_target": "nlp_places",
         "processed_at_target": "nlp_processed_at",
     }
 
@@ -615,7 +648,9 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
         else:
             nlp = nlp_xx if (non_en and nlp_xx is not None) else nlp_en
             entities = _extract_entities(nlp, row["headline"], lang or None)
-        records.append((json.dumps(entities), row["id"]))
+        records.append(
+            (json.dumps(entities), json.dumps(places_from_entities(entities)), row["id"])
+        )
 
     for model, model_rows in ((hf_ner, hf_rows), (hf_cyr, cyrillic_rows)):
         if model is None or not model_rows:
@@ -628,7 +663,7 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
             ],
         )
         records.extend(
-            (json.dumps(entities), row["id"])
+            (json.dumps(entities), json.dumps(places_from_entities(entities)), row["id"])
             for row, entities in zip(model_rows, extracted)
         )
 
@@ -643,7 +678,9 @@ async def _run_ner_phase(conn: asyncpg.Connection, limit: int, dry_run: bool) ->
 
     if not dry_run and records:
         await conn.executemany(
-            f"UPDATE signals_v2 SET {cols['persons_target']}=$1::jsonb WHERE id=$2",
+            f"UPDATE signals_v2 "
+            f"SET {cols['persons_target']}=$1::jsonb, {cols['places_target']}=$2::jsonb "
+            f"WHERE id=$3",
             records,
         )
     logger.info(
