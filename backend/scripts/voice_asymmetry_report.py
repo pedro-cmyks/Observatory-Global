@@ -183,7 +183,10 @@ def build_report(topics: list[TopicVoiceInput], *, hours: int) -> dict[str, Any]
         "window_hours": hours,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "subject_country_guardrail": (
-            "cluster_primary_coverage_proxy is who covered the story, not verified subject geography"
+            "receipt_subject_inference_verified = subject named in >=2 receipts/"
+            ">=2 outlets (serving inference, person-proxy demoted, dominance-"
+            "capped); cluster_primary_coverage_proxy = who covered the story, "
+            "not verified subject geography — labeled fallback, discounted"
         ),
         "truth_guardrail": (
             "scores describe Atlas corpus coverage and are not real-world truth or consensus"
@@ -283,7 +286,8 @@ ranked AS (
     WHERE s.timestamp > NOW() - ($1::int * INTERVAL '1 hour')
 )
 SELECT c.id AS topic_id, c.label, sp.subject_country,
-       s.id AS signal_id, s.source_name, s.source_lang, s.source_origin_country
+       s.id AS signal_id, s.headline, s.source_name, s.source_lang,
+       s.source_origin_country
 FROM candidates c
 LEFT JOIN subject_proxy sp ON sp.dynamic_topic_id = c.id
 JOIN ranked r ON r.dynamic_topic_id = c.id AND r.rn <= {MEMBER_CAP_PER_TOPIC}
@@ -302,6 +306,27 @@ GROUP BY 1
 """
 
 
+def resolve_topic_subject(
+    receipts: list[dict[str, Any]],
+    proxy_code: str | None,
+) -> tuple[str | None, str | None]:
+    """C7 geo-source swap (2026-07-16 reconsideration): subject country comes
+    from the SERVING receipt-subject inference (person-proxy demotion +
+    dominance cap included) when it VERIFIES; the cluster coverage proxy
+    survives only as a labeled fallback that the scorer already discounts
+    (subject_geo_is_coverage_proxy). 71% of the 07-12 hits carried proxy
+    mismatches; the serving inference measured 86.7% precision."""
+    if receipts:
+        from app.services.subject_geography import infer_receipt_subject_geography
+        inference = infer_receipt_subject_geography(receipts)
+        verified = list(inference.get("verified_subject_countries") or [])
+        if inference.get("status") == "verified" and verified:
+            return str(verified[0]).upper(), "receipt_subject_inference_verified"
+    if proxy_code:
+        return str(proxy_code).upper(), "cluster_primary_coverage_proxy"
+    return None, None
+
+
 async def load_topic_inputs(conn: Any, *, hours: int, limit: int) -> list[TopicVoiceInput]:
     rows = await conn.fetch(MEMBER_SQL, hours, limit, timeout=30)
     public_rows = await conn.fetch(PUBLIC_SQL, hours, timeout=15)
@@ -316,30 +341,38 @@ async def load_topic_inputs(conn: Any, *, hours: int, limit: int) -> list[TopicV
             "sources": set(),
             "languages": {},
             "origins": {},
+            "receipts": [],
         })
         item["signal_ids"].add(int(row["signal_id"]))
+        if row["headline"]:
+            item["receipts"].append({
+                "headline": str(row["headline"]),
+                "source_name": str(row["source_name"] or ""),
+            })
         if row["source_name"]:
             item["sources"].add(str(row["source_name"]))
         lang = str(row["source_lang"] or "(null)").strip().lower() or "(null)"
         origin = str(row["source_origin_country"] or "(null)").strip().upper() or "(null)"
         item["languages"][lang] = item["languages"].get(lang, 0) + 1
         item["origins"][origin] = item["origins"].get(origin, 0) + 1
-    return [
-        TopicVoiceInput(
+    inputs: list[TopicVoiceInput] = []
+    for topic_id, item in grouped.items():
+        subject_code, subject_method = resolve_topic_subject(
+            item["receipts"],
+            str(item["subject_country"]).upper() if item["subject_country"] else None,
+        )
+        inputs.append(TopicVoiceInput(
             topic_id=topic_id,
             label=item["label"],
             signal_count=len(item["signal_ids"]),
             distinct_sources=len(item["sources"]),
-            subject_country=str(item["subject_country"]).upper() if item["subject_country"] else None,
-            subject_country_method=(
-                "cluster_primary_coverage_proxy" if item["subject_country"] else None
-            ),
+            subject_country=subject_code,
+            subject_country_method=subject_method,
             language_counts=item["languages"],
             origin_counts=item["origins"],
             public_count=public_by_topic.get(topic_id, 0),
-        )
-        for topic_id, item in grouped.items()
-    ]
+        ))
+    return inputs
 
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:

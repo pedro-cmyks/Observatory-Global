@@ -107,3 +107,38 @@ def test_report_is_read_only_ranked_and_renders_guardrails():
     markdown = render_markdown(report)
     assert "coverage proxy" in markdown.lower()
     assert "not real-world truth" in markdown.lower()
+
+
+# ── C7 geo-source swap (2026-07-16 reconsideration): subject country comes from
+# the SERVING receipt-subject inference when it verifies; the cluster coverage
+# proxy survives only as a labeled fallback (the scorer already discounts it).
+from scripts.voice_asymmetry_report import resolve_topic_subject
+
+
+def _receipts(pairs):
+    return [{"headline": h, "source_name": s} for h, s in pairs]
+
+
+def test_verified_inference_wins_over_proxy():
+    receipts = _receipts([(f"Ukraine reports new strikes, wire {i}", f"o{i}") for i in range(4)])
+    code, method = resolve_topic_subject(receipts, proxy_code="RU")
+    assert code == "UA"
+    assert method == "receipt_subject_inference_verified"
+
+
+def test_unverified_falls_back_to_labeled_proxy():
+    receipts = _receipts([("Local council meets on budget", "o1"), ("Mayor speaks at fair", "o2")])
+    code, method = resolve_topic_subject(receipts, proxy_code="FR")
+    assert code == "FR"
+    assert method == "cluster_primary_coverage_proxy"
+
+
+def test_no_receipts_no_proxy_is_honest_none():
+    assert resolve_topic_subject([], proxy_code=None) == (None, None)
+
+
+def test_verified_subject_scores_without_proxy_reason_code():
+    receipts = _receipts([(f"Ukraine reports new strikes, wire {i}", f"o{i}") for i in range(4)])
+    code, method = resolve_topic_subject(receipts, proxy_code="RU")
+    row = score_topic_voice_asymmetry(_topic(subject_country=code, subject_country_method=method))
+    assert "subject_geo_is_coverage_proxy" not in row["reason_codes"]
