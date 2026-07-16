@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prefetchBriefing } from '../lib/briefingPrefetch'
+import { resolveVoiceStats, VOICE_BASELINE_LABEL, type VoiceStats } from '../lib/voiceStats'
 import { HeroThread } from '../components/HeroThread'
 import './Landing.css'
 
@@ -51,8 +52,10 @@ export function Landing() {
     const [movers, setMovers] = useState<Mover[] | null>(null)
     // L0 review item: these were hardcoded marketing numbers (126/31/0.71,
     // measured 2026-06-23) that would drift silently — now fetched live from
-    // /api/v2/voice-mix with the last-known values as fallback.
-    const [voice, setVoice] = useState<{ countries: number; langs: number; entropy: string } | null>(null)
+    // /api/v2/voice-mix. On fetch failure we fall back to that dated baseline
+    // and SAY SO (resolveVoiceStats flags it; a suffix is rendered) so a
+    // degraded fetch never asserts month-old numbers as current.
+    const [voice, setVoice] = useState<VoiceStats | null>(null)
 
     useEffect(() => { prefetchBriefing(24) }, [])
 
@@ -101,6 +104,7 @@ export function Landing() {
 
     const lead = movers && movers.length ? movers[0] : null
     const rest = movers && movers.length > 1 ? movers.slice(1, 4) : []
+    const voiceStats = resolveVoiceStats(voice)
 
     return (
         <div className="lp-root dark min-h-screen text-on-surface antialiased selection:bg-primary selection:text-on-primary">
@@ -160,7 +164,7 @@ export function Landing() {
 
                     <div className="flex flex-wrap justify-center gap-x-10 gap-y-3 mt-10 font-technical-label text-technical-label text-text-secondary uppercase tracking-wider">
                         <span className="tabular-nums"><span className="text-primary">{liveSignals ?? '—'}</span> signals indexed</span>
-                        <span className="tabular-nums"><span className="text-primary">{voice?.countries ?? 126}</span> countries of voice</span>
+                        <span className="tabular-nums"><span className="text-primary">{voiceStats.countries}</span> countries of voice · attributable-origin base{voiceStats.isBaseline && <span className="text-slate-500 normal-case"> ({VOICE_BASELINE_LABEL})</span>}</span>
                         <span><span className="text-primary">{liveStatus === 'degraded' ? 'Degraded' : 'Live'}</span> · ingesting every 15 min</span>
                     </div>
                 </section>
@@ -285,8 +289,9 @@ export function Landing() {
                             <ul className="flex flex-col gap-2.5">
                                 {[
                                     ['GDELT media graph', 'global multilingual baseline'],
-                                    ['RSS · ReliefWeb · news APIs', 'regional voice + crisis provenance'],
-                                    ['Reddit', 'commentary, kept separate from evidence'],
+                                    ['RSS · news APIs', 'regional voice + crisis provenance'],
+                                    ['ReliefWeb', 'wired, pending institutional access — not currently producing'],
+                                    ['Bluesky · Lemmy · Reddit (legacy)', 'commentary, kept separate from evidence'],
                                     ['Google Trends · Wikipedia', 'public search + reference attention'],
                                     ['NLP + e5 embeddings', 'sentiment, entities, framing, semantic recall'],
                                 ].map(([n, d]) => (
@@ -302,10 +307,13 @@ export function Landing() {
                             <h3 className="font-headline-md text-text-primary text-xl md:text-2xl mb-3">Global without the monoculture.</h3>
                             <p className="font-body-main text-text-secondary text-sm mb-5">"Global" is a measured claim. Atlas separates a country being <em>talked about</em> from a country having its own <em>voice</em> — self-coverage by outlet ownership, not language.</p>
                             <div className="flex gap-8">
-                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voice?.countries ?? 126}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">countries of voice</div></div>
-                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voice?.langs ?? 31}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">languages ingested</div></div>
-                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voice?.entropy ?? "0.71"}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">voice entropy</div></div>
+                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voiceStats.countries}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">countries of voice · attributable-origin base</div></div>
+                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voiceStats.langs}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">languages ingested · 7-day voice-mix</div></div>
+                                <div><div className="font-headline-md text-primary text-2xl tabular-nums">{voiceStats.entropy}</div><div className="font-technical-label text-technical-label text-text-secondary uppercase">voice entropy · origin diversity</div></div>
                             </div>
+                            {voiceStats.isBaseline && (
+                                <div className="font-technical-label text-technical-label text-slate-500 mt-3">{VOICE_BASELINE_LABEL} (measured 2026-06-23) — live voice-mix unavailable</div>
+                            )}
                         </div>
                     </div>
                 </RevealSection>

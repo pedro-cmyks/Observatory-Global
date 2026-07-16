@@ -144,13 +144,14 @@ export function Docs() {
                         <tbody>
                             <tr><td>GDELT GKG 2.0</td><td>Media narratives, themes, sentiment, persons</td><td>15 min</td><td>Global, multilingual baseline</td></tr>
                             <tr><td>GDELT Events</td><td>Actor-action geopolitical events using CAMEO</td><td>15 min</td><td>Global</td></tr>
-                            <tr><td>RSS / ReliefWeb</td><td>Curated regional, humanitarian, NGO, institutional feeds</td><td>60 min</td><td>Source provenance and crisis-country context</td></tr>
+                            <tr><td>RSS feeds</td><td>Curated regional, humanitarian, NGO, institutional feeds</td><td>60 min</td><td>Source provenance and regional voice</td></tr>
+                            <tr><td>ReliefWeb (OCHA)</td><td>Humanitarian reports and crisis updates</td><td>—</td><td>Wired, pending institutional API access — not currently producing</td></tr>
                             <tr><td>NewsData.io</td><td>Multilingual media coverage expansion</td><td>60 min</td><td>Language and country buckets</td></tr>
                             <tr><td>MediaStack</td><td>Country-specific media expansion</td><td>2 h</td><td>LatAm and regional coverage</td></tr>
                             <tr><td>NewsAPI.org</td><td>Targeted crisis-query coverage</td><td>2 h</td><td>Focused crisis monitoring</td></tr>
-                            <tr><td>Reddit</td><td>Public social commentary from geopolitical subreddits</td><td>60 min</td><td>Commentary layer, not news evidence</td></tr>
-                            <tr><td>Bluesky</td><td>Public social posts via the Jetstream firehose</td><td>~60 min</td><td>Global social commentary, multilingual</td></tr>
-                            <tr><td>Lemmy</td><td>Federated forum posts across public instances</td><td>~60 min</td><td>Instance-tagged social commentary</td></tr>
+                            <tr><td>Bluesky</td><td>Public social posts via the Jetstream firehose</td><td>~60 min</td><td>Global social commentary, multilingual — the live forum lane</td></tr>
+                            <tr><td>Lemmy</td><td>Federated forum posts across public instances</td><td>~60 min</td><td>Instance-tagged social commentary — the live forum lane</td></tr>
+                            <tr><td>Reddit (legacy)</td><td>Public social commentary from geopolitical subreddits</td><td>60 min</td><td>Legacy commentary layer, minor volume; never news evidence</td></tr>
                             <tr><td>Google Trends</td><td>Public search interest by keyword and country</td><td>30 min</td><td>Availability varies by country</td></tr>
                             <tr><td>Wikipedia Pageviews</td><td>Article reading volume by language/country</td><td>24 h</td><td>Reference-seeking public attention</td></tr>
                         </tbody>
@@ -371,11 +372,12 @@ export function Docs() {
                         <div className="docs-source-card">
                             <div className="docs-source-card-head">
                                 <span className="docs-source-badge badge-acled">RSS</span>
-                                <span className="docs-source-title">Curated + ReliefWeb Feeds</span>
+                                <span className="docs-source-title">Curated RSS Feeds</span>
                             </div>
                             <p>
                                 Curated feeds add regional, state, NGO, and humanitarian sources with stronger
-                                provenance. ReliefWeb/OCHA coverage is especially useful for crisis-country context.
+                                provenance. ReliefWeb/OCHA is wired but pending institutional API access and is
+                                not currently producing rows — it is not part of the live source mix.
                             </p>
                             <div className="docs-source-meta">
                                 <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
@@ -400,11 +402,12 @@ export function Docs() {
                         <div className="docs-source-card">
                             <div className="docs-source-card-head">
                                 <span className="docs-source-badge badge-wiki">SOCIAL</span>
-                                <span className="docs-source-title">Reddit Commentary</span>
+                                <span className="docs-source-title">Reddit Commentary (Legacy)</span>
                             </div>
                             <p>
-                                Reddit is treated as commentary, not as article evidence. It can reveal early public
-                                discussion, but it should be scored separately from media and institutional sources.
+                                Reddit is a legacy, lower-volume commentary lane — the live forum lane is Bluesky +
+                                Lemmy. Like all social layers it is treated as commentary, not as article evidence,
+                                and is scored separately from media and institutional sources.
                             </p>
                             <div className="docs-source-meta">
                                 <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
@@ -419,8 +422,8 @@ export function Docs() {
                             <p>
                                 Public Bluesky posts are drained from the Jetstream firehose (no credentials, one
                                 global network). Country is inferred by NER geocode and language from the post's own
-                                tag. Like Reddit it is commentary — it attaches to threads as discussion, never as
-                                article evidence, and never seeds a cluster.
+                                tag. Like every social layer it is commentary — it attaches to threads as discussion,
+                                never as article evidence, and never seeds a cluster.
                             </p>
                             <div className="docs-source-meta">
                                 <div className="docs-source-meta-item">Latency <span>~60 min</span></div>
@@ -541,9 +544,10 @@ export function Docs() {
                 <section className="docs-section" id="social">
                     <h3>Social &amp; Forums — Commentary Signal</h3>
                     <p>
-                        Three social layers feed Atlas as <em>commentary</em>, never article evidence: Reddit
-                        (geopolitical and country subreddits), Bluesky (the Jetstream firehose), and Lemmy (federated
-                        forum instances). All three are embedded with the same multilingual model as news, then
+                        Three social layers feed Atlas as <em>commentary</em>, never article evidence. The live forum
+                        lane is Bluesky (the Jetstream firehose) and Lemmy (federated forum instances); Reddit
+                        (geopolitical and country subreddits) remains as a legacy, lower-volume layer. All three are
+                        embedded with the same multilingual model as news, then
                         attached to narrative threads with a <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>discussion</code> role
                         so social attention is scored separately and does not contaminate media-source scoring.
                     </p>
@@ -573,7 +577,8 @@ export function Docs() {
                             <div className="docs-pipeline-step-body">
                                 <h4>Fetch</h4>
                                 <p>
-                                    GDELT files, RSS feeds, news APIs, Reddit JSON, Trends, and Wikipedia are fetched
+                                    GDELT files, RSS feeds, news APIs, social drains (Bluesky, Lemmy, legacy
+                                    Reddit), Trends, and Wikipedia are fetched
                                     on their own cadences. Source family, language, attribution method, and confidence
                                     metadata are attached as early as possible.
                                 </p>
@@ -916,7 +921,9 @@ countries_v2         Country centroids and metadata`}
                     <h3>Voice Mix metrics</h3>
                     <p>
                         Served by <code style={{ fontFamily: 'monospace', color: '#68dbae' }}>/api/v2/voice-mix</code> and
-                        surfaced in the Country Brief as "X% covered by its own press":
+                        surfaced in the Country Brief as "X% covered by its own press". Ratios are computed over the
+                        <em> attributable-origin base</em> (signals whose outlet ownership is known — not raw 24h
+                        outlet domains); rows with no known origin are reported honestly as unattributed:
                     </p>
                     <table className="docs-table">
                         <thead><tr><th>Metric</th><th>Meaning</th></tr></thead>
@@ -932,7 +939,8 @@ countries_v2         Country centroids and metadata`}
                     <h3>How Atlas widens the aperture</h3>
                     <p>
                         Voice is raised at the source: 200+ native-language RSS feeds across 100+ countries and
-                        30+ languages (uncapped, unlike metered news APIs), native-script geo-tagging so a Persian
+                        30+ languages (uncapped, unlike metered news APIs; counts refer to the curated feed
+                        roster, not the raw 24h outlet-domain mix), native-script geo-tagging so a Persian
                         or Chinese headline is attributed to the country it <em>names</em> rather than the outlet's
                         home country, multilingual NLP for in-window scoring, and on-demand translation.
                     </p>

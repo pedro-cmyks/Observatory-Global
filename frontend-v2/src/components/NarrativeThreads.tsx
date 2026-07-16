@@ -8,15 +8,9 @@ import { Flag } from './Flag'
 import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
 import { threadConfidencePresentation } from '../lib/threadConfidence'
 import { threadCountryPresentation } from '../lib/threadGeography'
+import { familyColor, familyGradient } from '../lib/categoryFamily'
+import { TranslatableText } from './TranslatableText'
 import './NarrativeThreads.css'
-
-const THREAD_COLORS = [
-    { gradient: 'linear-gradient(90deg, #f97316, #fbbf24)', accent: '#f97316' },
-    { gradient: 'linear-gradient(90deg, #6366f1, #818cf8)', accent: '#6366f1' },
-    { gradient: 'linear-gradient(90deg, #14b8a6, #22d3ee)', accent: '#14b8a6' },
-    { gradient: 'linear-gradient(90deg, #8b5cf6, #a78bfa)', accent: '#8b5cf6' },
-    { gradient: 'linear-gradient(90deg, #22c55e, #84cc16)', accent: '#22c55e' },
-]
 
 interface TimelinePoint {
     hour: string
@@ -427,15 +421,18 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // volume + coherence. The trend arrow carries the movement; the
                 // count its weight. No source-origin badge.
 
-                const colorIdx = orderedNarratives.indexOf(n) % THREAD_COLORS.length
-                const threadColor = THREAD_COLORS[colorIdx]
+                // Dataviz audit fix 2: color by CATEGORY FAMILY (parent_domain),
+                // never by row index — a thread keeps its color when its rank
+                // changes. The visible domain label is the secondary encoding.
+                const threadAccent = familyColor(n.parent_domain)
+                const threadGradient = familyGradient(n.parent_domain)
                 return (
                     <div
                         key={n.thread_id}
                         className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''}`}
                         data-tip={rowHint}
                         onClick={() => handleClick(n)}
-                        style={{ borderLeftColor: threadColor.accent }}
+                        style={{ borderLeftColor: threadAccent }}
                     >
                         {/* Row 1: Label + stats */}
                         <div className="narrative-header">
@@ -443,7 +440,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 <span className={`sentiment-dot ${n.sentiment_swing_10h && n.sentiment_swing_10h > 0.1 ? 'pos' : n.sentiment_swing_10h && n.sentiment_swing_10h < -0.1 ? 'neg' : 'neu'}`} data-tip={`10h sentiment swing: ${n.sentiment_swing_10h == null ? 'not available' : n.sentiment_swing_10h.toFixed(2)}`} />
                                 <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
                                 <span className="narrative-label-text" data-tip={n.label}>
-                                    {n.label}
+                                    <TranslatableText text={n.label} />
                                     <span className="narrative-cluster-label">
                                         {domainLabel}
                                         {siblingReason && (
@@ -524,7 +521,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                         className="narrative-grad-bar-fill"
                                         style={{
                                             width: `${Math.min(n.confidence_pct, 100)}%`,
-                                            background: threadColor.gradient,
+                                            background: threadGradient,
                                         }}
                                     />
                                 </div>
