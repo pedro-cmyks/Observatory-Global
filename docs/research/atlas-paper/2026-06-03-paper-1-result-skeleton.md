@@ -574,3 +574,27 @@ now a SERVING gate input (junk separator, `41862150`) — typing precision has a
 production consequence beyond display badges. Artifacts:
 `docs/research/embedding-whitening/2026-07-07-whitening-findings.md`,
 `docs/state/2026-07-09-useful-coverage-gate.md`.
+
+## 2026-07-16 addendum — gate cost measured at the gap level + eval discipline
+
+Two results for the gate/eval sections (full blocks in the master plan,
+`2026-05-27-atlas-papers-master-plan.md` P1/P4; grown there 2026-07-16):
+
+1. **Gap-pool relevance** (`docs/research/gap-pool/2026-07-16-gap-pool-relevance.md`):
+   in the two live `coverage_gaps` categories (raw≥20, 0 gate-kept/24h) a
+   DeepSeek judge against candidate-v2 canonical definitions found the gate
+   hiding a small real tail — telecom ~6% judge-YES of a 232-pool, mining 4%
+   of 70 (census). The extended tier recovers part of it (telecom ext census:
+   2 YES + 1 borderline of 7 = ~43% incl. borderline) and the product now
+   serves top-3 extended receipts in the gap box, labeled UNVERIFIED·EXTENDED
+   (`baa7428d`). This is the measured per-category cost of the ≥90%-precision
+   policy AND the honest two-tier recovery — companion to the 2026-07-04
+   gate-recall diagnosis.
+
+2. **Judge-controlled replay** (from #238, method detailed under P4): frozen
+   serving window + one baseline judge set + code-replay per iteration = a
+   controlled experiment on live data. The honest-dip finding (targeted fixes
+   lowered headline numbers before the dominance cap; every targeted class
+   flipped correctly) is the eval-discipline example for the methods section:
+   headline metrics can move AGAINST a correct fix when it exposes new error
+   classes — decompose, don't average.
