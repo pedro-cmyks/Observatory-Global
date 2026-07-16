@@ -27,21 +27,21 @@ function item(i: string, x: number, y: number, w: number, h: number): LayoutItem
 }
 
 const PRESETS: Record<LayoutBucket, LayoutItem[]> = {
-  // Ocean arrangement (Pedro 2026-07-16, from the reference console he chose):
-  // the MAP is the hero — wide, top-left — with Narrative Threads reading
-  // directly under it; the Signal Stream is a full-height right column; the
-  // Intel Dock is a full-width strip below. Presets are starting points —
+  // Ocean arrangement, v2 (Pedro 2026-07-16, arranged live by hand): the MAP
+  // is the hero — wide, top-left — with the SIGNAL STREAM reading directly
+  // under it; NARRATIVE THREADS take the full-height right column; the Intel
+  // Dock is a full-width strip below. Presets are starting points —
   // drag/resize/persist/reset all still apply; reset returns HERE.
   laptop: [
     item('radar', 0, 0, 14, 12),
-    item('threads', 0, 12, 14, 6),
-    item('stream', 14, 0, 10, 18),
+    item('stream', 0, 12, 14, 6),
+    item('threads', 14, 0, 10, 18),
     item('dock', 0, 18, 24, 6),
   ],
   desktop: [
     item('radar', 0, 0, 15, 12),
-    item('threads', 0, 12, 15, 6),
-    item('stream', 15, 0, 9, 18),
+    item('stream', 0, 12, 15, 6),
+    item('threads', 15, 0, 9, 18),
     item('dock', 0, 18, 24, 6),
   ],
   // Big monitors: four full-height columns — the dock earns a column instead
