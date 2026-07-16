@@ -14,10 +14,21 @@ fallback when GDELT geographic NLP isn't available.
 
 Runs every 4 GDELT cycles (~60 min) via ingest_loop.py.
 """
+from __future__ import annotations
+
 import asyncio
 import asyncpg
-import aiohttp
-import feedparser
+
+# The fetch stack is optional: lexicon-only consumers (subject_geography on
+# the M1 mlvenv, which imports _COUNTRY_PATTERNS/_NATIVE_COUNTRY_PATTERNS)
+# must not require the ingest deps. Fly/API images always have them; any
+# fetch call without them fails loudly (AttributeError on None).
+try:
+    import aiohttp
+    import feedparser
+except ImportError:  # pragma: no cover - only hit on lexicon-only envs
+    aiohttp = None  # type: ignore[assignment]
+    feedparser = None  # type: ignore[assignment]
 import logging
 import os
 import re
