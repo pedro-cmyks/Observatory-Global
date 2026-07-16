@@ -112,10 +112,9 @@ def test_assemble_thread_contract():
     assert thread["hourly_timeline"][0]["count"] == 12
     # #214: why_now must read as a NET delta vs the prior 10h, never as a
     # gross count that invites comparison against the window signal_count.
-    assert (
-        thread["why_now"]
-        == "Up 47 vs the prior 10h (net new coverage), concentrated in Nigeria and Peru."
-    )
+    # #238: the atlas path computes no receipt-subject inference — why_now is
+    # movement-only; coverage countries never masquerade as the subject.
+    assert thread["why_now"] == "Up 47 vs the prior 10h (net new coverage)."
     # #214: reader-safe movement chip is self-describing ("vs prior 10h").
     assert thread["movement_label"] == "+47 vs prior 10h"
     assert thread["related_threads"][0]["topic"] == "labor-strike-disruption"
@@ -329,17 +328,18 @@ def test_why_now_reads_as_net_change_not_gross_count():
     against the window signal_count and reads as a contradiction)."""
     from app.services.thread_intelligence import _why_now
 
-    up = _why_now(47, ["NG", "PE"])
-    assert up == "Up 47 vs the prior 10h (net new coverage), concentrated in Nigeria and Peru."
+    # #238 contract: the geo clause exists ONLY as a verified subject claim.
+    up = _why_now(47, subject_countries=["NG", "PE"], subject_status="verified")
+    assert up == "Up 47 vs the prior 10h (net new coverage), centered on Nigeria and Peru."
     # It must NOT use the old absolute phrasing.
     assert "more signals" not in up
 
-    down = _why_now(-12, ["FR"])
-    assert down == "Down 12 vs the prior 10h (coverage cooling), concentrated in France."
+    down = _why_now(-12)
+    assert down == "Down 12 vs the prior 10h (coverage cooling)."
     assert "fewer signals" not in down
 
-    flat = _why_now(0, [])
-    assert flat == "Signal volume is steady vs the prior 10h, concentrated in multiple regions."
+    flat = _why_now(0)
+    assert flat == "Signal volume is steady vs the prior 10h."
 
 
 def test_why_now_honest_when_delta_exceeds_window_total():

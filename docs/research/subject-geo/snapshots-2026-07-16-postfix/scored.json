@@ -1,0 +1,1324 @@
+[
+ {
+  "thread_id": "dynamic-topic-320",
+  "label": "17-Year-Old British Teen Fall",
+  "status": "verified",
+  "verified": [
+   "GR",
+   "IR"
+  ],
+  "judge": [
+   "GR"
+  ],
+  "judge_reason": "All headlines about the tragic car accident are set in Chalkidiki, Greece, and involve a Greek family. The thread label '17-Year-Old British Teen Fall' appears to be a mislabel or unrelated, as no headlines mention a British teen.",
+  "agree": false,
+  "scripts": {
+   "GREEK": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "GR",
+    "receipt_count": 15,
+    "outlet_count": 11,
+    "non_proxy_receipt_count": 15,
+    "non_proxy_outlet_count": 11,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "IR",
+    "receipt_count": 2,
+    "outlet_count": 2,
+    "non_proxy_receipt_count": 2,
+    "non_proxy_outlet_count": 2,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "DE",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "US",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-714",
+  "label": "Political Blocaj Continues",
+  "status": "verified",
+  "verified": [
+   "RO"
+  ],
+  "judge": [
+   "RO"
+  ],
+  "judge_reason": "All headlines focus on Romanian political figures (Nicușor Dan, Dăianu, Dragoș Damian, Dan Dungaciu, Ciucu, Ludovic Orban) and domestic issues (taxes, political crisis, EU infringement procedures, aid to Ukraine), with Romania as the central subject of coverage.",
+  "agree": true,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "person_proxy_evidence_demoted"
+  ],
+  "candidates": [
+   {
+    "country": "RO",
+    "receipt_count": 10,
+    "outlet_count": 7,
+    "non_proxy_receipt_count": 10,
+    "non_proxy_outlet_count": 7,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "RU",
+    "receipt_count": 3,
+    "outlet_count": 2,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern",
+     "person_proxy"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": true
+   },
+   {
+    "country": "BE",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "US",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 0,
+    "non_proxy_outlet_count": 0,
+    "methods": [
+     "person_proxy"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-21",
+  "label": "Cronaca e Incidenti",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "IT"
+  ],
+  "judge_reason": "All headlines refer to events, legal cases, and incidents occurring in Italy, with specific locations like Rimini, Modena, Emilia-Romagna, Lombardy, and Vicentino, and involve Italian public figures and legal matters.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "FR",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "LK",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-49",
+  "label": "US Iran Exchange Strikes",
+  "status": "verified",
+  "verified": [
+   "IR"
+  ],
+  "judge": [
+   "US",
+   "IR"
+  ],
+  "judge_reason": "The thread label and headlines focus on actions and tensions between the United States and Iran, specifically regarding blockades and strikes, making both countries the primary subjects of the coverage.",
+  "agree": true,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "person_proxy_evidence_demoted"
+  ],
+  "candidates": [
+   {
+    "country": "IR",
+    "receipt_count": 24,
+    "outlet_count": 21,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 21,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "US",
+    "receipt_count": 4,
+    "outlet_count": 4,
+    "non_proxy_receipt_count": 0,
+    "non_proxy_outlet_count": 0,
+    "methods": [
+     "person_proxy"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": true
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-438",
+  "label": "Lightning Strike Injures Child",
+  "status": "verified",
+  "verified": [
+   "RU",
+   "UA"
+  ],
+  "judge": [
+   "UA"
+  ],
+  "judge_reason": "All headlines describe attacks and casualties in Ukraine (Kherson, Sumy, Kharkiv, Kramatorsk, Odesa) resulting from Russian aggression, making Ukraine the clear subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "CYRILLIC": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 16,
+    "outlet_count": 10,
+    "non_proxy_receipt_count": 16,
+    "non_proxy_outlet_count": 10,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "UA",
+    "receipt_count": 8,
+    "outlet_count": 6,
+    "non_proxy_receipt_count": 8,
+    "non_proxy_outlet_count": 6,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "US",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-372",
+  "label": "Trump Attacks Meloni",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "IT"
+  ],
+  "judge_reason": "All headlines focus on Italian electoral law reform and Prime Minister Giorgia Meloni's government, making Italy the clear subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated",
+   "person_proxy_evidence_demoted"
+  ],
+  "candidates": [
+   {
+    "country": "IT",
+    "receipt_count": 12,
+    "outlet_count": 7,
+    "non_proxy_receipt_count": 0,
+    "non_proxy_outlet_count": 0,
+    "methods": [
+     "person_proxy"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": true
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2469",
+  "label": "Emerging: Counter-terrorism police continue to question Ann Widdecombe murder suspect",
+  "status": "verified",
+  "verified": [
+   "GB"
+  ],
+  "judge": [
+   "GB"
+  ],
+  "judge_reason": "The story is about the murder of Ann Widdecombe, a UK politician and TV personality, with all headlines referencing UK police and her role in UK politics.",
+  "agree": true,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "GB",
+    "receipt_count": 11,
+    "outlet_count": 10,
+    "non_proxy_receipt_count": 11,
+    "non_proxy_outlet_count": 10,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-96",
+  "label": "Côte d'Ivoire Public Service",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "CI"
+  ],
+  "judge_reason": "All headlines are about events, policies, or issues within Côte d'Ivoire, with the thread label explicitly naming the country as the subject of public service coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "CI",
+    "receipt_count": 24,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "BF",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "SN",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2369",
+  "label": "Emerging: Keystone Pipeline operator agrees to pay $26.9 million over 2022 oil spill",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The thread label is about the Keystone Pipeline operator agreeing to pay a fine for a 2022 oil spill, which is a US domestic incident. The receipt headlines are all about a US legal case involving Donald Trump and E. Jean Carroll, also a US domestic matter. Both the thread and the headlines are clearly about events in the United States.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated",
+   "person_proxy_evidence_demoted"
+  ],
+  "candidates": [
+   {
+    "country": "US",
+    "receipt_count": 24,
+    "outlet_count": 24,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern",
+     "person_proxy"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": true
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-387",
+  "label": "Ukraine Germany Men Return",
+  "status": "verified",
+  "verified": [
+   "RU"
+  ],
+  "judge": [
+   "UA",
+   "RU"
+  ],
+  "judge_reason": "Multiple headlines directly discuss attacks on Ukraine and drone strikes on Moscow and the Moscow region, indicating the story is about the conflict between Ukraine and Russia.",
+  "agree": true,
+  "scripts": {
+   "CYRILLIC": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 2,
+    "outlet_count": 2,
+    "non_proxy_receipt_count": 2,
+    "non_proxy_outlet_count": 2,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "UA",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 20
+ },
+ {
+  "thread_id": "dynamic-topic-1334",
+  "label": "Dólar Hoy Cotizaciones",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "AR"
+  ],
+  "judge_reason": "The thread label 'Dólar Hoy Cotizaciones' and the majority of headlines focus on Argentine lottery results (Quiniela de Santa Fe, Quiniela de Córdoba, Quiniela Nacional, Quiniela de la Provincia) and Argentine dollar rates, indicating Argentina as the primary subject.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "MX",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "NI",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "PY",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "UY",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "VE",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-287",
+  "label": "Southern Europe Wildfires",
+  "status": "verified",
+  "verified": [
+   "CA"
+  ],
+  "judge": [
+   "CA"
+  ],
+  "judge_reason": "All headlines focus on wildfires in Canada and their smoke affecting Canada and the U.S., making Canada the clear subject country.",
+  "agree": true,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "CA",
+    "receipt_count": 16,
+    "outlet_count": 16,
+    "non_proxy_receipt_count": 16,
+    "non_proxy_outlet_count": 16,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2493",
+  "label": "Emerging: House passes bill to make Daylight Saving Time permanent",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "All headlines refer to the U.S. House of Representatives passing a bill to make daylight saving time permanent, indicating the United States is the subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated",
+   "person_proxy_evidence_demoted"
+  ],
+  "candidates": [
+   {
+    "country": "US",
+    "receipt_count": 2,
+    "outlet_count": 2,
+    "non_proxy_receipt_count": 0,
+    "non_proxy_outlet_count": 0,
+    "methods": [
+     "person_proxy"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": true
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2521",
+  "label": "Emerging: 1 missing, 17 rescued after boat catches fire, sinks near Alcatraz Island in San",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The incident occurred near Alcatraz Island in San Francisco Bay, which is part of the United States.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-248",
+  "label": "Venezuela Earthquake Death Toll",
+  "status": "verified",
+  "verified": [
+   "VE"
+  ],
+  "judge": [
+   "VE"
+  ],
+  "judge_reason": "All headlines explicitly mention Venezuela as the location of the earthquakes and the resulting death toll, making it the clear subject of the coverage.",
+  "agree": true,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "VE",
+    "receipt_count": 24,
+    "outlet_count": 24,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 24,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-66",
+  "label": "Cyclosporiasis Outbreak in US",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "All headlines focus on a cyclosporiasis outbreak occurring within the United States, with specific mentions of states like Michigan, Wisconsin, Ohio, Idaho, North Carolina, Kansas, and Louisiana, and references to the CDC and nationwide spread.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2455",
+  "label": "Darline Graham Senate Appointment",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "All headlines focus on the appointment of Darline Graham Nordone to the U.S. Senate seat previously held by her brother Lindsey Graham, a U.S. Senator from South Carolina, making the United States the clear subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 12
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 12
+ },
+ {
+  "thread_id": "dynamic-topic-2458",
+  "label": "States Sue to Block Merger",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The thread label and all headlines refer to a lawsuit by U.S. states (e.g., California, New Mexico, New Jersey, New York) and the Writers Guild of America (WGA) to block a merger between U.S.-based companies Paramount and Warner Bros. Discovery, making the United States the clear subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "MX",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 16
+ },
+ {
+  "thread_id": "dynamic-topic-2536",
+  "label": "Emerging: US Mint produces a $1 coin bearing Trump's face to help celebrate America's 250t",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "All headlines focus on the US Mint producing a $1 coin featuring Donald Trump for America's 250th birthday, making the United States the clear subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 13
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated",
+   "person_proxy_evidence_demoted"
+  ],
+  "candidates": [
+   {
+    "country": "US",
+    "receipt_count": 13,
+    "outlet_count": 13,
+    "non_proxy_receipt_count": 0,
+    "non_proxy_outlet_count": 0,
+    "methods": [
+     "person_proxy"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": true
+   }
+  ],
+  "n_receipts": 13
+ },
+ {
+  "thread_id": "dynamic-topic-245",
+  "label": "Albanian Anti-Government Protests",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "AL"
+  ],
+  "judge_reason": "The thread label and the vast majority of headlines focus on anti-government protests in Albania, targeting Prime Minister Edi Rama and involving Albanian political figures and domestic issues.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "AF",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 16
+ },
+ {
+  "thread_id": "dynamic-topic-553",
+  "label": "Violent Deaths and Crimes",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "BR"
+  ],
+  "judge_reason": "All headlines refer to locations in Brazil (MT, Maceió, Campo Grande, Teresina, Amapá, Feira de Santana, Mogi das Cruzes, Taubaté, Campinas, Hortolândia, Goiânia), and the thread label 'Violent Deaths and Crimes' matches the content about homicides, drug trafficking, and other crimes in Brazil.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 19
+ },
+ {
+  "thread_id": "dynamic-topic-565",
+  "label": "Job and Course Openings",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "BR"
+  ],
+  "judge_reason": "All headlines refer to events, policies, and operations in Brazil, including specific states and cities, with no mention of other countries as the primary subject.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-115",
+  "label": "Mundial 2026 Coverage",
+  "status": "verified",
+  "verified": [
+   "ES",
+   "FR"
+  ],
+  "judge": [
+   "ES",
+   "FR"
+  ],
+  "judge_reason": "The headlines focus on a match between Spain and France in the 2026 World Cup semifinal, with Spain defeating France to advance to the final. Both countries are the subjects of the coverage.",
+  "agree": true,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "ES",
+    "receipt_count": 24,
+    "outlet_count": 22,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 22,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "FR",
+    "receipt_count": 24,
+    "outlet_count": 22,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 22,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-1649",
+  "label": "Francia Semifinalista Mundial 2026",
+  "status": "verified",
+  "verified": [
+   "ES",
+   "FR"
+  ],
+  "judge": [
+   "ES"
+  ],
+  "judge_reason": "All headlines focus on Spain's victory over France, making Spain the subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "ES",
+    "receipt_count": 24,
+    "outlet_count": 23,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 23,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "FR",
+    "receipt_count": 24,
+    "outlet_count": 23,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 23,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "AR",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "GB",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-1206",
+  "label": "Mbappe Double Powers France",
+  "status": "verified",
+  "verified": [
+   "ES",
+   "FR"
+  ],
+  "judge": [
+   "ES"
+  ],
+  "judge_reason": "All headlines focus on Spain's victory over France, making Spain the clear subject of the coverage.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "ES",
+    "receipt_count": 24,
+    "outlet_count": 23,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 23,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "FR",
+    "receipt_count": 24,
+    "outlet_count": 23,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 23,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-644",
+  "label": "Argentina vs Cabo Verde World Cup 2026",
+  "status": "verified",
+  "verified": [
+   "AR",
+   "ES",
+   "GB"
+  ],
+  "judge": [
+   "AR"
+  ],
+  "judge_reason": "The thread label mentions Argentina vs Cabo Verde, but all receipt headlines focus on Argentina's matches against England and Spain in the World Cup 2026, with no mention of Cabo Verde. The subject of coverage is Argentina.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "AR",
+    "receipt_count": 24,
+    "outlet_count": 18,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 18,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "GB",
+    "receipt_count": 24,
+    "outlet_count": 18,
+    "non_proxy_receipt_count": 24,
+    "non_proxy_outlet_count": 18,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "ES",
+    "receipt_count": 4,
+    "outlet_count": 3,
+    "non_proxy_receipt_count": 4,
+    "non_proxy_outlet_count": 3,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-1112",
+  "label": "Danny Glover Alzheimer's Diagnosis",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "All headlines focus on Chesley 'Sully' Sullenberger, a US pilot, and his Alzheimer's diagnosis; the story is about him as a US individual.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 21
+ },
+ {
+  "thread_id": "dynamic-topic-457",
+  "label": "Ukraine Conflict Casualties",
+  "status": "verified",
+  "verified": [
+   "RU"
+  ],
+  "judge": [
+   "UA"
+  ],
+  "judge_reason": "The headlines focus on the death of the chief engineer of the Zaporizhzhia Nuclear Power Plant (Zaporizhzhia is in Ukraine), with mentions of attacks by the Armed Forces of Ukraine (VSU) and reactions from Russian and international bodies, indicating the story is about an event in Ukraine.",
+  "agree": false,
+  "scripts": {
+   "CYRILLIC": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 3,
+    "outlet_count": 2,
+    "non_proxy_receipt_count": 3,
+    "non_proxy_outlet_count": 2,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "UA",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 23
+ },
+ {
+  "thread_id": "dynamic-topic-606",
+  "label": "Piala Dunia 2026",
+  "status": "verified",
+  "verified": [
+   "AR",
+   "ES",
+   "FR",
+   "GB"
+  ],
+  "judge": [],
+  "judge_reason": "The thread label 'Piala Dunia 2026' refers to the 2026 FIFA World Cup, a global tournament, and the headlines cover multiple countries (Spain, France, Argentina, England) as participants, but no single country is the subject of the overall story.",
+  "agree": false,
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "ES",
+    "receipt_count": 22,
+    "outlet_count": 13,
+    "non_proxy_receipt_count": 22,
+    "non_proxy_outlet_count": 13,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "FR",
+    "receipt_count": 13,
+    "outlet_count": 10,
+    "non_proxy_receipt_count": 13,
+    "non_proxy_outlet_count": 10,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "GB",
+    "receipt_count": 5,
+    "outlet_count": 5,
+    "non_proxy_receipt_count": 5,
+    "non_proxy_outlet_count": 5,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "AR",
+    "receipt_count": 4,
+    "outlet_count": 4,
+    "non_proxy_receipt_count": 4,
+    "non_proxy_outlet_count": 4,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-623",
+  "label": "Hong Myung-Bo World Cup Failure",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "KR"
+  ],
+  "judge_reason": "The thread label references Hong Myung-Bo, a South Korean football figure, and the headlines describe weather events across South Korea, including regions like Seoul, Gyeonggi, Gangwon, and Jeju, with a brief mention of North Korea but the focus is on South Korea.",
+  "agree": false,
+  "scripts": {
+   "HANGUL": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "KP",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "KR",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "non_proxy_receipt_count": 1,
+    "non_proxy_outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 20
+ },
+ {
+  "thread_id": "dynamic-topic-90",
+  "label": "Trump FIFA World Cup Scandal",
+  "status": "verified",
+  "verified": [
+   "FR",
+   "IR",
+   "US"
+  ],
+  "judge": [
+   "IR"
+  ],
+  "judge_reason": "The thread label mentions 'Trump FIFA World Cup Scandal', but the receipt headlines overwhelmingly focus on tensions between the US (Trump) and Iran, including threats, attacks, and the Strait of Hormuz. The subject of the coverage is Iran, as it is the country being threatened and responding.",
+  "agree": false,
+  "scripts": {
+   "GREEK": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "IR",
+    "receipt_count": 7,
+    "outlet_count": 4,
+    "non_proxy_receipt_count": 7,
+    "non_proxy_outlet_count": 4,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "FR",
+    "receipt_count": 4,
+    "outlet_count": 4,
+    "non_proxy_receipt_count": 4,
+    "non_proxy_outlet_count": 4,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   },
+   {
+    "country": "US",
+    "receipt_count": 2,
+    "outlet_count": 2,
+    "non_proxy_receipt_count": 2,
+    "non_proxy_outlet_count": 2,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified",
+    "person_proxy_suppressed": false
+   }
+  ],
+  "n_receipts": 24
+ }
+]

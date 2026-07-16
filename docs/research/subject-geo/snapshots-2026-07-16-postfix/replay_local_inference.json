@@ -1,0 +1,1524 @@
+[
+ {
+  "thread_id": "dynamic-topic-320",
+  "label": "17-Year-Old British Teen Fall",
+  "baseline_served_status": "unavailable",
+  "baseline_served_subjects": [],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "GR",
+   "IR"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "GR",
+    "IR"
+   ],
+   "candidates": [
+    {
+     "country": "GR",
+     "receipt_count": 15,
+     "outlet_count": 11,
+     "non_proxy_receipt_count": 15,
+     "non_proxy_outlet_count": 11,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "IR",
+     "receipt_count": 2,
+     "outlet_count": 2,
+     "non_proxy_receipt_count": 2,
+     "non_proxy_outlet_count": 2,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "DE",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "US",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-714",
+  "label": "Political Blocaj Continues",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "RU"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "RO"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "RO"
+   ],
+   "candidates": [
+    {
+     "country": "RO",
+     "receipt_count": 10,
+     "outlet_count": 7,
+     "non_proxy_receipt_count": 10,
+     "non_proxy_outlet_count": 7,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "RU",
+     "receipt_count": 3,
+     "outlet_count": 2,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern",
+      "person_proxy"
+     ],
+     "person_proxy_suppressed": true,
+     "status": "candidate"
+    },
+    {
+     "country": "BE",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "US",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 0,
+     "non_proxy_outlet_count": 0,
+     "methods": [
+      "person_proxy"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "person_proxy_evidence_demoted"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-21",
+  "label": "Cronaca e Incidenti",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "FR",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "LK",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-49",
+  "label": "US Iran Exchange Strikes",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "IR",
+   "US"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "IR"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "IR"
+   ],
+   "candidates": [
+    {
+     "country": "IR",
+     "receipt_count": 24,
+     "outlet_count": 21,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 21,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "US",
+     "receipt_count": 4,
+     "outlet_count": 4,
+     "non_proxy_receipt_count": 0,
+     "non_proxy_outlet_count": 0,
+     "methods": [
+      "person_proxy"
+     ],
+     "person_proxy_suppressed": true,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "person_proxy_evidence_demoted"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-438",
+  "label": "Lightning Strike Injures Child",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "RU"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "RU",
+   "UA"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "RU",
+    "UA"
+   ],
+   "candidates": [
+    {
+     "country": "RU",
+     "receipt_count": 16,
+     "outlet_count": 10,
+     "non_proxy_receipt_count": 16,
+     "non_proxy_outlet_count": 10,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "UA",
+     "receipt_count": 8,
+     "outlet_count": 6,
+     "non_proxy_receipt_count": 8,
+     "non_proxy_outlet_count": 6,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "US",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-372",
+  "label": "Trump Attacks Meloni",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "IT"
+  ],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "IT",
+     "receipt_count": 12,
+     "outlet_count": 7,
+     "non_proxy_receipt_count": 0,
+     "non_proxy_outlet_count": 0,
+     "methods": [
+      "person_proxy"
+     ],
+     "person_proxy_suppressed": true,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated",
+    "person_proxy_evidence_demoted"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-2469",
+  "label": "Emerging: Counter-terrorism police continue to question Ann Widdecombe murder suspect",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "GB"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "GB"
+   ],
+   "candidates": [
+    {
+     "country": "GB",
+     "receipt_count": 11,
+     "outlet_count": 10,
+     "non_proxy_receipt_count": 11,
+     "non_proxy_outlet_count": 10,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-96",
+  "label": "Côte d'Ivoire Public Service",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "CI",
+     "receipt_count": 24,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "BF",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "SN",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-2369",
+  "label": "Emerging: Keystone Pipeline operator agrees to pay $26.9 million over 2022 oil spill",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "US"
+  ],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "US",
+     "receipt_count": 24,
+     "outlet_count": 24,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern",
+      "person_proxy"
+     ],
+     "person_proxy_suppressed": true,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated",
+    "person_proxy_evidence_demoted"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-387",
+  "label": "Ukraine Germany Men Return",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "RU"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "RU"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "RU"
+   ],
+   "candidates": [
+    {
+     "country": "RU",
+     "receipt_count": 2,
+     "outlet_count": 2,
+     "non_proxy_receipt_count": 2,
+     "non_proxy_outlet_count": 2,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "UA",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-1334",
+  "label": "Dólar Hoy Cotizaciones",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "MX",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "NI",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "PY",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "UY",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "VE",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-287",
+  "label": "Southern Europe Wildfires",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "CA"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "CA"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "CA"
+   ],
+   "candidates": [
+    {
+     "country": "CA",
+     "receipt_count": 16,
+     "outlet_count": 16,
+     "non_proxy_receipt_count": 16,
+     "non_proxy_outlet_count": 16,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-2493",
+  "label": "Emerging: House passes bill to make Daylight Saving Time permanent",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "US"
+  ],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "US",
+     "receipt_count": 2,
+     "outlet_count": 2,
+     "non_proxy_receipt_count": 0,
+     "non_proxy_outlet_count": 0,
+     "methods": [
+      "person_proxy"
+     ],
+     "person_proxy_suppressed": true,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated",
+    "person_proxy_evidence_demoted"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-2521",
+  "label": "Emerging: 1 missing, 17 rescued after boat catches fire, sinks near Alcatraz Island in San",
+  "baseline_served_status": "unavailable",
+  "baseline_served_subjects": [],
+  "postfix_status": "unavailable",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "unavailable",
+   "verified_subject_countries": [],
+   "candidates": [],
+   "reason_codes": [
+    "no_explicit_subject_geography_in_receipts"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-248",
+  "label": "Venezuela Earthquake Death Toll",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "VE"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "VE"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "VE"
+   ],
+   "candidates": [
+    {
+     "country": "VE",
+     "receipt_count": 24,
+     "outlet_count": 24,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 24,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-66",
+  "label": "Cyclosporiasis Outbreak in US",
+  "baseline_served_status": "unavailable",
+  "baseline_served_subjects": [],
+  "postfix_status": "unavailable",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "unavailable",
+   "verified_subject_countries": [],
+   "candidates": [],
+   "reason_codes": [
+    "no_explicit_subject_geography_in_receipts"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-2455",
+  "label": "Darline Graham Senate Appointment",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "RU",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-2458",
+  "label": "States Sue to Block Merger",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "MX",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-2536",
+  "label": "Emerging: US Mint produces a $1 coin bearing Trump's face to help celebrate America's 250t",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "US"
+  ],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "US",
+     "receipt_count": 13,
+     "outlet_count": 13,
+     "non_proxy_receipt_count": 0,
+     "non_proxy_outlet_count": 0,
+     "methods": [
+      "person_proxy"
+     ],
+     "person_proxy_suppressed": true,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated",
+    "person_proxy_evidence_demoted"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-245",
+  "label": "Albanian Anti-Government Protests",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "AF",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-553",
+  "label": "Violent Deaths and Crimes",
+  "baseline_served_status": "unavailable",
+  "baseline_served_subjects": [],
+  "postfix_status": "unavailable",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "unavailable",
+   "verified_subject_countries": [],
+   "candidates": [],
+   "reason_codes": [
+    "no_explicit_subject_geography_in_receipts"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-565",
+  "label": "Job and Course Openings",
+  "baseline_served_status": "unavailable",
+  "baseline_served_subjects": [],
+  "postfix_status": "unavailable",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "unavailable",
+   "verified_subject_countries": [],
+   "candidates": [],
+   "reason_codes": [
+    "no_explicit_subject_geography_in_receipts"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-115",
+  "label": "Mundial 2026 Coverage",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "ES"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "ES",
+   "FR"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "ES",
+    "FR"
+   ],
+   "candidates": [
+    {
+     "country": "ES",
+     "receipt_count": 24,
+     "outlet_count": 22,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 22,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "FR",
+     "receipt_count": 24,
+     "outlet_count": 22,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 22,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-1649",
+  "label": "Francia Semifinalista Mundial 2026",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "ES"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "ES",
+   "FR"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "ES",
+    "FR"
+   ],
+   "candidates": [
+    {
+     "country": "ES",
+     "receipt_count": 24,
+     "outlet_count": 23,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 23,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "FR",
+     "receipt_count": 24,
+     "outlet_count": 23,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 23,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "AR",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "GB",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-1206",
+  "label": "Mbappe Double Powers France",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "ES",
+   "FR"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "ES",
+   "FR"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "ES",
+    "FR"
+   ],
+   "candidates": [
+    {
+     "country": "ES",
+     "receipt_count": 24,
+     "outlet_count": 23,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 23,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "FR",
+     "receipt_count": 24,
+     "outlet_count": 23,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 23,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-644",
+  "label": "Argentina vs Cabo Verde World Cup 2026",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "AR",
+   "ES"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "AR",
+   "ES",
+   "GB"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "AR",
+    "ES",
+    "GB"
+   ],
+   "candidates": [
+    {
+     "country": "AR",
+     "receipt_count": 24,
+     "outlet_count": 18,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 18,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "GB",
+     "receipt_count": 24,
+     "outlet_count": 18,
+     "non_proxy_receipt_count": 24,
+     "non_proxy_outlet_count": 18,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "ES",
+     "receipt_count": 4,
+     "outlet_count": 3,
+     "non_proxy_receipt_count": 4,
+     "non_proxy_outlet_count": 3,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-1112",
+  "label": "Danny Glover Alzheimer's Diagnosis",
+  "baseline_served_status": "unavailable",
+  "baseline_served_subjects": [],
+  "postfix_status": "unavailable",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "unavailable",
+   "verified_subject_countries": [],
+   "candidates": [],
+   "reason_codes": [
+    "no_explicit_subject_geography_in_receipts"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-457",
+  "label": "Ukraine Conflict Casualties",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "RU"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "RU"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "RU"
+   ],
+   "candidates": [
+    {
+     "country": "RU",
+     "receipt_count": 3,
+     "outlet_count": 2,
+     "non_proxy_receipt_count": 3,
+     "non_proxy_outlet_count": 2,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "UA",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-606",
+  "label": "Piala Dunia 2026",
+  "baseline_served_status": "verified",
+  "baseline_served_subjects": [
+   "AR"
+  ],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "AR",
+   "ES",
+   "FR",
+   "GB"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "AR",
+    "ES",
+    "FR",
+    "GB"
+   ],
+   "candidates": [
+    {
+     "country": "ES",
+     "receipt_count": 22,
+     "outlet_count": 13,
+     "non_proxy_receipt_count": 22,
+     "non_proxy_outlet_count": 13,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "FR",
+     "receipt_count": 13,
+     "outlet_count": 10,
+     "non_proxy_receipt_count": 13,
+     "non_proxy_outlet_count": 10,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "GB",
+     "receipt_count": 5,
+     "outlet_count": 5,
+     "non_proxy_receipt_count": 5,
+     "non_proxy_outlet_count": 5,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "AR",
+     "receipt_count": 4,
+     "outlet_count": 4,
+     "non_proxy_receipt_count": 4,
+     "non_proxy_outlet_count": 4,
+     "methods": [
+      "headline_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-623",
+  "label": "Hong Myung-Bo World Cup Failure",
+  "baseline_served_status": "partial",
+  "baseline_served_subjects": [],
+  "postfix_status": "partial",
+  "postfix_subjects": [],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "partial",
+   "verified_subject_countries": [],
+   "candidates": [
+    {
+     "country": "KP",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    },
+    {
+     "country": "KR",
+     "receipt_count": 1,
+     "outlet_count": 1,
+     "non_proxy_receipt_count": 1,
+     "non_proxy_outlet_count": 1,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "candidate"
+    }
+   ],
+   "reason_codes": [
+    "subject_geography_not_independently_corroborated"
+   ],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ },
+ {
+  "thread_id": "dynamic-topic-90",
+  "label": "Trump FIFA World Cup Scandal",
+  "baseline_served_status": "unavailable",
+  "baseline_served_subjects": [],
+  "postfix_status": "verified",
+  "postfix_subjects": [
+   "FR",
+   "IR",
+   "US"
+  ],
+  "postfix_result": {
+   "contract": "atlas-subject-geography-v1",
+   "status": "verified",
+   "verified_subject_countries": [
+    "FR",
+    "IR",
+    "US"
+   ],
+   "candidates": [
+    {
+     "country": "IR",
+     "receipt_count": 7,
+     "outlet_count": 4,
+     "non_proxy_receipt_count": 7,
+     "non_proxy_outlet_count": 4,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "FR",
+     "receipt_count": 4,
+     "outlet_count": 4,
+     "non_proxy_receipt_count": 4,
+     "non_proxy_outlet_count": 4,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    },
+    {
+     "country": "US",
+     "receipt_count": 2,
+     "outlet_count": 2,
+     "non_proxy_receipt_count": 2,
+     "non_proxy_outlet_count": 2,
+     "methods": [
+      "native_pattern"
+     ],
+     "person_proxy_suppressed": false,
+     "status": "verified"
+    }
+   ],
+   "reason_codes": [],
+   "method": "decoded_headline_country_patterns_distinct_receipt_outlet",
+   "minimum_receipts": 2,
+   "minimum_outlets": 2,
+   "forced_primary_country": false,
+   "coverage_geography_used": false,
+   "truncated": false
+  }
+ }
+]

@@ -454,3 +454,116 @@ def test_subject_geography_ignores_unresolvable_ner_places():
     result = infer_receipt_subject_geography(receipts)
     # unresolvable places must not fabricate a country
     assert result["verified_subject_countries"] == []
+
+
+# ── #238 lexicon-form gaps (measured 2026-07-16,
+# docs/research/subject-geo/2026-07-16-inference-quality.md) ───────────────────
+# Each form below was probed against live front-page receipts and matched
+# NOTHING: Romanian self-names (dt-714), "UK" (dt-2469), Côte d'Ivoire (dt-96),
+# Spanish/Indonesian exonyms (dt-644/dt-606), the Greek script entirely
+# (dt-320/dt-90), and Ukrainian cities named as attack locations (dt-438).
+# Headlines are REAL-shaped (quoted or paraphrased from the measured receipts).
+_FORM_RECALL_238: list[tuple[str, str, str]] = [
+    # Romanian self-name — diacritic + genitive (dt-714 receipts)
+    ("ro_selfname", "România e o ţară suverană şi nu se lasă intimidată", "RO"),
+    ("ro_genitive", "Economia României creşte peste aşteptări", "RO"),
+    ("ro_ascii", "Romania hosts NATO exercises this autumn", "RO"),
+    # Romanian genitive of Russia (dt-714: "ameninţările Rusiei")
+    ("ro_rusiei", "Ameninţările Rusiei îngrijorează estul Europei", "RU"),
+    # "UK" standalone token, case-sensitive (dt-2469: 8 "UK police" receipts)
+    ("uk_token", "UK police arrest three in fraud probe", "GB"),
+    # Côte d'Ivoire — typographic and ASCII apostrophes (dt-96)
+    ("cote_divoire_typographic", "Côte d’Ivoire se prépare pour les élections", "CI"),
+    ("cote_divoire_ascii", "Cote d'Ivoire announces election results", "CI"),
+    ("ivory_coast", "Ivory Coast cocoa exports rise sharply", "CI"),
+    # Spanish exonyms (dt-644: "Argentina fulmina a Inglaterra")
+    ("es_inglaterra", "Inglaterra sufre pero avanza a la final", "GB"),
+    ("es_francia", "Francia anuncia nuevas medidas económicas", "FR"),
+    # Indonesian exonyms (dt-606: "Spanyol Tumbangkan Prancis 2-0")
+    ("id_spanyol", "Spanyol umumkan skuad untuk laga berikutnya", "ES"),
+    ("id_prancis", "Prancis dilanda gelombang panas ekstrem", "FR"),
+    ("id_inggris", "Inggris menang telak dalam laga uji coba", "GB"),
+    # Greek script — zero coverage before (dt-320 Χαλκιδική, dt-90 Ιράν/ΗΠΑ)
+    ("el_greece", "Η Ελλάδα ετοιμάζεται για εκλογές", "GR"),
+    ("el_chalkidiki", "Τραγωδία στη Χαλκιδική με έναν νεκρό", "GR"),
+    ("el_iran", "Το Ιράν απαντά στις κυρώσεις", "IR"),
+    ("el_usa", "Οι ΗΠΑ επιβάλλουν νέους δασμούς", "US"),
+    ("el_russia", "Η Ρωσία συνεχίζει τις επιθέσεις", "RU"),
+    ("el_ukraine", "Η Ουκρανία ζητά περισσότερη βοήθεια", "UA"),
+    ("el_turkey", "Η Τουρκία προχωρά σε νέες γεωτρήσεις", "TR"),
+    ("el_cyprus", "Η Κύπρος υπογράφει συμφωνία για την ενέργεια", "CY"),
+    ("el_france", "Η Γαλλία ενισχύει την άμυνά της", "FR"),
+    ("el_germany", "Η Γερμανία εγκρίνει τον προϋπολογισμό", "DE"),
+    # Korean — regression pins: 서울/미국/북한 already live in the CJK lines
+    # (the dt-623 miss was a thinner receipt set, not a missing token).
+    ("ko_seoul", "서울 도심 폭우로 도로 통제", "KR"),
+    ("ko_us", "미국, 새로운 제재 발표", "US"),
+    ("ko_north_korea", "북한, 탄도미사일 발사", "KP"),
+    # Ukrainian cities as LOCATION evidence (dt-438: the attacked place is
+    # named, the country word never is — interim actor-vs-location fix until
+    # NER places, #184)
+    ("uk_kherson", "У Херсоні внаслідок обстрілу загинула жінка", "UA"),
+    ("uk_sumy", "Дрони атакували Суми вночі", "UA"),
+    ("uk_kharkiv", "Вибухи пролунали у Харкові", "UA"),
+    ("uk_odesa", "В Одесі пошкоджено інфраструктуру порту", "UA"),
+    ("uk_kramatorsk", "Атака на Краматорськ забрала три життя", "UA"),
+    ("uk_zaporizhzhia", "Запоріжжя знову під обстрілами", "UA"),
+    ("uk_dnipro", "У Дніпрі зруйновано житловий будинок", "UA"),
+    ("uk_mykolaiv", "Миколаїв відновлює водопостачання", "UA"),
+]
+
+# Precision guards for the risky additions.
+_FORM_PRECISION_238: list[tuple[str, str, str, str | None]] = [
+    # "UK" must be CASE-SENSITIVE: lowercase domain suffixes never tag GB.
+    ("uk_lowercase_domain", "Watch the full interview on bbc.co.uk tonight", "GB", None),
+    # Суми needs \b + capital С: Сумніви ("doubts") shares the СУМ prefix.
+    ("sumy_not_sumnivy", "Сумніви щодо нової угоди зростають", "UA", None),
+    # lowercase сумно ("sadly") must not fire either.
+    ("sumy_not_sumno", "Він сумно подивився у вікно", "UA", None),
+    # Микола is a common given name — only the full city stem Миколаїв tags UA.
+    ("mykola_given_name", "Микола Петренко отримав нагороду", "UA", None),
+]
+
+
+@pytest.mark.parametrize(
+    "label,headline,expected", _FORM_RECALL_238, ids=[c[0] for c in _FORM_RECALL_238],
+)
+def test_238_form_recall(label, headline, expected):
+    assert extract_country(headline, "") == expected
+
+
+@pytest.mark.parametrize(
+    "label,headline,forbidden,expected",
+    _FORM_PRECISION_238,
+    ids=[c[0] for c in _FORM_PRECISION_238],
+)
+def test_238_form_precision(label, headline, forbidden, expected):
+    result = extract_country(headline, "")
+    assert result != forbidden, f"false positive {forbidden} on {label!r} (got {result!r})"
+    assert result == expected
+
+
+def test_ukrainian_war_receipts_verify_ua_alongside_ru():
+    """dt-438 class: receipts name the attacker (Росія) and the attacked
+    CITIES (Херсон/Суми/Краматорськ) but never the word Україна. City evidence
+    must verify UA alongside RU instead of serving RU-only (the inversion the
+    2026-07-16 measurement flagged)."""
+    receipts = [
+        {"id": 1, "headline": "Росія обстріляла Херсон уночі", "source_name": "O1"},
+        {"id": 2, "headline": "Російські дрони атакували Суми", "source_name": "O2"},
+        {"id": 3, "headline": "Російська атака на Краматорськ", "source_name": "O3"},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    assert result["status"] == "verified"
+    assert set(result["verified_subject_countries"]) == {"RU", "UA"}
+
+
+def test_greek_receipts_verify_greece():
+    """dt-320 class: 24 Greek receipts yielded ZERO candidates before."""
+    receipts = [
+        {"id": 1, "headline": "Τραγωδία στη Χαλκιδική: νεκρός 40χρονος", "source_name": "Kathimerini"},
+        {"id": 2, "headline": "Θρήνος στη Χαλκιδική μετά το δυστύχημα", "source_name": "Proto Thema"},
+    ]
+    result = infer_receipt_subject_geography(receipts)
+    assert result["status"] == "verified"
+    assert result["verified_subject_countries"] == ["GR"]

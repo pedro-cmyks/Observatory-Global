@@ -1,0 +1,1019 @@
+[
+ {
+  "thread_id": "dynamic-topic-320",
+  "label": "17-Year-Old British Teen Fall",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "GR"
+  ],
+  "judge_reason": "All headlines refer to a tragic car accident in Chalkidiki, Greece, involving a family, with no mention of other countries as the subject.",
+  "agree": false,
+  "dom_script": "GREEK",
+  "scripts": {
+   "GREEK": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-714",
+  "label": "Political Blocaj Continues",
+  "status": "verified",
+  "verified": [
+   "RU"
+  ],
+  "judge": [
+   "RO"
+  ],
+  "judge_reason": "All headlines focus on Romania's political and economic affairs, including its aid to Ukraine, internal political crises, and EU relations, with Romania as the primary subject country.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 2,
+    "outlet_count": 2,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "BE",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "US",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-21",
+  "label": "Cronaca e Incidenti",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "IT"
+  ],
+  "judge_reason": "All headlines refer to events, legal cases, and incidents occurring in Italy, such as femminicidio in Rimini, maltempo in Emilia-Romagna, and legal proceedings involving Italian figures like Santanchè and Colombo.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "LK",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-49",
+  "label": "US Iran Exchange Strikes",
+  "status": "verified",
+  "verified": [
+   "IR",
+   "US"
+  ],
+  "judge": [
+   "IR",
+   "US"
+  ],
+  "judge_reason": "The story is about the United States imposing a blockade on Iran and exchanging strikes, with both countries as the primary subjects.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "IR",
+    "receipt_count": 24,
+    "outlet_count": 21,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "US",
+    "receipt_count": 4,
+    "outlet_count": 4,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-438",
+  "label": "Lightning Strike Injures Child",
+  "status": "verified",
+  "verified": [
+   "RU"
+  ],
+  "judge": [
+   "UA"
+  ],
+  "judge_reason": "All headlines describe events occurring in Ukraine (e.g., Kherson, Sumy, Kharkiv, Odesa, Kramatorsk) involving Russian attacks, casualties, or military actions, making Ukraine the clear subject country.",
+  "agree": false,
+  "dom_script": "CYRILLIC",
+  "scripts": {
+   "CYRILLIC": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 16,
+    "outlet_count": 10,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "UA",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "US",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-372",
+  "label": "Trump Attacks Meloni",
+  "status": "verified",
+  "verified": [
+   "IT"
+  ],
+  "judge": [
+   "IT"
+  ],
+  "judge_reason": "All headlines discuss a legislative defeat for the Italian government led by Giorgia Meloni, specifically regarding an electoral law amendment in the Italian Chamber of Deputies.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "IT",
+    "receipt_count": 12,
+    "outlet_count": 7,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2469",
+  "label": "Emerging: Counter-terrorism police continue to question Ann Widdecombe murder suspect",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "GB"
+  ],
+  "judge_reason": "The story is about the murder of Ann Widdecombe, a UK politician and TV personality, and the investigation by UK police, making the United Kingdom the subject country.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "GB",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-96",
+  "label": "Côte d'Ivoire Public Service",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "CI"
+  ],
+  "judge_reason": "All headlines are from a Côte d'Ivoire news source and primarily focus on events, government actions, and local issues within Côte d'Ivoire, with a few exceptions about Burkina Faso, Sudan, and global topics that are not the main subject of the thread.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "BF",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "SN",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2369",
+  "label": "Emerging: Keystone Pipeline operator agrees to pay $26.9 million over 2022 oil spill",
+  "status": "verified",
+  "verified": [
+   "US"
+  ],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The story involves a payment from Donald Trump to E. Jean Carroll in a sexual abuse and defamation case, which is a legal matter centered in the United States.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "US",
+    "receipt_count": 24,
+    "outlet_count": 24,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-387",
+  "label": "Ukraine Germany Men Return",
+  "status": "verified",
+  "verified": [
+   "RU"
+  ],
+  "judge": [
+   "RU",
+   "UA"
+  ],
+  "judge_reason": "The thread label 'Ukraine Germany Men Return' and headlines about drone attacks on Ukraine and Russia, as well as a Z-blogger discussing Russia's war in Ukraine, indicate the story is about Ukraine and Russia.",
+  "agree": true,
+  "dom_script": "CYRILLIC",
+  "scripts": {
+   "CYRILLIC": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 2,
+    "outlet_count": 2,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "UA",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 20
+ },
+ {
+  "thread_id": "dynamic-topic-1334",
+  "label": "Dólar Hoy Cotizaciones",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "AR",
+   "CO"
+  ],
+  "judge_reason": "The thread includes multiple headlines about lottery results and dollar exchange rates in Argentina (e.g., Quiniela de Santa Fe, Quiniela de Córdoba, Dólar hoy) and Colombia (e.g., Motilón Noche, Peso colombiano), with additional mentions of other countries like Mexico, Guatemala, Venezuela, Uruguay, and Paraguay, but the dominant focus is on Argentina and Colombia due to the number of specific local lottery and currency headlines.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "MX",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "NI",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "PY",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "UY",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "VE",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-287",
+  "label": "Southern Europe Wildfires",
+  "status": "verified",
+  "verified": [
+   "CA"
+  ],
+  "judge": [
+   "CA"
+  ],
+  "judge_reason": "All headlines explicitly reference Canadian wildfires as the source of smoke affecting air quality in various regions, making Canada the primary subject country.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "CA",
+    "receipt_count": 16,
+    "outlet_count": 16,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2493",
+  "label": "Emerging: House passes bill to make Daylight Saving Time permanent",
+  "status": "verified",
+  "verified": [
+   "US"
+  ],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The story is about the U.S. House of Representatives passing a bill to make daylight saving time permanent, which is a legislative action specific to the United States.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "US",
+    "receipt_count": 2,
+    "outlet_count": 2,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2521",
+  "label": "Emerging: 1 missing, 17 rescued after boat catches fire, sinks near Alcatraz Island in San",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The incident occurred in San Francisco Bay near Alcatraz Island, which is within the United States.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-248",
+  "label": "Venezuela Earthquake Death Toll",
+  "status": "verified",
+  "verified": [
+   "VE"
+  ],
+  "judge": [
+   "VE"
+  ],
+  "judge_reason": "All headlines explicitly mention Venezuela as the location of the earthquakes and the resulting casualties.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "VE",
+    "receipt_count": 24,
+    "outlet_count": 24,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-66",
+  "label": "Cyclosporiasis Outbreak in US",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "All headlines refer to a cyclosporiasis outbreak occurring in the United States, with mentions of specific states (Michigan, Wisconsin, Ohio, Idaho, North Carolina, Kansas, Louisiana) and the CDC.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-2455",
+  "label": "Darline Graham Senate Appointment",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The story is about the appointment of Darline Graham Nordone to the U.S. Senate seat previously held by her brother Lindsey Graham, which is a political event in the United States.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 12
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 12
+ },
+ {
+  "thread_id": "dynamic-topic-2458",
+  "label": "States Sue to Block Merger",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The story is about a lawsuit by U.S. states and the Writers Guild of America to block a merger between U.S.-based companies Paramount and Warner Bros. Discovery, focusing on U.S. antitrust law and its impact on U.S. writers and markets.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "MX",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 16
+ },
+ {
+  "thread_id": "dynamic-topic-2536",
+  "label": "Emerging: US Mint produces a $1 coin bearing Trump's face to help celebrate America's 250t",
+  "status": "verified",
+  "verified": [
+   "US"
+  ],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "The story is about the U.S. Mint producing a $1 coin featuring Donald Trump to celebrate America's 250th birthday, which is a domestic U.S. event and subject.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 13
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "US",
+    "receipt_count": 13,
+    "outlet_count": 13,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 13
+ },
+ {
+  "thread_id": "dynamic-topic-245",
+  "label": "Albanian Anti-Government Protests",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "AL"
+  ],
+  "judge_reason": "All headlines focus on Albanian domestic politics, specifically anti-government protests against Prime Minister Edi Rama, with references to Albanian politicians, institutions, and local issues.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "AF",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 16
+ },
+ {
+  "thread_id": "dynamic-topic-553",
+  "label": "Violent Deaths and Crimes",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "BR"
+  ],
+  "judge_reason": "All headlines refer to events occurring in various Brazilian states and cities, such as Mato Grosso (MT), Maceió, Campo Grande, Teresina, Amapá, Feira de Santana, Mogi das Cruzes, Taubaté, Campinas, Hortolândia, and Goiânia, indicating the subject geography is Brazil.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 19
+ },
+ {
+  "thread_id": "dynamic-topic-565",
+  "label": "Job and Course Openings",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "BR"
+  ],
+  "judge_reason": "All headlines refer to events, government actions, or local news within Brazil, such as police operations, economic impacts on Brazil, and regional political developments.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-115",
+  "label": "Mundial 2026 Coverage",
+  "status": "verified",
+  "verified": [
+   "ES"
+  ],
+  "judge": [
+   "ES",
+   "FR"
+  ],
+  "judge_reason": "The news story is about a World Cup 2026 semifinal match between Spain and France, making both countries the subject of the coverage.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "ES",
+    "receipt_count": 24,
+    "outlet_count": 22,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-1649",
+  "label": "Francia Semifinalista Mundial 2026",
+  "status": "verified",
+  "verified": [
+   "ES"
+  ],
+  "judge": [
+   "ES",
+   "FR"
+  ],
+  "judge_reason": "The story is about a football match between Spain and France in the 2026 World Cup, with Spain defeating France to advance to the final.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "ES",
+    "receipt_count": 24,
+    "outlet_count": 23,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "AR",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-1206",
+  "label": "Mbappe Double Powers France",
+  "status": "verified",
+  "verified": [
+   "ES",
+   "FR"
+  ],
+  "judge": [
+   "ES",
+   "FR"
+  ],
+  "judge_reason": "The story is about a World Cup match between Spain and France, with Spain defeating France to reach the final.",
+  "agree": true,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "ES",
+    "receipt_count": 24,
+    "outlet_count": 23,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "FR",
+    "receipt_count": 24,
+    "outlet_count": 23,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-644",
+  "label": "Argentina vs Cabo Verde World Cup 2026",
+  "status": "verified",
+  "verified": [
+   "AR",
+   "ES"
+  ],
+  "judge": [
+   "AR",
+   "GB"
+  ],
+  "judge_reason": "The headlines consistently focus on the football match between Argentina and England in the 2026 World Cup semifinals, making these two countries the clear subjects of the story.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "AR",
+    "receipt_count": 24,
+    "outlet_count": 18,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "ES",
+    "receipt_count": 4,
+    "outlet_count": 3,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-1112",
+  "label": "Danny Glover Alzheimer's Diagnosis",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "US"
+  ],
+  "judge_reason": "All headlines refer to Chesley 'Sully' Sullenberger, a US pilot, and his Alzheimer's diagnosis, making the United States the subject country.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 21
+ },
+ {
+  "thread_id": "dynamic-topic-457",
+  "label": "Ukraine Conflict Casualties",
+  "status": "verified",
+  "verified": [
+   "RU"
+  ],
+  "judge": [
+   "RU",
+   "UA"
+  ],
+  "judge_reason": "The story is about the death of the chief engineer of the Zaporizhzhia Nuclear Power Plant (Zaporizhzhia is in Ukraine, currently under Russian control), involving accusations against Ukrainian forces and reactions from Russian and international bodies, making both Ukraine and Russia the subject countries.",
+  "agree": true,
+  "dom_script": "CYRILLIC",
+  "scripts": {
+   "CYRILLIC": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "RU",
+    "receipt_count": 3,
+    "outlet_count": 2,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "verified"
+   },
+   {
+    "country": "UA",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 23
+ },
+ {
+  "thread_id": "dynamic-topic-606",
+  "label": "Piala Dunia 2026",
+  "status": "verified",
+  "verified": [
+   "AR"
+  ],
+  "judge": [
+   "ES",
+   "FR"
+  ],
+  "judge_reason": "The headlines focus on the 2026 FIFA World Cup semifinal match between Spain and France, with Spain advancing to the final, making Spain and France the primary subject countries.",
+  "agree": false,
+  "dom_script": "LATIN",
+  "scripts": {
+   "LATIN": 15
+  },
+  "reason_codes": [],
+  "candidates": [
+   {
+    "country": "AR",
+    "receipt_count": 4,
+    "outlet_count": 4,
+    "methods": [
+     "headline_pattern"
+    ],
+    "status": "verified"
+   }
+  ],
+  "n_receipts": 24
+ },
+ {
+  "thread_id": "dynamic-topic-623",
+  "label": "Hong Myung-Bo World Cup Failure",
+  "status": "partial",
+  "verified": [],
+  "judge": [
+   "KR"
+  ],
+  "judge_reason": "All headlines describe weather conditions in South Korea, including specific regions like Seoul, Gyeonggi, Gangwon, Jeju, Daejeon, and Incheon, with one headline about North Korea weather, but the primary subject is South Korea.",
+  "agree": false,
+  "dom_script": "HANGUL",
+  "scripts": {
+   "HANGUL": 15
+  },
+  "reason_codes": [
+   "subject_geography_not_independently_corroborated"
+  ],
+  "candidates": [
+   {
+    "country": "KP",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate"
+   },
+   {
+    "country": "KR",
+    "receipt_count": 1,
+    "outlet_count": 1,
+    "methods": [
+     "native_pattern"
+    ],
+    "status": "candidate"
+   }
+  ],
+  "n_receipts": 20
+ },
+ {
+  "thread_id": "dynamic-topic-90",
+  "label": "Trump FIFA World Cup Scandal",
+  "status": "unavailable",
+  "verified": [],
+  "judge": [
+   "IR",
+   "US"
+  ],
+  "judge_reason": "The thread label 'Trump FIFA World Cup Scandal' is misleading, but the majority of headlines focus on escalating tensions between the US (Trump) and Iran, including threats of attacks, control of the Strait of Hormuz, and nuclear deal disputes.",
+  "agree": false,
+  "dom_script": "GREEK",
+  "scripts": {
+   "GREEK": 15
+  },
+  "reason_codes": [
+   "no_explicit_subject_geography_in_receipts"
+  ],
+  "candidates": [],
+  "n_receipts": 24
+ }
+]

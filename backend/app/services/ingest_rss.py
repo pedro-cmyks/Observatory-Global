@@ -758,7 +758,8 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
 _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\biran\b|\bIranian\b|\bTehran\b|\bIRGC\b|\bKhamenei\b|\bAraghchi\b', re.I), "IR"),
     (re.compile(r'\bUkraine\b|\bUkrainian\b|\bKyiv\b|\bZelenskyy\b|\bZelenskiy\b', re.I), "UA"),
-    (re.compile(r'\bRussia\b|\bRussian\b|\bMoscow\b|\bKremlin\b|\bPutin\b|\bRossiya\b', re.I), "RU"),
+    # Rusiei = Romanian genitive of Russia (#238 dt-714: "ameninţările Rusiei").
+    (re.compile(r'\bRussia\b|\bRussian\b|\bMoscow\b|\bKremlin\b|\bPutin\b|\bRossiya\b|\bRusiei\b', re.I), "RU"),
     (re.compile(r'\bGaza\b|\bPalestine\b|\bPalestinian\b|\bHamas\b|\bRafah\b|\bWest Bank\b', re.I), "GZ"),
     (re.compile(r'\bIsrael\b|\bIsraeli\b|\bTel Aviv\b|\bNetanyahu\b|\bIDF\b', re.I), "IL"),
     (re.compile(r'\bMyanmar\b|\bBurma\b|\bRangoon\b|\bNaypyidaw\b|\bTatmadaw\b|\bMilitary junta\b', re.I), "MM"),
@@ -781,8 +782,15 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bVenezuela\b|\bVenezuelan\b|\bCaracas\b|\bMaduro\b', re.I), "VE"),
     (re.compile(r'\bBrazil\b|\bBrazilian\b|\bBrasilia\b|\bLula\b|\bSão Paulo\b|\bSTF\b|\bSupremo Tribunal Federal\b|\bFlávio Dino\b', re.I), "BR"),
     (re.compile(r'\bUnited States\b|\bAmerican\b|\bWashington\b|\bTrump\b|\bPentagon\b', re.I), "US"),
-    (re.compile(r'\bUnited Kingdom\b|\bBritish\b|\bLondon\b|\bWimbledon\b|\bStarmer\b|\bDowning Street\b', re.I), "GB"),
-    (re.compile(r'\bFrance\b|\bFrench\b|\bParis\b|\bMacron\b|\bElysée\b', re.I), "FR"),
+    # Inglaterra = Spanish/Portuguese exonym (#238 dt-644: "Argentina fulmina a
+    # Inglaterra"); Inggris = Indonesian exonym (#238 dt-606 class).
+    (re.compile(r'\bUnited Kingdom\b|\bBritish\b|\bLondon\b|\bWimbledon\b|\bStarmer\b|\bDowning Street\b|\bInglaterra\b|\bInggris\b', re.I), "GB"),
+    # "UK" needs its own CASE-SENSITIVE entry (#238 dt-2469: 8 "UK police"
+    # receipts matched nothing) — the re.I table above would fire on lowercase
+    # "co.uk" domain suffixes, so no ignorecase here.
+    (re.compile(r'\bUK\b'), "GB"),
+    # Francia = Spanish/Italian exonym; Prancis = Indonesian exonym (#238).
+    (re.compile(r'\bFrance\b|\bFrench\b|\bParis\b|\bMacron\b|\bElysée\b|\bFrancia\b|\bPrancis\b', re.I), "FR"),
     (re.compile(r'\bGermany\b|\bGerman\b|\bBerlin\b|\bBundestag\b', re.I), "DE"),
     (re.compile(r'\bStrait of Hormuz\b|\bHormuz\b|\bPersian Gulf\b|\bGulf of Oman\b', re.I), "IR"),
     (re.compile(r'\bRed Sea\b|\bGulf of Aden\b|\bBab el-Mandeb\b', re.I), "YE"),
@@ -844,7 +852,8 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bBelgium\b|\bBelgian\b|\bBrussels\b|\bBruxelles\b|\bBelgique\b|\bBelgi[eë]\b', re.I), "BE"),
     (re.compile(r'\bNetherlands\b|\bDutch\b|\bAmsterdam\b|\bThe Hague\b|\bRotterdam\b', re.I), "NL"),
     (re.compile(r'\bSwitzerland\b|\bSwiss\b|\bGeneva\b|\bZurich\b|\bZürich\b|\bSuiza\b|\bSuisse\b', re.I), "CH"),
-    (re.compile(r'\bSpain\b|\bMadrid\b|\bBarcelona\b|\bEspaña\b|\bSevilla\b', re.I), "ES"),
+    # Spanyol = Indonesian exonym (#238 dt-606: "Spanyol Tumbangkan Prancis").
+    (re.compile(r'\bSpain\b|\bMadrid\b|\bBarcelona\b|\bEspaña\b|\bSevilla\b|\bSpanyol\b', re.I), "ES"),
     (re.compile(r'\bItaly\b|\bItalian\b|\bRome\b|\bMilan\b|\bNaples\b|\bMeloni\b', re.I), "IT"),
     (re.compile(r'\bPoland\b|\bWarsaw\b|\bKrak[oó]w\b|\bTusk\b', re.I), "PL"),
     (re.compile(r'\bJapan\b|\bJapanese\b|\bTokyo\b|\bOsaka\b|\bKishida\b|\bIshiba\b', re.I), "JP"),
@@ -858,6 +867,14 @@ _COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r'\bDenmark\b|\bDanish\b|\bCopenhagen\b', re.I), "DK"),
     (re.compile(r'\bFinland\b|\bFinnish\b|\bHelsinki\b', re.I), "FI"),
     (re.compile(r'\bNew Zealand\b|\bNew Zealander\b|\bAuckland\b', re.I), "NZ"),
+    # #238 measured lexicon-form gaps (2026-07-16 inference-quality audit):
+    # Romania had NO entry at all — its own self-name in its own language
+    # matched nothing (dt-714), so Romanian domestic threads verified via the
+    # Putin→RU person proxy instead. Diacritic + genitive forms included.
+    (re.compile(r'\bRom[âa]nia\b|\bRom[âa]niei\b|\bRomanian\b|\bBucharest\b|\bBucurești\b', re.I), "RO"),
+    # Côte d'Ivoire was literally in every dt-96 headline and matched nothing —
+    # typographic (’) and ASCII (') apostrophes both covered.
+    (re.compile(r"\bC[ôo]te d[’']Ivoire\b|\bIvory Coast\b|\bIvorian\b|\bAbidjan\b|\bYamoussoukro\b", re.I), "CI"),
 ]
 
 # ── Native-script country patterns (#150 — Problema A) ────────────────────────
@@ -996,6 +1013,16 @@ _NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     # (Україн/Київ/Зеленськ) orthographies (#238): the stems were Russian-only,
     # so Ukrainian-language receipts about Ukraine yielded no subject evidence.
     (re.compile(r'Украин|Україн|Киев|Київ|Зеленск|Зеленськ'), "UA"),
+    # Ukrainian cities/oblast stems as LOCATION evidence (#238 dt-438): war
+    # receipts name the ATTACKED PLACE (Херсон, Суми, Харків, Одещина…) and
+    # rarely the country word, so RU — always named as the actor — verified
+    # alone and inverted the story. Interim actor-vs-location fix until NER
+    # places land (#184). Precision: Суми takes \b + capital С (Сумніви
+    # "doubts", сумно "sadly" share the prefix); Миколаїв keeps the full city
+    # stem because Микола alone is a common given name. The other stems are
+    # prefix-safe and catch the inflected forms (Херсоні, Харкові, Одесі,
+    # Краматорську, Запоріжжя, Дніпрі).
+    (re.compile(r'Херсон|Харків|Харков|Одес|Краматорськ|Запоріж|Дніпр|Миколаїв|Миколаєв|\bСуми\b'), "UA"),
     (re.compile(r'乌克兰|ウクライナ|우크라이나'), "UA"),
     (_native_arabic('اوکراین', 'أوكرانيا', 'یوکرین'), "UA"),
     (re.compile(r'यूक्रेन'), "UA"),
@@ -1024,6 +1051,23 @@ _NATIVE_COUNTRY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (_native_word('Yunanistan'), "GR"),                 # Turkish (Greece)
     (_native_bengali('বাংলাদেশ'), "BD"),                # Bengali
     (_native_bengali('মিয়ানমার'), "MM"),               # Bengali (Myanmar)
+    # ── Greek script (#238) — zero coverage before; two live front-page
+    # threads (dt-320 Χαλκιδική tragedy, dt-90 Ιράν/ΗΠΑ) served 24 Greek
+    # receipts and produced ZERO candidates. Greek inflects, so distinctive
+    # capitalized stems (the Cyrillic regime) catch nominative + genitive
+    # (Ελλάδα/Ελλάδας, Ρωσία/Ρωσίας). Priority order preserved: RU before UA,
+    # hot subjects before neighbours. Greek letters share no codepoints with
+    # Latin/Cyrillic, so these stems cannot collide with the other tables. ──
+    (re.compile(r'Ρωσί'), "RU"),
+    (re.compile(r'Ιράν|Ιραν'), "IR"),
+    (re.compile(r'ΗΠΑ'), "US"),
+    (re.compile(r'Τουρκ'), "TR"),
+    (re.compile(r'Ουκραν'), "UA"),
+    (re.compile(r'Κύπρ'), "CY"),
+    (re.compile(r'Γαλλί'), "FR"),
+    (re.compile(r'Γερμανί'), "DE"),
+    # Χαλκιδική = the dt-320 live case (place stem, like the Latin-city rows).
+    (re.compile(r'Ελλάδ|Ελλαδ|Χαλκιδικ'), "GR"),
 ]
 
 

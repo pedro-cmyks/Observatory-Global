@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 import html
+import re
 from typing import Any, Sequence
 
 from app.services.ingest_rss import _COUNTRY_PATTERNS, _NATIVE_COUNTRY_PATTERNS
@@ -21,6 +22,51 @@ _SUBJECT_COUNTRY_ALIASES = {
     "KU": "KW",
     "BX": "BN",
 }
+
+
+# ── Person-proxy demotion (#238, measured 2026-07-16) ─────────────────────────
+# The ingest lexicons deliberately carry leader names (Putin→RU, Trump→US,
+# Зеленськ→UA, …). That stays fine for coarse volume geo-tagging, but a person
+# mention is NOT verify-grade SUBJECT geography: dt-714, a Romania-domestic
+# politics thread, VERIFIED RU because "mesaj către Putin" receipts hit the
+# Putin proxy across ≥2 outlets. Every person token appearing in
+# _COUNTRY_PATTERNS / _NATIVE_COUNTRY_PATTERNS is listed here; a headline whose
+# country evidence survives only via these tokens is demoted to method
+# "person_proxy" and never counts toward the verified bar. Organizations
+# (Hamas, IDF, Houthi, Taliban, Wagner…) are metonyms for parties to the story,
+# not individual proxies — they stay verify-grade.
+_PERSON_PROXY_TOKENS_LATIN = [
+    # heads of state / leader surnames present in the Latin table
+    "Khamenei", "Araghchi", "Zelenskyy", "Zelenskiy", "Putin", "Netanyahu",
+    "Sharif", "Modi", "Xi Jinping", "Kim Jong", "Assad", "MBS", "Maduro",
+    "Lula", "Flávio Dino", "Trump", "Starmer", "Macron", "Petro", "Boluarte",
+    "Milei", "Boric", "Sheinbaum", "Noboa", "Arce", "Díaz-Canel", "Ortega",
+    "El-Sisi", "Sisi", "Erdogan", "Erdoğan", "Saied", "Abdullah", "Tinubu",
+    "Ruto", "Ramaphosa", "Mahama", "Museveni", "Mnangagwa", "Faye", "Traoré",
+    "Tiani", "Marcos", "Duterte", "Prabowo", "Lee Hsien Loong",
+    "Lawrence Wong", "Pita", "Anwar", "Hun Sen", "Hun Manet", "Yunus",
+    "Dissanayake", "Albanese", "Trudeau", "Carney", "Meloni", "Tusk",
+    "Kishida", "Ishiba",
+]
+_PERSON_PROXY_PATTERNS: list[re.Pattern] = [
+    re.compile(
+        r"\b(?:" + "|".join(re.escape(t) for t in _PERSON_PROXY_TOKENS_LATIN) + r")\b",
+        re.I,
+    ),
+    # Cyrillic stems (Russian + Ukrainian orthographies) — same boundary
+    # regime as the native table (stem prefix, no \b).
+    re.compile(r"Путин|Путін|Зеленск|Зеленськ"),
+    # Arabic-script el-Sisi (the EG native pattern carries him).
+    re.compile(r"السیسی|السيسي"),
+]
+
+
+def _mask_person_tokens(text: str) -> str:
+    """Blank every known person token so country patterns can be re-checked
+    against the remaining, genuinely geographic, evidence."""
+    for pattern in _PERSON_PROXY_PATTERNS:
+        text = pattern.sub(" ", text)
+    return text
 
 
 def decode_headline(value: Any) -> str:
@@ -35,21 +81,31 @@ def decode_headline(value: Any) -> str:
 
 
 def headline_country_evidence(headline: Any) -> dict[str, set[str]]:
-    """Return every country explicitly matched in one decoded headline."""
+    """Return every country explicitly matched in one decoded headline.
+
+    A pattern that matches the raw headline but no longer matches once person
+    tokens are masked was matching a PERSON, not a place — that country's
+    method for this headline is ``person_proxy`` (candidate-grade only, #238).
+    The country still appears in the result: demotion is labeling, never
+    silent filtering.
+    """
     text = decode_headline(headline)
+    masked = _mask_person_tokens(text)
     methods: dict[str, set[str]] = defaultdict(set)
-    for pattern, code in _COUNTRY_PATTERNS:
-        if pattern.search(text):
+    for table, method in (
+        (_COUNTRY_PATTERNS, "headline_pattern"),
+        (_NATIVE_COUNTRY_PATTERNS, "native_pattern"),
+    ):
+        for pattern, code in table:
+            if not pattern.search(text):
+                continue
             normalized = _SUBJECT_COUNTRY_ALIASES.get(
                 str(code).upper(), str(code).upper(),
             )
-            methods[normalized].add("headline_pattern")
-    for pattern, code in _NATIVE_COUNTRY_PATTERNS:
-        if pattern.search(text):
-            normalized = _SUBJECT_COUNTRY_ALIASES.get(
-                str(code).upper(), str(code).upper(),
-            )
-            methods[normalized].add("native_pattern")
+            if pattern.search(masked):
+                methods[normalized].add(method)
+            else:
+                methods[normalized].add("person_proxy")
     return dict(methods)
 
 
@@ -86,21 +142,37 @@ def infer_receipt_subject_geography(
     The thresholds are corroboration requirements, not a semantic ranking
     score.  Every candidate remains in the returned ledger when it does not
     clear them.
+
+    Person-proxy demotion (#238): a receipt whose evidence for a country comes
+    ONLY from person tokens (Putin→RU, Trump→US, …) is candidate-grade — the
+    ≥minimum_receipts/≥minimum_outlets verified bar must be met by non-proxy
+    receipts alone.  When that demotion suppresses a would-be verify, the
+    candidate carries ``person_proxy_suppressed`` and the reason codes carry
+    ``person_proxy_evidence_demoted`` — visible, never silent.
     """
+    def _new_item() -> dict[str, Any]:
+        return {
+            "receipt_ids": set(),
+            "outlets": set(),
+            "methods": set(),
+            "non_proxy_receipt_ids": set(),
+            "non_proxy_outlets": set(),
+        }
+
     evidence: dict[str, dict[str, Any]] = {}
     for position, row in enumerate(receipts):
         receipt_id = row.get("id") or row.get("source_url") or f"row:{position}"
         outlet = str(row.get("source_name") or "").strip().casefold()
         for country, methods in headline_country_evidence(row.get("headline")).items():
-            item = evidence.setdefault(country, {
-                "receipt_ids": set(),
-                "outlets": set(),
-                "methods": set(),
-            })
+            item = evidence.setdefault(country, _new_item())
             item["receipt_ids"].add(str(receipt_id))
             if outlet:
                 item["outlets"].add(outlet)
             item["methods"].update(methods)
+            if methods - {"person_proxy"}:
+                item["non_proxy_receipt_ids"].add(str(receipt_id))
+                if outlet:
+                    item["non_proxy_outlets"].add(outlet)
         # C-clean: a place named in the story body (via NER) is subject signal,
         # so it corroborates geography for headlines that name only a local
         # entity. Activates when receipts carry NER `places`; a no-op until that
@@ -109,37 +181,70 @@ def infer_receipt_subject_geography(
             code = resolve_place_to_country(place)
             if not code:
                 continue
-            item = evidence.setdefault(code, {
-                "receipt_ids": set(),
-                "outlets": set(),
-                "methods": set(),
-            })
+            item = evidence.setdefault(code, _new_item())
             item["receipt_ids"].add(str(receipt_id))
             if outlet:
                 item["outlets"].add(outlet)
             item["methods"].add("ner_place")
+            # a NER place is location evidence — verify-grade by construction
+            item["non_proxy_receipt_ids"].add(str(receipt_id))
+            if outlet:
+                item["non_proxy_outlets"].add(outlet)
 
     candidates = []
+    any_proxy_suppressed = False
     for country, item in evidence.items():
         receipt_count = len(item["receipt_ids"])
         outlet_count = len(item["outlets"])
+        non_proxy_receipt_count = len(item["non_proxy_receipt_ids"])
+        non_proxy_outlet_count = len(item["non_proxy_outlets"])
+        is_verified = (
+            non_proxy_receipt_count >= minimum_receipts
+            and non_proxy_outlet_count >= minimum_outlets
+        )
+        # would the OLD (proxy-blind) bar have verified this country?
+        person_proxy_suppressed = (
+            not is_verified
+            and "person_proxy" in item["methods"]
+            and receipt_count >= minimum_receipts
+            and outlet_count >= minimum_outlets
+        )
+        any_proxy_suppressed = any_proxy_suppressed or person_proxy_suppressed
         candidates.append({
             "country": country,
             "receipt_count": receipt_count,
             "outlet_count": outlet_count,
+            "non_proxy_receipt_count": non_proxy_receipt_count,
+            "non_proxy_outlet_count": non_proxy_outlet_count,
             "methods": sorted(item["methods"]),
-            "status": (
-                "verified"
-                if receipt_count >= minimum_receipts and outlet_count >= minimum_outlets
-                else "candidate"
-            ),
+            "person_proxy_suppressed": person_proxy_suppressed,
+            "status": "verified" if is_verified else "candidate",
         })
     candidates.sort(
         key=lambda row: (-row["receipt_count"], -row["outlet_count"], row["country"]),
     )
-    verified = sorted(
-        row["country"] for row in candidates if row["status"] == "verified"
-    )
+    # #238 dominance cap (measured, 2026-07-16 post-fix remeasure §Simulation:
+    # 66.7%/32.3% -> 86.7%/41.9%, above baseline on both axes): the recall
+    # fixes exposed cluster SIDE-MENTIONS clearing the low 2-receipt/2-outlet
+    # bar next to a dominant real subject. A verified country must hold
+    # >= 1/3 of the leading verified country's receipts; the verified set is
+    # capped at 2, ordered by receipts. Capped countries stay visible as
+    # candidates with dominance_capped=true + a reason code — never silently
+    # dropped (the no-silent-filtering guardrail).
+    verified_rows = [row for row in candidates if row["status"] == "verified"]
+    any_dominance_capped = False
+    if len(verified_rows) > 1:
+        lead_receipts = verified_rows[0]["receipt_count"]
+        kept: list[dict] = []
+        for row in verified_rows:
+            if len(kept) < 2 and row["receipt_count"] * 3 >= lead_receipts:
+                kept.append(row)
+            else:
+                row["status"] = "candidate"
+                row["dominance_capped"] = True
+                any_dominance_capped = True
+        verified_rows = kept
+    verified = [row["country"] for row in verified_rows]
     if verified:
         status = "verified"
         reasons: list[str] = []
@@ -149,6 +254,10 @@ def infer_receipt_subject_geography(
     else:
         status = "unavailable"
         reasons = ["no_explicit_subject_geography_in_receipts"]
+    if any_proxy_suppressed:
+        reasons.append("person_proxy_evidence_demoted")
+    if any_dominance_capped:
+        reasons.append("subject_geography_dominance_capped")
     return {
         "contract": "atlas-subject-geography-v1",
         "status": status,

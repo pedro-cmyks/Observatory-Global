@@ -1,0 +1,31 @@
+{
+  "replay_metrics": {
+    "n": 31,
+    "judged": 31,
+    "judge_named": 31,
+    "verified": 15,
+    "precision": "10/15 = 66.7%",
+    "recall_strict": "10/31 = 32.3%",
+    "recall_lenient": "15/31 = 48.4%",
+    "status_distribution": {
+      "verified": 15,
+      "partial": 11,
+      "unavailable": 5
+    }
+  },
+  "fresh_metrics": {
+    "n": 31,
+    "judged": 31,
+    "judge_named": 30,
+    "verified": 15,
+    "precision": "7/15 = 46.7%",
+    "recall_strict": "7/30 = 23.3%",
+    "recall_lenient": "14/30 = 46.7%",
+    "status_distribution": {
+      "verified": 15,
+      "partial": 11,
+      "unavailable": 5
+    }
+  },
+  "served_vs_local_delta_count": 14
+}
