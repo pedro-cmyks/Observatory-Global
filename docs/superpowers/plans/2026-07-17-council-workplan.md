@@ -38,13 +38,23 @@ frontend reads them safely via `countryCodeBoundary.ts`; upstream normalization
 ## Phase 1 — Stop the front page lying (label trust; days–week)
 The council's Move 1 core. The confidence number exists (21% served as lead vs 96–100% on real stories) — use it.
 
-- [ ] **Confidence-gate the Brief lead slot + share card** — floor (~70%); below it the story cannot lead and the card refuses to freeze.
-- [ ] **"Unassembled signals" tray** — low-confidence clusters drop to an honest desk showing raw receipts grouped by geography (reuse the loved Under-the-Radar pattern) instead of a fake headline.
-- [ ] **"Label under review" chip** on demoted labels (the L2 lens already ships one — unify).
-- [ ] **Label Court (engine, parallel track, #204/#224):** cheap entailment check label-vs-its-own-top-N-receipts before any label reaches a surface; failures auto-demote to receipt-derived neutral labels ("Iran: Hormuz blockade & US strikes — from 6 receipts") + logged as labeler training data.
-- [ ] **Brief staleness ops** — the 2-day-stale sealed edition: fix the daily-publication chain failure mode + banner gains what/why/when. [P0-2, wish 20]
+**STATUS: DONE 2026-07-17.** Backend + frontend, two Marcos-persona gate rounds
+(round 2 = "phase1 clean") + a live-DOM verification pass that caught a reconcile
+bug the static gate missed. Live proof: prod `/briefing` serves `label_status`;
+all 10 top threads judged FAILED by the court — including the 0.893 "Job and
+Course Openings" (a Brazilian police roundup the confidence floor alone let
+through) — so the front page shows the honest "no story clears the bar" empty-lead
+and the Greek blob sits in the tray with translated receipts. Commits: `8cbe3999`
+(Label Court engine), `ae8af35a` (serve label_status), `80a1f119` (front page +
+reconcile round-3 + sealed_at). 555 vitest green.
 
-**Acceptance:** no served lead below the confidence floor; the FIFA/Meloni/Job-Openings class cannot reach L1; Marcos persona re-run scores the front page "no lies found".
+- [x] **Confidence-gate the Brief lead slot + share card** — FLOOR 0.70 (`lib/leadConfidence.ts`); label_status='failed' blocks the lead even above floor; share card refuses non-eligible.
+- [x] **"Unassembled signals" tray** — below-floor/failed threads → honest desk, receipts grouped by source country, translated; no thread vanishes. Country edition gated identically.
+- [x] **"Label under review" chip** — ONE shared `lib/labelReviewChip.tsx` across Brief/NarrativeThreads/ThemeDetail (unified).
+- [x] **Label Court (engine, #204/#224):** `backend/scripts/label_court.py` — DeepSeek temp-0 entailment label-vs-receipts → entailed/partial/failed + receipt-derived neutral proposal (never auto-served) + JSONL training ledger. mig 080, wired into the nightly runner, run live (25 failed / 4 entailed / 3 partial of 32).
+- [x] **Brief staleness ops** — failure-mode fixed (`108026ef` snapshot failure budget) + banner what/why/when (`lib/staleBanner.ts` + `investigation.py` sealed_at). [P0-2, wish 20]
+
+**Acceptance: PASSED** — Marcos re-run "phase1 clean"; the Job-Openings/FIFA/Meloni class cannot lead L1 (all court-failed → tray). Follow-up: the court judged only 32 topics (thin substrate); the full active set gets judged on the next complete nightly snapshot.
 
 ## Phase 2 — Complete the capture loop (product-surface; ~1 week)
 Council Move 2 = the #1 wish (5/6 personas). Carolina's claim ledger is the spec.
