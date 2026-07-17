@@ -6,6 +6,7 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
 import { Pin, PinOff } from '../lib/icons'
+import PinReceiptButton from './PinReceiptButton'
 import { SignalDetailPanel } from './SignalDetailPanel'
 import type { Signal } from './SignalDetailPanel'
 import './SignalStream.css'
@@ -534,6 +535,18 @@ export const SignalStream: React.FC = () => {
                                             >
                                                 {isPinned(`signal-${sig.id}`) ? <PinOff size={12} /> : <Pin size={12} />}
                                             </button>
+                                            <PinReceiptButton
+                                                contextLabel={sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`}
+                                                citation={{
+                                                    headline: sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`,
+                                                    source: sig.source || undefined,
+                                                    url: sig.url || undefined,
+                                                    sourceCountry: sig.country || undefined,
+                                                    sourceLang: sig.source_lang || undefined,
+                                                    gateStatus: 'unknown',
+                                                    publishedDate: sig.timestamp ? new Date(sig.timestamp).toISOString().slice(0, 10) : undefined,
+                                                }}
+                                            />
                                         </div>
                                         <div className="signal-footer">
                                             <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>

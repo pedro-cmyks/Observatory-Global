@@ -1,5 +1,6 @@
 .wb-panel {
   display: flex;
+  position: relative;
   height: 100%;
   overflow: hidden;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
@@ -302,3 +303,129 @@
 [data-theme^='emerald'] .wb-pin-remove:hover {
   color: var(--color-sentiment-negative);
 }
+
+/* ── Receipt-level citations (council wish 1) ── distinct from thread pins:
+   each row is one headline with FROZEN provenance chips. */
+.wb-citations { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.wb-cit {
+  padding: 9px 12px;
+  border: 1px solid var(--color-border, #334155);
+  border-left: 2px solid var(--color-accent, #10b981);
+  border-radius: 6px;
+  background: var(--color-surface, rgba(255, 255, 255, 0.02));
+}
+.wb-cit-head { display: flex; align-items: flex-start; gap: 8px; }
+.wb-cit-headline {
+  flex: 1; min-width: 0;
+  font-size: 13px; line-height: 1.35;
+  color: var(--color-text, #e2e8f0);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+a.wb-cit-headline:hover { text-decoration: underline; }
+.wb-cit-headline--plain { color: var(--color-text-muted, #94a3b8); }
+.wb-cit-remove {
+  flex: 0 0 auto; background: none; border: none; cursor: pointer;
+  color: var(--color-text-muted, #64748b); font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.wb-cit-remove:hover { color: var(--color-sentiment-negative, #f87171); }
+.wb-cit-meta { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 2px; align-items: center; }
+.wb-cit-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px; letter-spacing: 0.03em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.05));
+  color: var(--color-text-muted, #94a3b8);
+}
+.wb-cit-flag { width: 14px; height: 10px; border-radius: 1px; }
+.wb-cit-gate--verified { background: rgba(16, 185, 129, 0.16); color: #34d399; }
+.wb-cit-gate--extended { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+.wb-cit-gate--below_gate { background: rgba(248, 113, 113, 0.14); color: #f87171; }
+.wb-cit-gate--unknown { background: rgba(148, 163, 184, 0.14); color: #94a3b8; }
+
+/* ── Claim ledger: mark-relation affordance (Carolina's spec) ──────────────── */
+.wb-claim-mark {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 2px 0 8px; padding: 8px 10px;
+  border: 1px dashed var(--color-border, #334155);
+  border-radius: 6px;
+  background: var(--color-surface, rgba(255, 255, 255, 0.02));
+}
+.wb-claim-mark-hint { font-size: 11px; color: var(--color-text-muted, #94a3b8); }
+.wb-claim-mark-btns { display: flex; gap: 6px; }
+.wb-claim-btn {
+  flex: 1; padding: 5px 8px; border-radius: 5px; cursor: pointer;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  border: 1px solid var(--color-border, #334155);
+  background: transparent; color: var(--color-text, #e2e8f0);
+}
+.wb-claim-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wb-claim-btn--corroborates:not(:disabled):hover {
+  border-color: var(--color-accent, #10b981); color: var(--color-accent, #10b981);
+}
+.wb-claim-btn--contradicts:not(:disabled):hover {
+  border-color: #dc2626; color: #ef4444;
+}
+.wb-claim-toast {
+  margin: 0 0 8px; padding: 4px 10px; border-radius: 5px;
+  font-size: 11px; font-weight: 600;
+  color: var(--color-accent, #10b981);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.wb-claim-count { font-size: 10px; color: var(--color-text-muted, #94a3b8); margin: 0 0 6px; }
+.wb-cit--selected {
+  border-left-color: #eab308;
+  box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.4);
+}
+.wb-cit-select {
+  flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px;
+  border: 1px solid var(--color-border, #475569); border-radius: 4px;
+  background: transparent; cursor: pointer;
+  color: #eab308; font-size: 11px; line-height: 1; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.wb-cit-select--on { border-color: #eab308; background: rgba(234, 179, 8, 0.15); }
+
+/* Ergonomics (council P1-11, wish 4): merge/move controls + undo toast. */
+.wb-merge-select,
+.wb-pin-move {
+  font-size: 10px;
+  color: var(--color-text-muted, #94a3b8);
+  background: var(--color-surface, #0f172a);
+  border: 1px solid var(--color-border, #475569);
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+.wb-pin-move { margin-left: auto; }
+
+.wb-undo-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text, #e2e8f0);
+  background: var(--color-surface-elevated, #1e293b);
+  border: 1px solid var(--color-border, #475569);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  z-index: 9200;
+}
+.wb-undo-btn {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--color-accent, #10b981);
+  background: transparent;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  border-radius: 5px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.wb-undo-btn:hover { background: rgba(16, 185, 129, 0.15); }

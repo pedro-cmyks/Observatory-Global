@@ -2270,6 +2270,7 @@ function AppContent() {
                 onOpenCountry={handleResearchOpenCountry}
                 onOpenParams={handleOpenParams}
                 onStartInvestigation={(q) => setResearchQuery(q)}
+                onClose={() => setWorkbenchOpen(false)}
               />
             </div>
             <div className="workbench-overlay-right">

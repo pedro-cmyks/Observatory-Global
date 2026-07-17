@@ -1,8 +1,11 @@
 // Workbench panel (Phase 2): the investigation memory. Sidebar of saved
 // investigations + pinned route + trail + JSON export (the v1 durability
 // mechanism — localStorage is evictable by design, spec amendment B3).
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  addCitation,
+  addClaim,
+  addPin,
   createInvestigation,
   deleteInvestigation,
   exportInvestigationJSON,
@@ -10,16 +13,33 @@ import {
   getInvestigation,
   investigationQuery,
   listInvestigations,
+  mergeInvestigations,
+  movePin,
+  removeCitation,
   removePin,
+  updateCitationNote,
   updatePinNote,
   setActiveInvestigation,
+  type Citation,
   type Investigation,
+  type WorkbenchPin,
 } from '../lib/workbench';
+import type { ClaimRelation } from '../lib/claimLedger';
+import { Flag } from './Flag';
 import { DossierView } from './DossierView';
 import WorkbenchConstellation from './WorkbenchConstellation';
 import { connectionTopicIds } from '../lib/dossierConnections';
 import { countQualifier } from '../lib/countQualifier';
 import './WorkbenchPanel.css';
+
+// Gate-tier badge copy for pinned receipts — the same honesty labels the
+// evidence rows carry, frozen alongside the receipt.
+const GATE_BADGE: Record<string, { label: string; tip: string }> = {
+  verified: { label: 'VERIFIED', tip: 'Cleared the quality gate (~90% precision) when pinned.' },
+  extended: { label: 'EXTENDED', tip: 'Cleared the extended threshold (~75% precision) when pinned — graded coverage.' },
+  below_gate: { label: 'BELOW GATE', tip: 'Did not clear the quality gate — candidate material, not verified coverage.' },
+  unknown: { label: 'UNGATED', tip: 'The row carried no gate signal (dynamic/social/archive receipt).' },
+};
 
 // Notes must never clip mid-sentence (the truncation complaint): size the
 // textarea to its content on mount and as the analyst types.
@@ -35,11 +55,13 @@ interface WorkbenchPanelProps {
   /** W1: panel pins restore their L2 view from a query-string. */
   onOpenParams?: (params: string) => void;
   onStartInvestigation?: (query: string) => void;
+  /** Escape closes the workbench (council P1-11, wish 4). */
+  onClose?: () => void;
   refreshToken?: number; // bump to force re-read after external pin changes
 }
 
 export default function WorkbenchPanel({
-  onOpenThread, onOpenCountry, onOpenParams, onStartInvestigation, refreshToken,
+  onOpenThread, onOpenCountry, onOpenParams, onStartInvestigation, onClose, refreshToken,
 }: WorkbenchPanelProps) {
   const [, setTick] = useState(0);
   const [newTitle, setNewTitle] = useState('');
@@ -48,13 +70,68 @@ export default function WorkbenchPanel({
   const [exported, setExported] = useState(false);
   // P0.6b: CORROBORATE opens the report AND fires the web-corroboration run.
   const [autoCorroborate, setAutoCorroborate] = useState(false);
+  // Claim ledger (Carolina): select two receipts → mark their relation.
+  const [selectedCites, setSelectedCites] = useState<string[]>([]);
+  const [claimToast, setClaimToast] = useState<string | null>(null);
+  // Undo toast for destructive ops (council P1-11, wish 4): every removal is
+  // reversible for a few seconds so a mis-click never loses a pinned receipt.
+  const [undoToast, setUndoToast] = useState<{ message: string; undo: () => void } | null>(null);
   void refreshToken;
 
   const rerender = useCallback(() => setTick(t => t + 1), []);
 
+  const showUndo = useCallback((message: string, undo: () => void) => {
+    setUndoToast({ message, undo });
+    window.setTimeout(() => setUndoToast(cur => (cur && cur.message === message ? null : cur)), 6000);
+  }, []);
+
   const investigations = listInvestigations();
   const activeId = getActiveInvestigationId();
   const active: Investigation | null = activeId ? getInvestigation(activeId) : null;
+
+  // Escape closes the dossier first (if open), else the whole workbench.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (showDossier) { setShowDossier(false); setAutoCorroborate(false); return; }
+      onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showDossier, onClose]);
+
+  // Destructive-op helpers with undo (capture the removed item, restore on undo).
+  const removePinWithUndo = useCallback((inv: Investigation, pin: WorkbenchPin) => {
+    removePin(inv.id, pin.anchorId);
+    rerender();
+    showUndo(`Unpinned “${pin.label}”`, () => { addPin(inv.id, pin); rerender(); });
+  }, [rerender, showUndo]);
+
+  const removeCitationWithUndo = useCallback((inv: Investigation, cit: Citation) => {
+    removeCitation(inv.id, cit.id);
+    rerender();
+    showUndo(`Removed receipt “${cit.headline}”`, () => { addCitation(inv.id, cit); rerender(); });
+  }, [rerender, showUndo]);
+
+  // Investigations the active one can move a pin into / merge into.
+  const otherInvestigations = investigations.filter(i => i.id !== activeId);
+
+  const toggleCiteSelect = useCallback((id: string) => {
+    setSelectedCites(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id);
+      // Keep at most two selected — drop the oldest when a third is picked.
+      return prev.length >= 2 ? [prev[1], id] : [...prev, id];
+    });
+  }, []);
+
+  const markRelation = useCallback((relation: ClaimRelation) => {
+    if (!activeId || selectedCites.length !== 2) return;
+    addClaim(activeId, { citationIdA: selectedCites[0], citationIdB: selectedCites[1], relation });
+    setSelectedCites([]);
+    setClaimToast(`Marked ${relation.toLowerCase()}`);
+    window.setTimeout(() => setClaimToast(null), 1800);
+    rerender();
+  }, [activeId, selectedCites, rerender]);
 
   function handleCreate() {
     const title = newTitle.trim();
@@ -137,6 +214,7 @@ export default function WorkbenchPanel({
               <DossierView
                 investigation={active}
                 autoCorroborate={autoCorroborate}
+                onMutate={rerender}
                 onClose={() => { setShowDossier(false); setAutoCorroborate(false); }}
               />
             )}
@@ -146,6 +224,29 @@ export default function WorkbenchPanel({
                 <button className="wb-action wb-action--report" onClick={() => { setAutoCorroborate(false); setShowDossier(true); }} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
                 <button className="wb-action wb-action--corroborate" onClick={() => { setAutoCorroborate(true); setShowDossier(true); }} data-tip="Check every evidence-bearing pin against live web coverage; metadata-only context is marked not applicable. Duration grows with the route." disabled={active.pins.length === 0}>CORROBORATE</button>
                 <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">{exported ? 'DOWNLOADED ✓' : 'EXPORT'}</button>
+                {otherInvestigations.length > 0 && (
+                  <select
+                    className="wb-action wb-merge-select"
+                    data-tip="Merge this investigation into another — pins, receipts and claims are unioned (duplicates collapse), trails combine."
+                    value=""
+                    onChange={e => {
+                      const targetId = e.target.value;
+                      if (!targetId) return;
+                      const target = investigations.find(i => i.id === targetId);
+                      if (target && window.confirm(`Merge “${active.title}” into “${target.title}”? This combines both and removes “${active.title}”.`)) {
+                        mergeInvestigations(targetId, active.id);
+                        rerender();
+                        onStartInvestigation?.(investigationQuery(getInvestigation(targetId)!));
+                      }
+                      e.target.value = '';
+                    }}
+                  >
+                    <option value="">MERGE INTO…</option>
+                    {otherInvestigations.map(i => (
+                      <option key={i.id} value={i.id}>{i.title}</option>
+                    ))}
+                  </select>
+                )}
                 <button
                   className="wb-action wb-action--danger"
                   data-tip="Delete this investigation"
@@ -183,10 +284,27 @@ export default function WorkbenchPanel({
                     {pin.matchBasis === 'topic_description' && (
                       <span className="wb-pin-tag wb-pin-tag--taxonomy" data-tip="Semantic taxonomy match — not found evidence">taxonomy</span>
                     )}
+                    {otherInvestigations.length > 0 && (
+                      <select
+                        className="wb-pin-move"
+                        data-tip="Move this pin to another investigation"
+                        value=""
+                        onChange={e => {
+                          const toId = e.target.value;
+                          if (toId && movePin(pin.anchorId, active.id, toId)) rerender();
+                          e.target.value = '';
+                        }}
+                      >
+                        <option value="">move…</option>
+                        {otherInvestigations.map(i => (
+                          <option key={i.id} value={i.id}>{i.title}</option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       className="wb-pin-remove"
                       data-tip="Unpin"
-                      onClick={() => { removePin(active.id, pin.anchorId); rerender(); }}
+                      onClick={() => removePinWithUndo(active, pin)}
                     >×</button>
                   </div>
                   {/* #227: frozen evidence snapshot — what the analyst saw when pinning */}
@@ -238,6 +356,93 @@ export default function WorkbenchPanel({
               )}
             </div>
 
+            {/* Receipt-level citations (council wish 1) — SEPARATE from thread
+                pins: each is one headline pinned with frozen provenance. */}
+            {active.citations.length > 0 && (
+              <>
+                <div className="wb-section-title" data-tip="Single receipts pinned from evidence rows — provenance frozen at pin time. Select two to mark how they relate.">CITATIONS ({active.citations.length})</div>
+                {/* Mark-relation affordance (Carolina's claim ledger): pick two
+                    receipts, then say how they relate → a Claim the dossier reads. */}
+                {active.citations.length >= 2 && (
+                  <div className="wb-claim-mark" role="group" aria-label="Mark relation between two receipts">
+                    <span className="wb-claim-mark-hint">
+                      {selectedCites.length < 2
+                        ? `Select ${2 - selectedCites.length} more receipt${selectedCites.length === 1 ? '' : 's'} to mark a relation`
+                        : 'How do these two relate?'}
+                    </span>
+                    <div className="wb-claim-mark-btns">
+                      <button className="wb-claim-btn wb-claim-btn--corroborates" disabled={selectedCites.length !== 2}
+                        data-tip="These receipts agree / support the same figure or claim."
+                        onClick={() => markRelation('CORROBORATES')}>Corroborates</button>
+                      <button className="wb-claim-btn wb-claim-btn--contradicts" disabled={selectedCites.length !== 2}
+                        data-tip="These receipts disagree — e.g. different death tolls."
+                        onClick={() => markRelation('CONTRADICTS')}>Contradicts</button>
+                    </div>
+                  </div>
+                )}
+                {claimToast && <div className="wb-claim-toast" role="status">{claimToast} ✓</div>}
+                {active.claims.length > 0 && (
+                  <div className="wb-claim-count" data-tip="Marked relations render as the Contested figures table in the dossier.">{active.claims.length} claim{active.claims.length === 1 ? '' : 's'} marked</div>
+                )}
+                <div className="wb-citations">
+                  {active.citations.map(cit => {
+                    const gate = GATE_BADGE[cit.gateStatus];
+                    const selected = selectedCites.includes(cit.id);
+                    const day = cit.publishedDate
+                      ? new Date(cit.publishedDate + 'T00:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+                      : null;
+                    return (
+                      <div key={cit.id} className={`wb-cit${selected ? ' wb-cit--selected' : ''}`}>
+                        <div className="wb-cit-head">
+                          <button
+                            className={`wb-cit-select${selected ? ' wb-cit-select--on' : ''}`}
+                            data-tip={selected ? 'Deselect receipt' : 'Select to mark a relation'}
+                            aria-pressed={selected}
+                            onClick={() => toggleCiteSelect(cit.id)}
+                          >{selected ? '✓' : ''}</button>
+                          {cit.url
+                            ? <a className="wb-cit-headline" href={cit.url} target="_blank" rel="noopener noreferrer">{cit.headline}</a>
+                            : <span className="wb-cit-headline wb-cit-headline--plain">{cit.headline}</span>}
+                          <button
+                            className="wb-cit-remove"
+                            data-tip="Unpin receipt"
+                            onClick={() => removeCitationWithUndo(active, cit)}
+                          >×</button>
+                        </div>
+                        <div className="wb-cit-meta">
+                          {cit.sourceCountry && (
+                            <span className="wb-cit-chip wb-cit-chip--cc">
+                              <Flag code={cit.sourceCountry} title={cit.sourceCountry} className="wb-cit-flag" />
+                              {cit.sourceCountry}
+                            </span>
+                          )}
+                          {cit.source && <span className="wb-cit-chip">{cit.source}</span>}
+                          {cit.sourceLang && !['xx', 'un', 'und', ''].includes(cit.sourceLang.toLowerCase())
+                            && <span className="wb-cit-chip wb-cit-chip--lang">{cit.sourceLang.toUpperCase()}</span>}
+                          <span className={`wb-cit-chip wb-cit-gate wb-cit-gate--${cit.gateStatus}`} data-tip={gate.tip}>{gate.label}</span>
+                          {day && <span className="wb-cit-chip wb-cit-chip--date">{day}</span>}
+                        </div>
+                        <textarea
+                          className="wb-pin-note"
+                          defaultValue={cit.note ?? ''}
+                          placeholder="Add a note…"
+                          rows={1}
+                          ref={autoGrowNote}
+                          onInput={e => autoGrowNote(e.currentTarget)}
+                          onBlur={e => {
+                            if ((e.target.value ?? '') !== (cit.note ?? '')) {
+                              updateCitationNote(active.id, cit.id, e.target.value);
+                              rerender();
+                            }
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
             <div className="wb-section-title">TRAIL</div>
             <div className="wb-trail">
               {active.trail.slice(-20).reverse().map((step, i) => (
@@ -250,6 +455,15 @@ export default function WorkbenchPanel({
           </>
         )}
       </div>
+      {undoToast && (
+        <div className="wb-undo-toast" role="status">
+          <span className="wb-undo-msg">{undoToast.message}</span>
+          <button
+            className="wb-undo-btn"
+            onClick={() => { undoToast.undo(); setUndoToast(null); }}
+          >Undo</button>
+        </div>
+      )}
     </div>
   );
 }

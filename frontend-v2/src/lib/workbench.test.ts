@@ -15,16 +15,25 @@ vi.stubGlobal('localStorage', {
 })
 
 import {
+  addCitation,
   addPin,
+  citationId,
   createInvestigation,
   deleteInvestigation,
   exportInvestigationJSON,
   getActiveInvestigationId,
   getInvestigation,
   investigationQuery,
+  isCitationPinned,
+  listCitations,
   listInvestigations,
+  mergeInvestigations,
+  movePin,
+  removeCitation,
   removePin,
   renameInvestigation,
+  toCitationGateStatus,
+  updateCitationNote,
   updatePinNote,
   setActiveInvestigation,
 } from './workbench'
@@ -152,10 +161,198 @@ describe('workbench store', () => {
     expect(listInvestigations()).toHaveLength(0)
   })
 
+  it('new investigations start with an empty citations array', () => {
+    const inv = createInvestigation('Iran')
+    expect(getInvestigation(inv.id)!.citations).toEqual([])
+  })
+
   it('survives corrupted storage', () => {
     localStorage.setItem('atlas.workbench.v1', '{not json')
     expect(listInvestigations()).toEqual([])
     setActiveInvestigation('x')
     expect(getActiveInvestigationId()).toBe('x')
+  })
+})
+
+const RECEIPT = {
+  headline: 'Greek highway shut after landslide',
+  source: 'kathimerini',
+  url: 'https://kathimerini.gr/a/1',
+  sourceCountry: 'GR',
+  sourceLang: 'el',
+  gateStatus: 'below_gate' as const,
+  publishedDate: '2026-07-13',
+}
+
+describe('workbench citations (receipt-level pinning)', () => {
+  it('toCitationGateStatus maps assigned→below_gate and unknowns→unknown', () => {
+    expect(toCitationGateStatus('verified')).toBe('verified')
+    expect(toCitationGateStatus('extended')).toBe('extended')
+    expect(toCitationGateStatus('below_gate')).toBe('below_gate')
+    expect(toCitationGateStatus('assigned')).toBe('below_gate')
+    expect(toCitationGateStatus(null)).toBe('unknown')
+    expect(toCitationGateStatus(undefined)).toBe('unknown')
+    expect(toCitationGateStatus('garbage')).toBe('unknown')
+  })
+
+  it('citationId prefers the url, falls back to source+headline', () => {
+    expect(citationId(RECEIPT)).toBe('cite:url:https://kathimerini.gr/a/1')
+    expect(citationId({ headline: 'H', source: 'AP' })).toBe('cite:txt:ap::H')
+    // Same receipt, two renders → same id (idempotent toggle).
+    expect(citationId({ ...RECEIPT, id: undefined } as never)).toBe(citationId(RECEIPT))
+  })
+
+  it('adds a citation with frozen provenance and derives its id', () => {
+    const inv = createInvestigation('Greek traffic')
+    addCitation(inv.id, RECEIPT)
+    const cits = listCitations(inv.id)
+    expect(cits).toHaveLength(1)
+    expect(cits[0].id).toBe('cite:url:https://kathimerini.gr/a/1')
+    expect(cits[0].sourceCountry).toBe('GR')
+    expect(cits[0].gateStatus).toBe('below_gate')
+    expect(cits[0].capturedAt).toBeTruthy()
+    expect(cits[0].investigationId).toBe(inv.id)
+  })
+
+  it('citations are idempotent per id (re-pin ignored)', () => {
+    const inv = createInvestigation('Greek traffic')
+    addCitation(inv.id, RECEIPT)
+    addCitation(inv.id, RECEIPT)
+    expect(listCitations(inv.id)).toHaveLength(1)
+  })
+
+  it('isCitationPinned reflects add/remove', () => {
+    const inv = createInvestigation('Greek traffic')
+    const id = citationId(RECEIPT)
+    expect(isCitationPinned(inv.id, id)).toBe(false)
+    addCitation(inv.id, RECEIPT)
+    expect(isCitationPinned(inv.id, id)).toBe(true)
+    removeCitation(inv.id, id)
+    expect(isCitationPinned(inv.id, id)).toBe(false)
+    expect(isCitationPinned(null, id)).toBe(false)
+  })
+
+  it('updateCitationNote edits the receipt note', () => {
+    const inv = createInvestigation('Greek traffic')
+    addCitation(inv.id, RECEIPT)
+    updateCitationNote(inv.id, citationId(RECEIPT), 'corroborate with local police feed')
+    expect(listCitations(inv.id)[0].note).toBe('corroborate with local police feed')
+  })
+
+  it('citations are SEPARATE from thread pins and never mix', () => {
+    const inv = createInvestigation('Greek traffic')
+    addPin(inv.id, PIN)
+    addCitation(inv.id, RECEIPT)
+    const got = getInvestigation(inv.id)!
+    expect(got.pins).toHaveLength(1)
+    expect(got.citations).toHaveLength(1)
+    expect(got.pins[0].anchorId).toBe(PIN.anchorId)
+  })
+
+  it('migrates a pre-citation record WITHOUT losing pins', () => {
+    // Simulate a v1 record persisted before citations existed.
+    const legacy = {
+      investigations: [{
+        id: 'inv-legacy', title: 'Old case', createdAt: 'x', updatedAt: 'x',
+        pins: [{ ...PIN, pinnedAt: 'x' }],
+        trail: [{ at: 'x', action: 'search', detail: 'Old case' }],
+        // NOTE: no `citations` key
+      }],
+    }
+    localStorage.setItem('atlas.workbench.v1', JSON.stringify(legacy))
+    const got = getInvestigation('inv-legacy')!
+    expect(got.pins).toHaveLength(1) // pin preserved
+    expect(got.citations).toEqual([]) // defaulted
+    // And a citation can now be added to the migrated record.
+    addCitation('inv-legacy', RECEIPT)
+    expect(listCitations('inv-legacy')).toHaveLength(1)
+    expect(getInvestigation('inv-legacy')!.pins).toHaveLength(1) // still there
+  })
+
+  it('citations survive JSON export', () => {
+    const inv = createInvestigation('Greek traffic')
+    addCitation(inv.id, RECEIPT)
+    const parsed = JSON.parse(exportInvestigationJSON(inv.id)!)
+    expect(parsed.investigation.citations[0].headline).toBe(RECEIPT.headline)
+  })
+
+  it('url-less receipts still toggle by source+headline id', () => {
+    const inv = createInvestigation('No-url case')
+    const noUrl = { headline: 'Wire report', source: 'Reuters', gateStatus: 'unknown' as const }
+    addCitation(inv.id, noUrl)
+    addCitation(inv.id, noUrl) // idempotent
+    expect(listCitations(inv.id)).toHaveLength(1)
+  })
+})
+
+describe('investigation ergonomics (dedupe / merge / move)', () => {
+  it('createInvestigation reuses an existing SAME-QUERY investigation instead of a silent dup', () => {
+    const a = createInvestigation('Iran water', 'iran water drought')
+    addPin(a.id, PIN)
+    // Same query (case/space-insensitive) → reuse, do not create a second record.
+    const b = createInvestigation('Iran Water', '  IRAN WATER DROUGHT ')
+    expect(b.id).toBe(a.id)
+    expect(listInvestigations()).toHaveLength(1)
+    expect(getInvestigation(a.id)!.pins).toHaveLength(1) // pins preserved
+    expect(getActiveInvestigationId()).toBe(a.id)
+  })
+
+  it('a DIFFERENT query still creates a distinct investigation', () => {
+    const a = createInvestigation('Iran water', 'iran water')
+    const b = createInvestigation('Colombia mining', 'colombia mining')
+    expect(b.id).not.toBe(a.id)
+    expect(listInvestigations()).toHaveLength(2)
+  })
+
+  it('mergeInvestigations unions pins + citations and concatenates the trail, then deletes the source', () => {
+    const a = createInvestigation('A case', 'query a')
+    const b = createInvestigation('B case', 'query b')
+    addPin(a.id, PIN)
+    addPin(b.id, { ...PIN, anchorId: 'other--x', label: 'Other thread' })
+    addCitation(a.id, RECEIPT)
+    addCitation(b.id, { ...RECEIPT, url: 'https://kathimerini.gr/a/2', headline: 'Second receipt' })
+    const merged = mergeInvestigations(a.id, b.id)!
+    expect(merged.id).toBe(a.id)
+    expect(merged.pins).toHaveLength(2)
+    expect(merged.citations).toHaveLength(2)
+    // source b is gone; active points at the survivor
+    expect(getInvestigation(b.id)).toBeNull()
+    expect(getActiveInvestigationId()).toBe(a.id)
+    expect(merged.trail.some(t => t.detail.toLowerCase().includes('merge'))).toBe(true)
+  })
+
+  it('merge dedupes overlapping pins/citations by id (no double-count)', () => {
+    const a = createInvestigation('A', 'qa')
+    const b = createInvestigation('B', 'qb')
+    addPin(a.id, PIN)
+    addPin(b.id, PIN) // same anchorId in both
+    addCitation(a.id, RECEIPT)
+    addCitation(b.id, RECEIPT) // same receipt id in both
+    const merged = mergeInvestigations(a.id, b.id)!
+    expect(merged.pins).toHaveLength(1)
+    expect(merged.citations).toHaveLength(1)
+  })
+
+  it('movePin relocates a pin between investigations and leaves trail steps on both', () => {
+    const a = createInvestigation('A', 'qa')
+    const b = createInvestigation('B', 'qb')
+    addPin(a.id, PIN)
+    const ok = movePin(PIN.anchorId, a.id, b.id)
+    expect(ok).toBe(true)
+    expect(getInvestigation(a.id)!.pins).toHaveLength(0)
+    expect(getInvestigation(b.id)!.pins).toHaveLength(1)
+    expect(getInvestigation(b.id)!.pins[0].anchorId).toBe(PIN.anchorId)
+    expect(getInvestigation(a.id)!.trail.some(t => t.action === 'unpin')).toBe(true)
+    expect(getInvestigation(b.id)!.trail.some(t => t.action === 'pin')).toBe(true)
+  })
+
+  it('movePin is a no-op (false) when the target already has the pin', () => {
+    const a = createInvestigation('A', 'qa')
+    const b = createInvestigation('B', 'qb')
+    addPin(a.id, PIN)
+    addPin(b.id, PIN)
+    expect(movePin(PIN.anchorId, a.id, b.id)).toBe(false)
+    // source keeps its pin (nothing lost on a conflict)
+    expect(getInvestigation(a.id)!.pins).toHaveLength(1)
   })
 })

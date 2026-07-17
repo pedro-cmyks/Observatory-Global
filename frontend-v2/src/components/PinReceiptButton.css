@@ -1,0 +1,57 @@
+/* Receipt-level pin affordance (council wish 1). A quiet ◇ at rest that fills
+   to a solid ◆ when pinned — small, so it never competes with the headline. */
+.pin-receipt-btn {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--color-text-muted, #64748b);
+  opacity: 0.55;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+.pin-receipt-btn:hover,
+.pin-receipt-btn:focus-visible {
+  opacity: 1;
+  color: var(--color-accent, #10b981);
+  outline: none;
+}
+.pin-receipt-btn--on {
+  opacity: 1;
+  color: var(--color-accent, #10b981);
+}
+
+/* Body-level toast — fixed, layout-decoupled so it can fire from inside a row. */
+.pin-receipt-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  z-index: 12000;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--color-surface-raised, #0f172a);
+  color: var(--color-text, #e2e8f0);
+  border: 1px solid var(--color-border, #334155);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.pin-receipt-toast--show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pin-receipt-btn,
+  .pin-receipt-toast {
+    transition: none;
+  }
+}

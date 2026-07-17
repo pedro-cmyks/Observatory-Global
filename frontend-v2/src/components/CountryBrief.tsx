@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IndicatorTooltip, VolumeIndicator } from './IndicatorTooltip';
 import { TranslatableHeadline } from './TranslatableHeadline';
+import PinReceiptButton from './PinReceiptButton';
 import { useCrisis } from '../contexts/CrisisContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useFocus } from '../contexts/FocusContext';
@@ -943,9 +944,23 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                 className="story-item"
                                 data-tip="Open article in new tab"
                             >
-                                <p className="story-source-line">
+                                <p className="story-source-line" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <span className="story-domain">{extractDomain(story.url)}</span>
                                     <span className="story-age">{timeAgo(story.timestamp)}</span>
+                                    <span style={{ marginLeft: 'auto' }}>
+                                        <PinReceiptButton
+                                            contextLabel={displayCountryName}
+                                            citation={{
+                                                headline: story.headline || extractDomain(story.url),
+                                                source: extractDomain(story.url) || undefined,
+                                                url: story.url || undefined,
+                                                sourceCountry: countryCode || undefined,
+                                                sourceLang: story.source_lang || undefined,
+                                                gateStatus: 'unknown',
+                                                publishedDate: story.timestamp ? String(story.timestamp).slice(0, 10) : undefined,
+                                            }}
+                                        />
+                                    </span>
                                 </p>
                                 {story.headline && (
                                     <p className="story-headline" style={{ margin: '2px 0 4px', fontSize: '0.85rem', lineHeight: 1.35 }}>

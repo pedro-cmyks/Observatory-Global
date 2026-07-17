@@ -13,6 +13,8 @@ import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline } from '../components/TranslatableHeadline'
+import PinReceiptButton from '../components/PinReceiptButton'
+import type { CitationGateStatus } from '../lib/workbench'
 import { TranslatableText } from '../components/TranslatableText'
 import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -739,7 +741,10 @@ export function BriefNewspaper() {
 
     // Receipts: REAL LINKS. Evidence urls render as <a href> (the whole point
     // of a receipt); rows without a url degrade to a plain row.
-    const renderReceipt = (ev: ThreadEvidence, i: number) => {
+    const renderReceipt = (
+        ev: ThreadEvidence, i: number,
+        ctx?: { gateStatus?: CitationGateStatus; contextLabel?: string },
+    ) => {
         // Entities decoded before any render/translate path (council P0-3);
         // id-less receipts (e.g. the sealed daily package) still translate via
         // the free-text lane instead of rendering a foreign headline plain
@@ -761,6 +766,18 @@ export function BriefNewspaper() {
                     </span>
                 )}
                 {ev.url && <span className="brief-receipt-ext" aria-hidden="true">↗</span>}
+                <PinReceiptButton
+                    contextLabel={ctx?.contextLabel || headline}
+                    citation={{
+                        headline,
+                        source: ev.source || undefined,
+                        url: ev.url || undefined,
+                        sourceCountry: ev.country_code || undefined,
+                        sourceLang: ev.source_lang || undefined,
+                        gateStatus: ctx?.gateStatus ?? 'unknown',
+                        publishedDate: ev.timestamp && ev.timestamp.length >= 10 ? ev.timestamp.slice(0, 10) : undefined,
+                    }}
+                />
             </span>
         )
         return ev.url ? (
@@ -844,7 +861,7 @@ export function BriefNewspaper() {
                 {receipts.length > 0 && (
                     <>
                         <div className="brief-rc-lab">Receipts</div>
-                        <div className="brief-receipts">{receipts.map(renderReceipt)}</div>
+                        <div className="brief-receipts">{receipts.map((ev, i) => renderReceipt(ev, i, { contextLabel: t.label }))}</div>
                     </>
                 )}
                 <div className="brief-card-foot">
@@ -916,7 +933,7 @@ export function BriefNewspaper() {
                                         ? <><Flag code={cc} /> {resolveCountryName(cc, cc)}</>
                                         : <span>Unattributed</span>}
                                 </div>
-                                <div className="brief-receipts">{evs.slice(0, 3).map(renderReceipt)}</div>
+                                <div className="brief-receipts">{evs.slice(0, 3).map((ev, i) => renderReceipt(ev, i, { gateStatus: 'below_gate', contextLabel: t.label }))}</div>
                             </div>
                         ))}
                     </div>
@@ -1270,7 +1287,7 @@ export function BriefNewspaper() {
                                                 <>
                                                     <div className="brief-rc-lab">Receipts — real source · {COVERAGE_CHIP_LABEL.toLowerCase()}</div>
                                                     <div className="brief-receipts">
-                                                        {(leadThread.evidence_samples ?? []).slice(0, 3).map(renderReceipt)}
+                                                        {(leadThread.evidence_samples ?? []).slice(0, 3).map((ev, i) => renderReceipt(ev, i, { contextLabel: leadThread.label }))}
                                                     </div>
                                                 </>
                                             )}

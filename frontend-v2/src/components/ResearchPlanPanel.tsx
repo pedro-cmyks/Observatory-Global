@@ -24,7 +24,9 @@ import {
   updatePinSnapshot,
   type PinSnapshot,
 } from '../lib/workbench';
+import { toCitationGateStatus } from '../lib/workbench';
 import { fetchThreadEvidence } from '../lib/pinEvidence';
+import PinReceiptButton from './PinReceiptButton';
 import StoryTimeTravel from './StoryTimeTravel';
 import './ResearchPlanPanel.css';
 
@@ -332,6 +334,16 @@ export default function ResearchPlanPanel({
               <div className="rp-evidence-head">
                 {item.country_code && <span className="rp-evidence-cc">{item.country_code}</span>}
                 <span className="rp-evidence-headline">{item.headline}</span>
+                <PinReceiptButton
+                  contextLabel={query}
+                  citation={{
+                    headline: item.headline,
+                    source: item.source_name || undefined,
+                    sourceCountry: item.country_code || undefined,
+                    gateStatus: toCitationGateStatus(item.gate_status),
+                    publishedDate: item.timestamp ? item.timestamp.slice(0, 10) : undefined,
+                  }}
+                />
               </div>
               <div className="rp-anchor-meta">
                 <span className="rp-lane">semantic {item.similarity.toFixed(2)}</span>

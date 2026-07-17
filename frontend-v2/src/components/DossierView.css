@@ -346,3 +346,88 @@
 [data-theme^='emerald'] .dossier-title-edit {
     color: rgba(var(--color-ink-rgb), 0.4);
 }
+
+/* ── Claim ledger — contested figures table (Carolina's spec) ──────────────── */
+.dossier-claims-scroll {
+    overflow-x: auto;
+    margin: 6px 0 4px;
+}
+.dossier-claim-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 0.86rem;
+}
+.dossier-claim-table th {
+    text-align: left;
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    padding: 4px 10px 4px 0;
+    border-bottom: 1px solid rgba(var(--color-neutral-rgb), 0.22);
+    white-space: nowrap;
+}
+.dossier-claim-table td {
+    padding: 6px 10px 6px 0;
+    border-bottom: 1px solid rgba(var(--color-neutral-rgb), 0.12);
+    color: var(--color-text-primary);
+    vertical-align: baseline;
+}
+.dossier-claim-figure {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+}
+/* CONTRADICTS pairs are the alarm — tint the row so the eye lands on the split. */
+.dossier-claim-row--contradicts td {
+    background: rgba(220, 38, 38, 0.07);
+}
+.dossier-claim-official {
+    margin-left: 6px;
+    font-size: 0.6rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-accent-primary);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.4);
+    border-radius: 3px;
+    padding: 0 4px;
+    vertical-align: middle;
+}
+.dossier-claim-rel {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border-radius: 3px;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+.dossier-claim-rel--contradicts {
+    color: rgb(220, 38, 38);
+    border: 1px solid rgba(220, 38, 38, 0.45);
+    background: rgba(220, 38, 38, 0.08);
+}
+.dossier-claim-rel--corroborates {
+    color: var(--color-accent-primary);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.45);
+    background: rgba(var(--color-accent-deep-rgb), 0.08);
+}
+.dossier-claim-rel--context {
+    color: var(--color-text-muted);
+    border: 1px solid rgba(var(--color-neutral-rgb), 0.4);
+    background: rgba(var(--color-neutral-rgb), 0.06);
+}
+.dossier-claim-caveat {
+    margin: 8px 0 0;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    color: rgb(180, 30, 30);
+    background: rgba(220, 38, 38, 0.06);
+    border-left: 3px solid rgba(220, 38, 38, 0.5);
+    border-radius: 0 4px 4px 0;
+}
+[data-theme='noir'] .dossier-claim-caveat,
+[data-theme^='noir'] .dossier-claim-caveat {
+    color: rgb(248, 120, 120);
+}

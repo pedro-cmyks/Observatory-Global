@@ -6,6 +6,7 @@ import { LabelReviewChip } from '../lib/labelReviewChip'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { TranslatableHeadline } from './TranslatableHeadline'
+import PinReceiptButton from './PinReceiptButton'
 import { ShareThreadButton } from './ShareCard'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { ExportMenu } from './ExportMenu'
@@ -475,10 +476,24 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         const title = sig.headline ? decodeEntities(sig.headline) : 'Untitled report'
         return (
             <div className="coverage-article">
-                <div className="coverage-article-headline">
-                    {sig.id != null && sig.headline
-                        ? <TranslatableHeadline signalId={sig.id} original={title} sourceLang={sig.source_lang} />
-                        : <span className="coverage-article-headline--nolink">{title}</span>}
+                <div className="coverage-article-headline" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                        {sig.id != null && sig.headline
+                            ? <TranslatableHeadline signalId={sig.id} original={title} sourceLang={sig.source_lang} />
+                            : <span className="coverage-article-headline--nolink">{title}</span>}
+                    </span>
+                    <PinReceiptButton
+                        contextLabel={displayLabel}
+                        citation={{
+                            headline: title,
+                            source: sig.source || undefined,
+                            url: sig.url || undefined,
+                            sourceCountry: sig.country || undefined,
+                            sourceLang: sig.source_lang || undefined,
+                            gateStatus: 'unknown',
+                            publishedDate: sig.timestamp ? sig.timestamp.slice(0, 10) : undefined,
+                        }}
+                    />
                 </div>
                 <div className="coverage-article-meta">
                     {sig.url && (

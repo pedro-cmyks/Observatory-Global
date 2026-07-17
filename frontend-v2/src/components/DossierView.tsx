@@ -14,7 +14,10 @@ import {
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { humanizeReadinessValue } from '../lib/humanizeInternals'
-import { renameInvestigation, type Investigation } from '../lib/workbench'
+import { removePin, renameInvestigation, type Investigation } from '../lib/workbench'
+import { deriveVerdictChips, type NodeStateRef, type VerdictChipDescriptor } from '../lib/verdictChips'
+import { VerdictChip } from './VerdictChip'
+import { buildClaimTable, claimTableMarkdown } from '../lib/claimLedger'
 import {
     buildInvestigationPublication,
     buildPublicationReadinessMarkdown,
@@ -50,14 +53,23 @@ function renderWithCitations(text: string) {
 /** Phase 3 report view — a structured dossier generated from the FROZEN
  *  Workbench pins (#227 snapshots), with a Markdown export. Dossier v2 (W3)
  *  adds who-says-what + voice sections MEASURED at generation time. */
-export function DossierView({ investigation, onClose, autoCorroborate }: {
+export function DossierView({ investigation, onClose, autoCorroborate, onMutate }: {
     investigation: Investigation; onClose: () => void; autoCorroborate?: boolean
+    /** Called after a verdict chip mutates pinned state (drop receipt) so the
+     *  parent re-reads the store and re-renders this frozen view. */
+    onMutate?: () => void
 }) {
     const now = useMemo(() => new Date().toISOString(), [])
     const [enrichment, setEnrichment] = useState<DossierEnrichment | undefined>(undefined)
     const dossier = useMemo(
         () => buildDossier(investigation, now, enrichment),
         [investigation, now, enrichment],
+    )
+    // Claim ledger (Carolina's spec): contested figures across the pinned
+    // receipts, put side by side with an "official source missing" caveat.
+    const claimRows = useMemo(
+        () => buildClaimTable(investigation.citations, investigation.claims),
+        [investigation.citations, investigation.claims],
     )
     const [copied, setCopied] = useState(false)
     // Export feedback (council wish 12): downloads must confirm themselves too.
@@ -88,6 +100,37 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
         if (!pinTopicId || !conn) return null
         return conn.data.nodes.find(n => n.id === pinTopicId || n.collapsed_from?.includes(pinTopicId)) ?? null
     }, [conn])
+
+    // Verdict-chip flywheel (Inés): every self-critique the dossier raises →
+    // an actionable chip. Isolated connection nodes surface the "unrelated"
+    // critique; single-sourced / metadata-only / taxonomy pins surface from the
+    // frozen evidence alone. Resolving a chip logs #204 gold with provenance.
+    const nodeStates = useMemo<NodeStateRef[]>(() => {
+        if (!conn) return []
+        const isolatedIds = new Set(conn.cluster.isolated.map(n => n.id))
+        const out: NodeStateRef[] = []
+        for (const p of dossier.pins) {
+            const node = nodeForPin(resolveThreadTopicId(p))
+            if (node && isolatedIds.has(node.id)) out.push({ id: p.anchorId, state: 'isolated' })
+        }
+        return out
+    }, [conn, dossier.pins, nodeForPin])
+    const chipsByPin = useMemo(() => {
+        const byPin = new Map<string, VerdictChipDescriptor[]>()
+        for (const c of deriveVerdictChips(dossier.pins, nodeStates)) {
+            byPin.set(c.targetId, [...(byPin.get(c.targetId) ?? []), c])
+        }
+        return byPin
+    }, [dossier.pins, nodeStates])
+    const performVerdict = useCallback((d: VerdictChipDescriptor) => {
+        // Only the destructive action mutates pinned state; flag/relabel/request
+        // actions persist through the verdict log alone (the chip flips to
+        // resolved on its own). Drop-receipt removes the offending pin.
+        if (d.kind === 'unrelated-receipt' && d.targetKind === 'pin') {
+            removePin(investigation.id, d.targetId)
+            onMutate?.()
+        }
+    }, [investigation.id, onMutate])
 
     // #2 synthesis — the standalone brief. One grounded LLM pass over the frozen
     // pins + the measured connection verdict. Fires once the connection is
@@ -214,6 +257,13 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
             const sMarker = '## Executive summary'
             const sAt = base.indexOf(sMarker)
             base = sAt === -1 ? `${sblock}\n${base}` : `${base.slice(0, sAt)}${sblock}\n${base.slice(sAt)}`
+        }
+        // Claim ledger: the contested-figures table travels with the export.
+        if (claimRows.length > 0) {
+            const clBlock = claimTableMarkdown(claimRows).join('\n') + '\n'
+            const clMarker = '\n## Timeline'
+            const clAt = base.indexOf(clMarker)
+            base = clAt === -1 ? `${base}\n${clBlock}` : `${base.slice(0, clAt)}\n${clBlock}${base.slice(clAt)}`
         }
         // P0.6b: the web-corroboration section travels with the export.
         if (corrob) {
@@ -486,11 +536,65 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                                     </ul>
                                 )}
                                 {p.note && <div className="dossier-note">Note: {p.note}</div>}
+                                {(chipsByPin.get(p.anchorId) ?? []).map(chip => (
+                                    <VerdictChip
+                                        key={chip.id}
+                                        descriptor={chip}
+                                        investigationId={investigation.id}
+                                        perform={performVerdict}
+                                        onChange={onMutate}
+                                    />
+                                ))}
                             </div>
                             )
                         })
                     )}
                 </section>
+
+                {claimRows.length > 0 && (
+                    <section className="dossier-section dossier-claims">
+                        <h2>Contested figures</h2>
+                        <p className="dossier-meta" data-tip="Figures the analyst marked as corroborating or contradicting across pinned receipts. When no official/wire source backs a contested number, the row is flagged.">
+                            claim ledger · figures put side by side, with source provenance
+                        </p>
+                        <div className="dossier-claims-scroll">
+                            <table className="dossier-claim-table">
+                                <thead>
+                                    <tr>
+                                        <th>Figure</th>
+                                        <th>Outlet</th>
+                                        <th>Country</th>
+                                        <th>Date</th>
+                                        <th>Relation</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {claimRows.map((r, i) => (
+                                        <tr
+                                            key={`${r.claimId}-${i}`}
+                                            className={`dossier-claim-row dossier-claim-row--${r.relation.toLowerCase()}${r.official ? ' dossier-claim-row--official' : ''}`}
+                                        >
+                                            <td className="dossier-claim-figure">{r.figureText}</td>
+                                            <td>
+                                                {r.outlet ?? '—'}
+                                                {r.official && <span className="dossier-claim-official" data-tip="Official / wire source (government, UN, or an international wire agency).">official</span>}
+                                            </td>
+                                            <td>{r.country ?? '—'}</td>
+                                            <td>{r.date ? fmtDay(r.date) : '—'}</td>
+                                            <td><span className={`dossier-claim-rel dossier-claim-rel--${r.relation.toLowerCase()}`}>{r.relation}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {/* Caveat: one line per claim with no official/wire backing. */}
+                        {[...new Map(claimRows.filter(r => !r.officialSourcePresent).map(r => [r.claimId, r])).values()].map(r => (
+                            <p key={r.claimId} className="dossier-claim-caveat" role="note">
+                                No official/wire source backs this {r.relation.toLowerCase()} figure — treat as contested.
+                            </p>
+                        ))}
+                    </section>
+                )}
 
                 {dossier.pinCount >= 2 && (
                     <section className="dossier-section">
