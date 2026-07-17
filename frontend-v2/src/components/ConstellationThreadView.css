@@ -1,4 +1,9 @@
-.orbital-section {
+/* Constellation Thread View — the constellation re-code of the orbital story
+   system. Chrome (scrubber/legend/hover/empty) themes via vars; the CANVAS is
+   dark-by-design and text on it pins fixed light literals (light-theme vars are
+   dark ink) — same emerald-canvas policy as OrbitalThreadView.css / UniverseView.css. */
+
+.constellation-section {
   padding: 4px 0 12px;
   display: flex;
   flex-direction: column;
@@ -6,55 +11,7 @@
   min-height: 0;
 }
 
-/* Story-system view: ◉ Constellation / ◉ Orbits toggle over the same story. */
-.story-view {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.story-view-toggle {
-  display: inline-flex;
-  align-self: flex-start;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 5px;
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-
-.story-view-mode {
-  background: none;
-  border: none;
-  color: var(--color-sentiment-neutral);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  padding: 3px 9px;
-  cursor: pointer;
-}
-
-.story-view-mode + .story-view-mode {
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.story-view-mode.active {
-  background: rgba(52, 211, 153, 0.14);
-  color: #34d399;
-}
-
-[data-theme^='emerald'] .story-view-toggle {
-  border-color: var(--color-border-medium);
-}
-[data-theme^='emerald'] .story-view-mode {
-  color: var(--color-text-secondary);
-}
-[data-theme^='emerald'] .story-view-mode.active {
-  background: color-mix(in srgb, var(--color-accent-primary) 14%, transparent);
-  color: var(--color-accent-primary);
-}
-
-.orbital-canvas {
+.constellation-canvas {
   position: relative;
   width: 100%;
   flex: 1;
@@ -68,47 +25,24 @@
   overflow: hidden;
 }
 
-.orbital-ring-label {
-  fill: rgba(var(--color-neutral-rgb), 0.4);
-  font-size: 8.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-anchor: middle;
-  pointer-events: none;
-}
-
-.orbital-ring-label--far {
-  fill: rgba(var(--color-neutral-rgb), 0.28);
-}
-
-.orbital-hover-link {
-  stroke: rgba(var(--color-ink-rgb), 0.35);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
-}
-
-.orbital-hover-link-label {
+.constellation-hover-link-label {
   fill: var(--color-text-secondary);
   font-size: 9px;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   text-anchor: middle;
   pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(11, 14, 19, 0.8);
+  stroke-width: 2.5px;
 }
 
-.orbital-ring {
-  fill: none;
-  stroke: rgba(var(--color-neutral-rgb), 0.14);
-  stroke-width: 1;
-  stroke-dasharray: 3 5;
-}
-
-.orbital-center {
+.constellation-anchor {
   fill: rgba(16, 185, 129, 0.22);
   stroke: rgba(52, 211, 153, 0.9);
   stroke-width: 1.2;
 }
 
-.orbital-center-label {
+.constellation-anchor-label {
   fill: #f1f5f9;
   font-size: 11.5px;
   font-weight: 600;
@@ -118,7 +52,7 @@
   stroke-width: 3px;
 }
 
-.orbital-center-category {
+.constellation-anchor-category {
   fill: #64748b;
   font-size: 9px;
   text-anchor: middle;
@@ -126,7 +60,7 @@
   letter-spacing: 0.08em;
 }
 
-.orbital-body-label {
+.constellation-body-label {
   fill: var(--color-text-secondary);
   font-size: 9.5px;
   text-anchor: middle;
@@ -136,11 +70,11 @@
   stroke-width: 2.5px;
 }
 
-.orbital-body--clickable {
+.constellation-body--clickable {
   cursor: pointer;
 }
 
-.orbital-hover {
+.constellation-hover {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -155,51 +89,51 @@
   max-width: 240px;
 }
 
-.orbital-hover-type {
+.constellation-hover-type {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
-.orbital-hover strong {
+.constellation-hover strong {
   color: var(--color-text-primary);
   font-size: 12px;
 }
 
-.orbital-hover em {
+.constellation-hover em {
   color: var(--color-text-muted);
   font-size: 10px;
   font-style: normal;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
-.orbital-scrubber {
+.constellation-scrubber {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-top: 10px;
 }
 
-.orbital-scrubber input[type='range'] {
+.constellation-scrubber input[type='range'] {
   flex: 1;
   accent-color: #34d399;
 }
 
-.orbital-scrubber-time {
+.constellation-scrubber-time {
   min-width: 108px;
   color: var(--color-text-secondary);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
 }
 
-.orbital-scrubber-entrants {
+.constellation-scrubber-entrants {
   color: #34d399;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   white-space: nowrap;
 }
 
-.orbital-legend {
+.constellation-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -210,7 +144,7 @@
   text-transform: capitalize;
 }
 
-.orbital-legend i {
+.constellation-legend i {
   display: inline-block;
   width: 8px;
   height: 8px;
@@ -219,26 +153,101 @@
   vertical-align: -1px;
 }
 
-.orbital-legend-comet {
+.constellation-legend-edge {
+  background: linear-gradient(90deg, var(--color-text-primary), transparent);
+  border-radius: 2px !important;
+  width: 14px !important;
+  height: 2px !important;
+}
+
+.constellation-legend-cooc {
+  background: #e2e8f0;
+  border-radius: 2px !important;
+  width: 14px !important;
+  height: 3px !important;
+}
+
+.constellation-legend-ignition {
+  background: #f8fafc;
+  box-shadow: 0 0 3px rgba(248, 250, 252, 0.9);
+}
+
+.constellation-legend-comet {
   background: transparent;
   border: 1.5px dashed rgba(var(--color-ink-rgb), 0.75);
   border-radius: 50% !important;
 }
 
-.orbital-legend-tail {
+.constellation-legend-drift {
   background: linear-gradient(90deg, var(--color-text-primary), transparent);
   border-radius: 2px !important;
   width: 14px !important;
   height: 3px !important;
 }
 
-.orbital-legend-note {
+.constellation-legend-note {
   margin-left: auto;
   text-transform: none;
   font-style: italic;
 }
 
-.orbital-empty {
+/* Tone Distributions strip — tone lives here, not on the star rims (eval P1-5). */
+.constellation-distributions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 9.5px;
+  color: var(--color-text-muted);
+}
+
+.constellation-dist-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.constellation-dist-bar {
+  display: flex;
+  flex: 1;
+  max-width: 320px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.constellation-dist-bar i {
+  display: block;
+  height: 100%;
+}
+
+.constellation-dist-counts {
+  display: inline-flex;
+  gap: 9px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.constellation-dist-counts b {
+  font-weight: 600;
+}
+
+.constellation-legend-tone {
+  background: transparent;
+  border: 1.5px solid rgba(248, 113, 113, 0.85);
+  border-right-color: rgba(52, 211, 153, 0.85);
+  border-radius: 50% !important;
+}
+
+.constellation-legend-moon {
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 50%;
+  background: var(--color-text-primary);
+  opacity: 0.8;
+}
+
+.constellation-empty {
   padding: 18px 12px;
   color: var(--color-text-muted);
   font-size: 11px;
@@ -247,22 +256,7 @@
   text-align: center;
 }
 
-.orbital-legend-tone {
-  background: transparent;
-  border: 1.5px solid rgba(248, 113, 113, 0.85);
-  border-right-color: rgba(52, 211, 153, 0.85);
-  border-radius: 50% !important;
-}
-
-.orbital-legend-moon {
-  width: 5px !important;
-  height: 5px !important;
-  border-radius: 50%;
-  background: var(--color-text-primary);
-  opacity: 0.8;
-}
-
-.orbital-reset {
+.constellation-reset {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -276,53 +270,41 @@
   padding: 4px 7px;
   cursor: pointer;
 }
-.orbital-reset:hover { border-color: rgba(255, 255, 255, 0.4); }
+.constellation-reset:hover { border-color: rgba(255, 255, 255, 0.4); }
 
-/* ── R3c defect 15 — emerald canvas policy (same as UniverseView.css) ──────
-   The orbital CANVAS is dark-by-design; text ON it pins fixed light literals
-   (never vars — light-theme vars are dark ink). Chrome around it (scrubber,
-   legend, empty state) themes via vars. Scoped; noir/retro byte-identical. */
+/* ── emerald canvas policy (same as OrbitalThreadView.css / UniverseView.css) ──
+   The constellation CANVAS is dark-by-design; text ON it pins fixed light
+   literals (never vars — light-theme vars are dark ink). Chrome around it
+   (scrubber, legend, empty) themes via vars. Scoped; noir/retro byte-identical. */
 
 /* — chrome — */
-[data-theme^='emerald'] .orbital-canvas {
+[data-theme^='emerald'] .constellation-canvas {
   border-color: var(--color-border-medium);
 }
-[data-theme^='emerald'] .orbital-scrubber input[type='range'] {
+[data-theme^='emerald'] .constellation-scrubber input[type='range'] {
   accent-color: var(--color-accent-primary);
 }
-[data-theme^='emerald'] .orbital-scrubber-entrants {
+[data-theme^='emerald'] .constellation-scrubber-entrants {
   color: var(--color-accent-primary);
 }
-[data-theme^='emerald'] .orbital-empty {
+[data-theme^='emerald'] .constellation-empty {
   border-color: rgba(var(--color-ink-rgb), 0.18);
 }
 
 /* — canvas overlays: pinned light text on the dark field — */
-[data-theme^='emerald'] .orbital-ring-label {
-  fill: rgba(148, 163, 184, 0.4);
-}
-[data-theme^='emerald'] .orbital-ring-label--far {
-  fill: rgba(148, 163, 184, 0.28);
-}
-[data-theme^='emerald'] .orbital-ring {
-  stroke: rgba(148, 163, 184, 0.14);
-}
-[data-theme^='emerald'] .orbital-hover-link {
-  stroke: rgba(226, 232, 240, 0.35);
-}
-[data-theme^='emerald'] .orbital-hover-link-label,
-[data-theme^='emerald'] .orbital-body-label {
+[data-theme^='emerald'] .constellation-hover-link-label,
+[data-theme^='emerald'] .constellation-body-label {
   fill: rgba(226, 232, 240, 0.68);
 }
-[data-theme^='emerald'] .orbital-hover {
+[data-theme^='emerald'] .constellation-hover {
   color: rgba(203, 213, 224, 0.9);
 }
-[data-theme^='emerald'] .orbital-hover strong {
+[data-theme^='emerald'] .constellation-hover strong {
   color: #e7ece8;
 }
-[data-theme^='emerald'] .orbital-hover em {
+[data-theme^='emerald'] .constellation-hover em {
   color: rgba(226, 232, 240, 0.6);
 }
-[data-theme^='emerald'] .orbital-reset {
+[data-theme^='emerald'] .constellation-reset {
   color: rgba(226, 232, 240, 0.8); /* sits on the dark canvas — pinned */
 }

@@ -14,7 +14,23 @@ import {
     type OrbitalWindow,
 } from '../lib/orbitalLayout'
 import { resolveCountryName } from '../lib/countryNames'
+import { ConstellationThreadView } from './ConstellationThreadView'
 import './OrbitalThreadView.css'
+
+// Story-system view mode. The constellation is now Atlas's identity (the grammar
+// the dossier prints), so it is the DEFAULT; the orbital solar-system stays one
+// click away until Pedro's eyeball retires it. Persisted per browser. The toggle
+// lives HERE (not in UniverseView) so the whole change stays inside the two
+// collision-clean orbital files — UniverseView is actively edited in parallel.
+type StoryViewMode = 'constellation' | 'orbits'
+const STORY_VIEW_KEY = 'atlas.story-view.v1'
+function readStoryViewMode(): StoryViewMode {
+    try {
+        return localStorage.getItem(STORY_VIEW_KEY) === 'orbits' ? 'orbits' : 'constellation'
+    } catch {
+        return 'constellation'
+    }
+}
 
 interface OrbitalPayload {
     contract: string
@@ -60,7 +76,7 @@ function bodyLabel(b: OrbitalBody): string {
     return b.type === 'country' ? resolveCountryName(b.label) : b.label
 }
 
-export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, onPersonSelect }: OrbitalThreadViewProps) {
+function OrbitalSolarView({ theme, themeLabel, hours, onCountrySelect, onPersonSelect }: OrbitalThreadViewProps) {
     const [payload, setPayload] = useState<OrbitalPayload | null>(null)
     const [loading, setLoading] = useState(true)
     const [scrubPct, setScrubPct] = useState(100)
@@ -453,5 +469,44 @@ export function OrbitalThreadView({ theme, themeLabel, hours, onCountrySelect, o
                 </span>
             </div>
         </section>
+    )
+}
+
+/**
+ * Story-system view: a ◉ Constellation / ◉ Orbits toggle over the SAME measured
+ * story. Constellation (default, Atlas's identity) renders the star-graph;
+ * Orbits keeps the legacy solar-system intact until Pedro's eyeball. Only the
+ * selected child mounts, so only it fetches. Exposed under the original
+ * OrbitalThreadView name + props so UniverseView's mount is unchanged (the whole
+ * feature stays inside the collision-clean orbital files).
+ */
+export function OrbitalThreadView(props: OrbitalThreadViewProps) {
+    const [mode, setMode] = useState<StoryViewMode>(readStoryViewMode)
+    const setStoryView = (m: StoryViewMode) => {
+        setMode(m)
+        try { localStorage.setItem(STORY_VIEW_KEY, m) } catch { /* private mode */ }
+    }
+    return (
+        <div className="story-view">
+            <div className="story-view-toggle" role="group" aria-label="Story view">
+                <button
+                    className={`story-view-mode ${mode === 'constellation' ? 'active' : ''}`}
+                    onClick={() => setStoryView('constellation')}
+                    data-tip="Constellation — the story as a star-graph, Atlas's own grammar (the one the dossier prints)"
+                >
+                    ◉ Constellation
+                </button>
+                <button
+                    className={`story-view-mode ${mode === 'orbits' ? 'active' : ''}`}
+                    onClick={() => setStoryView('orbits')}
+                    data-tip="Orbits — the legacy solar-system view of the same measured story"
+                >
+                    ◉ Orbits
+                </button>
+            </div>
+            {mode === 'constellation'
+                ? <ConstellationThreadView {...props} />
+                : <OrbitalSolarView {...props} />}
+        </div>
     )
 }

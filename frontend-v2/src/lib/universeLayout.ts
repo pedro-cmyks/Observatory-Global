@@ -302,10 +302,12 @@ export function entitySpread(litNodes: UniverseNode[]): {
   return { stories: litNodes.length, categories, shape }
 }
 
-/** Movement = relative changed_10h (the SAME signal thread_ranking / the
-    Narrative Threads "▲ Accelerating" use — one number everywhere, not a
-    snapshot proxy). A thin/fresh corpus saturates the absolute value, so
-    "rising" is RANK-based (the top movers now), robust to corpus density. */
+/** Movement = node.velocity as served by /api/v2/universe: the shared Kalman
+    velocity (topic_movement, tanh-squashed) where a story has a row, else a
+    relative changed_10h fallback for a fresh topic between cron runs — ONE
+    movement channel, mixed basis (P1-8: labeled honestly in the readout copy,
+    NOT claimed identical to the threads-panel changed_10h). A thin/fresh corpus
+    saturates the absolute value, so "rising" is RANK-based (top movers now). */
 export const MOVING_FLOOR = 0.12
 export const MAX_RISING = 8
 

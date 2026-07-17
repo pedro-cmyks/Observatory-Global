@@ -195,8 +195,11 @@ export const Legend: React.FC<LegendProps> = ({
                         <span style={{ opacity: 0.8 }}>elevated</span>
                         <span>spiking vs own norm</span>
                     </div>
-                    <div style={{ fontSize: '9px', color: 'var(--color-text-muted)', marginTop: '3px', opacity: 0.8 }}>
-                        vs each country's own baseline — brighter = hotter
+                    <div
+                        style={{ fontSize: '9px', color: 'var(--color-text-muted)', marginTop: '3px', opacity: 0.8 }}
+                        data-tip="P2-10: the color encodes each country's RANK position on today's composite anomaly (velocity / surprise / source diversity / local voice vs its OWN baseline — never raw volume), not an absolute level. The country most above its own norm always paints brightest — even on a globally quiet day — and a country's color shifts as others move around it. Read it as 'who is most anomalous right now', not 'how hot'."
+                    >
+                        color = rank vs other countries today — most above its own baseline paints brightest, even on a quiet day
                     </div>
                 </div>
             )}
@@ -284,6 +287,15 @@ export const Legend: React.FC<LegendProps> = ({
 
             <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '9px', letterSpacing: '0.03em', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '8px', marginTop: '4px' }}>
                 Sources: {activeSources.join(' · ')}
+                {/* P2-9: name the projection honestly — it is Behrmann cylindrical
+                    equal-area (equal AREA, rectangular), not the rounded Equal Earth
+                    the label historically implied. */}
+                <div
+                    style={{ marginTop: '4px', opacity: 0.85 }}
+                    data-tip="Behrmann cylindrical equal-area (standard parallel 30°). Country AREAS are true — a fair basis for comparing coverage — but shapes stretch toward the poles. It is a rectangular projection, not the rounded Equal Earth."
+                >
+                    Projection: equal-area (Behrmann) — areas true, shapes stretch
+                </div>
             </div>
         </div>
     )
