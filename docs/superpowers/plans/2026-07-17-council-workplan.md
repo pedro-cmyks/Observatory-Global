@@ -59,12 +59,17 @@ reconcile round-3 + sealed_at). 555 vitest green.
 ## Phase 2 — Complete the capture loop (product-surface; ~1 week)
 Council Move 2 = the #1 wish (5/6 personas). Carolina's claim ledger is the spec.
 
-- [ ] **Receipt-level pinning** — every evidence row / semantic match / archive-day headline / Brief receipt pinnable as a first-class citation carrying provenance (source, country, language, gate status, frozen timestamp). [wish 1, W4/#227 lineage]
-- [ ] **Claim ledger** — mark receipt pairs CORROBORATES / CONTRADICTS; dossier renders a claim table (the 4,734-vs-4,930 death-toll demo: each figure, outlet, date side by side, official source marked missing).
-- [ ] **Investigation merge/move-pin + ergonomics** — silent duplicate investigations, tiny ◆ targets, rows moving under the cursor, badge lag, toast+undo, Escape closes. [P1-11, wish 4]
-- [ ] **Verdict chips = the flywheel** (Inés's big idea) — every dossier self-critique ("label unreliable", "unrelated receipt", "single-sourced") renders as an actionable chip: drop receipt / split-relabel / needs-corroboration / request snapshot. Each resolution logged with provenance = the gold labels #204 is starved for, generated as a byproduct of real work. [wish 9]
+**STATUS: DONE 2026-07-17.** Pipeline (foundation → build → gate), Carolina
+persona gate = **"phase2 clean"** (0 leaks, 0 regressions, 11 confirmed, DOM-driven:
+the 4,734-vs-4,930 death-toll table rendered without a hand-typed note, verdict
+log 0→N, merge/dedupe/undo/Escape live). 638 vitest, build green. Commit `eca17716`.
 
-**Acceptance:** Carolina persona re-run files her claim table without hand-typing a note; a session of dossier work emits ≥N logged verdicts.
+- [x] **Receipt-level pinning** — `lib/workbench.ts` Citation (frozen provenance: source, country, language, gate status, published+captured dates); `PinReceiptButton` on every evidence row (ThemeDetail, CountryBrief, ResearchPlan, Brief lead+tray, SignalStream); WorkbenchPanel CITATIONS section. [wish 1, W4/#227]
+- [x] **Claim ledger** — `lib/claimLedger.ts` (CORROBORATES/CONTRADICTS/CONTEXT + figure extraction + official-source-missing detection); DossierView "Contested figures" table (the death-toll demo), in the MD export; WorkbenchPanel select-two → mark-relation.
+- [x] **Investigation merge/move-pin + ergonomics** — dedupe silent duplicates, mergeInvestigations (pins+citations+claims union), movePin, remove-with-undo (6s toast), Escape closes. [P1-11, wish 4]
+- [x] **Verdict chips = the flywheel** — `lib/verdictChips.ts` + `VerdictChip`: each dossier self-critique → actionable chip (split-relabel / drop-receipt / needs-corroboration / request-snapshot); `lib/verdictLog.ts` logs every resolution with provenance = the #204 gold, generated as a byproduct of real work. [wish 9]
+
+**Acceptance: PASSED** — Carolina files her claim table without hand-typing a note; a dossier session emits provenance-carrying verdict-log entries.
 
 ## Phase 3 — Make the dossier publishable (engine/data)
 Council Move 3, ordered by leverage. Verdict today: 6/6 "use internally yes, publish no".
