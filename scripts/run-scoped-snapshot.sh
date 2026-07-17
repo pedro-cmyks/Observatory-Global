@@ -88,6 +88,15 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_emergent_categories --
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.type_noncrisis_domains --write \
   || echo "[scoped-snapshot] non-crisis domains failed (non-fatal)" >&2
 
+# Step 2.6: LABEL COURT (#204/#224, council Move 1) — try each active topic's
+# SERVED label against its own receipts (DeepSeek entailment, ~cents). Writes
+# label_status (entailed/partial/failed) so L1 can refuse to lead with a failed
+# label; on 'failed' proposes a receipt-derived neutral label (NEVER auto-served
+# unless ATLAS_LABEL_COURT_APPLY=on) + logs the failure as #204 training data.
+# Runs AFTER typing so the checked labels are the fresh ones. Non-fatal.
+$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_court --write \
+  || echo "[scoped-snapshot] label court failed (non-fatal)" >&2
+
 # Step 3: R2 — rebuild the umbrella hierarchy (centroid-of-centroids) over the fresh
 # active set. Cheap (~hundreds of centroids, seconds). Collapses same-EVENT
 # cross-country dups into parent umbrellas so the global list stays de-duped + gives
