@@ -419,6 +419,14 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         ← UNIVERSE
                     </button>
                     <span className="universe-orbit-title">{orbitLabel}</span>
+                    {/* P1-4: signpost that the node FILL encoding changed on
+                        travel — category (field) → subject type (inside a story). */}
+                    <span
+                        className="universe-orbit-note"
+                        data-tip="Inside a story, stars are colored by SUBJECT TYPE (person / org / place / event / country), not by narrative category as in the field."
+                    >
+                        colors = subject type
+                    </span>
                 </div>
                 <div className="universe-orbit-body">
                     <OrbitalThreadView
@@ -790,8 +798,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     </div>
                 )}
 
+                {/* P1-8: copy aligned to the real basis (Kalman-first, changed_10h fallback) */}
                 {!litActive && heating.length > 0 && (
-                    <div className="universe-heating-readout" data-tip="Fastest-rising stories now — relative net signal change over the last 10h vs the prior 10h (the same movement signal as the threads panel). Measured, not a prediction">
+                    <div className="universe-heating-readout" data-tip="Fastest-rising stories now, by MEASURED movement: the shared Kalman velocity (topic_movement) where a story has one, otherwise its recent signal-change as a fallback — squashed to a comparable scale. One movement number, honestly labeled; measured, not a prediction.">
                         <span className="universe-heating-count">
                             <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden="true" style={{ marginRight: 5, verticalAlign: '-1px' }}>
                                 {/* upward spark — rising attention, vector not emoji */}
@@ -821,6 +830,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
             </div>
 
             <div className="universe-legend">
+                <span data-tip="Node fill = the story's narrative CATEGORY (family palette). Opening a story recolors its members by SUBJECT TYPE (person / org / place / event / country) — the fill encodes a different variable inside a single story.">fill = category</span>
                 <span><i className="universe-legend-dot" />size = volume (log)</span>
                 <span><i className="universe-legend-edge" />line = semantic proximity (measured in full 768-dim space)</span>
                 <span><i className="universe-legend-crisis" />red ring = crisis-relevant</span>
