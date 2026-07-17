@@ -74,14 +74,23 @@ log 0→N, merge/dedupe/undo/Escape live). 638 vitest, build green. Commit `eca1
 ## Phase 3 — Make the dossier publishable (engine/data)
 Council Move 3, ordered by leverage. Verdict today: 6/6 "use internally yes, publish no".
 
-- [ ] **(a) Wire the corroboration lane** — SERP/Brave key or GDELT DOC 2.0 fix (Marcos: "the single feature that would make the dossier publishable"); pre-announce when down; cached-corpus degraded mode; inline per-receipt verdicts. [P1-9, wish 3, task_ce252c2b]
-- [ ] **(b) Prose-vs-tables validator** — generated prose (Editor's Analysis, dossier lens/actor claims, auto-titles) validated against its own measured tables before render; never "confirmed" while corroboration unmeasured. Diana's dossier-voice-upstream (wish 11) ships ONLY behind this validator. [P1-10, wish 8, task_07cdda75]
-- [ ] **(c) Source credibility tiers** (#217) past "unknown 19 · wire 1" — coarse wire/state/local/unknown rollout. [wish 10]
-- [ ] Discussion-attach relevance honesty (#248 class — Brazil tariffs inside the VE quake thread). [P1-14, wish 17]
-- [ ] Voice-mix/self-voice panel inside thread view (Carolina). [wish 18]
-- [ ] NER/subject garbage chips ("states states", "catia a sea") — P2.5 actor-quality track. [P1-13]
+**STATUS: core DONE 2026-07-17 (a/b/c).** Professional-panel gate =
+**"phase3 publishable-with-caveats"** — the honesty architecture moves the dossier
+from the unanimous "publish no" to "publishable WITH NAMED CAVEATS". The two
+publishable-blocker bugs the panel found (DOC 2.0 `import json` NameError; the
+Markdown export bypassing the prose validator) are FIXED. 676 vitest / 28
+corroboration pytest / build green. Commit `cd157198`. **Full-history unlock**
+(Pedro): corroboration queries hot ∪ cold (historical_evidence_samples May-3→
+present, refreshed by tonight's catch-up chain) — no SERP/Brave key needed.
 
-**Acceptance:** a professional-persona panel re-run scores the dossier "publishable with named caveats" (vs today's unanimous "publish no").
+- [x] **(a) Corroboration lane** — GDELT DOC 2.0 (query-time, free, no key) ∪ full-history Atlas corpus (hot signal_embeddings + cold historical_evidence_samples); relation is math not LLM; HONEST degraded mode (per-lane source_status, never fakes complete); per-receipt verdicts. [P1-9, wish 3]
+- [x] **(b) Prose-vs-tables validator** — `lib/proseValidator.ts`: "confirmed/verified/corroborated" downgraded to "reported (uncorroborated)" unless a corroboration verdict backs it; wired into on-screen synthesis AND the Markdown export + auto-title. [P1-10, wish 8]
+- [x] **(c) Source credibility tiers** (#217) — coarse wire/state/major/local/unknown (unknown terminal); chips on citations + Brief receipts + dossier source-mix rollup. [wish 10]
+- [ ] Discussion-attach relevance honesty (#248 class). [P1-14, wish 17] — deferred (named caveat)
+- [ ] Voice-mix/self-voice panel inside thread view (Carolina). [wish 18] — deferred
+- [ ] NER/subject garbage chips — P2.5 actor-quality track. [P1-13] — deferred
+
+**Acceptance: PASSED (with named caveats)** — panel scores "publishable with named caveats". Remaining caveats the panel would still print: corroboration leans on the Atlas corpus while a fresh IP is needed for a clean live DOC 2.0 `ok`; single-source (esp. single-local) is labelled but still a caveat; atlas_hot url=null dedup falls back to headline key; #248/voice-mix/NER-garbage deferred.
 
 ## Parking Lot (explicitly deferred, council's reasons kept)
 - **Full Reconciliation Desk** (Tomás, L) — Phase-0 count chips deliver ~80%; revisit when they prove insufficient.
