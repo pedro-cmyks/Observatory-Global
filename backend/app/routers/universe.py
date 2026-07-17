@@ -255,6 +255,11 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
     import math
     velocity_by_topic: dict = {}
     trend_by_topic: dict = {}
+    # velocity_basis: which lineage produced each node's velocity — 'kalman'
+    # (the smoothed #219 field) or 'changed_10h' (the live relative fallback).
+    # Lets the constellation frontend label the two honestly instead of
+    # presenting the raw-delta fallback as if it were the smoothed field (P1-8).
+    velocity_basis_by_topic: dict = {}
     for k in kalman_rows:
         tid_text = k["topic_id"]
         if not tid_text.startswith("dynamic-topic-"):
@@ -262,6 +267,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
         tid = int(tid_text[len("dynamic-topic-"):])
         velocity_by_topic[tid] = round(math.tanh(float(k["velocity"] or 0.0)), 4)
         trend_by_topic[tid] = k["trend"]
+        velocity_basis_by_topic[tid] = "kalman"
     for m in movement_rows:  # fallback for topics with no Kalman row yet
         tid_text = m["topic_id"]
         if not tid_text.startswith("dynamic-topic-"):
@@ -272,6 +278,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
         recent = int(m["recent_vol"] or 0)
         ch = int(m["changed_10h"] or 0)
         velocity_by_topic[tid] = round(ch / max(6, recent), 4) if recent else 0.0
+        velocity_basis_by_topic[tid] = "changed_10h"
     track_by_topic: dict = {}
     for tid, by_snapshot in snapshots_by_topic.items():
         cat = category_by_topic.get(tid)
@@ -308,6 +315,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             "countries": countries_by_topic.get(ids[i], []),
             "persons": persons_by_topic.get(ids[i], []),
             "velocity": velocity_by_topic.get(int(r["id"]), 0.0),
+            "velocity_basis": velocity_basis_by_topic.get(int(r["id"])),
             "trend": trend_by_topic.get(int(r["id"])),
         }
         for i, r in enumerate(rows)
