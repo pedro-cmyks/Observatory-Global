@@ -68,6 +68,9 @@ const ArcSwatch: React.FC<{ tip?: string }> = ({ tip }) => (
     </div>
 )
 
+// Item 6: remembers an explicit user open across sessions (default collapsed).
+const LEGEND_OPEN_KEY = 'atlas.mapkey-open.v1'
+
 const SectionHeader: React.FC<{ label: string; tip?: string }> = ({ label, tip }) => (
     <div
         data-tip={tip}
@@ -93,12 +96,22 @@ export const Legend: React.FC<LegendProps> = ({
     disasterCount = 0,
     anomalyCount = 0,
 }) => {
-    // On phones the expanded legend floats over the stream/workbench; start
-    // collapsed (a small "MAP KEY" button) so it never overlaps content. The
-    // user can still expand it. Desktop keeps it open.
-    const [collapsed, setCollapsed] = useState(
-        () => typeof window !== 'undefined' && window.innerWidth <= 768,
-    )
+    // Fix round 2026-07-17 item 6: the expanded key covered ~1/3 of the map
+    // and ate hover/clicks over Russia. Default is COLLAPSED everywhere (a
+    // small "MAP KEY" button); an explicit open is remembered in localStorage
+    // so users who want it open keep it open across sessions.
+    const [collapsed, setCollapsedState] = useState(() => {
+        try {
+            return localStorage.getItem(LEGEND_OPEN_KEY) !== '1'
+        } catch { return true }
+    })
+    const setCollapsed = (next: boolean) => {
+        setCollapsedState(next)
+        try {
+            if (next) localStorage.removeItem(LEGEND_OPEN_KEY)
+            else localStorage.setItem(LEGEND_OPEN_KEY, '1')
+        } catch { /* private mode — session-only */ }
+    }
 
     const contextLabel = activeCountry
         ? resolveCountryName(activeCountry)
@@ -132,7 +145,10 @@ export const Legend: React.FC<LegendProps> = ({
     return (
         <div
             className="panel"
-            style={{ position: 'absolute', bottom: '14px', left: '14px', minWidth: '210px', maxWidth: '250px', maxHeight: 'calc(100% - 28px)', overflowY: 'auto', zIndex: 800, padding: '12px 14px' }}
+            // Item 6: hard height cap (≤42% of the map, never more than 320px)
+            // with internal scroll — the key must never swallow the map again.
+            // It only captures pointer events over ITSELF (absolute box).
+            style={{ position: 'absolute', bottom: '14px', left: '14px', minWidth: '210px', maxWidth: '250px', maxHeight: 'min(42%, 320px)', overflowY: 'auto', zIndex: 800, padding: '12px 14px' }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-secondary)' }}>Map Key</span>

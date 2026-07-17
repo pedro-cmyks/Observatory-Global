@@ -40,7 +40,9 @@ interface UniversePayload {
 }
 
 interface UniverseViewProps {
-    onThemeSelect: (themeId: string) => void
+    /** Item 8: the node's real label rides along so the focus chip never
+     *  stores/falls back to the generic "Narrative Thread" skeleton. */
+    onThemeSelect: (themeId: string, label?: string) => void
     /** Open thread (if any): the panel travels to that orbit and shows its
         story system here — one place for the same information (Pedro §7.3). */
     activeTheme?: string | null
@@ -160,19 +162,32 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         resizeObserverRef.current = observer
     }, [])
 
+    // Reliability (council P1-6 / wish 19): /api/v2/universe intermittently
+    // dies mid-flight (ERR_ABORTED). One automatic retry after a short beat,
+    // then an HONEST failed state with a RETRY button (loadNonce re-arms this
+    // effect) — never a dead "unavailable" wall with no way back.
+    const [loadNonce, setLoadNonce] = useState(0)
     useEffect(() => {
         let cancelled = false
         // Timeout so a slow cache-miss (heavy PCA + neighbor build server-side)
         // surfaces as an empty state instead of an endless "Assembling…" spinner.
         const ctrl = new AbortController()
+        setLoading(true)
+        setPayload(null)
         const timer = setTimeout(() => ctrl.abort(), 20000)
-        fetch('/api/v2/universe', { signal: ctrl.signal })
-            .then(r => r.json())
+        const attempt = (n: number): Promise<UniversePayload> =>
+            fetch('/api/v2/universe', { signal: ctrl.signal })
+                .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+                .catch(err => {
+                    if (cancelled || ctrl.signal.aborted || n >= 1) throw err
+                    return new Promise(res => setTimeout(res, 800)).then(() => attempt(n + 1))
+                })
+        attempt(0)
             .then(json => { if (!cancelled) setPayload(json) })
             .catch(() => { if (!cancelled) setPayload(null) })
             .finally(() => { if (!cancelled) { clearTimeout(timer); setLoading(false) } })
         return () => { cancelled = true; clearTimeout(timer); ctrl.abort() }
-    }, [])
+    }, [loadNonce])
 
     const allNodes = useMemo(() => payload?.nodes ?? [], [payload])
     const nodes = useMemo(
@@ -356,7 +371,23 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         )
     }
     if (!payload || allNodes.length === 0) {
-        return <div className="universe-empty">Universe data unavailable{payload?.reason ? ` (${payload.reason})` : ''}.</div>
+        return (
+            <div className="universe-empty">
+                <div>Universe data unavailable{payload?.reason ? ` (${payload.reason})` : ''}.</div>
+                <div className="universe-empty-note">
+                    {payload
+                        ? 'The endpoint answered but served no stories for this window.'
+                        : 'The field endpoint did not answer (already retried once).'}
+                </div>
+                <button
+                    className="universe-filter universe-retry"
+                    onClick={() => setLoadNonce(n => n + 1)}
+                    data-tip="Re-request /api/v2/universe"
+                >
+                    ↻ RETRY
+                </button>
+            </div>
+        )
     }
 
     // AT an orbit: the story system replaces the field until back/close.
@@ -453,9 +484,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     <button
                         className="universe-filter"
                         onClick={() => { setRot(IDENTITY_ROT); setView({ k: 1, tx: 0, ty: 0 }) }}
-                        data-tip="Reset the camera. (Roll still available: alt-drag or two-finger twist)"
+                        data-tip="Reset the camera: rotation, pan and zoom back to the default view. (Roll still available: alt-drag or two-finger twist)"
                     >
-                        ⌖
+                        ⌖ RESET
                     </button>
                 </span>
             </div>
@@ -556,7 +587,10 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         // (onThemeSelect no-ops when the theme is unchanged, so
                         // the same node felt "dead" — Pedro 2026-07-03).
                         if (hit && hit === activeTheme) setOrbitalVisible(true)
-                        else if (hit) onThemeSelect(hit)
+                        // Item 8: pass the node's REAL label with the id — the
+                        // opener knows it; downstream must never re-derive a
+                        // generic from the raw dynamic-topic id.
+                        else if (hit) onThemeSelect(hit, allNodes.find(n => n.id === hit)?.label)
                     }
                     pointersRef.current.delete(e.pointerId)
                     if (pointersRef.current.size < 2) pinchRef.current = null

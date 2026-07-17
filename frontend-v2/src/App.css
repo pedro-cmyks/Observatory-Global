@@ -32,15 +32,24 @@
   z-index: 10000;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 80ms ease;
+  /* No fade: opacity transitions never complete across a display:none→block
+     flip (the tip stayed invisible), and the system's goal is instant show. */
+  transition: none;
   font-family: var(--font-sans, system-ui);
   font-weight: 400;
   text-align: left;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.62);
   white-space: normal;
+  /* Round-2 2026-07-17 item 3: at rest the tip must have NO layout box.
+     opacity:0 alone leaves an invisible max-content box in the scrollable
+     overflow — tips anchored near the right edge (e.g. long thread-row label
+     tips, the ··· menu) silently widened document scrollWidth (1587 vs 1526)
+     and the browser auto-scrolled the page sideways on interactions. */
+  display: none;
 }
 [data-tip]:hover::before {
   opacity: 1;
+  display: block;
 }
 [data-tip].tip-below::before {
   bottom: auto;

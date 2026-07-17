@@ -7,6 +7,8 @@ import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForD
 import { threadConfidencePresentation } from '../lib/threadConfidence'
 import { threadCountryPresentation } from '../lib/threadGeography'
 import { familyColor, familyGradient } from '../lib/categoryFamily'
+import { decodeEntities } from '../lib/decodeEntities'
+import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
 import { TranslatableText } from './TranslatableText'
 import './NarrativeThreads.css'
 
@@ -118,7 +120,7 @@ const normalizeThread = (thread: any): Narrative => {
     })
     return {
     thread_id: thread.thread_id,
-    label: stripCountrySuffix(thread.label || thread.summary || thread.thread_id),
+    label: stripCountrySuffix(decodeEntities(thread.label || thread.summary || thread.thread_id)),
     anchor_topics: thread.anchor_topics || [],
     parent_domain: thread.parent_domain || null,
     signal_count: thread.signal_count || 0,
@@ -443,18 +445,28 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     </span>
                                 </span>
                             </div>
-                            {/* T4 (dataviz audit): count-lineage label. The row count is the RAW
-                                assigned count; the opened detail shows the gate-verified count —
-                                unlabeled they read as a bug. Convention: raw · sourced · verified. */}
+                            {/* Fix round 2026-07-17 item 2: the row number has TWO different
+                                true bases depending on the row's engine path, and the chip must
+                                state the right one — labeling both "raw" made the row (42) and
+                                the detail (347) contradict under identical tooltips.
+                                - Atlas rows (gate fields served): signal_count IS the raw
+                                  assigned count → "raw" + verified lineage.
+                                - Dynamic rows (gate fields null): signal_count is the SERVED
+                                  membership for the window → "gated"; the detail's raw count
+                                  is honestly larger. */}
+                            {(() => {
+                                const rowBase = n.gated_signal_count != null ? 'raw' as const : 'gated' as const
+                                return (
                             <span
                                 className="narrative-count"
-                                data-tip={n.gate_scored_count && n.gated_signal_count !== n.signal_count
-                                    ? `${n.signal_count.toLocaleString()} raw assigned signals · ${(n.gated_signal_count ?? 0).toLocaleString()} verified by the relevance gate. The detail view shows the verified set.`
-                                    : `${n.signal_count.toLocaleString()} media signals in the selected window`}
+                                data-tip={n.gate_scored_count && n.gated_signal_count != null && n.gated_signal_count !== n.signal_count
+                                    ? `${countQualifier(n.signal_count, '24h', 'raw').tip} ${(n.gated_signal_count ?? 0).toLocaleString()} verified by the relevance gate — the detail view shows the verified set.`
+                                    : countQualifier(n.signal_count, '24h', rowBase).tip}
                             >
                                 {n.signal_count > 999 ? `${(n.signal_count / 1000).toFixed(1)}k` : n.signal_count}
+                                <CountQualifierChip count={n.signal_count} windowLabel="24h" base={rowBase} />
                                 {!!n.gate_scored_count && n.gated_signal_count != null && n.gated_signal_count !== n.signal_count && (
-                                    <span className="narrative-count-lineage">
+                                    <span className="narrative-count-lineage" data-tip={countQualifier(n.gated_signal_count, '24h', 'verified').tip}>
                                         {n.gated_signal_count.toLocaleString()} verified
                                     </span>
                                 )}
@@ -465,6 +477,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     <span className="coverage-badge coverage-badge--limited" data-tip={`${n.signal_count} signals — limited coverage`}>~</span>
                                 )}
                             </span>
+                                )
+                            })()}
                             <button
                                 className={`narrative-pin ${isPinned(`theme-${n.thread_id}`) ? 'narrative-pin--active' : ''}`}
                                 data-tip={isPinned(`theme-${n.thread_id}`) ? 'Unpin from investigation' : 'Pin thread to investigation'}

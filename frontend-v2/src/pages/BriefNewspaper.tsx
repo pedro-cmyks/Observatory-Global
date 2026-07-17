@@ -17,7 +17,9 @@ import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
-import type { EclipseData } from '../lib/attentionEclipse'
+import { decodeEntities, type EclipseData } from '../lib/attentionEclipse'
+import { formatSentimentPm1, formatTone10, measuredSentimentChip } from '../lib/sentimentScale'
+import { reconcileSentimentProse } from '../lib/reconcileSentimentProse'
 import { useReaderTheme, ReaderThemeToggle } from '../lib/readerTheme'
 import {
     assessDailyPublication,
@@ -596,7 +598,7 @@ export function BriefNewspaper() {
     const standfirstFallback = dailyGate.useSharedPackage && dailyEdition
         ? `${dailyEdition.package.title}. ${allThreads.length} measured story nodes, ${dailyEdition.package.receipts.length} frozen receipts; no LLM selected or ranked the edition.`
         : data
-        ? `${data.stats.total_signals.toLocaleString()} signals across ${data.stats.countries} countries from ${data.stats.sources} sources${leadThread ? ` · lead: ${leadThread.label}` : ''}.`
+        ? `${data.stats.total_signals.toLocaleString()} signals across ${data.stats.countries} countries from ${data.stats.sources} sources${leadThread ? ` · lead: ${decodeEntities(leadThread.label)}` : ''}.`
         : null
 
     const historicalCoverage = data?.historical_coverage
@@ -615,7 +617,7 @@ export function BriefNewspaper() {
     // ---- share dialog ----
     const shareCaption = data
         ? buildShareCaption({
-            leadLabel: leadThread?.label ?? null,
+            leadLabel: leadThread ? decodeEntities(leadThread.label) : null,
             signals: data.stats.total_signals,
             countries: data.stats.countries,
             sources: data.stats.sources,
@@ -661,11 +663,16 @@ export function BriefNewspaper() {
     // Receipts: REAL LINKS. Evidence urls render as <a href> (the whole point
     // of a receipt); rows without a url degrade to a plain row.
     const renderReceipt = (ev: ThreadEvidence, i: number) => {
+        // Entities decoded before any render/translate path (council P0-3);
+        // id-less receipts (e.g. the sealed daily package) still translate via
+        // the free-text lane instead of rendering a foreign headline plain
+        // (council wish 6 — the lead's Greek receipts never translated).
+        const headline = decodeEntities(ev.headline)
         const head = (
             <span className="brief-receipt-head" dir="auto">
                 {ev.id != null
-                    ? <TranslatableHeadline signalId={Number(ev.id)} original={ev.headline} sourceLang={ev.source_lang} />
-                    : ev.headline}
+                    ? <TranslatableHeadline signalId={Number(ev.id)} original={headline} sourceLang={ev.source_lang} />
+                    : <TranslatableText text={headline} />}
             </span>
         )
         const meta = (
@@ -744,7 +751,7 @@ export function BriefNewspaper() {
                 </div>
                 <h3 className="brief-card-headline">
                     <button className="brief-headline-btn" onClick={() => openThread(t, opts?.country)}>
-                        <TranslatableText text={t.label} />
+                        <TranslatableText text={decodeEntities(t.label)} />
                     </button>
                 </h3>
                 <div className="brief-vitals-line">
@@ -913,7 +920,7 @@ export function BriefNewspaper() {
                             </div>
                             <div className="brief-vital">
                                 <div className="k">Avg sentiment</div>
-                                <div className="v">{data.stats.avg_sentiment > 0 ? '+' : ''}{data.stats.avg_sentiment.toFixed(2)}</div>
+                                <div className="v">{formatSentimentPm1(data.stats.avg_sentiment)}</div>
                                 <div className="sub">normalized ±1 scale · window aggregate</div>
                             </div>
                             <div className="brief-vital">
@@ -1057,7 +1064,7 @@ export function BriefNewspaper() {
                                             </div>
                                             <h3 className="brief-lead-headline">
                                                 <button className="brief-headline-btn" onClick={() => openThread(leadThread)}>
-                                                    <TranslatableText text={leadThread.label} />
+                                                    <TranslatableText text={decodeEntities(leadThread.label)} />
                                                 </button>
                                             </h3>
                                             <div className="brief-metarow">
@@ -1078,7 +1085,7 @@ export function BriefNewspaper() {
                                             {leadThread.why_now && (
                                                 <p className="brief-whynow">
                                                     <span className="lab">Why now</span>
-                                                    {leadThread.why_now}
+                                                    {decodeEntities(leadThread.why_now)}
                                                 </p>
                                             )}
                                             <div className="brief-vitals-line">
@@ -1117,8 +1124,37 @@ export function BriefNewspaper() {
                                                         data-tip="AI-generated pattern reading based on signal volume, sentiment shifts, and narrative spread. Describes observable coverage patterns — does not reflect Atlas editorial opinion."
                                                     >
                                                         Editor's analysis
+                                                        {/* Council P1-4: the prose can be stale/generated — the chip
+                                                            carries the SAME measured number the instrument strip
+                                                            shows, so any sentiment figure inside the prose is
+                                                            anchored to the current measurement and its scale. */}
+                                                        <span
+                                                            className="brief-measured-chip"
+                                                            data-tip="The window's measured average sentiment — identical to the instrument strip above. If the prose cites a different figure, trust this one: the prose may be older than the measurement."
+                                                        >
+                                                            {measuredSentimentChip(data.stats.avg_sentiment)}
+                                                        </span>
                                                     </span>
-                                                    <p>{displayInsight}</p>
+                                                    {/* Fix round item 3: the chip anchors, but a STALE figure
+                                                        inside the prose still co-rendered ("-0.1" under the
+                                                        -0.53 strip). Numeric sentiment claims that disagree
+                                                        with the measurement beyond 0.05 are replaced inline
+                                                        with the measured value — marked, never silent. */}
+                                                    <p>
+                                                        {reconcileSentimentProse(displayInsight, data.stats.avg_sentiment).map((seg, i) =>
+                                                            seg.corrected ? (
+                                                                <span
+                                                                    key={i}
+                                                                    className="brief-corrected-figure"
+                                                                    data-tip={`Corrected against the measured strip — the generated prose cited ${seg.corrected.original}, the measured window average is ${seg.text}.`}
+                                                                >
+                                                                    {seg.text}
+                                                                </span>
+                                                            ) : (
+                                                                <span key={i}>{seg.text}</span>
+                                                            ),
+                                                        )}
+                                                    </p>
                                                 </>
                                             ) : (
                                                 <p className="brief-standfirst">{standfirstFallback}</p>
@@ -1190,7 +1226,7 @@ export function BriefNewspaper() {
                                                             onClick={() => goToAtlas(`theme=${encodeURIComponent(g.slug)}`, 'gap_box')}
                                                             data-tip="Category with real coverage in the last 24h where NOTHING cleared the quality gate — attention without verified evidence. 'gate pending' means not yet scored, not rejected."
                                                         >
-                                                            <span className="brief-gap-label">{g.label}</span>
+                                                            <span className="brief-gap-label">{decodeEntities(g.label)}</span>
                                                             <span className="brief-gap-cat">Coverage gap</span>
                                                             <span className="brief-gauge">
                                                                 <span><span className="num raw">{g.raw_signals.toLocaleString()}</span><span className="lbl">raw signals</span></span>
@@ -1217,7 +1253,7 @@ export function BriefNewspaper() {
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
                                                                     >
-                                                                        <span className="brief-gap-receipt-headline">{r.headline}</span>
+                                                                        <span className="brief-gap-receipt-headline">{decodeEntities(r.headline)}</span>
                                                                         <span className="brief-gap-receipt-meta">{r.source ?? 'source unknown'} · score {r.gate_score.toFixed(2)} ↗</span>
                                                                     </a>
                                                                 ))}
@@ -1396,36 +1432,45 @@ export function BriefNewspaper() {
                                 display and label the unit. */}
                             <div className="brief-bottom-col">
                                 <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Negative</h3>
-                                {data.negative_sentiment.slice(0, 4).map(c => (
-                                    <button
-                                        key={c.code}
-                                        className="brief-bottom-country"
-                                        onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
-                                    >
-                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                        <span className="brief-bottom-num negative" data-tip={`Avg tone ${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
-                                            {(c.sentiment * 10).toFixed(1)}
-                                            <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
-                                        </span>
-                                    </button>
-                                ))}
+                                {data.negative_sentiment.slice(0, 4).map(c => {
+                                    // Council P1-4: never print a value outside the legend
+                                    // ("Gaza −10.3" under −10…+10) — clamp for display, keep
+                                    // the raw figure honest in the hover.
+                                    const tone = formatTone10(c.sentiment)
+                                    return (
+                                        <button
+                                            key={c.code}
+                                            className="brief-bottom-country"
+                                            onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
+                                        >
+                                            <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
+                                            <span className="brief-bottom-num negative" data-tip={`Avg tone ${tone.display} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)${tone.clamped ? ` — raw value ${tone.raw} clamped to the printed scale` : ''}`}>
+                                                {tone.display}
+                                                <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
+                                            </span>
+                                        </button>
+                                    )
+                                })}
                                 <div className="brief-scale-note">GDELT tone · −10…+10</div>
                             </div>
                             <div className="brief-bottom-col">
                                 <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Positive</h3>
-                                {data.positive_sentiment.slice(0, 4).map(c => (
-                                    <button
-                                        key={c.code}
-                                        className="brief-bottom-country"
-                                        onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
-                                    >
-                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                        <span className="brief-bottom-num positive" data-tip={`Avg tone +${(c.sentiment * 10).toFixed(1)} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)`}>
-                                            +{(c.sentiment * 10).toFixed(1)}
-                                            <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
-                                        </span>
-                                    </button>
-                                ))}
+                                {data.positive_sentiment.slice(0, 4).map(c => {
+                                    const tone = formatTone10(c.sentiment)
+                                    return (
+                                        <button
+                                            key={c.code}
+                                            className="brief-bottom-country"
+                                            onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
+                                        >
+                                            <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
+                                            <span className="brief-bottom-num positive" data-tip={`Avg tone ${tone.display} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)${tone.clamped ? ` — raw value ${tone.raw} clamped to the printed scale` : ''}`}>
+                                                {tone.display}
+                                                <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
+                                            </span>
+                                        </button>
+                                    )
+                                })}
                                 <div className="brief-scale-note">GDELT tone · −10…+10</div>
                             </div>
                             <div className="brief-bottom-col">
@@ -1586,7 +1631,7 @@ export function BriefNewspaper() {
                             <div
                                 className="brief-share-card"
                                 role="img"
-                                aria-label={`Shareable preview card: ATLAS, ${weekday} ${dayLine}.${leadThread ? ` Lead — ${leadThread.label}.` : ''} The Atlas Edition — the news of the world, measured.`}
+                                aria-label={`Shareable preview card: ATLAS, ${weekday} ${dayLine}.${leadThread ? ` Lead — ${decodeEntities(leadThread.label)}.` : ''} The Atlas Edition — the news of the world, measured.`}
                             >
                                 <div className="sc-head">
                                     <span className="sc-mark">ATLAS<span className="dot">.</span></span>
@@ -1595,13 +1640,13 @@ export function BriefNewspaper() {
                                 <p className="sc-kicker">
                                     Lead{leadThread && (leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}
                                 </p>
-                                <p className="sc-headline">{leadThread?.label ?? 'No lead story cleared the gate today'}</p>
-                                {leadThread?.why_now && <p className="sc-stand">{leadThread.why_now}</p>}
+                                <p className="sc-headline">{leadThread ? decodeEntities(leadThread.label) : 'No lead story cleared the gate today'}</p>
+                                {leadThread?.why_now && <p className="sc-stand">{decodeEntities(leadThread.why_now)}</p>}
                                 {worldCards.length > 0 && (
                                     <div className="sc-secondaries">
                                         <p className="sc-lab">Also in today's edition</p>
                                         {worldCards.slice(0, 2).map(t => (
-                                            <p key={t.thread_id}>{t.label}</p>
+                                            <p key={t.thread_id}>{decodeEntities(t.label)}</p>
                                         ))}
                                     </div>
                                 )}

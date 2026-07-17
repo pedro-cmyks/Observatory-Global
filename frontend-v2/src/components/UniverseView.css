@@ -241,6 +241,19 @@
   text-align: center;
 }
 
+/* Council P1-6: honest failure state carries its own way back. */
+.universe-empty-note {
+  margin-top: 6px;
+  font-size: 10.5px;
+  opacity: 0.75;
+}
+
+.universe-retry {
+  margin-top: 12px;
+  font-size: 11px;
+  padding: 5px 14px;
+}
+
 .universe-overlay {
   position: fixed;
   inset: 0;

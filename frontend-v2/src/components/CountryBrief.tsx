@@ -29,6 +29,9 @@ import {
 import { buildCountryBriefThreadSummary, type CountryBriefThreadInput } from '../lib/countryBriefThreads';
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters';
 import { optionalFetchResponse } from '../lib/countryBriefFetch';
+import { decodeEntities } from '../lib/decodeEntities';
+import { humanizeCameoEvent } from '../lib/humanizeInternals';
+import { CountQualifierChip, countQualifier } from '../lib/countQualifier';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -239,13 +242,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             .then(d => {
                 if (ignore) return;
                 // Stored headlines can carry HTML entities (&#x639;…) — decode
-                // before render (the _serialize_evidence class of bug).
-                const decode = (t: string | null | undefined) => {
-                    if (!t) return t;
-                    const el = document.createElement('textarea');
-                    el.innerHTML = t;
-                    return el.value;
-                };
+                // before render (the _serialize_evidence class of bug). Shared
+                // decoder — one implementation product-wide.
+                const decode = (t: string | null | undefined) => (t ? decodeEntities(t) : t);
                 const stories = (d?.signals || []).map((sig: { id?: number; headline?: string | null; source_url?: string; url?: string; timestamp: string; source_lang?: string | null }) => ({
                     id: sig.id, headline: decode(sig.headline), url: sig.source_url || sig.url || '#',
                     timestamp: sig.timestamp, source_lang: sig.source_lang,
@@ -353,7 +352,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             timestamp: s.timestamp || new Date().toISOString(),
                             sentiment: s.sentiment || 0,
                             themeCode: primaryTheme,
-                            headline: s.headline,
+                            headline: s.headline ? decodeEntities(s.headline) : s.headline,
                             id: s.id,
                             source_lang: (s as SignalResponseItem & { source_lang?: string | null }).source_lang,
                         };
@@ -498,7 +497,10 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             <div className="cb-metrics">
                 <div>
-                    <span className="cb-metric-value">{data.signal_count.toLocaleString()}</span>
+                    <span className="cb-metric-value">
+                        {data.signal_count.toLocaleString()}
+                        <CountQualifierChip count={data.signal_count} windowLabel={`${timeWindow}h`} base="raw" />
+                    </span>
                     <span className="cb-metric-label">signals</span>
                 </div>
                 <div>
@@ -564,11 +566,16 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             className="theme-chip"
                             onClick={() => onThemeSelect?.(thread.name)}
                             data-tip={thread.rawCount > thread.count
-                                ? `${thread.count} verified of ${thread.rawCount} assigned · open thread`
+                                ? `${countQualifier(thread.count, `${timeWindow}h`, 'verified').tip} ${thread.rawCount.toLocaleString()} were assigned before the gate. Click to open the thread.`
                                 : `Click to open ${thread.label} narrative thread`}
                         >
                             <span className="theme-name">{thread.label}</span>
-                            <span className="theme-count">{thread.count}</span>
+                            <span className="theme-count">
+                                {thread.count}
+                                {thread.rawCount > thread.count && (
+                                    <CountQualifierChip count={thread.count} windowLabel={`${timeWindow}h`} base="verified" />
+                                )}
+                            </span>
                         </button>
                     ))}
                 </div>
@@ -613,11 +620,20 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         {countryConflicts.slice(0, showAllConflicts ? 15 : 5).map(ev => {
                             const src = ev.source === 'gdelt_events' ? 'G' : 'A';
                             const actors = [ev.actors?.actor1, ev.actors?.actor2].filter(Boolean).join(' → ');
+                            // Jargon purge (wish 7): CAMEO codebook imperatives ("Use
+                            // unconventional violence") read as leaked internals — show
+                            // the human event noun; the verbatim codebook string moves
+                            // into the hover, never deleted.
+                            const humanType = humanizeCameoEvent(ev.type);
+                            const tipParts = [
+                                actors ? `${actors}${ev.date ? ` · ${ev.date.slice(0, 10)}` : ''}` : (ev.date ? ev.date.slice(0, 10) : null),
+                                ev.type && ev.type !== humanType ? `CAMEO codebook: “${ev.type}”` : null,
+                            ].filter(Boolean);
                             return (
                                 <div key={ev.id} className="cb-conflict-row"
-                                    data-tip={actors ? `${actors}${ev.date ? ` · ${ev.date.slice(0, 10)}` : ''}` : undefined}>
+                                    data-tip={tipParts.length ? tipParts.join(' · ') : undefined}>
                                     <span className={`cb-conflict-src cb-conflict-src--${src.toLowerCase()}`}>{src}</span>
-                                    <span className="cb-conflict-type">{(ev.type || 'Conflict event').replace('Use conventional military force', 'Military force')}</span>
+                                    <span className="cb-conflict-type">{humanType}</span>
                                     <span className="cb-conflict-place">{ev.location?.name || ''}</span>
                                     {ev.fatalities > 0 && <span className="cb-conflict-fatal">{ev.fatalities}†</span>}
                                 </div>
@@ -687,7 +703,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     rel="noopener noreferrer"
                                     data-tip={f.subreddit ? `Discussion on ${f.subreddit} — open thread` : 'Open discussion'}
                                 >
-                                    <span>{f.headline || '(untitled)'}</span>
+                                    <span>{f.headline ? decodeEntities(f.headline) : '(untitled)'}</span>
                                     {f.subreddit && <strong className="cb-forum-src">{f.subreddit}</strong>}
                                 </a>
                             ))

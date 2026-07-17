@@ -20,8 +20,10 @@ export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
     // For a theme/thread focus, focus.label is the raw filter.theme id
     // (dynamic-topic-N / atlas slug). Resolve it to a human label — never show
     // the raw id — while GDELT theme codes still route through getThemeLabel.
+    // Item 8: the opener's real label (focus.knownLabel) wins; the generic
+    // "Narrative Thread" fallback is a display-only skeleton, never stored.
     const displayLabel = (focus.type === 'theme' || focus.type === 'thread')
-        ? resolveThreadLabel(focus.label)
+        ? resolveThreadLabel(focus.label, focus.knownLabel)
         : focus.type === 'country' && focus.label
             ? resolveCountryName(focus.label)   // "Australia", never a raw "AU"
             : focus.label

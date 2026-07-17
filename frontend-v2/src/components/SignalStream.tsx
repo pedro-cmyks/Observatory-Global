@@ -3,6 +3,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { TranslatableHeadline } from './TranslatableHeadline'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { decodeEntities } from '../lib/decodeEntities'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
 import { Pin, PinOff } from '../lib/icons'
 import { SignalDetailPanel } from './SignalDetailPanel'
@@ -510,7 +511,7 @@ export const SignalStream: React.FC = () => {
                                                 onClick={(e) => { e.stopPropagation(); setSelectedSignal(sig); }}
                                             >
                                                 {sig.headline
-                                                    ? <TranslatableHeadline signalId={sig.id} original={sig.headline} sourceLang={sig.source_lang} />
+                                                    ? <TranslatableHeadline signalId={sig.id} original={decodeEntities(sig.headline)} sourceLang={sig.source_lang} />
                                                     : `Signal from ${sig.source}`}
                                             </span>
                                             <button
@@ -523,7 +524,7 @@ export const SignalStream: React.FC = () => {
                                                         pinItem({
                                                             id: pinnedId,
                                                             type: 'signal',
-                                                            title: sig.headline || `Signal from ${sig.source}`,
+                                                            title: sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`,
                                                             urlParams: `?${new URLSearchParams(window.location.search).toString()}`
                                                         })
                                                     }

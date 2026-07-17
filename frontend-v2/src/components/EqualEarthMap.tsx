@@ -12,14 +12,23 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
 import { select } from 'd3-selection'
-import { geoCentroid, geoGraticule10 } from 'd3-geo'
+import { geoArea, geoCentroid, geoGraticule10 } from 'd3-geo'
 import {
     createEqualEarth,
     type ViewTransform,
     IDENTITY_TRANSFORM,
 } from '../lib/equalEarthProjection'
 import { heatFillColor, heatGlowColor, type CountryHeatStates } from '../lib/countryHeatStates'
+import { resolveInboundIso, LEGACY_GDELT_TO_ISO } from '../lib/countryCodeBoundary'
+import { MICRO_CENTROIDS } from '../lib/microstates'
+import { resolveCountryName } from '../lib/countryNames'
 import './EqualEarthMap.css'
+
+// Inverse of the legacy alias table — lets the heat lookup fall back to a
+// legacy-keyed backend row (e.g. heat under 'GZ' painting the PS polygon).
+const ISO_TO_LEGACY: Record<string, string> = Object.fromEntries(
+    Object.entries(LEGACY_GDELT_TO_ISO).map(([legacy, iso]) => [iso, legacy]),
+)
 
 // Land base color (slate) so countries read as land over the darker ocean, and
 // heat tints ON TOP of land (single-fill alpha composite) instead of floating
@@ -38,17 +47,14 @@ import './EqualEarthMap.css'
 const LAND_RGB: [number, number, number] = [58, 76, 100]
 const OCEAN = '#1b2531'
 
-// ISO_A2 (Natural Earth) → GDELT/FIPS where they differ. Mirrors App.tsx's map
-// so a click resolves to the same code the rest of Atlas keys on.
-const ISO_TO_GDELT: Record<string, string> = {
-    CN: 'CH', ID: 'RI', RS: 'RB', XK: 'KV', MK: 'MK',
-    CD: 'CG', CG: 'CF', TZ: 'TZ', KR: 'KS', KP: 'KN',
-    PS: 'GZ', EI: 'EI',
-}
-// Inverse: GDELT code → ISO_A2, to highlight the selected country's shape.
-const GDELT_TO_ISO: Record<string, string> = Object.fromEntries(
-    Object.entries(ISO_TO_GDELT).map(([iso, gdelt]) => [gdelt, iso]),
-)
+// Country codes are ISO end-to-end (fix round 2026-07-17 item 1): the geojson
+// carries ISO_A2 and every click consumer (focus, CountryBrief, /evidence/day,
+// resolveCountryName) keys ISO too — clicks pass the polygon's ISO through
+// UNCONVERTED. The old ISO→GDELT conversion here turned CN into FIPS 'CH',
+// which ISO consumers read as Switzerland ("click China opens Switzerland").
+// Inbound codes (selectedCountryCode / flyCountry) may still carry legacy
+// GDELT residue with no ISO meaning (GZ, KS…) — resolved ISO-first via
+// lib/countryCodeBoundary.resolveInboundIso.
 
 const GEOJSON_URL = '/data/countries.geojson'
 
@@ -76,6 +82,143 @@ const CONFLICT_CLASS_LABELS: Record<ConflictClass, string> = {
 }
 
 type MarkerKind = 'chokepoint' | 'acled' | 'disaster' | 'anomaly'
+
+// ── Click-reliability helpers (council 2026-07-17, P1-8 / wish 14) ──────────
+// Pure + exported so the hit-test priorities are frozen by tests.
+
+/** Pointer slop (px) below which a press-release is a CLICK, not a pan. */
+export const CLICK_SLOP_PX = 6
+
+/** Drawn screen radii of the point-marker glyphs (see the canvas draw code —
+ *  markers are screen-space, they do not scale with zoom). */
+const MARKER_DRAWN_RADIUS: Record<'acled' | 'disaster' | 'chokepoint', number> = {
+    acled: 5.5, disaster: 8, chokepoint: 9,
+}
+
+export type PointMarkerKind = 'acled' | 'disaster' | 'chokepoint'
+
+/** Hit tolerance for a marker at zoom k: near the drawn glyph at world zoom
+ *  (a generous fixed 12-14px let a Cape Town event card steal a click made
+ *  near Brazil), finger-friendly once zoomed in. */
+export function markerHitTolerance(kind: PointMarkerKind, k: number): number {
+    return MARKER_DRAWN_RADIUS[kind] + (k < 2 ? 2.5 : 6.5)
+}
+
+export interface MarkerCandidate { kind: PointMarkerKind; dist: number; index: number }
+
+/** NEAREST marker within its tolerance wins — never array/layer order. A miss
+ *  (null) lets the click fall through to the country polygon. */
+export function pickMarkerHit(cands: MarkerCandidate[], k: number): MarkerCandidate | null {
+    let best: MarkerCandidate | null = null
+    for (const c of cands) {
+        if (c.dist > markerHitTolerance(c.kind, k)) continue
+        if (!best || c.dist < best.dist) best = c
+    }
+    return best
+}
+
+// ── Tiny-island assist (fix round 2026-07-17, item 7) ───────────────────────
+// Country paths down to 1.4×2.9px at world zoom are untargetable. A click or
+// hover that misses every polygon searches SMALL countries whose bbox is
+// within ISLAND_NEAR_PX of the pointer and picks the nearest. Runs only on
+// true misses, so the marker > polygon > assist priority holds.
+
+/** Screen-px reach of the assist around a tiny country's bbox. */
+export const ISLAND_NEAR_PX = 5
+/** A country only gets the assist while its drawn bbox is at most this many
+ *  screen px in BOTH dimensions — once zoomed in, the real path takes over. */
+export const ISLAND_SMALL_PX = 12
+
+export interface IslandCandidate {
+    iso: string
+    name: string
+    /** bbox in BASE (k=1) projected coordinates. */
+    x0: number; y0: number; x1: number; y1: number
+}
+
+/**
+ * Nearest SMALL country whose bbox sits within `nearPx` (screen px at zoom k)
+ * of the pointer (`base` = pointer in base coordinates). Null = no assist.
+ */
+export function pickNearestSmallCountry(
+    cands: IslandCandidate[],
+    base: { x: number; y: number },
+    k: number,
+    nearPx: number = ISLAND_NEAR_PX,
+    smallPx: number = ISLAND_SMALL_PX,
+): IslandCandidate | null {
+    let best: IslandCandidate | null = null
+    let bestD = Infinity
+    for (const c of cands) {
+        if ((c.x1 - c.x0) * k > smallPx || (c.y1 - c.y0) * k > smallPx) continue
+        const dx = Math.max(c.x0 - base.x, 0, base.x - c.x1) * k
+        const dy = Math.max(c.y0 - base.y, 0, base.y - c.y1) * k
+        const d = Math.hypot(dx, dy)
+        if (d > nearPx) continue
+        if (d < bestD) { best = c; bestD = d }
+    }
+    return best
+}
+
+/** Did a d3-zoom gesture actually MOVE? Sub-slop jitter during a click used to
+ *  mark the gesture as a pan and silently swallow the country select. */
+export function gestureMoved(
+    a: { x: number; y: number; k: number },
+    b: { x: number; y: number; k: number },
+    slop: number = CLICK_SLOP_PX,
+): boolean {
+    return b.k !== a.k || Math.hypot(b.x - a.x, b.y - a.y) > slop
+}
+
+/** ISO code of a geojson feature. Prefers a VALID 2-letter ISO_A2; falls back
+ *  to ISO_A2_EH when ISO_A2 is Natural Earth's '-99' or a compound like
+ *  'CN-TW' (Taiwan) — that fallback is what gives Taiwan (TW) and Kosovo (XK)
+ *  their real polygons. '-99' when neither field is usable, so the existing
+ *  click/label guards keep filtering the truly code-less features. */
+export function featureIso(props: Record<string, unknown>): string {
+    const a = String(props.ISO_A2 ?? '')
+    if (/^[A-Z]{2}$/.test(a)) return a
+    const eh = String(props.ISO_A2_EH ?? '')
+    if (/^[A-Z]{2}$/.test(eh)) return eh
+    return '-99'
+}
+
+/** Round-2 item 2: fly-to target for an ISO code. Polygon anchor when the
+ *  country has a feature; MICRO_CENTROIDS fallback for polygon-less
+ *  microstates (Malta class) — flyCountry must never silently no-op and leave
+ *  the camera parked over the previous country. Null only for unknown codes. */
+export function flyTarget(
+    features: Array<{ geometry: { type: string; coordinates: unknown }; properties: Record<string, unknown> }>,
+    iso: string,
+): [number, number] | null {
+    const f = features.find(ft => featureIso(ft.properties) === iso)
+    const anchor = f ? flyAnchor(f.geometry) : null
+    return anchor ?? MICRO_CENTROIDS[iso] ?? null
+}
+
+/** Camera anchor for a country: the centroid of its LARGEST landmass. The
+ *  whole-feature centroid area-averages scattered territories (the council's
+ *  "fly-to averages coordinates" / Mongolia-class bug), pulling the camera off
+ *  the country people mean. Null on degenerate geometry — skip the fly. */
+export function flyAnchor(geometry: { type: string; coordinates: unknown }): [number, number] | null {
+    try {
+        if (geometry.type === 'MultiPolygon') {
+            const polys = geometry.coordinates as unknown[]
+            if (!Array.isArray(polys) || polys.length === 0) return null
+            let best: unknown = null
+            let bestArea = -1
+            for (const p of polys) {
+                const area = geoArea({ type: 'Polygon', coordinates: p } as never)
+                if (area > bestArea) { bestArea = area; best = p }
+            }
+            if (best == null) return null
+            return geoCentroid({ type: 'Polygon', coordinates: best } as never) as [number, number]
+        }
+        if (!Array.isArray(geometry.coordinates) || geometry.coordinates.length === 0) return null
+        const c = geoCentroid(geometry as never) as [number, number]
+        return Number.isFinite(c[0]) && Number.isFinite(c[1]) ? c : null
+    } catch { return null }
+}
 
 /** Hover card state: country shape hover vs marker (hazard/conflict/chokepoint). */
 type HoverState =
@@ -190,7 +333,7 @@ export interface EqualEarthMapProps {
     flyCountry?: string | null
     /** Bump to reset the view (the toolbar ↺ — was MapLibre-only). */
     resetNonce?: number
-    onCountryClick: (gdeltCode: string, name: string) => void
+    onCountryClick: (isoCode: string, name: string) => void
     /** Marker click (Mercator parity): chokepoint / conflict-event dots. */
     onMarkerClick?: (kind: 'chokepoint' | 'acled' | 'disaster', properties: Record<string, unknown>) => void
     /** Overlay layers (flows/markers/terminator), same data MapLibre uses. */
@@ -269,7 +412,7 @@ export function EqualEarthMap({
     const paths = useMemo(() => {
         if (!ee || features.length === 0) return []
         return features.map(f => ({
-            iso: String(f.properties.ISO_A2 ?? f.properties.ISO_A2_EH ?? ''),
+            iso: featureIso(f.properties),
             name: String(f.properties.NAME ?? f.properties.ADMIN ?? ''),
             d: ee.pathString(f) ?? '',
         })).filter(p => p.d)
@@ -281,7 +424,7 @@ export function EqualEarthMap({
         if (features.length === 0) return []
         return features.map(f => {
             const name = String(f.properties.NAME ?? f.properties.ADMIN ?? '')
-            const iso = String(f.properties.ISO_A2 ?? f.properties.ISO_A2_EH ?? '')
+            const iso = featureIso(f.properties)
             if (!name || iso === '-99') return null
             try {
                 const c = geoCentroid(f as never) as [number, number]
@@ -290,9 +433,12 @@ export function EqualEarthMap({
         }).filter(Boolean) as Array<{ name: string; c: [number, number] }>
     }, [features])
 
-    const selectedIso = selectedCountryCode
-        ? (GDELT_TO_ISO[selectedCountryCode] ?? selectedCountryCode)
-        : null
+    // ISO codes that actually have a polygon — the keyspace for ISO-first
+    // resolution of inbound codes (selectedCountryCode / flyCountry).
+    const isoSet = useMemo(() => new Set(paths.map(p => p.iso)), [paths])
+    const hasIso = useCallback((c: string) => isoSet.has(c), [isoSet])
+
+    const selectedIso = resolveInboundIso(selectedCountryCode, hasIso)
 
     // True during/just after a pan-zoom gesture — swallows the click that fires
     // at gesture end so a pan ≠ a country select.
@@ -301,9 +447,58 @@ export function EqualEarthMap({
     const handleCountryClick = useCallback((iso: string, name: string) => {
         if (movedRef.current) return // a pan, not a select
         if (!iso || iso === '-99') return
-        const gdelt = ISO_TO_GDELT[iso] || iso
-        onCountryClick(gdelt, name)
+        // ISO passes through UNCONVERTED — consumers key ISO (item-1 fix).
+        onCountryClick(iso, name)
     }, [onCountryClick])
+
+    // Heat rows may still arrive keyed by legacy GDELT residue (GZ for PS…):
+    // look up the polygon's ISO first, then its legacy alias.
+    const heatFor = useCallback((iso: string) => (
+        heatStates.get(iso) ?? (ISO_TO_LEGACY[iso] ? heatStates.get(ISO_TO_LEGACY[iso]) : undefined)
+    ), [heatStates])
+
+    // Item 7: base-coordinate bboxes for the tiny-island assist. Computed once
+    // per projection fit (walks every ring, so memoized hard).
+    const islandBoxes = useMemo<IslandCandidate[]>(() => {
+        if (!ee || features.length === 0) return []
+        const out: IslandCandidate[] = []
+        for (const f of features) {
+            const iso = featureIso(f.properties)
+            const name = String(f.properties.NAME ?? f.properties.ADMIN ?? '')
+            if (!iso || iso === '-99') continue
+            const geom = f.geometry as { type: string; coordinates: unknown }
+            const rings: [number, number][][] =
+                geom.type === 'MultiPolygon'
+                    ? (geom.coordinates as [number, number][][][]).flat()
+                    : geom.type === 'Polygon'
+                        ? (geom.coordinates as [number, number][][])
+                        : []
+            let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+            for (const ring of rings) {
+                for (const c of ring) {
+                    const p = ee.project(c)
+                    if (!p) continue
+                    if (p[0] < x0) x0 = p[0]
+                    if (p[0] > x1) x1 = p[0]
+                    if (p[1] < y0) y0 = p[1]
+                    if (p[1] > y1) y1 = p[1]
+                }
+            }
+            if (Number.isFinite(x0)) out.push({ iso, name, x0, y0, x1, y1 })
+        }
+        // Round-2 item 2: polygon-less microstates (Malta class — absent from
+        // the 110m geojson) join the assist as ZERO-SIZE bboxes at their
+        // projected centroid, so hover/click work within the same tolerance.
+        const seen = new Set(out.map(b => b.iso))
+        for (const [iso, lonlat] of Object.entries(MICRO_CENTROIDS)) {
+            if (seen.has(iso)) continue
+            const p = ee.project(lonlat)
+            if (!p) continue
+            out.push({ iso, name: resolveCountryName(iso), x0: p[0], y0: p[1], x1: p[0], y1: p[1] })
+        }
+        return out
+    }, [ee, features])
+
 
     // Heat-conduction render (Pedro's weather-radar idea): THREE memoized SVG
     // layers, stacked per tile — (1) solid LAND base, (2) heat fills run through
@@ -323,14 +518,14 @@ export function EqualEarthMap({
     )), [paths])
 
     const heatEls = useMemo(() => paths.map((p, i) => {
-        const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
+        const st = heatFor(p.iso)
         const heat = showHeatmap && st ? st.heat : 0
         if (heat <= 0) return null
         return <path key={`h-${p.iso}-${i}`} d={p.d} fill={heatFillColor(heat)} />
-    }).filter(Boolean), [paths, heatStates, showHeatmap])
+    }).filter(Boolean), [paths, heatFor, showHeatmap])
 
     const borderEls = useMemo(() => paths.map((p, i) => {
-        const st = heatStates.get(ISO_TO_GDELT[p.iso] || p.iso)
+        const st = heatFor(p.iso)
         const heat = showHeatmap && st ? st.heat : 0
         const isSel = selectedIso != null && p.iso !== '-99' && p.iso === selectedIso
         return (
@@ -347,7 +542,7 @@ export function EqualEarthMap({
                 style={{ cursor: 'pointer' }}
             />
         )
-    }), [paths, heatStates, showHeatmap, selectedIso, handleCountryClick])
+    }), [paths, heatFor, showHeatmap, selectedIso, handleCountryClick])
 
     // Fit-the-WORLD scale: the k at which the full world width fits the panel.
     // fitHeight alone over-zoomed narrow panels (a 500×625 panel opened on
@@ -376,20 +571,55 @@ export function EqualEarthMap({
         return { k: transform.k, x, y }
     }, [transform, ee, period, size.h])
 
+    /** Item 7: nearest small country to a container-space pointer, across the
+     *  3 wrap tiles. Null when nothing small is within reach. */
+    const findIslandAt = useCallback((cx: number, cy: number): IslandCandidate | null => {
+        if (!ee || islandBoxes.length === 0) return null
+        const bx = (cx - applied.x) / applied.k
+        const by = (cy - applied.y) / applied.k
+        let best: IslandCandidate | null = null
+        let bestD = Infinity
+        for (const off of [0, -ee.worldWidth, ee.worldWidth]) {
+            const hit = pickNearestSmallCountry(islandBoxes, { x: bx + off, y: by }, applied.k)
+            if (!hit) continue
+            const dx = Math.max(hit.x0 - (bx + off), 0, (bx + off) - hit.x1) * applied.k
+            const dy = Math.max(hit.y0 - by, 0, by - hit.y1) * applied.k
+            const d = Math.hypot(dx, dy)
+            if (d < bestD) { best = hit; bestD = d }
+        }
+        return best
+    }, [ee, islandBoxes, applied])
+
     // --- Pan / zoom / pinch via d3-zoom (handles wheel, drag AND multi-touch
     // pinch — the mobile gesture the hand-rolled handlers couldn't do). One
     // {k,x,y} transform drives both the SVG <g> and the canvas. ---
     const zoomRef = useRef<ZoomBehavior<HTMLDivElement, unknown> | null>(null)
+    // Transform at gesture start — a click is only demoted to a pan when the
+    // transform ACTUALLY moved past the slop (P1-8: any 1px jitter used to
+    // swallow country clicks at world zoom, silently).
+    const gestureStartRef = useRef<{ x: number; y: number; k: number } | null>(null)
 
     useEffect(() => {
         const el = containerRef.current
         if (!el) return
         const zb = d3zoom<HTMLDivElement, unknown>()
             .scaleExtent([1, 12])
-            .on('start', () => { movedRef.current = false; setGesturing(true); setHover(null) })
-            .on('zoom', (event) => {
-                if (event.sourceEvent) movedRef.current = true
+            // d3's own click suppressor defaults to 0px — pair it with our slop
+            // so a jittery click still reaches the country path.
+            .clickDistance(CLICK_SLOP_PX)
+            .on('start', (event) => {
                 const t = event.transform
+                gestureStartRef.current = { x: t.x, y: t.y, k: t.k }
+                movedRef.current = false
+                setGesturing(true)
+                setHover(null)
+            })
+            .on('zoom', (event) => {
+                const t = event.transform
+                const s = gestureStartRef.current
+                if (event.sourceEvent && s && gestureMoved(s, { x: t.x, y: t.y, k: t.k })) {
+                    movedRef.current = true
+                }
                 setTransform({ k: t.k, x: t.x, y: t.y })
             })
             .on('end', () => { setGesturing(false); setTimeout(() => { movedRef.current = false }, 120) })
@@ -426,50 +656,68 @@ export function EqualEarthMap({
     // projected centroid. MapLibre animates; EE jumps (v1 — acceptable).
     useEffect(() => {
         if (!flyCountry || !ee || features.length === 0) return
-        const iso = GDELT_TO_ISO[flyCountry] ?? flyCountry
-        const f = features.find(ft => String(ft.properties.ISO_A2 ?? ft.properties.ISO_A2_EH ?? '') === iso)
-        if (!f) return
-        try {
-            const c = geoCentroid(f as never) as [number, number]
-            const p = ee.project(c)
-            if (!p) return
-            const k = Math.max(2.5, transform.k)
-            const t = zoomIdentity.translate(size.w / 2 - p[0] * k, size.h / 2 - p[1] * k).scale(k)
-            const el = containerRef.current
-            if (el && zoomRef.current) select(el).call(zoomRef.current.transform, t)
-        } catch { /* centroid can fail on degenerate geometries */ }
+        const iso = resolveInboundIso(flyCountry, hasIso) ?? flyCountry
+        // Largest-landmass anchor for polygon countries (council wish 22 — the
+        // whole-feature centroid area-averages scattered territories); the
+        // MICRO_CENTROIDS fallback for polygon-less microstates (round-2
+        // item 2 — searching "Malta" used to silently no-op and leave the
+        // camera over the previous country).
+        const c = flyTarget(
+            features as Array<{ geometry: { type: string; coordinates: unknown }; properties: Record<string, unknown> }>,
+            iso,
+        )
+        if (!c) return
+        const p = ee.project(c)
+        if (!p) return
+        const k = Math.max(2.5, transform.k)
+        const t = zoomIdentity.translate(size.w / 2 - p[0] * k, size.h / 2 - p[1] * k).scale(k)
+        const el = containerRef.current
+        if (el && zoomRef.current) select(el).call(zoomRef.current.transform, t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [flyCountry, ee, features])
 
     // Shared marker hit test — the same projected positions the canvas draws,
     // used by BOTH the click capture (open panel / event page) and the hover
-    // card. Priority order matches the original click path: acled → disaster
-    // → chokepoint.
+    // card. NEAREST marker within a zoom-aware tolerance wins (pickMarkerHit);
+    // a miss falls through to the country polygon — the P1-8 fix for a click
+    // near Brazil opening a Cape Town event card at world zoom.
     const findMarkerAt = useCallback((cx: number, cy: number): { kind: MarkerKind; properties: Record<string, unknown> } | null => {
         if (!ee || !overlay) return null
         const per = ee.worldWidth * applied.k
         const seams = per > 0 ? [0, -per, per] : [0]
-        const near = (coords: unknown, tol: number) => {
-            if (!Array.isArray(coords)) return false
+        const distTo = (coords: unknown): number | null => {
+            if (!Array.isArray(coords)) return null
             const p = ee.toScreen(coords as [number, number], applied)
-            if (!p) return false
-            return seams.some(off => Math.hypot(p[0] + off - cx, p[1] - cy) <= tol)
+            if (!p) return null
+            let best = Infinity
+            for (const off of seams) best = Math.min(best, Math.hypot(p[0] + off - cx, p[1] - cy))
+            return Number.isFinite(best) ? best : null
         }
-        for (const f of overlay.acled.features) {
-            if (near(f.geometry.coordinates, 12)) return { kind: 'acled', properties: f.properties }
+        const layers: Array<{ kind: PointMarkerKind; features: FC['features'] }> = [
+            { kind: 'acled', features: overlay.acled.features },
+            { kind: 'disaster', features: overlay.disasters?.features ?? [] },
+            { kind: 'chokepoint', features: overlay.chokepoints.features },
+        ]
+        const cands: MarkerCandidate[] = []
+        for (const layer of layers) {
+            layer.features.forEach((f, i) => {
+                const d = distTo(f.geometry.coordinates)
+                if (d != null) cands.push({ kind: layer.kind, dist: d, index: i })
+            })
         }
-        for (const f of overlay.disasters?.features ?? []) {
-            if (near(f.geometry.coordinates, 12)) return { kind: 'disaster', properties: f.properties }
-        }
-        for (const f of overlay.chokepoints.features) {
-            if (near(f.geometry.coordinates, 14)) return { kind: 'chokepoint', properties: f.properties }
+        const hit = pickMarkerHit(cands, applied.k)
+        if (hit) {
+            const layer = layers.find(l => l.kind === hit.kind)
+            const f = layer?.features[hit.index]
+            if (f) return { kind: hit.kind, properties: f.properties }
         }
         // Anomaly rings LAST (largest + background — never steal a point marker's
         // hover). Tolerance follows the drawn core-ring radius.
         for (const f of overlay.anomaly.features) {
             const r = typeof f.properties.radius === 'number' ? f.properties.radius : 8
             const tol = Math.min(Math.max(r, 8), 24) + 4
-            if (near(f.geometry.coordinates, tol)) return { kind: 'anomaly', properties: f.properties }
+            const d = distTo(f.geometry.coordinates)
+            if (d != null && d <= tol) return { kind: 'anomaly', properties: f.properties }
         }
         return null
     }, [ee, overlay, applied])
@@ -508,6 +756,42 @@ export function EqualEarthMap({
             setHover(prev => (prev?.kind === 'marker' ? null : prev))
         }
     }, [gesturing, findMarkerAt])
+
+    // Item 7 — tiny-island assist, CLICK side. Runs in the bubble phase, so:
+    // markers already won (their capture handler stopPropagation'd), and a real
+    // country-path hit handled itself (skip via target check). Only a true
+    // ocean/graticule miss reaches the assist.
+    const handleMissClick = useCallback((e: React.MouseEvent) => {
+        if (movedRef.current) return // a pan, not a select
+        const target = e.target as Element | null
+        if (target?.closest?.('.equal-earth-country')) return // polygon priority
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const hit = findIslandAt(e.clientX - rect.left, e.clientY - rect.top)
+        if (hit) onCountryClick(hit.iso, hit.name)
+    }, [findIslandAt, onCountryClick])
+
+    // Item 7 — HOVER side: an ocean-move near a tiny island shows its tooltip
+    // (same card the polygon hover shows). Real polygon/marker hovers win.
+    const handleMissHover = useCallback((e: React.MouseEvent) => {
+        if (gesturing) return
+        const target = e.target as Element | null
+        if (target?.closest?.('.equal-earth-country')) return
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const hit = findIslandAt(e.clientX - rect.left, e.clientY - rect.top)
+        if (hit) {
+            const st = heatFor(hit.iso)
+            setHover(prev => (prev?.kind === 'marker' ? prev : {
+                kind: 'country', name: hit.name, heat: st ? st.heat : 0,
+                x: e.clientX, y: e.clientY,
+            }))
+        } else {
+            // Over open ocean with no island in reach: clear a stale country
+            // card (the path's own mouseleave already fired when we left it).
+            setHover(prev => (prev?.kind === 'country' ? null : prev))
+        }
+    }, [gesturing, findIslandAt, heatFor])
 
     const resetView = useCallback(() => {
         const el = containerRef.current
@@ -733,7 +1017,9 @@ export function EqualEarthMap({
             className="equal-earth-map"
             onDoubleClick={resetView}
             onClickCapture={handleMarkerCapture}
+            onClick={handleMissClick}
             onMouseMoveCapture={handleHoverCapture}
+            onMouseMove={handleMissHover}
             onMouseLeave={() => setHover(null)}
             style={hover?.kind === 'marker' ? { cursor: 'pointer' } : undefined}
         >

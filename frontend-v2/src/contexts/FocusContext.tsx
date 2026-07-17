@@ -8,6 +8,11 @@ export interface FocusState {
     type: FocusType
     value: string | null
     label: string | null
+    /** Fix round 2026-07-17 item 8: the OPENER's human label for a theme/thread
+     *  focus (universe node label, threads-row label). When present, chips must
+     *  render it instead of skeleton-resolving the raw id — the raw-id fallback
+     *  produced the generic "Narrative Thread" in the focus chip / map key. */
+    knownLabel: string | null
 }
 
 export interface ConceptFilter {
@@ -32,6 +37,9 @@ export interface GlobalFilter {
     person: string | null
     concept: ConceptFilter | null
     region: RegionFilter | null
+    /** Item 8: the opener's human label for the current thread/theme focus.
+     *  Lives and dies with thread/theme; null when the opener knew none. */
+    themeLabel: string | null
     // timeRange REMOVED (2026-07-15): the VIEW selector is gone — the map
     // scrubber is time; each surface owns its fixed window.
     lockedBy: LockedBy
@@ -41,9 +49,9 @@ export interface GlobalFilter {
 interface FocusContextValue {
     // New GlobalFilter state
     filter: GlobalFilter
-    setThread: (thread: string | null) => void
+    setThread: (thread: string | null, label?: string | null) => void
     setCountry: (country: string | null, source?: LockedBy) => void
-    setTheme: (theme: string | null, source?: LockedBy) => void
+    setTheme: (theme: string | null, source?: LockedBy, label?: string | null) => void
     setEntity: (entity: string | null) => void
     setPerson: (person: string | null) => void
     setConcept: (concept: ConceptFilter | null) => void
@@ -69,6 +77,7 @@ const defaultFilter: GlobalFilter = {
     person: null,
     concept: null,
     region: null,
+    themeLabel: null,
     lockedBy: null,
     streamLevel: 'notable',
 }
@@ -85,7 +94,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [filter, setFilter] = useState<GlobalFilter>(defaultFilter)
     const [mapFlyCountry, setMapFlyCountry] = useState<string | null>(null)
 
-    const setThread = useCallback((thread: string | null) => {
+    const setThread = useCallback((thread: string | null, label: string | null = null) => {
         setFilter(prev => ({
             ...prev,
             thread,
@@ -95,6 +104,9 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             theme: null,
             concept: null,
             region: null,
+            // Item 8: a label-less re-set of the SAME thread (URL sync, deep-link
+            // re-fire) must not erase the opener's label.
+            themeLabel: thread ? (label ?? (prev.thread === thread ? prev.themeLabel : null)) : null,
             lockedBy: null,
         }))
         console.log(`[GlobalFilter] Set thread=${thread}`)
@@ -112,14 +124,17 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log(`[GlobalFilter] Set country=${country} by ${source || 'unknown'}`)
     }, [])
 
-    const setTheme = useCallback((theme: string | null, source: LockedBy = null) => {
-        setFilter(prev => ({ 
-            ...prev, 
-            theme, 
+    const setTheme = useCallback((theme: string | null, source: LockedBy = null, label: string | null = null) => {
+        setFilter(prev => ({
+            ...prev,
+            theme,
             thread: null,
             entity: null,
             person: null,
-            lockedBy: theme ? source : prev.country ? prev.lockedBy : null 
+            // Item 8: a label-less re-set of the SAME theme (URL sync, deep-link
+            // re-fire) must not erase the opener's label.
+            themeLabel: theme ? (label ?? (prev.theme === theme ? prev.themeLabel : null)) : null,
+            lockedBy: theme ? source : prev.country ? prev.lockedBy : null
         }))
         console.log(`[GlobalFilter] Set theme=${theme} by ${source || 'unknown'}`)
     }, [])
@@ -132,6 +147,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             thread: null,
             country: null,
             theme: null,
+            themeLabel: null,
             concept: null,
             region: null,
             lockedBy: null,
@@ -147,6 +163,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             thread: null,
             country: null,
             theme: null,
+            themeLabel: null,
             concept: null,
             region: null,
             lockedBy: null,
@@ -162,6 +179,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             concept,
             theme: primaryTheme,
             thread: null,
+            themeLabel: null,
             entity: null,
             person: null,
             lockedBy: null,
@@ -178,6 +196,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             entity: null,
             person: null,
             theme: null,
+            themeLabel: null,
             concept: null,
             lockedBy: null,
         }))
@@ -194,6 +213,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             thread: null,
             country: null,
             theme: null,
+            themeLabel: null,
             entity: null,
             person: null,
             concept: null,
@@ -212,16 +232,18 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // until native Thread/Entity Focus endpoints exist.
         type: threadAnchor ? 'theme' : entityFocusValue ? 'person' : filter.country ? 'country' : filter.theme ? 'theme' : null,
         value: threadAnchor || entityFocusValue || filter.country || filter.theme,
-        label: filter.thread || entityFocusValue || filter.country || filter.theme
+        label: filter.thread || entityFocusValue || filter.country || filter.theme,
+        // Item 8: only a thread/theme focus carries an opener-supplied label.
+        knownLabel: (filter.thread || filter.theme) ? filter.themeLabel : null,
     }
 
-    const setFocus = useCallback((type: FocusType, value: string, _label?: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+    const setFocus = useCallback((type: FocusType, value: string, label?: string) => {
         if (type === 'thread') {
-            setThread(value)
+            setThread(value, label ?? null)
         } else if (type === 'country') {
             setCountry(value)
         } else if (type === 'theme') {
-            setTheme(value)
+            setTheme(value, null, label ?? null)
         } else if (type === 'entity') {
             setEntity(value)
         } else if (type === 'person') {

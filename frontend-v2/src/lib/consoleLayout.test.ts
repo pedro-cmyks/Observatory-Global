@@ -13,8 +13,10 @@ import {
   loadSavedLayouts,
   rowHeightFor,
   saveLayout,
+  snapResizedItem,
 } from './consoleLayout'
 import type { LayoutBucket } from './consoleLayout'
+import type { LayoutItem } from 'react-grid-layout'
 
 function fakeStorage(initial: Record<string, string> = {}) {
   const store = new Map(Object.entries(initial))
@@ -147,6 +149,110 @@ describe('layoutForBucket', () => {
     expect(isValidLayout(narrow)).toBe(true)
     expect(layoutFillsWidth(narrow)).toBe(false)
     expect(layoutForBucket('big', { big: narrow })).toEqual(defaultLayoutFor('big'))
+  })
+})
+
+describe('snapResizedItem', () => {
+  const box = (i: string, x: number, y: number, w: number, h: number, extra: Partial<LayoutItem> = {}): LayoutItem =>
+    ({ i, x, y, w, h, minW: 3, minH: 4, ...extra })
+
+  it('snaps the right edge to a neighboring panel left edge within threshold (different row band)', () => {
+    // radar right edge = 9; threads left edge = 10 (in a lower band, no adjacency)
+    const layout = [
+      box('radar', 0, 0, 9, 6),
+      box('threads', 10, 6, 8, 6),
+    ]
+    const out = snapResizedItem(layout, 'radar', { threshold: 1 })
+    expect(out.find(l => l.i === 'radar')?.w).toBe(10)
+    // the neighbor is never moved or shrunk
+    expect(out.find(l => l.i === 'threads')).toEqual(layout[1])
+  })
+
+  it('snaps the right edge to the container edge within threshold', () => {
+    const layout = [
+      box('radar', 14, 0, 9, 12), // right edge 23, container 24
+      box('threads', 0, 0, 12, 12),
+    ]
+    const out = snapResizedItem(layout, 'radar', { threshold: 1 })
+    expect(out.find(l => l.i === 'radar')?.w).toBe(10) // reaches col 24
+  })
+
+  it('snaps the bottom edge to the container bottom within threshold', () => {
+    const layout = [
+      box('radar', 0, 0, 10, GRID_ROWS - 1), // bottom edge 23, container 24
+      box('threads', 12, 0, 12, 12),
+    ]
+    const out = snapResizedItem(layout, 'radar', { threshold: 1 })
+    expect(out.find(l => l.i === 'radar')?.h).toBe(GRID_ROWS)
+  })
+
+  it('fills a small dead gap up to the next obstacle', () => {
+    // one dead column between radar and threads (right edge 9, obstacle at 10)
+    const layout = [
+      box('radar', 0, 0, 9, 12),
+      box('threads', 10, 0, 14, 12),
+    ]
+    const out = snapResizedItem(layout, 'radar', { threshold: 1 })
+    expect(out.find(l => l.i === 'radar')?.w).toBe(10)
+  })
+
+  it('does not snap beyond the threshold', () => {
+    // gap of 2 with threshold 1 → untouched
+    const layout = [
+      box('radar', 0, 0, 8, 12),
+      box('threads', 10, 0, 14, 12),
+    ]
+    const out = snapResizedItem(layout, 'radar', { threshold: 1 })
+    expect(out).toEqual(layout)
+  })
+
+  it('never creates an overlap: a candidate edge behind an obstacle is rejected', () => {
+    // stream's left edge (10) is within threshold of radar's right edge (9),
+    // but expanding radar to 10 would overlap threads (x 9..15, y 0..6).
+    const layout = [
+      box('radar', 0, 0, 9, 12),
+      box('threads', 9, 0, 6, 6),
+      box('stream', 10, 6, 5, 6),
+    ]
+    const out = snapResizedItem(layout, 'radar', { threshold: 1 })
+    expect(out).toEqual(layout)
+  })
+
+  it('respects minW: never shrink-snaps below the minimum width', () => {
+    // radar w=3=minW; a neighbor alignment line at x=2 (delta 1) may not shrink it to w=2
+    const layout = [
+      box('radar', 0, 0, 3, 12),
+      box('threads', 2, 12, 10, 8),
+    ]
+    const out = snapResizedItem(layout, 'radar', { threshold: 1 })
+    expect(out.find(l => l.i === 'radar')?.w).toBe(3)
+  })
+
+  it('is idempotent: snapping a snapped layout is a no-op', () => {
+    const layout = [
+      box('radar', 0, 0, 9, 11),
+      box('threads', 10, 0, 14, GRID_ROWS),
+      box('dock', 0, 12, 9, GRID_ROWS - 12),
+    ]
+    const once = snapResizedItem(layout, 'radar', { threshold: 1 })
+    const twice = snapResizedItem(once, 'radar', { threshold: 1 })
+    expect(twice).toEqual(once)
+  })
+
+  it('returns a copied layout unchanged when the item id is unknown', () => {
+    const layout = [box('radar', 0, 0, 9, 12)]
+    const out = snapResizedItem(layout, 'nope', { threshold: 1 })
+    expect(out).toEqual(layout)
+    expect(out).not.toBe(layout)
+  })
+
+  it('defaults threshold to 1 grid unit', () => {
+    const layout = [
+      box('radar', 14, 0, 9, 12),
+      box('threads', 0, 0, 12, 12),
+    ]
+    const out = snapResizedItem(layout, 'radar')
+    expect(out.find(l => l.i === 'radar')?.w).toBe(10)
   })
 })
 

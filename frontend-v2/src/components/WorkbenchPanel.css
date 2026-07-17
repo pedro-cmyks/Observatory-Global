@@ -185,6 +185,16 @@
   line-height: 1.5;
 }
 
+/* Constellation absence hint (council wish 21): under 2 topic pins the
+   constellation degrades to absence — one honest sentence says why. */
+.wb-constellation-hint {
+  font-size: 10px;
+  color: rgba(var(--color-neutral-rgb), 0.65);
+  padding: 6px 8px 8px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
 /* #227: pin evidence snapshot + per-pin note */
 .wb-pin-snapshot {
     margin-top: 6px;

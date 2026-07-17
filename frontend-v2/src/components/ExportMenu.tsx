@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Download, Link, FileText, Image, Table, Check } from '../lib/icons'
+import { Download, Link, FileText, Image, Table, Check, X } from '../lib/icons'
 import * as htmlToImage from 'html-to-image'
 import {
     buildThemeBriefingMarkdown,
@@ -25,7 +25,7 @@ interface DriftPoint {
 
 export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuProps) {
     const [open, setOpen] = useState(false)
-    const [copied, setCopied] = useState(false)
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
     const menuRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -38,11 +38,25 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    const handleCopyLink = () => {
-        navigator.clipboard.writeText(window.location.href)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-        setOpen(false)
+    // Fix round 2026-07-17 item 5: closing the menu on the same tick hid the
+    // "Copied!" swap — the click gave ZERO feedback. Same pattern DossierView
+    // uses: show "Copied ✓" in place for a beat, then close.
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href)
+        } catch {
+            // Round-2 item 4: a failed copy must SAY so — the silent return
+            // left the user believing the link was on the clipboard. Same
+            // in-place swap as "Copied ✓"; the menu STAYS OPEN for a retry.
+            setCopyStatus('failed')
+            setTimeout(() => setCopyStatus('idle'), 2500)
+            return
+        }
+        setCopyStatus('copied')
+        setTimeout(() => {
+            setCopyStatus('idle')
+            setOpen(false)
+        }, 1500)
     }
 
     const downloadFile = (filename: string, content: string, type: string) => {
@@ -137,8 +151,12 @@ export function ExportMenu({ themeName, data, insight, captureRef }: ExportMenuP
             {open && (
                 <div className="export-menu-dropdown">
                     <button className="export-menu-item" onClick={handleCopyLink}>
-                        {copied ? <Check size={14} color="#10b981" /> : <Link size={14} />}
-                        {copied ? 'Copied!' : 'Copy Shareable Link'}
+                        {copyStatus === 'copied' ? <Check size={14} color="#10b981" />
+                            : copyStatus === 'failed' ? <X size={14} color="#f87171" />
+                                : <Link size={14} />}
+                        {copyStatus === 'copied' ? 'Copied ✓'
+                            : copyStatus === 'failed' ? 'Copy failed'
+                                : 'Copy Shareable Link'}
                     </button>
                     <div className="export-menu-divider" />
                     <button className="export-menu-item" onClick={handleExportCSV}>

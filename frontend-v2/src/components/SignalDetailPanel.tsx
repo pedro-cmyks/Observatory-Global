@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { decodeEntities } from '../lib/decodeEntities'
 import { resolveCountryName } from '../lib/countryNames'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 import './SignalDetailPanel.css'
@@ -154,7 +155,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
 
                 <div className="sdp-body">
                     <div className="sdp-headline">
-                        {signal.headline || `Signal from ${signal.source}`}
+                        {signal.headline ? decodeEntities(signal.headline) : `Signal from ${signal.source}`}
                     </div>
 
                     {signal.snippet && (
@@ -234,7 +235,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                                 data-tip={tip}
                                                 onClick={() => { onThemeClick(t.thread_id); onClose(); }}
                                             >
-                                                {t.label}
+                                                {decodeEntities(t.label)}
                                                 <span className={`sdp-basis-badge sdp-basis-badge--${t.basis}`}>{badge}</span>
                                             </span>
                                         )
@@ -327,7 +328,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                         rel="noopener noreferrer"
                                         data-tip="Open original article"
                                     >
-                                        <span className="sdp-related-headline">{n.headline}</span>
+                                        <span className="sdp-related-headline">{decodeEntities(n.headline)}</span>
                                         <div className="sdp-related-meta">
                                             {n.country_code && (
                                                 <span className="sdp-related-country">{resolveCountryName(n.country_code, n.country_code)}</span>
@@ -354,7 +355,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     >
-                                        <span className="sdp-related-headline">{r.headline || `Signal from ${r.source}`}</span>
+                                        <span className="sdp-related-headline">{r.headline ? decodeEntities(r.headline) : `Signal from ${r.source}`}</span>
                                         <div className="sdp-related-meta">
                                             <span className="sdp-related-country">{r.country || 'GLO'}</span>
                                             <span className="sdp-related-source">{r.source}</span>

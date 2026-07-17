@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { prefetchBriefing } from '../lib/briefingPrefetch'
 import { resolveVoiceStats, VOICE_BASELINE_LABEL, type VoiceStats } from '../lib/voiceStats'
+import { formatSignalCount, formatCountriesCovering, resolveLiveStat, type CountriesCovering } from '../lib/landingStats'
+import { decodeEntities } from '../lib/attentionEclipse'
 import { useReaderTheme, ReaderThemeToggle, type ReaderTheme } from '../lib/readerTheme'
 import '../styles/readerTheme.css'
 import './Landing.css'
@@ -30,13 +32,11 @@ function RevealSection({ children, className = '', id, labelledBy }: { children:
     )
 }
 
-function formatSignalCount(n: number): string {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-    if (n >= 1_000) return `${Math.floor(n / 1_000)}k`
-    return String(n)
-}
+// formatSignalCount / formatCountriesCovering / resolveLiveStat live in
+// lib/landingStats.ts (council P1-12: TDD'd formatters so the templates can
+// never render "$ countries covering" or a silent em-dash again).
 
-interface Mover { id: string; label: string; trend: string; countries: number }
+interface Mover { id: string; label: string; trend: string; covering: CountriesCovering | null }
 
 const TREND_LABEL: Record<string, string> = {
     accelerating: 'accelerating',
@@ -232,6 +232,7 @@ export function Landing() {
     const navigate = useNavigate()
     const { theme, toggle } = useReaderTheme()
     const [liveSignals, setLiveSignals] = useState<string | null>(null)
+    const [liveFailed, setLiveFailed] = useState(false)
     const [liveStatus, setLiveStatus] = useState<'live' | 'degraded' | null>(null)
     const [movers, setMovers] = useState<Mover[] | null>(null)
     // L0 review item: these were hardcoded marketing numbers (126/31/0.71,
@@ -261,9 +262,10 @@ export function Landing() {
             .then(r => r.ok ? r.json() : null)
             .then(d => {
                 if (d?.total_signals) setLiveSignals(formatSignalCount(d.total_signals))
+                else setLiveFailed(true)
                 if (d?.status) setLiveStatus(d.status === 'healthy' ? 'live' : 'degraded')
             })
-            .catch(() => {})
+            .catch(() => setLiveFailed(true))
     }, [])
 
     useEffect(() => {
@@ -273,11 +275,17 @@ export function Landing() {
                 const list: unknown[] = d?.threads ?? d ?? []
                 const out: Mover[] = (Array.isArray(list) ? list : []).map((item) => {
                     const t = item as Record<string, unknown>
+                    const rawLabel = (t.label ?? t.title) as string
                     return {
                         id: (t.thread_id ?? t.id) as string,
-                        label: (t.label ?? t.title) as string,
+                        label: typeof rawLabel === 'string' ? decodeEntities(rawLabel) : rawLabel,
                         trend: (t.trend as string) ?? 'stable',
-                        countries: (t.country_count as number) ?? (Array.isArray(t.top_countries) ? (t.top_countries as unknown[]).length : 0),
+                        // formatter rejects garbage + marks the capped top-countries
+                        // list as a floor — the "5 countries covering ×3" fix.
+                        covering: formatCountriesCovering(
+                            t.country_count as number | null | undefined,
+                            Array.isArray(t.top_countries) ? (t.top_countries as unknown[]).length : 0,
+                        ),
                     }
                 }).filter(m => Boolean(m.id && m.label))
                 if (out.length) setMovers(out)
@@ -287,6 +295,7 @@ export function Landing() {
     }, [])
 
     const voiceStats = resolveVoiceStats(voice)
+    const signalsStat = resolveLiveStat(liveSignals, liveFailed)
     const openThread = (id: string) => navigate(`/app?theme=${encodeURIComponent(id)}&entry=landing`)
 
     return (
@@ -319,7 +328,10 @@ export function Landing() {
                             <button className="lp-btn lp-btn-ghost" onClick={() => navigate('/app')}>Open the console</button>
                         </div>
                         <div className="lp-ticker" aria-label="Live totals">
-                            <span className="lp-tk"><span className="lp-tv">{liveSignals ?? '—'}</span><span className="lp-tl">signals indexed</span></span>
+                            <span className="lp-tk">
+                                <span className="lp-tv">{signalsStat.display}</span>
+                                <span className="lp-tl">{signalsStat.state === 'live' ? 'signals indexed' : `signals indexed · ${signalsStat.note}`}</span>
+                            </span>
                             <span className="lp-tk">
                                 <span className="lp-tv">{voiceStats.countries}</span>
                                 <span className="lp-tl">countries of voice · attributable-origin base{voiceStats.isBaseline && <span className="lp-tbase"> ({VOICE_BASELINE_LABEL})</span>}</span>
@@ -354,8 +366,12 @@ export function Landing() {
                     <div className="lp-instrument" aria-label="Measured vitals">
                         <div className="lp-vital">
                             <div className="lp-vk">Signals</div>
-                            <div className="lp-vv">{liveSignals ?? '—'}</div>
-                            <div className="lp-vsub">indexed across the live store · ingesting every ~15 min</div>
+                            <div className="lp-vv">{signalsStat.display}</div>
+                            <div className="lp-vsub">
+                                {signalsStat.state === 'live'
+                                    ? 'indexed across the live store · ingesting every ~15 min'
+                                    : signalsStat.note}
+                            </div>
                         </div>
                         <div className="lp-vital">
                             <div className="lp-vk">Countries of voice</div>
@@ -390,7 +406,16 @@ export function Landing() {
                                 <button key={m.id} className="lp-tcard" onClick={() => openThread(m.id)}>
                                     <p className={`lp-tcat lp-trend--${m.trend}`}><i />{TREND_LABEL[m.trend] ?? m.trend}</p>
                                     <h3 className="lp-tlabel">{m.label}</h3>
-                                    <p className="lp-tmeta"><span><b>{m.countries}</b> {m.countries === 1 ? 'country' : 'countries'} covering</span></p>
+                                    {m.covering && (
+                                        <p className="lp-tmeta">
+                                            <span data-tip={m.covering.approx
+                                                ? 'A floor read from the thread\'s capped top-countries list — the true count is at least this many.'
+                                                : undefined}
+                                            >
+                                                <b>{m.covering.value}</b> {m.covering.noun} covering
+                                            </span>
+                                        </p>
+                                    )}
                                     <div className="lp-trec"><span className="lp-rq">Open the thread — who is covering it, and how <ArrowRight /></span></div>
                                 </button>
                             ))}

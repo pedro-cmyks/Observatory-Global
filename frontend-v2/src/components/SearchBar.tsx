@@ -5,6 +5,7 @@ import { useFocus } from '../contexts/FocusContext'
 import type { RegionFilter } from '../contexts/FocusContext'
 import { Search } from '../lib/icons'
 import { hasVisibleSearchResults } from '../lib/searchResults'
+import { decodeEntities } from '../lib/decodeEntities'
 import { Flag } from './Flag'
 import { classifyQuery } from '../lib/searchIntent'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
@@ -228,6 +229,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     // Power tools (build-thread / investigation) collapse behind a "more"
     // affordance so each query leads with ONE obvious action.
     const [showMore, setShowMore] = useState(false)
+    // Query-expansion variants are normalization internals ("usstrikesenergy…")
+    // — progressive disclosure (council wish 7): a human sentence by default,
+    // the variant chips one click away. Never deleted, just demoted.
+    const [showVariants, setShowVariants] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const { setFocus, setMapFlyCountry, setCountry, setTheme, setRegion } = useFocus()
     // Guards the close-vs-inflight-response race: pressing Enter (story) while
@@ -237,6 +242,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     const doSearch = useCallback(async (q: string) => {
         const seq = ++searchSeqRef.current
         setShowMore(false)
+        setShowVariants(false)
         if (q.length < 2) {
             setResults(null)
             setIsOpen(false)
@@ -528,19 +534,33 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
                     {expandedVariants.length > 0 && (
                         <div className="search-expansion-banner">
-                            Also searching:
-                            {expandedVariants.map(variant => (
+                            {!showVariants ? (
                                 <button
-                                    key={variant}
-                                    className="search-expansion-chip"
-                                    onClick={() => {
-                                        setQuery(variant)
-                                        doSearch(variant)
-                                    }}
+                                    type="button"
+                                    className="search-expansion-toggle"
+                                    data-tip={`Atlas also matched related phrasings of this query: ${expandedVariants.join(' · ')}`}
+                                    onClick={() => setShowVariants(true)}
                                 >
-                                    {variant}
+                                    Results include related phrasings ▾
                                 </button>
-                            ))}
+                            ) : (
+                                <>
+                                    Related phrasings:
+                                    {expandedVariants.map(variant => (
+                                        <button
+                                            key={variant}
+                                            className="search-expansion-chip"
+                                            data-tip="Search this phrasing instead"
+                                            onClick={() => {
+                                                setQuery(variant)
+                                                doSearch(variant)
+                                            }}
+                                        >
+                                            {variant}
+                                        </button>
+                                    ))}
+                                </>
+                            )}
                         </div>
                     )}
 
@@ -568,7 +588,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                             {results.live_threads.map(t => (
                                 <div key={t.id} className="search-item search-item--thread" onClick={() => handleLiveThreadClick(t)}>
                                     <span className="search-item-tag thread-tag">{t.is_umbrella ? 'EVENT' : 'THREAD'}</span>
-                                    <span className="search-item-name">{t.label}</span>
+                                    <span className="search-item-name">{decodeEntities(t.label)}</span>
                                     <span className="search-item-meta">
                                         {t.total_signals.toLocaleString()} signals
                                         {t.category ? ` · ${t.category}` : ''}
@@ -608,7 +628,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                             {results.public_attention.filter(item => isPublicAttentionRelevant(item.title)).map(item => (
                                 <div key={item.title} className="search-item search-item--attention" onClick={() => handlePublicAttentionClick(item)}>
                                     <span className="search-item-tag wiki-tag">WIKI</span>
-                                    <span className="search-item-name">{item.title.replace(/_/g, ' ')}</span>
+                                    <span className="search-item-name">{decodeEntities(item.title.replace(/_/g, ' '))}</span>
                                     <span className="search-item-meta">
                                         {item.country_count} countries · {item.views.toLocaleString()} views
                                     </span>
@@ -623,7 +643,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                             {results.signal_matches.map(s => (
                                 <div key={s.id} className="search-item search-item--signal" onClick={() => handleSignalMatchClick(s)}>
                                     <span className="search-item-tag country-tag">{s.country || 'GLO'}</span>
-                                    <span className="search-item-name">{s.headline || `Signal from ${s.source}`}</span>
+                                    <span className="search-item-name">{s.headline ? decodeEntities(s.headline) : `Signal from ${s.source}`}</span>
                                     <span className="search-item-meta">
                                         {s.source}
                                         {s.themes[0] ? ` · ${getThemeLabel(s.themes[0])}` : ''}

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
+import { getThemeLabel, getThemeIcon, resolveThreadLabel } from '../lib/themeLabels'
+import { decodeEntities } from '../lib/decodeEntities'
+import { CountQualifierChip } from '../lib/countQualifier'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { TranslatableHeadline } from './TranslatableHeadline'
@@ -452,12 +454,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         sig: { id?: number; timestamp: string; country: string; source: string; url: string; headline?: string | null; source_lang?: string | null; sentiment: number; persons: string[] },
         opts: { showSource?: boolean } = {},
     ) => {
-        const title = sig.headline || 'Untitled report'
+        // Evidence headlines can arrive HTML-entity-encoded — decode for display.
+        const title = sig.headline ? decodeEntities(sig.headline) : 'Untitled report'
         return (
             <div className="coverage-article">
                 <div className="coverage-article-headline">
                     {sig.id != null && sig.headline
-                        ? <TranslatableHeadline signalId={sig.id} original={sig.headline} sourceLang={sig.source_lang} />
+                        ? <TranslatableHeadline signalId={sig.id} original={title} sourceLang={sig.source_lang} />
                         : <span className="coverage-article-headline--nolink">{title}</span>}
                 </div>
                 <div className="coverage-article-meta">
@@ -492,7 +495,19 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
     const pinnedId = `theme-${theme}${originCountry ? '-' + originCountry : ''}`
     const pinned = isPinned(pinnedId)
-    const displayLabel = data?.label || (isQueryThread ? queryThreadText : getThemeLabel(theme))
+    // Never serve a placeholder title — ON THE LOADING PATH TOO (council P1-7:
+    // "Dynamic Topic 49 — 0 signals" flashed ~3s before resolve). Preference:
+    // resolved payload label → the label carried by the list row that opened
+    // this thread (threadContext) → resolveThreadLabel (which refuses to echo
+    // a raw dynamic-topic id back as a title). Labels can arrive HTML-entity-
+    // encoded — decode for display.
+    const displayLabel = decodeEntities(
+        data?.label
+        || threadContext?.label
+        || (isQueryThread ? queryThreadText : resolveThreadLabel(theme)))
+    // While the first fetch is in flight there is no honest count yet — print
+    // an ellipsis, never a false "0 signals" next to a skeleton.
+    const totalDisplay = loading && !data ? '…' : String(data?.total || 0)
     // total counts VERIFIED (gate-kept) evidence; with the below-gate
     // fallback (#214) the backend can return raw signals labeled unverified
     // even when total is 0 — only show the empty state when there is truly
@@ -582,7 +597,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 {data?.coverageTier === 'limited' && (
                                     <span className="coverage-badge coverage-badge--limited" data-tip="Limited matching signals for this query">LIMITED</span>
                                 )}
-                                {' '}Built from your search · {data?.total || 0} matching signals
+                                {' '}Built from your search · {totalDisplay} matching signals
                             </p>
                         )}
                         {drillCountry ? (
@@ -593,7 +608,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 >
                                     ← Global
                                 </button>
-                                {' · '}<Flag code={drillCountry} title={drillCountryName} /> {drillCountryName} · {data?.total || 0} signals
+                                {' · '}<Flag code={drillCountry} title={drillCountryName} /> {drillCountryName} · {totalDisplay} signals
                             </p>
                         ) : (
                             <p className="theme-detail-meta">
@@ -606,7 +621,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         Global · {data.rawTotal.toLocaleString()} raw · {(data.signals?.length ?? 0).toLocaleString()} sourced · {(data.total || 0).toLocaleString()} verified · Last {hours}h
                                     </span>
                                 ) : (
-                                    <>Global · {data?.total || 0} signals · Last {hours}h</>
+                                    <>Global · {totalDisplay} signals · Last {hours}h</>
                                 )}
                                 {data?.firstSeen && (
                                     <span className="origin-country-hint" data-tip="Topic lifetime — when this story identity first appeared (not the current window)">
@@ -782,7 +797,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             <div className="theme-stat" data-tip={data.rawTotal && data.rawTotal !== data.total
                                 ? `${data.total} precise signals kept by the relevance gate, of ${data.rawTotal} assigned to this thread. The Narrative Threads list shows the assigned count.`
                                 : "Total media signals (articles, posts) mentioning this topic in the selected time window"}>
-                                <span className="theme-stat-value">{data.total}</span>
+                                <span className="theme-stat-value">
+                                    {data.total}
+                                    <CountQualifierChip
+                                        count={data.total}
+                                        windowLabel={`${hours}h`}
+                                        base={data.rawTotal && data.rawTotal !== data.total ? 'verified' : 'raw'}
+                                    />
+                                </span>
                                 <span className="theme-stat-label">Signals</span>
                                 {data.rawTotal && data.rawTotal !== data.total ? (
                                     <span className="theme-stat-subnote">of {data.rawTotal.toLocaleString()} assigned</span>
@@ -830,7 +852,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         {attentionSearchData.signal_matches.slice(0, 3).map(signal => (
                                             <div key={signal.id} className="public-attention-evidence-row">
                                                 <span>{signal.country || 'GLO'} · {signal.source}</span>
-                                                <p>{signal.headline || 'Untitled signal'}</p>
+                                                <p>{signal.headline ? decodeEntities(signal.headline) : 'Untitled signal'}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -870,7 +892,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         >
                                             <span className="member-story-label">
                                                 {story.crisis_relevant ? <span className="member-story-crisis">●</span> : null}
-                                                {story.label}
+                                                {decodeEntities(story.label)}
                                             </span>
                                             <span className="member-story-meta">{story.n} sig</span>
                                         </button>
@@ -959,7 +981,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                 <span className="thread-forum-sim" data-tip="Semantic similarity to this thread">{Math.round(item.similarity * 100)}%</span>
                                             </span>
                                             <span className="thread-forum-headline">
-                                                <TranslatableHeadline signalId={item.signal_id} original={item.headline} sourceLang={item.source_lang} />
+                                                <TranslatableHeadline signalId={item.signal_id} original={decodeEntities(item.headline)} sourceLang={item.source_lang} />
                                             </span>
                                         </a>
                                     ))}
@@ -1089,8 +1111,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                                 {peek.length > 0 ? peek.map((sig, j) => (
                                                                     <a key={j} href={sig.url} target="_blank" rel="noopener noreferrer" className="framing-peek-row">
                                                                         {typeof sig.id === 'number'
-                                                                            ? <TranslatableHeadline signalId={sig.id} original={sig.headline!} sourceLang={sig.source_lang} />
-                                                                            : sig.headline}
+                                                                            ? <TranslatableHeadline signalId={sig.id} original={decodeEntities(sig.headline!)} sourceLang={sig.source_lang} />
+                                                                            : decodeEntities(sig.headline!)}
                                                                     </a>
                                                                 )) : (
                                                                     <p className="framing-peek-empty">
@@ -1289,7 +1311,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 {discussion.items.slice(0, 10).map((it, i) => (
                                     <div key={i} className="community-discussion-item">
                                         <span className="cd-platform">{it.platform?.replace(/^lemmy\//, '')}{it.origin ? ` · ${it.origin}` : ''}</span>
-                                        <a href={it.url} target="_blank" rel="noopener noreferrer">{it.headline}</a>
+                                        <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.headline)}</a>
                                     </div>
                                 ))}
                             </div>
@@ -1352,8 +1374,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                             {tier === 'hot' ? '● live' : 'archive'}
                                                         </span>
                                                         {tier === 'hot'
-                                                            ? <a href={it.url as string} target="_blank" rel="noopener noreferrer">{it.headline as string}</a>
-                                                            : <span className="dh-cluster">{it.cluster_label as string}{heads.length ? ` — ${heads.slice(0,2).join(' · ')}` : ''}</span>}
+                                                            ? <a href={it.url as string} target="_blank" rel="noopener noreferrer">{decodeEntities(it.headline as string)}</a>
+                                                            : <span className="dh-cluster">{decodeEntities(it.cluster_label as string)}{heads.length ? ` — ${heads.slice(0, 2).map(h => decodeEntities(h)).join(' · ')}` : ''}</span>}
                                                     </div>
                                                 )
                                             })}
@@ -1394,7 +1416,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         </p>
                                         {(externalDepth.items ?? []).slice(0, 12).map((it, i) => (
                                             <div key={i} className="external-depth-item">
-                                                <a href={it.url} target="_blank" rel="noopener noreferrer">{it.title}</a>
+                                                <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.title)}</a>
                                                 <span className="external-depth-meta">
                                                     {it.domain}{it.language ? ` · ${it.language}` : ''}
                                                     {it.credibility && !['unknown', 'mainstream'].includes(it.credibility.label) && (

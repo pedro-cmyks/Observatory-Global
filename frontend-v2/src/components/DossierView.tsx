@@ -13,6 +13,7 @@ import {
 } from '../lib/dossierCorroboration'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
+import { humanizeReadinessValue } from '../lib/humanizeInternals'
 import { renameInvestigation, type Investigation } from '../lib/workbench'
 import {
     buildInvestigationPublication,
@@ -59,6 +60,8 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
         [investigation, now, enrichment],
     )
     const [copied, setCopied] = useState(false)
+    // Export feedback (council wish 12): downloads must confirm themselves too.
+    const [downloaded, setDownloaded] = useState(false)
     // Title is a presentation/label concern (the frozen pins never change). The
     // H1 leads with the analyst's explicit rename if any, else the synthesis
     // headline (a real thesis, not the worst-conflated first-pin), else the
@@ -249,6 +252,8 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
         a.download = `atlas-report-${effectiveTitle.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40)}.md`
         a.click()
         URL.revokeObjectURL(url)
+        setDownloaded(true)
+        setTimeout(() => setDownloaded(false), 1600)
     }
 
     return (
@@ -288,8 +293,8 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                             disabled={corrobRunning || dossier.pinCount === 0}
                             data-tip="Check every evidence-bearing pin against live web coverage — independent sources weighted. Metadata-only context is marked not applicable. DOC 2.0 permits one query every five seconds, so duration grows with the route."
                         >{corrobRunning ? 'Corroborating every evidence pin…' : corrob ? 'Re-corroborate' : 'Corroborate'}</button>
-                        <button className="dossier-btn" onClick={copy}>{copied ? 'Copied' : 'Copy MD'}</button>
-                        <button className="dossier-btn" onClick={download}>Download</button>
+                        <button className="dossier-btn" onClick={copy}>{copied ? 'Copied ✓' : 'Copy MD'}</button>
+                        <button className="dossier-btn" onClick={download}>{downloaded ? 'Downloaded ✓' : 'Download'}</button>
                         <button className="dossier-close" onClick={onClose} aria-label="Close">×</button>
                     </div>
                 </div>
@@ -376,7 +381,22 @@ export function DossierView({ investigation, onClose, autoCorroborate }: {
                                                     <span>{item.status}</span>
                                                 </div>
                                                 {item.values.length > 0 && (
-                                                    <div className="dossier-ready-values">{item.values.join(' · ')}</div>
+                                                    <div className="dossier-ready-values">
+                                                        {/* Jargon purge (wish 7): internals like `changed_10h=-38` or
+                                                            node hashes leak into these cells — render the human
+                                                            paraphrase, keep the verbatim internal in the hover. */}
+                                                        {item.values.map((v, i) => {
+                                                            const h = humanizeReadinessValue(v)
+                                                            return (
+                                                                <span key={i}>
+                                                                    {i > 0 && ' · '}
+                                                                    {h.internal
+                                                                        ? <span className="dossier-ready-internal" data-tip={`measured internal: ${h.raw}`}>{h.text}</span>
+                                                                        : h.text}
+                                                                </span>
+                                                            )
+                                                        })}
+                                                    </div>
                                                 )}
                                                 {item.reason_codes.length > 0 && (
                                                     <div className="dossier-ready-reasons">

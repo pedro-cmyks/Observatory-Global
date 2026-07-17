@@ -6,11 +6,12 @@ import './Flag.css';
 // the app's CSP (external CDNs are blocked). Use anywhere a flag sits next to a
 // country name: <Flag code="VE" />.
 
-// GDELT / FIPS country codes that differ from ISO-3166-1 alpha-2. Atlas stores
-// many codes in GDELT form, so remap before resolving the flag class.
-const GDELT_TO_ISO: Record<string, string> = {
-    CH: 'CN', RI: 'ID', RB: 'RS', KV: 'XK', CG: 'CD', CF: 'CG',
-    KS: 'KR', KN: 'KP', GZ: 'PS', UK: 'GB',
+// Legacy GDELT codes with NO ISO meaning → ISO (item-1 fix round 2026-07-17):
+// Atlas' code system is ISO end-to-end, so an assigned ISO code is NEVER
+// remapped (the old CH→CN entry rendered China's flag next to "Switzerland").
+// Only aliases that cannot collide with ISO stay.
+const LEGACY_TO_ISO: Record<string, string> = {
+    RI: 'ID', RB: 'RS', KV: 'XK', KS: 'KR', GZ: 'PS', UK: 'GB', EI: 'IE',
 };
 
 // ISO alpha-2 codes flag-icons ships an SVG for (from flags/4x3). Anything else
@@ -41,7 +42,11 @@ const SUPPORTED = new Set([
 export function resolveFlagCode(code: string | null | undefined): string | null {
     if (!code) return null;
     const upper = code.toUpperCase();
-    const iso = (GDELT_TO_ISO[upper] ?? code).toLowerCase();
+    // ISO-first: a code with a real flag IS that country (CH = Switzerland).
+    // Only codes with no ISO flag fall back to the legacy alias table.
+    const direct = upper.toLowerCase();
+    if (/^[a-z]{2}$/.test(direct) && SUPPORTED.has(direct)) return direct;
+    const iso = (LEGACY_TO_ISO[upper] ?? code).toLowerCase();
     if (!/^[a-z]{2}$/.test(iso)) return null;
     return SUPPORTED.has(iso) ? iso : null;
 }

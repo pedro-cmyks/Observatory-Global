@@ -9,20 +9,31 @@
 ## Phase 0 — Hygiene batch (days; pure surface; no new capability)
 The trust-per-line cheapest fixes. Every item is a council P0/P1 bug.
 
-- [ ] **HTML entities sweep** (`html.unescape`) — ≥5 surfaces: Under the Radar, search dropdown, archive receipts (Cyrillic hex soup), signal stream, gap cards. [P0-3]
-- [ ] **One sentiment scale** — strip −0.52 vs prose "−0.1" contradiction; clamp/fix "Gaza −10.3" outside the printed −10..+10. [P1-4]
-- [ ] **Count qualifiers everywhere a number prints** — "gated · in-window · lifetime" hover chip: kills 42/347/3,762 polysemy, header-vs-bottom totals, "1 COUNTRIES" vs "across 3". (Tomás's Reconciliation Desk deferred; chips = 80% of value.) [P1-5, wish 5]
-- [ ] **Placeholder-title flash regression** — "Dynamic Topic 49 — 0 signals" ~3s before resolve + raw "Dynamic Topic 21" from universe travel. Regression class of the shipped #204 never-serve-placeholder rule; extend it to the loading path. [P1-7]
-- [ ] **Landing template failures** — literal "$ countries covering", triplicated "5 countries", SIGNALS em-dash on fresh load. [P1-12]
-- [ ] **Jargon leaks purge** — #219 tooltip, `changed_10h` in WHY cells, "Also searching" debug chips, CAMEO codebook strings (progressive disclosure: human sentence default, measured internals on hover). [wish 7]
-- [ ] **Export/share feedback** — "Copied!" toast, download confirmation; sticky report action bar. [wish 12]
-- [ ] **Map click reliability** — country click dead at world zoom (5 attempts/3 personas); Cape Town card from a Brazil click; hover-highlight of polygons. [P1-8, wish 14]
-- [ ] **Universe reliability** — ERR_ABORTED intermittent + reset-view button. [P1-6, wish 19]
-- [ ] **Scrubber ergonomics** — bigger handle, unmissable NOW pill, keyboard stepping, layers badge "live — not replayed" where replay doesn't apply. [wish 13]
-- [ ] **Translate receipts by default in the Brief lead** (TranslatableHeadline exists, lead doesn't use it). [wish 6]
-- [ ] Constellation ≥2-pins empty-state hint; camera fly-to dominant coverage country (Mongolia bug). [wishes 21, 22]
+**STATUS: DONE 2026-07-17.** Three lanes + two fix rounds, each closed by a
+Ponepeross acceptance re-run: round 1 verdict "phase0 leaks" (5 repros + 3 new
+regressions incl. the China-click-opens-Switzerland ISO/FIPS collision the click
+fix made visible), round 2 verdict **"round2 clean"** (0 repros, 0 regressions).
+503 vitest green / build green at commit. Bonus finds along the way: Taiwan +
+Kosovo gained their real polygons (`featureIso` audit), `data-tip::before`
+phantom layout boxes were the console's 61px horizontal scroll, backend
+`/heat/countries` still serves legacy-FIPS residue rows (CH+CN, RQ/VQ) —
+frontend reads them safely via `countryCodeBoundary.ts`; upstream normalization
+= backend follow-up.
 
-**Acceptance:** a re-run of the Ponepeross persona finds zero P0-3/P1-4/P1-5/P1-7/P1-12 reproductions.
+- [x] **HTML entities sweep** (`decodeEntities.ts`) — Under the Radar, search dropdown, archive receipts, signal stream, gap cards. [P0-3]
+- [x] **One sentiment scale** (`sentimentScale.ts` + `reconcileSentimentProse.ts` — global-scoped: per-country figures never rewritten). [P1-4]
+- [x] **Count qualifiers** (`countQualifier.tsx` — bases gated/raw/frozen stated truthfully per surface; the 212-vs-408 row/detail pair now labeled honestly). [P1-5, wish 5]
+- [x] **Placeholder-title flash** — loading path under the #204 rule; focus chip stores the opener's real label (`focus.knownLabel`), generic never stored. [P1-7]
+- [x] **Landing template failures**. [P1-12]
+- [x] **Jargon purge** (`humanizeInternals.ts`, matches `Label: key=value` anywhere; verbatim internals on hover). [wish 7]
+- [x] **Export/share feedback** — Copied ✓ / Copy failed in place; menu stays open on failure. [wish 12]
+- [x] **Map click reliability** — ISO-first contract end-to-end (`countryCodeBoundary.ts`; CN≠CH, BN/BJ class frozen by hygiene test); tiny-island nearest-wins assist; polygon-less microstates get centroids (`microstates.ts`, 37 entries — Malta/Singapore clickable + fly-to works); MAP KEY collapsed by default. [P1-8, wish 14]
+- [x] **Universe reliability** — honest unavailable + RETRY state. [P1-6, wish 19]
+- [x] **Scrubber ergonomics**. [wish 13]
+- [x] **Translate receipts in the Brief lead**. [wish 6]
+- [x] Constellation ≥2-pins hint; camera fly-to dominant coverage country. [wishes 21, 22]
+
+**Acceptance: PASSED** — Ponepeross re-run round 2 = zero reproductions, zero new regressions.
 
 ## Phase 1 — Stop the front page lying (label trust; days–week)
 The council's Move 1 core. The confidence number exists (21% served as lead vs 96–100% on real stories) — use it.

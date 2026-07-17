@@ -5,6 +5,7 @@
 // never presented as exhaustive coverage).
 import { useEffect, useState } from 'react'
 import { resolveCountryName } from '../lib/countryNames'
+import { decodeEntities } from '../lib/decodeEntities'
 import { track } from '../lib/telemetry'
 import './DayEvidencePanel.css'
 
@@ -85,12 +86,14 @@ export function DayEvidencePanel({ day, country, onClose, onOpenLive }: {
             )}
 
             <ul className="day-evidence-list">
+                {/* Council P0-3: archive receipts arrived entity-encoded (the
+                    Cyrillic "hex soup") — decode for display, shared decoder. */}
                 {(data?.items ?? []).map((it, i) => (
                     <li key={i}>
                         {it.url
-                            ? <a href={it.url} target="_blank" rel="noopener noreferrer">{it.headline}</a>
-                            : <span>{it.headline}</span>}
-                        {it.source && <span className="day-evidence-src"> — {it.source}</span>}
+                            ? <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.headline)}</a>
+                            : <span>{decodeEntities(it.headline)}</span>}
+                        {it.source && <span className="day-evidence-src"> — {decodeEntities(it.source)}</span>}
                     </li>
                 ))}
             </ul>

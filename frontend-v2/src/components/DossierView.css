@@ -25,6 +25,16 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+    /* Sticky action bar (council wish 12): Copy/Download stay reachable while
+       reading a long report. Sticks to the overlay scroller; background +
+       negative margins cover the card padding so content never shows through. */
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    background: var(--color-bg-secondary);
+    margin: -20px -22px 0;
+    padding: 20px 22px 10px;
+    border-radius: 12px 12px 0 0;
 }
 .dossier-kicker {
     font-family: 'SF Mono', monospace;
@@ -150,6 +160,13 @@
     overflow-wrap: anywhere;
 }
 .dossier-ready-values { color: var(--color-text-secondary); }
+/* A paraphrased internal (changed_10h=… / node hash) — dotted underline says
+   "the verbatim measurement is one hover away". */
+.dossier-ready-internal {
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    cursor: help;
+}
 .dossier-ready-reasons { color: var(--color-text-muted); font-style: italic; }
 .dossier-ready-gap-list {
     margin: -8px 0 0;

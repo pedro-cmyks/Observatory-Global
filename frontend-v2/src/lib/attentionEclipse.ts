@@ -31,18 +31,9 @@ export function shouldShowEclipse(data: EclipseData | null | undefined): boolean
   return Boolean(data && data.eclipse && Array.isArray(data.selected) && data.selected.length > 0)
 }
 
-// Topic labels can arrive HTML-entity-encoded (e.g. '&#x936;…' for non-Latin
-// scripts). Decode for display via a textarea — RCDATA, so no script executes and
-// we only read back textContent-equivalent text. Also drops a trailing incomplete
-// entity ('…लगा&#') left by a mid-entity label truncation. Browser-only (guarded
-// for SSR/test envs with no document — returns the string unchanged).
-export function decodeEntities(s: string): string {
-  if (typeof document === 'undefined' || !s.includes('&')) return s
-  const trimmed = s.replace(/&#[0-9a-fx]*$/i, '')
-  const el = document.createElement('textarea')
-  el.innerHTML = trimmed
-  return el.value
-}
+// decodeEntities was promoted to its own module (src/lib/decodeEntities.ts)
+// so every surface shares ONE decoder; re-exported here for existing imports.
+export { decodeEntities } from './decodeEntities'
 
 export function eclipseDominantLine(data: EclipseData): string {
   const label = data.dominant?.label ?? 'one story'

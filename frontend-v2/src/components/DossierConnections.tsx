@@ -14,6 +14,9 @@ import {
 } from '../lib/dossierConnections'
 import { categoryColor, universeRadius } from '../lib/universeLayout'
 import { createEqualEarth } from '../lib/equalEarthProjection'
+// Item-1 fix round: assigned ISO codes (CH/CG/CF/KN…) are NEVER remapped —
+// the old CH→CN entry painted China for a Switzerland row. Legacy-only table.
+import { LEGACY_GDELT_TO_ISO } from '../lib/countryCodeBoundary'
 import { track } from '../lib/telemetry'
 import type { Investigation } from '../lib/workbench'
 import './DossierConnections.css'
@@ -44,11 +47,6 @@ function edgeTag(e: ConnectionEdge): string {
   return ''
 }
 
-// GDELT/FIPS → ISO_A2 (Natural Earth), to match the geojson used by the map.
-const GDELT_TO_ISO: Record<string, string> = {
-  CH: 'CN', RI: 'ID', RB: 'RS', KV: 'XK', CG: 'CD', CF: 'CG',
-  KS: 'KR', KN: 'KP', GZ: 'PS',
-}
 
 export function DossierConnections(
   { inv, onData }: {
@@ -643,7 +641,7 @@ function DossierMap({ data }: { data: ConnectionsData }) {
   const touched = useMemo(() => {
     const m = new Map<string, number>()
     for (const c of data.distributions?.countries ?? []) {
-      const iso = GDELT_TO_ISO[c.cc] ?? c.cc
+      const iso = LEGACY_GDELT_TO_ISO[c.cc] ?? c.cc
       m.set(iso, c.n)
     }
     return m

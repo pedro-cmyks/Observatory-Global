@@ -1,0 +1,13 @@
+/* Count-qualifier chip — the "window · base" suffix a number wears so it can
+   never be misread against another rendering of the same object. Muted by
+   design: the number leads, the qualifier explains. Theme vars only. */
+.count-qualifier {
+  margin-left: 4px;
+  font-size: 9px;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, rgba(var(--color-neutral-rgb, 148, 163, 184), 0.85));
+  opacity: 0.8;
+  white-space: nowrap;
+  cursor: default;
+}

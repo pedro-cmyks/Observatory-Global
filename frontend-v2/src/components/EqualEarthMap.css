@@ -64,8 +64,13 @@
     vector-effect: non-scaling-stroke;
 }
 
+/* Council P1-8 / wish 14: clickability must be VISIBLE — hovering a country
+   brightens its fill AND draws a clear stroke, so the click affordance reads
+   even at world zoom (theme-var accent; adapts per theme, no hardcoded hue). */
 .equal-earth-country:hover {
     fill: rgba(var(--color-accent-bright-rgb), 0.18);
+    stroke: rgba(var(--color-accent-bright-rgb), 0.95);
+    stroke-width: 1.3;
 }
 
 /* hover tooltip — Mercator parity (country name on hover) */
@@ -125,4 +130,40 @@
    a deliberate card inside the light panel, not an unthemed leftover. */
 [data-theme='emerald-light'] .equal-earth-map {
     box-shadow: inset 0 0 0 1px rgba(20, 32, 27, 0.18);
+}
+
+/* ── Scrubber ergonomics (council wish 13) ──────────────────────────────────
+   The time scrubber renders over the map panel; these override the App.css
+   base styles (lane-B map surface). Mis-clicks jumped users to May 12/21:
+   the drag hit area grows to ≥24px, the thumb becomes a real handle, and the
+   NOW pill flips into a loud return-to-live action while scrubbed. */
+.globe-scrubber-track {
+    height: 24px;   /* was 14px — the whole track is the drag surface */
+    width: 220px;
+}
+.globe-scrubber-thumb {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(var(--color-neutral-rgb), 0.9);
+    box-sizing: border-box;
+}
+.globe-scrubber-now {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
+}
+/* Scrubbed state: the way back to live must be unmissable. */
+.globe-scrubber-now--return {
+    background: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    color: rgba(var(--color-shell-rgb), 1);
+}
+.globe-scrubber-livebadge {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: rgba(var(--color-neutral-rgb), 0.65);
+    border: 1px dashed rgba(var(--color-neutral-rgb), 0.35);
+    border-radius: 3px;
+    padding: 1px 6px;
+    white-space: nowrap;
 }

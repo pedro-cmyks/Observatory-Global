@@ -678,6 +678,33 @@
 
 .brief-standfirst-box p { margin: 0; }
 
+/* Council P1-4: the measured-sentiment chip anchors generated prose to the
+   SAME ±1 number the instrument strip prints — one scale per page. */
+.brief-measured-chip {
+  font-family: var(--r-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--r-ink-soft);
+  background: color-mix(in srgb, var(--r-sec) 10%, var(--r-surface));
+  border: 1px solid color-mix(in srgb, var(--r-sec) 26%, var(--r-line));
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin-left: 8px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Fix round item 3: a sentiment figure inside generated prose that was
+   REPLACED with the measured value — dotted underline signals the correction;
+   the data-tip carries the original claim. */
+.brief-corrected-figure {
+  font-family: var(--r-mono);
+  font-size: 0.85em;
+  border-bottom: 1px dotted var(--r-ink-soft);
+  cursor: help;
+}
+
 .brief-standfirst {
   font-family: var(--r-serif);
   font-size: 0.95rem;

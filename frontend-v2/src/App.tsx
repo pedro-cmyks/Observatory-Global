@@ -277,6 +277,9 @@ function AppContent() {
     originCountryName?: string,
     originAttention?: PublicAttentionOrigin,
     thread?: { thread_id: string, label: string },
+    /** Item 8: the opener's human label (universe node / threads row) — used
+     *  until the detail fetch fills `thread.label`; never a stored generic. */
+    labelHint?: string,
   }
   const [selectedTheme, setSelectedTheme] = useState<SelectedTheme | null>(null)
   const [selectedThread, setSelectedThread] = useState<LivingThreadSelection | null>(null)
@@ -662,7 +665,7 @@ function AppContent() {
   }
 
   // Theme selection handlers
-  const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string, originAttention?: PublicAttentionOrigin) => {
+  const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string, originAttention?: PublicAttentionOrigin, labelHint?: string) => {
     // T5.1: a thread open is a value moment (the analyst reached real narrative).
     track('thread_open')
     trackOnce('first_value_moment', { kind: 'thread' })
@@ -671,11 +674,19 @@ function AppContent() {
     setSelectedThread(null)
     // Custom query threads are synthetic — they must not pollute FocusContext
     // (which would fire focus-data fetches against a non-existent theme code).
-    if (!theme.startsWith('query-thread::')) setTheme(theme)
-    const nextTheme = { theme, originCountry: countryCode, originCountryName: countryName, originAttention }
+    // Item 8: when the opener knows the real thread label (universe node,
+    // threads row), it travels INTO the focus context — the chip must never
+    // fall back to the generic "Narrative Thread" skeleton for a named open.
+    if (!theme.startsWith('query-thread::')) setTheme(theme, null, labelHint ?? null)
+    const nextTheme = { theme, originCountry: countryCode, originCountryName: countryName, originAttention, labelHint }
     setSelectedTheme(prev => {
       if (prev && prev.theme !== theme) {
         setThemeBackStack(stack => [prev, ...stack].slice(0, 5))
+      }
+      // Item 8: a re-open of the SAME theme without a label (URL-sync deep-link
+      // re-fire) must not clobber the opener's label or the loaded thread meta.
+      if (prev && prev.theme === theme) {
+        return { ...nextTheme, labelHint: labelHint ?? prev.labelHint, thread: prev.thread }
       }
       return nextTheme
     })
@@ -783,6 +794,10 @@ function AppContent() {
   const onScrubPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     trackOnce('scrubber_used', { surface: 'globe' })
     ensureReplayData()
+    // Keyboard stepping (council wish 13): Safari/Firefox do NOT focus a
+    // tabIndex div on click — without this, ArrowLeft/Right silently did
+    // nothing after any pointer interaction with the track.
+    e.currentTarget.focus()
     // Capture must never abort the scrub (it throws for exotic/synthetic
     // pointers) — without it the drag still works while the pointer stays
     // over the track.
@@ -916,7 +931,9 @@ function AppContent() {
     const filterCountry = filter.country || undefined
     if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme || selectedTheme.originCountry !== filterCountry)) {
       const countryName = filter.country ? resolveCountryName(filter.country) : undefined
-      setSelectedTheme({ theme: filter.theme, originCountry: filterCountry, originCountryName: countryName })
+      // Item 8: carry the focus context's known label so a focus-driven open
+      // keeps the opener's real thread name.
+      setSelectedTheme({ theme: filter.theme, originCountry: filterCountry, originCountryName: countryName, labelHint: filter.themeLabel ?? undefined })
       setRightPanelThemeCountry(null)
     }
   }, [filter.theme, filter.country, selectedTheme])
@@ -1680,9 +1697,13 @@ function AppContent() {
                    lib/scrubberScale when its history deepens. */
                 <div className="globe-scrubber" data-tip={`The scrubber is time — the whole replayable history in one bar. Recent days are wide on the right; the deep past compresses left (log scale). Hold SHIFT while dragging for fine control. Country intensity replays that day's signal VOLUME (the composite heat has no history); scrubber reaches back ${scrubMaxDays} days to the archive. NOW restores live heat.`}>
                   <button
-                    className={`globe-scrubber-now ${replayDay ? '' : 'active'}`}
+                    /* Unmissable NOW pill (council wish 13): quiet state chip at
+                       the live edge; while scrubbed it becomes the loud
+                       return-to-live action. */
+                    className={`globe-scrubber-now ${replayDay ? 'globe-scrubber-now--return' : 'active'}`}
                     onClick={() => { scrubPosRef.current = 1; setReplayDay(null) }}
-                  >NOW</button>
+                    data-tip={replayDay ? 'Return to the live picture' : 'You are at the live edge'}
+                  >{replayDay ? '◀ NOW' : '● NOW'}</button>
                   <div
                     className="globe-scrubber-track"
                     role="slider"
@@ -1715,6 +1736,26 @@ function AppContent() {
                         } · volume replay`
                       : 'NOW · live heat'}
                   </span>
+                  {/* Council wish 13: layers with no history (events / ships /
+                      hazards) keep showing TODAY while the heat replays the
+                      past — say so instead of letting Jul-17 events pose as
+                      May-12 events. */}
+                  {replayDay && (() => {
+                    const liveOnly = [
+                      (acledConflicts?.length ?? 0) > 0 ? 'events' : null,
+                      disasterEvents.length > 0 ? 'hazards' : null,
+                      showVessels ? 'ships' : null,
+                      showAircraft ? 'aircraft' : null,
+                    ].filter(Boolean)
+                    return liveOnly.length > 0 ? (
+                      <span
+                        className="globe-scrubber-livebadge"
+                        data-tip="These marker layers have no replayable history — they always show the live picture, even while the heat replays a past day."
+                      >
+                        {liveOnly.join(' · ')}: live — not replayed
+                      </span>
+                    ) : null
+                  })()}
                 </div>
               )}
             </MapErrorBoundary>
@@ -1735,7 +1776,7 @@ function AppContent() {
               showTerminator={showTerminator}
               activeCountry={filter.country}
               activeTheme={filter.theme}
-              activeThemeLabel={selectedTheme?.thread?.label ?? selectedThread?.label ?? null}
+              activeThemeLabel={selectedTheme?.thread?.label ?? selectedTheme?.labelHint ?? filter.themeLabel ?? selectedThread?.label ?? null}
               vesselCount={vesselData.length}
               vesselConnected={vesselConnected}
               aircraftError={aircraftError}
@@ -1749,7 +1790,7 @@ function AppContent() {
             {universeOpen && (
               <div className="universe-panel">
                 <UniverseView
-                  onThemeSelect={(themeId) => handleThemeSelect(themeId)}
+                  onThemeSelect={(themeId, label) => handleThemeSelect(themeId, undefined, undefined, undefined, label)}
                   activeTheme={selectedTheme?.theme ?? null}
                   activeThemeLabel={selectedTheme ? (selectedTheme.thread?.label ?? getThemeLabel(selectedTheme.theme)) : undefined}
                   hours={DAY_WINDOW_HOURS} /* universe field = live day (ambient) */
@@ -2081,7 +2122,7 @@ function AppContent() {
                 <AnomalyPanel
                   onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
                   onPublicAttentionSelect={handlePublicAttentionSelect}
-                  activeThemeLabel={selectedTheme?.thread?.label ?? selectedThread?.label ?? null}
+                  activeThemeLabel={selectedTheme?.thread?.label ?? selectedTheme?.labelHint ?? filter.themeLabel ?? selectedThread?.label ?? null}
                 />
               </PanelErrorBoundary>
             )}

@@ -17,6 +17,8 @@ import {
 } from '../lib/workbench';
 import { DossierView } from './DossierView';
 import WorkbenchConstellation from './WorkbenchConstellation';
+import { connectionTopicIds } from '../lib/dossierConnections';
+import { countQualifier } from '../lib/countQualifier';
 import './WorkbenchPanel.css';
 
 // Notes must never clip mid-sentence (the truncation complaint): size the
@@ -42,6 +44,8 @@ export default function WorkbenchPanel({
   const [, setTick] = useState(0);
   const [newTitle, setNewTitle] = useState('');
   const [showDossier, setShowDossier] = useState(false);
+  // Export feedback (council wish 12): the action must confirm itself.
+  const [exported, setExported] = useState(false);
   // P0.6b: CORROBORATE opens the report AND fires the web-corroboration run.
   const [autoCorroborate, setAutoCorroborate] = useState(false);
   void refreshToken;
@@ -72,6 +76,8 @@ export default function WorkbenchPanel({
     a.download = `atlas-investigation-${active.id}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setExported(true);
+    window.setTimeout(() => setExported(false), 1600);
   }
 
   function handleOpenPin(pin: Investigation['pins'][number]) {
@@ -139,7 +145,7 @@ export default function WorkbenchPanel({
               <div className="wb-actions">
                 <button className="wb-action wb-action--report" onClick={() => { setAutoCorroborate(false); setShowDossier(true); }} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
                 <button className="wb-action wb-action--corroborate" onClick={() => { setAutoCorroborate(true); setShowDossier(true); }} data-tip="Check every evidence-bearing pin against live web coverage; metadata-only context is marked not applicable. Duration grows with the route." disabled={active.pins.length === 0}>CORROBORATE</button>
-                <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">EXPORT</button>
+                <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">{exported ? 'DOWNLOADED ✓' : 'EXPORT'}</button>
                 <button
                   className="wb-action wb-action--danger"
                   data-tip="Delete this investigation"
@@ -154,8 +160,15 @@ export default function WorkbenchPanel({
             </div>
 
             {/* Incremental constellation seed: the universe builds as you pin
-                (absent under 2 thread pins — nothing to connect). */}
+                (absent under 2 thread pins — nothing to connect). The absence
+                gets one honest sentence instead of silent nothing (council
+                wish 21). */}
             <WorkbenchConstellation inv={active} />
+            {connectionTopicIds(active).length < 2 && (
+              <div className="wb-constellation-hint" data-tip="The constellation measures semantic proximity, shared countries and shared actors between pinned topic threads — it needs at least two to have anything to connect.">
+                Pin 2+ topic threads to see their measured connections.
+              </div>
+            )}
 
             <div className="wb-section-title">PINNED ROUTE ({active.pins.length})</div>
             <div className="wb-pins">
@@ -190,9 +203,17 @@ export default function WorkbenchPanel({
                           ))}
                         </ul>
                       )}
-                      <div className="wb-snap-frozen" data-tip="This is frozen at pin time — the live data may have drifted since.">
-                        frozen {new Date(pin.snapshot.capturedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </div>
+                      {(() => {
+                        // Count-qualifier contract: snapshot numbers are FROZEN —
+                        // say so with the shared base explanation, not just a date.
+                        const frozenDay = new Date(pin.snapshot.capturedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                        const q = countQualifier(pin.snapshot.evidence?.length ?? 0, frozenDay, 'frozen');
+                        return (
+                          <div className="wb-snap-frozen" data-tip={`${q.tip} The live data may have drifted since.`}>
+                            frozen {frozenDay} · counts as pinned
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                   {/* #227: per-pin analyst note (saved on blur) */}
