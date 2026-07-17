@@ -182,6 +182,7 @@ async def main() -> None:
               f"whiten_k={args.whiten_k}", file=sys.stderr)
 
         total_written = total_clusters = done = failed = 0
+        failed_ccs: list[str] = []
         prepared_rows = []
         dump_countries: list[dict] = []
         base = 0
@@ -219,6 +220,7 @@ async def main() -> None:
                         await asyncio.sleep(5 * attempt)
             if last_ex is not None:
                 failed += 1
+                failed_ccs.append(cc)
                 print(f"  [{done}/{len(ccs)}] {cc}: FETCH/CLUSTER failed after "
                       f"{_COUNTRY_ATTEMPTS} attempts ({last_ex})",
                       file=sys.stderr, flush=True)
@@ -297,10 +299,22 @@ async def main() -> None:
                   file=sys.stderr, flush=True)
 
         if failed:
-            raise RuntimeError(
-                f"incomplete country pass: {failed}/{len(ccs)} countries failed; "
-                "staged snapshot discarded before database commit"
-            )
+            # One persistently-failing country must not freeze the whole
+            # substrate (2026-07-13→16: a single dropped connection discarded
+            # three consecutive nightly snapshots and the served threads went
+            # stale for days). Budget: a handful of gaps commit WITH a loud
+            # ledger — the missing countries' topics age one lifecycle tick and
+            # resurrect on the next pass. Widespread failure still discards.
+            budget = max(2, len(ccs) // 50)
+            if failed > budget:
+                raise RuntimeError(
+                    f"incomplete country pass: {failed}/{len(ccs)} countries failed "
+                    f"(budget {budget}); staged snapshot discarded before database commit"
+                )
+            print(f"  SNAPSHOT COMMITTED WITH GAPS: {failed}/{len(ccs)} countries "
+                  f"missing{' (' + ', '.join(failed_ccs) + ')' if failed_ccs else ''} "
+                  f"— within budget {budget}; their topics age one cycle and "
+                  f"resurrect next pass", file=sys.stderr, flush=True)
         if not args.dry_run and prepared_rows:
             if conn.is_closed():
                 conn = await asyncpg.connect(db)
