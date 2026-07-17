@@ -1076,6 +1076,8 @@ SELECT
     dt.category,            -- R3.1 open category (crisis seed OR emergent) = the badge
     dt.crisis_class,        -- (legacy) seed-32 class or 'non_crisis'
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
+    dt.label_status,        -- Label Court verdict (entailed/partial/failed, NULL=unchecked)
+    dt.label_proposed,      -- receipt-derived neutral label on 'failed' (never auto-served)
     COALESCE((
         -- current volume = kept-signal count at the topic's LATEST snapshot. SUM
         -- (not LIMIT 1) so an R2 umbrella (N child clusters at one snapshot) reflects
@@ -1191,6 +1193,8 @@ SELECT
     dt.category,            -- R3.1 open category (crisis seed OR emergent) = the badge
     dt.crisis_class,        -- (legacy) seed-32 class or 'non_crisis'
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
+    dt.label_status,        -- Label Court verdict (entailed/partial/failed, NULL=unchecked)
+    dt.label_proposed,      -- receipt-derived neutral label on 'failed' (never auto-served)
     COALESCE((
         -- movement = velocity at the topic's LATEST snapshot only. The old
         -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
@@ -1419,6 +1423,12 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],
         "narrative_note": None,
         "cluster_cohesion": float(cohesion) if cohesion is not None else None,
+        # Label Court (#204/#224): the verdict on this thread's own label vs its
+        # receipts. NULL until the nightly court runs; the surface falls back to
+        # the confidence band when unchecked. `label_proposed` is the neutral
+        # receipt-derived alternative on 'failed' (advisory, never auto-served).
+        "label_status": _record_get(topic_row, "label_status"),
+        "label_proposed": _record_get(topic_row, "label_proposed"),
         "source": "dynamic_topics",
     })
 
