@@ -18,6 +18,10 @@ import { removePin, renameInvestigation, type Investigation } from '../lib/workb
 import { deriveVerdictChips, type NodeStateRef, type VerdictChipDescriptor } from '../lib/verdictChips'
 import { VerdictChip } from './VerdictChip'
 import { buildClaimTable, claimTableMarkdown } from '../lib/claimLedger'
+import { sourceMix, formatSourceMix } from '../lib/sourceTiers'
+import {
+    validateProse, joinValidatedText, corroborationBackedFrom, type MeasuredContext,
+} from '../lib/proseValidator'
 import {
     buildInvestigationPublication,
     buildPublicationReadinessMarkdown,
@@ -50,6 +54,28 @@ function renderWithCitations(text: string) {
     )
 }
 
+/** Council Phase 3 (Lane B) — generated synthesis prose is validated against the
+ *  MEASURED set (claim figures, coverage counts, corroboration verdict) BEFORE it
+ *  renders. An unbacked "confirmed"/"verified" is softened to "reported
+ *  (uncorroborated)" (Marcos' rule: never assert corroboration we didn't
+ *  measure); an unbacked figure keeps its text but wears a caveat marker. Backed
+ *  text still flows through the [n] citation renderer. */
+function renderValidatedProse(text: string, ctx: MeasuredContext) {
+    return validateProse(text, ctx).map((seg, i) => {
+        if (seg.kind === 'ok') return <span key={i}>{renderWithCitations(seg.text)}</span>
+        if (seg.kind === 'unbacked-confirmation') {
+            return (
+                <span key={i} className="dossier-prose-softened" data-tip={seg.note}>{seg.text}</span>
+            )
+        }
+        return (
+            <span key={i} className="dossier-prose-unbacked" data-tip={seg.note}>
+                {seg.text}<sup className="dossier-prose-caveat" aria-label="not backed by a measured value">⚠</sup>
+            </span>
+        )
+    })
+}
+
 /** Phase 3 report view — a structured dossier generated from the FROZEN
  *  Workbench pins (#227 snapshots), with a Markdown export. Dossier v2 (W3)
  *  adds who-says-what + voice sections MEASURED at generation time. */
@@ -70,6 +96,13 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
     const claimRows = useMemo(
         () => buildClaimTable(investigation.citations, investigation.claims),
         [investigation.citations, investigation.claims],
+    )
+    // Source mix (#217): coarse credibility rollup over the pinned receipts, so
+    // an analyst sees at a glance whether a story is wire-driven or single-
+    // local-sourced. "2 wire · 5 major · 11 local · 3 unknown".
+    const sourceMixText = useMemo(
+        () => formatSourceMix(sourceMix(investigation.citations.map(c => c.source))),
+        [investigation.citations],
     )
     const [copied, setCopied] = useState(false)
     // Export feedback (council wish 12): downloads must confirm themselves too.
@@ -201,6 +234,27 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoCorroborate])
 
+    // Council Phase 3 (Lane B) — the measured set the synthesis prose is checked
+    // against before it renders: every claim-ledger figure, the coverage counts
+    // (press/public, per-country, per-language), the corroboration counts, and
+    // whether ANY corroboration verdict is `established`. A prose figure with no
+    // measured backing wears a caveat; an unbacked "confirmed" is softened.
+    const measuredCtx = useMemo<MeasuredContext>(() => {
+        const figures: number[] = []
+        for (const r of claimRows) if (r.figure !== null) figures.push(r.figure)
+        const d = conn?.data.distributions
+        if (d) {
+            figures.push(d.roles.press ?? 0, d.roles.public ?? 0)
+            for (const c of d.countries ?? []) figures.push(c.n)
+            for (const l of d.languages ?? []) figures.push(l.n)
+            for (const s of d.sentimentByNode ?? []) figures.push(s.sentiment)
+        }
+        if (corrob) for (const p of corrob.pins) {
+            figures.push(p.independent_outlets, p.total_articles, p.syndicated_clusters)
+        }
+        return { figures, corroborationBacked: corroborationBackedFrom(corrob) }
+    }, [claimRows, conn, corrob])
+
     // W3: measured sections load after the frozen core renders; a fetch
     // failure leaves the report intact (sections simply absent).
     useEffect(() => {
@@ -237,6 +291,16 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
     // Effective title: explicit rename > synthesis headline > auto first-pin title.
     const effectiveTitle = customTitle ?? (synth?.headline || null) ?? investigation.title
 
+    // Run prose through the validator + soften unbacked confirmations ("confirmed"
+    // → "reported (uncorroborated)"). Applied to BOTH the on-screen title and the
+    // Markdown export so the deliverable (the file a journalist publishes) carries
+    // the same honesty gate as the screen — the auto-title "Confirmed: …" case + the
+    // raw synthesisMarkdown export path the panel gate flagged.
+    const validatedText = (s: string) => joinValidatedText(validateProse(s, measuredCtx))
+    // A rename the analyst typed themselves is their words, not generated prose —
+    // never rewrite it; only synthesis/auto titles pass through the gate.
+    const displayTitle = customTitle ? effectiveTitle : validatedText(effectiveTitle)
+
     const startRename = () => { setTitleDraft(effectiveTitle); setEditingTitle(true) }
     const commitRename = () => {
         const next = titleDraft.trim()
@@ -248,15 +312,24 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
     }
 
     const markdown = () => {
-        // Export/filename use the same chosen title the report leads with.
-        let base = dossierToMarkdown({ ...dossier, title: effectiveTitle })
+        // Export/filename use the same chosen title the report leads with — the
+        // title runs through the honesty gate too (auto/synthesis titles only).
+        let base = dossierToMarkdown({ ...dossier, title: displayTitle })
         // Synthesis leads the report (above the templated summary) so the export
-        // opens with the finding, not a pin count.
+        // opens with the finding, not a pin count. VALIDATED — the exported file
+        // must not assert an unbacked "confirmed" the on-screen view softens.
         if (synth && (synth.headline || synth.synthesis || isArticle(synth))) {
-            const sblock = synthesisMarkdown(synth).join('\n')
+            const sblock = validatedText(synthesisMarkdown(synth).join('\n'))
             const sMarker = '## Executive summary'
             const sAt = base.indexOf(sMarker)
             base = sAt === -1 ? `${sblock}\n${base}` : `${base.slice(0, sAt)}${sblock}\n${base.slice(sAt)}`
+        }
+        // Source mix (#217): the coarse credibility rollup travels with the export.
+        if (sourceMixText) {
+            const smBlock = `## Source mix\n\n${investigation.citations.length} pinned receipt${investigation.citations.length === 1 ? '' : 's'} · ${sourceMixText}\n`
+            const smMarker = '\n## Timeline'
+            const smAt = base.indexOf(smMarker)
+            base = smAt === -1 ? `${base}\n${smBlock}` : `${base.slice(0, smAt)}\n${smBlock}${base.slice(smAt)}`
         }
         // Claim ledger: the contested-figures table travels with the export.
         if (claimRows.length > 0) {
@@ -331,7 +404,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                                 onClick={startRename}
                                 title="Click to rename this report"
                             >
-                                {effectiveTitle}
+                                {displayTitle}
                                 <span className="dossier-title-edit" aria-hidden> ✎</span>
                             </h1>
                         )}
@@ -365,9 +438,9 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                                 {synth.headline && <p className="dossier-synth-headline">{synth.headline}</p>}
                                 {isArticle(synth) ? (
                                     <>
-                                        {synth.lede && <p className="dossier-synth-lede">{renderWithCitations(synth.lede)}</p>}
+                                        {synth.lede && <p className="dossier-synth-lede">{renderValidatedProse(synth.lede, measuredCtx)}</p>}
                                         {(synth.body ?? []).map((para, i) => (
-                                            <p key={i}>{renderWithCitations(para)}</p>
+                                            <p key={i}>{renderValidatedProse(para, measuredCtx)}</p>
                                         ))}
                                         {synth.unknowns && synth.unknowns.length > 0 && (
                                             <div className="dossier-synth-unknowns">
@@ -395,7 +468,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                                     </>
                                 ) : (
                                     <>
-                                        {synth.synthesis && <p>{synth.synthesis}</p>}
+                                        {synth.synthesis && <p>{renderValidatedProse(synth.synthesis, measuredCtx)}</p>}
                                         {synth.gap && <p className="dossier-synth-gap">Key gap: {synth.gap}</p>}
                                     </>
                                 )}
@@ -550,6 +623,15 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                         })
                     )}
                 </section>
+
+                {sourceMixText && (
+                    <section className="dossier-section dossier-source-mix">
+                        <h2>Source mix</h2>
+                        <p className="dossier-meta" data-tip="Coarse credibility tiers (#217) of the pinned receipts: wire = international agency, state = state broadcaster, major = established national press, local = registered/regional outlet, unknown = no signal (never guessed). Wire-driven vs single-local-sourced at a glance.">
+                            {investigation.citations.length} pinned receipt{investigation.citations.length === 1 ? '' : 's'} · {sourceMixText}
+                        </p>
+                    </section>
+                )}
 
                 {claimRows.length > 0 && (
                     <section className="dossier-section dossier-claims">

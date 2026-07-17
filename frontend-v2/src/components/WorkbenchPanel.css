@@ -343,6 +343,14 @@ a.wb-cit-headline:hover { text-decoration: underline; }
 .wb-cit-gate--below_gate { background: rgba(248, 113, 113, 0.14); color: #f87171; }
 .wb-cit-gate--unknown { background: rgba(148, 163, 184, 0.14); color: #94a3b8; }
 
+/* Coarse source-credibility tier (#217): wire | state | major | local | unknown */
+.wb-cit-tier { font-weight: 600; }
+.wb-cit-tier--wire { background: rgba(59, 130, 246, 0.16); color: #60a5fa; }
+.wb-cit-tier--state { background: rgba(245, 158, 11, 0.16); color: #f59e0b; }
+.wb-cit-tier--major { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+.wb-cit-tier--local { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+.wb-cit-tier--unknown { background: rgba(148, 163, 184, 0.10); color: #94a3b8; }
+
 /* ── Claim ledger: mark-relation affordance (Carolina's spec) ──────────────── */
 .wb-claim-mark {
   display: flex; flex-direction: column; gap: 6px;

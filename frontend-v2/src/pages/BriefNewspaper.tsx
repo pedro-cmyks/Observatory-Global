@@ -15,6 +15,7 @@ import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline } from '../components/TranslatableHeadline'
 import PinReceiptButton from '../components/PinReceiptButton'
 import type { CitationGateStatus } from '../lib/workbench'
+import { classifyOutlet, coarseTierLabel, TIER_TIP } from '../lib/sourceTiers'
 import { TranslatableText } from '../components/TranslatableText'
 import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -760,6 +761,14 @@ export function BriefNewspaper() {
         const meta = (
             <span className="brief-receipt-meta">
                 {ev.source && <span className="brief-receipt-src">{ev.source}</span>}
+                {ev.source && (() => {
+                    const t = classifyOutlet(ev.source).tier
+                    return (
+                        <span className={`brief-receipt-tier brief-receipt-tier--${t}`} data-tip={TIER_TIP[t]}>
+                            {coarseTierLabel(t)}
+                        </span>
+                    )
+                })()}
                 {ev.country_code && (
                     <span className="brief-receipt-cc" data-tip={coverageChipTip(resolveCountryName(ev.country_code, ev.country_code))}>
                         {ev.country_code}

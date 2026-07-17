@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
+import { classifyOutlet, coarseTierLabel, TIER_TIP } from '../lib/sourceTiers'
 import './Briefing.css'
 
 interface BriefingData {
@@ -248,9 +249,18 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                 <div className="briefing-section">
                     <h3>Top Sources</h3>
                     <div className="source-tags">
-                        {data.top_sources.map(s => (
-                            <span key={s.source} className="source-tag">{s.source} ({s.count})</span>
-                        ))}
+                        {data.top_sources.map(s => {
+                            const t = classifyOutlet(s.source).tier
+                            return (
+                                <span key={s.source} className="source-tag">
+                                    {s.source} ({s.count})
+                                    <span
+                                        className={`source-tier-chip source-tier-chip--${t}`}
+                                        data-tip={TIER_TIP[t]}
+                                    >{coarseTierLabel(t)}</span>
+                                </span>
+                            )
+                        })}
                     </div>
                 </div>
             </div>

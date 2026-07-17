@@ -20,6 +20,7 @@ client-supplied lane or a future stance pass may set it).
 """
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -165,3 +166,550 @@ def pin_status(
     return ("unverified",
             f"only {independent_outlets} independent outlet(s) — "
             "insufficient corroboration; treat as single-sourced")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CORROBORATION LANE (council Phase 3a) — query-time verdicts over TWO corpora.
+#
+# The P0.6b math above answers "how many independent outlets cover this pin?".
+# This lane answers a sharper question the council named the publish-blocker
+# (Marcos): "does an OFFICIAL/WIRE or full-history source CORROBORATE — or
+# CONTRADICT — the specific claim in this receipt?".
+#
+# Two unified corpora, both spanning MONTHS (not the 8-day hot window):
+#   basis=doc20         → GDELT DOC 2.0 query-time (free, no key, throttles)
+#   basis=atlas_hot     → signal_embeddings (semantic, last ~8 days)
+#   basis=atlas_archive → historical_evidence_samples (text, May-3 → present)
+#
+# HONESTY (Marcos's requirement): when DOC 2.0 throttles/errors, the response
+# says so explicitly via source_status and STILL serves the Atlas-corpus
+# matches labelled by basis — never silently returns fewer results as if the
+# answer were complete. Relation is MATH (figure comparison + term/semantic
+# overlap), never an LLM stance guess — stance beyond figure conflict stays
+# out of scope (same discipline as the reserved 'contested' status above).
+# ─────────────────────────────────────────────────────────────────────────────
+
+import asyncio as _asyncio
+import logging as _logging
+import urllib.parse as _urlparse
+
+_log = _logging.getLogger(__name__)
+
+Relation = str  # 'corroborates' | 'contradicts' | 'context'
+
+# Relation thresholds — glass-box, echoed in the payload meta.
+FIGURE_MATCH_TOLERANCE = 0.01   # |a-b|/max ≤ this = same figure = corroborates
+SAME_EVENT_TERM_RECALL = 0.40   # ≥ this share of claim terms present = same event
+CORROBORATE_TERM_RECALL = 0.50  # ≥ this (and no figure conflict) = corroborates
+SAME_EVENT_SIMILARITY = 0.86    # semantic sim ≥ this = same event (hot lane)
+
+# International wire agencies / official bodies — mirrors the frontend
+# claimLedger.ts OFFICIAL_SOURCE_TOKENS so backend + client agree on what
+# "official source present" means (the contested-figure caveat).
+_OFFICIAL_SOURCE_TOKENS = (
+    "reuters", "associated press", "afp", "agence france", "efe", "bloomberg",
+    "anadolu", "tass", "xinhua", "kyodo", "yonhap", "pa media",
+    "press association", "dpa", "pti", "ians", "ap news", "reliefweb",
+    "united nations", "u.n.", "who ", "world health", "government",
+)
+
+# Numbers that are almost never a death-toll / magnitude claim — years and
+# small counts that would create noisy figure "contradictions".
+_FIGURE_RE = re.compile(r"\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?")
+
+
+def extract_figure(text: str | None) -> float | None:
+    """First thousands-grouped or plain number → float, else None. Mirrors
+    claimLedger.ts extractFigure so a headline's toll parses identically on
+    both ends of the wire."""
+    if not text:
+        return None
+    m = _FIGURE_RE.search(text)
+    if not m:
+        return None
+    try:
+        return float(m.group(0).replace(",", ""))
+    except ValueError:
+        return None
+
+
+def is_official_source(source: str | None) -> bool:
+    """True when the source name reads as an international wire / official body.
+    Word-boundary for the two-letter agencies so 'AP' hits, 'Apple' doesn't."""
+    s = (source or "").strip().lower()
+    if not s:
+        return False
+    if re.search(r"\bap\b", s) or re.search(r"\bafp\b", s):
+        return True
+    return any(tok in s for tok in _OFFICIAL_SOURCE_TOKENS)
+
+
+def extract_claim_terms(
+    headline: str,
+    *,
+    country: str | None = None,
+) -> dict[str, Any]:
+    """Turn a claim headline into the search substrate: significant tokens +
+    a DOC 2.0 implicit-AND query (short — the parser is fragile, see
+    external_depth.build_query). Country is appended only when the query is
+    short enough to stay specific without over-constraining."""
+    toks = _tokens(headline)
+    # Preserve first-seen order but drop dups.
+    ordered = list(dict.fromkeys(toks))
+    query_toks = ordered[:5]
+    query = " ".join(query_toks)
+    if country and len(query_toks) < 4 and country.lower() not in query.lower():
+        query = f"{query} {country.lower()}".strip()
+    return {"terms": ordered, "query": query.strip()}
+
+
+def term_recall(claim_terms: list[str], candidate_text: str | None) -> float:
+    """Share of the claim's distinctive terms present in the candidate. 0..1.
+    Recall (not Jaccard) because a candidate headline may add many words; what
+    matters is whether it restates the claim's terms."""
+    if not claim_terms:
+        return 0.0
+    cand = set(_tokens(candidate_text or ""))
+    if not cand:
+        return 0.0
+    hit = sum(1 for t in set(claim_terms) if t in cand)
+    return hit / len(set(claim_terms))
+
+
+def figure_relation(claim_figure: float | None,
+                    candidate_figure: float | None) -> Relation | None:
+    """Figure-level relation, or None when a figure is missing on either side.
+    Within tolerance = corroborates; materially different = contradicts."""
+    if claim_figure is None or candidate_figure is None:
+        return None
+    hi = max(abs(claim_figure), abs(candidate_figure))
+    if hi == 0:
+        return "corroborates"
+    if abs(claim_figure - candidate_figure) / hi <= FIGURE_MATCH_TOLERANCE:
+        return "corroborates"
+    return "contradicts"
+
+
+def classify_relation(
+    claim_terms: list[str],
+    claim_figure: float | None,
+    candidate_headline: str | None,
+    *,
+    similarity: float | None = None,
+) -> Relation:
+    """MATH relation for one candidate against the claim. A candidate is the
+    SAME EVENT when it restates enough claim terms OR (hot lane) is semantically
+    close. Same-event + a conflicting figure = contradicts; same-event with a
+    matching or absent figure = corroborates; everything weaker = context
+    (related coverage, not a restatement). No stance model — honest by
+    construction."""
+    recall = term_recall(claim_terms, candidate_headline)
+    same_event = recall >= SAME_EVENT_TERM_RECALL or (
+        similarity is not None and similarity >= SAME_EVENT_SIMILARITY
+    )
+    cand_figure = extract_figure(candidate_headline)
+    fig_rel = figure_relation(claim_figure, cand_figure)
+    if same_event and fig_rel == "contradicts":
+        return "contradicts"
+    if fig_rel == "corroborates" and same_event:
+        return "corroborates"
+    if recall >= CORROBORATE_TERM_RECALL or (
+        similarity is not None and similarity >= SAME_EVENT_SIMILARITY
+    ):
+        return "corroborates"
+    return "context"
+
+
+def _domain(url: str | None) -> str:
+    return _urlparse.urlparse(url or "").netloc.removeprefix("www.")
+
+
+def normalize_match(
+    *,
+    basis: str,
+    source: str | None,
+    url: str | None,
+    country: str | None,
+    date: str | None,
+    snippet: str | None,
+    relation: Relation,
+    similarity: float | None = None,
+) -> dict[str, Any]:
+    """One unified corroboration row. `snippet` is the candidate headline (the
+    only text these corpora carry) — kept so the dossier can show WHAT the
+    corroborating source said."""
+    return {
+        "basis": basis,
+        "source": source,
+        "url": url,
+        "country": country,
+        "date": date,
+        "snippet": snippet,
+        "relation": relation,
+        "official": is_official_source(source),
+        "similarity": round(similarity, 4) if similarity is not None else None,
+    }
+
+
+def dedup_matches(matches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse the three corpora on url OR normalized headline. First writer
+    wins, but a later duplicate from a HIGHER-trust basis (doc20/archive carry
+    official wires; hot carries the same story) never displaces the first — we
+    keep insertion order and merely drop repeats. Contradictions are preserved
+    (a contradicting row with a distinct url survives)."""
+    seen_urls: set[str] = set()
+    seen_titles: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for m in matches:
+        url = (m.get("url") or "").strip().lower()
+        title = re.sub(r"\s+", " ", (m.get("snippet") or "").strip().lower())[:120]
+        if url and url in seen_urls:
+            continue
+        if title and title in seen_titles:
+            continue
+        if url:
+            seen_urls.add(url)
+        if title:
+            seen_titles.add(title)
+        out.append(m)
+    return out
+
+
+def citation_verdict(matches: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compact per-receipt verdict the dossier renders next to a Citation.
+    Counts corroborating / contradicting / official-among-corroborating. Answers
+    the claim ledger's 'official source missing' question: is any corroborating
+    source a wire/official body?"""
+    corr = [m for m in matches if m.get("relation") == "corroborates"]
+    contra = [m for m in matches if m.get("relation") == "contradicts"]
+    official_corr = sum(1 for m in corr if m.get("official"))
+    n_corr, n_contra = len(corr), len(contra)
+    if n_contra and n_contra >= n_corr:
+        status = "contradicted"
+    elif n_corr:
+        status = "corroborated"
+    else:
+        status = "uncorroborated"
+
+    parts: list[str] = []
+    if n_corr:
+        official_note = (f", incl. {official_corr} official/wire"
+                         if official_corr else ", none official/wire")
+        parts.append(f"corroborated by {n_corr} source(s){official_note}")
+    if n_contra:
+        parts.append(f"contradicted by {n_contra}")
+    if not parts:
+        parts.append("no corroborating coverage found in the queried corpora")
+    return {
+        "status": status,
+        "corroborating": n_corr,
+        "contradicting": n_contra,
+        "official_corroborating": official_corr,
+        "note": "; ".join(parts),
+    }
+
+
+# ── corpus query builders (pure — testable without a DB) ─────────────────────
+
+COLD_LANE_LIMIT = 40
+HOT_LANE_LIMIT = 20
+
+
+def build_cold_corpus_query(
+    terms: list[str],
+    *,
+    country: str | None = None,
+    limit: int = COLD_LANE_LIMIT,
+) -> tuple[str, list[Any]]:
+    """SQL + params for the FULL-HISTORY archive text lane
+    (historical_evidence_samples, May-3 → present). ILIKE-ANY over the claim's
+    distinctive terms (OR-match for recall); Python then scores term overlap and
+    assigns the relation. Country filter optional. Pure: returns (sql, params)
+    so the query shape is unit-tested without a live database."""
+    patterns = [f"%{t}%" for t in terms[:6] if t]
+    sql = """
+        SELECT headline, source_url, source_name, country_code, day,
+               topic_slug, sentiment
+        FROM historical_evidence_samples
+        WHERE headline IS NOT NULL
+          AND headline ILIKE ANY($1)
+          AND ($2::text IS NULL OR country_code = $2)
+        ORDER BY day DESC
+        LIMIT $3
+    """
+    return sql, [patterns, country, int(limit)]
+
+
+def rows_to_archive_matches(
+    rows: list[dict[str, Any]],
+    claim_terms: list[str],
+    claim_figure: float | None,
+) -> list[dict[str, Any]]:
+    """Turn cold-lane DB rows into unified matches, keeping only rows that
+    restate the claim (same-event term recall) — an ILIKE OR-match alone is too
+    loose. Pure."""
+    import html as _html
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        headline = _html.unescape((r.get("headline") or "").strip())
+        if not headline:
+            continue
+        recall = term_recall(claim_terms, headline)
+        if recall < SAME_EVENT_TERM_RECALL:
+            continue
+        relation = classify_relation(claim_terms, claim_figure, headline)
+        day = r.get("day")
+        out.append(normalize_match(
+            basis="atlas_archive",
+            source=r.get("source_name") or _domain(r.get("source_url")),
+            url=r.get("source_url"),
+            country=r.get("country_code"),
+            date=day.isoformat() if hasattr(day, "isoformat") else (
+                str(day) if day else None),
+            snippet=headline,
+            relation=relation,
+        ))
+    return out
+
+
+def articles_to_doc20_matches(
+    articles: list[dict[str, Any]],
+    claim_terms: list[str],
+    claim_figure: float | None,
+) -> list[dict[str, Any]]:
+    """DOC 2.0 artlist articles → unified matches. Pure (no network)."""
+    out: list[dict[str, Any]] = []
+    for a in articles:
+        title = (a.get("title") or "").strip()
+        if not title:
+            continue
+        relation = classify_relation(claim_terms, claim_figure, title)
+        url = a.get("url")
+        out.append(normalize_match(
+            basis="doc20",
+            source=a.get("domain") or _domain(url),
+            url=url,
+            country=(a.get("sourcecountry") or "").upper() or None,
+            date=a.get("seendate"),
+            snippet=title,
+            relation=relation,
+        ))
+    return out
+
+
+def rows_to_hot_matches(
+    matches: list[dict[str, Any]],
+    claim_terms: list[str],
+    claim_figure: float | None,
+) -> list[dict[str, Any]]:
+    """signal_embeddings semantic matches (research_semantic.fetch_semantic_
+    signal_matches output) → unified matches, using each hit's similarity as the
+    same-event signal. Pure."""
+    out: list[dict[str, Any]] = []
+    for m in matches:
+        headline = (m.get("headline") or "").strip()
+        if not headline:
+            continue
+        sim = m.get("similarity")
+        relation = classify_relation(
+            claim_terms, claim_figure, headline, similarity=sim)
+        ts = m.get("timestamp")
+        out.append(normalize_match(
+            basis="atlas_hot",
+            source=m.get("source_name"),
+            url=None,   # signal_embeddings join doesn't carry source_url here
+            country=m.get("country_code"),
+            date=ts[:10] if isinstance(ts, str) else None,
+            snippet=headline,
+            relation=relation,
+            similarity=sim,
+        ))
+    return out
+
+
+# ── DOC 2.0 fetch WITH explicit status (honest degraded mode) ────────────────
+
+DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
+_DOC20_TIMEOUT = 25.0
+
+
+async def doc20_fetch_status(
+    query: str,
+    *,
+    timespan: str = "1m",
+    maxrecords: int = 40,
+) -> dict[str, Any]:
+    """Fetch DOC 2.0 and CLASSIFY the outcome so the caller can be honest:
+      {"status": "ok"|"throttled"|"down", "articles": [...]}.
+    Non-JSON body (the free tier answers over-limit with an HTML notice) →
+    'throttled'; HTTP 429 → 'throttled'; timeout/refused/other → 'down'.
+    Shares the external_depth per-process 1-req/5s throttle so this lane never
+    trips the rate limit on top of the depth lane."""
+    if not query:
+        return {"status": "down", "articles": []}
+    params = _urlparse.urlencode({
+        "query": query, "mode": "artlist", "format": "json",
+        "maxrecords": maxrecords, "timespan": timespan, "sort": "hybridrel",
+    })
+    url = f"{DOC_URL}?{params}"
+
+    def _get() -> tuple[int, bytes]:
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request(url, headers={"User-Agent": "atlas/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=_DOC20_TIMEOUT) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, b""
+
+    try:
+        # Reuse the external-depth global throttle when available.
+        try:
+            from app.services.external_depth import _throttle
+            await _throttle()
+        except Exception:  # noqa: BLE001 — throttle is best-effort
+            pass
+        status_code, body = await _asyncio.wait_for(
+            _asyncio.get_event_loop().run_in_executor(None, _get),
+            timeout=_DOC20_TIMEOUT + 2,
+        )
+    except Exception as exc:  # noqa: BLE001 — timeout / refused / DNS
+        _log.warning("doc20 corroboration lane down (%s): %s", query, str(exc)[:120])
+        return {"status": "down", "articles": []}
+
+    return _classify_doc20(status_code, body)
+
+
+def _classify_doc20(status_code: int, body: bytes) -> dict[str, Any]:
+    """Pure: (HTTP status, body) → {"status": ok|throttled|down, "articles"}.
+    Extracted so the JSON-parse path (a 200 with a real JSON body — the
+    publishable success case) is unit-testable without a live fetch; the panel
+    gate caught a NameError here that the orchestrator-level mocks skipped."""
+    if status_code == 429:
+        return {"status": "throttled", "articles": []}
+    if status_code >= 500:
+        return {"status": "down", "articles": []}
+    try:
+        articles = json.loads(body).get("articles", [])
+    except (json.JSONDecodeError, AttributeError, ValueError, TypeError):
+        # Over-limit HTML/text notice, not JSON — the free tier's throttle tell.
+        return {"status": "throttled", "articles": []}
+    return {"status": "ok", "articles": articles}
+
+
+# ── orchestrator ─────────────────────────────────────────────────────────────
+
+async def corroborate_claim(
+    *,
+    headline: str,
+    figure: float | None = None,
+    country: str | None = None,
+    published_date: str | None = None,
+    conn: Any | None = None,
+    embed_fn: Any | None = None,
+    hot_fetch: Any | None = None,
+    doc20_fetch: Any | None = None,
+    hot_hours: int = 192,
+) -> dict[str, Any]:
+    """Corroborate ONE claim across DOC 2.0 ∪ atlas_hot ∪ atlas_archive.
+
+    Every corpus is best-effort and independently reported in `source_status`.
+    A throttled/down DOC 2.0 NEVER suppresses the Atlas matches — the response
+    is explicit about what was and wasn't reached (Marcos's honest-degraded
+    requirement). All I/O is injectable so the contract is unit-tested offline:
+      * doc20_fetch(query) -> {"status", "articles"}
+      * hot_fetch(query_vec) -> list[semantic match dict]  (needs embed_fn+conn)
+      * conn -> asyncpg-style connection for the cold archive lane
+    """
+    parsed = extract_claim_terms(headline, country=country)
+    terms, query = parsed["terms"], parsed["query"]
+    if figure is None:
+        figure = extract_figure(headline)
+
+    source_status: dict[str, str] = {
+        "doc20": "not_queried",
+        "atlas_hot": "not_queried",
+        "atlas_archive": "not_queried",
+    }
+    matches: list[dict[str, Any]] = []
+
+    # ── DOC 2.0 (query-time external) ──
+    fetcher = doc20_fetch or doc20_fetch_status
+    try:
+        doc = await fetcher(query)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("doc20 fetch raised: %s", str(exc)[:120])
+        doc = {"status": "down", "articles": []}
+    source_status["doc20"] = doc.get("status", "down")
+    matches += articles_to_doc20_matches(
+        doc.get("articles", []) or [], terms, figure)
+
+    # ── atlas_hot (semantic over signal_embeddings) ──
+    if conn is not None and embed_fn is not None and query:
+        try:
+            query_vec = await _maybe_await(embed_fn(f"query: {headline}"))
+            if query_vec:
+                hf = hot_fetch or _default_hot_fetch
+                hot = await hf(conn, query_vec, hot_hours)
+                matches += rows_to_hot_matches(hot or [], terms, figure)
+                source_status["atlas_hot"] = "ok"
+            else:
+                source_status["atlas_hot"] = "unavailable"
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("atlas_hot lane unavailable: %s", str(exc)[:120])
+            source_status["atlas_hot"] = "unavailable"
+
+    # ── atlas_archive (text over historical_evidence_samples) ──
+    if conn is not None and terms:
+        try:
+            sql, params = build_cold_corpus_query(terms, country=country)
+            rows = await conn.fetch(sql, *params)
+            row_dicts = [dict(r) for r in rows]
+            matches += rows_to_archive_matches(row_dicts, terms, figure)
+            source_status["atlas_archive"] = "ok"
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("atlas_archive lane unavailable: %s", str(exc)[:120])
+            source_status["atlas_archive"] = "unavailable"
+
+    matches = dedup_matches(matches)
+    corroborating = [m for m in matches if m["relation"] == "corroborates"]
+    contradicting = [m for m in matches if m["relation"] == "contradicts"]
+    context = [m for m in matches if m["relation"] == "context"]
+
+    return {
+        "contract": "corroboration-v1",
+        "claim": {
+            "headline": headline,
+            "figure": figure,
+            "country": country,
+            "published_date": published_date,
+            "query": query,
+            "terms": terms[:8],
+        },
+        "source_status": source_status,
+        "corroborating": corroborating,
+        "contradicting": contradicting,
+        "context": context,
+        "verdict": citation_verdict(matches),
+        "meta": {
+            "figure_match_tolerance": FIGURE_MATCH_TOLERANCE,
+            "same_event_term_recall": SAME_EVENT_TERM_RECALL,
+            "corroborate_term_recall": CORROBORATE_TERM_RECALL,
+            "same_event_similarity": SAME_EVENT_SIMILARITY,
+        },
+    }
+
+
+async def _maybe_await(value: Any) -> Any:
+    if _asyncio.iscoroutine(value):
+        return await value
+    return value
+
+
+async def _default_hot_fetch(conn: Any, query_vec: list[float],
+                             hours: int) -> list[dict[str, Any]]:
+    """Bridge to research_semantic's ANN lane over signal_embeddings."""
+    from app.services.research_semantic import fetch_semantic_signal_matches
+    return await fetch_semantic_signal_matches(
+        conn, query_vec, hours=hours, limit=HOT_LANE_LIMIT)

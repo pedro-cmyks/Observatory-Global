@@ -10,6 +10,7 @@
 // removeClaim / relabelClaim / listClaims — live in workbench.ts, mirroring the
 // Citation precedent, so a Claim persists on `Investigation.claims`.
 import type { Citation } from './workbench'
+import { classifyOutlet, isOfficialishTier } from './sourceTiers'
 
 /** How the analyst relates two receipts. */
 export type ClaimRelation = 'CORROBORATES' | 'CONTRADICTS' | 'CONTEXT'
@@ -76,13 +77,18 @@ const OFFICIAL_SOURCE_TOKENS = [
   'dpa', 'pti', 'ians', 'ap news',
 ]
 
-/** True when a source name reads as an international wire agency / official body.
- *  Word-boundary match so "AP" hits but "Apple Daily" does not. */
+/** True when a source name reads as an official-ish body — an international
+ *  wire agency OR a state broadcaster (#217: wire/state = official-ish). The
+ *  local token list stays as a fast path; the coarse tier classifier
+ *  (sourceTiers.ts) is the shared, single-source-of-truth backstop that also
+ *  catches state channels (RT/CGTN/Xinhua). Word-boundary so "AP" hits but
+ *  "Apple Daily" does not. */
 export function isOfficialSource(source: string | null | undefined): boolean {
   const s = (source ?? '').trim().toLowerCase()
   if (!s) return false
   if (/\bap\b/.test(s) || /\bafp\b/.test(s)) return true
-  return OFFICIAL_SOURCE_TOKENS.some(tok => s.includes(tok))
+  if (OFFICIAL_SOURCE_TOKENS.some(tok => s.includes(tok))) return true
+  return isOfficialishTier(classifyOutlet(source).tier)
 }
 
 /** First number (thousands-separated or plain) in a string → integer, else null. */

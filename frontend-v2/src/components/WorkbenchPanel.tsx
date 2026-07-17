@@ -25,6 +25,7 @@ import {
   type WorkbenchPin,
 } from '../lib/workbench';
 import type { ClaimRelation } from '../lib/claimLedger';
+import { classifyOutlet, coarseTierLabel, TIER_TIP } from '../lib/sourceTiers';
 import { Flag } from './Flag';
 import { DossierView } from './DossierView';
 import WorkbenchConstellation from './WorkbenchConstellation';
@@ -417,6 +418,15 @@ export default function WorkbenchPanel({
                             </span>
                           )}
                           {cit.source && <span className="wb-cit-chip">{cit.source}</span>}
+                          {(() => {
+                            const t = classifyOutlet(cit.source).tier;
+                            return (
+                              <span
+                                className={`wb-cit-chip wb-cit-tier wb-cit-tier--${t}`}
+                                data-tip={TIER_TIP[t]}
+                              >{coarseTierLabel(t)}</span>
+                            );
+                          })()}
                           {cit.sourceLang && !['xx', 'un', 'und', ''].includes(cit.sourceLang.toLowerCase())
                             && <span className="wb-cit-chip wb-cit-chip--lang">{cit.sourceLang.toUpperCase()}</span>}
                           <span className={`wb-cit-chip wb-cit-gate wb-cit-gate--${cit.gateStatus}`} data-tip={gate.tip}>{gate.label}</span>

@@ -236,6 +236,26 @@
 .dossier-synth-headline { font-size: 17px !important; font-weight: 650; color: var(--color-text-primary); line-height: 1.35 !important; }
 .dossier-synth-gap { color: var(--color-text-secondary); font-style: italic; }
 
+/* Council Phase 3 (Lane B) — prose-vs-tables validator. An unbacked
+   "confirmed"/"verified" is softened to "reported (uncorroborated)" (dotted
+   underline + tip); an unbacked figure keeps its text but wears a caveat mark. */
+.dossier-prose-softened {
+    text-decoration: underline dotted rgba(var(--color-neutral-rgb), 0.6);
+    text-underline-offset: 2px;
+    cursor: help;
+}
+.dossier-prose-unbacked {
+    text-decoration: underline dotted rgba(var(--color-warn-rgb, var(--color-neutral-rgb)), 0.7);
+    text-underline-offset: 2px;
+    cursor: help;
+}
+.dossier-prose-caveat {
+    color: var(--color-warn, var(--color-text-secondary));
+    font-size: 0.72em;
+    margin-left: 1px;
+    cursor: help;
+}
+
 /* P0.6a mini-article: lede → body with [n] receipt anchors → unknowns → receipts. */
 .dossier-synth-lede { color: var(--color-text-primary); font-weight: 550; }
 .dossier-cite-ref a {
