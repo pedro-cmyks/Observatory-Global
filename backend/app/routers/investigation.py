@@ -193,6 +193,8 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
     if db.pool is None:
         return {
             "contract": "atlas-daily-publication-v1",
+            "edition_date": None,
+            "sealed_at": None,
             "package": None,
             "graph": None,
             "selection": None,
@@ -217,6 +219,8 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
     if row is None:
         return {
             "contract": "atlas-daily-publication-v1",
+            "edition_date": None,
+            "sealed_at": None,
             "package": None,
             "graph": None,
             "selection": None,
@@ -227,9 +231,13 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
             },
         }
     payload = dict(row)
+    # The staleness banner reads WHAT edition + HOW OLD off the top level.
+    # generated_at is the seal moment; it remains in completion for compat.
+    sealed_at = payload["generated_at"]
     return {
         "contract": payload.pop("contract"),
         "edition_date": payload.pop("edition_date"),
+        "sealed_at": sealed_at,
         "status": payload.pop("status"),
         "package": _json_value(payload.pop("package")),
         "graph": _json_value(payload.pop("graph")),

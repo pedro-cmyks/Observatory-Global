@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon, resolveThreadLabel } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { CountQualifierChip } from '../lib/countQualifier'
+import { LabelReviewChip } from '../lib/labelReviewChip'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { TranslatableHeadline } from './TranslatableHeadline'
@@ -291,6 +292,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const [wikiMatch, setWikiMatch] = useState<{ has_wiki_activity: boolean; matches: Array<{ title: string; views: number }>, total_views: number } | null>(null)
     const [attentionSearchData, setAttentionSearchData] = useState<AttentionSearchData | null>(null)
     const [threadNote, setThreadNote] = useState<NarrativeNote | null>(null)
+    // Label trust for the header chip (council Phase 1): captured from the same
+    // thread fetch as the narrative note. Only set when opened from a thread.
+    const [threadLabelTrust, setThreadLabelTrust] = useState<{
+        label_status: string | null
+        avg_confidence: number | null
+        confidence_measured: boolean
+        label_proposed: string | null
+    } | null>(null)
     // Per-thread forum discussion (L2 C3): semantic neighbors of the thread
     // centroid from the social lane. Discussion only — never gated evidence.
     const [threadForum, setThreadForum] = useState<ThreadForumItem[]>([])
@@ -379,6 +388,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     useEffect(() => {
         if (!threadContext?.thread_id) {
             setThreadNote(null)
+            setThreadLabelTrust(null)
             return
         }
         const controller = new AbortController()
@@ -386,11 +396,18 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
             .then(payload => {
                 if (!controller.signal.aborted) {
-                    setThreadNote(payload?.thread?.narrative_note ?? null)
+                    const t = payload?.thread
+                    setThreadNote(t?.narrative_note ?? null)
+                    setThreadLabelTrust(t ? {
+                        label_status: t.label_status ?? null,
+                        avg_confidence: typeof t.avg_confidence === 'number' ? t.avg_confidence : null,
+                        confidence_measured: t.confidence_measured === true,
+                        label_proposed: t.label_proposed ?? null,
+                    } : null)
                 }
             })
             .catch(() => {
-                if (!controller.signal.aborted) setThreadNote(null)
+                if (!controller.signal.aborted) { setThreadNote(null); setThreadLabelTrust(null) }
             })
         return () => controller.abort()
     }, [threadContext?.thread_id, hours])
@@ -587,7 +604,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 <div className="theme-detail-header">
                     <span className="theme-detail-icon">{getThemeIcon(theme)}</span>
                     <div style={{ flex: 1 }}>
-                        <h2>{displayLabel}</h2>
+                        <h2>
+                            {displayLabel}
+                            {threadLabelTrust && (
+                                <LabelReviewChip
+                                    labelStatus={threadLabelTrust.label_status}
+                                    avgConfidence={threadLabelTrust.avg_confidence}
+                                    confidenceMeasured={threadLabelTrust.confidence_measured}
+                                    labelProposed={threadLabelTrust.label_proposed}
+                                />
+                            )}
+                        </h2>
                         {isQueryThread && (
                             <p className="theme-detail-meta">
                                 <span className="query-thread-tag">Custom thread</span>

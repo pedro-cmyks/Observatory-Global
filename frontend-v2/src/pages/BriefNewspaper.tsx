@@ -7,9 +7,10 @@ import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
 import { Flag } from '../components/Flag'
 import { readBriefingCache, writeBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
-import { selectLeadThread } from '../lib/briefLead'
+import { isLeadEligible, leadBlockReason, selectLiveLead, LEAD_CONFIDENCE_FLOOR } from '../lib/leadConfidence'
 import { splitEditionThreads, buildShareCaption } from '../lib/briefEdition'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
+import { LabelReviewChip } from '../lib/labelReviewChip'
 import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline } from '../components/TranslatableHeadline'
 import { TranslatableText } from '../components/TranslatableText'
@@ -26,6 +27,7 @@ import {
     publicationThreads,
     type DailyPublicationArtifact,
 } from '../lib/dailyPublication'
+import { buildStaleBanner } from '../lib/staleBanner'
 import '../styles/readerTheme.css'
 import './BriefNewspaper.css'
 
@@ -100,6 +102,13 @@ interface TopThread {
     evidence_samples?: ThreadEvidence[]
     hourly_timeline?: TimelinePoint[]
     confidence?: string
+    avg_confidence?: number | null
+    confidence_measured?: boolean
+    // Label Court (Lane B / #204): entailment of the label vs its own top-N
+    // receipts. "failed" auto-demotes; label_proposed carries an advisory
+    // neutral receipt-derived label. NULL until the nightly court runs.
+    label_status?: 'entailed' | 'partial' | 'failed' | null
+    label_proposed?: string | null
     edition_role?: string
 }
 
@@ -218,6 +227,25 @@ function trendArrow(trend?: string, changed10h?: number): { glyph: string; cls: 
     if (trend === 'fading') return { glyph: '▼', cls: 'down', label: changed10h ? `${changed10h}/10h raw` : 'fading', tip }
     if (trend === 'stable') return { glyph: '—', cls: 'flat', label: 'stable', tip }
     return null
+}
+
+// Union-safe extraction of the label-trust props for the shared LabelReviewChip.
+// The lead can be a live TopThread OR a sealed DailyPublicationThread (already
+// reconciled at assembly, no per-row confidence columns). This shape carries
+// only the trust fields; a sealed row that lacks them all resolves to no chip.
+interface LabelTrustRow {
+    label_status?: string | null
+    avg_confidence?: number | null
+    confidence_measured?: boolean
+    label_proposed?: string | null
+}
+function labelReviewChipProps(t: LabelTrustRow) {
+    return {
+        labelStatus: t.label_status ?? null,
+        avgConfidence: typeof t.avg_confidence === 'number' ? t.avg_confidence : null,
+        confidenceMeasured: t.confidence_measured === true,
+        labelProposed: t.label_proposed ?? null,
+    }
 }
 
 // Inline sparkline from a thread's hourly timeline. Graphic slot per the
@@ -570,17 +598,66 @@ export function BriefNewspaper() {
     const dayLine = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
     const dailyGate = assessDailyPublication(dailyEdition)
+    // Staleness truth: what edition is served, how old, and when the next seal is.
+    // Honest sealed/live split — the sealed package is only "served" when the gate
+    // passes; otherwise the always-current live view below is what the reader sees.
+    const staleBanner = dailyEdition
+        ? buildStaleBanner({
+            sealedAt: dailyEdition.sealed_at ?? dailyEdition.completion?.generated_at as string | null ?? null,
+            editionDate: dailyEdition.edition_date ?? null,
+            servedFromSeal: dailyGate.useSharedPackage,
+            reasonCodes: dailyGate.reasonCodes,
+            now,
+        })
+        : null
     const allThreads = dailyGate.useSharedPackage ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
-    // Lead story = the TOP-RANKED thread (see lib/briefLead.ts). Never the
-    // first thread that merely *carries* evidence — that broke after ranking
-    // was unified (2026-06-24). The lead renders evidence headlines when
-    // present and degrades gracefully when absent.
-    const leadThread = dailyGate.useSharedPackage
-        ? allThreads.find(thread => thread.edition_role === 'lead') ?? selectLeadThread(allThreads, countryFilter)
-        : selectLeadThread(allThreads, countryFilter)
+
+    // Council Phase 1: on the LIVE brief the front page may only present a thread
+    // as an assembled story (label-as-fact: lead or desk card) when we trust its
+    // label — measured confidence >= floor AND the Label Court did not fail it.
+    // Everything else drops to the honest "Unassembled signals" tray with its raw
+    // receipts. Nothing vanishes (no-silent-filtering) — a thread is either an
+    // assembled card or a tray entry, exactly once.
+    //
+    // The gate is scoped to the legacy live path: the sealed daily package is a
+    // separately-assembled, already-reconciled artifact whose rows may not carry
+    // per-row confidence — re-gating it here would dump a curated edition into the
+    // tray. When the package is active, trust its assembly (old behavior).
+    //
+    // Lead = the TOP-RANKED *eligible* thread (see lib/leadConfidence.ts). Never
+    // the first thread that merely carries evidence (broke after unified ranking
+    // 2026-06-24), and never a below-floor blob (broke the front page's trust:
+    // the 0.214 Greek "Teen Fall" led while real stories scored 0.9+).
+    const gateActive = !countryFilter && !dailyGate.useSharedPackage
+    // gateActive implies the legacy live path, so the gate operates on the
+    // concrete TopThread rows (which carry avg_confidence/label_status) — the
+    // sealed-package union type has no confidence columns to gate on.
+    const liveThreads: TopThread[] = data?.top_threads ?? []
+    // ONE source of truth for lead selection (lib/leadConfidence.selectLiveLead):
+    // reads label_status/avg_confidence off the live payload, so a top thread
+    // newly served as court-failed (dt-565) demotes automatically and the next
+    // eligible thread wins; when none clears the bar, leadUnavailable fires.
+    const liveLead = gateActive ? selectLiveLead(liveThreads) : null
+    const eligiblePool = countryFilter ? [] : (gateActive ? liveLead!.eligible : allThreads)
+    const unassembledThreads: TopThread[] = gateActive ? liveThreads.filter(t => !isLeadEligible(t)) : []
+    const preferredLead = dailyGate.useSharedPackage
+        ? allThreads.find(thread => thread.edition_role === 'lead') ?? null
+        : null
+    const leadThread = countryFilter ? null : (preferredLead ?? liveLead?.lead ?? eligiblePool[0] ?? null)
+    // Honest empty-lead (live path only): threads exist but none cleared the bar.
+    const leadUnavailable = gateActive && (liveLead?.leadUnavailable ?? false)
+
+    // Leak 2: the COUNTRY edition gets the SAME eligibility split as the global
+    // path — below-bar / court-failed country threads never render as assembled
+    // cards; they drop to the unassembled tray (or the honest empty-lead when
+    // none clears the bar). Country threads share the /threads contract, so they
+    // carry avg_confidence/label_status too.
+    const countryPool: TopThread[] = countryThreads ?? []
+    const countryEligible = countryFilter ? countryPool.filter(isLeadEligible) : []
+    const countryUnassembled = countryFilter ? countryPool.filter(t => !isLeadEligible(t)) : []
     const restThreads = leadThread
-        ? allThreads.filter(t => t.thread_id !== leadThread.thread_id)
-        : allThreads
+        ? eligiblePool.filter(t => t.thread_id !== leadThread.thread_id)
+        : eligiblePool
     // Edition sections: culture/sport/lifestyle threads get their OWN section
     // (nothing dropped); the ranked lead stays the lead regardless of lane.
     const { world: worldRest, culture: cultureRest } = splitEditionThreads(restThreads)
@@ -753,6 +830,7 @@ export function BriefNewspaper() {
                     <button className="brief-headline-btn" onClick={() => openThread(t, opts?.country)}>
                         <TranslatableText text={decodeEntities(t.label)} />
                     </button>
+                    <LabelReviewChip {...labelReviewChipProps(t)} />
                 </h3>
                 <div className="brief-vitals-line">
                     {t.source_count != null && <span><b>{t.source_count}</b> sources</span>}
@@ -779,6 +857,101 @@ export function BriefNewspaper() {
             </article>
         )
     }
+
+    // UNASSEMBLED SIGNALS TRAY entry. A cluster whose machine label we don't
+    // trust for the front page (below the confidence floor OR failed the Label
+    // Court). We NEVER present its label as a headline/fact — it renders struck
+    // with a "label under review" chip, and the raw receipts (grouped by the
+    // country each source is filed from) are the real content. Reuses the loved
+    // Under-the-Radar receipt shape.
+    const renderUnassembledEntry = (t: TopThread) => {
+        const reason = leadBlockReason(t)
+        const conf = typeof t.avg_confidence === 'number' ? t.avg_confidence : null
+        const receipts = t.evidence_samples ?? []
+        const groups = new Map<string, ThreadEvidence[]>()
+        for (const ev of receipts) {
+            const cc = ev.country_code || '—'
+            const arr = groups.get(cc) ?? []
+            arr.push(ev)
+            groups.set(cc, arr)
+        }
+        const groupList = [...groups.entries()]
+        return (
+            <div key={t.thread_id} className="brief-unassembled-cell">
+                <div className="brief-unassembled-head">
+                    <span
+                        className="brief-unassembled-label"
+                        data-tip="This cluster's machine label was not trusted for the front page. Read the raw sources below — not the label."
+                    >
+                        {decodeEntities(t.label)}
+                    </span>
+                    {/* ONE chip everywhere (leak 3): the shared LabelReviewChip, not a
+                        bespoke span. `reason` is passed explicitly because the tray's
+                        membership was decided by the band-aware leadBlockReason — the
+                        override guarantees the chip renders even for a band-only row. */}
+                    <LabelReviewChip
+                        reason={reason}
+                        labelStatus={t.label_status ?? null}
+                        avgConfidence={conf}
+                        labelProposed={t.label_proposed ?? null}
+                    />
+                </div>
+                {t.label_proposed && (
+                    <div className="brief-unassembled-proposed">
+                        <span className="lab">receipt-derived</span>
+                        <span>{decodeEntities(t.label_proposed)}</span>
+                    </div>
+                )}
+                <div className="brief-unassembled-meta">
+                    {conf != null && <span>{Math.round(conf * 100)}% confidence</span>}
+                    <span>{t.signal_count.toLocaleString()} raw signals</span>
+                    {t.source_count != null && <span>{t.source_count} sources</span>}
+                </div>
+                {groupList.length > 0 ? (
+                    <div className="brief-unassembled-groups">
+                        {groupList.map(([cc, evs]) => (
+                            <div key={cc} className="brief-unassembled-group">
+                                <div className="brief-unassembled-cc">
+                                    {cc !== '—'
+                                        ? <><Flag code={cc} /> {resolveCountryName(cc, cc)}</>
+                                        : <span>Unattributed</span>}
+                                </div>
+                                <div className="brief-receipts">{evs.slice(0, 3).map(renderReceipt)}</div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="brief-unassembled-noreceipts">No sample receipts carried for this cluster this window.</p>
+                )}
+            </div>
+        )
+    }
+
+    // Shared "Unassembled signals" section — ONE markup for the global AND
+    // country editions (leak 2), so both surfaces demote below-bar/court-failed
+    // clusters identically. Receipts are grouped by source country and, per the
+    // lede, translated into the viewer's language (now honestly true — the
+    // GDELT-unknown Greek receipts translate via TranslatableHeadline).
+    const renderUnassembledSection = (threads: TopThread[]) => (
+        <section className="brief-unassembled" aria-label="Unassembled signals">
+            <span className="reader-section-kicker brief-sub-kicker">The unassembled desk</span>
+            <h3
+                className="brief-section-title brief-unassembled-title"
+                data-tip="Clusters Atlas is tracking but has not assembled into a trustworthy story: their machine label is below the front-page confidence bar, or the Label Court could not entail it against its own receipts. The label is under review; the receipts are real. Nothing is deleted."
+            >
+                Below the confidence bar
+            </h3>
+            <p className="brief-section-lede">
+                {threads.length} tracked cluster{threads.length === 1 ? '' : 's'}{' '}
+                whose label did not clear the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% bar. Read the
+                sources, not the label — grouped by the country each source is filed from, translated
+                into your language.
+            </p>
+            <div className="brief-unassembled-grid">
+                {threads.map(renderUnassembledEntry)}
+            </div>
+        </section>
+    )
 
     return (
         <div className={`atlas-reader brief-page${countryFilter ? '' : ` brief-sec-${SECTIONS[section].id}`}`} data-rtheme={readerTheme}>
@@ -845,28 +1018,25 @@ export function BriefNewspaper() {
                             </div>
                         )}
 
-                        {dailyEdition && (
+                        {dailyEdition && staleBanner && (
                             <section
-                                className={`brief-publication-state ${dailyGate.useSharedPackage ? 'is-ready' : 'is-rebuilding'}`}
-                                aria-label="Daily Investigation status"
+                                className={`brief-publication-state ${staleBanner.served === 'sealed' ? 'is-ready' : 'is-rebuilding'}`}
+                                aria-label="Daily edition freshness"
+                                data-tone={staleBanner.tone}
                             >
                                 <div>
                                     <span className="brief-publication-kicker">
-                                        {dailyGate.useSharedPackage ? 'SEALED DAILY INVESTIGATION' : 'LIVE BRIEF FALLBACK'}
+                                        {staleBanner.served === 'sealed' ? 'SEALED DAILY EDITION' : 'LIVE VIEW'}
                                     </span>
-                                    <strong>
-                                        {dailyGate.useSharedPackage
-                                            ? `${dailyEdition.completion.rows_scanned ?? dailyEdition.completion.candidate_count ?? 0} candidates reconciled — shared L1/L3 package active`
-                                            : 'Daily Investigation is still rebuilding — the live newspaper remains active'}
-                                    </strong>
+                                    <strong>{staleBanner.edition}</strong>
                                 </div>
                                 <span className="brief-publication-cutoff">
-                                    {dailyEdition.completion.edition_end
-                                        ? `cutoff ${new Date(dailyEdition.completion.edition_end).toLocaleString()}`
-                                        : dailyEdition.edition_date}
-                                    {!dailyGate.useSharedPackage && dailyGate.reasonCodes.length > 0
-                                        ? ` · ${dailyGate.reasonCodes.join(' · ').replaceAll('_', ' ')}`
-                                        : ''}
+                                    {[
+                                        staleBanner.age,
+                                        staleBanner.tone === 'stale' ? staleBanner.why : null,
+                                        staleBanner.served === 'live' ? staleBanner.liveNote : null,
+                                        staleBanner.nextAttempt,
+                                    ].filter(Boolean).join(' · ')}
                                 </span>
                             </section>
                         )}
@@ -1066,6 +1236,10 @@ export function BriefNewspaper() {
                                                 <button className="brief-headline-btn" onClick={() => openThread(leadThread)}>
                                                     <TranslatableText text={decodeEntities(leadThread.label)} />
                                                 </button>
+                                                {/* leadThread is TopThread | sealed DailyPublicationThread; the
+                                                    sealed row carries no trust columns, so read through the
+                                                    LabelTrustRow shape (missing fields → no chip). */}
+                                                <LabelReviewChip {...labelReviewChipProps(leadThread as LabelTrustRow)} />
                                             </h3>
                                             <div className="brief-metarow">
                                                 {(() => {
@@ -1106,6 +1280,19 @@ export function BriefNewspaper() {
                                                     <button className="brief-theme-link" onClick={() => openThread(leadThread)}>Open thread →</button>
                                                 </span>
                                             </div>
+                                        </article>
+                                    ) : leadUnavailable ? (
+                                        <article className="brief-lead brief-lead-empty brief-lead-belowbar">
+                                            <div className="reader-kicker">
+                                                <span>Lead</span>
+                                                <span className="cat">no story clears the bar</span>
+                                            </div>
+                                            <p>
+                                                No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
+                                                bar this window — {allThreads.length} tracked cluster{allThreads.length === 1 ? '' : 's'}{' '}
+                                                sit{allThreads.length === 1 ? 's' : ''} below it. Rather than lead with a label we
+                                                don't trust, see the unassembled desk below for the raw receipts.
+                                            </p>
                                         </article>
                                     ) : (
                                         <article className="brief-lead brief-lead-empty">
@@ -1168,6 +1355,12 @@ export function BriefNewspaper() {
                                             {worldCards.map((t, i) => renderThreadCard(t, { wide: i === 0 }))}
                                         </div>
                                     )}
+
+                                    {/* UNASSEMBLED SIGNALS — clusters below the confidence bar or
+                                        failed by the Label Court. Additive (no thread vanishes): the
+                                        label is struck under review and the raw receipts, grouped by
+                                        source country, are the content. */}
+                                    {unassembledThreads.length > 0 && renderUnassembledSection(unassembledThreads)}
 
                                     {/* HEATING UP — country heat strip */}
                                     {heatStrip.length > 0 && (
@@ -1339,11 +1532,7 @@ export function BriefNewspaper() {
                                 </h2>
                                 {countryLoading ? (
                                     <p className="brief-country-note">Checking this country's narrative threads for the selected window…</p>
-                                ) : (countryThreads?.length ?? 0) > 0 ? (
-                                    <div className="brief-cards">
-                                        {countryThreads!.map((t, i) => renderThreadCard(t, { country: countryFilter, wide: i === 0 }))}
-                                    </div>
-                                ) : (
+                                ) : countryPool.length === 0 ? (
                                     <div className="brief-country-note">
                                         <p>
                                             {countryError
@@ -1357,6 +1546,36 @@ export function BriefNewspaper() {
                                             Open country in Atlas →
                                         </button>
                                     </div>
+                                ) : (
+                                    <>
+                                        {/* Leak 2: only threads that clear the confidence bar AND the
+                                            Label Court render as assembled cards. */}
+                                        {countryEligible.length > 0 ? (
+                                            <div className="brief-cards">
+                                                {countryEligible.map((t, i) => renderThreadCard(t, { country: countryFilter, wide: i === 0 }))}
+                                            </div>
+                                        ) : (
+                                            // Threads exist but none clears the bar (e.g. GR: the 0.214
+                                            // "British Teen Fall" blob) — honest empty-lead, never an
+                                            // assembled card. The raw receipts live in the tray below.
+                                            <article className="brief-lead brief-lead-empty brief-lead-belowbar">
+                                                <div className="reader-kicker">
+                                                    <span>Lead</span>
+                                                    <span className="cat">no story clears the bar</span>
+                                                </div>
+                                                <p>
+                                                    No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
+                                                    bar for {resolveCountryName(countryFilter, countryDetail?.name)} this window —{' '}
+                                                    {countryUnassembled.length} tracked cluster{countryUnassembled.length === 1 ? '' : 's'}{' '}
+                                                    sit{countryUnassembled.length === 1 ? 's' : ''} below it. Read the unassembled desk
+                                                    below for the raw receipts rather than a label we don't trust.
+                                                </p>
+                                            </article>
+                                        )}
+
+                                        {/* Same unassembled tray as the global edition. */}
+                                        {countryUnassembled.length > 0 && renderUnassembledSection(countryUnassembled)}
+                                    </>
                                 )}
                             </section>
                         )}
@@ -1638,9 +1857,13 @@ export function BriefNewspaper() {
                                     <span className="sc-date">{weekday} · {dayLine}</span>
                                 </div>
                                 <p className="sc-kicker">
-                                    Lead{leadThread && (leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}
+                                    {leadThread
+                                        ? `Lead${(leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}`
+                                        : 'No lead sealed'}
                                 </p>
-                                <p className="sc-headline">{leadThread ? decodeEntities(leadThread.label) : 'No lead story cleared the gate today'}</p>
+                                {/* The share card refuses to freeze a lead we don't trust: when no
+                                    thread clears the confidence bar there is no headline to publish. */}
+                                <p className="sc-headline">{leadThread ? decodeEntities(leadThread.label) : 'Story under assembly — check back'}</p>
                                 {leadThread?.why_now && <p className="sc-stand">{decodeEntities(leadThread.why_now)}</p>}
                                 {worldCards.length > 0 && (
                                     <div className="sc-secondaries">

@@ -128,3 +128,25 @@ describe('reconcileSentimentProse', () => {
     })
   })
 })
+
+// Round-3 (2026-07-17): live-payload regression — a global figure whose
+// sentence is followed by a country clause must still be corrected.
+import { reconcileSentimentProse as _r3, joinSegments as _j3 } from './reconcileSentimentProse'
+describe('reconcileSentimentProse round-3 global-vs-adjacent-country', () => {
+  it('corrects "overall sentiment of -0.1. The United States leads..." to the measured value', () => {
+    const prose = 'a slightly negative overall sentiment of -0.1. The United States leads in coverage volume with a negative tone, while China shows marginally positive sentiment.'
+    const segs = _r3(prose, -0.51)
+    const corrected = segs.find(s => s.corrected)
+    expect(corrected).toBeTruthy()
+    expect(corrected!.corrected!.original).toBe('-0.1')
+    expect(_j3(segs)).toContain('-0.51')
+    expect(_j3(segs)).not.toMatch(/of -0\.1\./)
+  })
+  it('still leaves a per-country figure with no adjacent global wording untouched', () => {
+    const prose = 'The US shows -0.09 sentiment while China leans +0.08.'
+    const segs = _r3(prose, -0.51)
+    expect(segs.find(s => s.corrected)).toBeFalsy()
+    expect(_j3(segs)).toContain('-0.09')
+    expect(_j3(segs)).toContain('+0.08')
+  })
+})

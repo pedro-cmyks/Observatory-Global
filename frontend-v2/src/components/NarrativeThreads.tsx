@@ -9,6 +9,7 @@ import { threadCountryPresentation } from '../lib/threadGeography'
 import { familyColor, familyGradient } from '../lib/categoryFamily'
 import { decodeEntities } from '../lib/decodeEntities'
 import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
+import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TranslatableText } from './TranslatableText'
 import './NarrativeThreads.css'
 
@@ -39,6 +40,15 @@ interface Narrative {
     confidence_label: string
     show_confidence_bar: boolean
     confidence_trend_color: string
+    // Label trust (council Phase 1): raw assignment confidence + Label Court
+    // verdict, carried through so the row can render the "LABEL UNDER REVIEW"
+    // chip without re-deriving the confidence presentation. `avg_confidence`
+    // stays `number | undefined` to remain assignment-compatible with
+    // ThreadDetail (ThreadFocusPanel reads a Narrative as a ThreadDetail).
+    avg_confidence?: number
+    confidence_measured: boolean
+    label_status: string | null
+    label_proposed: string | null
     crisis_relevant: boolean
     sentiment_swing_10h: number | null
     top_entities: string[]
@@ -138,6 +148,10 @@ const normalizeThread = (thread: any): Narrative => {
     confidence_label: confidence.confidenceLabel,
     show_confidence_bar: confidence.showConfidenceBar,
     confidence_trend_color: confidence.trendColor,
+    avg_confidence: typeof thread.avg_confidence === 'number' ? thread.avg_confidence : undefined,
+    confidence_measured: thread.confidence_measured === true,
+    label_status: thread.label_status ?? null,
+    label_proposed: thread.label_proposed ?? null,
     crisis_relevant: crisisRelevant,
     sentiment_swing_10h: thread.sentiment_swing_10h ?? null,
     top_entities: thread.top_entities || thread.top_people || [],
@@ -444,6 +458,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                         )}
                                     </span>
                                 </span>
+                                <LabelReviewChip
+                                    labelStatus={n.label_status}
+                                    avgConfidence={n.avg_confidence}
+                                    confidenceMeasured={n.confidence_measured}
+                                    labelProposed={n.label_proposed}
+                                />
                             </div>
                             {/* Fix round 2026-07-17 item 2: the row number has TWO different
                                 true bases depending on the row's engine path, and the chip must

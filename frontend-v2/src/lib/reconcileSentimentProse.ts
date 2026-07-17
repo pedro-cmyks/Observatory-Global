@@ -34,9 +34,9 @@ export interface ProseSegment {
  * count as a sentiment CLAIM. Keeps "magnitude 5.9" out of scope. */
 const KEYWORD_WINDOW = 48
 
-/** A country name within this many chars of the number makes the number a
- * PER-COUNTRY figure — never corrected, even if global wording is also near
- * (the global wording may belong to the neighboring sentence). */
+/** A country name within this many chars of the number, IN THE SAME CLAUSE,
+ * makes the number a per-country figure. Clause-bounded so a country in the
+ * next sentence ("…-0.1. The United States leads") does not capture it. */
 const ADJACENT_WINDOW = 24
 
 const KEYWORD_RE = /sentiment|tone|mood/i
@@ -69,33 +69,54 @@ const COUNTRY_NAME_RE = new RegExp(
 const ISO_CODE_RE = /(?<![A-Za-z])[A-Z]{2}(?![A-Za-z])/g
 const ISO_CODES = new Set(Object.keys(COUNTRY_NAMES))
 
-/** Smallest char gap between the number (at [ns,ne) inside `ctx`) and any
- * regex match in `ctx`; null when nothing matches. 0 = overlapping/adjacent. */
-function nearestGap(
-  ctx: string,
-  ns: number,
-  ne: number,
-  re: RegExp,
-  accept?: (m: string) => boolean,
-): number | null {
+/** The sentence/clause containing [start,end) in `prose` — bounded by the
+ * nearest sentence terminator on each side. Attribution is decided WITHIN this
+ * clause: a number in "The US shows -0.09" is per-country; the same figure in
+ * "overall sentiment of -0.1." is global even when the next sentence names a
+ * country. */
+/** True when prose[i] ends a sentence/clause — but a '.' between two digits is
+ * a decimal point (e.g. "-0.05"), NOT a boundary. */
+function isBoundary(prose: string, i: number): boolean {
+  const c = prose[i]
+  if (c === ';' || c === '!' || c === '?' || c === '\n') return true
+  if (c !== '.') return false
+  const prev = prose[i - 1]
+  const next = prose[i + 1]
+  return !(prev >= '0' && prev <= '9' && next >= '0' && next <= '9')
+}
+
+function enclosingClause(prose: string, start: number, end: number): { text: string; offset: number } {
+  let s = start
+  while (s > 0 && !isBoundary(prose, s - 1)) s--
+  let e = end
+  while (e < prose.length && !isBoundary(prose, e)) e++
+  return { text: prose.slice(s, e), offset: s }
+}
+
+/** Smallest char gap between [ns,ne) and any country mention in `clause`;
+ * null when the clause names no country. 0 = adjacent/overlapping. */
+function nearestCountryGapInClause(clause: string, ns: number, ne: number): number | null {
   let best: number | null = null
-  for (const m of ctx.matchAll(re)) {
-    if (accept && !accept(m[0])) continue
-    const s = m.index ?? 0
-    const e = s + m[0].length
+  const consider = (s: number, e: number) => {
     const gap = e <= ns ? ns - e : s >= ne ? s - ne : 0
     if (best === null || gap < best) best = gap
+  }
+  for (const m of clause.matchAll(COUNTRY_NAME_RE)) {
+    const s = m.index ?? 0
+    consider(s, s + m[0].length)
+  }
+  for (const m of clause.matchAll(ISO_CODE_RE)) {
+    if (!ISO_CODES.has(m[0])) continue
+    const s = m.index ?? 0
+    consider(s, s + m[0].length)
   }
   return best
 }
 
-/** Nearest country mention (name or bare uppercase ISO code) to the number. */
-function nearestCountryGap(ctx: string, ns: number, ne: number): number | null {
-  const byName = nearestGap(ctx, ns, ne, COUNTRY_NAME_RE)
-  const byCode = nearestGap(ctx, ns, ne, ISO_CODE_RE, (m) => ISO_CODES.has(m))
-  if (byName === null) return byCode
-  if (byCode === null) return byName
-  return Math.min(byName, byCode)
+function clauseIsGlobal(clause: string): boolean {
+  const hit = GLOBAL_RE.test(clause)
+  GLOBAL_RE.lastIndex = 0
+  return hit
 }
 
 export function reconcileSentimentProse(
@@ -126,16 +147,21 @@ export function reconcileSentimentProse(
     if (Math.abs(value) > 1) continue
     if (Math.abs(value - measured) <= tolerance) continue
 
-    // Round-2 scope: is this claim GLOBAL? Per-country figures pass through.
-    const ns = start - ctxStart
-    const ne = end - ctxStart
-    const countryGap = nearestCountryGap(ctx, ns, ne)
+    // Round-2/3 scope: is this claim GLOBAL? Per-country figures pass through.
+    // Decided within the number's OWN clause (sentence-bounded) so a country in
+    // the NEXT sentence ("…-0.1. The United States leads") can't capture it.
+    //  1) a country ADJACENT to the number in this clause  → per-country.
+    //  2) else a country anywhere in the clause + NO global wording → per-country
+    //     (the "US and India lean negative at -0.09 and -0.05" case, figures far
+    //     from their subjects).
+    //  3) else (global wording, or no country at all)      → correct.
+    const clause = enclosingClause(prose, start, end)
+    const ns = start - clause.offset
+    const ne = end - clause.offset
+    const countryGap = nearestCountryGapInClause(clause.text, ns, ne)
     if (countryGap !== null) {
-      // A country RIGHT NEXT to the figure = a per-country claim, always.
       if (countryGap <= ADJACENT_WINDOW) continue
-      // A country in the wider window: only global wording overrides it.
-      const globalGap = nearestGap(ctx, ns, ne, GLOBAL_RE)
-      if (globalGap === null) continue
+      if (!clauseIsGlobal(clause.text)) continue
     }
 
     if (start > cursor) out.push({ text: prose.slice(cursor, start) })

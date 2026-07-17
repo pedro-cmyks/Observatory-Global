@@ -1,0 +1,29 @@
+/* "LABEL UNDER REVIEW" chip — one shared style across every surface (council
+   Phase 1). Amber caveat family, matching .forum-lane-badge / .sdp-gate-badge
+   so the honesty layer reads as one system. Theme vars only; never hides the
+   thread, never competes with the label — it annotates it. */
+.label-review-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--color-severity-notable, #f59e0b);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 4px;
+  padding: 1px 5px;
+  cursor: help;
+}
+
+/* A court FAILURE is a harder claim than a below-floor demotion — nudge it
+   warmer so the two read as different severities without new copy. */
+.label-review-chip[data-reason='label-failed'] {
+  color: var(--color-severity-critical, #ef4444);
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.28);
+}

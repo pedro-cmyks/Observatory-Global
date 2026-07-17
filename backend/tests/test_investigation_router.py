@@ -248,3 +248,32 @@ def test_stored_daily_reader_is_one_compact_row_and_parses_json(monkeypatch):
     assert len(conn.queries) == 1
     assert "atlas_daily_editions" in conn.queries[0][0]
     assert "dynamic_topics" not in conn.queries[0][0]
+    # The staleness banner needs a clean top-level seal timestamp + edition date
+    # without digging into the completion ledger. Additive: generated_at stays.
+    assert payload["sealed_at"] == now
+    assert payload["edition_date"] == date(2026, 7, 12)
+    assert payload["completion"]["generated_at"] == now
+
+
+def test_stored_daily_reader_reports_no_seal_when_row_absent(monkeypatch):
+    class Conn:
+        async def fetchrow(self, query, *, timeout):
+            return None
+
+    class Acquire:
+        async def __aenter__(self):
+            return Conn()
+
+        async def __aexit__(self, *args):
+            return False
+
+    class Pool:
+        def acquire(self):
+            return Acquire()
+
+    monkeypatch.setattr(db, "pool", Pool(), raising=False)
+    payload = asyncio.run(fetch_stored_daily_publication())
+
+    assert payload["sealed_at"] is None
+    assert payload["edition_date"] is None
+    assert payload["completion"]["stored"] is False

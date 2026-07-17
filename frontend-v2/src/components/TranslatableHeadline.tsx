@@ -27,12 +27,31 @@ const L = LABELS[TARGET_LANG] || LABELS.en;
 // Process-lifetime memo so repeat renders / re-opens don't re-fetch.
 const memo = new Map<string, string>();
 
-function shouldTranslate(sourceLang?: string | null): boolean {
-    if (!sourceLang) return false;
-    const s = sourceLang.slice(0, 2).toLowerCase();
-    // 'xx'/'un' = unknown (GDELT) — don't guess; only translate when we KNOW
-    // the source language and it differs from the viewer's.
-    if (s === 'xx' || s === 'un' || s === 'und') return false;
+// Typographic punctuation that is technically non-ASCII but says nothing about
+// the language (curly quotes, dashes, ellipsis, the middot separator).
+const TYPOGRAPHIC_RE = /[‘’“”–—… ·]/g;
+
+// "Clearly non-English": contains a non-Latin script or diacritics beyond mere
+// typographic punctuation. Used to decide whether a GDELT-unknown headline is
+// worth a translate call.
+function isClearlyNonEnglish(text: string): boolean {
+    const stripped = (text || '').replace(TYPOGRAPHIC_RE, '');
+    // eslint-disable-next-line no-control-regex
+    return stripped.length > 0 && !/^[\x00-\x7F]*$/.test(stripped);
+}
+
+export function shouldTranslate(sourceLang: string | null | undefined, original: string): boolean {
+    const s = (sourceLang || '').slice(0, 2).toLowerCase();
+    // 'xx'/'un'/'und'/empty = unknown source (GDELT feed). We used to bail here,
+    // which silently broke the "translated into your language" promise for the
+    // flagship non-English receipts (Greek traffic news filed as source_lang=xx).
+    // Now: attempt when the text is CLEARLY non-English — the /api/v2/translate
+    // backend auto-detects the real source (DeepSeek), and the same-text guard in
+    // the fetch effect drops a no-op when the detected source already equals the
+    // viewer's language (so a Greek viewer reading Greek is not "translated").
+    // English-ASCII text stays plain (no wasted call, no loop).
+    const unknown = !s || s === 'xx' || s === 'un' || s === 'und';
+    if (unknown) return isClearlyNonEnglish(original);
     return s !== TARGET_LANG;
 }
 
@@ -43,7 +62,7 @@ interface Props {
 }
 
 export const TranslatableHeadline: React.FC<Props> = ({ signalId, original, sourceLang }) => {
-    const eligible = shouldTranslate(sourceLang);
+    const eligible = shouldTranslate(sourceLang, original);
     const cacheKey = `${signalId}:${TARGET_LANG}`;
     const [translated, setTranslated] = useState<string | null>(() => memo.get(cacheKey) ?? null);
     const [showOriginal, setShowOriginal] = useState(false);

@@ -34,7 +34,9 @@ export interface DailyPublicationStoryNode {
 
 export interface DailyPublicationArtifact {
   contract: 'atlas-daily-publication-v1'
-  edition_date: string
+  edition_date: string | null
+  /** Seal moment (generated_at) surfaced top-level for the staleness banner. */
+  sealed_at?: string | null
   status: 'ready' | 'degraded' | string
   graph: {
     contract: 'atlas-investigation-graph-v1'

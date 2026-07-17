@@ -110,6 +110,8 @@ describe('daily publication compatibility gate', () => {
     expect(source).toContain('/api/v2/investigation/daily-publication')
     expect(source).toContain('assessDailyPublication(dailyEdition)')
     expect(source).toContain('dailyGate.useSharedPackage ? publicationThreads(dailyEdition)')
-    expect(source).toContain('Daily Investigation is still rebuilding')
+    // The staleness banner announces the live fallback honestly (sealed/live split).
+    expect(source).toContain('buildStaleBanner')
+    expect(source).toContain('LIVE VIEW')
   })
 })
