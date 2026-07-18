@@ -95,3 +95,114 @@ def test_relation_handles_zero_attributable():
     r = voice_mix.relation(500, 0, 0, 0, [], [])
     assert r["self_voice_ratio"] == 0.0
     assert r["unattributed"] == 500
+
+
+# ── /voice-mix degraded path (2026-07-18, intermittent-503 fix) ──────────────
+# Under M1 batch-window DB contention the aggregation used to bubble a
+# QueryCanceledError into the global db_busy handler → 503. The router must
+# instead serve an honest degraded 200 shape, and a slow country-relation
+# query must degrade ONLY the relation, never the base report.
+
+import asyncpg
+import pytest
+
+from app import db
+from app.routers import voice_mix as vm_router
+
+
+class _AcquireCtx:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *args):
+        return False
+
+
+class FakePool:
+    """Each acquire() hands out the next conn (base block, then relation)."""
+    def __init__(self, *conns):
+        self._conns = list(conns)
+
+    def acquire(self):
+        conn = self._conns.pop(0) if len(self._conns) > 1 else self._conns[0]
+        return _AcquireCtx(conn)
+
+
+class BusyConn:
+    async def execute(self, sql):
+        return None
+
+    async def fetch(self, sql, *params):
+        raise asyncpg.exceptions.QueryCanceledError(
+            "canceling statement due to statement timeout")
+
+    async def fetchrow(self, sql, *params):
+        raise asyncpg.exceptions.QueryCanceledError(
+            "canceling statement due to statement timeout")
+
+
+class OkBaseConn:
+    async def execute(self, sql):
+        # the router must bound every statement, not run unbounded
+        assert "statement_timeout" in sql
+
+    async def fetch(self, sql, *params):
+        if "source_origin_country" in sql:
+            return [{"o": "US", "n": 5}, {"o": "(null)", "n": 2}]
+        return [{"lang": "en", "n": 8}, {"lang": "es", "n": 4}]
+
+    async def fetchrow(self, sql, *params):
+        return {"total": 12, "state_media": 1, "distinct_sources": 4}
+
+
+@pytest.mark.asyncio
+async def test_db_timeout_serves_degraded_200_shape(monkeypatch):
+    monkeypatch.setattr(db, "pool", FakePool(BusyConn()), raising=False)
+    out = await vm_router.get_voice_mix(hours=168, country=None)
+    assert out["degraded"] is True
+    assert out["reason"] == "db_busy"
+    assert out["contract"] == "voice-mix-v0"
+    assert out["window_hours"] == 168
+    # NEVER a measured-looking zero: no stats fields on the degraded shape
+    # (Landing guards on distinct_origin_countries, CountryBrief on relation).
+    assert "distinct_origin_countries" not in out
+    assert "diversity_score" not in out
+    assert "relation" not in out
+
+
+@pytest.mark.asyncio
+async def test_relation_timeout_degrades_only_relation(monkeypatch):
+    monkeypatch.setattr(db, "pool", FakePool(OkBaseConn(), BusyConn()), raising=False)
+    out = await vm_router.get_voice_mix(hours=168, country="co")
+    # base report intact
+    assert "degraded" not in out
+    assert "diversity_score" in out
+    assert out["country"] == "CO"
+    # relation lane honestly degraded, not silently absent
+    assert out.get("relation_degraded") is True
+    assert "relation" not in out
+    assert out["primary_languages"] == ["es"]
+
+
+@pytest.mark.asyncio
+async def test_healthy_country_path_serves_relation(monkeypatch):
+    class OkRelationConn(OkBaseConn):
+        async def fetchrow(self, sql, *params):
+            if "origin_known" in sql:
+                return {"origin_known": 7, "domestic": 3, "soft_power": 1}
+            return await super().fetchrow(sql, *params)
+
+        async def fetch(self, sql, *params):
+            if "ORDER BY n DESC LIMIT 6" in sql:
+                if "source_origin_country" in sql:
+                    return [{"cc": "US", "n": 4}]
+                return [{"lang": "en", "n": 4}]
+            return await super().fetch(sql, *params)
+
+    monkeypatch.setattr(db, "pool", FakePool(OkBaseConn(), OkRelationConn()), raising=False)
+    out = await vm_router.get_voice_mix(hours=168, country="co")
+    assert out["relation"]["self_voice"] == 3
+    assert "relation_degraded" not in out
