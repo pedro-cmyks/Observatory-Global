@@ -1073,7 +1073,11 @@ SELECT
     dt.last_seen,
     dt.agg_n_signals,
     dt.mean_cohesion,
-    dt.noise_rate,
+    -- Umbrellas carry no own noise_rate (NULL -> confidence None -> the
+    -- umbrella-first front page could never clear the Brief's lead bar).
+    -- Their confidence is their CHILDREN's average (2026-07-18).
+    COALESCE(dt.noise_rate, (SELECT AVG(c.noise_rate) FROM dynamic_topics c
+                             WHERE c.parent_id = dt.id AND c.state='active')) AS noise_rate,
     dt.category,            -- R3.1 open category (crisis seed OR emergent) = the badge
     dt.crisis_class,        -- (legacy) seed-32 class or 'non_crisis'
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
@@ -1190,7 +1194,11 @@ SELECT
     dt.last_seen,
     dt.agg_n_signals,
     dt.mean_cohesion,
-    dt.noise_rate,
+    -- Umbrellas carry no own noise_rate (NULL -> confidence None -> the
+    -- umbrella-first front page could never clear the Brief's lead bar).
+    -- Their confidence is their CHILDREN's average (2026-07-18).
+    COALESCE(dt.noise_rate, (SELECT AVG(c.noise_rate) FROM dynamic_topics c
+                             WHERE c.parent_id = dt.id AND c.state='active')) AS noise_rate,
     dt.category,            -- R3.1 open category (crisis seed OR emergent) = the badge
     dt.crisis_class,        -- (legacy) seed-32 class or 'non_crisis'
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
