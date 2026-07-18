@@ -32,6 +32,9 @@
 
 ATLAS_HEAVY_LOCK_DIR="${ATLAS_HEAVY_LOCK_DIR:-/tmp/atlas-heavy-job.lock}"
 ATLAS_HEAVY_LOCK_LOG="${ATLAS_HEAVY_LOCK_LOG:-$HOME/AtlasLocalWorker/logs/heavy-lock.log}"
+# Reliability ledger (#259): OVERDUE_ACTIVE incidents also land here so the
+# weekly read has ONE place to grep (shared with the freshness watchdog).
+ATLAS_RELIABILITY_ALERTS_LOG="${ATLAS_RELIABILITY_ALERTS_LOG:-$HOME/AtlasLocalWorker/logs/reliability-alerts.log}"
 _ATLAS_HEAVY_LOCK_HELD=""
 
 _atlas_heavy_log() {
@@ -77,6 +80,10 @@ _atlas_heavy_try_reclaim() {
       && [ "$(( (now - started) / 60 ))" -gt "$owner_ttl" ]; then
     age_min="$(( (now - started) / 60 ))"
     _atlas_heavy_log "OVERDUE_ACTIVE lock (job=$job pid=$pid age=${age_min}m > owner_ttl=${owner_ttl}m) — NOT reclaiming a live owner; investigate"
+    if [ -d "$(dirname "$ATLAS_RELIABILITY_ALERTS_LOG")" ]; then
+      echo "$(date '+%F %T') [heavy-lock] OVERDUE_ACTIVE job=$job pid=$pid age=${age_min}m owner_ttl=${owner_ttl}m — live owner NOT evicted" \
+        >> "$ATLAS_RELIABILITY_ALERTS_LOG" 2>/dev/null || true
+    fi
   fi
   return 1
 }
