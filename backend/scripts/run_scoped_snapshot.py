@@ -63,20 +63,64 @@ _COUNTRIES = """
     GROUP BY s.country_code HAVING COUNT(*) >= $2
     ORDER BY n DESC
 """
-_FETCH = """
+# Keyset-paginated pull. The single-shot `se.vec::text` fetch of the biggest
+# countries (US ~74k × 768-dim halfvec) exceeded statement_timeout='600s' under
+# daytime contention and failed all 3 retries (2026-07-17): one statement had to
+# scan+sort every row AND text-format 74k×768 floats (~9.5 KB/row). Two measured
+# fixes, both here:
+#   1. se.vec::real[] instead of ::text — asyncpg decodes float4[] in binary
+#      (native, no _parse_vec float() loop) at ~1/3 the bytes and far cheaper
+#      server-side formatting (measured 2.7× client-total on a US sample).
+#   2. keyset pagination on (timestamp, id) — each statement is bounded to
+#      _FETCH_PAGE_ROWS, so no single statement can approach the timeout no
+#      matter the contention. Same corpus: (timestamp DESC, id DESC) is the
+#      total order over the SAME rows the old timestamp-only pull returned; the
+#      id tiebreak only makes ties deterministic (previously undefined).
+_FETCH_PAGE = """
     SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
-           se.vec::text AS emb
+           se.vec::real[] AS emb
     FROM signal_embeddings se JOIN signals_v2 s ON s.id = se.signal_id
     WHERE s.country_code = $1
       AND s.timestamp > NOW() - ($2::int * INTERVAL '1 hour')
       AND s.headline IS NOT NULL AND length(s.headline) >= 20
-    ORDER BY s.timestamp DESC
-    LIMIT NULLIF($3, 0)
+      AND (s.timestamp, s.id) < ($4::timestamptz, $5::bigint)
+    ORDER BY s.timestamp DESC, s.id DESC
+    LIMIT $3
 """
 
+_FETCH_PAGE_ROWS = int(os.environ.get("ATLAS_SCOPED_FETCH_PAGE_ROWS", "15000") or "15000")
+_MAX_BIGINT = (1 << 63) - 1  # keyset sentinel: first page has no cursor upper bound
 
-def _parse_vec(t: str) -> list[float]:
-    return [float(x) for x in t.strip().lstrip("[").rstrip("]").split(",") if x]
+
+async def _fetch_country_embeddings(conn, cc, hours, cap, page_rows):
+    """Keyset-paginate the scoped pull so no single statement times out.
+
+    Returns the same row set (id, headline, country_code, source_name, timestamp,
+    emb) the old single-shot _FETCH did, in (timestamp DESC, id DESC) order, with
+    `emb` a binary-decoded list[float] (not text). cap>0 stops after `cap` newest
+    rows (old LIMIT NULLIF($3,0) semantics); cap<=0 traverses every eligible row.
+    """
+    out: list = []
+    last_ts = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+    last_id = _MAX_BIGINT
+    remaining = cap if cap and cap > 0 else None
+    while True:
+        limit = page_rows if remaining is None else min(page_rows, remaining)
+        if limit <= 0:
+            break
+        page = await conn.fetch(_FETCH_PAGE, cc, hours, limit, last_ts, last_id)
+        if not page:
+            break
+        out.extend(page)
+        if remaining is not None:
+            remaining -= len(page)
+            if remaining <= 0:
+                break
+        if len(page) < limit:
+            break  # last (short) page
+        tail = page[-1]
+        last_ts, last_id = tail["timestamp"], int(tail["id"])
+    return out
 
 
 def _env_whiten_k() -> int:
@@ -102,12 +146,13 @@ def _whiten_input(embs: np.ndarray, k: int) -> np.ndarray:
 
 
 async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n,
-                            whiten_k: int = 0):
+                            whiten_k: int = 0, page_rows: int | None = None):
     """Scoped pull → cluster → gate → top-N. Returns (clusters, embs, rows) or None."""
-    recs = await conn.fetch(_FETCH, cc, hours, cap)
+    recs = await _fetch_country_embeddings(conn, cc, hours, cap,
+                                           page_rows or _FETCH_PAGE_ROWS)
     if len(recs) < mcs * 2:
         return None
-    emb_by_id = {int(r["id"]): _parse_vec(r["emb"]) for r in recs}
+    emb_by_id = {int(r["id"]): list(r["emb"]) for r in recs}
     rows = _clean_and_dedupe([{k: r[k] for k in
                                ("id", "headline", "country_code", "source_name", "timestamp")}
                               for r in recs])

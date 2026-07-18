@@ -96,6 +96,9 @@ def test_k1_matches_harness_implementation_on_fixture():
 # --------------------------------------------- _country_clusters space wiring
 
 class _FakeConn:
+    """Models the keyset-paginated pull: one short (full-corpus) page — the
+    `_fetch_country_embeddings` loop terminates after a single statement."""
+
     def __init__(self, recs):
         self._recs = recs
 
@@ -107,14 +110,14 @@ def _fake_records(n: int = 12, dim: int = 16):
     embs = _unit_rows(n, dim)
     recs = []
     for i in range(n):
-        vec = "[" + ",".join(f"{v:.6f}" for v in embs[i]) + "]"
         recs.append({
             "id": i + 1,
             "headline": f"Distinct scoped-cluster fixture headline number {i} for testing",
             "country_code": "US",
             "source_name": f"src-{i}",
             "timestamp": None,
-            "emb": vec,
+            # binary-decoded float4[] (the paginated pull's se.vec::real[])
+            "emb": [float(v) for v in embs[i]],
         })
     return recs, embs
 
