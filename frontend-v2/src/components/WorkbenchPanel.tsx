@@ -101,6 +101,17 @@ export default function WorkbenchPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [showDossier, onClose]);
 
+  // accounts-v1 (F4b): the sync engine adopts pulled investigations via a raw
+  // localStorage write (deliberate onWorkbenchChange bypass — that bypass is
+  // the sync loop guard) and announces it with this DOM event. Re-read the
+  // store so a pull from another device shows up without a reopen. UI-only:
+  // a re-render can never re-enter sync.
+  useEffect(() => {
+    const onPulled = () => rerender();
+    window.addEventListener('atlas-workbench-pulled', onPulled);
+    return () => window.removeEventListener('atlas-workbench-pulled', onPulled);
+  }, [rerender]);
+
   // Destructive-op helpers with undo (capture the removed item, restore on undo).
   const removePinWithUndo = useCallback((inv: Investigation, pin: WorkbenchPin) => {
     removePin(inv.id, pin.anchorId);
