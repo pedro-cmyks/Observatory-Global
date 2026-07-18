@@ -209,7 +209,15 @@ def rank_threads(threads: list[dict]) -> list[dict]:
     if v2:
         # SYNDICATION DAMP (v2): the volume term carries a diversity factor —
         # single-wire reprint volume stops counting as independent coverage.
-        volumes = [c[0] * headline_diversity(t) for t, c in zip(threads, comps)]
+        # The factor is WRITTEN BACK into each thread's quality dict so the
+        # damp is explainable in the served payload (verify-gate note: a damp
+        # with no served explanation hook is a silent judgment).
+        divs = [headline_diversity(t) for t in threads]
+        for t, dv in zip(threads, divs):
+            q = t.get("quality")
+            if isinstance(q, dict):
+                q["headline_diversity"] = round(dv, 3)
+        volumes = [c[0] * dv for dv, c in zip(divs, comps)]
     else:
         volumes = [c[0] for c in comps]
     nv = _minmax(volumes)
