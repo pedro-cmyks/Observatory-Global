@@ -24,6 +24,7 @@ import asyncio
 import json
 import os
 import sys
+from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +70,11 @@ def is_candidate(sim: float, theta: float | None, bimodal: bool,
     return sim < theta + near
 
 
+def _d(v) -> date | None:
+    """ISO week string -> date (asyncpg binds date-typed params as objects)."""
+    return date.fromisoformat(v) if v else None
+
+
 def parse_edges(doc: dict, near: float = NEAR_DEFAULT) -> dict:
     """lineage-edges.json -> keyed upsert rows (pure; testable).
 
@@ -89,15 +95,15 @@ def parse_edges(doc: dict, near: float = NEAR_DEFAULT) -> dict:
     for e in doc.get("topic_unit_edges") or []:
         key = (int(e["topic_id"]), int(e["unit_id"]))
         topic_unit[key] = (
-            key[0], key[1], float(e["sim"]), e.get("week"), method_str,
+            key[0], key[1], float(e["sim"]), _d(e.get("week")), method_str,
             is_candidate(float(e["sim"]), tu_theta, tu_bimodal, near))
 
     unit_unit: dict[tuple[int, int], tuple] = {}
     for e in doc.get("unit_unit_edges") or []:
         key = (int(e["src_unit_id"]), int(e["dst_unit_id"]))
         unit_unit[key] = (
-            key[0], key[1], float(e["sim"]), e.get("src_week"),
-            e.get("dst_week"), e.get("kind"), method_str,
+            key[0], key[1], float(e["sim"]), _d(e.get("src_week")),
+            _d(e.get("dst_week")), e.get("kind"), method_str,
             is_candidate(float(e["sim"]), uu_theta, uu_bimodal, near))
 
     return {"method": method_str, "topic_unit": topic_unit,

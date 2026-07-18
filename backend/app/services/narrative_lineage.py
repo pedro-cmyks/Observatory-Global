@@ -19,6 +19,7 @@ Honesty rules (mirrors the census):
 """
 from __future__ import annotations
 
+import html
 import json
 import logging
 import re
@@ -71,9 +72,9 @@ def _receipts_from_samples(samples: Any, day: str | None) -> list[dict]:
     out = []
     for s in samples or []:
         if isinstance(s, str):
-            out.append({"headline": s, "day": day})
+            out.append({"headline": html.unescape(s), "day": day})
         elif isinstance(s, dict) and s.get("headline"):
-            out.append({"headline": s["headline"],
+            out.append({"headline": html.unescape(s["headline"]),
                         "url": s.get("url"), "source": s.get("source"),
                         "source_lang": s.get("source_lang"),
                         "day": s.get("day") or day})
@@ -148,7 +149,7 @@ def build_lineage_payload(topic_id: str, tu_edges: list[dict],
         weeks_out.append({
             "week": wk.isoformat(),
             "tier": "archive",
-            "label": big["label"][:160],
+            "label": html.unescape(big["label"])[:160],
             "n_signals": sum(int(r["n_signals"]) for r in rows),
             "n_units": len(rows),
             "countries": [c for c, _ in ccs.most_common(4)],
