@@ -48,4 +48,26 @@ describe('theme-lineage-v0 fixture', () => {
         expect(presentWeeks(null)).toEqual([])
         expect(presentWeeks(undefined)).toEqual([])
     })
+
+    it('labels the lineage union and flags the seam ONLY at the hot week', () => {
+        // the fixture is a union of two census lineages — labeled, never silent
+        expect(LINEAGE_FIXTURE.meta?.lineage_ids).toEqual(['lin-2041', 'lin-3105'])
+        const joined = LINEAGE_FIXTURE.weeks.filter(w => w.joined)
+        expect(joined).toHaveLength(1)
+        // the live thread is the only measured joint between the lineages
+        expect(joined[0].tier).toBe('hot')
+    })
+
+    it('spine passes the seam through so the render marks the joined node', () => {
+        const spine = buildLineageSpine(LINEAGE_FIXTURE.weeks)
+        const seamNodes = spine.nodes.filter(n => n.joined)
+        expect(seamNodes).toHaveLength(1)
+        expect(seamNodes[0].tier).toBe('hot')
+        // non-seam nodes never claim the join
+        expect(spine.nodes.filter(n => !n.joined).length).toBe(spine.nodes.length - 1)
+    })
+
+    it('labels where the hot count comes from (members vs aggregate)', () => {
+        expect(LINEAGE_FIXTURE.meta?.hot_n_signals_source).toBe('members')
+    })
 })

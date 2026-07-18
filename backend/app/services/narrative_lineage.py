@@ -15,6 +15,13 @@ Honesty rules (mirrors the census):
   the labeled stitch;
 - candidate stitches (near/below the measured threshold, or thresholds from
   the non-bimodal fallback) are flagged, never asserted;
+- hot n_signals is a real COUNT over topic_members evidence (receipts stay
+  LIMITed); when the count is unavailable we fall back to the topic's
+  agg_n_signals and LABEL the source in meta (hot_n_signals_source);
+- when the topic stitches to units of MORE THAN ONE census lineage the BFS
+  merges them into one spine — the union is LABELED (meta.lineage_ids) and
+  the seam week (the live thread, the only measured joint) carries
+  joined:true, never a silent merge;
 - absence is honest: no stitch -> empty weeks + empty_reason, never filler.
 """
 from __future__ import annotations
@@ -81,6 +88,37 @@ def _receipts_from_samples(samples: Any, day: str | None) -> list[dict]:
         if len(out) >= 3:
             break
     return out
+
+
+def lineage_component_ids(unit_ids: list[int], uu_edges: list[dict]) -> list[str]:
+    """Census-lineage ids inside the served component.
+
+    Census lineages are connected components of the unit_unit graph; the serving
+    BFS can union several of them when one live topic stitches to units of more
+    than one. Recover the ORIGINAL components here (union-find over uu edges
+    only — topic stitches never merge units) so the union can be labeled.
+    Ids follow the census convention: lin-<min unit id in component>.
+    """
+    parent = {u: u for u in unit_ids}
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for e in uu_edges:
+        a, b = int(e["src_unit_id"]), int(e["unit_id"])
+        if a in parent and b in parent:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+
+    comps: dict[int, list[int]] = {}
+    for u in unit_ids:
+        comps.setdefault(find(u), []).append(u)
+    return [f"lin-{min(members)}"
+            for members in sorted(comps.values(), key=min)]
 
 
 def build_lineage_payload(topic_id: str, tu_edges: list[dict],
@@ -161,12 +199,16 @@ def build_lineage_payload(topic_id: str, tu_edges: list[dict],
             prev_centroid = centroid
         prev_week = wk
 
+    # labeled union: which ORIGINAL census lineages does this spine merge?
+    lineage_ids = lineage_component_ids(sorted(by_id), uu_edges)
+    joined = len(lineage_ids) > 1
+
     if hot:
         # The hot node's drift is the STITCH cosine (topic centroid vs its
         # best-matched archive unit) — a measured number in the same space,
         # labeled by the stitch block; era-centroid drift is not computable
         # across the Stage-B unit hole, so we never fake one.
-        weeks_out.append({
+        hot_week = {
             "week": hot["week"],
             "tier": "hot",
             "label": (hot.get("label") or "")[:160] or None,
@@ -176,7 +218,12 @@ def build_lineage_payload(topic_id: str, tu_edges: list[dict],
             "drift_cos_prev": round(float(best["sim"]), 4),
             "candidate": bool(best["candidate"]),
             "receipts": list(hot.get("receipts") or []),
-        })
+        }
+        if joined:
+            # the live thread is the ONLY measured joint between the merged
+            # census lineages — flag the seam, never merge silently
+            hot_week["joined"] = True
+        weeks_out.append(hot_week)
 
     present = [w for w in weeks_out if not w.get("gap")]
     span = len({w["week"] for w in weeks_out})
@@ -202,6 +249,12 @@ def build_lineage_payload(topic_id: str, tu_edges: list[dict],
             "coverage_pct": round(100.0 * len(present) / span, 1) if span else 0.0,
             "n_units": len(units),
             "n_unit_edges": len(uu_edges),
+            # all census lineages merged into this spine (>1 = labeled union;
+            # the hot week carries joined:true at the seam)
+            "lineage_ids": lineage_ids,
+            # where the hot node's count comes from: 'members' = count(*) over
+            # topic_members evidence, 'aggregate' = dynamic_topics.agg_n_signals
+            "hot_n_signals_source": hot.get("n_signals_source") if hot else None,
         },
         "empty_reason": None,
     }
@@ -245,7 +298,8 @@ async def topic_lineage(conn: Any, theme_code: str) -> dict:
         return _empty(theme_code, "topic_not_found")
 
     topic = await conn.fetchrow(
-        "SELECT id, label, last_seen FROM dynamic_topics WHERE id = $1", tid)
+        """SELECT id, label, last_seen, agg_n_signals
+           FROM dynamic_topics WHERE id = $1""", tid)
     if not topic:
         return _empty(theme_code, "topic_not_found")
 
@@ -277,7 +331,27 @@ async def topic_lineage(conn: Any, theme_code: str) -> dict:
                       "n_signals": int(r["n_signals"]),
                       "top_cc": list(r["top_cc"] or []), "vec": vec})
 
-    # hot tier: the live topic itself (evidence-membership window)
+    # hot tier: the live topic itself (evidence-membership window).
+    # n_signals is a REAL count over evidence members (the receipts query
+    # below stays LIMITed — a LIMIT-truncated len() once served "120 signals"
+    # for a 1,811-member thread and 0 for young topics); when the count is
+    # unavailable/zero we fall back to agg_n_signals and LABEL the source.
+    hot_n = 0
+    hot_src = "aggregate"
+    try:
+        n_members = await conn.fetchval(
+            """SELECT count(*) FROM topic_members
+               WHERE topic_id = $1 AND role = 'evidence'""", theme_code)
+        if n_members:
+            hot_n, hot_src = int(n_members), "members"
+    except Exception as exc:  # noqa: BLE001 — count is best-effort
+        logger.warning("lineage hot member count failed: %s", exc)
+    if hot_src == "aggregate":
+        try:
+            hot_n = int(topic["agg_n_signals"] or 0)
+        except (KeyError, TypeError, ValueError):
+            hot_n = 0
+
     hot: dict | None = None
     try:
         ev = await conn.fetch(
@@ -293,7 +367,8 @@ async def topic_lineage(conn: Any, theme_code: str) -> dict:
         hot = {
             "week": monday(topic["last_seen"].date()).isoformat(),
             "label": topic["label"],
-            "n_signals": len(ev),
+            "n_signals": hot_n,
+            "n_signals_source": hot_src,
             "countries": [c for c, _ in ccs.most_common(4)],
             "receipts": [
                 {"headline": r["headline"], "url": r["source_url"],
@@ -304,7 +379,7 @@ async def topic_lineage(conn: Any, theme_code: str) -> dict:
     except Exception as exc:  # noqa: BLE001 — hot tier is best-effort
         logger.warning("lineage hot tier failed: %s", exc)
         hot = {"week": monday(topic["last_seen"].date()).isoformat(),
-               "label": topic["label"], "n_signals": 0,
-               "countries": [], "receipts": []}
+               "label": topic["label"], "n_signals": hot_n,
+               "n_signals_source": hot_src, "countries": [], "receipts": []}
 
     return build_lineage_payload(theme_code, tu_edges, uu_edges, units, hot)

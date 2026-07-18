@@ -214,6 +214,44 @@ class TestBuildLineagePayload:
         assert out["meta"]["weeks_present"] == 2
         assert out["meta"]["coverage_pct"] == pytest.approx(50.0)
 
+    def test_hot_count_source_labeled_in_meta(self):
+        hot = dict(self._hot(), n_signals=1811, n_signals_source="members")
+        out = nl.build_lineage_payload("dynamic-topic-1837", TU, self._uu(),
+                                       self._units(), hot)
+        hot_week = [w for w in out["weeks"] if w.get("tier") == "hot"][0]
+        assert hot_week["n_signals"] == 1811   # real count, not len(receipts)
+        assert out["meta"]["hot_n_signals_source"] == "members"
+
+    def test_hot_source_null_without_hot_tier(self):
+        out = nl.build_lineage_payload("dynamic-topic-1837", TU, self._uu(),
+                                       self._units(), None)
+        assert out["meta"]["hot_n_signals_source"] is None
+
+    def test_single_lineage_labeled_no_seam_flag(self):
+        out = nl.build_lineage_payload("dynamic-topic-1837", TU, self._uu(),
+                                       self._units(), self._hot())
+        assert out["meta"]["lineage_ids"] == ["lin-10"]
+        hot_week = [w for w in out["weeks"] if w.get("tier") == "hot"][0]
+        assert "joined" not in hot_week
+
+    def test_union_of_two_lineages_labeled_and_seam_flagged(self):
+        # two census lineages: {10,11} (uu-connected) and {79} (its own
+        # component) — both stitched to the SAME live topic -> one spine,
+        # labeled union, seam flag on the hot week (the only measured joint)
+        tu = TU + [{"unit_id": 79, "sim": 0.66, "candidate": False,
+                    "method": "census-v0 gen=2026-07-18 tu=0.62 uu=0.55"}]
+        units = self._units() + [
+            _unit(79, "2026-06-30", "Aid Convoy Dispute", 120, _vec("b"))]
+        out = nl.build_lineage_payload("dynamic-topic-1837", tu, self._uu(),
+                                       units, self._hot())
+        assert out["meta"]["lineage_ids"] == ["lin-10", "lin-79"]
+        assert out["lineage_id"] == "lin-10"  # back-compat: first of the union
+        hot_week = [w for w in out["weeks"] if w.get("tier") == "hot"][0]
+        assert hot_week["joined"] is True
+        # archive eras never carry the seam flag — the topic is the joint
+        assert all("joined" not in w for w in out["weeks"]
+                   if w.get("tier") == "archive")
+
     def test_no_edges_is_honest_empty(self):
         out = nl.build_lineage_payload("dynamic-topic-9", [], [], [], None)
         assert out["weeks"] == [] and out["stitch"] is None
@@ -224,15 +262,22 @@ class TestBuildLineagePayload:
 
 class FakeServeConn:
     def __init__(self, topic_row=None, tu_rows=(), uu_rows=(), unit_rows=(),
-                 hot_rows=()):
+                 hot_rows=(), member_count=None):
         self.topic_row = topic_row
         self.tu_rows = list(tu_rows)
         self.uu_rows = list(uu_rows)
         self.unit_rows = list(unit_rows)
         self.hot_rows = list(hot_rows)
+        self.member_count = member_count
 
     async def fetchrow(self, sql, *args):
         return self.topic_row
+
+    async def fetchval(self, sql, *args):
+        assert "count(*)" in sql and "role = 'evidence'" in sql
+        if isinstance(self.member_count, Exception):
+            raise self.member_count
+        return self.member_count
 
     async def fetch(self, sql, *args):
         if "kind = 'topic_unit'" in sql:
@@ -270,15 +315,18 @@ class TestTopicLineageServing:
 
     def test_no_stitch_honest_empty(self):
         conn = FakeServeConn(topic_row={"id": 7, "label": "X",
-                                        "last_seen": _Ts(date(2026, 7, 16))})
+                                        "last_seen": _Ts(date(2026, 7, 16)),
+                                        "agg_n_signals": 0})
         out = asyncio.run(nl.topic_lineage(conn, "dynamic-topic-7"))
         assert out["empty_reason"] == "no_lineage"
         assert out["contract"] == "theme-lineage-v0"
 
-    def test_end_to_end_shape(self):
-        conn = FakeServeConn(
+    @staticmethod
+    def _e2e_conn(member_count=1811, agg=1500):
+        return FakeServeConn(
             topic_row={"id": 1837, "label": "Quake Recovery",
-                       "last_seen": _Ts(date(2026, 7, 16))},
+                       "last_seen": _Ts(date(2026, 7, 16)),
+                       "agg_n_signals": agg},
             tu_rows=[{"unit_id": 11, "sim": 0.714, "candidate": False,
                       "method": "census-v0 gen=2026-07-18 tu=0.62 uu=0.55"}],
             uu_rows=[{"src_unit_id": 10, "unit_id": 11, "sim": 0.58,
@@ -293,8 +341,12 @@ class TestTopicLineageServing:
             ],
             hot_rows=[{"signal_id": 5, "headline": "hot h", "source_name": "s",
                        "source_url": "u", "country_code": "VE",
-                       "source_lang": "es", "day": "2026-07-15"}])
-        out = asyncio.run(nl.topic_lineage(conn, "dynamic-topic-1837"))
+                       "source_lang": "es", "day": "2026-07-15"}],
+            member_count=member_count)
+
+    def test_end_to_end_shape(self):
+        out = asyncio.run(nl.topic_lineage(self._e2e_conn(),
+                                           "dynamic-topic-1837"))
         assert out["empty_reason"] is None
         present = [w for w in out["weeks"] if not w.get("gap")]
         assert [w["tier"] for w in present] == ["archive", "archive", "hot"]
@@ -305,3 +357,28 @@ class TestTopicLineageServing:
         assert hot["week"] == "2026-07-13"  # Monday of Jul-16
         assert hot["receipts"][0]["signal_id"] == 5
         assert hot["countries"] == ["VE"]
+        assert out["meta"]["lineage_ids"] == ["lin-10"]
+
+    def test_hot_count_is_full_member_count_not_receipt_limit(self):
+        # 1,811 evidence members must serve 1,811 — never the LIMIT-120 len()
+        out = asyncio.run(nl.topic_lineage(self._e2e_conn(member_count=1811),
+                                           "dynamic-topic-1837"))
+        hot = [w for w in out["weeks"] if w.get("tier") == "hot"][0]
+        assert hot["n_signals"] == 1811
+        assert out["meta"]["hot_n_signals_source"] == "members"
+        assert len(hot["receipts"]) <= 3  # receipts stay LIMITed
+
+    def test_hot_count_zero_members_falls_back_to_aggregate_labeled(self):
+        out = asyncio.run(nl.topic_lineage(
+            self._e2e_conn(member_count=0, agg=1500), "dynamic-topic-1837"))
+        hot = [w for w in out["weeks"] if w.get("tier") == "hot"][0]
+        assert hot["n_signals"] == 1500
+        assert out["meta"]["hot_n_signals_source"] == "aggregate"
+
+    def test_hot_count_query_failure_falls_back_to_aggregate_labeled(self):
+        out = asyncio.run(nl.topic_lineage(
+            self._e2e_conn(member_count=RuntimeError("db_busy"), agg=1500),
+            "dynamic-topic-1837"))
+        hot = [w for w in out["weeks"] if w.get("tier") == "hot"][0]
+        assert hot["n_signals"] == 1500
+        assert out["meta"]["hot_n_signals_source"] == "aggregate"

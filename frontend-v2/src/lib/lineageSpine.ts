@@ -50,6 +50,8 @@ export interface SpineNode {
     countries: string[]
     driftCosPrev: number | null
     candidate: boolean
+    /** SEAM node: multiple census lineages meet here, joined by the live thread */
+    joined: boolean
 }
 
 export interface SpineEdge {
@@ -132,6 +134,7 @@ export function buildLineageSpine(
             countries: w.countries ?? [],
             driftCosPrev: w.drift_cos_prev ?? null,
             candidate: !!w.candidate,
+            joined: !!w.joined,
         }
     })
 

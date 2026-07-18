@@ -1,0 +1,29 @@
+/* TEMPORAL SIGNATURE chip — one shared style across surfaces (Lane C).
+   Cool indigo family (time/lineage — matches the NarrativeBiography accent
+   #818cf8) so it reads as a different axis than the amber honesty caveats.
+   Theme vars only; annotates the label, never competes with it. */
+.temporal-signature-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--color-accent-indigo, #818cf8);
+  background: rgba(129, 140, 248, 0.1);
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  border-radius: 4px;
+  padding: 1px 5px;
+  cursor: help;
+}
+
+/* NEW is a first-appearance claim — nudge it toward the emerald "fresh"
+   family so it separates from the returned/recurring pair at a glance. */
+.temporal-signature-chip[data-signature='new'] {
+  color: var(--color-positive, #34d399);
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.28);
+}

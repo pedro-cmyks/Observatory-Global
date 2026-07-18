@@ -78,6 +78,15 @@
     filter: drop-shadow(0 0 6px rgba(129, 140, 248, 0.8));
 }
 
+/* SEAM ring: two measured lineages meet at this node (labeled union) —
+   dashed outer ring, never a silent merge */
+.nb-node-seam {
+    fill: none;
+    stroke: rgba(196, 181, 253, 0.85);
+    stroke-width: 1.2;
+    stroke-dasharray: 3 3;
+}
+
 .nb-node-group:hover .nb-node {
     filter: drop-shadow(0 0 5px rgba(148, 163, 184, 0.7));
 }
@@ -122,6 +131,15 @@
     pointer-events: auto;
 }
 
+/* seam tip zone: sits ON the seam node; clicks fall through to week-open */
+.nb-seam-tip-zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
 /* ── legend + method (themed chrome, not canvas) ── */
 .nb-legend {
     display: flex;
@@ -143,6 +161,14 @@
 
 .nb-dot--hot { background: rgba(16, 185, 129, 0.35); border: 1px solid #34d399; }
 .nb-dot--archive { background: rgba(99, 102, 241, 0.3); border: 1px solid #818cf8; }
+
+.nb-ring--seam {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1px dashed rgba(196, 181, 253, 0.9);
+}
 
 .nb-line {
     display: inline-block;
@@ -212,6 +238,8 @@
 
 .nb-era-candidate { color: #fbbf24; }
 
+.nb-era-joined { color: #c4b5fd; }
+
 .nb-era-empty {
     margin-top: 8px;
     font-size: 0.75rem;
@@ -253,4 +281,11 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     color: var(--color-text-secondary);
     opacity: 0.85;
+}
+
+/* Temporal signature chip leads the method foot — flip the shared chip's
+   spacing (it defaults to margin-left for inline-after-label placement). */
+.nb-method .nb-signature-chip {
+    margin-left: 0;
+    margin-right: 8px;
 }

@@ -54,7 +54,25 @@ export interface LineageWeek {
     drift_cos_prev?: number | null
     /** this era joined the lineage below the asserted threshold */
     candidate?: boolean
+    /** SEAM week: two (or more) census lineages meet here, joined ONLY by the
+     *  live thread — the union is labeled (meta.lineage_ids), never silent */
+    joined?: boolean
     receipts?: LineageReceipt[]
+}
+
+export interface LineageMeta {
+    /** all census lineages merged into this spine; >1 = labeled union whose
+     *  seam week carries joined:true */
+    lineage_ids?: string[]
+    /** where the hot node's count comes from: 'members' = count(*) over
+     *  topic_members evidence, 'aggregate' = dynamic_topics.agg_n_signals */
+    hot_n_signals_source?: 'members' | 'aggregate' | null
+    weeks_spanned?: number
+    weeks_present?: number
+    coverage_pct?: number
+    n_units?: number
+    n_unit_edges?: number
+    method?: string | null
 }
 
 export interface LineageStitch {
@@ -75,6 +93,7 @@ export interface LineageResponse {
     lineage_id: string | null
     weeks: LineageWeek[]
     stitch: LineageStitch | null
+    meta?: LineageMeta | null
     empty_reason?: string | null
 }
 
@@ -86,11 +105,17 @@ export function presentWeeks(weeks: LineageWeek[] | null | undefined): LineageWe
 // ── Fixture: the canonical example the endpoint must satisfy ────────────────
 // Modeled on the census lane's real top-living lineage shape (VE earthquake
 // class): archive eras May→early-July, the Stage-B unit hole crossed by the
-// stitch to the live topic (hot tier), one rename mid-life, one candidate era.
+// stitch to the live topic (hot tier), one rename mid-life, one candidate era,
+// and a LABELED UNION: the live thread stitches to units of TWO census
+// lineages (lin-2041 + lin-3105) — the hot week is the seam (joined:true).
 export const LINEAGE_FIXTURE: LineageResponse = {
     contract: 'theme-lineage-v0',
     topic_id: 'dynamic-topic-1837',
     lineage_id: 'lin-2041',
+    meta: {
+        lineage_ids: ['lin-2041', 'lin-3105'],
+        hot_n_signals_source: 'members',
+    },
     stitch: {
         space: 'openai/text-embedding-3-small',
         theta_topic_unit: 0.62,
@@ -130,7 +155,7 @@ export const LINEAGE_FIXTURE: LineageResponse = {
         },
         {
             week: '2026-07-13', tier: 'hot', label: 'Venezuela Earthquake Recovery',
-            n_signals: 96, n_units: 1, countries: ['VE'], drift_cos_prev: 0.66, candidate: false,
+            n_signals: 96, n_units: 1, countries: ['VE'], drift_cos_prev: 0.66, candidate: false, joined: true,
             receipts: [
                 { headline: 'Damnificados exigen viviendas dos meses después del sismo', source: 'Efecto Cocuyo', url: 'https://example.com/e', source_lang: 'es', signal_id: 123456, day: '2026-07-15' },
             ],

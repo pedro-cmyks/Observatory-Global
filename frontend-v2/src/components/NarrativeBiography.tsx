@@ -20,10 +20,15 @@ import { buildLineageSpine, type SpineEdge, type SpineNode } from '../lib/lineag
 import { decodeEntities } from '../lib/decodeEntities'
 import { resolveCountryName } from '../lib/countryNames'
 import { TranslatableHeadline } from './TranslatableHeadline'
+import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { track } from '../lib/telemetry'
 import './NarrativeBiography.css'
 
 const SVG_H = 132
+
+const SEAM_TIP = 'Two measured lineages joined by this thread — they were '
+    + 'measured separately in the archive; the live thread is their only '
+    + 'measured connection.'
 
 function fmtWeek(week: string): string {
     return new Date(week + 'T00:00:00Z')
@@ -40,7 +45,13 @@ function edgeTip(e: SpineEdge): string {
     return parts.join(' · ')
 }
 
-export function NarrativeBiography({ theme }: { theme: string }) {
+export function NarrativeBiography({ theme, temporalSignature, signatureMeta }: {
+    theme: string
+    /** Temporal signature (mig 085) served with the theme detail — the foot
+     *  chip states the lineage's shape in time; null/continuous = no chip. */
+    temporalSignature?: string | null
+    signatureMeta?: TemporalSignatureMeta | null
+}) {
     const [data, setData] = useState<LineageResponse | null>(null)
     const [selected, setSelected] = useState<string | null>(null)
     const [width, setWidth] = useState(720)
@@ -118,6 +129,11 @@ export function NarrativeBiography({ theme }: { theme: string }) {
                     ))}
                     {spine.nodes.map(n => (
                         <g key={n.week} className="nb-node-group" onClick={() => openWeek(n.week)}>
+                            {/* SEAM marker: two census lineages meet at this node,
+                                joined only by the live thread (labeled union) */}
+                            {n.joined && (
+                                <circle className="nb-node-seam" cx={n.x} cy={n.y} r={n.r + 4} />
+                            )}
                             <circle
                                 className={`nb-node nb-node--${n.tier}${n.candidate ? ' nb-node--candidate' : ''}${selected === n.week ? ' nb-node--selected' : ''}`}
                                 cx={n.x} cy={n.y} r={n.r}
@@ -153,6 +169,17 @@ export function NarrativeBiography({ theme }: { theme: string }) {
                                 data-tip={edgeTip(e)} />
                         )
                     })}
+                    {/* seam tip rides AT the seam node; clicks fall through to
+                        the same week-open the node itself would fire */}
+                    {spine.nodes.filter(n => n.joined).map(n => (
+                        <span key={`j-${n.week}`} className="nb-seam-tip-zone"
+                            style={{
+                                left: `${((n.x - n.r - 5) / width) * 100}%`,
+                                width: `${(((n.r + 5) * 2) / width) * 100}%`,
+                            }}
+                            data-tip={SEAM_TIP}
+                            onClick={() => openWeek(n.week)} />
+                    ))}
                 </div>
             </div>
 
@@ -162,6 +189,9 @@ export function NarrativeBiography({ theme }: { theme: string }) {
                 <span><i className="nb-line nb-line--steady" /> steady</span>
                 <span><i className="nb-line nb-line--shifting" /> shifting</span>
                 <span><i className="nb-line nb-line--candidate" /> candidate link</span>
+                {spine.nodes.some(n => n.joined) && (
+                    <span data-tip={SEAM_TIP}><i className="nb-ring nb-ring--seam" /> lineages joined here</span>
+                )}
             </div>
 
             {selectedEra && selectedNode && (
@@ -188,6 +218,11 @@ export function NarrativeBiography({ theme }: { theme: string }) {
                         {(selectedEra.countries ?? []).length > 0 &&
                             ` · ${(selectedEra.countries ?? []).slice(0, 4).map(c => resolveCountryName(c, c)).join(', ')}`}
                         {selectedEra.candidate && <span className="nb-era-candidate"> · candidate era</span>}
+                        {selectedEra.joined && (
+                            <span className="nb-era-joined" data-tip={SEAM_TIP}>
+                                {' · '}two measured lineages joined by this thread
+                            </span>
+                        )}
                     </div>
                     {(selectedEra.receipts ?? []).length === 0 ? (
                         <div className="nb-era-empty">No stored receipts for this era — honest empty, not filler.</div>
@@ -218,11 +253,26 @@ export function NarrativeBiography({ theme }: { theme: string }) {
 
             {stitch && (
                 <div className="nb-method">
+                    {/* Temporal signature foot chip (Lane C): the lineage's
+                        shape in time — no chip for continuous/unclassified. */}
+                    <TemporalSignatureChip
+                        signature={temporalSignature}
+                        meta={signatureMeta}
+                        className="nb-signature-chip"
+                    />
                     stitched in OpenAI space
                     {stitch.theta_topic_unit != null && <> · θ topic↔era {stitch.theta_topic_unit}</>}
                     {stitch.theta_unit_unit != null && <> · θ era↔era {stitch.theta_unit_unit}</>}
                     {stitch.topic_sim != null && <> · stitch sim {stitch.topic_sim.toFixed(2)}</>}
                     {stitch.member_coverage != null && <> · member coverage {Math.round(stitch.member_coverage * 100)}%</>}
+                    {(data.meta?.lineage_ids?.length ?? 0) > 1 && (
+                        <span data-tip={SEAM_TIP}> · union of {data.meta!.lineage_ids!.length} measured lineages ({data.meta!.lineage_ids!.join(' + ')})</span>
+                    )}
+                    {data.meta?.hot_n_signals_source && (
+                        <span data-tip="Where the live-thread signal count comes from: a full count over evidence members, or the topic's stored aggregate when the count was unavailable.">
+                            {' · '}hot count: {data.meta.hot_n_signals_source === 'members' ? 'evidence members' : 'topic aggregate'}
+                        </span>
+                    )}
                     {' · '}hot = live thread · archive = weekly archive clusters
                 </div>
             )}
