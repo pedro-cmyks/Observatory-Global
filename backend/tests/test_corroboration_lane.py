@@ -275,3 +275,124 @@ def test_classify_doc20_429_and_5xx():
     from app.services.corroboration import _classify_doc20
     assert _classify_doc20(429, b"")["status"] == "throttled"
     assert _classify_doc20(503, b"")["status"] == "down"
+
+
+# ── #260 DOC 2.0 response cache + cooldown backoff ───────────────────────────
+
+class FakeCache:
+    """Redis-shaped fake: async get/setex over a dict, recording setex TTLs."""
+    def __init__(self):
+        self.store: dict[str, str] = {}
+        self.setex_calls: list[tuple[str, int]] = []
+
+    async def get(self, key):
+        return self.store.get(key)
+
+    async def setex(self, key, ttl, value):
+        self.setex_calls.append((key, ttl))
+        self.store[key] = value
+
+
+class BrokenCache:
+    async def get(self, key):
+        raise RuntimeError("redis down")
+
+    async def setex(self, key, ttl, value):
+        raise RuntimeError("redis down")
+
+
+class TestDoc20CacheKey:
+    def test_key_is_versioned_sha1_of_query_and_timespan(self):
+        import hashlib
+        k = c.doc20_cache_key("ankara nato summit", "1m")
+        assert k == "doc20:v1:" + hashlib.sha1(
+            b"ankara nato summit|1m").hexdigest()
+
+    def test_timespan_changes_key(self):
+        assert c.doc20_cache_key("q", "1m") != c.doc20_cache_key("q", "3m")
+
+    def test_query_changes_key(self):
+        assert c.doc20_cache_key("a", "1m") != c.doc20_cache_key("b", "1m")
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_returns_cached_ok_payload_without_network():
+    import json as _json
+    cache = FakeCache()
+    key = c.doc20_cache_key("venezuela earthquake toll", "1m")
+    cache.store[key] = _json.dumps(
+        {"status": "ok", "articles": [{"title": "T", "domain": "reuters.com"}]})
+    out = await c.doc20_fetch_status("venezuela earthquake toll", cache=cache)
+    assert out["status"] == "ok"
+    assert out["cache"] == "hit"
+    assert out["articles"][0]["title"] == "T"
+
+
+@pytest.mark.asyncio
+async def test_cooldown_marker_short_circuits_as_honest_throttled():
+    cache = FakeCache()
+    cache.store[c._DOC20_COOLDOWN_KEY] = "1"
+    out = await c.doc20_fetch_status("any fresh query", cache=cache)
+    # No network attempt; still HONESTLY reported as throttled, not ok/empty.
+    assert out["status"] == "throttled"
+    assert out["cache"] == "cooldown"
+    assert out["articles"] == []
+
+
+@pytest.mark.asyncio
+async def test_positive_cache_beats_cooldown():
+    # A cached ok answer is served even while the cooldown marker is live.
+    import json as _json
+    cache = FakeCache()
+    key = c.doc20_cache_key("cached query", "1m")
+    cache.store[key] = _json.dumps({"status": "ok", "articles": []})
+    cache.store[c._DOC20_COOLDOWN_KEY] = "1"
+    out = await c.doc20_fetch_status("cached query", cache=cache)
+    assert out["status"] == "ok"
+    assert out["cache"] == "hit"
+
+
+@pytest.mark.asyncio
+async def test_store_caches_only_ok_and_sets_cooldown_on_throttle():
+    cache = FakeCache()
+    key = c.doc20_cache_key("q", "1m")
+
+    # ok → positive cache with the 6h TTL
+    await c.doc20_cache_store(cache, key, {"status": "ok", "articles": [1]})
+    assert (key, c.DOC20_CACHE_TTL) in cache.setex_calls
+
+    # throttled → ONLY the short cooldown marker, never a positive entry
+    cache2 = FakeCache()
+    await c.doc20_cache_store(cache2, key, {"status": "throttled", "articles": []})
+    assert cache2.setex_calls == [(c._DOC20_COOLDOWN_KEY, c.DOC20_COOLDOWN_TTL)]
+    assert key not in cache2.store
+
+    # down → nothing cached (a blip must not suppress the next attempt)
+    cache3 = FakeCache()
+    await c.doc20_cache_store(cache3, key, {"status": "down", "articles": []})
+    assert cache3.setex_calls == []
+
+
+@pytest.mark.asyncio
+async def test_broken_cache_degrades_to_no_cache():
+    # Lookup + store both swallow cache errors (lane must not depend on Redis).
+    assert await c.doc20_cache_lookup(BrokenCache(), "doc20:v1:x") is None
+    await c.doc20_cache_store(BrokenCache(), "doc20:v1:x",
+                              {"status": "ok", "articles": []})
+
+
+@pytest.mark.asyncio
+async def test_absent_cache_is_none_lookup_noop():
+    assert await c.doc20_cache_lookup(None, "doc20:v1:x") is None
+    await c.doc20_cache_store(None, "doc20:v1:x", {"status": "ok", "articles": []})
+
+
+@pytest.mark.asyncio
+async def test_corroborate_claim_meta_reports_cache_disposition():
+    async def cached_doc20(query):
+        return {"status": "ok", "articles": [], "cache": "hit"}
+
+    out = await c.corroborate_claim(
+        headline="Ankara summit collapses", doc20_fetch=cached_doc20)
+    assert out["meta"]["cache"] == "hit"
+    assert out["source_status"]["doc20"] == "ok"

@@ -532,21 +532,97 @@ def rows_to_hot_matches(
 DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 _DOC20_TIMEOUT = 25.0
 
+# #260 DOC 2.0 cache + backoff. Positive cache holds ONLY status=="ok"
+# payloads (a throttle notice must never be replayed as an answer); the
+# cooldown marker is a short negative cache set after a 429/notice so
+# repeated dossier renders stop hammering GDELT while it is throttling us.
+# source_status still reports "throttled" honestly during the cooldown —
+# the marker changes traffic, never the story we tell.
+DOC20_CACHE_TTL = 6 * 3600      # seconds — ok payloads
+DOC20_COOLDOWN_TTL = 120        # seconds — negative marker after a throttle
+_DOC20_CACHE_PREFIX = "doc20:v1:"
+_DOC20_COOLDOWN_KEY = "doc20:cooldown:v1"
+
+
+def doc20_cache_key(query: str, timespan: str = "1m") -> str:
+    """Versioned key over sha1(query|timespan) — stable across processes."""
+    import hashlib
+    digest = hashlib.sha1(f"{query}|{timespan}".encode("utf-8")).hexdigest()
+    return f"{_DOC20_CACHE_PREFIX}{digest}"
+
+
+def _resolve_doc20_cache() -> Any | None:
+    """Best-effort app-level Redis. None outside the API process (scripts,
+    unit tests) or when Redis is down — the lane degrades to no-cache."""
+    try:
+        from app.main_v2 import app as _app
+        return getattr(_app.state, "redis", None)
+    except Exception:  # noqa: BLE001 — import/app-state failure = no cache
+        return None
+
+
+async def doc20_cache_lookup(cache: Any, key: str) -> dict[str, Any] | None:
+    """Pre-flight cache check: cached ok payload → {"...", "cache": "hit"};
+    active cooldown → honest throttled response with cache: "cooldown";
+    neither (or any cache error) → None (caller does the network fetch)."""
+    if cache is None:
+        return None
+    try:
+        cached = await cache.get(key)
+        if cached:
+            payload = json.loads(cached)
+            payload["cache"] = "hit"
+            return payload
+        if await cache.get(_DOC20_COOLDOWN_KEY):
+            return {"status": "throttled", "articles": [], "cache": "cooldown"}
+    except Exception as exc:  # noqa: BLE001 — cache is best-effort
+        _log.warning("doc20 cache lookup failed: %s", str(exc)[:120])
+    return None
+
+
+async def doc20_cache_store(cache: Any, key: str,
+                            result: dict[str, Any]) -> None:
+    """Post-fetch cache write: ok → positive cache (6h); throttled → set the
+    short cooldown marker. 'down' is cached as nothing — a network blip must
+    not suppress the next attempt."""
+    if cache is None:
+        return
+    try:
+        status = result.get("status")
+        if status == "ok":
+            await cache.setex(key, DOC20_CACHE_TTL, json.dumps(
+                {"status": "ok", "articles": result.get("articles", [])}))
+        elif status == "throttled":
+            await cache.setex(_DOC20_COOLDOWN_KEY, DOC20_COOLDOWN_TTL, "1")
+    except Exception as exc:  # noqa: BLE001 — cache is best-effort
+        _log.warning("doc20 cache store failed: %s", str(exc)[:120])
+
 
 async def doc20_fetch_status(
     query: str,
     *,
     timespan: str = "1m",
     maxrecords: int = 40,
+    cache: Any | None = None,
 ) -> dict[str, Any]:
     """Fetch DOC 2.0 and CLASSIFY the outcome so the caller can be honest:
-      {"status": "ok"|"throttled"|"down", "articles": [...]}.
+      {"status": "ok"|"throttled"|"down", "articles": [...],
+       "cache": "hit"|"miss"|"cooldown"}.
     Non-JSON body (the free tier answers over-limit with an HTML notice) →
     'throttled'; HTTP 429 → 'throttled'; timeout/refused/other → 'down'.
     Shares the external_depth per-process 1-req/5s throttle so this lane never
-    trips the rate limit on top of the depth lane."""
+    trips the rate limit on top of the depth lane. Responses are Redis-cached
+    (#260): ok payloads 6h; a throttle sets a 120s cooldown marker so we stop
+    hammering while throttled. No Redis → straight to the network."""
     if not query:
-        return {"status": "down", "articles": []}
+        return {"status": "down", "articles": [], "cache": "miss"}
+
+    if cache is None:
+        cache = _resolve_doc20_cache()
+    key = doc20_cache_key(query, timespan)
+    cached = await doc20_cache_lookup(cache, key)
+    if cached is not None:
+        return cached
     params = _urlparse.urlencode({
         "query": query, "mode": "artlist", "format": "json",
         "maxrecords": maxrecords, "timespan": timespan, "sort": "hybridrel",
@@ -576,9 +652,12 @@ async def doc20_fetch_status(
         )
     except Exception as exc:  # noqa: BLE001 — timeout / refused / DNS
         _log.warning("doc20 corroboration lane down (%s): %s", query, str(exc)[:120])
-        return {"status": "down", "articles": []}
+        return {"status": "down", "articles": [], "cache": "miss"}
 
-    return _classify_doc20(status_code, body)
+    result = _classify_doc20(status_code, body)
+    await doc20_cache_store(cache, key, result)
+    result["cache"] = "miss"
+    return result
 
 
 def _classify_doc20(status_code: int, body: bytes) -> dict[str, Any]:
@@ -642,6 +721,7 @@ async def corroborate_claim(
         _log.warning("doc20 fetch raised: %s", str(exc)[:120])
         doc = {"status": "down", "articles": []}
     source_status["doc20"] = doc.get("status", "down")
+    doc20_cache = doc.get("cache")  # "hit"|"miss"|"cooldown"|None (injected)
     matches += articles_to_doc20_matches(
         doc.get("articles", []) or [], terms, figure)
 
@@ -697,6 +777,7 @@ async def corroborate_claim(
             "same_event_term_recall": SAME_EVENT_TERM_RECALL,
             "corroborate_term_recall": CORROBORATE_TERM_RECALL,
             "same_event_similarity": SAME_EVENT_SIMILARITY,
+            "cache": doc20_cache,
         },
     }
 
