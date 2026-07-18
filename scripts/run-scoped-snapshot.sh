@@ -153,6 +153,13 @@ if [[ "${ATLAS_LINEAGE_REFRESH:-on}" == "on" && -d /Volumes/Ext/Atlas/Embeddings
     || echo "[scoped-snapshot] lineage census failed (non-fatal — lineage serves previous edges)" >&2
   ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.load_narrative_lineage --write --prune-stale ) \
     || echo "[scoped-snapshot] lineage load failed (non-fatal — lineage serves previous edges)" >&2
+  # TEMPORAL SIGNATURE (Lane C, mig 085): classify every active topic's shape
+  # in time (new/continuous/recurrent/resurrected) from the just-loaded
+  # narrative_lineage edges + the census member-floor coverage. Cheap (pure
+  # SQL reads + in-memory union-find); re-writes active topics each run, NULLs
+  # the unclassifiable — a stale signature never outlives its lineage.
+  ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.temporal_signature --write ) \
+    || echo "[scoped-snapshot] temporal signature failed (non-fatal — chips simply don't render)" >&2
 else
   echo "[scoped-snapshot] skip lineage refresh (off, volume unmounted, or no OPENAI key)" >&2
 fi

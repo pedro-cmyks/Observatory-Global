@@ -3,6 +3,7 @@ import { getThemeLabel, getThemeIcon, resolveThreadLabel } from '../lib/themeLab
 import { decodeEntities } from '../lib/decodeEntities'
 import { CountQualifierChip } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
+import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
 import { NarrativeBiography } from './NarrativeBiography'
@@ -49,6 +50,11 @@ interface ThemeData {
     gateCoverage?: number | null
     /** X2/S2 (time-as-dimension): topic lifetime start — AGE is first-class. */
     firstSeen?: string | null
+    /** Temporal signature (mig 085): new/continuous/recurrent/resurrected;
+     *  null below the census member floor or until the nightly classifier
+     *  runs — the chip renders nothing then (absence over guess). */
+    temporalSignature?: string | null
+    signatureMeta?: TemporalSignatureMeta | null
     avgSentiment: number
     signals: Array<{
         id?: number
@@ -630,6 +636,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     labelProposed={threadLabelTrust.label_proposed}
                                 />
                             )}
+                            <TemporalSignatureChip
+                                signature={data?.temporalSignature}
+                                meta={data?.signatureMeta}
+                            />
                         </h2>
                         {isQueryThread && (
                             <p className="theme-detail-meta">
@@ -921,7 +931,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             spine — how this story evolved across the hot/archive
                             seam. Renders ONLY when the lineage endpoint returns
                             >=2 weeks; absence is honest (no placeholder). */}
-                        <NarrativeBiography theme={theme} />
+                        <NarrativeBiography
+                            theme={theme}
+                            temporalSignature={data?.temporalSignature}
+                            signatureMeta={data?.signatureMeta}
+                        />
 
                         {/* R3 spine drill-down: the SPECIFIC living stories under
                             this atlas topic (category) — big topics open into their

@@ -10,6 +10,7 @@ import { familyColor, familyGradient } from '../lib/categoryFamily'
 import { decodeEntities } from '../lib/decodeEntities'
 import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
+import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { TranslatableText } from './TranslatableText'
 import './NarrativeThreads.css'
 
@@ -49,6 +50,10 @@ interface Narrative {
     confidence_measured: boolean
     label_status: string | null
     label_proposed: string | null
+    // Temporal signature (mig 085): new/recurrent/resurrected chip;
+    // continuous/null render nothing (default is not a badge).
+    temporal_signature: string | null
+    signature_meta: TemporalSignatureMeta | null
     crisis_relevant: boolean
     sentiment_swing_10h: number | null
     top_entities: string[]
@@ -152,6 +157,8 @@ const normalizeThread = (thread: any): Narrative => {
     confidence_measured: thread.confidence_measured === true,
     label_status: thread.label_status ?? null,
     label_proposed: thread.label_proposed ?? null,
+    temporal_signature: thread.temporal_signature ?? null,
+    signature_meta: thread.signature_meta ?? null,
     crisis_relevant: crisisRelevant,
     sentiment_swing_10h: thread.sentiment_swing_10h ?? null,
     top_entities: thread.top_entities || thread.top_people || [],
@@ -463,6 +470,10 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     avgConfidence={n.avg_confidence}
                                     confidenceMeasured={n.confidence_measured}
                                     labelProposed={n.label_proposed}
+                                />
+                                <TemporalSignatureChip
+                                    signature={n.temporal_signature}
+                                    meta={n.signature_meta}
                                 />
                             </div>
                             {/* Fix round 2026-07-17 item 2: the row number has TWO different

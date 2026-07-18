@@ -753,7 +753,8 @@ async def _dynamic_topic_detail(
     # Serving-layer label guard (Lane A): placeholder / "(label failed)" /
     # NULL / stale "Emerging:" / untyped-foreign-headline labels render as a
     # receipt-derived neutral fallback — never a raw stub. Display-only.
-    from app.services.thread_intelligence import _NO_CATEGORY, clean_thread_label
+    from app.services.thread_intelligence import (
+        _NO_CATEGORY, _parse_json_obj, clean_thread_label)
 
     _rec = dict(topic_row)
     _label_kwargs = {
@@ -776,6 +777,11 @@ async def _dynamic_topic_detail(
         # X2/S2 (time-as-dimension): AGE is first-class — "active since".
         "firstSeen": topic_row["first_seen"].isoformat()
             if ("first_seen" in dict(topic_row) and topic_row["first_seen"]) else None,
+        # Temporal signature (mig 085, additive): new/continuous/recurrent/
+        # resurrected + meta; NULL below the census member floor or until the
+        # nightly classifier runs (chip renders nothing then — honest absence).
+        "temporalSignature": _rec.get("temporal_signature"),
+        "signatureMeta": _parse_json_obj(_rec.get("signature_meta")),
         "velocity": None,
         "cohesion": float(topic_row["mean_cohesion"])
             if topic_row["mean_cohesion"] is not None else None,
@@ -1332,6 +1338,8 @@ async def get_theme_details(
                             dt.noise_rate,
                             dt.last_seen,
                             dt.first_seen,
+                            dt.temporal_signature,
+                            dt.signature_meta,
                             COALESCE((
                                 SELECT array_agg(DISTINCT sid.signal_id)
                                 FROM dynamic_topic_members dtm

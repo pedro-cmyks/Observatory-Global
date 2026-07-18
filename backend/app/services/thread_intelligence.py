@@ -583,6 +583,21 @@ def _record_get(row: Any, key: str, default: Any = None) -> Any:
         return default
 
 
+def _parse_json_obj(value: Any) -> dict[str, Any] | None:
+    """JSONB dict column -> dict (asyncpg may hand it over as a JSON string)."""
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
+
+
 def confidence_band(
     *,
     evidence_count: int,
@@ -1083,6 +1098,8 @@ SELECT
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
     dt.label_status,        -- Label Court verdict (entailed/partial/failed, NULL=unchecked)
     dt.label_proposed,      -- receipt-derived neutral label on 'failed' (never auto-served)
+    dt.temporal_signature,  -- mig 085: new/continuous/recurrent/resurrected (NULL=unclassified)
+    dt.signature_meta,      -- {eras, gap_weeks, first_seen_week, returned_week, ...}
     COALESCE((
         -- current volume = kept-signal count at the topic's LATEST snapshot. SUM
         -- (not LIMIT 1) so an R2 umbrella (N child clusters at one snapshot) reflects
@@ -1204,6 +1221,8 @@ SELECT
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
     dt.label_status,        -- Label Court verdict (entailed/partial/failed, NULL=unchecked)
     dt.label_proposed,      -- receipt-derived neutral label on 'failed' (never auto-served)
+    dt.temporal_signature,  -- mig 085: new/continuous/recurrent/resurrected (NULL=unclassified)
+    dt.signature_meta,      -- {eras, gap_weeks, first_seen_week, returned_week, ...}
     COALESCE((
         -- movement = velocity at the topic's LATEST snapshot only. The old
         -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
@@ -1501,6 +1520,12 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         # receipt-derived alternative on 'failed' (advisory, never auto-served).
         "label_status": _record_get(topic_row, "label_status"),
         "label_proposed": _record_get(topic_row, "label_proposed"),
+        # Temporal signature (mig 085, additive): how this story sits in TIME
+        # vs the archive lineage — new/continuous/recurrent/resurrected, NULL
+        # until the nightly classifier runs (or below the census member floor:
+        # absence over guess; the chip renders nothing on NULL/continuous).
+        "temporal_signature": _record_get(topic_row, "temporal_signature"),
+        "signature_meta": _parse_json_obj(_record_get(topic_row, "signature_meta")),
         "source": "dynamic_topics",
     })
 
