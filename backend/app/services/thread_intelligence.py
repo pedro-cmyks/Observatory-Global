@@ -935,7 +935,8 @@ def assemble_emergent_thread(
     """
     cluster_id = int(_record_get(cluster_row, "id"))
     label_text = clean_thread_label(
-        _record_get(cluster_row, "label"), sample_signals, f"cluster {cluster_id}"
+        _record_get(cluster_row, "label"), sample_signals, f"cluster {cluster_id}",
+        country_codes=[str(c) for c in (_record_get(cluster_row, "top_country_codes") or [])],
     )
     description = _record_get(cluster_row, "description")
     signal_count = int(_record_get(cluster_row, "n_signals") or 0)
@@ -1249,8 +1250,14 @@ WHERE dt.id = $1
 # representative evidence headline (mirrors build_unified_topics' creation-time
 # "Emerging: <headline>" fallback). Non-English title *translation* is a
 # separate follow-up (#204 part b).
+# Mirror of scripts/label_hygiene.PLACEHOLDER_LABELS (app/ must not import
+# from scripts/): keep the two sets in sync.
 _PLACEHOLDER_LABELS = {"", "(no label)", "(label failed)", "(label failed.)", "none", "null"}
 _LABEL_MAX = 90
+# Sentinel: the caller did not supply the topic's category, so the
+# unlabeled-foreign-headline rule below cannot be evaluated (emergent
+# clusters have no category concept — the rule must stay off for them).
+_NO_CATEGORY = object()
 
 
 def _is_placeholder_label(label: str | None) -> bool:
@@ -1263,14 +1270,26 @@ def _is_placeholder_label(label: str | None) -> bool:
     return low in _PLACEHOLDER_LABELS or low.startswith("(label failed")
 
 
-def clean_thread_label(raw_label: Any, sample_signals: list[Any], fallback: str) -> str:
-    """Return a real thread title. A real label is returned HTML-unescaped. If
-    the stored label is a placeholder/failed stub, compose ``Emerging:
-    <headline>`` from the first non-junk sample headline; if none is clean, use
-    the generic ``fallback`` (e.g. 'dynamic topic 42')."""
-    label = None if raw_label is None else str(raw_label)
-    if not _is_placeholder_label(label):
-        return html.unescape(label).strip()
+def _is_foreign_script(text: str) -> bool:
+    """True when the text's letters are dominated by non-Latin script.
+
+    Used ONLY together with ``category IS NULL`` (an untyped topic — the
+    pipeline never processed it, so its "label" is almost certainly a raw
+    scraped headline, not a curated title). A real DeepSeek label in
+    Spanish/French/etc. is Latin-script and never trips this."""
+    letters = [c for c in text if c.isalpha()]
+    if len(letters) < 4:
+        return False
+    latin = sum(1 for c in letters if ord(c) < 0x250)
+    return latin / len(letters) < 0.3
+
+
+def _receipt_fallback_label(
+    sample_signals: list[Any], country_codes: list[str] | None = None
+) -> str | None:
+    """Receipt-derived neutral display label: dominant geo + top clean
+    headline — ``Emerging (VE): <headline>`` (or without the geo when the
+    thread has no country codes). None when no clean receipt exists."""
     try:
         from app.services.research_semantic import is_junk_headline
     except Exception:  # pragma: no cover - never break serving on an import hiccup
@@ -1282,14 +1301,59 @@ def clean_thread_label(raw_label: Any, sample_signals: list[Any], fallback: str)
             clean = html.unescape(str(headline)).strip()
             if len(clean) > _LABEL_MAX:
                 clean = clean[: _LABEL_MAX - 1].rstrip() + "…"
-            return f"Emerging: {clean}"
-    return fallback
+            geo = next((str(c).strip().upper() for c in (country_codes or []) if c), None)
+            return f"Emerging ({geo}): {clean}" if geo else f"Emerging: {clean}"
+    return None
+
+
+def clean_thread_label(
+    raw_label: Any,
+    sample_signals: list[Any],
+    fallback: str,
+    *,
+    country_codes: list[str] | None = None,
+    category: Any = _NO_CATEGORY,
+) -> str:
+    """Return a real thread title. A real label is returned HTML-unescaped.
+
+    Display-only hygiene — never hides a thread, fixes its label:
+    - placeholder / NULL / "(label failed)" stub → receipt-derived neutral
+      fallback (dominant geo + top clean headline); generic ``fallback``
+      (e.g. 'dynamic topic 42') only when no clean receipt exists.
+    - a persisted creation-time fallback ("Emerging: …") is refreshed from
+      the CURRENT receipts (it froze a headline at creation); kept as-is
+      when no fresher receipt is available.
+    - an untyped topic (``category`` passed and NULL) whose label is a raw
+      foreign-script headline gets the same receipt-derived neutral
+      fallback; a typed topic's foreign-script label is served untouched.
+    """
+    label = None if raw_label is None else str(raw_label)
+    if not _is_placeholder_label(label):
+        clean = html.unescape(label).strip()
+        low = clean.lower()
+        # only the machine-generated forms — a real title like "Emerging
+        # Markets Crisis" must pass through untouched
+        stale_creation_fallback = low.startswith("emerging:") or low.startswith("emerging (")
+        unlabeled_foreign = (
+            category is not _NO_CATEGORY
+            and category is None
+            and _is_foreign_script(clean)
+        )
+        if not stale_creation_fallback and not unlabeled_foreign:
+            return clean
+        derived = _receipt_fallback_label(sample_signals, country_codes)
+        # keep the stored receipt-derived label over a raw-id fallback
+        return derived or clean
+    derived = _receipt_fallback_label(sample_signals, country_codes)
+    return derived or fallback
 
 
 def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[str, Any]:
     topic_id = int(_record_get(topic_row, "id"))
     label_text = clean_thread_label(
-        _record_get(topic_row, "label"), sample_signals, f"dynamic topic {topic_id}"
+        _record_get(topic_row, "label"), sample_signals, f"dynamic topic {topic_id}",
+        country_codes=[str(c) for c in (_record_get(topic_row, "top_country_codes") or [])],
+        category=_record_get(topic_row, "category", _NO_CATEGORY),
     )
     # current-window volume (#224); lifetime aggregate kept as metadata
     signal_count = int(

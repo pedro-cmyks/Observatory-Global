@@ -256,7 +256,9 @@ def test_briefing_exposes_top_threads_via_thread_intelligence():
     second pool acquire per request) and degrade to [] on failure."""
     source = _briefing_source()
 
-    assert "from app.services.thread_intelligence import fetch_threads" in source
+    # import may be single- or multi-line (Lane A added clean_thread_label to it)
+    assert "from app.services.thread_intelligence import" in source
+    assert "fetch_threads" in source
     assert 'TOP_THREADS_CONTRACT = "living-narrative-threads-v0"' in source
 
     briefing_body = _get_briefing_source()

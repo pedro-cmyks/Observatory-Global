@@ -77,3 +77,84 @@ def test_long_headline_is_truncated():
     assert out.startswith("Emerging: Coalition of the willing")
     assert out.endswith("…")
     assert len(out) <= len("Emerging: ") + 90
+
+# --- Lane A (2026-07-18) extensions: geo-prefixed receipt fallback, stale
+# "Emerging:" refresh, and the untyped-foreign-headline rule ------------------
+
+from app.services.thread_intelligence import _NO_CATEGORY  # noqa: E402
+
+
+def test_placeholder_fallback_carries_dominant_geo():
+    out = clean_thread_label(
+        "(label failed)",
+        [_sig("Caracas hospitals overwhelmed after quake")],
+        "dynamic topic 9",
+        country_codes=["VE", "CO"],
+    )
+    assert out == "Emerging (VE): Caracas hospitals overwhelmed after quake"
+
+
+def test_stale_emerging_label_refreshes_from_current_receipts():
+    # build_unified_topics persists "Emerging: <headline>" at creation time; the
+    # serving guard refreshes it from the receipts actually in hand today.
+    out = clean_thread_label(
+        "Emerging: old frozen headline from creation night",
+        [_sig("Peru election board orders partial recount")],
+        "dynamic topic 12",
+        country_codes=["PE"],
+    )
+    assert out == "Emerging (PE): Peru election board orders partial recount"
+
+
+def test_stale_emerging_label_kept_when_no_receipts():
+    # never degrade a receipt-derived label to a raw id
+    stored = "Emerging: Peru election recount ordered"
+    assert clean_thread_label(stored, [], "dynamic topic 12") == stored
+
+
+def test_real_emerging_titled_label_passes_through():
+    # a genuine title that merely starts with the word must NOT be rewritten
+    label = "Emerging Markets Debt Crisis"
+    assert (
+        clean_thread_label(label, [_sig("some receipt")], "dynamic topic 3") == label
+    )
+
+
+def test_untyped_foreign_script_label_gets_receipt_fallback():
+    # category served and NULL + non-Latin raw-headline label → neutral fallback
+    out = clean_thread_label(
+        "زلزال يضرب فنزويلا ويخلف مئات القتلى في كاراكاس",
+        [_sig("Venezuela earthquake death toll rises")],
+        "dynamic topic 77",
+        country_codes=["VE"],
+        category=None,
+    )
+    assert out == "Emerging (VE): Venezuela earthquake death toll rises"
+
+
+def test_typed_foreign_script_label_is_served_untouched():
+    label = "زلزال فنزويلا"
+    out = clean_thread_label(
+        label, [_sig("whatever")], "dynamic topic 77",
+        category="natural-disaster",
+    )
+    assert out == label
+
+
+def test_foreign_script_label_untouched_when_category_unknown():
+    # emergent clusters never carry a category — the rule must stay off
+    label = "地震で数百人が死亡"
+    assert clean_thread_label(label, [_sig("x")], "cluster 5") == label
+    assert (
+        clean_thread_label(label, [_sig("x")], "cluster 5", category=_NO_CATEGORY)
+        == label
+    )
+
+
+def test_latin_real_label_with_category_null_passes_through():
+    # Spanish/French/etc. labels are Latin-script: never rewritten by the rule
+    label = "Atentado a Ranucci en Roma"
+    assert (
+        clean_thread_label(label, [_sig("x")], "dynamic topic 8", category=None)
+        == label
+    )

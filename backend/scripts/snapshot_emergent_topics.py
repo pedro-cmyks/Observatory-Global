@@ -38,6 +38,10 @@ import asyncpg
 import numpy as np
 
 # Reuse the POC's pure helpers — they are stable and identical math.
+try:  # entry-point tolerant (-m backend.scripts.* vs -m scripts.*)
+    from backend.scripts.label_hygiene import normalize_persisted_label
+except ImportError:  # pragma: no cover
+    from scripts.label_hygiene import normalize_persisted_label
 from backend.scripts.emergent_poc import (
     _apply_gate,
     _build_embedder,
@@ -273,7 +277,10 @@ def _prepare_snapshot_rows(
             snapshot_at,
             int(window_hours),
             int(c["cluster_id"]),
-            dl.get("label") or "(no label)",
+            # Never persist a labeler-failure sentinel ("(label failed)",
+            # "(no label)") — write NULL; the serving guard renders a
+            # receipt-derived fallback (Lane A, mig 083).
+            normalize_persisted_label(dl.get("label")),
             dl.get("description"),
             int(c["raw_size"]),
             int(c["kept_size"]),

@@ -384,9 +384,18 @@ async def _emergent_cluster_detail(
     sample_ids = list(cluster_row["sample_signal_ids"] or [])
     raw_total = int(cluster_row["raw_signal_count"] or 0)
     gated_total = int(cluster_row["n_signals"] or 0)
+    # Serving-layer label guard (Lane A) — same rule as the dynamic path;
+    # emergent clusters have no category, so only the placeholder/stale
+    # branches apply here.
+    from app.services.thread_intelligence import clean_thread_label
+
+    _cluster_ccs = [str(c) for c in (cluster_row["top_country_codes"] or [])]
     base_payload = {
         "theme": f"cluster-{cluster_row['id']}",
-        "label": cluster_row["label"],
+        "label": clean_thread_label(
+            cluster_row["label"], [], f"cluster {cluster_row['id']}",
+            country_codes=_cluster_ccs,
+        ),
         "description": cluster_row["description"],
         "country": country_code,
         "hours": hours,
@@ -439,6 +448,12 @@ async def _emergent_cluster_detail(
     sample = len(signals)
     avg_sentiment = (
         sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
+    )
+
+    # Re-derive with real receipts in hand (base pass had none).
+    base_payload["label"] = clean_thread_label(
+        cluster_row["label"], list(signals), f"cluster {cluster_row['id']}",
+        country_codes=_cluster_ccs,
     )
 
     packet = build_thread_packet(signals, own_topic=None)
@@ -717,9 +732,21 @@ async def _dynamic_topic_detail(
         float(topic_row["noise_rate"])
         if topic_row["noise_rate"] is not None else None
     )
+    # Serving-layer label guard (Lane A): placeholder / "(label failed)" /
+    # NULL / stale "Emerging:" / untyped-foreign-headline labels render as a
+    # receipt-derived neutral fallback — never a raw stub. Display-only.
+    from app.services.thread_intelligence import _NO_CATEGORY, clean_thread_label
+
+    _rec = dict(topic_row)
+    _label_kwargs = {
+        "country_codes": top_country_codes,
+        "category": _rec.get("category", _NO_CATEGORY),
+    }
     base_payload = {
         "theme": f"dynamic-topic-{topic_row['id']}",
-        "label": topic_row["label"],
+        "label": clean_thread_label(
+            topic_row["label"], [], f"dynamic topic {topic_row['id']}", **_label_kwargs
+        ),
         "description": None,
         "country": country_code,
         "hours": hours,
@@ -775,6 +802,13 @@ async def _dynamic_topic_detail(
     sample = len(signals)
     avg_sentiment = (
         sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
+    )
+
+    # Re-derive the display label now that the actual receipts are in hand
+    # (the base_payload pass had none to fall back on).
+    base_payload["label"] = clean_thread_label(
+        topic_row["label"], list(signals), f"dynamic topic {topic_row['id']}",
+        **_label_kwargs,
     )
 
     packet = build_thread_packet(signals, own_topic=None)
@@ -1274,6 +1308,7 @@ async def get_theme_details(
                         SELECT
                             dt.id,
                             dt.label,
+                            dt.category,
                             dt.agg_n_signals,
                             dt.mean_cohesion,
                             dt.noise_rate,

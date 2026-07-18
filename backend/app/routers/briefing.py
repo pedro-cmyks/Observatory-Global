@@ -32,7 +32,11 @@ from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group
     choose_sentiment_weighted,
     serialize_country_row,
 )
-from app.services.thread_intelligence import fetch_threads  # noqa: E402
+from app.services.thread_intelligence import (  # noqa: E402
+    _NO_CATEGORY,
+    clean_thread_label,
+    fetch_threads,
+)
 
 
 TOP_THREADS_CONTRACT = "living-narrative-threads-v0"
@@ -499,33 +503,56 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # uses slug = 'cluster-<id>'.
         top_atlas_topics: list = []
         if has_dynamic_topics and has_dynamic_topic_members:
+            # Outer LATERAL (over the LIMIT-10 result only, so it stays cheap)
+            # fetches a few member receipts per row: the serving-layer label
+            # guard needs receipts to render a NULL/placeholder label as a
+            # receipt-derived fallback instead of a raw stub (Lane A).
             top_atlas_topics = await _fetch_section(
                 conn, degraded_segments, "top_atlas_topics", """
-                SELECT
-                    ('dynamic-topic-' || dt.id::text)                  AS slug,
-                    dt.label,
-                    NULL::text                                         AS parent_domain,
-                    dt.agg_n_signals::bigint                           AS signal_count,
-                    CASE
-                        WHEN dt.noise_rate IS NULL THEN NULL::float
-                        ELSE (1 - dt.noise_rate)::float
-                    END                                                AS avg_confidence,
-                    dt.agg_n_signals::bigint                           AS high_confidence_count,
-                    dt.agg_n_signals::bigint                           AS gated_signal_count,
-                    dt.agg_n_signals::bigint                           AS gate_scored_count,
-                    'dynamic_topics'                                   AS source_table,
-                    'dynamic-topics-v1'                                AS model_version,
-                    NULL::text                                         AS description,
-                    NULL::int                                          AS velocity,
-                    ARRAY[]::text[]                                    AS top_country_codes,
-                    dt.mean_cohesion::float                            AS cohesion,
-                    NULL::float                                        AS vendor_agreement,
-                    dt.noise_rate::float                               AS noise_rate
-                FROM dynamic_topics dt
-                WHERE dt.state = 'active'
-                  AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
-                ORDER BY dt.agg_n_signals DESC, dt.last_seen DESC
-                LIMIT 10
+                SELECT q.*, COALESCE(sh.headlines, ARRAY[]::text[]) AS sample_headlines
+                FROM (
+                    SELECT
+                        dt.id                                              AS topic_pk,
+                        ('dynamic-topic-' || dt.id::text)                  AS slug,
+                        dt.label,
+                        dt.category                                        AS category,
+                        NULL::text                                         AS parent_domain,
+                        dt.agg_n_signals::bigint                           AS signal_count,
+                        CASE
+                            WHEN dt.noise_rate IS NULL THEN NULL::float
+                            ELSE (1 - dt.noise_rate)::float
+                        END                                                AS avg_confidence,
+                        dt.agg_n_signals::bigint                           AS high_confidence_count,
+                        dt.agg_n_signals::bigint                           AS gated_signal_count,
+                        dt.agg_n_signals::bigint                           AS gate_scored_count,
+                        'dynamic_topics'                                   AS source_table,
+                        'dynamic-topics-v1'                                AS model_version,
+                        NULL::text                                         AS description,
+                        NULL::int                                          AS velocity,
+                        ARRAY[]::text[]                                    AS top_country_codes,
+                        dt.mean_cohesion::float                            AS cohesion,
+                        NULL::float                                        AS vendor_agreement,
+                        dt.noise_rate::float                               AS noise_rate
+                    FROM dynamic_topics dt
+                    WHERE dt.state = 'active'
+                      AND dt.last_seen > NOW() - ($1::int * INTERVAL '1 hour')
+                    ORDER BY dt.agg_n_signals DESC, dt.last_seen DESC
+                    LIMIT 10
+                ) q
+                LEFT JOIN LATERAL (
+                    SELECT array_agg(h.headline) AS headlines
+                    FROM (
+                        SELECT s.headline
+                        FROM dynamic_topic_members dtm
+                        JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
+                        CROSS JOIN LATERAL unnest(ec.sample_signal_ids) AS sid(signal_id)
+                        JOIN signals_v2 s ON s.id = sid.signal_id
+                        WHERE dtm.dynamic_topic_id = q.topic_pk
+                          AND s.headline IS NOT NULL
+                        ORDER BY s.timestamp DESC
+                        LIMIT 4
+                    ) h
+                ) sh ON TRUE
             """, hours)
 
         if not top_atlas_topics and has_emergent_clusters:
@@ -868,7 +895,18 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             "top_atlas_topics": [
                 {
                     "slug": r["slug"],
-                    "label": r["label"],
+                    # Serving-layer label guard (Lane A): a NULL/placeholder
+                    # label renders as a receipt-derived fallback, never a
+                    # raw "(label failed)" stub. Display-only.
+                    "label": clean_thread_label(
+                        r["label"],
+                        [{"headline": h} for h in (_record_get(r, "sample_headlines") or [])],
+                        r["slug"],
+                        country_codes=[
+                            str(c) for c in (_record_get(r, "top_country_codes") or [])
+                        ],
+                        category=_record_get(r, "category", _NO_CATEGORY),
+                    ),
                     "parent_domain": _record_get(r, "parent_domain"),
                     "signal_count": int(r["signal_count"]),
                     "avg_confidence": (

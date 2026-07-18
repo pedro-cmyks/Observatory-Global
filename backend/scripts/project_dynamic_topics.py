@@ -32,6 +32,10 @@ from typing import Any
 import numpy as np
 
 from scripts.emergent_topic_identity_resolver import cosine
+try:  # entry-point tolerant (-m scripts.* vs -m backend.scripts.*)
+    from scripts.label_hygiene import is_placeholder_label
+except ImportError:  # pragma: no cover
+    from backend.scripts.label_hygiene import is_placeholder_label
 
 MATCH_THRESHOLD = 0.88
 # Anchor guard (#224, measured 2026-06-11): a cluster must also match the
@@ -352,6 +356,11 @@ class Topic:
         self.id: int | None = None
         self.identity_key = identity_key
         self.state = "candidate"
+        # Never let a labeler-failure sentinel ("(label failed)", "(no label)")
+        # become a countable label — it is truthy, so it used to win the mode
+        # vote and get PERSISTED into dynamic_topics.label (Lane A, 2026-07-18).
+        if is_placeholder_label(label):
+            label = None
         self.label_counts: Any = Counter({label: 1}) if label else Counter()
         self.centroid = np.array(centroid, dtype=np.float64)
         # immutable identity anchor (#224): the first cluster's centroid.
@@ -409,7 +418,7 @@ class Topic:
             self.cohesions.append(float(cluster["cohesion"]))
         self.n_labels += 1
         clabel = cluster.get("label")
-        if clabel:
+        if clabel and not is_placeholder_label(clabel):
             self.label_counts[clabel] += 1
         if is_roundup_label(clabel) or cluster.get("content_roundup"):
             self.roundup_votes += 1
@@ -751,7 +760,7 @@ async def persist(conn, topics: list[Topic]) -> dict[str, int]:
                 "is_roundup, snapshots_since_seen, noise_rate, last_state_change) "
                 "VALUES ($1,$2,$3,$4,$5::timestamptz,$6::timestamptz,$7,$8,$9,$10,$11,$12,NOW()) "
                 "ON CONFLICT (identity_key) DO NOTHING RETURNING id",
-                t.identity_key, t.state, t.label, [float(x) for x in t.centroid],
+                t.identity_key, t.state, t.label or None, [float(x) for x in t.centroid],
                 first_seen, last_seen, len(t.snapshots), t.agg_n_signals,
                 cohesion, t.is_roundup, t.since_seen, t.noise_rate,
             )
@@ -760,13 +769,16 @@ async def persist(conn, topics: list[Topic]) -> dict[str, int]:
                 t.new = False
                 written["inserted"] += 1
         else:
+            # label=COALESCE(...): a run whose member labels are all placeholders
+            # projects label=None — keep the previously persisted real label
+            # rather than downgrading it to NULL (Lane A never-persist rule).
             await conn.execute(
-                "UPDATE dynamic_topics SET state=$2, label=$3, centroid_vec=$4, "
+                "UPDATE dynamic_topics SET state=$2, label=COALESCE($3, label), centroid_vec=$4, "
                 "last_seen=$5::timestamptz, n_snapshots=$6, agg_n_signals=$7, mean_cohesion=$8, "
                 "is_roundup=$9, snapshots_since_seen=$10, noise_rate=$11, updated_at=NOW(), "
                 "last_state_change=CASE WHEN state IS DISTINCT FROM $2 THEN NOW() ELSE last_state_change END "
                 "WHERE id=$1",
-                t.id, t.state, t.label, [float(x) for x in t.centroid], last_seen,
+                t.id, t.state, t.label or None, [float(x) for x in t.centroid], last_seen,
                 len(t.snapshots), t.agg_n_signals, cohesion, t.is_roundup, t.since_seen,
                 t.noise_rate,
             )
