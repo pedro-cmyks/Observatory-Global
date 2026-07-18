@@ -114,6 +114,192 @@ def test_thread_ranking_without_breadth_fields_still_ranks():
     assert ranked[0] == "a"
 
 
+# ---------------------------------------------------------------------------
+# RANK V2 (2026-07-18, Lane C): court damp + syndication damp + crisis nudge.
+# All damps, never gates — every thread stays listed; env-reversible via
+# ATLAS_RANK_V2=off (byte-identical old ranking).
+# ---------------------------------------------------------------------------
+
+def _evidence(pairs):
+    """pairs = [(headline, source), ...] → evidence_samples shape."""
+    return [{"headline": h, "source": s} for h, s in pairs]
+
+
+def _syndicated_lifestyle():
+    # Measured live case: fresh AU-syndication lifestyle burst — one wire piece
+    # reprinted across one publisher family, near-identical headlines. Untyped
+    # (category NULL, crisis_relevant None) so neither the category damp nor
+    # the label-keyword lane catches it ("24K Gold Facial" has no lane token).
+    return {
+        "label": "24K Gold Facial", "signal_count": 77, "changed_10h": 45,
+        "avg_confidence": 0.97, "language_count": 1, "country_count": 1,
+        "crisis_relevant": None, "label_status": None,
+        "evidence_samples": _evidence([
+            ("The 24K gold facial taking over salons", "themercury.com.au"),
+            ("The 24K gold facial taking over salons", "examiner.com.au"),
+            ("The 24K gold facial taking over salons", "standard.net.au"),
+            ("The 24K gold facial taking over salons", "themercury.com.au"),
+            ("The 24K gold facial taking over salons", "examiner.com.au"),
+            ("The 24K gold facial taking over salons", "borderMail.com.au"),
+        ]),
+    }
+
+
+def _ukraine():
+    # Multi-outlet, multi-language crisis story; court has not judged (NULL).
+    return {
+        "label": "Ukraine War Updates", "signal_count": 744, "changed_10h": 180,
+        "avg_confidence": 0.85, "language_count": 6, "country_count": 12,
+        "crisis_relevant": True, "label_status": None,
+        "evidence_samples": _evidence([
+            ("Russia strikes Kharkiv power grid", "bbc.com"),
+            ("Ukraine claims advance near Bakhmut", "reuters.com"),
+            ("Kyiv under drone attack overnight", "lemonde.fr"),
+            ("Zelensky seeks new air defences", "dw.com"),
+            ("Frappes russes sur Kharkiv", "france24.com"),
+            ("Guerra en Ucrania: avance en el frente", "elpais.com"),
+        ]),
+    }
+
+
+def _failed_blob():
+    # Huge court-FAILED blob: label does not match its receipts. Diverse
+    # sources (it absorbed everything), big volume — the old ranking loved it.
+    return {
+        "label": "Armed conflict escalation", "signal_count": 3770,
+        "changed_10h": 220, "avg_confidence": 0.45,
+        "language_count": 4, "country_count": 9,
+        "crisis_relevant": True, "label_status": "failed",
+        "evidence_samples": _evidence([
+            ("Book review: a wartime memoir", "npr.org"),
+            ("Local council votes on budget", "abc.net.au"),
+            ("Film about conflict wins award", "variety.com"),
+            ("Markets shrug off tensions", "ft.com"),
+            ("Recipe: comfort food for hard times", "bonappetit.com"),
+            ("Opinion: the rhetoric of escalation", "nytimes.com"),
+        ]),
+    }
+
+
+def test_rank_v2_measured_live_case_ukraine_leads_blob_damped_lifestyle_listed(monkeypatch):
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)  # default = on
+    lifestyle, ukraine, blob = _syndicated_lifestyle(), _ukraine(), _failed_blob()
+    ranked = rank_threads([lifestyle, blob, ukraine])
+    labels = [t["label"] for t in ranked]
+    # The strong story leads.
+    assert labels[0] == "Ukraine War Updates"
+    # Court-failed blob is damped below the court-null real story.
+    assert labels.index("Armed conflict escalation") > labels.index("Ukraine War Updates")
+    # Lifestyle burst is LISTED (damp, never gate) — just not on top.
+    assert "24K Gold Facial" in labels
+    assert labels.index("24K Gold Facial") > labels.index("Ukraine War Updates")
+
+
+def test_rank_v2_off_reverts_to_the_old_ranking(monkeypatch):
+    # Minimal deterministic pair: identical metrics, one court-FAILED. The old
+    # ranking ignores label_status entirely → both score identically and the
+    # label tie-break (descending) puts "zzz-court-failed" first. v2 damps the
+    # failed one below. The env var must flip between the two behaviours.
+    failed = _t("zzz-court-failed", sc=100, ch=20, conf=0.8)
+    failed["label_status"] = "failed"
+    clean = _t("aaa-clean", sc=100, ch=20, conf=0.8)
+    monkeypatch.setenv("ATLAS_RANK_V2", "off")
+    old = [t["label"] for t in rank_threads([dict(failed), dict(clean)])]
+    assert old == ["zzz-court-failed", "aaa-clean"]  # legacy: court invisible
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)  # default = on
+    new = [t["label"] for t in rank_threads([dict(failed), dict(clean)])]
+    assert new == ["aaa-clean", "zzz-court-failed"]  # v2: failed label sinks
+
+
+def test_court_damp_failed_sinks_partial_dips_entailed_untouched(monkeypatch):
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
+    base = dict(sc=100, ch=20, conf=0.8)
+    failed = _t("failed-label", **base)
+    failed["label_status"] = "failed"
+    partial = _t("partial-label", **base)
+    partial["label_status"] = "partial"
+    entailed = _t("entailed-label", **base)
+    entailed["label_status"] = "entailed"
+    nulled = _t("null-label", **base)
+    ranked = [t["label"] for t in rank_threads([failed, partial, entailed, nulled])]
+    # entailed/null (1.0) > partial (0.85) > failed (0.5)
+    assert ranked.index("failed-label") == len(ranked) - 1
+    assert ranked.index("partial-label") > ranked.index("entailed-label")
+    assert ranked.index("partial-label") > ranked.index("null-label")
+
+
+def test_syndication_damp_one_wire_reprint_loses_to_multi_outlet_coverage(monkeypatch):
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
+    # Same metrics; only the evidence differs: 6 reprints of one headline vs
+    # 6 distinct outlet/headline pairs. Diversity damps the volume term only.
+    reprint = _t("wire-reprint", sc=200, ch=20, conf=0.8)
+    reprint["evidence_samples"] = _evidence(
+        [("Same syndicated headline", f"paper{i}.com.au") for i in range(3)]
+        + [("Same syndicated headline", "paper0.com.au")] * 3
+    )
+    organic = _t("organic-coverage", sc=180, ch=20, conf=0.8)
+    organic["evidence_samples"] = _evidence(
+        [(f"Distinct angle {i}", f"outlet{i}.com") for i in range(6)]
+    )
+    ranked = [t["label"] for t in rank_threads([reprint, organic])]
+    assert ranked[0] == "organic-coverage"
+    assert "wire-reprint" in ranked  # damped, never excluded
+
+
+def test_headline_diversity_bounds_and_thin_evidence():
+    from app.services.thread_ranking import headline_diversity
+    # No evidence → cannot measure → no damp (honest 1.0).
+    assert headline_diversity({}) == 1.0
+    assert headline_diversity({"evidence_samples": []}) == 1.0
+    # Thin evidence (<3 samples) → not enough to judge → 1.0.
+    assert headline_diversity({"evidence_samples": _evidence(
+        [("a", "x.com"), ("a", "y.com")])}) == 1.0
+    # Fully identical wire copy clamps at the floor, never 0.
+    flat = headline_diversity({"evidence_samples": _evidence(
+        [("same", "one.com.au")] * 8)})
+    assert flat == 0.4
+    # Fully diverse coverage → 1.0.
+    rich = headline_diversity({"evidence_samples": _evidence(
+        [(f"h{i}", f"s{i}.com") for i in range(8)])})
+    assert rich == 1.0
+
+
+def test_headline_diversity_catches_the_measured_masthead_suffix_signature():
+    # The LIVE 2026-07-18 case: one wire piece + " | <Masthead>" suffix across
+    # 24 distinct .com.au domains (one publisher family). Distinct outlets AND
+    # distinct raw headlines — only masthead-suffix stripping reveals the
+    # reprint. Must clamp at the floor.
+    from app.services.thread_ranking import headline_diversity
+    mastheads = ["Katherine Times", "Blayney Chronicle", "The Scone Advocate",
+                 "Namoi Valley Independent", "Dungog Chronicle", "Western Advocate"]
+    samples = _evidence([
+        (f"Automated assistant duped caller, raising ethical fears. | {m}",
+         f"{m.lower().replace(' ', '')}.com.au")
+        for m in mastheads
+    ])
+    assert headline_diversity({"evidence_samples": samples}) == 0.4
+
+
+def test_crisis_lens_nudge_is_a_mild_tiebreak_not_a_gate(monkeypatch):
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
+    # Identical metrics: crisis_relevant=True wins the tie (+10%)...
+    crisis = _t("crisis-story", sc=100, ch=20, conf=0.8)
+    crisis["crisis_relevant"] = True
+    farandula = _t("farandula-story", sc=100, ch=20, conf=0.8)
+    farandula["crisis_relevant"] = False
+    ranked = [t["label"] for t in rank_threads([farandula, crisis])]
+    assert ranked[0] == "crisis-story"
+    assert "farandula-story" in ranked  # stays listed — "you decide"
+    # ...but a clearly stronger non-crisis story still beats a weak crisis one
+    # (nudge is mild, never a gate).
+    strong = _t("strong-noncrisis", sc=900, ch=200, conf=0.9)
+    strong["crisis_relevant"] = False
+    strong["language_count"], strong["country_count"] = 5, 10
+    weak = _t("weak-crisis", sc=20, ch=1, conf=0.4)
+    weak["crisis_relevant"] = True
+    assert [t["label"] for t in rank_threads([weak, strong])][0] == "strong-noncrisis"
+
+
 def test_correctly_typed_sport_is_damped_below_news_despite_global_breadth():
     # A World Cup match is genuinely multi-country/-language — the HIGHEST volume
     # and breadth here — but the semantic damp keeps it off the front page, so it

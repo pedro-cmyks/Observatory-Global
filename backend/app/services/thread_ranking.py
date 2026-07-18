@@ -20,6 +20,8 @@ Weights are a calibratable v1; tune against live orderings, not in the abstract.
 from __future__ import annotations
 
 import math
+import os
+import re
 
 from app.services.daily_edition import global_breadth_signal
 from app.services.stream_relevance import classify_stream_lane
@@ -71,6 +73,100 @@ def lane_rank_multiplier(thread: dict) -> float:
     lane = classify_stream_lane([], str(thread.get("label") or ""))
     return _LANE_RANK_MULTIPLIER.get(lane, 1.0)
 
+# --------------------------------------------------------------------------
+# RANK V2 (2026-07-18, Lane C). Three glass-box adjustments, all damps (never
+# gates — every thread stays listed) behind ONE kill-switch:
+#   ATLAS_RANK_V2=off  → byte-identical to the pre-v2 ranking.
+#
+# 1. COURT DAMP — the Label Court verdict (label_status, mig 080) multiplies
+#    the final score: a thread whose label FAILED entailment against its own
+#    receipts ("Armed conflict escalation" blob serving book reviews) sinks
+#    hard; "partial" dips mildly. The thread stays listed and the
+#    LabelReviewChip explains why it sank. NULL (unjudged) / entailed = 1.0.
+# 2. SYNDICATION DAMP — headline_diversity (the Jun-29 term, now measured as
+#    needed: fresh single-family AU wire bursts out-rank Ukraine). Distinct
+#    outlet/headline ratio over evidence_samples damps the VOLUME term only —
+#    25 reprints of one wire piece stop counting as 25 independent outlets,
+#    while movement/coherence/breadth stay untouched. Clamped to a 0.4 floor
+#    (damp, never erase); threads with <3 receipts are not judged (1.0).
+# 3. CRISIS LENS NUDGE — crisis_relevant=true gets a mild +10% tiebreak (the
+#    harm lens). Never a gate: farándula stays listed, "you decide".
+# --------------------------------------------------------------------------
+
+_COURT_DAMP = {"failed": 0.5, "partial": 0.85}
+_CRISIS_NUDGE = 1.10
+_DIVERSITY_FLOOR = 0.4
+_DIVERSITY_MIN_SAMPLES = 3
+# Min-max normalisation sends the bottom of every component to 0, so a pure
+# multiplicative damp cannot bite on a 0 score. v2 adds this small baseline
+# BEFORE the multiplicative damps — an additive constant preserves the
+# damp-free ordering exactly (monotonic shift) while letting court/lane/crisis
+# multipliers still differentiate threads at the normalisation floor.
+_V2_SCORE_BASELINE = 0.05
+
+_NON_ALNUM = re.compile(r"[^a-z0-9]+")
+
+
+def rank_v2_enabled() -> bool:
+    """ATLAS_RANK_V2 kill-switch — default ON; off/false/0/no reverts to the
+    byte-identical old ranking (serving-order changes stay env-reversible)."""
+    return os.getenv("ATLAS_RANK_V2", "on").strip().lower() not in {
+        "off", "false", "0", "no",
+    }
+
+
+def _norm_headline(text: str) -> str:
+    """Normalise a headline for reprint detection. The measured live
+    syndication signature (2026-07-18, AU Community Media) is the identical
+    wire headline + a per-masthead suffix: "<same story> | Katherine Times" /
+    "... | Blayney Chronicle" across 24 distinct .com.au domains — so strip
+    the LAST "|"-separated segment (the outlet stamp) before comparing.
+    Genuine distinct stories stay distinct; 24 masthead reprints collapse
+    to one."""
+    parts = text.split("|")
+    if len(parts) >= 2:
+        text = "|".join(parts[:-1])
+    return _NON_ALNUM.sub(" ", text.lower()).strip()
+
+
+def headline_diversity(thread: dict) -> float:
+    """Distinct-outlet/headline ratio over the thread's evidence receipts,
+    clamped to [0.4, 1.0]. 25 near-identical reprints of one wire piece score
+    the floor; genuinely multi-outlet coverage scores 1.0. Honest defaults:
+    no receipts, or fewer than 3, cannot be judged → 1.0 (no damp)."""
+    samples = thread.get("evidence_samples") or []
+    if len(samples) < _DIVERSITY_MIN_SAMPLES:
+        return 1.0
+    outlets: set[str] = set()
+    headlines: set[str] = set()
+    counted = 0
+    for sample in samples:
+        if not isinstance(sample, dict):
+            continue
+        counted += 1
+        source = str(sample.get("source") or "").strip().lower()
+        if source:
+            outlets.add(source)
+        headline = _norm_headline(str(sample.get("headline") or ""))
+        if headline:
+            headlines.add(headline)
+    if counted < _DIVERSITY_MIN_SAMPLES:
+        return 1.0
+    outlet_ratio = len(outlets) / counted if outlets else 1.0
+    headline_ratio = len(headlines) / counted if headlines else 1.0
+    # The binding constraint wins: one family reprinting (low outlet ratio) OR
+    # one wire headline everywhere (low headline ratio) both mean the volume
+    # is amplification, not independent coverage.
+    diversity = min(outlet_ratio, headline_ratio)
+    return max(_DIVERSITY_FLOOR, min(1.0, diversity))
+
+
+def court_rank_multiplier(thread: dict) -> float:
+    """Label Court damp: failed 0.5, partial 0.85, entailed/NULL 1.0."""
+    status = str(thread.get("label_status") or "").strip().lower()
+    return _COURT_DAMP.get(status, 1.0)
+
+
 # A thread needs at least this many signals before its relative movement is
 # fully trusted. A huge swing on a tiny base (e.g. a 28-signal syndicated story
 # whose changed_10h reads 53) is noise/amplification, not a real surge — so it
@@ -108,17 +204,35 @@ def rank_threads(threads: list[dict]) -> list[dict]:
     and deterministic: ties fall back to volume then label so order is stable."""
     if not threads:
         return []
+    v2 = rank_v2_enabled()
     comps = [thread_score_components(t) for t in threads]
-    nv = _minmax([c[0] for c in comps])
+    if v2:
+        # SYNDICATION DAMP (v2): the volume term carries a diversity factor —
+        # single-wire reprint volume stops counting as independent coverage.
+        volumes = [c[0] * headline_diversity(t) for t, c in zip(threads, comps)]
+    else:
+        volumes = [c[0] for c in comps]
+    nv = _minmax(volumes)
     nm = _minmax([c[1] for c in comps])
     nc = _minmax([c[2] for c in comps])
     nb = _minmax([c[3] for c in comps])
     scored = []
     for idx, (t, v, m, c, b) in enumerate(zip(threads, nv, nm, nc, nb)):
         score = _W_VOLUME * v + _W_MOVEMENT * m + _W_COHERENCE * c + _W_BREADTH * b
+        if v2:
+            # Baseline so multiplicative damps bite at the min-max floor;
+            # additive shift never reorders the damp-free ranking.
+            score += _V2_SCORE_BASELINE
         # Editorial-lane damp: lifestyle/sport/entertainment threads stop
         # out-ranking real news (still present — input, not gate).
         score *= lane_rank_multiplier(t)
+        if v2:
+            # COURT DAMP: a label the court failed against its own receipts
+            # sinks (0.5) — still listed, chip explains. Partial dips (0.85).
+            score *= court_rank_multiplier(t)
+            # CRISIS LENS NUDGE: mild harm-lens tiebreak, never a gate.
+            if t.get("crisis_relevant") is True:
+                score *= _CRISIS_NUDGE
         # deterministic tie-break: score, then raw volume, then label
         scored.append((score, comps[idx][0], str(t.get("label") or ""), t))
     scored.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
