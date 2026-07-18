@@ -1,0 +1,1086 @@
+{
+ "meta": {
+  "control": {
+   "snapshot_at": "2026-07-16T20:10:43.211657+00:00",
+   "hours": 168,
+   "whiten_k": 0,
+   "mcs": 5,
+   "ms": 2,
+   "min_kept": 8,
+   "dry_run": true,
+   "countries_attempted": 151,
+   "failed": 0,
+   "elapsed_s": 25808
+  },
+  "whitened": {
+   "snapshot_at": "2026-07-17T23:00:07.117118+00:00",
+   "hours": 168,
+   "whiten_k": 1,
+   "mcs": 5,
+   "ms": 2,
+   "min_kept": 8,
+   "dry_run": true,
+   "countries_attempted": 151,
+   "failed": 0,
+   "elapsed_s": 31480
+  },
+  "countries_match": false,
+  "control_only_countries": [
+   "KP",
+   "MG"
+  ],
+  "whitened_only_countries": [
+   "NE",
+   "ZM"
+  ]
+ },
+ "totals": {
+  "control_kept_clusters": 2268,
+  "whitened_kept_clusters": 2706,
+  "marginal_whitened_not_in_control": 1204
+ },
+ "per_country": {
+  "AE": {
+   "control_kept": 7,
+   "whitened_kept": 10,
+   "marginal_count": 6
+  },
+  "AF": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "AJ": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 0
+  },
+  "AL": {
+   "control_kept": 3,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "AM": {
+   "control_kept": 2,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "AR": {
+   "control_kept": 44,
+   "whitened_kept": 72,
+   "marginal_count": 38
+  },
+  "AT": {
+   "control_kept": 3,
+   "whitened_kept": 3,
+   "marginal_count": 2
+  },
+  "AU": {
+   "control_kept": 50,
+   "whitened_kept": 61,
+   "marginal_count": 22
+  },
+  "AZ": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "BA": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "BB": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "BD": {
+   "control_kept": 5,
+   "whitened_kept": 5,
+   "marginal_count": 1
+  },
+  "BE": {
+   "control_kept": 12,
+   "whitened_kept": 17,
+   "marginal_count": 8
+  },
+  "BF": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  },
+  "BG": {
+   "control_kept": 6,
+   "whitened_kept": 3,
+   "marginal_count": 1
+  },
+  "BK": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "BO": {
+   "control_kept": 3,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "BR": {
+   "control_kept": 36,
+   "whitened_kept": 46,
+   "marginal_count": 22
+  },
+  "BY": {
+   "control_kept": 0,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  },
+  "CA": {
+   "control_kept": 43,
+   "whitened_kept": 60,
+   "marginal_count": 23
+  },
+  "CD": {
+   "control_kept": 3,
+   "whitened_kept": 3,
+   "marginal_count": 0
+  },
+  "CG": {
+   "control_kept": 9,
+   "whitened_kept": 11,
+   "marginal_count": 3
+  },
+  "CH": {
+   "control_kept": 8,
+   "whitened_kept": 9,
+   "marginal_count": 3
+  },
+  "CI": {
+   "control_kept": 1,
+   "whitened_kept": 5,
+   "marginal_count": 0
+  },
+  "CL": {
+   "control_kept": 8,
+   "whitened_kept": 8,
+   "marginal_count": 1
+  },
+  "CM": {
+   "control_kept": 2,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "CN": {
+   "control_kept": 18,
+   "whitened_kept": 23,
+   "marginal_count": 14
+  },
+  "CO": {
+   "control_kept": 16,
+   "whitened_kept": 19,
+   "marginal_count": 11
+  },
+  "CR": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "CS": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "CU": {
+   "control_kept": 1,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "CY": {
+   "control_kept": 4,
+   "whitened_kept": 6,
+   "marginal_count": 4
+  },
+  "CZ": {
+   "control_kept": 8,
+   "whitened_kept": 10,
+   "marginal_count": 4
+  },
+  "DE": {
+   "control_kept": 63,
+   "whitened_kept": 59,
+   "marginal_count": 20
+  },
+  "DK": {
+   "control_kept": 1,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "DO": {
+   "control_kept": 1,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "DZ": {
+   "control_kept": 5,
+   "whitened_kept": 6,
+   "marginal_count": 5
+  },
+  "EC": {
+   "control_kept": 1,
+   "whitened_kept": 4,
+   "marginal_count": 3
+  },
+  "EE": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "EG": {
+   "control_kept": 16,
+   "whitened_kept": 23,
+   "marginal_count": 15
+  },
+  "ES": {
+   "control_kept": 82,
+   "whitened_kept": 98,
+   "marginal_count": 46
+  },
+  "ET": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "FI": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "FJ": {
+   "control_kept": 0,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  },
+  "FR": {
+   "control_kept": 78,
+   "whitened_kept": 101,
+   "marginal_count": 45
+  },
+  "GB": {
+   "control_kept": 130,
+   "whitened_kept": 116,
+   "marginal_count": 39
+  },
+  "GG": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "GH": {
+   "control_kept": 5,
+   "whitened_kept": 3,
+   "marginal_count": 1
+  },
+  "GN": {
+   "control_kept": 1,
+   "whitened_kept": 3,
+   "marginal_count": 2
+  },
+  "GR": {
+   "control_kept": 119,
+   "whitened_kept": 140,
+   "marginal_count": 57
+  },
+  "GT": {
+   "control_kept": 2,
+   "whitened_kept": 3,
+   "marginal_count": 1
+  },
+  "GZ": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "HK": {
+   "control_kept": 3,
+   "whitened_kept": 4,
+   "marginal_count": 3
+  },
+  "HN": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  },
+  "HR": {
+   "control_kept": 1,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  },
+  "HT": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "HU": {
+   "control_kept": 4,
+   "whitened_kept": 7,
+   "marginal_count": 5
+  },
+  "IC": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "ID": {
+   "control_kept": 62,
+   "whitened_kept": 94,
+   "marginal_count": 57
+  },
+  "IE": {
+   "control_kept": 13,
+   "whitened_kept": 18,
+   "marginal_count": 10
+  },
+  "IL": {
+   "control_kept": 28,
+   "whitened_kept": 36,
+   "marginal_count": 12
+  },
+  "IN": {
+   "control_kept": 128,
+   "whitened_kept": 126,
+   "marginal_count": 44
+  },
+  "IQ": {
+   "control_kept": 5,
+   "whitened_kept": 8,
+   "marginal_count": 4
+  },
+  "IR": {
+   "control_kept": 117,
+   "whitened_kept": 142,
+   "marginal_count": 52
+  },
+  "IT": {
+   "control_kept": 78,
+   "whitened_kept": 100,
+   "marginal_count": 52
+  },
+  "JE": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "JM": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "JO": {
+   "control_kept": 6,
+   "whitened_kept": 10,
+   "marginal_count": 5
+  },
+  "JP": {
+   "control_kept": 12,
+   "whitened_kept": 19,
+   "marginal_count": 12
+  },
+  "KE": {
+   "control_kept": 2,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "KG": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 0
+  },
+  "KH": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "KP": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "KR": {
+   "control_kept": 15,
+   "whitened_kept": 14,
+   "marginal_count": 4
+  },
+  "KV": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "KW": {
+   "control_kept": 4,
+   "whitened_kept": 6,
+   "marginal_count": 2
+  },
+  "KZ": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "LK": {
+   "control_kept": 4,
+   "whitened_kept": 4,
+   "marginal_count": 1
+  },
+  "LR": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "LS": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "LT": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "LU": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "LV": {
+   "control_kept": 1,
+   "whitened_kept": 3,
+   "marginal_count": 3
+  },
+  "LY": {
+   "control_kept": 1,
+   "whitened_kept": 4,
+   "marginal_count": 3
+  },
+  "MA": {
+   "control_kept": 8,
+   "whitened_kept": 10,
+   "marginal_count": 6
+  },
+  "MD": {
+   "control_kept": 8,
+   "whitened_kept": 13,
+   "marginal_count": 7
+  },
+  "MG": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "MJ": {
+   "control_kept": 2,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "MK": {
+   "control_kept": 5,
+   "whitened_kept": 9,
+   "marginal_count": 6
+  },
+  "ML": {
+   "control_kept": 2,
+   "whitened_kept": 4,
+   "marginal_count": 3
+  },
+  "MM": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "MN": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "MR": {
+   "control_kept": 2,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "MT": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 0
+  },
+  "MU": {
+   "control_kept": 6,
+   "whitened_kept": 7,
+   "marginal_count": 2
+  },
+  "MW": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "MX": {
+   "control_kept": 36,
+   "whitened_kept": 45,
+   "marginal_count": 19
+  },
+  "MY": {
+   "control_kept": 3,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "MZ": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "NA": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "NE": {
+   "control_kept": 0,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  },
+  "NG": {
+   "control_kept": 50,
+   "whitened_kept": 54,
+   "marginal_count": 15
+  },
+  "NI": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "NL": {
+   "control_kept": 6,
+   "whitened_kept": 8,
+   "marginal_count": 5
+  },
+  "NO": {
+   "control_kept": 15,
+   "whitened_kept": 15,
+   "marginal_count": 3
+  },
+  "NP": {
+   "control_kept": 2,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "NZ": {
+   "control_kept": 16,
+   "whitened_kept": 23,
+   "marginal_count": 10
+  },
+  "OS": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "PA": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 0
+  },
+  "PE": {
+   "control_kept": 15,
+   "whitened_kept": 18,
+   "marginal_count": 5
+  },
+  "PG": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "PH": {
+   "control_kept": 8,
+   "whitened_kept": 8,
+   "marginal_count": 3
+  },
+  "PK": {
+   "control_kept": 15,
+   "whitened_kept": 14,
+   "marginal_count": 5
+  },
+  "PL": {
+   "control_kept": 14,
+   "whitened_kept": 10,
+   "marginal_count": 7
+  },
+  "PM": {
+   "control_kept": 2,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "PS": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "PT": {
+   "control_kept": 1,
+   "whitened_kept": 3,
+   "marginal_count": 2
+  },
+  "PY": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "QA": {
+   "control_kept": 6,
+   "whitened_kept": 4,
+   "marginal_count": 1
+  },
+  "RB": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "RE": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "RI": {
+   "control_kept": 2,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "RO": {
+   "control_kept": 10,
+   "whitened_kept": 27,
+   "marginal_count": 20
+  },
+  "RS": {
+   "control_kept": 2,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "RU": {
+   "control_kept": 111,
+   "whitened_kept": 131,
+   "marginal_count": 59
+  },
+  "SA": {
+   "control_kept": 5,
+   "whitened_kept": 7,
+   "marginal_count": 3
+  },
+  "SD": {
+   "control_kept": 3,
+   "whitened_kept": 3,
+   "marginal_count": 1
+  },
+  "SE": {
+   "control_kept": 6,
+   "whitened_kept": 14,
+   "marginal_count": 11
+  },
+  "SG": {
+   "control_kept": 6,
+   "whitened_kept": 7,
+   "marginal_count": 1
+  },
+  "SI": {
+   "control_kept": 0,
+   "whitened_kept": 1,
+   "marginal_count": 1
+  },
+  "SK": {
+   "control_kept": 1,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  },
+  "SN": {
+   "control_kept": 7,
+   "whitened_kept": 12,
+   "marginal_count": 7
+  },
+  "SO": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "SV": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 0
+  },
+  "SY": {
+   "control_kept": 5,
+   "whitened_kept": 7,
+   "marginal_count": 5
+  },
+  "TD": {
+   "control_kept": 1,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "TH": {
+   "control_kept": 12,
+   "whitened_kept": 18,
+   "marginal_count": 7
+  },
+  "TN": {
+   "control_kept": 3,
+   "whitened_kept": 5,
+   "marginal_count": 5
+  },
+  "TR": {
+   "control_kept": 48,
+   "whitened_kept": 66,
+   "marginal_count": 36
+  },
+  "TW": {
+   "control_kept": 3,
+   "whitened_kept": 3,
+   "marginal_count": 1
+  },
+  "TZ": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "UA": {
+   "control_kept": 112,
+   "whitened_kept": 110,
+   "marginal_count": 45
+  },
+  "UG": {
+   "control_kept": 3,
+   "whitened_kept": 4,
+   "marginal_count": 2
+  },
+  "US": {
+   "control_kept": 328,
+   "whitened_kept": 388,
+   "marginal_count": 168
+  },
+  "UY": {
+   "control_kept": 2,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "UZ": {
+   "control_kept": 1,
+   "whitened_kept": 1,
+   "marginal_count": 0
+  },
+  "VE": {
+   "control_kept": 20,
+   "whitened_kept": 20,
+   "marginal_count": 6
+  },
+  "VN": {
+   "control_kept": 16,
+   "whitened_kept": 20,
+   "marginal_count": 12
+  },
+  "YE": {
+   "control_kept": 2,
+   "whitened_kept": 2,
+   "marginal_count": 1
+  },
+  "YM": {
+   "control_kept": 6,
+   "whitened_kept": 7,
+   "marginal_count": 4
+  },
+  "ZA": {
+   "control_kept": 14,
+   "whitened_kept": 17,
+   "marginal_count": 7
+  },
+  "ZM": {
+   "control_kept": 0,
+   "whitened_kept": 0,
+   "marginal_count": 0
+  },
+  "ZW": {
+   "control_kept": 0,
+   "whitened_kept": 2,
+   "marginal_count": 2
+  }
+ },
+ "marginal_examples": [
+  {
+   "country": "AE",
+   "kept_size": 17,
+   "cohesion": 0.951,
+   "best_control_overlap": 0.412,
+   "sample_headlines": [
+    "بين الأرز والمعكرونة.. أيهما يربح معركة الأمعاء؟",
+    "الحرائق تعصف بدار أيتام بالجزائر.. قتلى ومصابون وصدمات نفسية",
+    "دون أي تكلفة.. 5 عادات صباحية بسيطة تعزز صحتك"
+   ]
+  },
+  {
+   "country": "AE",
+   "kept_size": 13,
+   "cohesion": 0.9561,
+   "best_control_overlap": 0.231,
+   "sample_headlines": [
+    "«تملك العقار الأول» في دبي.. برنامج يُسهّل رحلة المقيمين من «الإيجار» إلى «التملك»",
+    "في مزادها الإلكتروني.. «طرق دبي» تطرح 150 رقماً مميزاً لمختلف أنواع المركبات",
+    "انطلاق «صيف الإمارات» في فلج المعلا"
+   ]
+  },
+  {
+   "country": "AE",
+   "kept_size": 8,
+   "cohesion": 0.9615,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "إلزام شركة بدفع 143 ألف دولار لـ «دبي للخدمات المالية»",
+    "سوق دبي يرتفع مجدداً بمكاسب 3 مليارات درهم",
+    "106 مليارات درهم مبيعات الأراضي  في دبي خلال النصف الأول"
+   ]
+  },
+  {
+   "country": "AE",
+   "kept_size": 8,
+   "cohesion": 0.9541,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "Emirates hits milestone of 100 aircraft refurbished under retrofit program",
+    "100 aircraft, 44 months and 4.4 million man hours: Emirates' retrofit programme marks majo",
+    "100 aircraft: Emirates' retrofit programme marks major milestone"
+   ]
+  },
+  {
+   "country": "AE",
+   "kept_size": 8,
+   "cohesion": 0.9672,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "Власти Дубая опровергли сообщения о взрывах в центре города — Новости «Серебряного Дождя»",
+    "Дубай опроверг сообщение о взрывах в районе Даунтаун-ОБНОВЛЕНО",
+    "Власти Дубая опровергли сообщения о взрывах в центре города ::  Новости дня  / ВЗГЛЯД"
+   ]
+  },
+  {
+   "country": "AE",
+   "kept_size": 8,
+   "cohesion": 0.9541,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "US ends its latest round of airstrikes on Iran, the sixth night in a row, as fighting over Strait of Hormuz in",
+    "US airstrikes shake Iran's capital, Tehran, as fighting over the Strait of Hormuz escalates, state media repor",
+    "US military says it ends a wave of overnight airstrikes that rattled parts of northern Iran for the first time"
+   ]
+  },
+  {
+   "country": "AF",
+   "kept_size": 8,
+   "cohesion": 0.9522,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "British Troops Dropped Prisoners From Forklift ‘For Fun’, Afghanistan Inquiry Hears",
+    "Revealed: British forces abused Afghans 'for fun' during occupation",
+    "UK Inquiry Hears SAS Troops Dropped Afghan Detainees From Forklifts 'For Fun'"
+   ]
+  },
+  {
+   "country": "AL",
+   "kept_size": 11,
+   "cohesion": 0.968,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "\"Mijëra njerëz protestojnë në Tiranë\"/ \"The Independent\": Dua Lipa shpreh mbështetje për \"Revolucionin e Flami",
+    "“Mijëra njerëz protestojnë në Tiranë”/ “The Independent”: Dua Lipa shpreh mbështetje për “Revolucionin e Flami",
+    "Revolta popullore për largimin e qeverisë/ Media italiane jehonë, ngjarjeve: Dua Lipa mbështet protestat në Ti"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 38,
+   "cohesion": 0.9736,
+   "best_control_overlap": 0.395,
+   "sample_headlines": [
+    "Clima hoy en Saladillo, Buenos Aires: el pronóstico del tiempo para este viernes 17 julio de 2026",
+    "Clima hoy en Saenz Peña, Chaco: el pronóstico del tiempo para este viernes 17 julio de 2026",
+    "Clima hoy en Río Tercero, Córdoba: el pronóstico del tiempo para este viernes 17 julio de 2026"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 22,
+   "cohesion": 0.9498,
+   "best_control_overlap": 0.318,
+   "sample_headlines": [
+    "Argentina's President Javier Milei skips World Cup Final over superstition",
+    "Milei confirmó que no viajará a la final y mantendrá su cábala en Olivos",
+    "Argentine President Milei won't attend the World Cup final, citing superstition | World"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 17,
+   "cohesion": 0.9621,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "Milei en la Bolsa: \"Voy a ser reelecto y se vienen 100 años de liberalismo\" «  Diario La Capital de Mar del Pl",
+    "Javier Milei: \"Voy a ser reelecto y voy a mandar cuatro años más; si no te gusta, andate a Cuba\" El Intransige",
+    "Javier Milei dijo que va por la reelección y se cruzó con un socio de la Bolsa: \"Si no te gusta, andate a Cuba"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 15,
+   "cohesion": 0.9663,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "La fuerte respuesta de Cuti Romero a Gary Neville tras la victoria de Argentina: «Espero no ser tan estúpido»",
+    "'Cuti' Romero y Lisandro Martínez respondieron a Gary Neville tras sus críticas: 'Lo único que espero es que c",
+    "La contundente respuesta de \"Cuti\" Romero a Gary Neville: \"Lo único que espero que cuando me retire no sea tan"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 14,
+   "cohesion": 0.9576,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "El sector de la construcción advirtió por los hasta 130.000 empleos perdidos y la falta de diálogo con el Esta",
+    "El empleo formal volvió a caer en abril: se perdieron casi 29.000 puestos de trabajo",
+    "La industria santafesina volvió a retroceder en mayo: siete de cada diez empresas produjeron menos"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 14,
+   "cohesion": 0.9558,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "Acciones y bonos argentinos retrocedieron ante la presión externa y el riesgo país rozó los 410 puntos",
+    "Bajan los activos argentinos: caen acciones y bonos mientras el riesgo país sigue por encima de los 400 puntos",
+    "Wall Street: los activos argentinos caen y el riesgo país no logra quebrar los 400 puntos"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 13,
+   "cohesion": 0.9851,
+   "best_control_overlap": 0.385,
+   "sample_headlines": [
+    "La historia de la bandera de Malvinas que terminó en manos de los jugadores argentinos",
+    "La increíble historia detrás de la bandera de las Malvinas: así fue como llegó a las manos de los jugadores de",
+    "La historia oculta detrás de la bandera de Malvinas que exhibió la Selección Argentina tras vencer a Inglaterr"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 13,
+   "cohesion": 0.9643,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "La reacción de Dalma Maradona luego de escuchar lo que Lionel Messi dijo sobre Diego tras vencer a Inglaterra",
+    "\"No paro de llorar, te extraño\": Dalma recordó a Diego Maradona tras el triunfo ante Inglaterra :: Diario Preg",
+    "\"No paro de llorar, te extraño\": Dalma recordó a Diego Maradona :: El Diario de La Pampa"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 12,
+   "cohesion": 0.9682,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "La canasta básica de crianza superó los $670.000 en junio",
+    "La canasta de crianza superó los $670.000 en junio, según el INDEC",
+    "La canasta básica para criar a un hijo superó los $670.000 en junio"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 12,
+   "cohesion": 0.9497,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "Qué significa el proverbio chino sobre la sabiduría: “El que hace el bien de los demás hace el suyo”",
+    "Qué significa el proverbio ruso sobre la mesura y la perfección: \"Mide siete veces, corta una\"",
+    "Qué significa el proverbio chino sobre la sabiduría: “El agua hace flotar el barco, pero también puede hundirl"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 12,
+   "cohesion": 0.9739,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "¿Cuánto cuesta volar desde Argentina en avión privado para ver la final del Mundial?",
+    "Cuánto cuesta volar en avión privado para ver la final del Mundial en Nueva Jersey",
+    "Cuánto cuesta viajar a Nueva York para ver la final del Mundial entre Argentina y España"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 11,
+   "cohesion": 0.9769,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "FIFA probes Argentina over Falklands banner after England defeat",
+    "Argentina Could Face FIFA Sanction Over Falklands Banner After England Semifinal Win",
+    "Argentina face possible FIFA sanctions over Falklands banner after England win"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 11,
+   "cohesion": 0.9589,
+   "best_control_overlap": 0.182,
+   "sample_headlines": [
+    "Villarruel encendió la previa de Argentina-Inglaterra: \"Jugamos contra los piratas usurpadores\"",
+    "Sanrafaelino en la previa contra Inglaterra: \"No es un partido más. Tiene una historia muy especial\"",
+    "Villarruel trató de \"piratas usurpadores\" a los ingleses en la previa del partido de la Selección argentina – "
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 11,
+   "cohesion": 0.9828,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "La Casa Blanca confirmó que Trump estará presente en la final entre Argentina y España",
+    "Donald Trump asistirá a la gran final del Mundial entre Argentina y España: se espera que entregue el trofeo a",
+    "Donald Trump tendrá su lugar estelar en la final entre España y Argentina"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 11,
+   "cohesion": 0.9673,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "\"Los argentinos ya se creen campeones\": qué dicen los medios españoles sobre la final del Mundial contra la Se",
+    "\"Los inmortales, \"La cabeza de Dios\" y \"Messi contra el mundo\": las portadas de los principales diarios del pl",
+    "\"Corazones rotos\": así \"lloraron\" los medios ingleses la histórica remontada de Argentina"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 11,
+   "cohesion": 0.9692,
+   "best_control_overlap": 0.0,
+   "sample_headlines": [
+    "El \"machete\" de Pickford en una botella al descubierto: la divertida reacción de Messi y los jugadores de Arge",
+    "La botella de Pickford con apuntes para los penales causó sorpresa en la Selección Argentina",
+    "El \"machete\" de Pickford para los penales terminó en manos de Argentina: esta fue la reacción de Messi"
+   ]
+  },
+  {
+   "country": "AR",
+   "kept_size": 11,
+   "cohesion": 0.9758,
+   "best_control_overlap": 0.182,
+   "sample_headlines": [
+    "El Indec difunde el dato de inflación de junio y el mercado espera una desaceleración",
+    "El Indec difunde el IPC de junio con la expectativa de consolidar la desaceleración",
+    "Inflación de junio: el mercado prevé otra baja y apuesta a que perfore el 2%"
+   ]
+  }
+ ]
+}

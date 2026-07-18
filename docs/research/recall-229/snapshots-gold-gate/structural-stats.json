@@ -1,0 +1,61 @@
+{
+ "meta": {
+  "control": {
+   "snapshot_at": "2026-07-16T20:10:43.211657+00:00",
+   "hours": 168,
+   "whiten_k": 0,
+   "mcs": 5,
+   "ms": 2,
+   "min_kept": 8,
+   "dry_run": true,
+   "countries_attempted": 151,
+   "failed": 0,
+   "elapsed_s": 25808
+  },
+  "whitened": {
+   "snapshot_at": "2026-07-17T23:00:07.117118+00:00",
+   "hours": 168,
+   "whiten_k": 1,
+   "mcs": 5,
+   "ms": 2,
+   "min_kept": 8,
+   "dry_run": true,
+   "countries_attempted": 151,
+   "failed": 0,
+   "elapsed_s": 31480
+  },
+  "control_max_signal_id": 13575580,
+  "whitened_min_signal_id": 12744237
+ },
+ "control": {
+  "kept_clusters": 2268,
+  "ge12_promotable": 919,
+  "kept_signal_mass": 29974,
+  "kept_p50": 10.0,
+  "kept_max": 256,
+  "kept_max_country": "CI",
+  "kept_max_label": "C\u00f4te d\u2019Ivoire-AIP/ L\u2019IFEF de Man appelle \u00e0 un renforcement des moyens face aux d",
+  "mean_cohesion": 0.9685,
+  "p10_cohesion": 0.9518
+ },
+ "whitened": {
+  "kept_clusters": 2706,
+  "ge12_promotable": 1070,
+  "kept_signal_mass": 34273,
+  "kept_p50": 10.0,
+  "kept_max": 102,
+  "kept_max_country": "ES",
+  "kept_max_label": "Jadwal Final Piala Dunia 2026 Spanyol Vs Argentina, Duel Juara Eropa dan Juara B",
+  "mean_cohesion": 0.9661,
+  "p10_cohesion": 0.9481
+ },
+ "marginal": {
+  "total": 1204,
+  "shared_window_ge80pct_old": 1061,
+  "window_new_lt80pct_old": 143,
+  "shared_ge12": 276,
+  "total_ge12": 329,
+  "shared_mean_cohesion": 0.9614,
+  "control_clusters_lost_in_whitened": 799
+ }
+}
