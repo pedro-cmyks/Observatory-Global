@@ -29,6 +29,7 @@ import {
   listInvestigations,
   mergeInvestigations,
   movePin,
+  onWorkbenchChange,
   removeCitation,
   removePin,
   renameInvestigation,
@@ -354,5 +355,27 @@ describe('investigation ergonomics (dedupe / merge / move)', () => {
     expect(movePin(PIN.anchorId, a.id, b.id)).toBe(false)
     // source keeps its pin (nothing lost on a conflict)
     expect(getInvestigation(a.id)!.pins).toHaveLength(1)
+  })
+})
+
+describe('onWorkbenchChange (accounts-v1 sync hook)', () => {
+  it('fires subscribers after any store mutation, with the fresh list', () => {
+    localStorage.clear()
+    const seen: number[] = []
+    const off = onWorkbenchChange((invs) => seen.push(invs.length))
+    createInvestigation('sync hook test')
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen[seen.length - 1]).toBe(1)
+    off()
+    createInvestigation('after unsubscribe')
+    expect(seen[seen.length - 1]).toBe(1) // did not fire again
+  })
+
+  it('a throwing subscriber never breaks the store write', () => {
+    localStorage.clear()
+    const off = onWorkbenchChange(() => { throw new Error('boom') })
+    expect(() => createInvestigation('still works')).not.toThrow()
+    expect(listInvestigations()).toHaveLength(1)
+    off()
   })
 })

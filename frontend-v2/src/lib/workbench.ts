@@ -162,12 +162,27 @@ function readStore(): StoreShape {
   }
 }
 
+// ── accounts-v1 sync hook ────────────────────────────────────────────────
+// Every mutation funnels through writeStore; subscribers (the sync engine)
+// get the fresh investigation list after each write. Subscribers must never
+// break the store — errors are swallowed (sync is best-effort by design).
+type WorkbenchListener = (investigations: Investigation[]) => void
+const changeListeners = new Set<WorkbenchListener>()
+
+export function onWorkbenchChange(cb: WorkbenchListener): () => void {
+  changeListeners.add(cb)
+  return () => changeListeners.delete(cb)
+}
+
 function writeStore(store: StoreShape): void {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(store))
   } catch {
     // quota/eviction: investigation continues in memory for this session;
     // export is the durability mechanism.
+  }
+  for (const cb of changeListeners) {
+    try { cb(store.investigations) } catch { /* sync must never break the store */ }
   }
 }
 
