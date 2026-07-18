@@ -99,6 +99,20 @@ present, refreshed by tonight's catch-up chain) — no SERP/Brave key needed.
 - **Sibling-vs-constellation relation vocabulary** (wish 16) — fold into the connection-layer track when it next opens.
 - **Junk in "Fastest rising"** [P1-15] — resolves via Label Court + #248, not its own fix.
 
+## Accounts-v1 SHIPPED (2026-07-18 — the market primitive)
+Plan `2026-07-18-accounts-sync.md` executed subagent-driven (3 batches, two-stage
+review each; 6 real review findings fixed with TDD before landing). Supabase Auth
+magic-link + RLS `user_investigations` (mig 081+082) + local-first LWW sync with
+tombstones + AccountSection in the Workbench + pseudonymous `user_id` on
+telemetry. **E2E proven without email**: two-origin device sim — push → RLS row →
+cross-device pull → UI; funnel `sign_in → workbench_open → investigation_created
+→ sync_done` all carrying user_id. W0-D5 privacy stance PRESERVED (anonymous =
+pure localStorage, server sees only anonymous events). **Nothing paywalled** —
+accounts are the measurement apparatus; monetization stays gated on readiness
+≥70 (reliability ≥70) + 4 clean weeks of real-user L3 retention. Pedro's one
+manual step: confirm the Email provider in the Supabase dashboard + add the two
+VITE_SUPABASE_* vars to Vercel env (local .env.local already configured).
+
 ## In flight now (don't double-run)
 - **#229 whitening gold gate** — control pass done (2,268 clusters); whitened pass chained behind tonight's real snapshot run; then 2-vendor judge. Outcome feeds substrate depth (more real stories = less label starvation).
 - **Issues/papers/constellation chip** (separate session) — already landing PRs (NLP selector root-cause fix merged).

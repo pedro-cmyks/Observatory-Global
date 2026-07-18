@@ -1,5 +1,31 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-18 (ACCOUNTS-V1 SHIPPED + GENERAL REVIEW 50/100 + EMBED-FIRST CHAIN).**
+General review (5-assessment workflow): READINESS 50/100 (presentation 75 ·
+data 55 · processing 55 · publishability 50 · ops 35 · market 20); doc =
+council-workplan + issues #259/#260/#261 filed. TOP FIXES SAME DAY: killed the
+8h-stuck daytime snapshot; **Step 0 embed-first CHAINED into
+run-scoped-snapshot.sh** (`fd85f875` — the 07-04 "durable plan" finally built;
+embed coverage had hit 0% of 24h while the snapshot hogged the mutex);
+label_court fallback SQL column fixed (+schema-freeze test). **ACCOUNTS-V1**
+(plan `2026-07-18-accounts-sync.md`, subagent-driven, 3 batches × two-stage
+review, 6 review findings fixed TDD pre-land): Supabase Auth magic-link +
+RLS `user_investigations` (migs 081+082 — 082 revokes Supabase DEFAULT-priv
+leak: new client tables MUST ship 082-style revokes) + local-first LWW sync
+(epoch-ms compare — NEVER lexicographic ISO, Postgres re-serializes to
++00:00; tombstones + toForget + pushed-markers in atlas.sync.v1) +
+AccountSection in Workbench + `setTelemetryUser` → user_id rides props.
+E2E WITHOUT email: synthetic auth.users via SQL + GoTrue password grant +
+session injected under sb-<ref>-auth-token + two vite ports = two devices;
+push→RLS row→cross-device pull→UI verified; funnel sign_in→workbench_open→
+investigation_created→sync_done all with user_id in telemetry_events.
+W0-D5 PRESERVED: anonymous = pure localStorage. NOTHING paywalled —
+monetization gated on readiness ≥70 + reliability ≥70 + 4 clean weeks of
+real L3 retention (market rec: FREE browse+Brief · free ACCOUNT sync · PAID
+L3 $15-30/mo). Pedro manual: confirm Email provider in Supabase dashboard +
+VITE_SUPABASE_URL/ANON_KEY into Vercel env (frontend .env.local done).
+696 vitest · Council phases 0-3 ALL SHIPPED prior day (see workplan).**
+
 **2026-07-12 (CONSOLIDATION + P1.1 + C7 DELIVERED).** `v3-intel-layer` is the canonical production/main branch. Closed obsolete PRs #118/#144; preserved legacy `main`, dirty worktrees, and Codex-host-owned worktrees. Landed corrected heavy-job mutex (owner TTL; never evict live overdue PID), explicit asyncpg-only `db_busy`, candidate-first bounded `/threads` SQL, nullable measured confidence, neutral non-crisis acceleration, and Brief stale-while-revalidate/error truth. Production read-only EXPLAIN: global 48.166 ms, country 242.154 ms, zero sequential scans. Repaired Anthropic/Node installations and removed duplicate `orjson`. C7 read-only artifact: 100 topics / 49 eligible / 18 review hits; obvious coverage-proxy geo mismatches prove it must stay out of UI/ranking/cron until semantic subject geo #238. Canonical plan: `docs/superpowers/plans/2026-07-12-consolidation-stability-c7.md`. NEXT: real-analyst validation, #238 subject geography, then reconsider C7; actor-quality P2.5 remains open.**
 
 **2026-07-12 (L3 WORKBENCH 3-PANEL UX FIXED, `51426c75`, pushed
