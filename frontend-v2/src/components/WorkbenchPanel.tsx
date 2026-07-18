@@ -28,6 +28,7 @@ import type { ClaimRelation } from '../lib/claimLedger';
 import { classifyOutlet, coarseTierLabel, TIER_TIP } from '../lib/sourceTiers';
 import { Flag } from './Flag';
 import { DossierView } from './DossierView';
+import { AccountSection } from './AccountSection';
 import WorkbenchConstellation from './WorkbenchConstellation';
 import { connectionTopicIds } from '../lib/dossierConnections';
 import { countQualifier } from '../lib/countQualifier';
@@ -184,6 +185,7 @@ export default function WorkbenchPanel({
   return (
     <div className="wb-panel">
       <div className="wb-sidebar">
+        <AccountSection />
         <div className="wb-new">
           <input
             className="wb-new-input"
