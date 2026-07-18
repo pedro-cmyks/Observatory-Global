@@ -24,6 +24,9 @@ UID_N=$(id -u)
 ALW=/Users/pedro/AtlasLocalWorker
 LOG=$ALW/logs/cron-freshness-watchdog.log
 ALERTS=${ATLAS_RELIABILITY_ALERTS_LOG:-$ALW/logs/reliability-alerts.log}
+# The ledger must exist even before the first alert (the weekly read greps it;
+# a missing file reads as "no alerts" vs "never armed" — make those distinct).
+mkdir -p "$(dirname "$ALERTS")" && touch "$ALERTS" 2>/dev/null || true
 ENV_FILE=$ALW/.env
 LOCK_DIR=${ATLAS_HEAVY_LOCK_DIR:-/tmp/atlas-heavy-job.lock}
 ts() { date '+%F %T'; }

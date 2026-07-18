@@ -30,7 +30,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 import numpy as np
@@ -81,7 +81,7 @@ _FETCH_PAGE = """
            se.vec::real[] AS emb
     FROM signal_embeddings se JOIN signals_v2 s ON s.id = se.signal_id
     WHERE s.country_code = $1
-      AND s.timestamp > NOW() - ($2::int * INTERVAL '1 hour')
+      AND s.timestamp > $2::timestamptz
       AND s.headline IS NOT NULL AND length(s.headline) >= 20
       AND (s.timestamp, s.id) < ($4::timestamptz, $5::bigint)
     ORDER BY s.timestamp DESC, s.id DESC
@@ -104,11 +104,15 @@ async def _fetch_country_embeddings(conn, cc, hours, cap, page_rows):
     last_ts = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
     last_id = _MAX_BIGINT
     remaining = cap if cap and cap > 0 else None
+    # Freeze the window's lower bound ONCE — NOW() re-evaluated per page made
+    # the 168h cutoff slide forward during long paginated pulls (verify-gate
+    # note, ~0.04% of window on a contended US pull; now exactly zero).
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     while True:
         limit = page_rows if remaining is None else min(page_rows, remaining)
         if limit <= 0:
             break
-        page = await conn.fetch(_FETCH_PAGE, cc, hours, limit, last_ts, last_id)
+        page = await conn.fetch(_FETCH_PAGE, cc, cutoff, limit, last_ts, last_id)
         if not page:
             break
         out.extend(page)
