@@ -138,6 +138,25 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.compute_topic_movement ) \
   || echo "[scoped-snapshot] ERROR topic movement failed — movement is STALE" >&2
 
+# Step 3.6: NARRATIVE LINEAGE refresh (2026-07-18) — re-stitch live topics to
+# the archive story units (narrative_lineage_census, OpenAI space, local
+# disk/CPU; DB reads are 3 bounded SELECTs) and load the measured edges into
+# narrative_lineage (mig 084) for GET /theme/{id}/lineage. Incremental by
+# construction: the sha1 shard index reuses its fingerprint and the
+# live-embed cache means only NEW topic member headlines hit the OpenAI API
+# (--max-embed is the nightly cost guard). Skipped, non-fatal, when the
+# external volume is unmounted or the key is missing — serving keeps the
+# previous edges (stale lineage beats fabricated lineage).
+if [[ "${ATLAS_LINEAGE_REFRESH:-on}" == "on" && -d /Volumes/Ext/Atlas/Embeddings/openai-3-small && -n "${OPENAI_API_KEY:-}" ]]; then
+  ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.narrative_lineage_census all \
+      --max-embed "${ATLAS_LINEAGE_MAX_EMBED:-40000}" ) \
+    || echo "[scoped-snapshot] lineage census failed (non-fatal — lineage serves previous edges)" >&2
+  ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.load_narrative_lineage --write --prune-stale ) \
+    || echo "[scoped-snapshot] lineage load failed (non-fatal — lineage serves previous edges)" >&2
+else
+  echo "[scoped-snapshot] skip lineage refresh (off, volume unmounted, or no OPENAI key)" >&2
+fi
+
 # Step 3.9 (#256): the steps above mass-rewrote the exact tables the event binders
 # read; stale planner stats after that rewrite were degrading the binding queries
 # 30x+ into statement timeout (bindings silently stale 07-10 -> 07-12). Refresh

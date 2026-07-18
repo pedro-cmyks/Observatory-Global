@@ -261,6 +261,24 @@ async def get_theme_deep_history(
                 "reason": "internal error"}
 
 
+@router.get("/api/v2/theme/{theme_code}/lineage")
+async def get_theme_lineage(theme_code: str):
+    """Narrative lineage (theme-lineage-v0) — the thread's BIOGRAPHY: weekly
+    archive eras (narrative_lineage census stitch, mig 084) chained up to the
+    live hot week. Drift = measured era-centroid cosine (OpenAI space);
+    candidate stitches flagged; era gaps explicit; absence honest."""
+    from app.services.narrative_lineage import topic_lineage
+
+    try:
+        async with db.pool.acquire() as conn:
+            return await topic_lineage(conn, theme_code)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("lineage failed: %s", exc)
+        return {"contract": "theme-lineage-v0", "topic_id": theme_code,
+                "lineage_id": None, "weeks": [], "stitch": None,
+                "empty_reason": "internal_error"}
+
+
 @router.get("/api/v2/theme/{theme_code}/external-depth")
 async def get_theme_external_depth(theme_code: str):
     """#161 external-depth lane — ON-DEMAND DOC 2.0 enrichment for THIN
