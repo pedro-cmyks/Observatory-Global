@@ -1,0 +1,256 @@
+/* NARRATIVE BIOGRAPHY — weekly spine in the constellation visual grammar
+   (dark-by-design canvas like ConstellationThreadView.css: chrome themes via
+   vars, the canvas pins fixed light literals). */
+
+.narrative-biography .nb-canvas {
+    position: relative;
+    width: 100%;
+    margin-top: 10px;
+    background:
+        radial-gradient(ellipse at 50% 45%, rgba(30, 41, 59, 0.55) 0%, rgba(11, 14, 19, 0.1) 62%),
+        radial-gradient(ellipse at 80% 15%, rgba(49, 46, 129, 0.22) 0%, transparent 55%),
+        #0b0e13;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* ── spine edges: style = MEASURED drift class ── */
+.nb-edge {
+    stroke-width: 1.6;
+}
+
+.nb-edge--steady {
+    stroke: rgba(52, 211, 153, 0.75);
+}
+
+.nb-edge--shifting {
+    stroke: rgba(251, 191, 36, 0.8);
+}
+
+.nb-edge--unmeasured {
+    stroke: rgba(148, 163, 184, 0.45);
+}
+
+/* candidate stitch: dashed, never asserted as solid */
+.nb-edge--candidate {
+    stroke-dasharray: 5 4;
+}
+
+/* crosses quiet week(s): dotted overlay feel */
+.nb-edge--gap:not(.nb-edge--candidate) {
+    stroke-dasharray: 1.5 5;
+}
+
+.nb-edge-drift {
+    font-size: 8.5px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.nb-edge-drift--steady { fill: rgba(52, 211, 153, 0.85); }
+.nb-edge-drift--shifting { fill: rgba(251, 191, 36, 0.9); }
+.nb-edge-drift--unmeasured { fill: rgba(148, 163, 184, 0.6); }
+
+/* ── nodes: color = tier ── */
+.nb-node-group { cursor: pointer; }
+
+.nb-node {
+    stroke-width: 1.4;
+}
+
+.nb-node--archive {
+    fill: rgba(99, 102, 241, 0.28);
+    stroke: rgba(129, 140, 248, 0.9);
+}
+
+.nb-node--hot {
+    fill: rgba(16, 185, 129, 0.3);
+    stroke: rgba(52, 211, 153, 0.95);
+}
+
+.nb-node--candidate {
+    stroke-dasharray: 3 3;
+}
+
+.nb-node--selected {
+    filter: drop-shadow(0 0 6px rgba(129, 140, 248, 0.8));
+}
+
+.nb-node-group:hover .nb-node {
+    filter: drop-shadow(0 0 5px rgba(148, 163, 184, 0.7));
+}
+
+/* canvas text pins fixed light literals (dark-by-design canvas) */
+.nb-era-label {
+    fill: #f1f5f9;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: rgba(11, 14, 19, 0.85);
+    stroke-width: 3px;
+    pointer-events: none;
+}
+
+.nb-week-label {
+    fill: #64748b;
+    font-size: 9px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    text-anchor: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    pointer-events: none;
+}
+
+/* hover zones for the data-tip edge explanations */
+.nb-edge-tips {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 22px;
+    transform: translateY(-50%);
+    width: 100%;
+    pointer-events: none;
+}
+
+.nb-edge-tip-zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    pointer-events: auto;
+}
+
+/* ── legend + method (themed chrome, not canvas) ── */
+.nb-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+}
+
+.nb-legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+.nb-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.nb-dot--hot { background: rgba(16, 185, 129, 0.35); border: 1px solid #34d399; }
+.nb-dot--archive { background: rgba(99, 102, 241, 0.3); border: 1px solid #818cf8; }
+
+.nb-line {
+    display: inline-block;
+    width: 18px;
+    height: 0;
+    border-top: 2px solid;
+}
+
+.nb-line--steady { border-color: rgba(52, 211, 153, 0.85); }
+.nb-line--shifting { border-color: rgba(251, 191, 36, 0.85); }
+.nb-line--candidate { border-color: rgba(148, 163, 184, 0.8); border-top-style: dashed; }
+
+.nb-candidate-chip {
+    margin-left: 8px;
+    padding: 1px 6px;
+    border: 1px dashed rgba(251, 191, 36, 0.7);
+    border-radius: 4px;
+    color: #fbbf24;
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+}
+
+/* ── era receipts (DayEvidence renderer discipline) ── */
+.nb-era {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border, rgba(148, 163, 184, 0.2));
+    border-radius: 8px;
+    background: var(--color-bg-secondary, rgba(15, 23, 42, 0.4));
+}
+
+.nb-era-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.nb-era-kicker {
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+}
+
+.nb-era-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-top: 2px;
+}
+
+.nb-era-close {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+}
+
+.nb-era-meta {
+    margin-top: 6px;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+}
+
+.nb-era-candidate { color: #fbbf24; }
+
+.nb-era-empty {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
+.nb-receipts {
+    margin: 8px 0 0;
+    padding: 0 0 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
+.nb-receipts a {
+    color: var(--color-text-primary);
+    text-decoration: none;
+    border-bottom: 1px dotted rgba(148, 163, 184, 0.5);
+}
+
+.nb-receipts a:hover { border-bottom-style: solid; }
+
+.nb-receipt-src { color: var(--color-text-secondary); }
+
+.nb-receipt-link {
+    margin-left: 5px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    border-bottom: none !important;
+}
+
+/* glass-box method foot */
+.nb-method {
+    margin-top: 8px;
+    font-size: 0.625rem;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    color: var(--color-text-secondary);
+    opacity: 0.85;
+}

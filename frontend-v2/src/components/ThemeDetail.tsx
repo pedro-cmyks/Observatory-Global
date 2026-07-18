@@ -5,6 +5,7 @@ import { CountQualifierChip } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { CompareBar } from './CompareBar'
 import { NarrativeDrift } from './NarrativeDrift'
+import { NarrativeBiography } from './NarrativeBiography'
 import { TranslatableHeadline } from './TranslatableHeadline'
 import PinReceiptButton from './PinReceiptButton'
 import { ShareThreadButton } from './ShareCard'
@@ -915,6 +916,12 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {showDrift && (
                             <NarrativeDrift themeCode={theme} countryCode={drillCountry || originCountry} days={14} />
                         )}
+
+                        {/* NARRATIVE BIOGRAPHY (2026-07-18): the weekly lineage
+                            spine — how this story evolved across the hot/archive
+                            seam. Renders ONLY when the lineage endpoint returns
+                            >=2 weeks; absence is honest (no placeholder). */}
+                        <NarrativeBiography theme={theme} />
 
                         {/* R3 spine drill-down: the SPECIFIC living stories under
                             this atlas topic (category) — big topics open into their
