@@ -324,9 +324,30 @@ Full histograms, control percentiles (n = 164,564), and the flagged
 `bimodal: false` fallback notes are preserved verbatim in
 `method.theta_measurement` inside the pinned snapshot.
 
-## Appendix B — post-floor deltas (RESERVED)
+## Appendix B — post-floor deltas (landed 2026-07-18, commit 03b17f4b)
 
-Empty by design. When Lane A's per-language / per-country floors land, re-run
-`census` with the floored thresholds and append: (a) the new census table,
-(b) the delta vs §2, (c) lin-5's fate (expected: dissolved), (d) whether the
-lin-79 ↔ lin-2058 archive split heals. Do not edit §2–§6.
+Per-country floors ran (41 countries, p95 of same-country different-week
+no-overlap pairs + 0.02 margin; min 150 pairs or NO floor — never guessed).
+15 country floors sit ABOVE theta_uu 0.862: AM .974, IC .936, AL .917, PE .910,
+LS .898, RB .896, NG .884, HU .880, EG .879, HR .862, CO .854*, RO .854*,
+CU .852*, RI .850*, TR .843* (*below theta — floor inert, listed for the record).
+Cold anchors where language cannot chain: UA .732, VE .628, US .467.
+
+(a) Post-floor census: **uu edges 6,351 → 4,976** (−21.7%); lineages 762 → 782
+(blobs split); span≥4w 91 → 89; span≥8w 19 → 15; living 226 → 245;
+`single_country(≥0.8 weighted) ≥4w` = 59, every one flagged in the emission.
+
+(b) Delta vs §2: the giant-thread headline holds (89/15 vs 91/19) — the floor
+removed CHAINS, not stories.
+
+(c) **lin-5 (Icelandic blob, 9w, 42 units): DEAD**, as predicted. Also died:
+lin-734 (RO 7w), lin-1527 (PE 6w), lin-588 (CU 4w) — all hot-floor countries.
+Shrunk: lin-3 (AM — survives only on template near-dups >0.994, caveated),
+lin-113 (NG), lin-1179 (CO), lin-165, lin-358.
+
+(d) lin-79 ↔ lin-2058 did NOT heal in the archive (still two lineages); the
+serving layer unions them via the shared live topic and now LABELS the union
+(meta.lineage_ids + joined:true on the hot seam only).
+
+Truth anchors survived: Ukraine lin-79/lin-2058, Venezuela lin-2910/lin-274,
+SpaceX lin-961. DB reloaded via --prune-stale: 7,406 → 6,031 edges.
