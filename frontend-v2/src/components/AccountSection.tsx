@@ -18,7 +18,7 @@ export function AccountSection() {
     return (
       <div className="account-section" data-signed-in>
         <span className="account-dot" aria-hidden />
-        <span className="account-email" title={email ?? ''}>{email}</span>
+        <span className="account-email" data-tip={email ?? ''}>{email}</span>
         <span className="account-sync" data-tip="Investigations sync to your account — local copy stays on this device">synced</span>
         <button className="account-btn" onClick={() => void signOut()}>Sign out</button>
       </div>
