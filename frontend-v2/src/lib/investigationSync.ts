@@ -202,4 +202,7 @@ export function startSyncEngine(userId: string): () => void {
 export function stopSyncEngine(): void {
   if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null }
   if (engineOff) { engineOff(); engineOff = null }
+  // Sign-out mid-sync: a coalesced re-run queued during the in-flight run must
+  // not fire after disarm with the dying session.
+  pendingUserId = null
 }

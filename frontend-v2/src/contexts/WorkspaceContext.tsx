@@ -137,6 +137,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     const bump = useCallback(() => setVersion(v => v + 1), [])
 
+    // accounts-v1 (re-review): the sync engine adopts pulled investigations via
+    // a raw localStorage write (deliberate onWorkbenchChange bypass — the sync
+    // loop guard) and announces it with this DOM event. Re-read so console-side
+    // pin views don't lag a pull. UI-only: a re-render can never re-enter sync.
+    useEffect(() => {
+        const onPulled = () => bump()
+        window.addEventListener('atlas-workbench-pulled', onPulled)
+        return () => window.removeEventListener('atlas-workbench-pulled', onPulled)
+    }, [bump])
+
     const items = useMemo<PinnedItem[]>(() => {
         void version
         const activeId = getActiveInvestigationId()

@@ -26,7 +26,7 @@ vi.mock('./supabaseClient', () => ({
 // trackOnce from the same module, so the factory must provide both).
 vi.mock('./telemetry', () => ({ track: vi.fn(), trackOnce: vi.fn() }))
 
-import { mergeInvestigationSets, readPushedMap, syncNow, type RemoteRow } from './investigationSync'
+import { mergeInvestigationSets, readPushedMap, stopSyncEngine, syncNow, type RemoteRow } from './investigationSync'
 import { track } from './telemetry'
 import type { Investigation } from './workbench'
 
@@ -228,5 +228,30 @@ describe('reviewer nits', () => {
     expect(readPushedMap()).toEqual({ a: t, b: t, c: t }) // markers retained for a human look
     expect(vi.mocked(track)).toHaveBeenCalledWith('sync_error',
       expect.objectContaining({ stage: 'guard' }))
+  })
+})
+
+describe('re-review: disarm clears the coalesced queue', () => {
+  it('stopSyncEngine while a run is in flight cancels the queued re-run', async () => {
+    let release!: (v: { data: RemoteRow[]; error: null }) => void
+    let selects = 0
+    holder.sb = {
+      from: () => ({
+        select: () => {
+          selects += 1
+          if (selects === 1) return new Promise(res => { release = res })
+          return Promise.resolve({ data: [], error: null })
+        },
+        upsert: async () => ({ error: null }),
+        update: () => ({ eq: async () => ({ error: null }) }),
+      }),
+    }
+    const p1 = syncNow('user-1')
+    await syncNow('user-1')                       // lands mid-run → queues a re-run
+    stopSyncEngine()                              // sign-out mid-sync
+    release({ data: [], error: null })
+    await p1
+    await new Promise(res => setTimeout(res, 0))  // a would-be re-run gets its chance
+    expect(selects).toBe(1)                       // no re-run with the dying session
   })
 })
