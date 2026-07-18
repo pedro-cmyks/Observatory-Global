@@ -645,6 +645,12 @@ async def cmd_census(theta_uu: float | None, theta_tu: float | None,
     ctrl_p = {p: round(float(np.percentile(ctrl, p)), 3)
               for p in (50, 95, 99, 99.9)}
 
+    # per-country noise floors (leak 5 — the Icelandic-blob killer)
+    dom_cc = [ccs[0] if ccs else None for ccs in unit_cc]
+    floors = compute_country_floors(
+        dom_cc, unit_wk, U, min_pairs=floor_min_pairs,
+        week_gap=floor_week_gap, percentile=floor_percentile)
+
     G_tu = C @ U.T                      # (T, U)
     tu_best = G_tu.max(axis=1)
     tu_measure = _find_valley(tu_best)
@@ -659,8 +665,20 @@ async def cmd_census(theta_uu: float | None, theta_tu: float | None,
     print(f"theta_uu={THETA_UU} (measured {uu_measure}), "
           f"theta_tu={THETA_TU} (measured {tu_measure}), "
           f"control p99={ctrl_p[99]} p99.9={ctrl_p[99.9]}", file=sys.stderr)
+    hot = {cc: f for cc, f in floors.items()
+           if f["floor"] + floor_margin > THETA_UU}
+    print(f"country floors: {len(floors)} measured (min_pairs="
+          f"{floor_min_pairs}, gap>={floor_week_gap}w, p{floor_percentile:g}"
+          f"+{floor_margin}); {len(hot)} ABOVE theta_uu: "
+          + ", ".join(f"{cc}={f['floor']}" for cc, f in
+                      sorted(hot.items(), key=lambda kv: -kv[1]["floor"])),
+          file=sys.stderr)
 
     # ---- edges ----
+    def _keep(th: float, i: int, j: int, s: float) -> bool:
+        return s >= effective_edge_threshold(
+            th, dom_cc[i], dom_cc[j], floors, floor_margin)
+
     def build_edges(th: float):
         uu = []
         for k in range(len(weeks)):
@@ -668,13 +686,17 @@ async def cmd_census(theta_uu: float | None, theta_tu: float | None,
             if len(a) > 1:                       # intra-week (same story, other day)
                 B = U[a] @ U[a].T
                 for x, y in zip(*np.nonzero(np.triu(B >= th, 1))):
-                    uu.append((int(a[x]), int(a[y]), float(B[x, y]), "intra"))
+                    i, j, s = int(a[x]), int(a[y]), float(B[x, y])
+                    if _keep(th, i, j, s):
+                        uu.append((i, j, s, "intra"))
             if k + 1 < len(weeks):
                 b = by_week[k + 1]
                 if len(a) and len(b):
                     B = U[a] @ U[b].T
                     for x, y in zip(*np.nonzero(B >= th)):
-                        uu.append((int(a[x]), int(b[y]), float(B[x, y]), "adjacent"))
+                        i, j, s = int(a[x]), int(b[y]), float(B[x, y])
+                        if _keep(th, i, j, s):
+                            uu.append((i, j, s, "adjacent"))
         return uu
 
     def build_lineages(th: float):
@@ -710,11 +732,17 @@ async def cmd_census(theta_uu: float | None, theta_tu: float | None,
         starts_by_week: dict[int, list] = defaultdict(list)
         for root_b, wb, cb, mem_b in starts:
             starts_by_week[wb].append((root_b, wb, cb, mem_b))
+        def comp_dom(members):
+            return dominant_country_share(
+                [unit_cc[i] for i in members],
+                [unit_n[i] for i in members])[0]
         for root_a, wa, ca, mem_a in ends:
             for root_b, wb, cb, mem_b in starts_by_week.get(wa + 2, ()):
                 if root_a != root_b:
                     s = float(ca @ cb)
-                    if s >= th:
+                    if s >= effective_edge_threshold(
+                            th, comp_dom(mem_a), comp_dom(mem_b),
+                            floors, floor_margin):
                         # representative unit pair for the edge dump
                         aa = [i for i in mem_a if unit_wk[i] == wa]
                         bb = [i for i in mem_b if unit_wk[i] == wb]
@@ -796,9 +824,18 @@ async def cmd_census(theta_uu: float | None, theta_tu: float | None,
             prev_c = c
         att = sorted(topics_by_comp.get(root, {}).items(),
                      key=lambda kv: -kv[1])
+        dom_l, dom_share = dominant_country_share(
+            [unit_cc[i] for i in members], [unit_n[i] for i in members])
         lineages.append({
             "lineage_id": f"lin-{min(unit_ids[i] for i in members)}",
             "n_units": len(members),
+            "dominant_country": dom_l,
+            "dominant_share": round(dom_share, 3),
+            # single-dominant-country lineages survive their country's noise
+            # floor but stay CAVEATED: one language, one press pool — the
+            # census cannot distinguish a national story arc from national
+            # news adjacency as strongly as cross-country lineages.
+            "single_country": bool(dom_l) and dom_share >= SINGLE_COUNTRY_SHARE,
             "first_week": weeks[ks[0]], "last_week": weeks[ks[-1]],
             "span_weeks": span, "weeks_present": len(ks),
             "total_signals": total,
@@ -827,6 +864,9 @@ async def cmd_census(theta_uu: float | None, theta_tu: float | None,
         "living": len(living),
         "living_span_ge_4w": sum(1 for l in living if l["span_weeks"] >= 4),
         "dead_ge_3w": len(dead),
+        "single_country_ge_4w": sum(
+            1 for l in lineages
+            if l["span_weeks"] >= 4 and l["single_country"]),
         "sensitivity": sensitivity,
     }
 
@@ -851,6 +891,22 @@ async def cmd_census(theta_uu: float | None, theta_tu: float | None,
                               "topic_unit": tu_measure,
                               "negative_control_percentiles": ctrl_p,
                               "control_n": len(ctrl)},
+        # leak 1 folded honestly: the global thresholds STAY p75-fallback
+        # all-candidate (no faked valley); leak 5 fix = per-country floors
+        # layered ON TOP of theta for same-dominant-country edges.
+        "per_country_floor": {
+            "margin": floor_margin, "week_gap": floor_week_gap,
+            "percentile": floor_percentile, "min_pairs": floor_min_pairs,
+            "n_countries": len(floors),
+            "n_above_theta_uu": len(hot),
+            "rule": "same-dominant-country edge survives only if sim > "
+                    "max(theta, country_p95_negative_control + margin); "
+                    "control pairs are same-country units >= week_gap weeks "
+                    "apart (per-day clusters -> no member overlap by "
+                    "construction)",
+            "floors": {cc: f["floor"]
+                       for cc, f in sorted(floors.items())},
+        },
     }
     with open(edges_out, "w") as f:
         json.dump({
@@ -914,10 +970,27 @@ def main() -> int:
         p.add_argument("--summary-out", type=Path,
                        default=INDEX_ROOT / "census-summary.json")
         p.add_argument("--dead-min-signals", type=int, default=400)
+        p.add_argument("--floor-margin", type=float, default=0.02,
+                       help="margin above the per-country p95 noise floor")
+        p.add_argument("--floor-min-pairs", type=int, default=150,
+                       help="min same-country cross-week control pairs to "
+                            "measure a floor (else global theta only)")
+        p.add_argument("--floor-week-gap", type=int, default=3,
+                       help="min week separation of control pairs")
+        p.add_argument("--floor-percentile", type=float, default=95.0)
     p_all.add_argument("--min-matched", type=int, default=5)
     p_all.add_argument("--cap", type=int, default=500)
     p_all.add_argument("--max-embed", type=int, default=150_000)
     args = ap.parse_args()
+
+    def _census():
+        return cmd_census(args.theta_uu, args.theta_tu,
+                          args.edges_out, args.summary_out,
+                          args.dead_min_signals,
+                          floor_margin=args.floor_margin,
+                          floor_min_pairs=args.floor_min_pairs,
+                          floor_week_gap=args.floor_week_gap,
+                          floor_percentile=args.floor_percentile)
 
     if args.cmd == "index":
         cmd_index(force=args.force)
@@ -925,15 +998,11 @@ def main() -> int:
         cmd_index()
         asyncio.run(cmd_centroids(args.min_matched, args.cap, args.max_embed))
     elif args.cmd == "census":
-        asyncio.run(cmd_census(args.theta_uu, args.theta_tu,
-                               args.edges_out, args.summary_out,
-                               args.dead_min_signals))
+        asyncio.run(_census())
     else:
         cmd_index()
         asyncio.run(cmd_centroids(args.min_matched, args.cap, args.max_embed))
-        asyncio.run(cmd_census(args.theta_uu, args.theta_tu,
-                               args.edges_out, args.summary_out,
-                               args.dead_min_signals))
+        asyncio.run(_census())
     return 0
 
 

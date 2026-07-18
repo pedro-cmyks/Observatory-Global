@@ -54,10 +54,21 @@ UPSERT_UNIT_UNIT = """
 
 
 def build_method_string(method: dict) -> str:
-    """Compact provenance the endpoint can parse: build id + measured taus."""
-    return (f"census-v0 gen={method.get('generated_at', '?')} "
+    """Compact provenance the endpoint can parse: build id + measured taus.
+
+    When the census measured per-country noise floors (leak-5 fix: same-
+    language edges must clear max(theta, country p95 control + margin)),
+    that is provenance the serving meta must carry too — appended compactly
+    so parse_method_thetas' tu=/uu= regexes are untouched.
+    """
+    base = (f"census-v0 gen={method.get('generated_at', '?')} "
             f"tu={method.get('theta_topic_unit')} "
             f"uu={method.get('theta_unit_unit')}")
+    pcf = method.get("per_country_floor")
+    if pcf:
+        base += (f" floors={pcf.get('n_countries', 0)}cc"
+                 f"(p{pcf.get('percentile', 95):g}+{pcf.get('margin')})")
+    return base
 
 
 def is_candidate(sim: float, theta: float | None, bimodal: bool,
