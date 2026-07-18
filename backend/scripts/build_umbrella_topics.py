@@ -36,11 +36,15 @@ try:  # dual run-context: ROOT_DIR (backend.scripts.*) vs backend/ (scripts.*)
         SAME_EVENT_SYSTEM, parse_same_event_response, plan_event_umbrellas,
         plans_to_index_groups, same_event_user,
     )
+    from app.services.label_fold import label_fold_groups, merge_index_groups
     from scripts.ensemble.model_clients import call_llm
 except ImportError:  # pragma: no cover
     from backend.app.services.event_umbrella import (
         SAME_EVENT_SYSTEM, parse_same_event_response, plan_event_umbrellas,
         plans_to_index_groups, same_event_user,
+    )
+    from backend.app.services.label_fold import (
+        label_fold_groups, merge_index_groups,
     )
     from backend.scripts.ensemble.model_clients import call_llm
 
@@ -216,27 +220,51 @@ async def main() -> None:
         # blocked on NER/entity data quality (#184), the same root as the L2
         # sport mis-typing and the "who" lane. Serving stays on the semantic cut
         # until #184 lands; the mechanism is ready to wire then.
+        # Lane B (2026-07-18) — LABEL-FOLD PRE-PASS. Fragments of one event often
+        # carry the literal identical label ("Venezuela Earthquake Death Toll" x9):
+        # a LABEL-string cluster before it is a centroid cluster, which the LLM
+        # judge misses at scale (830 labels in one prompt truncate the response).
+        # Deterministic, cheap, conservative (Jaccard >= 0.8 complete-linkage on
+        # normalized label tokens). Reversible: ATLAS_UMBRELLA_LABEL_FOLD=off.
+        fold_on = os.environ.get("ATLAS_UMBRELLA_LABEL_FOLD", "on").lower() \
+            not in ("off", "0", "false")
+        fold_groups = label_fold_groups([r["label"] for r in rows]) if fold_on else {}
+        if fold_on:
+            print(f"label-fold pre-pass: {len(fold_groups)} groups over "
+                  f"{sum(len(v) for v in fold_groups.values())} near-duplicate labels")
+
         if args.linkage == "llm-event":
             try:
                 multi = await _llm_event_multi(rows, min_confidence=args.min_event_confidence)
+                if not multi:
+                    # An EMPTY grouping from a parseable verdict = a DEGRADED
+                    # response (ids hallucinated / below confidence), NOT a
+                    # genuine flatten (adversarial review 2026-07-14).
+                    raise RuntimeError("judge grounded 0 umbrella groups")
+                basis = "llm-same-event-v1"
             except Exception as exc:  # LLM/network/parse failure — NEVER wipe umbrellas
-                print(f"llm-event grouping FAILED ({exc!r}) — aborting before the "
-                      f"destructive rebuild; existing parent_id/umbrellas untouched",
-                      file=sys.stderr)
-                sys.exit(3)
-            # An EMPTY grouping from a parseable verdict is treated as a DEGRADED
-            # response (all ids hallucinated / below confidence / single-child),
-            # NOT a genuine flatten — aborting here is what actually protects the
-            # hierarchy from a silent full wipe (adversarial review 2026-07-14).
-            if not multi:
-                print("llm-event judge grounded 0 umbrella groups — aborting before "
-                      "the destructive rebuild; existing parent_id/umbrellas untouched",
-                      file=sys.stderr)
-                sys.exit(3)
-            basis = "llm-same-event-v1"
+                if fold_on and fold_groups:
+                    # DEGRADED PATH (Lane B): the judge failed, but the label fold
+                    # + the semantic cut are deterministic and real — write those
+                    # instead of aborting, so duplicate-label fragments still fold
+                    # on judge-outage nights (the 07-17 unparseable-response class).
+                    print(f"llm-event grouping FAILED ({exc!r}) — DEGRADED to "
+                          f"label-fold + semantic complete-linkage (no abort; "
+                          f"set ATLAS_UMBRELLA_LABEL_FOLD=off to restore abort)",
+                          file=sys.stderr)
+                    multi = _complete_linkage(sims, args.threshold)
+                    basis = "semantic-complete-linkage (llm-degraded)"
+                else:
+                    print(f"llm-event grouping FAILED ({exc!r}) — aborting before the "
+                          f"destructive rebuild; existing parent_id/umbrellas untouched",
+                          file=sys.stderr)
+                    sys.exit(3)
         else:
             multi = _complete_linkage(sims, args.threshold)
             basis = "semantic-complete-linkage"
+        if fold_on and fold_groups:
+            multi = merge_index_groups(n, fold_groups, multi)
+            basis = f"{basis}+label-fold-v1"
         n_children = sum(len(v) for v in multi.values())
 
         print(f"active_topics={n} · threshold={args.threshold} · umbrellas={len(multi)} · "
