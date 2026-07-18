@@ -109,3 +109,5 @@ backend/enrichment/lexicons/*.mined.json.bak
 # Obsidian vault config (per-user state)
 .obsidian/
 docs/.obsidian/
+.vercel
+.env*
