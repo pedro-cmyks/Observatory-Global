@@ -69,3 +69,13 @@ def test_build_neutral_label_global_when_no_geo():
         {"headline": "Global roundup of financial reports", "country_code": None},
     ]
     assert build_neutral_label(receipts).startswith("Global:")
+
+
+def test_fallback_sql_columns_match_live_schema():
+    # 2026-07-18 general-review finding: the fallback SQL referenced
+    # dtm.cluster_id (real column: emergent_cluster_id) — it crashed the court
+    # on exactly the thin-substrate case it exists for, swallowed as non-fatal.
+    # Freeze the column names against the migration files (no DB needed).
+    from scripts.label_court import _RECEIPTS_FALLBACK_SQL
+    assert "dtm.emergent_cluster_id" in _RECEIPTS_FALLBACK_SQL
+    assert "dtm.cluster_id" not in _RECEIPTS_FALLBACK_SQL.replace("emergent_cluster_id", "")

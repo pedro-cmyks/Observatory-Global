@@ -55,6 +55,19 @@ fi
 TASKPOLICY=""
 command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
 
+# Step 0 (2026-07-18 — the 2026-07-04 "durable plan" finally built): CHAIN
+# embed→cluster. Clustering on stale embeddings wastes the whole night — the
+# 07-17/18 runs spent 8h clustering old data while the embed cron starved
+# behind this very mutex (24h embed coverage hit 0%). Embed the recent window
+# FIRST, inside the same lock, so the country pass always clusters fresh
+# signals. Same bounded incremental writer the embed cron runs; idempotent.
+# Non-fatal: a partial embed still beats clustering nothing new.
+( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.embed_hot_corpus \
+    --hours "${ATLAS_EMBED_WINDOW_HOURS:-168}" \
+    --retention-days "${ATLAS_EMBED_RETENTION_DAYS:-7}" \
+    --max-signals "${ATLAS_EMBED_MAX_SIGNALS:-60000}" ) \
+  || echo "[scoped-snapshot] Step 0 embed catch-up failed (non-fatal — clustering may see stale embeds)" >&2
+
 # Step 1: form + write the scoped snapshot (all countries, one snapshot_at).
 cd "$ROOT_DIR"
 if ! $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.run_scoped_snapshot \

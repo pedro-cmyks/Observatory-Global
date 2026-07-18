@@ -56,7 +56,7 @@ _RECEIPTS_SQL = """
 _RECEIPTS_FALLBACK_SQL = """
     SELECT s.headline, s.country_code
     FROM dynamic_topic_members dtm
-    JOIN emergent_clusters ec ON ec.id = dtm.cluster_id
+    JOIN emergent_clusters ec ON ec.id = dtm.emergent_cluster_id
     CROSS JOIN LATERAL unnest(COALESCE(ec.sample_signal_ids, ARRAY[]::bigint[])) AS sid
     JOIN signals_v2 s ON s.id = sid
     WHERE dtm.dynamic_topic_id = $1
