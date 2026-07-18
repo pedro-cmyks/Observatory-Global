@@ -20,12 +20,19 @@ function sessionId(): string {
   }
 }
 
+// accounts-v1: pseudonymous identity. When a user signs in, every event
+// carries their Supabase user id in props (an opaque uuid — no email/PII).
+// This is the funnel/retention apparatus the monetization gate requires.
+let telemetryUserId: string | null = null
+export function setTelemetryUser(id: string | null): void { telemetryUserId = id }
+
 export function track(event: string, props?: Record<string, unknown>): void {
   try {
     fetch('/api/v2/telemetry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events: [{ event, session_id: sessionId(), props }] }),
+      body: JSON.stringify({ events: [{ event, session_id: sessionId(),
+        props: telemetryUserId ? { ...props, user_id: telemetryUserId } : props }] }),
       keepalive: true,
     }).catch(() => { /* best-effort */ })
   } catch {
