@@ -554,6 +554,36 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
 
 # ---------- DB ----------
 
+# Bounded `id = ANY($1)` fetches (2026-07-19). ONE unbatched ANY() over every
+# sample_signal_id exceeded statement_timeout ('600s') under post-snapshot
+# contention and killed the WHOLE projection — the 07-12/13 "dynamic_topics
+# projection failed (non-fatal)" incidents left serving a night behind while
+# the snapshot itself was fresh. Same medicine as the writer's keyset
+# pagination: no single statement may approach the timeout.
+ID_FETCH_CHUNK = int(os.environ.get("ATLAS_PROJECT_ID_FETCH_CHUNK", "10000") or "10000")
+
+
+def chunk_ids(ids: list[int], size: int = 10_000) -> list[list[int]]:
+    """Split an id list into bounded slices for `= ANY($1)` statements.
+
+    Pure + order-preserving; size<=0 returns ONE unbatched chunk (explicit
+    legacy opt-out via ATLAS_PROJECT_ID_FETCH_CHUNK=0)."""
+    ids = list(ids)
+    if not ids:
+        return []
+    if size <= 0:
+        return [ids]
+    return [ids[i:i + size] for i in range(0, len(ids), size)]
+
+
+async def _fetch_by_ids(conn, sql: str, all_ids: list[int]):
+    """Run an `= ANY($1::bigint[])` query in bounded chunks; one row list."""
+    rows: list = []
+    for chunk in chunk_ids(all_ids, ID_FETCH_CHUNK):
+        rows.extend(await conn.fetch(sql, chunk))
+    return rows
+
+
 async def load_clusters(conn) -> list[dict[str, Any]]:
     rows = await conn.fetch(
         "SELECT id, snapshot_at, cluster_id, label, n_signals, cohesion, "
@@ -593,8 +623,10 @@ async def flag_content_roundups(conn, clusters: list[dict[str, Any]]) -> None:
     if not todo:
         return
     all_ids = sorted({sid for c in todo for sid in c["sample_signal_ids"]})
-    rows = await conn.fetch(
-        "SELECT id, headline, source_name FROM signals_v2 WHERE id = ANY($1::bigint[])", all_ids)
+    rows = await _fetch_by_ids(
+        conn,
+        "SELECT id, headline, source_name FROM signals_v2 WHERE id = ANY($1::bigint[])",
+        all_ids)
     info = {int(r["id"]): (r["headline"] or "", r["source_name"] or "") for r in rows}
     for c in todo:
         ids = c["sample_signal_ids"]
@@ -621,9 +653,10 @@ async def score_clusters_noise(conn, clusters: list[dict[str, Any]], model_path:
     all_ids = sorted({sid for c in todo for sid in c["sample_signal_ids"]})
     if not all_ids:
         return
-    rows = await conn.fetch(
-        "SELECT id, headline FROM signals_v2 WHERE id = ANY($1::bigint[])", all_ids
-    )
+    rows = await _fetch_by_ids(
+        conn,
+        "SELECT id, headline FROM signals_v2 WHERE id = ANY($1::bigint[])",
+        all_ids)
     headline = {int(r["id"]): (r["headline"] or "").strip() for r in rows}
 
     embed, _ = _build_embedder(model["embedding_model"])

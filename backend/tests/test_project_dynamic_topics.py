@@ -5,6 +5,7 @@ import numpy as np
 from scripts.project_dynamic_topics import (
     LifecycleConfig,
     Topic,
+    chunk_ids,
     is_roundup_label,
     merge_duplicates,
     next_state,
@@ -305,3 +306,44 @@ def test_multilingual_roundup_labels_flagged():
     assert is_roundup_label("Greek News Roundup")
     assert not is_roundup_label("Crime Headlines")
     assert not is_roundup_label("Iran Water Crisis")
+
+
+def test_chunk_ids_bounds_every_statement():
+    # 2026-07-19: ONE unbatched `id = ANY($1)` over every sample_signal_id hit
+    # statement_timeout under post-snapshot contention and killed the whole
+    # projection (the 07-12/13 "projection failed (non-fatal)" incidents).
+    # Chunking bounds each statement — same medicine as keyset pagination.
+    ids = list(range(25))
+    chunks = chunk_ids(ids, size=10)
+    assert chunks == [list(range(10)), list(range(10, 20)), list(range(20, 25))]
+    # order + content preserved exactly
+    assert [i for c in chunks for i in c] == ids
+
+
+def test_chunk_ids_empty_and_degenerate_size():
+    assert chunk_ids([], size=10) == []
+    # size<=0 = one unbatched chunk (legacy behavior, explicit opt-out)
+    assert chunk_ids([1, 2, 3], size=0) == [[1, 2, 3]]
+    assert chunk_ids([1, 2, 3], size=-5) == [[1, 2, 3]]
+    # exact multiple leaves no empty tail chunk
+    assert chunk_ids([1, 2, 3, 4], size=2) == [[1, 2], [3, 4]]
+
+
+def test_fetch_by_ids_issues_one_bounded_statement_per_chunk(monkeypatch):
+    import asyncio
+
+    import scripts.project_dynamic_topics as pdt
+
+    class _FakeConn:
+        def __init__(self):
+            self.calls: list[list[int]] = []
+
+        async def fetch(self, _sql, chunk):
+            self.calls.append(list(chunk))
+            return [{"id": i} for i in chunk]
+
+    monkeypatch.setattr(pdt, "ID_FETCH_CHUNK", 3)
+    conn = _FakeConn()
+    rows = asyncio.run(pdt._fetch_by_ids(conn, "SELECT ...", list(range(7))))
+    assert conn.calls == [[0, 1, 2], [3, 4, 5], [6]]  # no unbounded statement
+    assert [r["id"] for r in rows] == list(range(7))  # all rows, in order

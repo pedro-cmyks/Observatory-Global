@@ -24,6 +24,7 @@ from pathlib import Path
 from scripts.snapshot_budget import (
     Checkpoint,
     RateEstimator,
+    empty_pass_is_benign,
     fit_cap,
     load_checkpoint,
     load_rotation,
@@ -200,3 +201,52 @@ def test_rotation_roundtrip_and_missing(tmp_path: Path):
     assert load_rotation(path) == ["DE", "IR", "ES"]
     save_rotation(path, [])
     assert load_rotation(path) == []
+
+
+# ------------------------------------------- empty-pass benign vs misconfig
+
+def _ck(*, done, complete=True, started_h_ago=1.0, snapshot="2026-07-19T02:45:00+00:00"):
+    started = (NOW - timedelta(hours=started_h_ago)).isoformat()
+    return Checkpoint(snapshot_at=snapshot, hours=168, started_at=started,
+                      next_base=500000, done=done, complete=complete)
+
+
+def test_empty_pass_benign_when_this_run_resumed_a_banked_snapshot():
+    # processed==0 but ck.done is non-empty — this run ADOPTED (resumed) a
+    # snapshot a previous cycle already banked; projecting + sealing it is
+    # exactly right, so the pass is benign regardless of the on-disk prev.
+    ck = _ck(done={"US": "ok", "IN": "ok"}, complete=False)
+    assert empty_pass_is_benign(ck, None, now=NOW, max_age_h=12)
+    assert empty_pass_is_benign(ck, _ck(done={}), now=NOW, max_age_h=12)
+
+
+def test_empty_pass_benign_when_previous_cycle_banked_fresh():
+    # A cycle re-fired IMMEDIATELY after a complete one: new snapshot_at,
+    # everything deferred (processed==0), nothing banked THIS run — but the
+    # previous cycle's checkpoint proves a fresh snapshot exists. Benign:
+    # exit 0 so post-steps project + seal the existing fresh snapshot.
+    this_run = _ck(done={})
+    prev = _ck(done={"IT": "ok", "DE": "ok"}, complete=True, started_h_ago=0.5)
+    assert empty_pass_is_benign(this_run, prev, now=NOW, max_age_h=12)
+    # a crashed-but-banked prev counts too — banked rows exist either way
+    prev_crashed = _ck(done={"IT": "ok"}, complete=False, started_h_ago=2.0)
+    assert empty_pass_is_benign(this_run, prev_crashed, now=NOW, max_age_h=12)
+
+
+def test_empty_pass_misconfig_when_nothing_banked_anywhere():
+    # True misconfig: deferred>0, banked==0 this run, and no checkpoint says
+    # a previous cycle banked — the budget cannot fit ANY country cold.
+    this_run = _ck(done={})
+    assert not empty_pass_is_benign(this_run, None, now=NOW, max_age_h=12)
+    assert not empty_pass_is_benign(this_run, _ck(done={}), now=NOW, max_age_h=12)
+
+
+def test_empty_pass_misconfig_when_prev_bank_is_stale_or_corrupt():
+    this_run = _ck(done={})
+    stale = _ck(done={"US": "ok"}, started_h_ago=26.0)
+    assert not empty_pass_is_benign(this_run, stale, now=NOW, max_age_h=12)
+    corrupt = _ck(done={"US": "ok"})
+    corrupt.started_at = "not-a-timestamp"
+    assert not empty_pass_is_benign(this_run, corrupt, now=NOW, max_age_h=12)
+    future = _ck(done={"US": "ok"}, started_h_ago=-3.0)  # clock skew guard
+    assert not empty_pass_is_benign(this_run, future, now=NOW, max_age_h=12)

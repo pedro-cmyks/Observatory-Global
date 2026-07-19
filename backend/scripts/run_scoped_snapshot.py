@@ -77,6 +77,7 @@ from backend.scripts.snapshot_budget import (
     CountryDeferred,
     CountryTimeGap,
     RateEstimator,
+    empty_pass_is_benign,
     load_checkpoint,
     load_rotation,
     order_countries,
@@ -494,14 +495,17 @@ async def main() -> None:
         except OSError as ex:
             print(f"state dir unusable ({ex}) — running stateless", file=sys.stderr)
 
+    # prev_ck is kept even when not resuming: the empty-pass guard below needs
+    # to know whether a PREVIOUS cycle recently banked a snapshot (the benign
+    # "nothing left to do" case must not be mistaken for a misconfig).
+    prev_ck = load_checkpoint(checkpoint_path) if checkpoint_path is not None else None
     resumed = None
-    if checkpoint_path is not None and args.resume != "off":
-        prev = load_checkpoint(checkpoint_path)
-        if prev is not None and should_resume(prev, now=snapshot_at,
-                                              hours=args.hours,
-                                              max_age_h=args.resume_max_age_h):
-            resumed = prev
-            snapshot_at = datetime.fromisoformat(prev.snapshot_at)
+    if prev_ck is not None and args.resume != "off":
+        if should_resume(prev_ck, now=snapshot_at,
+                         hours=args.hours,
+                         max_age_h=args.resume_max_age_h):
+            resumed = prev_ck
+            snapshot_at = datetime.fromisoformat(prev_ck.snapshot_at)
     ck = resumed or Checkpoint(snapshot_at=snapshot_at.isoformat(),
                                hours=args.hours,
                                started_at=datetime.now(timezone.utc).isoformat(),
@@ -808,17 +812,40 @@ async def main() -> None:
                   f"completed; these age one cycle, resurrect on the next pass, "
                   f"and take rotation priority", file=sys.stderr, flush=True)
         if processed == 0 and (deferred_ccs or timegap_ccs):
-            # Misconfig guard: nothing banked and everything planned out — do
-            # not let the runner project an effectively-empty snapshot.
-            if checkpoint_path is not None:
-                checkpoint_path.unlink(missing_ok=True)
-            print("NO countries completed within the time budget — check the "
-                  "ATLAS_SNAPSHOT_* knobs; exiting nonzero so projection is "
-                  "skipped", file=sys.stderr, flush=True)
-            sys.exit(1)
-        if checkpoint_path is not None:
+            # An all-deferred pass is BENIGN when a fresh banked snapshot
+            # already exists (this run resumed one, or the previous cycle just
+            # completed one — e.g. a re-fire immediately after a complete
+            # cycle): exit 0 so the runner still projects + SEALS the daily
+            # edition from the fresh snapshot. It is a true misconfig ONLY
+            # when nothing fresh is banked anywhere — the budget cannot fit
+            # ANY country from a cold start (2026-07-17→19: the old
+            # unconditional exit 1 skipped every post-step and the sealed
+            # edition starved 47h while snapshots were fresh).
+            if empty_pass_is_benign(ck, prev_ck,
+                                    now=datetime.now(timezone.utc),
+                                    max_age_h=args.resume_max_age_h):
+                src = ck if ck.done else prev_ck
+                print(f"  NOTHING COMPLETED this pass (all deferred/"
+                      f"time-gapped) — benign: snapshot {src.snapshot_at} "
+                      f"already banked {len(src.done)} countries; exiting 0 "
+                      f"so projection and the daily seal run on the fresh "
+                      f"snapshot", file=sys.stderr, flush=True)
+            else:
+                if checkpoint_path is not None:
+                    checkpoint_path.unlink(missing_ok=True)
+                print("NO countries completed within the time budget and no "
+                      "fresh banked snapshot exists — misconfig (budget too "
+                      "small to fit ANY country); check the ATLAS_SNAPSHOT_* "
+                      "knobs; exiting nonzero so projection is skipped",
+                      file=sys.stderr, flush=True)
+                sys.exit(1)
+        if checkpoint_path is not None and ck.done:
             # Budget-stop or full pass = a FINISHED run (deliberate partial
             # commit) — only crashes leave complete=False for the resume.
+            # `ck.done` guard: a pass that banked NOTHING must not clobber
+            # the previous cycle's checkpoint — that file is the durable
+            # record that a fresh banked snapshot exists (the benign-empty
+            # classification above depends on it).
             ck.complete = True
             save_checkpoint(checkpoint_path, ck)
         if rotation_path is not None:

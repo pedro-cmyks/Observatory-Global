@@ -243,6 +243,39 @@ def should_resume(ck: Checkpoint, *, now: datetime, hours: int,
     return 0 <= age_h <= max_age_h
 
 
+def empty_pass_is_benign(ck: Checkpoint, prev: Checkpoint | None, *,
+                         now: datetime, max_age_h: float) -> bool:
+    """Classify a pass that COMPLETED nothing (everything deferred/time-gapped).
+
+    Benign — the runner must exit 0 and proceed to projection + the daily
+    seal, because a fresh banked snapshot already exists — when either:
+
+      - this run RESUMED a checkpoint with banked countries (``ck.done``
+        non-empty: the adopted snapshot_at has committed rows), or
+      - the previous cycle's checkpoint (``prev``) banked countries and is
+        fresh (started within ``max_age_h``): the classic case is a
+        watchdog/operator re-fire IMMEDIATELY after a complete cycle — the
+        new pass defers everything, but the just-sealed-worthy snapshot is
+        sitting in the database waiting for post-steps.
+
+    True misconfig (caller keeps exit 1, projection skipped): nothing banked
+    this run AND no fresh prior bank — the budget cannot fit ANY country
+    from a cold start (2026-07-19: this guard used to fire for BOTH cases,
+    silently starving the sealed edition after every benign re-fire).
+    ``prev.complete`` is deliberately ignored: banked rows exist whether the
+    previous run budget-stopped or crashed mid-pass."""
+    if ck.done:
+        return True
+    if prev is None or not prev.done:
+        return False
+    try:
+        started = datetime.fromisoformat(prev.started_at)
+    except ValueError:
+        return False
+    age_h = (now - started).total_seconds() / 3600.0
+    return 0 <= age_h <= max_age_h
+
+
 # -------------------------------------------------------------- rotation I/O
 
 def save_rotation(path: Path | str, ccs: list[str]) -> None:
