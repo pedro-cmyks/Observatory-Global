@@ -62,8 +62,17 @@ if [[ -z "${DATABASE_URL:-}" || -z "${DEEPSEEK_API_KEY:-}" ]]; then
   echo "[scoped-snapshot] missing DATABASE_URL or DEEPSEEK_API_KEY" >&2; exit 2
 fi
 
-TASKPOLICY=""
-command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
+# Weekend compute mode (2026-07-19): weekends = performance cores + bigger
+# budgets (scripts/weekend-mode.sh); weekdays keep the mindful discipline.
+if [[ -r "$SCRIPT_DIR/weekend-mode.sh" ]]; then
+  source "$SCRIPT_DIR/weekend-mode.sh"
+  atlas_weekend_env
+  TASKPOLICY="$ATLAS_TASKPOLICY"
+  [[ "$ATLAS_WEEKEND" == "1" ]] && echo "[scoped-snapshot] WEEKEND MODE: performance cores, run budget ${ATLAS_SNAPSHOT_RUN_BUDGET_MIN:-480}min" >&2
+else
+  TASKPOLICY=""
+  command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
+fi
 
 # Step 0 (2026-07-18 — the 2026-07-04 "durable plan" finally built): CHAIN
 # embed→cluster. Clustering on stale embeddings wastes the whole night — the

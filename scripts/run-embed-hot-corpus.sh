@@ -28,6 +28,11 @@ MAX_SIGNALS="${ATLAS_EMBED_MAX_SIGNALS:-60000}"  # ~25-40 min/run, bounded
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
 
+# Weekend compute mode (2026-07-19): see scripts/weekend-mode.sh
+if [[ -r "$SCRIPT_DIR/weekend-mode.sh" ]]; then
+  source "$SCRIPT_DIR/weekend-mode.sh"; atlas_weekend_env
+fi
+
 # P1.1 heavy-job mutex: one heavy DB job at a time on the M1 (concurrent batch
 # jobs starve serving → prod statement timeouts). Queue behind any holder.
 if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
