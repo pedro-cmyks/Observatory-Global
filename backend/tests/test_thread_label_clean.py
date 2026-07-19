@@ -158,3 +158,40 @@ def test_latin_real_label_with_category_null_passes_through():
         clean_thread_label(label, [_sig("x")], "dynamic topic 8", category=None)
         == label
     )
+
+
+# --- 2026-07-19: LLM-refusal PROSE is a placeholder, never a title ----------
+# Live hole: prod /threads served "Unable to determine a single news cluster
+# from these diverse headlines" at rank #8 — refusal prose is a labeler
+# failure the fixed sentinel set cannot enumerate. Precision-first shape test:
+# refusal stem at the START + a self-referential task word ANYWHERE.
+
+_REFUSALS = [
+    "Unable to determine a single news cluster from these diverse headlines",
+    "Unable to determine a single event or majority cluster from these diverse headlines",
+    "Cannot identify a coherent grouping from the provided headlines",
+    "No single event connects these headlines",
+    "I cannot determine a majority topic from these articles",
+]
+
+
+def test_llm_refusal_prose_falls_back_to_receipt():
+    sigs = [_sig("Ebola outbreak spreads to third Congolese province")]
+    for refusal in _REFUSALS:
+        out = clean_thread_label(refusal, sigs, "dynamic topic 9")
+        assert out == "Emerging: Ebola outbreak spreads to third Congolese province", refusal
+
+
+def test_llm_refusal_without_receipt_uses_generic_fallback():
+    for refusal in _REFUSALS:
+        assert clean_thread_label(refusal, [], "dynamic topic 9") == "dynamic topic 9"
+
+
+def test_headline_like_unable_label_is_not_a_refusal():
+    # A real title can start with a refusal stem — without a self-referential
+    # task word it must pass through untouched (precision-first).
+    for real in (
+        "Unable to determine cause of deadly blast, officials say",
+        "Cannot afford rent: eviction crisis deepens in US cities",
+    ):
+        assert clean_thread_label(real, [_sig("x y z words")], "f") == real

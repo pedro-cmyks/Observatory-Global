@@ -129,3 +129,31 @@ class TestMergeIndexGroups:
         merged = merge_index_groups(5, {0: [0, 1]}, {})
         assert all(len(v) >= 2 for v in merged.values())
         assert 4 not in merged
+
+
+# --- 2026-07-19: refusal prose must never fold ------------------------------
+# 57 persisted LLM-refusal labels ("Unable to determine a single majority
+# cluster; headlines are unrelated") are near-IDENTICAL strings on UNRELATED
+# topics — Jaccard 1.0 would fold them into one garbage umbrella.
+
+def test_identical_refusal_labels_do_not_fold():
+    from app.services.label_fold import label_fold_groups
+
+    labels = [
+        "Unable to determine a single majority cluster; headlines are unrelated",
+        "Unable to determine a single majority cluster; headlines are unrelated",
+        "The headlines are too diverse to form a single news cluster",
+        "The headlines are too diverse to form a single news cluster",
+        "Venezuela Earthquake Death Toll",
+        "Venezuela Earthquake Death Toll",
+    ]
+    groups = label_fold_groups(labels)
+    # only the real-event pair folds
+    assert groups == {4: [4, 5]}
+
+
+def test_refusal_tokens_empty():
+    from app.services.label_fold import normalize_label_tokens
+
+    assert normalize_label_tokens(
+        "Multiple unrelated headlines; no single label applies") == frozenset()

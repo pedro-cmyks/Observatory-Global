@@ -77,3 +77,17 @@ def test_topic_all_placeholder_labels_yields_empty_label():
     assert t.label == ""
     # persist writes `t.label or None` → NULL, never a placeholder string
     assert (t.label or None) is None
+
+
+# --- 2026-07-19: writer side must also treat LLM-refusal prose as failure ---
+
+def test_refusal_prose_never_persists():
+    from scripts.label_hygiene import is_placeholder_label, normalize_persisted_label
+
+    refusal = "Unable to determine a single news cluster from these diverse headlines"
+    assert is_placeholder_label(refusal)
+    assert normalize_persisted_label(refusal) is None
+    # a real title with a refusal-like stem but no task word persists
+    real = "Unable to determine cause of deadly blast, officials say"
+    assert not is_placeholder_label(real)
+    assert normalize_persisted_label(real) == real

@@ -10,6 +10,7 @@ from typing import Any
 from app import db
 from app.core.gdelt_taxonomy import get_theme_label
 from app.core.iso_country_names import ISO_COUNTRY_NAMES, resolve_country_name
+from app.services.label_fold import is_refusal_label as _is_refusal_label
 from app.services.narrative_note import build_thread_narrative_note
 from app.services.subject_geography import infer_receipt_subject_geography
 from app.services.thread_packet import build_thread_packet
@@ -1280,6 +1281,11 @@ WHERE dt.id = $1
 # Mirror of scripts/label_hygiene.PLACEHOLDER_LABELS (app/ must not import
 # from scripts/): keep the two sets in sync.
 _PLACEHOLDER_LABELS = {"", "(no label)", "(label failed)", "(label failed.)", "none", "null"}
+# LLM-refusal PROSE ("Unable to determine a single news cluster from these
+# diverse headlines" — served at prod /threads #8, 2026-07-19) is a labeler
+# failure the fixed sentinel set cannot enumerate. Canonical detector =
+# label_fold.is_refusal_label (pure zero-dep module, imported at top — it also
+# needs the check so identical refusal strings never fold into one umbrella).
 _LABEL_MAX = 90
 # Sentinel: the caller did not supply the topic's category, so the
 # unlabeled-foreign-headline rule below cannot be evaluated (emergent
@@ -1294,7 +1300,9 @@ def _is_placeholder_label(label: str | None) -> bool:
     if not s:
         return True
     low = s.lower()
-    return low in _PLACEHOLDER_LABELS or low.startswith("(label failed")
+    if low in _PLACEHOLDER_LABELS or low.startswith("(label failed"):
+        return True
+    return _is_refusal_label(low)
 
 
 def _is_foreign_script(text: str) -> bool:
