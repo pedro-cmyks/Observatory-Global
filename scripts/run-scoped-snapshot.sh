@@ -33,6 +33,16 @@ MEMBERS_HOURS="${ATLAS_TOPIC_MEMBERS_HOURS:-336}"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 mkdir -p "$LOG_DIR"
 
+# EXECUTE-1 (2026-07-19): wall-time budget + checkpoint/resume state. The
+# budget knobs (ATLAS_SNAPSHOT_RUN_BUDGET_MIN 150 / _COUNTRY_BUDGET_S 1800 /
+# _N2_PER_SEC / _SUBPROC_MIN_N / _CAP_FLOOR_N / _RESUME) default IN the python
+# writer; exporting the state dir here turns on checkpointing so a crashed
+# pass resumes its snapshot instead of losing the night, and deferred/timed-
+# out countries rotate to the front next pass. Reversible: unset the dir.
+STATE_DIR="${ATLAS_SNAPSHOT_STATE_DIR:-$ROOT_DIR/state}"
+mkdir -p "$STATE_DIR" 2>/dev/null || true
+export ATLAS_SNAPSHOT_STATE_DIR="$STATE_DIR"
+
 # P1.1 heavy-job mutex: the multi-hour clustering chain must never overlap embed/
 # matview/catchup on the shared Supabase (serving statement-timeout incidents).
 if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
@@ -69,6 +79,11 @@ command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
   || echo "[scoped-snapshot] Step 0 embed catch-up failed (non-fatal — clustering may see stale embeds)" >&2
 
 # Step 1: form + write the scoped snapshot (all countries, one snapshot_at).
+# Time-budgeted (2026-07-19 forensics: US alone held the mutex 7+h inside one
+# uninterruptible HDBSCAN call): run budget 150min · country budget 1800s ·
+# big countries cluster their newest fitting slice in a hard-killable
+# subprocess · every completed country commits incrementally. Worst case
+# ≈ run budget + 1.5×country budget — the 240min mutex TTL is safe again.
 cd "$ROOT_DIR"
 if ! $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.run_scoped_snapshot \
   --min-embedded "$MIN_EMBEDDED" --top-per-country "$TOP_PER_COUNTRY" \
@@ -120,9 +135,13 @@ cd "$ROOT_DIR"
 # gap-2 (2026-07-14): default grouping = the LLM same-event judge, which reconnects
 # event fragments the centroid cut misses (US strikes / Hormuz / drone -> one
 # US-Iran umbrella) and rolls their volume/breadth to the parent for the eclipse
-# consumer. Reversible to the semantic cut: ATLAS_UMBRELLA_LINKAGE=complete. The
-# builder aborts WITHOUT wiping umbrellas if the judge call fails (never dissolves
-# the hierarchy on an LLM outage).
+# consumer. Reversible to the semantic cut: ATLAS_UMBRELLA_LINKAGE=complete.
+# 2026-07-19: a judge outage now DEGRADES to the deterministic semantic
+# complete-linkage (+ label-fold merge) instead of aborting — the old degraded
+# path was gated on non-empty label-fold groups and THE RELABEL had emptied
+# them, so the 07-18/19 outages left the umbrella layer stale. Restore the
+# abort-on-outage behavior with ATLAS_UMBRELLA_DEGRADED_FALLBACK=off; either
+# way a failed judge NEVER wipes existing umbrellas.
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
   --linkage "${ATLAS_UMBRELLA_LINKAGE:-llm-event}" \
   --threshold "${ATLAS_UMBRELLA_THRESHOLD:-0.98}" \

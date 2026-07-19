@@ -15,6 +15,35 @@ Writes emergent_clusters ONLY. Run project_dynamic_topics separately afterwards
 (so the write can be inspected before it reaches serving). Reversible: it is a new
 snapshot_at; reverting = re-project the prior snapshot.
 
+WALL-TIME BUDGET + CHECKPOINT/RESUME (EXECUTE-1, 2026-07-19 — the failure-budget
+philosophy extended to TIME). Forensics: HDBSCAN's brute O(n²·d) MST ran 7+
+hours inside ONE country (US = 51% of the night's Σn²) on efficiency cores,
+holding the heavy-job mutex (TTL 240min) all morning, and the all-at-end commit
+meant killed runs banked NOTHING (07-17/18 lost whole nights). Now:
+
+  - per-country budget (ATLAS_SNAPSHOT_COUNTRY_BUDGET_S, default 1800s): a
+    country whose predicted cost exceeds it clusters its NEWEST fitting slice
+    (fit over a self-calibrating n²/s rate, ATLAS_SNAPSHOT_N2_PER_SEC seed);
+  - hard kill backstop: countries with n ≥ ATLAS_SNAPSHOT_SUBPROC_MIN_N
+    cluster in a killable subprocess — timeout ⇒ one halved retry ⇒ honest
+    TIME GAP (bounded worst case 1.5× the country budget, never 7h);
+  - run budget (ATLAS_SNAPSHOT_RUN_BUDGET_MIN, default 150min): first-fit —
+    a country that cannot fit the remaining budget is DEFERRED loudly (the
+    smaller ones after it still run); on exhaustion the run STOPS and the
+    snapshot stands with what completed;
+  - incremental commit: every country's rows land in their own transaction —
+    a killed run has banked all completed countries; widespread ERROR failure
+    still discards via a compensating DELETE of this snapshot_at (time-gaps/
+    deferrals never count against that error budget);
+  - checkpoint/resume (ATLAS_SNAPSHOT_STATE_DIR): a crashed run within
+    ATLAS_SNAPSHOT_RESUME_MAX_AGE_H (12h) resumes the SAME snapshot_at and
+    skips banked countries; budget-stops mark the checkpoint complete (a
+    deliberate partial commit is a finished run, not a crash);
+  - rotation fairness: deferred/timed-out countries go FIRST next night.
+
+  All knobs are env-reversible: budget 0 = off, state dir unset = stateless
+  (exact pre-2026-07-19 behavior).
+
 Run (repo root, M1 ML env, off-peak — heavy + DeepSeek labeling):
   # test first:
   python -m backend.scripts.run_scoped_snapshot --countries US,CN --dry-run
@@ -28,16 +57,33 @@ import argparse
 import asyncio
 import json
 import os
+import signal
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import asyncpg
 import numpy as np
 
+from backend.scripts.cluster_subproc import ClusterTimeout, run_cluster_in_subprocess
 from backend.scripts.emergent_poc import (
     _apply_gate, _clean_and_dedupe, _cluster, _cluster_stats, _label_all, _load_gate,
     whiten_all_but_top,
+)
+from backend.scripts.snapshot_budget import (
+    BudgetContext,
+    Checkpoint,
+    CountryDeferred,
+    CountryTimeGap,
+    RateEstimator,
+    load_checkpoint,
+    load_rotation,
+    order_countries,
+    plan_country,
+    save_checkpoint,
+    save_rotation,
+    should_resume,
 )
 from backend.scripts.snapshot_emergent_topics import (
     SAMPLE_TOP_K,
@@ -149,21 +195,113 @@ def _whiten_input(embs: np.ndarray, k: int) -> np.ndarray:
     return whiten_all_but_top(embs, k)
 
 
+def _env_int(name: str, default: int) -> int:
+    """Garbage-tolerant env int (same contract as _env_whiten_k)."""
+    try:
+        return int(os.environ.get(name, "") or default)
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    """Garbage-tolerant env float."""
+    try:
+        return float(os.environ.get(name, "") or default)
+    except ValueError:
+        return default
+
+
 async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n,
-                            whiten_k: int = 0, page_rows: int | None = None):
-    """Scoped pull → cluster → gate → top-N. Returns (clusters, embs, rows) or None."""
+                            whiten_k: int = 0, page_rows: int | None = None,
+                            budget: BudgetContext | None = None,
+                            report: dict | None = None):
+    """Scoped pull → (budget plan) → cluster → gate → top-N.
+
+    Returns (clusters, embs, rows) or None. With a BudgetContext, the input
+    may be CAPPED to its newest-first fitting slice (the pull is
+    (timestamp DESC, id DESC) and _clean_and_dedupe preserves order, so
+    rows[:n] is exactly "the newest n deduped signals"); raises
+    CountryDeferred when planned out before clustering (run budget /
+    below-floor) and CountryTimeGap when the hard-killed clustering budget is
+    exhausted even after ONE halved retry. budget=None = exact legacy path.
+    """
     recs = await _fetch_country_embeddings(conn, cc, hours, cap,
                                            page_rows or _FETCH_PAGE_ROWS)
     if len(recs) < mcs * 2:
         return None
-    emb_by_id = {int(r["id"]): list(r["emb"]) for r in recs}
     rows = _clean_and_dedupe([{k: r[k] for k in
                                ("id", "headline", "country_code", "source_name", "timestamp")}
                               for r in recs])
     if len(rows) < mcs * 2:
         return None
+    n_eff = len(rows)
+    plan = None
+    if budget is not None:
+        plan = plan_country(n_eff, remaining_run_s=budget.remaining_run_s,
+                            country_budget_s=budget.country_budget_s,
+                            rate=budget.rate.rate,
+                            min_cluster_n=budget.min_cluster_n)
+        if plan.action == "defer":
+            raise CountryDeferred(plan.reason, n_eff)
+        if plan.capped:
+            rows = rows[: plan.n_use]  # newest-first slice (order preserved)
+    # Materialize vectors ONLY for kept rows — the whole-country dict of
+    # python float lists (US ≈ 100k × 768) was a multi-GB peak driver.
+    needed = {int(r["id"]) for r in rows}
+    emb_by_id = {i: r["emb"] for r in recs if (i := int(r["id"])) in needed}
+    del recs
     embs = np.array([emb_by_id[int(r["id"])] for r in rows], dtype=np.float32)
-    labels = _cluster(_whiten_input(embs, whiten_k), mcs, ms, "leaf")
+    del emb_by_id
+
+    cluster_input = _whiten_input(embs, whiten_k)
+    hard_timeout = plan.hard_timeout_s if plan is not None else 0.0
+    use_subproc = (budget is not None and budget.subproc_min_n > 0
+                   and len(rows) >= budget.subproc_min_n)
+    halved = False
+    t0 = time.monotonic()
+    if use_subproc:
+        try:
+            labels = run_cluster_in_subprocess(cluster_input, mcs, ms, "leaf",
+                                               timeout_s=hard_timeout)
+        except ClusterTimeout:
+            # The rate model was optimistic — recalibrate pessimistically
+            # (it ran ≥ hard_timeout without finishing) and retry ONCE at
+            # half size (¼ the predicted cost) before declaring a time gap.
+            budget.rate.update(len(rows), max(hard_timeout, 1.0) * 2)
+            half = len(rows) // 2
+            if half < budget.min_cluster_n:
+                raise CountryTimeGap(
+                    f"killed at {hard_timeout:.0f}s and half-slice {half} is "
+                    f"below the {budget.min_cluster_n} floor") from None
+            rows = rows[:half]
+            embs = embs[:half]
+            # NB: slice of the already-fitted transform (whiten fits on the
+            # larger slice; acceptable — whiten defaults off, retry is rare).
+            cluster_input = cluster_input[:half]
+            halved = True
+            t0 = time.monotonic()
+            try:
+                labels = run_cluster_in_subprocess(cluster_input, mcs, ms,
+                                                   "leaf", timeout_s=hard_timeout)
+            except ClusterTimeout:
+                budget.rate.update(len(rows), max(hard_timeout, 1.0) * 2)
+                raise CountryTimeGap(
+                    f"killed twice at the {hard_timeout:.0f}s hard budget "
+                    f"(n={len(rows)} after halving) — honest time gap") from None
+    else:
+        labels = _cluster(cluster_input, mcs, ms, "leaf")
+    dt = time.monotonic() - t0
+    if budget is not None:
+        budget.rate.update(len(rows), dt)  # self-calibration (EMA, clamped)
+    if report is not None:
+        report.update({
+            "n_eff": n_eff, "n_use": len(rows),
+            "capped": bool(plan.capped) if plan is not None else False,
+            "halved": halved, "subproc": use_subproc,
+            "cluster_seconds": round(dt, 1),
+            "hard_timeout_s": round(hard_timeout),
+        })
+
     all_clusters = _cluster_stats(labels, embs, rows, top_k=SAMPLE_TOP_K)
     if not all_clusters:
         return None
@@ -172,6 +310,36 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
     if not clusters:
         return None
     return clusters, embs, rows
+
+
+async def _commit_country(conn, db, prepared):
+    """Bank ONE country's prepared rows in their own transaction (incremental
+    commit, 2026-07-19), retrying once from a fresh connection on a transient
+    failure. Returns the (possibly reconnected) connection.
+
+    NB: if a commit lands but its ack is lost, the retry can duplicate one
+    country's clusters within this snapshot — projection's centroid matching
+    folds them into one identity; strictly better than losing the night."""
+    for attempt in (1, 2):
+        try:
+            if conn.is_closed():
+                conn = await asyncpg.connect(db)
+                await conn.execute("SET statement_timeout = '600s'")
+            async with conn.transaction():
+                await _insert_prepared_snapshot(conn, prepared)
+            return conn
+        except Exception as ex:
+            try:
+                if not conn.is_closed():
+                    await conn.close()
+            except Exception:
+                pass
+            if attempt == 2:
+                raise
+            print(f"  country commit failed ({ex}) — retrying from a fresh "
+                  f"connection", file=sys.stderr, flush=True)
+            await asyncio.sleep(3)
+    return conn
 
 
 async def main() -> None:
@@ -196,6 +364,41 @@ async def main() -> None:
     ap.add_argument("--dump-json", default="",
                     help="write per-country cluster payloads (members, cohesion, "
                          "gate verdicts) to this path — diagnostic, works with --dry-run")
+    # EXECUTE-1 (2026-07-19) wall-time budget + checkpoint knobs. Env-reversible:
+    # 0 = that budget off; state dir unset = stateless (pre-07-19 behavior).
+    ap.add_argument("--run-budget-min", type=float,
+                    default=_env_float("ATLAS_SNAPSHOT_RUN_BUDGET_MIN", 150.0),
+                    help="whole-pass wall budget in minutes; on exhaustion the run "
+                         "STOPS, commits what completed and defers the rest loudly "
+                         "(0 = unlimited; mutex TTL is 240min — stay well under)")
+    ap.add_argument("--country-budget-s", type=float,
+                    default=_env_float("ATLAS_SNAPSHOT_COUNTRY_BUDGET_S", 1800.0),
+                    help="per-country clustering wall budget in seconds; a country "
+                         "predicted over it clusters its NEWEST fitting slice "
+                         "(0 = unlimited)")
+    ap.add_argument("--rate-n2-per-s", type=float,
+                    default=_env_float("ATLAS_SNAPSHOT_N2_PER_SEC", 300000.0),
+                    help="initial clustering-rate estimate in n²-units/s (forensics "
+                         "2026-07-19: ~320-347k at nice-10 on efficiency cores); "
+                         "self-calibrates from measured countries within the run")
+    ap.add_argument("--subproc-min-n", type=int,
+                    default=_env_int("ATLAS_SNAPSHOT_SUBPROC_MIN_N", 12000),
+                    help="countries with clustering input >= this run in a "
+                         "hard-killable subprocess (0 = never isolate)")
+    ap.add_argument("--cap-floor-n", type=int,
+                    default=_env_int("ATLAS_SNAPSHOT_CAP_FLOOR_N", 4000),
+                    help="never cap the clustering input below this — defer the "
+                         "country instead of clustering a garbage sliver")
+    ap.add_argument("--state-dir",
+                    default=os.environ.get("ATLAS_SNAPSHOT_STATE_DIR", ""),
+                    help="dir for checkpoint/rotation files (unset = stateless)")
+    ap.add_argument("--resume", choices=["auto", "off"],
+                    default=(os.environ.get("ATLAS_SNAPSHOT_RESUME", "auto")
+                             or "auto"),
+                    help="auto = a fresh crashed checkpoint of the same window "
+                         "resumes its snapshot_at, skipping banked countries")
+    ap.add_argument("--resume-max-age-h", type=float,
+                    default=_env_float("ATLAS_SNAPSHOT_RESUME_MAX_AGE_H", 12.0))
     args = ap.parse_args()
 
     db = os.environ.get("DATABASE_URL")
@@ -204,11 +407,50 @@ async def main() -> None:
     ds_key = os.environ.get("DEEPSEEK_API_KEY", "")
     if not ds_key and not args.skip_label:
         print("DEEPSEEK_API_KEY not set (or --skip-label)", file=sys.stderr); sys.exit(2)
-    from pathlib import Path
     gate = _load_gate(Path(args.gate))
+
+    # SIGTERM (watchdog / operator kill) unwinds as SystemExit so finally
+    # blocks run: cluster_subproc's finally kills any live clustering child
+    # (no orphan MST burning the M1 for hours) and committed countries stand
+    # for the resume.
+    try:
+        signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+    except ValueError:  # non-main thread (tests) — fine without a handler
+        pass
 
     snapshot_at = datetime.now(timezone.utc)
     t0 = time.time()
+    t_mono = time.monotonic()
+    run_budget_s = args.run_budget_min * 60.0 if args.run_budget_min > 0 else 0.0
+    budget_enabled = args.country_budget_s > 0 or run_budget_s > 0
+    rate_est = RateEstimator(initial=args.rate_n2_per_s)
+
+    # Checkpoint/rotation only for full unattended passes — never for
+    # --countries test slices or dry runs (a dry run must leave no state a
+    # real run could resume).
+    checkpoint_path = rotation_path = None
+    if args.state_dir and not args.dry_run and not args.countries:
+        sdir = Path(args.state_dir)
+        try:
+            sdir.mkdir(parents=True, exist_ok=True)
+            checkpoint_path = sdir / "scoped-snapshot-checkpoint.json"
+            rotation_path = sdir / "scoped-snapshot-rotation.json"
+        except OSError as ex:
+            print(f"state dir unusable ({ex}) — running stateless", file=sys.stderr)
+
+    resumed = None
+    if checkpoint_path is not None and args.resume != "off":
+        prev = load_checkpoint(checkpoint_path)
+        if prev is not None and should_resume(prev, now=snapshot_at,
+                                              hours=args.hours,
+                                              max_age_h=args.resume_max_age_h):
+            resumed = prev
+            snapshot_at = datetime.fromisoformat(prev.snapshot_at)
+    ck = resumed or Checkpoint(snapshot_at=snapshot_at.isoformat(),
+                               hours=args.hours,
+                               started_at=datetime.now(timezone.utc).isoformat(),
+                               next_base=0)
+
     conn = await asyncpg.connect(db)
     await conn.execute("SET statement_timeout = '600s'")
     try:
@@ -219,6 +461,22 @@ async def main() -> None:
             ccs = [r["country_code"] for r in rows]
             if args.limit_countries:
                 ccs = ccs[: args.limit_countries]
+            if rotation_path is not None:
+                pri = load_rotation(rotation_path)
+                if pri:
+                    # Rotation fairness: last pass's deferred/timed-out go FIRST
+                    # so first-fit deferral never chronically starves them.
+                    ccs = order_countries(ccs, pri)
+                    print(f"rotation priority (deferred/timed-out last pass): "
+                          f"{', '.join(pri)}", file=sys.stderr)
+        if resumed is not None:
+            skip = set(ck.done)
+            ccs = [c for c in ccs if c not in skip]
+            print(f"RESUMING snapshot {snapshot_at.isoformat()} — {len(skip)} "
+                  f"countries already banked, {len(ccs)} to go (run started "
+                  f"{ck.started_at})", file=sys.stderr, flush=True)
+        # NB: with an adopted (resumed) snapshot_at, `< $1` still lands on the
+        # true prior snapshot — this run's own committed rows are excluded.
         prior = await _prior_snapshot_clusters(conn, snapshot_at)
         scope = "all gated clusters" if args.top_per_country <= 0 else (
             f"top{args.top_per_country}/country"
@@ -229,44 +487,97 @@ async def main() -> None:
         print(f"snapshot_at={snapshot_at.isoformat()} · {len(ccs)} countries · "
               f"{scope} · {corpus} · dry_run={args.dry_run} · "
               f"whiten_k={args.whiten_k}", file=sys.stderr)
+        if budget_enabled:
+            print(f"time budget: run={args.run_budget_min:.0f}min · "
+                  f"country={args.country_budget_s:.0f}s · "
+                  f"rate0={rate_est.rate:.0f} n²/s · "
+                  f"subproc_n>={args.subproc_min_n} · "
+                  f"cap_floor={args.cap_floor_n} · "
+                  f"checkpoint={'on' if checkpoint_path else 'off'}",
+                  file=sys.stderr)
 
         total_written = total_clusters = done = failed = 0
         failed_ccs: list[str] = []
-        prepared_rows = []
+        deferred_ccs: list[str] = []
+        timegap_ccs: list[str] = []
+        processed = 0  # countries that finished (clusters or honest no-clusters)
         dump_countries: list[dict] = []
-        base = 0
-        for cc in ccs:
+        base = ck.next_base
+        for pos, cc in enumerate(ccs):
             done += 1
-            # Resilience for the unattended ~1.5h run: a single transient
-            # connection blip must not discard the whole staged snapshot (the
-            # all-or-nothing guard below is for PERSISTENT failures). Each
-            # country gets up to 3 attempts; every retry starts from a fresh
-            # connection because "connection was closed in the middle of
-            # operation" leaves the old one unusable.
+            remaining = None
+            if run_budget_s > 0:
+                remaining = run_budget_s - (time.monotonic() - t_mono)
+                if remaining <= 0:
+                    rest = ccs[pos:]
+                    deferred_ccs.extend(rest)
+                    print(f"  RUN BUDGET {args.run_budget_min:.0f}min exhausted — "
+                          f"deferring {len(rest)} countries "
+                          f"({', '.join(rest[:12])}{', …' if len(rest) > 12 else ''}); "
+                          f"committing what completed", file=sys.stderr, flush=True)
+                    break
+            bctx = BudgetContext(country_budget_s=args.country_budget_s,
+                                 remaining_run_s=remaining,
+                                 rate=rate_est,
+                                 min_cluster_n=args.cap_floor_n,
+                                 subproc_min_n=args.subproc_min_n) \
+                if budget_enabled else None
+            # Resilience for the unattended run: a single transient connection
+            # blip must not discard the country (the all-or-nothing guard below
+            # is for PERSISTENT failures). Each country gets up to 3 attempts;
+            # every retry starts from a fresh connection because "connection
+            # was closed in the middle of operation" leaves the old one
+            # unusable. Budget outcomes (defer/time-gap) are deterministic and
+            # are NEVER retried.
             res = None
             last_ex: Exception | None = None
-            for attempt in range(1, _COUNTRY_ATTEMPTS + 1):
-                if conn.is_closed():
-                    conn = await asyncpg.connect(db)
-                    await conn.execute("SET statement_timeout = '600s'")
-                try:
-                    res = await _country_clusters(conn, cc, args.hours, args.per_country_cap,
-                                                  args.mcs, args.ms, gate, args.min_kept,
-                                                  args.top_per_country,
-                                                  whiten_k=args.whiten_k)
-                    last_ex = None
-                    break
-                except Exception as ex:
-                    last_ex = ex
+            report: dict = {}
+            try:
+                for attempt in range(1, _COUNTRY_ATTEMPTS + 1):
+                    if conn.is_closed():
+                        conn = await asyncpg.connect(db)
+                        await conn.execute("SET statement_timeout = '600s'")
                     try:
-                        if not conn.is_closed():
-                            await conn.close()  # retry from a clean connection
-                    except Exception:
-                        pass
-                    if attempt < _COUNTRY_ATTEMPTS:
-                        print(f"  [{done}/{len(ccs)}] {cc}: attempt {attempt} failed ({ex}) "
-                              f"— retrying", file=sys.stderr, flush=True)
-                        await asyncio.sleep(5 * attempt)
+                        res = await _country_clusters(conn, cc, args.hours,
+                                                      args.per_country_cap,
+                                                      args.mcs, args.ms, gate,
+                                                      args.min_kept,
+                                                      args.top_per_country,
+                                                      whiten_k=args.whiten_k,
+                                                      budget=bctx, report=report)
+                        last_ex = None
+                        break
+                    except (CountryDeferred, CountryTimeGap):
+                        raise
+                    except Exception as ex:
+                        last_ex = ex
+                        try:
+                            if not conn.is_closed():
+                                await conn.close()  # retry from a clean connection
+                        except Exception:
+                            pass
+                        if attempt < _COUNTRY_ATTEMPTS:
+                            print(f"  [{done}/{len(ccs)}] {cc}: attempt {attempt} "
+                                  f"failed ({ex}) — retrying",
+                                  file=sys.stderr, flush=True)
+                            await asyncio.sleep(5 * attempt)
+            except CountryDeferred as d:
+                deferred_ccs.append(cc)
+                print(f"  [{done}/{len(ccs)}] {cc}: DEFERRED ({d.reason}, "
+                      f"n={d.n_eff}) — rotation priority next pass",
+                      file=sys.stderr, flush=True)
+                if args.dump_json:
+                    dump_countries.append({"country": cc, "deferred": d.reason,
+                                           "clusters": []})
+                continue
+            except CountryTimeGap as tg:
+                timegap_ccs.append(cc)
+                print(f"  [{done}/{len(ccs)}] {cc}: TIME GAP — {tg}; rotation "
+                      f"priority next pass", file=sys.stderr, flush=True)
+                if args.dump_json:
+                    dump_countries.append({"country": cc, "time_gap": str(tg),
+                                           "clusters": []})
+                continue
             if last_ex is not None:
                 failed += 1
                 failed_ccs.append(cc)
@@ -282,6 +593,11 @@ async def main() -> None:
                 if args.dump_json:
                     dump_countries.append({"country": cc, "clusters": []})
                 base += _ID_OFFSET
+                processed += 1
+                if checkpoint_path is not None:
+                    ck.done[cc] = "no_clusters"
+                    ck.next_base = base
+                    save_checkpoint(checkpoint_path, ck)
                 continue
             clusters, embs, rows = res
             for i, c in enumerate(clusters):
@@ -293,7 +609,7 @@ async def main() -> None:
             else:
                 ds_labels = await _label_all(clusters, rows, ds_key)
             total_clusters += len(clusters)
-            prepared_rows.extend(_prepare_snapshot_rows(
+            prepared = _prepare_snapshot_rows(
                 snapshot_at=snapshot_at,
                 window_hours=args.hours,
                 clusters=clusters,
@@ -302,14 +618,41 @@ async def main() -> None:
                 rows=rows,
                 prior=prior,
                 gate_threshold=gate["_threshold"],
-            ))
+            )
+            # INCREMENTAL COMMIT (2026-07-19): bank each completed country in
+            # its own transaction so a killed run keeps everything finished
+            # (07-17/18 lost whole nights to the all-at-end commit). The
+            # widespread-error case still rolls back whole via the
+            # compensating DELETE below. Mid-run visibility of a partial
+            # snapshot_at is bounded: projection (serving) runs only after
+            # this script exits successfully.
+            if not args.dry_run and prepared:
+                conn = await _commit_country(conn, db, prepared)
+                total_written += len(prepared)
+            processed += 1
             lbls = ", ".join((d.get("label") or "?")[:24] for d in ds_labels[:2])
+            capnote = ""
+            if report.get("capped") or report.get("halved"):
+                capnote = (f" · TIME-CAPPED {report['n_use']}/{report['n_eff']}"
+                           + (" (halved)" if report.get("halved") else ""))
+            if report.get("cluster_seconds", 0) >= 60:
+                capnote += f" · cluster {report['cluster_seconds']:.0f}s"
             print(f"  [{done}/{len(ccs)}] {cc}: n={len(rows)} clusters={len(clusters)} "
-                  f"e.g. [{lbls}]", file=sys.stderr, flush=True)
+                  f"e.g. [{lbls}]{capnote}", file=sys.stderr, flush=True)
+            if checkpoint_path is not None:
+                # Saved AFTER the commit: a crash inside the tiny window
+                # between them re-does one country on resume (projection folds
+                # the duplicate by centroid); the reverse order would silently
+                # LOSE a country, which is worse.
+                ck.done[cc] = "ok"
+                ck.next_base = base
+                save_checkpoint(checkpoint_path, ck)
             if args.dump_json:
                 dump_countries.append({
                     "country": cc,
                     "n_signals": len(rows),
+                    "time_capped": bool(report.get("capped")
+                                        or report.get("halved")),
                     "clusters": [{
                         "cluster_id": int(c["cluster_id"]),
                         "label": (dl.get("label") or "")[:120],
@@ -327,7 +670,6 @@ async def main() -> None:
                 })
 
         if args.dump_json:
-            from pathlib import Path as _P
             payload = {
                 "meta": {
                     "snapshot_at": snapshot_at.isoformat(),
@@ -337,11 +679,13 @@ async def main() -> None:
                     "dry_run": args.dry_run,
                     "countries_attempted": len(ccs),
                     "failed": failed,
+                    "deferred": len(deferred_ccs),
+                    "time_gaps": len(timegap_ccs),
                     "elapsed_s": round(time.time() - t0),
                 },
                 "countries": dump_countries,
             }
-            out = _P(args.dump_json)
+            out = Path(args.dump_json)
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             print(f"dump written: {out} ({len(dump_countries)} countries)",
@@ -351,31 +695,63 @@ async def main() -> None:
             # One persistently-failing country must not freeze the whole
             # substrate (2026-07-13→16: a single dropped connection discarded
             # three consecutive nightly snapshots and the served threads went
-            # stale for days). Budget: a handful of gaps commit WITH a loud
-            # ledger — the missing countries' topics age one lifecycle tick and
-            # resurrect on the next pass. Widespread failure still discards.
+            # stale for days). Budget: a handful of ERROR gaps commit WITH a
+            # loud ledger — the missing countries' topics age one lifecycle
+            # tick and resurrect on the next pass. Widespread ERROR failure
+            # still discards — now via a compensating DELETE, because
+            # completed countries were committed incrementally. Time-gaps and
+            # deferrals are DELIBERATE bounded outcomes and never count here.
             budget = max(2, len(ccs) // 50)
             if failed > budget:
+                if not args.dry_run:
+                    if conn.is_closed():
+                        conn = await asyncpg.connect(db)
+                        await conn.execute("SET statement_timeout = '600s'")
+                    await conn.execute(
+                        "DELETE FROM emergent_clusters WHERE snapshot_at = $1",
+                        snapshot_at)
+                if checkpoint_path is not None:
+                    checkpoint_path.unlink(missing_ok=True)
                 raise RuntimeError(
-                    f"incomplete country pass: {failed}/{len(ccs)} countries failed "
-                    f"(budget {budget}); staged snapshot discarded before database commit"
+                    f"incomplete country pass: {failed}/{len(ccs)} countries "
+                    f"FAILED (error budget {budget}); this snapshot's rows "
+                    f"deleted (compensating rollback)"
                 )
             print(f"  SNAPSHOT COMMITTED WITH GAPS: {failed}/{len(ccs)} countries "
                   f"missing{' (' + ', '.join(failed_ccs) + ')' if failed_ccs else ''} "
                   f"— within budget {budget}; their topics age one cycle and "
                   f"resurrect next pass", file=sys.stderr, flush=True)
-        if not args.dry_run and prepared_rows:
-            if conn.is_closed():
-                conn = await asyncpg.connect(db)
-                await conn.execute("SET statement_timeout = '600s'")
-            async with conn.transaction():
-                total_written = await _insert_prepared_snapshot(conn, prepared_rows)
+        if timegap_ccs or deferred_ccs:
+            dshow = ", ".join(deferred_ccs[:20]) + (", …" if len(deferred_ccs) > 20 else "")
+            print(f"  TIME LEDGER: {len(timegap_ccs)} time-gap(s)"
+                  f"{' (' + ', '.join(timegap_ccs) + ')' if timegap_ccs else ''} · "
+                  f"{len(deferred_ccs)} deferred"
+                  f"{' (' + dshow + ')' if deferred_ccs else ''} — committed what "
+                  f"completed; these age one cycle, resurrect on the next pass, "
+                  f"and take rotation priority", file=sys.stderr, flush=True)
+        if processed == 0 and (deferred_ccs or timegap_ccs):
+            # Misconfig guard: nothing banked and everything planned out — do
+            # not let the runner project an effectively-empty snapshot.
+            if checkpoint_path is not None:
+                checkpoint_path.unlink(missing_ok=True)
+            print("NO countries completed within the time budget — check the "
+                  "ATLAS_SNAPSHOT_* knobs; exiting nonzero so projection is "
+                  "skipped", file=sys.stderr, flush=True)
+            sys.exit(1)
+        if checkpoint_path is not None:
+            # Budget-stop or full pass = a FINISHED run (deliberate partial
+            # commit) — only crashes leave complete=False for the resume.
+            ck.complete = True
+            save_checkpoint(checkpoint_path, ck)
+        if rotation_path is not None:
+            save_rotation(rotation_path, deferred_ccs + timegap_ccs)
     finally:
         await conn.close()
 
     print(f"\nR1 DONE: snapshot_at={snapshot_at.isoformat()} · {total_clusters} clusters "
           f"formed, {total_written} written{' (DRY)' if args.dry_run else ''} · "
-          f"{failed} failed · {round(time.time()-t0)}s")
+          f"{failed} failed · {len(timegap_ccs)} time-gap(s) · "
+          f"{len(deferred_ccs)} deferred · {round(time.time()-t0)}s")
     if not args.dry_run and total_written:
         print("NEXT: run project_dynamic_topics to fold this snapshot into dynamic_topics "
               "(then it serves). Inspect emergent_clusters for this snapshot_at first.")

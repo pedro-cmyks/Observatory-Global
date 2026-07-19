@@ -36,14 +36,28 @@ def test_launchd_plist_points_at_worker_runner():
     assert "<string>/Users/pedro/AtlasLocalWorker</string>" in source
 
 
-def test_scoped_snapshot_is_staged_and_committed_only_after_complete_country_pass():
+def test_scoped_snapshot_banks_per_country_with_compensating_rollback():
+    # EXECUTE-1 (2026-07-19) reversed the all-at-end staging: the 07-17/18
+    # runs were killed mid-pass and lost WHOLE nights because nothing was
+    # committed until every country finished. The contract is now:
+    #   - each completed country's rows are committed in their own
+    #     transaction (a killed run keeps everything it banked);
+    #   - widespread ERROR failure still discards the snapshot — via a
+    #     compensating DELETE of this snapshot_at (the all-or-nothing
+    #     failure-budget semantics survive the incremental commit);
+    #   - time-gaps/deferrals are deliberate bounded outcomes and never
+    #     count against that error budget.
     source = SCOPED_WRITER.read_text(encoding="utf-8")
 
-    assert "prepared_rows.extend(_prepare_snapshot_rows(" in source
+    assert "prepared = _prepare_snapshot_rows(" in source
+    assert "_commit_country(" in source
     assert "await _insert_prepared_snapshot(" in source
     assert "if failed:" in source
     assert "incomplete country pass" in source
+    assert "DELETE FROM emergent_clusters WHERE snapshot_at = $1" in source
     assert "_write_snapshot(" not in source
+    # the error budget never discards over TIME outcomes
+    assert "timegap_ccs" in source and "deferred_ccs" in source
 
 
 def test_scoped_shell_stops_before_projection_when_snapshot_write_fails():
