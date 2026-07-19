@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon, resolveThreadLabel } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { formatAttachSimilarity, laneTag, truncationNote } from '../lib/discussionHonesty'
+import { buildThreadVoiceModel, canHaveThreadVoice, type ThreadVoiceModel } from '../lib/threadVoice'
 import { CountQualifierChip } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
@@ -246,6 +247,22 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             .catch(() => { /* section absent */ })
         return () => { alive = false }
     }, [theme])
+
+    // Voice Mix · who speaks (council wish 18): language + outlet-origin
+    // distribution over this thread's typed evidence members + self-voice
+    // relation. Only topic-backed threads can have member rows; network
+    // failure -> section absent, backend available:false -> honest reason.
+    const [threadVoice, setThreadVoice] = useState<ThreadVoiceModel | null>(null)
+    useEffect(() => {
+        setThreadVoice(null)
+        if (!canHaveThreadVoice(theme)) return
+        let alive = true
+        fetch(`/api/v2/topic/${encodeURIComponent(theme)}/voice?hours=${hours}`)
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(d => { if (alive && typeof d?.available === 'boolean') setThreadVoice(buildThreadVoiceModel(d)) })
+            .catch(() => { /* section absent on network failure */ })
+        return () => { alive = false }
+    }, [theme, hours])
 
     // #161 external-depth lane: on-demand DOC 2.0 enrichment for THIN topics.
     // null = not fetched; 'loading'; {available:false,...} = honest gap.
@@ -1362,6 +1379,78 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 )}
                             </div>
                         )}
+
+                        {/* VOICE MIX · WHO SPEAKS (council wish 18) — language +
+                            outlet-origin distribution over this thread's typed
+                            evidence members + self-voice vs the dominant subject
+                            country (ownership, not language — same definition as
+                            the country Voice Mix). */}
+                        {threadVoice?.kind === 'unavailable' && (
+                            <div className="theme-section thread-voice-section">
+                                <div className="theme-section-title">VOICE MIX · WHO SPEAKS</div>
+                                <p className="external-depth-status">Voice mix unavailable: {threadVoice.reason}</p>
+                            </div>
+                        )}
+                        {threadVoice?.kind === 'mix' && (() => {
+                            const m = threadVoice
+                            const sv = m.selfVoice
+                            const barColor = sv && (sv.pct >= 50 ? 'var(--accent-green, #34d399)'
+                                : sv.pct >= 20 ? 'var(--accent-amber, #fbbf24)'
+                                : 'var(--accent-red, #f87171)')
+                            return (
+                                <div className="theme-section thread-voice-section">
+                                    <div className="theme-section-title">
+                                        VOICE MIX · WHO SPEAKS
+                                        <span className="sentiment-info-icon" data-tip="Who carries this story: languages and outlet home countries over the thread's typed evidence members (a projection of the engine's member record, not all coverage). Self-voice is outlet OWNERSHIP, not language — a foreign outlet in the local language counts as soft power, never as a local voice.">?</span>
+                                    </div>
+                                    <div className="thread-voice-langs">
+                                        {m.languages.slice(0, 6).map(l => (
+                                            <span key={l.lang} className="thread-voice-chip">{l.lang} <strong>{l.n}</strong></span>
+                                        ))}
+                                        {m.languageUnknown > 0 && (
+                                            <span className="thread-voice-chip thread-voice-chip--unknown" data-tip="Signals with no language metadata (mostly GDELT). Reported, never guessed.">
+                                                unknown <strong>{m.languageUnknown}</strong>
+                                            </span>
+                                        )}
+                                    </div>
+                                    {sv && (
+                                        <div className="thread-voice-self">
+                                            <div className="thread-voice-self-head" style={{ color: barColor || undefined }}>
+                                                {sv.pct}%
+                                                <span className="thread-voice-self-sub">
+                                                    of attributable voices are {resolveCountryName(sv.subject, sv.subject)}&apos;s own press
+                                                </span>
+                                                {sv.thin && (
+                                                    <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${sv.attributable} voices carry a known outlet origin — treat this ratio as indicative only`}>
+                                                        thin
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="thread-voice-bar">
+                                                <div style={{ width: `${sv.pct}%`, background: barColor || undefined }} />
+                                            </div>
+                                            <div className="thread-voice-detail">
+                                                {sv.selfN} of {sv.attributable} attributable voices are domestic.
+                                                {sv.dominantOutsider && (
+                                                    <> Loudest outsider: <strong>{resolveCountryName(sv.dominantOutsider.origin, sv.dominantOutsider.origin)}</strong> ({sv.dominantOutsider.n}).</>
+                                                )}
+                                                {sv.softPct > 0 && (
+                                                    <> {sv.softPct}% is foreign media in the local language (soft power, not self-coverage).</>
+                                                )}
+                                                {sv.unattributed > 0 && (
+                                                    <> {sv.unattributed} of {m.voicesTotal} voices carry no outlet origin — excluded from these ratios, never assumed.</>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {!sv && (
+                                        <p className="thread-voice-detail">
+                                            {m.voicesTotal} voices measured — no dominant subject country or no attributable outlet origins, so a self-voice ratio is not computed.
+                                        </p>
+                                    )}
+                                </div>
+                            )
+                        })()}
 
                         {/* #237 community discussion — the forum/social posts behind
                             the thread. PUBLIC DISCUSSION, never evidence: the

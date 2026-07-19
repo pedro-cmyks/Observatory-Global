@@ -1487,6 +1487,32 @@
   color: #d3a95c;
 }
 
+/* Voice Mix · who speaks (council wish 18) — thread-scoped voice panel. */
+.thread-voice-langs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.thread-voice-chip {
+  padding: 2px 7px; border-radius: 4px; font-size: 10px; letter-spacing: 0.04em;
+  font-family: var(--font-mono, monospace);
+  background: rgba(148, 163, 184, 0.10); border: 1px solid rgba(148, 163, 184, 0.22);
+  color: var(--color-text-secondary);
+}
+.thread-voice-chip strong { color: var(--color-text-primary); font-weight: 600; }
+.thread-voice-chip--unknown { opacity: 0.75; cursor: help; }
+.thread-voice-self-head {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 1.25rem; font-weight: 700;
+}
+.thread-voice-self-sub {
+  font-size: 0.75rem; font-weight: 400; color: var(--color-text-muted);
+}
+.thread-voice-bar {
+  height: 6px; border-radius: 3px; overflow: hidden;
+  background: rgba(148, 163, 184, 0.14); margin: 6px 0 8px;
+}
+.thread-voice-bar > div { height: 100%; }
+.thread-voice-detail {
+  font-size: 0.75rem; color: var(--color-text-muted); line-height: 1.5;
+}
+
 /* #224 black-hole guard — measured thread-coherence warning (mixed/loose). */
 .theme-coherence-warn {
   display: flex; align-items: center; gap: 8px; margin-top: 8px;
