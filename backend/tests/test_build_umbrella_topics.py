@@ -126,3 +126,106 @@ def test_coincidental_rare_name_blocked_by_centroid_floor():
     sims = np.array([[1.0, 0.30], [0.30, 1.0]], dtype=np.float32)
     edges = _shared_actor_edges(actors, sims, max_actor_df=6, centroid_floor=0.82)
     assert edges == []
+
+
+# --- #261 slice 1 (2026-07-19): CHUNKED same-event judge --------------------
+# 830 labels in ONE prompt truncate the 4k-token response → unparseable → the
+# whole run degrades and every LLM verdict is lost. Chunk the judge; a failed
+# chunk degrades to its OWN sub-block complete-linkage; parsed chunks keep
+# their verdicts; ALL-chunks-fail still raises (existing degradation ladder).
+
+def _rows4():
+    return [
+        {"id": 10, "label": "Iran strike A", "category": "conflict", "crisis_relevant": True},
+        {"id": 20, "label": "Iran strike B", "category": "conflict", "crisis_relevant": True},
+        {"id": 30, "label": "Peru election dispute", "category": "elections", "crisis_relevant": False},
+        {"id": 40, "label": "Peru recount protest", "category": "elections", "crisis_relevant": False},
+    ]
+
+
+# 10~20 and 30~40 semantically close; the two pairs unrelated.
+_SIMS4 = np.array([
+    [1.00, 0.97, 0.10, 0.12],
+    [0.97, 1.00, 0.11, 0.13],
+    [0.10, 0.11, 1.00, 0.96],
+    [0.12, 0.13, 0.96, 1.00],
+], dtype=np.float32)
+
+
+def _fake_call_llm(responses_by_ids):
+    """responses_by_ids: {frozenset(ids in prompt): raw response or Exception}."""
+    calls = []
+
+    async def fake(provider, *, system, user, client=None, **kw):
+        ids = frozenset(int(line.split("\t")[0]) for line in user.splitlines()[1:])
+        calls.append(ids)
+        resp = responses_by_ids[ids]
+        if isinstance(resp, Exception):
+            raise resp
+        return resp
+
+    return fake, calls
+
+
+def test_small_pool_is_one_judge_call(monkeypatch):
+    fake, calls = _fake_call_llm({
+        frozenset({10, 20, 30, 40}):
+            '{"events":[{"name":"Iran","topic_ids":[10,20],"confidence":0.9}]}',
+    })
+    monkeypatch.setattr(_bu, "call_llm", fake)
+    groups = asyncio.run(_bu._llm_event_multi(
+        _rows4(), _SIMS4, min_confidence=0.7, threshold=0.95, chunk_size=120))
+    assert len(calls) == 1
+    assert groups == {0: [0, 1]}
+
+
+def test_chunked_judge_merges_per_chunk_verdicts(monkeypatch):
+    # chunk_size=2 with semantic ordering → chunks {10,20} and {30,40}
+    fake, calls = _fake_call_llm({
+        frozenset({10, 20}):
+            '{"events":[{"name":"Iran","topic_ids":[10,20],"confidence":0.9}]}',
+        frozenset({30, 40}):
+            '{"events":[{"name":"Peru","topic_ids":[30,40],"confidence":0.8}]}',
+    })
+    monkeypatch.setattr(_bu, "call_llm", fake)
+    groups = asyncio.run(_bu._llm_event_multi(
+        _rows4(), _SIMS4, min_confidence=0.7, threshold=0.95, chunk_size=2))
+    assert len(calls) == 2
+    assert groups == {0: [0, 1], 2: [2, 3]}
+
+
+def test_failed_chunk_degrades_to_subblock_linkage_others_survive(monkeypatch):
+    fake, calls = _fake_call_llm({
+        frozenset({10, 20}):
+            '{"events":[{"name":"Iran","topic_ids":[10,20],"confidence":0.9}]}',
+        frozenset({30, 40}): "NOT JSON — truncated garbage",
+    })
+    monkeypatch.setattr(_bu, "call_llm", fake)
+    groups = asyncio.run(_bu._llm_event_multi(
+        _rows4(), _SIMS4, min_confidence=0.7, threshold=0.95, chunk_size=2))
+    # LLM verdict kept for the parsed chunk; the failed chunk's 0.96 pair is
+    # recovered by ITS OWN complete-linkage (never lost, never cross-chained)
+    assert groups == {0: [0, 1], 2: [2, 3]}
+
+
+def test_all_chunks_failing_raises_for_the_ladder(monkeypatch):
+    fake, _calls = _fake_call_llm({
+        frozenset({10, 20}): "garbage",
+        frozenset({30, 40}): RuntimeError("boom"),
+    })
+    monkeypatch.setattr(_bu, "call_llm", fake)
+    with pytest.raises(RuntimeError):
+        asyncio.run(_bu._llm_event_multi(
+            _rows4(), _SIMS4, min_confidence=0.7, threshold=0.95, chunk_size=2))
+
+
+def test_semantic_chunk_order_colocates_neighbors():
+    from app.services.event_umbrella import semantic_chunk_order
+
+    sims = [
+        [1.0, 0.1, 0.9, 0.1],
+        [0.1, 1.0, 0.1, 0.2],
+        [0.9, 0.1, 1.0, 0.1],
+        [0.1, 0.2, 0.1, 1.0],
+    ]
+    assert semantic_chunk_order(sims) == [0, 2, 1, 3]

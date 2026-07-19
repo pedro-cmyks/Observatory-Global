@@ -142,9 +142,14 @@ cd "$ROOT_DIR"
 # them, so the 07-18/19 outages left the umbrella layer stale. Restore the
 # abort-on-outage behavior with ATLAS_UMBRELLA_DEGRADED_FALLBACK=off; either
 # way a failed judge NEVER wipes existing umbrellas.
+# 2026-07-19 (#261 slice 1): the judge is CHUNKED (~120 labels/prompt over a
+# semantic co-location ordering) — one 830-label prompt truncated the 4k-token
+# response and lost every LLM verdict to the degraded fallback. A failed chunk
+# degrades alone; parsed chunks keep their verdicts.
 $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
   --linkage "${ATLAS_UMBRELLA_LINKAGE:-llm-event}" \
   --threshold "${ATLAS_UMBRELLA_THRESHOLD:-0.98}" \
+  --judge-chunk-size "${ATLAS_UMBRELLA_JUDGE_CHUNK:-120}" \
   || echo "[scoped-snapshot] umbrella build failed (non-fatal)" >&2
 
 # Step 3.5: project the just-refreshed thread identities into the shared typed

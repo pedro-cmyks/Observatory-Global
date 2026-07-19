@@ -34,14 +34,14 @@ import numpy as np
 try:  # dual run-context: ROOT_DIR (backend.scripts.*) vs backend/ (scripts.*)
     from app.services.event_umbrella import (
         SAME_EVENT_SYSTEM, parse_same_event_response, plan_event_umbrellas,
-        plans_to_index_groups, same_event_user,
+        plans_to_index_groups, same_event_user, semantic_chunk_order,
     )
     from app.services.label_fold import label_fold_groups, merge_index_groups
     from scripts.ensemble.model_clients import call_llm
 except ImportError:  # pragma: no cover
     from backend.app.services.event_umbrella import (
         SAME_EVENT_SYSTEM, parse_same_event_response, plan_event_umbrellas,
-        plans_to_index_groups, same_event_user,
+        plans_to_index_groups, same_event_user, semantic_chunk_order,
     )
     from backend.app.services.label_fold import (
         label_fold_groups, merge_index_groups,
@@ -197,28 +197,79 @@ async def _resolve_event_groups(judge, sims: "np.ndarray", threshold: float,
                 "semantic-complete-linkage (llm-degraded)")
 
 
-async def _llm_event_multi(rows, *, min_confidence: float) -> dict[int, list[int]]:
+async def _llm_event_multi(rows, sims: "np.ndarray", *, min_confidence: float,
+                           threshold: float,
+                           chunk_size: int = 120) -> dict[int, list[int]]:
     """Gap-2: group active topics into SAME-EVENT umbrellas via the LLM judge —
     reconnecting the fragments the semantic cut misses (US strikes / Hormuz /
     drone attack) WITHOUT chaining unrelated topics (the shared-actor negative
     result). Returns the same {root_idx: [member_idx]} shape as _complete_linkage
-    so the entire write path is reused. RAISES on any LLM/parse failure so the
-    caller aborts before the destructive parent_id rewrite — a failed grouping
-    must never wipe existing umbrellas."""
+    so the entire write path is reused.
+
+    #261 slice 1 (2026-07-19): the judge is CHUNKED. 830 labels in ONE prompt
+    truncated the 4k-token response → unparseable → the 07-18/19 nights lost
+    EVERY LLM verdict to the degraded fallback. Now: semantic ordering
+    co-locates likely same-event topics, contiguous chunks of ``chunk_size``
+    are judged independently, and failure is per-chunk:
+
+      chunk parses      → its events join the shared plan pass
+      chunk fails       → ITS OWN sub-block complete-linkage (deterministic,
+                          never cross-chunk chained) emitted as synthetic
+                          full-confidence events — the pairs are recovered,
+                          honestly, without the judge
+      ALL chunks fail   → raise (the caller's degradation ladder decides)
+
+    Cross-chunk merges the judge can no longer see are the accepted cost of
+    parseability; the label-fold pre-pass + semantic ordering mitigate."""
     topics = [
         {"id": int(r["id"]), "label": r["label"], "category": r["category"],
          "crisis_relevant": r["crisis_relevant"], "is_umbrella": False}
         for r in rows
     ]
+    n_topics = len(topics)
+    if n_topics <= chunk_size:
+        chunks = [list(range(n_topics))]
+    else:
+        order = semantic_chunk_order(sims)
+        chunks = [order[k:k + chunk_size] for k in range(0, n_topics, chunk_size)]
+
+    all_events: list[dict] = []
+    failed_chunks: list[list[int]] = []
     async with httpx.AsyncClient(timeout=90.0) as client:
-        raw = await call_llm(
-            "deepseek", system=SAME_EVENT_SYSTEM, user=same_event_user(topics),
-            client=client, max_tokens=4000, temperature=0.0, json_mode=True,
-        )
-    events = parse_same_event_response(raw)
-    if events is None:  # unparseable/empty response — abort, never wipe
-        raise RuntimeError("same-event judge response was unparseable")
-    plans = plan_event_umbrellas(topics, events, min_confidence=min_confidence)
+        for idxs in chunks:
+            sub = [topics[i] for i in idxs]
+            try:
+                raw = await call_llm(
+                    "deepseek", system=SAME_EVENT_SYSTEM, user=same_event_user(sub),
+                    client=client, max_tokens=4000, temperature=0.0, json_mode=True,
+                )
+                events = parse_same_event_response(raw)
+            except Exception as exc:  # LLM/transport failure = this chunk failed
+                print(f"same-event judge chunk failed ({exc!r})", file=sys.stderr)
+                events = None
+            if events is None:
+                failed_chunks.append(idxs)
+            else:
+                all_events.extend(events)
+
+    if len(failed_chunks) == len(chunks):
+        raise RuntimeError(
+            f"same-event judge response was unparseable on ALL {len(chunks)} chunk(s)")
+
+    for idxs in failed_chunks:
+        sub_sims = sims[np.ix_(idxs, idxs)]
+        for members in _complete_linkage(sub_sims, threshold).values():
+            all_events.append({
+                "name": "Semantic near-duplicate group (judge-degraded chunk)",
+                "topic_ids": [topics[idxs[m]]["id"] for m in members],
+                "confidence": 1.0,
+            })
+    if failed_chunks:
+        print(f"same-event judge: {len(failed_chunks)}/{len(chunks)} chunk(s) "
+              f"unparseable — degraded those chunks to sub-block "
+              f"complete-linkage @{threshold}", file=sys.stderr)
+
+    plans = plan_event_umbrellas(topics, all_events, min_confidence=min_confidence)
     return plans_to_index_groups([int(r["id"]) for r in rows], plans)
 
 
@@ -229,6 +280,10 @@ async def main() -> None:
                          "llm-event=LLM same-event judge (gap-2, reconnects fragments)")
     ap.add_argument("--min-event-confidence", type=float, default=0.7,
                     help="llm-event: minimum judge confidence to form an umbrella")
+    ap.add_argument("--judge-chunk-size", type=int, default=120,
+                    help="llm-event: topics per judge prompt (#261 — one 830-label "
+                         "prompt truncates the response; chunks are judged "
+                         "independently over a semantic co-location ordering)")
     ap.add_argument("--threshold", type=float, default=0.95,
                     help="cosine similarity to merge two topics into one umbrella (same-event cut)")
     ap.add_argument("--max-actor-df", type=int, default=2,
@@ -292,7 +347,9 @@ async def main() -> None:
             try:
                 multi, basis = await _resolve_event_groups(
                     lambda: _llm_event_multi(
-                        rows, min_confidence=args.min_event_confidence),
+                        rows, sims, min_confidence=args.min_event_confidence,
+                        threshold=args.threshold,
+                        chunk_size=args.judge_chunk_size),
                     sims, args.threshold, degraded_ok=degraded_ok)
             except UmbrellaGroupingUnavailable as exc:
                 # Fallback explicitly disabled — NEVER wipe umbrellas on an

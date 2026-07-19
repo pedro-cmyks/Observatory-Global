@@ -82,6 +82,34 @@ def _first_json_object(text: str) -> str | None:
     return text[start : end + 1]
 
 
+def semantic_chunk_order(sims, *, floor: float = 0.7) -> list[int]:
+    """Order topic indices so semantic neighbors are ADJACENT (greedy leader
+    pass): each unvisited index pulls its unvisited neighbors above ``floor``
+    right behind it, nearest first.
+
+    #261 slice 1 — the same-event judge is CHUNKED (830 labels in one prompt
+    truncate the 4k-token response); contiguous chunks over this ordering keep
+    likely same-event topics in the SAME chunk, so chunking costs little
+    recall. Pure and numpy-free: ``sims`` is any 2D indexable of similarities.
+    """
+    n = len(sims)
+    visited = [False] * n
+    order: list[int] = []
+    for i in range(n):
+        if visited[i]:
+            continue
+        visited[i] = True
+        order.append(i)
+        neighbors = sorted(
+            (j for j in range(n) if not visited[j] and float(sims[i][j]) >= floor),
+            key=lambda j: -float(sims[i][j]),
+        )
+        for j in neighbors:
+            visited[j] = True
+            order.append(j)
+    return order
+
+
 def plans_to_index_groups(
     ids_in_order: list[int], plans: list["UmbrellaPlan"]
 ) -> dict[int, list[int]]:
