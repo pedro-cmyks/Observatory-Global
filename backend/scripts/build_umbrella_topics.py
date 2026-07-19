@@ -148,6 +148,55 @@ def _shared_actor_edges(
     return edges
 
 
+class UmbrellaGroupingUnavailable(RuntimeError):
+    """llm-event grouping failed AND the degraded fallback is disabled —
+    the caller must abort before the destructive parent_id rewrite."""
+
+
+def _env_flag(name: str, *, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in ("off", "0", "false", "no")
+
+
+async def _resolve_event_groups(judge, sims: "np.ndarray", threshold: float,
+                                *, degraded_ok: bool):
+    """Resolve the llm-event grouping with an honest degradation ladder.
+
+    2026-07-19 fix: the degraded path used to be gated on non-empty label-fold
+    groups — after THE RELABEL removed near-duplicate labels, a judge outage
+    hit the abort branch and left the umbrella layer stale ("aborting before
+    the destructive rebuild", scoped-snapshot.err.log:2152) even though the
+    deterministic semantic complete-linkage was available all along. The
+    degrade decision is now independent of label-fold state:
+
+      judge ok + non-empty  → (groups, "llm-same-event-v1")
+      judge fails/empty     → degraded_ok: (complete-linkage groups,
+                              "semantic-complete-linkage (llm-degraded)")
+                              else: raise UmbrellaGroupingUnavailable → the
+                              caller aborts BEFORE the parent_id wipe.
+
+    An EMPTY-but-parseable verdict counts as degraded (adversarial review
+    2026-07-14: hallucinated ids / all-below-confidence must never read as a
+    genuine "flatten everything").
+    """
+    try:
+        multi = await judge()
+        if not multi:
+            raise RuntimeError("judge grounded 0 umbrella groups")
+        return multi, "llm-same-event-v1"
+    except Exception as exc:
+        if not degraded_ok:
+            raise UmbrellaGroupingUnavailable(repr(exc)) from exc
+        print(f"llm-event grouping FAILED ({exc!r}) — DEGRADED to the "
+              f"deterministic semantic complete-linkage (no abort; set "
+              f"ATLAS_UMBRELLA_DEGRADED_FALLBACK=off to restore the abort)",
+              file=sys.stderr)
+        return (_complete_linkage(sims, threshold),
+                "semantic-complete-linkage (llm-degraded)")
+
+
 async def _llm_event_multi(rows, *, min_confidence: float) -> dict[int, list[int]]:
     """Gap-2: group active topics into SAME-EVENT umbrellas via the LLM judge —
     reconnecting the fragments the semantic cut misses (US strikes / Hormuz /
@@ -234,31 +283,25 @@ async def main() -> None:
                   f"{sum(len(v) for v in fold_groups.values())} near-duplicate labels")
 
         if args.linkage == "llm-event":
+            # Degrade-by-default (2026-07-19): a judge outage falls back to the
+            # deterministic semantic cut INDEPENDENTLY of label-fold state —
+            # the 07-18/19 nights aborted here because the old degraded path
+            # required non-empty fold_groups, which THE RELABEL had emptied.
+            degraded_ok = _env_flag("ATLAS_UMBRELLA_DEGRADED_FALLBACK",
+                                    default=True)
             try:
-                multi = await _llm_event_multi(rows, min_confidence=args.min_event_confidence)
-                if not multi:
-                    # An EMPTY grouping from a parseable verdict = a DEGRADED
-                    # response (ids hallucinated / below confidence), NOT a
-                    # genuine flatten (adversarial review 2026-07-14).
-                    raise RuntimeError("judge grounded 0 umbrella groups")
-                basis = "llm-same-event-v1"
-            except Exception as exc:  # LLM/network/parse failure — NEVER wipe umbrellas
-                if fold_on and fold_groups:
-                    # DEGRADED PATH (Lane B): the judge failed, but the label fold
-                    # + the semantic cut are deterministic and real — write those
-                    # instead of aborting, so duplicate-label fragments still fold
-                    # on judge-outage nights (the 07-17 unparseable-response class).
-                    print(f"llm-event grouping FAILED ({exc!r}) — DEGRADED to "
-                          f"label-fold + semantic complete-linkage (no abort; "
-                          f"set ATLAS_UMBRELLA_LABEL_FOLD=off to restore abort)",
-                          file=sys.stderr)
-                    multi = _complete_linkage(sims, args.threshold)
-                    basis = "semantic-complete-linkage (llm-degraded)"
-                else:
-                    print(f"llm-event grouping FAILED ({exc!r}) — aborting before the "
-                          f"destructive rebuild; existing parent_id/umbrellas untouched",
-                          file=sys.stderr)
-                    sys.exit(3)
+                multi, basis = await _resolve_event_groups(
+                    lambda: _llm_event_multi(
+                        rows, min_confidence=args.min_event_confidence),
+                    sims, args.threshold, degraded_ok=degraded_ok)
+            except UmbrellaGroupingUnavailable as exc:
+                # Fallback explicitly disabled — NEVER wipe umbrellas on an
+                # LLM outage; existing parent_id/umbrellas stay untouched.
+                print(f"llm-event grouping FAILED ({exc}) — aborting before the "
+                      f"destructive rebuild; existing parent_id/umbrellas "
+                      f"untouched (ATLAS_UMBRELLA_DEGRADED_FALLBACK=off)",
+                      file=sys.stderr)
+                sys.exit(3)
         else:
             multi = _complete_linkage(sims, args.threshold)
             basis = "semantic-complete-linkage"
