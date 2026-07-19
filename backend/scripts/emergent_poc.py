@@ -176,6 +176,60 @@ def whiten_all_but_top(embs: np.ndarray, k: int) -> np.ndarray:
     return apply_whiten_all_but_top(embs, mean, top)
 
 
+def fit_pca_reduce(embs: np.ndarray, dim: int) -> tuple[np.ndarray, np.ndarray]:
+    """Fit a per-batch PCA basis for dimensionality reduction.
+
+    Returns (mean, components) where `mean` is the batch centroid and
+    `components` is the (<=dim, d) row-orthonormal matrix of the top principal
+    directions of the centered batch (numpy SVD — same primitive as the
+    universe layout, no sklearn dependency). Apply with `apply_pca_reduce`.
+    """
+    mean = embs.mean(axis=0)
+    x = embs - mean
+    _, _, vt = np.linalg.svd(x, full_matrices=False)
+    return mean, vt[:dim]
+
+
+def apply_pca_reduce(embs: np.ndarray, mean: np.ndarray,
+                     components: np.ndarray) -> np.ndarray:
+    """Center by `mean`, project onto `components`, L2-renormalize.
+
+    Renormalization follows the archive-engine PCA-128 precedent
+    (archive_cluster_offline.cluster_scope, 2026-07-10): HDBSCAN runs
+    euclidean, and the pipeline relies on euclidean-on-unit-sphere being
+    monotone in cosine (_cluster's contract) — so the reduced coordinates are
+    put back on the unit sphere, mirroring apply_whiten_all_but_top."""
+    proj = (embs - mean) @ components.T
+    n = np.linalg.norm(proj, axis=1, keepdims=True)
+    n[n == 0] = 1.0
+    return (proj / n).astype(np.float32)
+
+
+def pca_reduce(embs: np.ndarray, dim: int) -> np.ndarray:
+    """Per-batch PCA reduction of the CLUSTERING input to `dim` coordinates.
+
+    A cost lever, not a geometry lever: HDBSCAN's brute MST is O(n²·d), so
+    768→128 is ~6× cheaper per country while the top-`dim` principal
+    coordinates preserve the between-story contrast density clustering reads
+    (archive engine precedent: PCA-128 + renormalize, cluster_scope above).
+
+    No-op (returns the SAME object) when:
+      - dim <= 0 (feature off),
+      - dim >= embs.shape[1] (nothing to reduce),
+      - embs.shape[0] <= dim (centered rank <= n-1 <= dim: the projection
+        would be a pure rotation — zero speed win, pointless geometry change).
+
+    The fit is per batch: in the scoped snapshot the batch IS the country, so
+    this is a PER-COUNTRY transform re-fit each run — cluster boundaries may
+    drift run-to-run at the margins (same class as the per-country whitening
+    fit; identity/centroids/gate stay in raw e5 by construction).
+    """
+    if dim <= 0 or dim >= embs.shape[1] or embs.shape[0] <= dim:
+        return embs
+    mean, components = fit_pca_reduce(embs, dim)
+    return apply_pca_reduce(embs, mean, components)
+
+
 def _cluster(embs: np.ndarray, min_cluster_size: int, min_samples: int,
              selection_method: str = "leaf"):
     """HDBSCAN on L2-normalized e5 vectors.

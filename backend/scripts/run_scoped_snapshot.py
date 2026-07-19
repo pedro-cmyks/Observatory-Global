@@ -69,7 +69,7 @@ import numpy as np
 from backend.scripts.cluster_subproc import ClusterTimeout, run_cluster_in_subprocess
 from backend.scripts.emergent_poc import (
     _apply_gate, _clean_and_dedupe, _cluster, _cluster_stats, _label_all, _load_gate,
-    whiten_all_but_top,
+    pca_reduce, whiten_all_but_top,
 )
 from backend.scripts.snapshot_budget import (
     BudgetContext,
@@ -104,9 +104,9 @@ _COUNTRIES = """
     SELECT s.country_code, COUNT(*) AS n
     FROM signal_embeddings e JOIN signals_v2 s ON s.id = e.signal_id
     WHERE s.country_code IS NOT NULL AND s.country_code <> 'XX'
-      AND s.timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+      AND s.timestamp > $1::timestamptz AND s.timestamp <= $2::timestamptz
       AND s.headline IS NOT NULL AND length(s.headline) >= 20
-    GROUP BY s.country_code HAVING COUNT(*) >= $2
+    GROUP BY s.country_code HAVING COUNT(*) >= $3
     ORDER BY n DESC
 """
 # Keyset-paginated pull. The single-shot `se.vec::text` fetch of the biggest
@@ -138,22 +138,30 @@ _FETCH_PAGE_ROWS = int(os.environ.get("ATLAS_SCOPED_FETCH_PAGE_ROWS", "15000") o
 _MAX_BIGINT = (1 << 63) - 1  # keyset sentinel: first page has no cursor upper bound
 
 
-async def _fetch_country_embeddings(conn, cc, hours, cap, page_rows):
+async def _fetch_country_embeddings(conn, cc, hours, cap, page_rows,
+                                    as_of: datetime | None = None):
     """Keyset-paginate the scoped pull so no single statement times out.
 
     Returns the same row set (id, headline, country_code, source_name, timestamp,
     emb) the old single-shot _FETCH did, in (timestamp DESC, id DESC) order, with
     `emb` a binary-decoded list[float] (not text). cap>0 stops after `cap` newest
     rows (old LIMIT NULLIF($3,0) semantics); cap<=0 traverses every eligible row.
+
+    as_of (harness knob, --as-of): FREEZES the window to (as_of - hours,
+    as_of] — the keyset cursor starts at as_of instead of the open sentinel,
+    so a control/treatment dry-run pair launched with the same as_of pulls the
+    IDENTICAL row set regardless of wall-clock drift between the two runs
+    (the 27h window-shift confound of the 2026-07-18 whitening gold gate).
+    None = live behavior, byte-identical.
     """
     out: list = []
-    last_ts = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+    last_ts = as_of or datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
     last_id = _MAX_BIGINT
     remaining = cap if cap and cap > 0 else None
     # Freeze the window's lower bound ONCE — NOW() re-evaluated per page made
     # the 168h cutoff slide forward during long paginated pulls (verify-gate
     # note, ~0.04% of window on a contended US pull; now exactly zero).
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = (as_of or datetime.now(timezone.utc)) - timedelta(hours=hours)
     while True:
         limit = page_rows if remaining is None else min(page_rows, remaining)
         if limit <= 0:
@@ -195,6 +203,31 @@ def _whiten_input(embs: np.ndarray, k: int) -> np.ndarray:
     return whiten_all_but_top(embs, k)
 
 
+def _env_pca_dim() -> int:
+    """ATLAS_CLUSTER_PCA_DIM → int; garbage/negative fall to 0 (off)."""
+    try:
+        d = int(os.environ.get("ATLAS_CLUSTER_PCA_DIM", "0"))
+    except ValueError:
+        return 0
+    return d if d > 0 else 0
+
+
+def _pca_input(embs: np.ndarray, dim: int) -> np.ndarray:
+    """Per-country PCA reduction of the HDBSCAN INPUT only (cost lever).
+
+    dim=0 returns the SAME object (zero-cost, byte-identical default path).
+    Applied AFTER any whitening — the composed input transform is
+    _pca_input(_whiten_input(embs, k), dim). Like whitening, this touches
+    ONLY the vectors HDBSCAN sees: centroids (_cluster_stats), the precision
+    gate (_apply_gate) and everything persisted stay raw e5. The fit is per
+    country (the batch IS the country) and re-fit each run — see
+    emergent_poc.pca_reduce for the no-op guards and drift note.
+    """
+    if dim <= 0:
+        return embs
+    return pca_reduce(embs, dim)
+
+
 def _env_int(name: str, default: int) -> int:
     """Garbage-tolerant env int (same contract as _env_whiten_k)."""
     try:
@@ -212,9 +245,11 @@ def _env_float(name: str, default: float) -> float:
 
 
 async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n,
-                            whiten_k: int = 0, page_rows: int | None = None,
+                            whiten_k: int = 0, pca_dim: int = 0,
+                            page_rows: int | None = None,
                             budget: BudgetContext | None = None,
-                            report: dict | None = None):
+                            report: dict | None = None,
+                            as_of: datetime | None = None):
     """Scoped pull → (budget plan) → cluster → gate → top-N.
 
     Returns (clusters, embs, rows) or None. With a BudgetContext, the input
@@ -226,7 +261,8 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
     exhausted even after ONE halved retry. budget=None = exact legacy path.
     """
     recs = await _fetch_country_embeddings(conn, cc, hours, cap,
-                                           page_rows or _FETCH_PAGE_ROWS)
+                                           page_rows or _FETCH_PAGE_ROWS,
+                                           as_of=as_of)
     if len(recs) < mcs * 2:
         return None
     rows = _clean_and_dedupe([{k: r[k] for k in
@@ -253,7 +289,7 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
     embs = np.array([emb_by_id[int(r["id"])] for r in rows], dtype=np.float32)
     del emb_by_id
 
-    cluster_input = _whiten_input(embs, whiten_k)
+    cluster_input = _pca_input(_whiten_input(embs, whiten_k), pca_dim)
     hard_timeout = plan.hard_timeout_s if plan is not None else 0.0
     use_subproc = (budget is not None and budget.subproc_min_n > 0
                    and len(rows) >= budget.subproc_min_n)
@@ -275,8 +311,8 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
                     f"below the {budget.min_cluster_n} floor") from None
             rows = rows[:half]
             embs = embs[:half]
-            # NB: slice of the already-fitted transform (whiten fits on the
-            # larger slice; acceptable — whiten defaults off, retry is rare).
+            # NB: slice of the already-fitted transform (whiten/PCA fit on
+            # the larger slice; acceptable — both default off, retry is rare).
             cluster_input = cluster_input[:half]
             halved = True
             t0 = time.monotonic()
@@ -299,6 +335,7 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
             "capped": bool(plan.capped) if plan is not None else False,
             "halved": halved, "subproc": use_subproc,
             "cluster_seconds": round(dt, 1),
+            "input_dim": int(cluster_input.shape[1]),
             "hard_timeout_s": round(hard_timeout),
         })
 
@@ -361,6 +398,16 @@ async def main() -> None:
     ap.add_argument("--whiten-k", type=int, default=_env_whiten_k(),
                     help="all-but-top(k) whitening of the HDBSCAN input "
                          "(env ATLAS_CLUSTER_WHITEN_K; 0 = off, byte-identical)")
+    ap.add_argument("--pca-dim", type=int, default=_env_pca_dim(),
+                    help="per-country PCA reduction of the HDBSCAN input to this "
+                         "many dims, applied AFTER any whitening (env "
+                         "ATLAS_CLUSTER_PCA_DIM; 0 = off, byte-identical). Cost "
+                         "lever: brute HDBSCAN is O(n²·d), 768→128 ≈ 6× cheaper")
+    ap.add_argument("--as-of", default="",
+                    help="ISO timestamp freezing the window to (as_of - hours, "
+                         "as_of] and stamping snapshot_at — harness knob so a "
+                         "control/treatment dry-run pair sees the IDENTICAL "
+                         "corpus (empty = live NOW, byte-identical)")
     ap.add_argument("--dump-json", default="",
                     help="write per-country cluster payloads (members, cohesion, "
                          "gate verdicts) to this path — diagnostic, works with --dry-run")
@@ -418,7 +465,16 @@ async def main() -> None:
     except ValueError:  # non-main thread (tests) — fine without a handler
         pass
 
-    snapshot_at = datetime.now(timezone.utc)
+    as_of: datetime | None = None
+    if args.as_of:
+        try:
+            as_of = datetime.fromisoformat(args.as_of.replace("Z", "+00:00"))
+        except ValueError:
+            print(f"--as-of not ISO: {args.as_of!r}", file=sys.stderr); sys.exit(2)
+        if as_of.tzinfo is None:
+            as_of = as_of.replace(tzinfo=timezone.utc)
+
+    snapshot_at = as_of or datetime.now(timezone.utc)
     t0 = time.time()
     t_mono = time.monotonic()
     run_budget_s = args.run_budget_min * 60.0 if args.run_budget_min > 0 else 0.0
@@ -426,10 +482,10 @@ async def main() -> None:
     rate_est = RateEstimator(initial=args.rate_n2_per_s)
 
     # Checkpoint/rotation only for full unattended passes — never for
-    # --countries test slices or dry runs (a dry run must leave no state a
-    # real run could resume).
+    # --countries test slices, dry runs (a dry run must leave no state a
+    # real run could resume) or frozen-window harness runs (--as-of).
     checkpoint_path = rotation_path = None
-    if args.state_dir and not args.dry_run and not args.countries:
+    if args.state_dir and not args.dry_run and not args.countries and as_of is None:
         sdir = Path(args.state_dir)
         try:
             sdir.mkdir(parents=True, exist_ok=True)
@@ -457,7 +513,14 @@ async def main() -> None:
         if args.countries:
             ccs = [c.strip().upper() for c in args.countries.split(",") if c.strip()]
         else:
-            rows = await conn.fetch(_COUNTRIES, args.hours, args.min_embedded)
+            # anchor = as_of (frozen harness window) or live NOW; the far-future
+            # sentinel keeps the default upper bound open, byte-identical with
+            # the old `> NOW() - hours` (no upper-bound) semantics.
+            anchor = as_of or datetime.now(timezone.utc)
+            upper = as_of or datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+            rows = await conn.fetch(_COUNTRIES,
+                                    anchor - timedelta(hours=args.hours),
+                                    upper, args.min_embedded)
             ccs = [r["country_code"] for r in rows]
             if args.limit_countries:
                 ccs = ccs[: args.limit_countries]
@@ -486,7 +549,8 @@ async def main() -> None:
         )
         print(f"snapshot_at={snapshot_at.isoformat()} · {len(ccs)} countries · "
               f"{scope} · {corpus} · dry_run={args.dry_run} · "
-              f"whiten_k={args.whiten_k}", file=sys.stderr)
+              f"whiten_k={args.whiten_k} · pca_dim={args.pca_dim}"
+              f"{' · FROZEN WINDOW (as-of)' if as_of else ''}", file=sys.stderr)
         if budget_enabled:
             print(f"time budget: run={args.run_budget_min:.0f}min · "
                   f"country={args.country_budget_s:.0f}s · "
@@ -544,7 +608,9 @@ async def main() -> None:
                                                       args.min_kept,
                                                       args.top_per_country,
                                                       whiten_k=args.whiten_k,
-                                                      budget=bctx, report=report)
+                                                      pca_dim=args.pca_dim,
+                                                      budget=bctx, report=report,
+                                                      as_of=as_of)
                         last_ex = None
                         break
                     except (CountryDeferred, CountryTimeGap):
@@ -591,7 +657,15 @@ async def main() -> None:
             if res is None:
                 print(f"  [{done}/{len(ccs)}] {cc}: no gated clusters", file=sys.stderr, flush=True)
                 if args.dump_json:
-                    dump_countries.append({"country": cc, "clusters": []})
+                    # cluster_seconds present when HDBSCAN actually ran (the
+                    # gate kept nothing) — the speed harness sums it; None on
+                    # the too-few-rows early returns.
+                    dump_countries.append({
+                        "country": cc, "clusters": [],
+                        "n_signals": report.get("n_use"),
+                        "cluster_seconds": report.get("cluster_seconds"),
+                        "input_dim": report.get("input_dim"),
+                    })
                 base += _ID_OFFSET
                 processed += 1
                 if checkpoint_path is not None:
@@ -651,6 +725,8 @@ async def main() -> None:
                 dump_countries.append({
                     "country": cc,
                     "n_signals": len(rows),
+                    "cluster_seconds": report.get("cluster_seconds"),
+                    "input_dim": report.get("input_dim"),
                     "time_capped": bool(report.get("capped")
                                         or report.get("halved")),
                     "clusters": [{
@@ -675,6 +751,8 @@ async def main() -> None:
                     "snapshot_at": snapshot_at.isoformat(),
                     "hours": args.hours,
                     "whiten_k": args.whiten_k,
+                    "pca_dim": args.pca_dim,
+                    "as_of": args.as_of or None,
                     "mcs": args.mcs, "ms": args.ms, "min_kept": args.min_kept,
                     "dry_run": args.dry_run,
                     "countries_attempted": len(ccs),
