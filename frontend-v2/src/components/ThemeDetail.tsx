@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getThemeLabel, getThemeIcon, resolveThreadLabel } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
+import { formatAttachSimilarity, laneTag, truncationNote } from '../lib/discussionHonesty'
 import { CountQualifierChip } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
@@ -236,7 +237,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // #237 community discussion: the forum/social posts behind the thread,
     // as a non-evidence claim-origin layer. Auto-loads with the detail.
     const [discussion, setDiscussion] = useState<
-        null | { count: number; items: Array<{ headline: string; platform: string; url: string; origin: string; lang: string }> }>(null)
+        null | { count: number; noise_count?: number; items: Array<{ headline: string; platform: string; url: string; origin: string; lang: string; similarity?: number; lane?: string }> }>(null)
     useEffect(() => {
         let alive = true
         fetch(`/api/v2/topic/${encodeURIComponent(theme)}/discussion`)
@@ -1370,10 +1371,27 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <div className="theme-section-title">PUBLIC DISCUSSION · UNVERIFIED</div>
                                 <p className="external-depth-caveat" data-tip="Non-traditional / forum / social sources (Bluesky, Lemmy). Shows emergence and claim origin — never evidence, never corroboration.">
                                     {discussion.count} posts from forum/social — claim-origin layer, not evidence
+                                    {truncationNote(Math.min(discussion.items.length, 10), discussion.count) && (
+                                        <> · {truncationNote(Math.min(discussion.items.length, 10), discussion.count)}</>
+                                    )}
                                 </p>
                                 {discussion.items.slice(0, 10).map((it, i) => (
                                     <div key={i} className="community-discussion-item">
-                                        <span className="cd-platform">{it.platform?.replace(/^lemmy\//, '')}{it.origin ? ` · ${it.origin}` : ''}</span>
+                                        <span className="cd-platform">
+                                            {it.platform?.replace(/^lemmy\//, '')}{it.origin ? ` · ${it.origin}` : ''}
+                                            {/* #248 relevance honesty: MEASURED attach similarity —
+                                                absent when the engine recorded none (never faked). */}
+                                            {formatAttachSimilarity(it.similarity) && (
+                                                <span className="thread-forum-sim" data-tip="Measured semantic similarity between this post and the thread — how confidently it was attached. Not verification.">
+                                                    {formatAttachSimilarity(it.similarity)}
+                                                </span>
+                                            )}
+                                            {laneTag(it.lane) && (
+                                                <span className="cd-noise-lane" data-tip="This post reads as hobby/sports/entertainment/lifestyle rather than news discussion. It sorts below news-y posts but is never hidden.">
+                                                    {laneTag(it.lane)}
+                                                </span>
+                                            )}
+                                        </span>
                                         <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.headline)}</a>
                                     </div>
                                 ))}
