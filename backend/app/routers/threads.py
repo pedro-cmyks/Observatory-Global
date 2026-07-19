@@ -129,6 +129,41 @@ async def get_topic_discussion(
             conn, base, V1_COMPAT_ENGINE_VERSION)
 
 
+@router.get("/topic/{topic_id}/voice")
+async def get_topic_voice(
+    topic_id: str,
+    hours: int = Query(168, ge=1, le=720),
+) -> dict:
+    """Thread-scoped Voice Mix (council wish 18): who SPEAKS inside this
+    thread — language + outlet-origin distribution over its typed evidence
+    members, plus the self-voice relation vs the dominant subject country
+    (ownership, not language; same relation() as the country Voice Mix).
+    Degrades to available=false with a reason, never a 500."""
+    from app import db
+    from app.services.thread_voice import fetch_thread_voice
+    base = topic_id.strip().split("--", 1)[0]
+    cache_key = f"topic:voice:{base}:{hours}"
+    cached = await _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    envelope = {
+        "contract": "thread-voice-v0",
+        "topic_id": base,
+        "hours": hours,
+        "engine_version": V1_COMPAT_ENGINE_VERSION,
+    }
+    if db.pool is None:
+        return {**envelope, "available": False,
+                "reason": "database unavailable"}
+    async with db.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 8000")
+        voice = await fetch_thread_voice(
+            conn, base, V1_COMPAT_ENGINE_VERSION, hours)
+    payload = {**envelope, **voice}
+    await _cache_set(cache_key, payload, DETAIL_CACHE_TTL)
+    return payload
+
+
 @router.get("/threads/{thread_id}")
 async def get_thread_detail(
     thread_id: str,
