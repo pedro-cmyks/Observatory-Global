@@ -1,0 +1,2264 @@
+{
+ "summary": {
+  "totals": {
+   "marginal_universe": 1247,
+   "marginal_sampled": 40,
+   "control_sampled": 40
+  },
+  "marginal": {
+   "n": 40,
+   "errors": 0,
+   "same_story_yes": 23,
+   "precision_pct": 57.5
+  },
+  "marginal_nonlatin": {
+   "n": 20,
+   "errors": 0,
+   "same_story_yes": 13,
+   "precision_pct": 65.0
+  },
+  "marginal_other": {
+   "n": 20,
+   "errors": 0,
+   "same_story_yes": 10,
+   "precision_pct": 50.0
+  },
+  "control": {
+   "n": 40,
+   "errors": 0,
+   "same_story_yes": 25,
+   "precision_pct": 62.5
+  },
+  "control_nonlatin": {
+   "n": 20,
+   "errors": 0,
+   "same_story_yes": 14,
+   "precision_pct": 70.0
+  },
+  "control_other": {
+   "n": 20,
+   "errors": 0,
+   "same_story_yes": 11,
+   "precision_pct": 55.0
+  },
+  "vendor_spot_check": {
+   "n": 20,
+   "agree": 19,
+   "agree_pct": 95.0
+  }
+ },
+ "clusters": [
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700084,
+   "label": "САД извршија нови воздушни напади врз Иран по загинувањето на двајцата американски војници",
+   "kept_size": 11,
+   "cohesion": 0.9618303179740906,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "САД и Иран разменија напади откако двајца американски војници беа убиени во Јордан",
+    "САД извршија нови воздушни напади врз Иран откако загинаа американски војници во Јордан",
+    "САД извршија нови воздушни напади врз Иран по загинувањето на двајцата американски војници во Јордан",
+    "САД ја завршија осмата серија воздушни напади врз Иран, Техеран возврати со удари во Кувајт",
+    "Централна команда САД: Два припадника америчке војске су погинула, а један се води као нестао током напада Ирана на америчку базу у Јордану",
+    "Двајца американски војници се убиени, а еден засега се води како исчезнат во иранските напади во Јордан",
+    "Два америчка војника убијена, један нестао у иранском ракетном удару на Јордан",
+    "САД седма ноќ го напаѓаа Иран, Техеран возврати со удари врз Кувајт и Јордан",
+    "САД извршија уште една серија напади врз Иран, Техеран возврати со ракетни удари врз американски бази во регионот",
+    "Иран нападна цели во Бахреин и Кувајт по новите американски удари и поморската блокада",
+    "Америчка централна команда потврдила да су покренути нови напади на Иран"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines describe US-Iran military exchanges following the killing of US soldiers in Jordan, with variations in details but a clear common event."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss the escalation of military actions between the US and Iran following the death of American soldiers in Jordan."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700107,
+   "label": "U.S. Gasoline Prices Could Hit $4 Per Gallon Within Days",
+   "kept_size": 10,
+   "cohesion": 0.9516643285751343,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Porter bumps surcharge back up to $40 amid oil price hike",
+    "Ontario gas prices: Big weekend fuel cost spike expected",
+    "Average LACo Gas Price Rises 3.1 Cents Per Gallon",
+    "Ontario gas prices: GTA costs to reach 175.9 cents by Friday",
+    "Kalshi traders see gas prices crossing $4 by end of July",
+    "US Gasoline Prices Could Top $4 Per Gallon Within Days",
+    "U.S. Gasoline Prices Could Hit $4 Per Gallon Within Days",
+    "Ontario gas prices: 10 cent jump predicted in GTA",
+    "Average Roanoke gasoline prices up nearly 4¢ per gallon",
+    "Gas prices rise in Regina, closing in on $1.70 per litre"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines discuss rising gas prices in various regions, indicating a common theme of increasing fuel costs."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300054,
+   "label": "La UE y la OTAN condenan los ciberataques «maliciosos» de Rusia contra los países europeos",
+   "kept_size": 12,
+   "cohesion": 0.961383581161499,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Rusia condena sanciones europeas en el ciberespacio y defiende su uso pacífico",
+    "Lituania y Letonia alertan de que Rusia prepara ataques contra infraestructuras en países de la OTAN",
+    "Lituania asegura que Rusia prepara ataques contra infraestructuras en Polonia y en los bálticos",
+    "Lituania asegura que Rusia prepara ataques contra Polonia y los países bálticos – EntornoInteligente.com",
+    "Lituania avisa de que Putin prepara ataques contra infraestructuras críticas en Polonia y los países bálticos",
+    "La OTAN condena la campaña de ciberataques de Rusia y advierte de que responderá \"cuando y como considere oportuno\"",
+    "Rusia rechaza acusaciones europeas sobre ciberataques y califica de ilegales las sanciones",
+    "Rusia.-AMP.- La UE y Reino Unido aprueban sanciones contra Rusia por ataques cibernéticos a Europa",
+    "La UE y la OTAN apuntan a Rusia como responsable de la oleada de ciberataques",
+    "La UE condena la decisión del COI de readmitir a los atletas rusos: «Parece que premia los ataques a Ucrania»",
+    "La UE y la OTAN condenan los ciberataques «maliciosos» de Rusia contra los países europeos",
+    "La UE y Reino Unido sancionan a más de 20 personas y entidades rusas por actividades cibernéticas contra Europa"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines 1-11 focus on Russian cyberattacks and sanctions, but headline 10 is about IOC decision on Russian athletes, which is a different story."
+   },
+   "openai": {
+    "same_story": false,
+    "reason": "Headlines cover both alleged Russian cyberattacks and potential physical attacks on infrastructure, which are related but distinct topics."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700163,
+   "label": "Иран заявил об ударе по американским военным объектам в Иордании | MigNews - Новости Израи",
+   "kept_size": 8,
+   "cohesion": 0.9732711315155029,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Американские вертолеты получили повреждения при ударах Ирана по Иордании | MigNews - Новости Израиля и Мира на русском языке",
+    "Иран обвинил США в авиаударе по строительной площадке АЭС в Дарджавене | MigNews - Новости Израиля и Мира на русском языке",
+    "Иран нанес удар беспилотником по лагерю курдских повстанцев в Ираке | MigNews - Новости Израиля и Мира на русском языке",
+    "Иран заявил об ударе по американским военным объектам в Иордании | MigNews - Новости Израиля и Мира на русском языке",
+    "Минздрав Ирана заявил о 260 раненых в результате американских ударов | MigNews - Новости Израиля и Мира на русском языке",
+    "США наносили удары по Ирану на протяжении семи часов – CENTCOM",
+    "Иран заявил о массированной атаке дронов на американскую базу в Иордании | Западная Азия",
+    "США уже несколько часов наносят удары по территории Ирана – ABC News"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines describe mutual military strikes between Iran and the US, focusing on attacks and counterattacks in Jordan and Iran."
+   },
+   "openai": {
+    "same_story": false,
+    "reason": "Headlines cover multiple incidents involving Iran, the US, and other regions, not one specific story."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300194,
+   "label": "Зеленський оцінив готовність РФ до закінчення війни проти України",
+   "kept_size": 8,
+   "cohesion": 0.9678162932395935,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Зеленський оцінив готовність РФ до закінчення війни проти України",
+    "Зеленський назвав індикатори змін в Росії щодо закінчення війни",
+    "Зеленський назвав момент, після якого Путін може різко загострити війну",
+    "Зеленський оцінив загрозу мобілізації в Росії після виборів",
+    "Война в Украине — Россия может согласиться на мир до конца срока полномочий Трампа — СМИ",
+    "Війна в Україні — РФ може погодитися на мир до кінця каденції Трампа — ЗМІ",
+    "Трамп заявив, що очікує завершення війни Росії проти України до кінця свого президентського терміну",
+    "Зеленський заявив, що Путін може напасти на інші країни у разі поразки"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines discuss the Russia-Ukraine war, focusing on Zelenskyy's assessments, Putin's potential actions, and Trump's expectations for ending the war."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800140,
+   "label": "Российский дрон ударил по медучреждению в Херсоне, есть пострадавшие – агрессия россии",
+   "kept_size": 8,
+   "cohesion": 0.9701923131942749,
+   "best_control_overlap": 0.25,
+   "headlines": [
+    "Удары по Одесской области – россияне атаковали парк развлечений, есть погибшие и раненые",
+    "Российский дрон атаковал Херсон, есть погибшая и шесть раненых — агрессия России",
+    "Армия РФ атаковала Одессу авиационными ракетами, есть погибшие и раненые — агрессия России",
+    "Армия РФ сбросила шесть КАБов на Сумщину, три человека погибли, а семеро получили ранения — агрессия России",
+    "Российский дрон ударил по медучреждению в Херсоне, есть пострадавшие – агрессия россии",
+    "Рашисты нанесли повторный удар по спасателям на Днепропетровщине, есть пострадавшие – агрессия россии",
+    "Рашисты ударили КАБами по Запорожью и пригороду, семеро травмированных – агрессия россии",
+    "Россияне ударили по гражданскому судну в Одесской области, есть погибшие – агрессия россии"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines describe multiple separate attacks across different locations (Odesa, Kherson, Sumy, Dnipro, Zaporizhzhia) on different days, not a single event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800148,
+   "label": "Як правильно провітрювати квартиру влітку — що зробити, щоб не впускати спеку",
+   "kept_size": 8,
+   "cohesion": 0.9694033861160278,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Як охолодити дім без витрат і кондиціонера — порада з вентиляторами",
+    "Як приготувати цвітну капусту без запаху та гіркоти — секрет, який використовують кухарі",
+    "Як підготувати огірки для салату – що зробити, щоб не було зайвого соку",
+    "Кондиціонер для білизни своїми руками – як зробити в домашніх умовах",
+    "Як правильно провітрювати квартиру влітку — що зробити, щоб не впускати спеку",
+    "Як правильно зберігати продукти у спеку — корисні поради",
+    "Як помити вікна знадвору до кристальної чистоти: прості поради для ідеального блиску",
+    "Як за лічені секунди почистити вишні від кісточок: найкращі домашні лайфхаки з підручними засобами"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover various unrelated household tips (cooling, cooking, cleaning, storage) rather than a single news event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800132,
+   "label": "ЄС ввів санкції проти 15 причетних до знущань з українських полонених",
+   "kept_size": 9,
+   "cohesion": 0.9806300401687622,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "ЄС запровадив санкції проти 15 російських тюремників та СІЗО у Таганрозі за катування українських полонених",
+    "ЄС уперше запровадив санкції проти РФ за незаконне утримання українських цивільних",
+    "ЄС ввів санкції проти 15 осіб та однієї установи рф, причетних до катувань українців",
+    "ЄС ввів санкції проти 15 причетних до знущань з українських полонених",
+    "ЄС запровадив санкції проти причетних до катувань українських полонених",
+    "ЄС ввів санкції проти 15 причетних до знущань над українськими полоненими, зокрема в Оленівці",
+    "Санкції проти 15 росіян, які катували українських полонених, запровадили у ЄС",
+    "В ЄС ввели санкції проти 15 осіб, причетних до катування українських полонених, зокрема в Оленівці",
+    "ЄС ввів санкції проти причетних до порушень прав українських полонених"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the EU imposing sanctions on individuals involved in torturing Ukrainian prisoners, specifically mentioning 15 people and the Taganrog detention center."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300001,
+   "label": "Russia hit with EU, UK sanctions over cyber attacks",
+   "kept_size": 39,
+   "cohesion": 0.952198326587677,
+   "best_control_overlap": 0.385,
+   "headlines": [
+    "EU imposes sanctions on Russian executive, five companies over drones",
+    "Irish State agencies use password software linked to Russian tech firm",
+    "Irish State agencies use password software linked to Russian tech firm - Homepage",
+    "How Russian password technology made its way into Irish State agencies",
+    "Irish State bodies use password software licensed by Russian intelligence",
+    "EU, UK hit Russia with joint sanctions over cyber attacks",
+    "EU, UK Sanction Russian Intelligence Over Cyberattacks",
+    "EU sanctions target Russian state-backed messaging app",
+    "European Union adopts its largest-ever cyber sanctions package against Russia",
+    "EU sanctions Russian intelligence officers over 'cyberspying campaign'",
+    "EU and UK Sanction Russian Nation-State Hackers",
+    "Russia hit with EU, UK sanctions over cyber attacks"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple distinct stories: EU/UK sanctions on Russia for cyber attacks, Irish agencies using Russian password software, and EU sanctions on drones."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "GR",
+   "cluster_id": 1700069,
+   "label": "Λαμία: Στα 24 έφτασαν τα επιβεβαιωμένα κρούσματα σαλμονέλας – Οκτώ τα μαγαζιά που ελέγχθηκ",
+   "kept_size": 12,
+   "cohesion": 0.9872817993164062,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Λαμία: Αυξήθηκαν στα 25 τα κρούσματα σαλμονέλας – Στο μικροσκόπιο οι εργαζόμενοι καταστήματος εστίασης",
+    "Λαμία: Στα 25 τα κρούσματα σαλμονέλας – Τι έδειξαν τα αποτελέσματα από τα πρώτα δείγματα εργαζομένων σε κατάστημα εστίασης",
+    "Λαμία: Στα 24 έφτασαν τα επιβεβαιωμένα κρούσματα σαλμονέλας – Οκτώ τα μαγαζιά που ελέγχθηκαν",
+    "Λαμία: Στα 24 έφτασαν τα επιβεβαιωμένα κρούσματα σαλμονέλας - Οκτώ τα μαγαζιά που ελέγχθηκαν",
+    "Σαλμονέλα στη Λαμία: 22 τα επιβεβαιωμένα κρούσματα- 12 ασθενείς εξακολουθούν να νοσηλεύονται",
+    "Λαμία: Συνεχίζονται οι έλεγχοι στην εφοδιαστική αλυσίδα για τη σαλμονέλα – Στα 22 τα επιβεβαιωμένα κρούσματα",
+    "Λαμία: 30 άνθρωποι στο νοσοκομείο με σαλμονέλα – «Από τη μολυσμένη παρτίδα δεν προμηθεύτηκε μόνο η πόλη της Λαμίας»",
+    "Λαμία: 30 άνθρωποι στο νοσοκομείο με σαλμονέλα - «Από τη μολυσμένη παρτίδα δεν προμηθεύτηκε μόνο η πόλη της Λαμίας»",
+    "Επιδημία σαλμονέλας στη Λαμία: Πάνω από 30 άτομα στο νοσοκομείο, οι 12 πιο βαριά νοσηλεύονται - Από πού πιθανολογείται ότι μολύνθηκαν",
+    "Περισσότερα από 30 κρούσματα σαλμονέλας στη Λαμία: 12 νοσηλεύονται, άγνωστη η αιτία της μόλυνσης, συνεχίζονται οι έλεγχοι",
+    "Πάνω από 30 άτομα με σαλμονέλα στο νοσοκομείο της Λαμίας, οι 12 πιο βαριά νοσηλεύονται - Δεν έχει βρεθεί από πού μολύνθηκαν",
+    "Λαμία: 20 ασθενείς με σαλμονέλα πέρασαν από τα Επείγοντα από την Παρασκευή έως και σήμερα – Η ανακοίνωση του νοσοκομείου"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on a salmonella outbreak in Lamia, Greece, with varying case numbers and details about hospitalizations and investigations."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800142,
+   "label": "Без допомоги області: як Калуш за 500 тисяч гривень рятує екологічний моніторинг громади :",
+   "kept_size": 8,
+   "cohesion": 0.9612494707107544,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "\"Урок\" криміналу: на Івано-Франківщині чоловік обікрав свою колишню вчительку на 1,3 мільйона гривень (Фото) :: ВІКНА – Новини Калуша та Прикарпаття",
+    "Спека не завада: 13-річна волонтерка зі Студінки зібрала за концерт понад 5 тисяч гривень для ЗСУ :: ВІКНА – Новини Калуша та Прикарпаття",
+    "За порушення у рекламі прикарпатців оштрафували на 126 тисяч гривень :: ВІКНА – Новини Калуша та Прикарпаття",
+    "На Прикарпатті серійний грабіжник пішов на новий злочин після застави у 200 тисяч гривень (Фото) :: ВІКНА – Новини Калуша та Прикарпаття",
+    "Без допомоги області: як Калуш за 500 тисяч гривень рятує екологічний моніторинг громади :: ВІКНА – Новини Калуша та Прикарпаття",
+    "Медики врятували малюка з Івано-Франківська, який через складну патологію не міг їсти :: ВІКНА – Новини Калуша та Прикарпаття",
+    "Понад 20 тисяч для ЗСУ і коровай для захисника: як у Студінці організували благодійний ярмарок :: ВІКНА – Новини Калуша та Прикарпаття",
+    "Малюк від народження не міг ковтати та дихати. У Львові медики врятували дитину з унікальною патологією язика"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover diverse local news topics: theft, volunteer fundraising, advertising fines, serial robberies, environmental monitoring, medical rescue, charity fair, and another medical case."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300197,
+   "label": "الدفاع الروسية: نواصل استهداف الموانئ والسفن المرتبطة بالجيش الأوكراني",
+   "kept_size": 8,
+   "cohesion": 0.9697195887565613,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "الدفاع الروسية: توجيه ضربة واسعة للموانئ والمواقع العسكرية والطاقة في أوكرانيا",
+    "الدفاع الروسية: واصلنا ليلا ضرب الموانئ التي يستخدمها الجيش الأوكراني",
+    "الجيش الروسي يقصف مرافق البنية التحتية لميناء يوجني وسفنا قبالة أوديسا",
+    "الدفاع الروسية: نواصل استهداف الموانئ والسفن المرتبطة بالجيش الأوكراني",
+    "الجيش الروسي يستهدف منشآت البنية التحتية للوقود والطاقة والنقل للقوات الأوكرانية",
+    "الدفاع الروسية: استهداف منشآت للصناعات العسكرية في كييف وميناء يوجني بأوديسا بضربات جماعية ليلا",
+    "الدفاع الروسية: نواصل ضرب موانئ أوكرانية وسفنا تستحدمها قوات كييف",
+    "الدفاع الروسية: ضرب مواقع لإنتاج المسيرات وبنى تحتية للطاقة والنقل مرتبطة بالجيش الأوكراني"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report Russian military strikes on Ukrainian ports, military sites, and energy infrastructure, focusing on the same ongoing campaign."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines report on Russian military strikes targeting Ukrainian ports and infrastructure."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700012,
+   "label": "Al menos ocho muertos y 19 heridos en Irán en nuevos ataques de EE.UU. - Mundo",
+   "kept_size": 23,
+   "cohesion": 0.9697726964950562,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Letal y contundente: así fue la séptima noche consecutiva de ataques de Estados Unidos contra el régimen de Irán",
+    "Al menos siete muertos en la séptima noche consecutiva de ataques de EE.UU. contra Irán",
+    "Mueren tres personas y otras ocho resultan heridas en ataques de EE. UU. contra sur de Irán",
+    "Al menos siete muertos en la séptima noche consecutiva de ataques de EEUU contra Irán",
+    "Unos 10.000 iraníes se quedan sin agua tras un ataque de EEUU | Noticias El Día de Valladolid",
+    "Unos 10.000 iraníes se quedan sin agua tras un ataque de EEUU | Noticias Diario de Burgos",
+    "Unos 10.000 iraníes se quedan sin agua tras un ataque de EEUU | Todas las noticias de Palencia",
+    "Unos 10.000 iraníes se quedan sin agua tras un ataque de EEUU | Noticias Diario de Ávila",
+    "Tres muertos en la séptima noche de ataques de EEUU a Irán | Noticias Diario de Ávila",
+    "Tres muertos en la séptima noche de ataques de EEUU a Irán | Noticias El Día de Valladolid",
+    "Tres muertos en la séptima noche de ataques de EEUU a Irán | Todas las noticias de Palencia",
+    "Irán suma 38 muertos, entre ellos un niño, y más de 400 heridos por los ataques de EE UU"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on the seventh consecutive night of US attacks on Iran, with variations in casualty numbers and water outage details."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700131,
+   "label": "Oil hits 4-week high as US-Iran conflict escalates",
+   "kept_size": 9,
+   "cohesion": 0.9773145318031311,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Oil rises to 4-week highs as conflict in Iran escalates",
+    "Oil hits four-week high as US-Iran conflict escalates",
+    "Oil hits 4-week high as US-Iran conflict escalates",
+    "Oil prices surge 10% as US-Iran conflict reignites",
+    "Global crude oil prices hit four-week high amid escalating US-Iran conflict",
+    "Oil hits four-week high as U.S.-Iran conflict escalates",
+    "Oil prices jump 9% to $82.90 on worsening US-Iran conflict",
+    "Oil jumps 4% to $79 per barrel as US-Iran tensions escalate",
+    "Crude oil prices jump over 4 pc as US-Iran tensions escalate"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on oil price increases due to escalating US-Iran conflict."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700171,
+   "label": "US announces another troop death as Israel warns Tehran's attacks are coming close – San D",
+   "kept_size": 8,
+   "cohesion": 0.9849897623062134,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "US announces another troop death as Israel warns Iran's attacks are coming close | Burnham and Highbridge Weekly News",
+    "US announces another troop death as Israel warns Iran's attacks are coming close | Wilts and Gloucestershire Standard",
+    "US announces another troop death as Israel warns Tehran's attacks are coming close\n\napnews.com/article/iran...",
+    "U.S. announces a third troop death as Israel warns Tehran's attacks are coming close – Butler Eagle",
+    "US announces another troop death as Israel warns Tehran's attacks are coming close – San Diego Union-Tribune",
+    "US announces another troop death as Israel warns Iran's attacks are coming close | Dumbarton and Vale of Leven Reporter",
+    "US strikes Iran over troop deaths as Israel warns Tehran's attacks are coming close – The Virginian-Pilot",
+    "US strikes Iran over troop deaths as Israel warns Tehran's attacks are coming close – San Diego Union-Tribune"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on US troop deaths and Israel warning about Iran's attacks, with minor variations in wording."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300065,
+   "label": "\"Будуть рішення\". Зеленський домовився про співпрацю з радником Федорова",
+   "kept_size": 11,
+   "cohesion": 0.9601219296455383,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Портников: Федоров міг втрутитися у передвиборчу боротьбу Зеленського із Залужним",
+    "Після зустрічей із військовими командувачами. Зеленський анонсував важливі рішення щодо армії",
+    "Зеленський повідомив, що сьогодні \"довго говорив\" з Федоровим і Сирським",
+    "The Guardian: звільнення Федорова оголило проблеми в керівництві Зеленського",
+    "\"Будуть рішення\". Зеленський домовився про співпрацю з радником Федорова",
+    "\"Або ти знімаєш погони, або...\" У Раді розповіли, як законно призначити генерала Хмару на посаду міністра",
+    "Зеленський провів зустріч з ексрадником міністра оборони \"Флешем\" — DSnews.ua",
+    "Конфлікт Сирського та Федорова загострився - чому Зеленський міг зробити ставку на головкома",
+    "Зеленський анонсував зустріч із Федеровим та керівництвом армії — DSnews.ua",
+    "Зеленський заявив, що сьогодні зустрінеться з керівниками армії та Федоровим",
+    "\"Має стати реальністю\". Зеленський назвав терміни появи системи FREYJA в роботі"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines revolve around Ukrainian President Zelenskyy's interactions with Fedorov and military leadership, discussing meetings, decisions, and a reported conflict."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300107,
+   "label": "Путин: российские бойцы идут вперед в зоне спецоперации",
+   "kept_size": 9,
+   "cohesion": 0.9630343317985535,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Герасимов: Российские войска вошли в Алексеево-Дружковку",
+    "Герасимов: российские войска ведут бои в Доброполье и Анновке",
+    "Минобороны России: российская армия наносит удары без перерыва",
+    "Марочко: Российские войска вплотную подошли к Ровному",
+    "Путин: Россия побеждает и в тылу, и на фронте",
+    "Минобороны: ВС России продолжают удары по портам Украины",
+    "Путин: Россию, безусловно, ждёт победа",
+    "Путин: российские бойцы идут вперед в зоне спецоперации",
+    "Пушилин: ВС России продолжают продвигаться к Дружковке"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on Russian military advances and statements about the war in Ukraine, focusing on specific locations and overall progress."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800092,
+   "label": "До Верховної Ради надійшла заява про відставку Свириденко",
+   "kept_size": 10,
+   "cohesion": 0.9819642901420593,
+   "best_control_overlap": 0.3,
+   "headlines": [
+    "Рада відправила у відставку Свириденко та її уряд",
+    "Верховна Рада відправила у відставку прем'єр-міністерку Юлію Свириденко та уряд",
+    "Верховна Рада відправила у відставку прем'єрку Юлію Свириденко",
+    "Рада відправила у відставку Юлію Свириденко та її уряд",
+    "До Верховної Ради надійшла заява про відставку від Свириденко",
+    "До Верховної Ради надійшла заява про відставку Свириденко",
+    "Свириденко написала заяву про відставку з посади прем'єр-міністра",
+    "Свириденко подала заяву про відставку",
+    "Юлія Свириденко подала у відставку з посади прем'єр-міністра",
+    "До Ради надійшла заява Свириденко про відставку"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the resignation of Yulia Svyrydenko as Prime Minister of Ukraine, with minor variations in phrasing."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300139,
+   "label": "Российскую рыбу убрали из списка антироссийских санкций ЕС",
+   "kept_size": 8,
+   "cohesion": 0.9743397235870361,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Европейский союз настольного тенниса снял ограничения с российских спортсменов",
+    "Европейский союз настольного тенниса снял санкции с российских спортсменов",
+    "В России отменили квоту на вывоз риса",
+    "Российскую рыбу убрали из списка антироссийских санкций ЕС",
+    "ЕС исключил ограничения на поставки российской рыбы из 21-го пакета санкций",
+    "Антироссийские санкции: ЕС исключил рыбу из списка",
+    "Страны ЕС исключили рыбу из антироссийских санкций",
+    "Международная федерация настольного тенниса сняла санкции со спортсменов из России"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple distinct stories: EU table tennis sanctions (1,2,8), rice export quota (3), and EU fish sanctions (4-7)."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300000,
+   "label": "ترامب يتوقع بطل كأس العالم 2026.. يختار أفضل 3 لاعبين في التاريخ (فيديو)",
+   "kept_size": 92,
+   "cohesion": 0.9582580924034119,
+   "best_control_overlap": 0.478,
+   "headlines": [
+    "شاهد.. ترامب يحتفل مع لاعبي إسباني بكأس العالم 2026",
+    "مبابي يفوز بجائزة \"الحذاء الذهبي\" في مونديال 2026",
+    "منتخب إسبانيا يفوز بلقب بطل كأس العالم 2026",
+    "ترامب يتوقع بطل كأس العالم 2026.. يختار أفضل 3 لاعبين في التاريخ (فيديو)",
+    "قنوات مفتوحة تنقل المباراة النهائية لمونديال 2026.. الموعد والتشكيلة الأساسية",
+    "بخلاف القط بيلي!.. الغابة تصدر حكمها أيضا على نهائي مونديال 2026 (فيديو)",
+    "موقف محمد صلاح.. رئيس بشكتاش ينتقد رامي عباس بسبب \"العمولة\"",
+    "الكشف عن هوية الفائز بجائزة \"الكرة الذهبية\" في كأس العالم 2026",
+    "روسيا.. مقتل شخص وإصابة 3 بهجوم مسيرات أوكرانية",
+    "بلاتر يفتح النار على فيفا قبل النهائي.. وينتقد \"أمركة\" المونديال",
+    "تحذير عاجل لأولياء الأمور: هذا الصندل قد يقتل طفلك.. و\"تارغيت\" تعلن السحب الفوري",
+    "اليوم الـ39 آخر نبضات المونديال.. البرونزية أولا ثم نهائي الحلم"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines mix 2026 World Cup coverage with unrelated topics like a drone attack, a sandal recall, and a Beşiktaş president's criticism."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "BR",
+   "cluster_id": 1300066,
+   "label": "El Supremo de Brasil niega a Milei visitar a Bolsonaro en prisión domiciliaria",
+   "kept_size": 8,
+   "cohesion": 0.9891819357872009,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Brasil niega a Milei visitar a Bolsonaro en prisión domiciliaria",
+    "El Supremo de Brasil niega a Milei visitar a Bolsonaro en prisión domiciliaria",
+    "Corte prohíbe visita de Milei a Bolsonaro en prisión domiciliaria",
+    "Corte suprema de Brasil prohíbe visita de Milei a Bolsonaro en prisión domiciliaria",
+    "El Supremo Tribunal de Brasil niega a Milei visitar a Bolsonaro en prisión domiciliaria",
+    "Corte suprema de Brasil prohíbe visita de Javier Milei a Jair Bolsonaro en prisión domiciliaria",
+    "La Nación / Brasil: prohíben visita de Milei a Bolsonaro en prisión domiciliaria",
+    "El Supremo de Brasil niega a Milei visitar a Bolsonaro en prisión domiciliaria - Mundo"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the same event: Brazil's Supreme Court denying Javier Milei permission to visit Jair Bolsonaro under house arrest."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines report on the Brazilian Supreme Court denying Milei's visit to Bolsonaro in house arrest."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "ID",
+   "cluster_id": 1200035,
+   "label": "5 Destinasi Wisata di Jakarta yang Lagi Hits untuk Liburan Keluarga",
+   "kept_size": 14,
+   "cohesion": 0.9695855379104614,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "5 Wisata di Cilacap yang Cocok Didatangi bersama Keluarga",
+    "7 curug di Bogor yang wajib dikunjungi, cocok buat treking dan healing",
+    "10 tempat treking di Bogor yang wajib dikunjungi, cocok untuk pemula",
+    "Ragam rekomendasi wisata akhir pekan di DKI Jakarta",
+    "12 Tanaman Air yang Cocok untuk Kolam Cupang Galon, Ciptakan Ekosistem Sehat",
+    "Ketahui Lima Taman Kota di Jakarta yang Cocok untuk Healing",
+    "Lima Deretan Kampus dengan Jurusan Teknologi Informasi Terbaik di Jakarta",
+    "5 Destinasi Wisata di Jakarta yang Lagi Hits untuk Liburan Keluarga",
+    "7 Pantai Tersembunyi di Bali yang Wajib Masuk Itinerary, Cocok untuk Healing",
+    "7 Kecamatan di Jakarta Masuk Zona Rawan Longsor, Cek Daftarnya",
+    "5 Hotel Ramah Lingkungan di Bali, Rekomendasi tiket.com",
+    "10 Tanaman yang Wajib Ada dalam Food Forest Tropis agar Kebun Lebih Produktif dan Berkelanjutan"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover diverse topics like travel destinations, plants, universities, and disaster zones, not a single story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "RO",
+   "cluster_id": 2300010,
+   "label": "Accident pe DN2, în zona localității Cleja. Un șofer a fost rănit ușor",
+   "kept_size": 10,
+   "cohesion": 0.966629147529602,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Accident la Tiha Bârgăului, în care sunt implicate două autoturisme",
+    "Cinci persoane, între care doi copii, rănite într-un accident pe DN 11, în comuna Sănduleni",
+    "Două persoane au ajuns la spital după un accident produs între două autoturisme, la Sinersig",
+    "Accident rutier în Odoreu. Două autoturisme implicate într-o",
+    "Accident cu trei victime pe DN22. Doi răniți sunt copii",
+    "Accident pe DN1, la intersecția cu DJ 102A. Un motociclist a fost rănit după o coliziune cu un autoturism",
+    "Trei persoane, printre care și o fetiță de 6 ani, au ajuns la spital după ce cinci autoturisme au fost implicate într-un eveniment rutier în Eforie Sud",
+    "Accident pe DN2, în zona localității Cleja. Un șofer a fost rănit ușor",
+    "Accident între Badon și Borla. O femeie a ajuns la spital",
+    "Două persoane au ajuns la spital în urma unui accident produs pe DN2/E85, în comuna Nicolae Bălcescu"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines describe multiple distinct car accidents in different locations, not a single event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "PL",
+   "cluster_id": 2200007,
+   "label": "Nie wyrzucaj do ogólnych. Kara do 5 tys. zł za takie śmieci",
+   "kept_size": 10,
+   "cohesion": 0.9572955369949341,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Oddajesz butelkę i nic. Skarg na system kaucyjny przybywa",
+    "Zanim zabraknie tchu. Polski system ma wcześniej ostrzegać chorych na serce",
+    "Nie wyrzucaj do ogólnych. Kara do 5 tys. zł za takie śmieci",
+    "Biją na głowę banany i mają mało kalorii. To potasowa bomba",
+    "\"Jak komuś żal kuriera, niech da sowity napiwek\". Mam dość szantażu moralnego",
+    "\"Zajrzałem do paszportu przed lotem i zamarłem\". Spokojnie, jest plan B",
+    "Nie nagrywaj sąsiadów, bo zabulisz. Podglądanie skończyło się potężną karą",
+    "Na polskie ulice może trafić znak ostrzegający przed telefonami. Błagam, nie",
+    "To potasowa bomba. Zajadaj zamiast słodyczy",
+    "Widzisz taki gest? Nie zastanawiaj się. Od razu zadzwoń na policję"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover a variety of unrelated topics: deposit system, heart alerts, waste fines, potassium-rich foods, tipping, passport issues, neighbor recording, phone warning signs, and police calls."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "EC",
+   "cluster_id": 7500001,
+   "label": "Industria cosmética en Ecuador mueve $1.575 millones y analiza su futuro en Quito",
+   "kept_size": 9,
+   "cohesion": 0.9517653584480286,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Crédito en Ecuador creció 19,9% en junio de 2026 y superó los USD 5.000 millones",
+    "¿Por qué la gasolina Súper cuesta más en Ecuador que en EE. UU. y Panamá?",
+    "Ecuador recibirá USD 276 millones por extensión del contrato petrolero del bloque Pindo hasta 2037",
+    "Industria cosmética en Ecuador mueve $1.575 millones y analiza su futuro en Quito",
+    "¿Cuánto cuesta la carne de res en Guayaquil? Así están los precios en los mercados",
+    "Precio de la carne en Ecuador: ¿seguirá subiendo? El sector ganadero se pronuncia",
+    "¿Por qué la gasolina Súper sigue siendo la más cara en Ecuador?",
+    "IESS destina tres millones de dólares para el nuevo hospital básico en Quito",
+    "Límite de gasto electoral: Quito podrá invertir hasta USD 827 136; Guayaquil supera el millón de dólares"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover diverse topics: credit growth, gasoline prices, oil contract, cosmetics industry, beef prices, hospital funding, and electoral spending limits."
+   },
+   "openai": {
+    "same_story": false,
+    "reason": "The headlines cover a variety of topics including credit growth, gasoline prices, oil contracts, cosmetic industry, beef prices, healthcare investment, and electoral spending limits."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "CZ",
+   "cluster_id": 5000006,
+   "label": "CBSE 10th Result 2026 LIVE: cbseresults.nic.in पर जारी होने वाला है सीबीएसई 10वीं सेकेंड ए",
+   "kept_size": 11,
+   "cohesion": 0.941392183303833,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "CBSE 10th Phase 2 Result OUT: Check 10th Second Board Result",
+    "NEET UG 2026 का रिजल्‍ट हुआ जारी, 11.21 लाख छात्र हुए क्‍वालिफाई, कहां चेक करें परिणाम?",
+    "Re-NEET UG 2026: NTA ने जारी की फाइनल आंसर-की, 4 सवाल हुए ड्रॉप, जल्द आ रहा है रिजल्ट",
+    "DU UG 1st List 2026: डीयू का कॉलेज मिला या नहीं? ये रहा लिस्ट चेक करने का तरीका, ऐसे स्टूडेंट्स हो जाएंगे बाहर",
+    "Rajasthan Librarian 3rd Grade Final Result 2026: राजस्थान लाइब्रेरियन 3 ग्रेड फाइनल रिजल्ट rssb.rajasthan.gov.in पर जारी, इस लिंक से डाउनलोड करें PDF",
+    "CBSE 10th Result 2026 Live सीबीएसई कक्षा 10वीं बोर्ड का रिजल्ट जल्द होगा जारी यहां चेक करें पासिंग मार्क्स और लेटेस्ट अपडेट - cbse 10th second board result 2026 live updates released soon at cbsegovin check here passing marks and latest update",
+    "Bihar CET BEd 2nd Merit List 2026: बिहार सीईटी बीएड दूसरी मेरिट लिस्ट biharcetbed-brabu.in जारी, डायरेक्ट लिंक से करें चेक",
+    "CBSE 10th Result 2026 LIVE: cbseresults.nic.in पर जारी होने वाला है सीबीएसई 10वीं सेकेंड एग्जाम रिजल्ट",
+    "UGC NET 2026 Answer Key: यूजीसी नेट 2026 आंसर-की का इंतजार, ugcnet.nta.nic.in पर कर सकेंगे डाउनलोड",
+    "CBSE 10th Second Board Result 2026: सीबीएसई 10वीं सेकेंड बोर्ड एग्जाम का रिजल्ट कब जारी होगा?",
+    "Jharkhand Field Worker Admit Card 2026 OUT: झारखंड फील्ड वर्कर एडमिट कार्ड जारी, ये रहा JSSC JFWCE हॉल टिकट Link"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple unrelated exam results and admit cards (CBSE, NEET, DU, Rajasthan Librarian, Bihar CET, UGC NET, Jharkhand Field Worker), not a single story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "BR",
+   "cluster_id": 1300052,
+   "label": "Lula evita comentar tarifa dos EUA e diz que só falará após manifestação de Trump",
+   "kept_size": 8,
+   "cohesion": 0.9783905744552612,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Lula diz que só comenta tarifaço após Trump se manifestar",
+    "Lula adia reação a novo tarifaço e avisa que EUA não 'enganarão' o Brasil",
+    "'Enquanto Trump não falar de tarifaço, eu não falarei', diz Lula | Brasil",
+    "Lula evita comentar tarifa dos EUA e diz que só falará após manifestação de Trump",
+    "Enquanto Trump não falar de tarifaço, eu não falarei, diz Lula",
+    "Lula diz que Brasil não aceita desaforo e afirma que falará de tarifaço só depois que Trump se pronunciar",
+    "Tarifaço: Lula diz que quer travar 'guerra da verdade' e que Trump vai ter que aprender a usar 'arma da palavra'",
+    "Lula 'priorizou próprio ego em detrimento de acordo' e não 'negociou com os EUA de boa fé': o ataque de ministro de Trump após tarifaço"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines focus on Lula's reaction to Trump's tariff announcement, with variations in quotes and details."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "US",
+   "cluster_id": 194,
+   "label": "NYT Mini crossword answers, hints for July 16, 2026",
+   "kept_size": 11,
+   "cohesion": 0.9784054160118103,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "NYT Pips hints, answers for July 19, 2026",
+    "NYT Mini Crossword Hints And Answers For 19-July-2026",
+    "NYT Mini Crossword Hints And Answers For 18-July-2026",
+    "NYT Pips hints, answers for July 18, 2026",
+    "NYT Connections Answer for Today, July 18, 2026",
+    "NYT Mini Crossword Hints And Answers For 17-July-2026",
+    "NYT Connections Answer for Today, July 17, 2026",
+    "NYT Mini crossword answers, hints for July 16, 2026",
+    "NYT Mini Crossword Hints And Answers For 16-July-2026",
+    "NYT Mini Crossword Hints And Answers For 15-July-2026",
+    "NYT Pips hints, answers for July 14, 2026"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines are about different NYT puzzles (Pips, Mini Crossword, Connections) on various dates, not a single news story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "PE",
+   "cluster_id": 3500021,
+   "label": "Séisme de magnitude 5,1 au centre du Pérou : au moins un mort et une dizaine de blessés",
+   "kept_size": 10,
+   "cohesion": 0.9553614854812622,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Au moins six morts, 32 blessés et des dizaines de sinistrés dans un séisme de magnitude 5,1 au",
+    "Au moins cinq morts, 21 blessés et 300 sinistrés dans un séisme de magnitude 5,1 au Pérou",
+    "Pérou. Séisme de magnitude 5,1 : au moins six morts et des dizaines de blessés",
+    "Peru'da 5.1 büyüklüğünde deprem! En az 6 kişi hayatını kaybetti",
+    "Peru'da 5. 5 büyüklüğündeki deprem: Ölü sayısı 6'ya, yaralı sayısı 32'ye yükseldi",
+    "Cinq morts dans un séisme de magnitude 5,1 au Pérou",
+    "La terre tremble et détruit de nombreuses maisons : plusieurs morts et dizaines de blessés dans un séisme de magnitude 5,1 au Pérou",
+    "Peru'da 5,5 büyüklüğündeki depremde 1 kişi hayatını kaybetti, 10 kişi yaralandı",
+    "Erdbeben der Stärke 5,1 im Zentrum von Peru: Mindestens ein Toter, zehn Verletzte",
+    "Séisme de magnitude 5,1 au centre du Pérou : au moins un mort et une dizaine de blessés"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on an earthquake in Peru, with variations in magnitude and casualty numbers but clearly the same event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "IT",
+   "cluster_id": 400040,
+   "label": "Kejutan di Bursa Transfer Liga Italia, Juventus Tiba-Tiba Selesaikan Perekrutan Zeki Celik",
+   "kept_size": 11,
+   "cohesion": 0.9351972937583923,
+   "best_control_overlap": 0.091,
+   "headlines": [
+    "Kejutan di Bursa Transfer Liga Italia, Juventus Tiba-Tiba Selesaikan Perekrutan Zeki Celik dari AS Roma",
+    "Ternyata Masih Ada Italia di Piala Dunia 2026",
+    "تقارير إيطالية: فودين معروض على ميلان.. ومانشستر سيتي يحدد سعره",
+    "Wiyadi Yakin Kekompakan Jadi Kekuatan Timnas Argentina Menjuarai Piala Dunia 2026",
+    "جريدة الرياض  | روما يقترب من حسم صفقة سامرفيل",
+    "«العربية للطيران» تدشّن رحلاتها المباشرة بين الشارقة وروما",
+    "Bursa Transfer Juventus, Koneksi Massara dengan Eks Bintang AC Milan Bawa Dalam Persaingan Serius",
+    "Update Bursa Transfer Liga Italia: Kabar Buruk untuk Kiper Timnas Indonesia Emil Audero, Monza Ternyata Lakukan Ini",
+    "Sempat Dibuang dari Skuad Piala Dunia, Paulo Dybala Malah Dapat Kontrak Mewah dari AS Roma!",
+    "روما يمدد عقد ديبالا حتى 2027 | وكالة خبر للأنباء",
+    "AS Roma resmi perpanjangan kontrak Paulo Dybala hingga 2027"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple unrelated stories: Juventus transfers, Italy at World Cup, Roma transfers, airline routes, etc."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "US",
+   "cluster_id": 200,
+   "label": "Dodgers' Shohei Ohtani (knee) out of rotation indefinitely",
+   "kept_size": 11,
+   "cohesion": 0.9636245965957642,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Dodgers' Shohei Ohtani won't pitch in Philadelphia due to left knee irritation",
+    "Dodgers' Shohei Ohtani (knee) out of rotation indefinitely",
+    "Shohei Ohtani won't pitch for 'some time' due to knee irritation – NBC Los Angeles",
+    "Dodgers drop Shohei Ohtani from pitching rotation indefinitely due to knee pain",
+    "Dodgers face uncomfortable Shohei Ohtani decision after latest injury",
+    "Dodgers' Shohei Ohtani (knee) out of rotation indefinitely | 95.3 The Score",
+    "Dodgers' Shohei Ohtani (knee) out of rotation indefinitely | 107.5 The Game (WNKT-FM)",
+    "Shohei Ohtani won't make planned start to pitch vs. Phillies",
+    "Dodgers two-way star Shohei Ohtani won't pitch for 'some time' because of left knee irritation",
+    "Shohei Ohtani won't pitch for indefinite period as he recovers from knee irritation",
+    "Shohei Ohtani Injury Update: Dodgers Star to Have Left Knee Drained, Miss All-Star Game With Irritation"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on Shohei Ohtani's knee irritation causing him to be out of the pitching rotation indefinitely."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "TR",
+   "cluster_id": 900033,
+   "label": "İstanbul'da 15 Temmuz Demokrasi ve Milli Birlik Günü dolayısıyla anma programı düzenlendi.",
+   "kept_size": 11,
+   "cohesion": 0.9654045104980469,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Hatay Antakya'da 15 Temmuz Demokrasi ve Milli Birlik Günü anma programı düzenlendi.",
+    "Samsun Vezirköprü'de 15 Temmuz Demokrasi ve Milli Birlik Günü dolayısıyla etkinlikler düzenlendi.",
+    "Uşak'ta 15 Temmuz Demokrasi ve Milli Birlik Günü'nde Anma Programı Gerçekleştirildi.",
+    "Karabük'te 15 Temmuz Demokrasi ve Milli Birlik Günü dolayısıyla anma töreni gerçekleştirildi.",
+    "Kütahya Altıntaş'ta 15 Temmuz Demokrasi ve Milli Birlik Günü anma etkinlikleri gerçekleştirildi. | Mersin Haber",
+    "Edremit Balıkesir'de 15 Temmuz Demokrasi ve Milli Birlik Günü Anma Etkinlikleri Yoğun Katılımla Gerçekleştirildi.",
+    "Pendik'te 15 Temmuz Demokrasi ve Milli Birlik Günü için anma etkinlikleri düzenlendi. | Mersin Haber",
+    "Batman'da ''15 Temmuz Demokrasi ve Milli Birlik Günü'' etkinlikleri düzenlendi.",
+    "İstanbul'da 15 Temmuz Demokrasi ve Milli Birlik Günü dolayısıyla anma programı düzenlendi.",
+    "Samsun'da 15 Temmuz Demokrasi ve Milli Birlik Günü etkinlikleri yoğun katılımla gerçekleştirildi.",
+    "Şırnak'ta 15 Temmuz Demokrasi ve Milli Birlik Günü için anma etkinlikleri gerçekleştirildi. | Mersin Haber"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about local commemorations of the same national event: 15 Temmuz Demokrasi ve Milli Birlik Günü (July 15 Democracy and National Unity Day) in different cities across Turkey."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "AM",
+   "cluster_id": 7900002,
+   "label": "Из поликлиники Еревана из-за спора с Пашиняном уволили врача",
+   "kept_size": 11,
+   "cohesion": 0.9457547664642334,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Стрельба в Ереване: один человек погиб",
+    "Стало известно о гибели человека в результате ЧП со стрельбой в Ереване",
+    "В Армении задержали россиянина по подозрению в кибермошенничестве",
+    "В аэропорту Еревана по ошибке задержали гражданина РФ: подробности инцидента",
+    "Россиянина спутали с хаккером-вымогателем в Армении: комментарий адвоката",
+    "Стало известно о задержании в Армении россиянина",
+    "Armenian PM persecutes dissent as West turns blind eye  rights group",
+    "За что Никол Пашинян уволил врача в Армении после встречи",
+    "Из поликлиники Еревана из-за спора с Пашиняном уволили врача",
+    "В Армении женщину, поспорившую с Пашиняном, уволили с работы",
+    "Скандалы Пашиняна с гражданами: поспорившую женщину уволили с работы"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple distinct stories: a shooting in Yerevan, a Russian citizen detained for cyber fraud, and a doctor fired after a dispute with PM Pashinyan."
+   },
+   "openai": {
+    "same_story": false,
+    "reason": "Headlines cover multiple unrelated stories: a shooting in Yerevan, a Russian detained in Armenia, and a controversy involving Armenian PM Pashinyan."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "AR",
+   "cluster_id": 1100043,
+   "label": "2026 FIFA Dünya Kupası'nda finalin adı belli oldu: İspanya-Arjantin",
+   "kept_size": 11,
+   "cohesion": 0.9623365998268127,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "2026 Dünya Kupası'nda şampiyon İspanya: Arjantin uzatmalarda gelen golle yıkıldı",
+    "2026 FIFA Dünya Kupası final maçından notlar",
+    "2026 FIFA Dünya Kupası'nda şampiyon belli oluyor: İşte 11'ler",
+    "2026 Dünya Kupası finaline mistik dokunuş! Perulu şamanlardan Arjantin'e kehanet ayini",
+    "Dünya Kupası'nda finalin adı: Arjantin - İspanya",
+    "2026 Dünya Kupası'nda finalin adı İspanya-Arjantin",
+    "İspanya'dan sonra Dünya kupasının diğer finalisti belli oldu: Messi, Arjantin'i finale taşıdı",
+    "2026 FIFA Dünya Kupası'nda finalin adı belli oldu: İspanya-Arjantin",
+    "Dünya Kupası'nda finalin adı belli oluyor: İngiltere-Arjantin",
+    "Dünya Kupası'nda finalin adı belli oluyor! 1986'dan kalan dev hesaplaşma",
+    "2026 FIFA Dünya Kupası'nda İngiltere-Arjantin maçına doğru"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines mix pre-final, final, and post-final content about different matches (Spain vs Argentina, England vs Argentina), not a single event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "IN",
+   "cluster_id": 100142,
+   "label": "Amid Satluj row, Centre may make CBFC certification mandatory for direct OTT releases: Rep",
+   "kept_size": 9,
+   "cohesion": 0.9396878480911255,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Amid Satluj row, Centre may make CBFC certification mandatory for direct OTT releases: Report",
+    "Centre mulls compulsory CBFC certification for OTT films following Satluj row",
+    "'Satluj' effect: Govt weighs censor certificate for all OTT films",
+    "'Satluj' controversy escalates: Government may act against ZEE5 over uncertified streaming",
+    "After Diljit Dosanjh's Satluj controversy, central government considers making CBFC approval compulsory for OTT film releases: Report",
+    "Eetha Release Date Changed? Shraddha Kapoor's Film May Shift To Avoid Clash With Yash-Starrer Toxic",
+    "Taarak Mehta Ka Ooltah Chashmah: Is Dilip Joshi quitting the show? Makers react to reports of Jethalal's role being reduced",
+    "Satluj Film Controversy: Government considering to take legal action against unauthorised screenings of Diljit Dosanjh's 'Satluj' without obtaining any CBFC certificate: Report | Hindi Movie News",
+    "Satluj: Varun Badola explains why he's yet to watch 'Satluj', REACTS to Diljit Dosanjh starrer's removal from OTT; 'No intention of watching' | Hindi Movie News"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "8 out of 9 headlines are about the Satluj controversy and potential CBFC certification for OTT films, with only one unrelated headline."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "ES",
+   "cluster_id": 500119,
+   "label": "Cuánto dinero ganan España y sus jugadores tras conquistar el Mundial 2026",
+   "kept_size": 8,
+   "cohesion": 0.9745156764984131,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "¿Cuánto dinero ganó España por conquistar el Mundial 2026?",
+    "Cuánto dinero ganan España y sus jugadores tras conquistar el Mundial 2026",
+    "Cuánto ganó España por el Mundial de 2010 y cuánto se llevará el campeón en 2026",
+    "¿Cuánto se lleva Hacienda si España gana el Mundial?",
+    "¿Cuánto se quedará Hacienda por cada jugador si España gana el Mundial?",
+    "Desvelada la millonaria prima económica que recibirán los jugadores de la selección española si ganan el Mundial 2026",
+    "Este es el dinero que recibirán los jugadores de España si ganan la final del Mundial 2026",
+    "El dineral que cobrarán los jugadores de España si ganan el Mundial 2026"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines discuss the financial rewards for Spain winning the 2026 World Cup, including prize money, player bonuses, and tax implications."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "FI",
+   "cluster_id": 4200000,
+   "label": "Tutkija: Näistä syistä Trumpin mieli muuttui Ukrainan suhteen – ”Hän ei halua olla häviäji",
+   "kept_size": 23,
+   "cohesion": 0.973379373550415,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Nainen pyysi naapurista apua kädet sidottuina – Pian selvisi, mistä tilanteessa oli todella kyse",
+    "Pajari palasi tutulle paikalle erikoiskokeen nopeimmaksi kuljettajaksi – suomalaisella on tukeva johto Viron MM-rallissa",
+    "Valtio perii jättisumman vankeja auttaneelta yhdistykseltä – toiminnan­johtajalta hämmentävä vastaus | Kotimaa",
+    "Euroopan taso miesten keihäässä poikkeuksellisen matala – Tero Pitkämäeltä lupaava arvio: \"Mitaliin ei vaadita ihmeitä\" | Urheilu",
+    "Politiikan tutkija: Kokoomukselle tärkeintä, että hallitus saa jatkaa – \"Pääministerin epäonnistuminen näyttäisi hankalalta\"",
+    "Venäjä ja urheilu aiheuttavat yhdistelmän, jota on vaikea niellä – Valitettavasti tilanteesta on nähty vasta alkutahdit",
+    "Puhumalla voi välttää sakot ja yhdeksän muuta väitettä ylinopeudesta – poliisi kertoo, pitävätkö ne paikkansa",
+    "Tutkija: Näistä syistä Trumpin mieli muuttui Ukrainan suhteen – ”Hän ei halua olla häviäjien puolella”",
+    "Lähes 2,2 miljoonaa euroa veronpalautuksia uhkaa jäädä maksamatta – tilanteen ehtii vielä korjata",
+    "Ylen meteorologi kehottaa: Nyt kannattaa nauttia kesäsäästä – viikon­vaihteessa on luvassa muutos",
+    "Saastan keskeltä löytyi 16 \"villilasta\", joista osa ei osannut edes puhua – suomalainen oikeuspsykiatri arvioi, mitä syrjäisessä talossa oikein tapahtui",
+    "Tällainen on 400 miljoonan euron kone, jonka Suomi haluaa hankkia – Näin se muuttaa puolustusta"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover a wide range of unrelated topics including crime, sports, politics, weather, and defense."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "BR",
+   "cluster_id": 1300046,
+   "label": "Retaliação, negociações e exceções: como o Brasil pode reagir a novo tarifaço de Trump",
+   "kept_size": 9,
+   "cohesion": 0.9763074517250061,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "Com o novo tarifaço nos EUA, qual será o impacto na economia brasileira?",
+    "Trump usa tarifas como pressão sobre seus parceiros; como o Brasil pode lidar com isso?",
+    "Entenda como o Brasil pode reagir a novo tarifaço de Trump",
+    "A reação da indústria brasileira ao novo tarifaço de Trump",
+    "Retaliação, negociação e exceções: como o Brasil pode reagir a novo tarifaço de Trump",
+    "Como o governo brasileiro reagirá ao tarifaço de Trump?",
+    "Retaliação, negociações e exceções: como o Brasil pode reagir a novo tarifaço de Trump",
+    "Lista de exceções, retaliação e negociações: como o Brasil pode reagir a novo tarifaço de Trump",
+    "Tarifaço de Trump: o que está em jogo — e como isso afeta seus investimentos"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines discuss the impact of Trump's new tariffs on Brazil and potential Brazilian reactions."
+   },
+   "openai": null
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "US",
+   "cluster_id": 415,
+   "label": "R. Kelly Asks Trump to Cut His Prison Sentence",
+   "kept_size": 8,
+   "cohesion": 0.9729568958282471,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "R. Kelly asks Trump to help reduce his prison term",
+    "R. Kelly Asks Trump to Cut His Prison Sentence",
+    "R Kelly seeks to have sentence reduced",
+    "R. Kelly Formally Asks President Trump to Commute His Sentence",
+    "R. Kelly Seeks Clemency From President Donald Trump",
+    "R. Kelly Files Request to Have Trump Commute Prison Sentence",
+    "R. Kelly Asks Trump for Prison Release in Clemency Petition",
+    "R. Kelly Places Bid For Trump To Commute Prison Sentence"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report R. Kelly requesting clemency or sentence reduction from President Trump."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss R. Kelly asking Donald Trump to reduce or commute his prison sentence."
+   }
+  },
+  {
+   "arm": "marginal",
+   "stratum": "other",
+   "country": "HN",
+   "cluster_id": 10500002,
+   "label": "Alerta Verde por 72 horas ante riesgo de inundaciones en Gracias a Dios y Olancho",
+   "kept_size": 9,
+   "cohesion": 0.9692716598510742,
+   "best_control_overlap": 0.0,
+   "headlines": [
+    "COPECO mantiene alerta por lluvias en Gracias a Dios y Olancho",
+    "Copeco eleva a Alerta Amarilla en Gracias a Dios y mantiene vigilancia en Olancho por lluvias",
+    "Honduras activa Alerta Verde por 72 horas por riesgo de inundaciones en Gracias a Dios y Olancho",
+    "Alerta Verde por 72 horas ante riesgo de inundaciones en Gracias a Dios y Olancho",
+    "Copeco declara alerta verde en Gracias a Dios y Olancho",
+    "Decretan Alerta Verde para Gracias a Dios y cinco municipios de  Olancho por lluvias",
+    "Inundaciones afectan a unas 60 comunidades en Honduras y dejan daños en cultivos y vías de acceso",
+    "COPECO alerta por lluvias y actividad eléctrica en Gracias a Dios ante riesgo de inundaciones",
+    "Copeco emitirá una emergencia por inundaciones en Gracias a Dios; lluvias dejan evacuados y pérdidas en cultivos"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about flood alerts and impacts in Gracias a Dios and Olancho, Honduras, due to heavy rains."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss weather alerts and the risk of flooding in Gracias a Dios and Olancho, Honduras."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700162,
+   "label": "Irán eleva a 50 los muertos por los ataques de EE.UU. en las últimas tres semanas",
+   "kept_size": 8,
+   "cohesion": 0.9863332509994507,
+   "best_control_overlap": null,
+   "headlines": [
+    "Irán eleva a 50 los muertos por los ataques de EE.UU. contra el país en las últimas tres semanas",
+    "Irán eleva a 50 los muertos por los ataques de Estados Unidos en las últimas tres semanas",
+    "Irán eleva a 50 los muertos por ataques de Estados Unidos",
+    "Irán eleva a 50 los muertos y más de 500 heridos por los ataques de EEUU en las últimas tres semanas | Internacional",
+    "Irán eleva a 50 los muertos por los ataques de EE.UU. en las últimas tres semanas",
+    "Irán eleva a 50 los muertos por los ataques de EE.UU.",
+    "Irán eleva a 50 los muertos por los ataques de EE.UU. en las últimas tres semanas - Mundo",
+    "Asciende a 50 el número de muertos por bombardeos de EE.UU. contra Irán"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report Iran raising the death toll to 50 from US attacks in the last three weeks."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines report on the increase in the death toll to 50 due to U.S. attacks on Iran over the past three weeks."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700029,
+   "label": "US launches new Iran strikes, reimposes naval blockade",
+   "kept_size": 16,
+   "cohesion": 0.979735791683197,
+   "best_control_overlap": null,
+   "headlines": [
+    "US reimposes Naval blockade on Iran, intensifies airstrike campaign",
+    "United States launches new Iran strikes and reimposes naval blockade",
+    "IRAN WAR: U.S. launches new attacks as naval blockade reimposed",
+    "US Hits Iran With New Strikes After Reimposing Naval Blockade",
+    "US launches new Iran strikes, reimposes naval blockade",
+    "US military reimposes its blockade of Iranian ports",
+    "US reimposes naval blockade on Iran amid fresh strikes",
+    "New strikes on Iran as US restarts blockade",
+    "US resumes naval blockade on Iranian ports after",
+    "U.S. military resumes naval blockade of Iranian ports",
+    "US launches fresh Iran strikes, reimposes naval blockade",
+    "US launches new round of Iran strikes as blockade takes effect"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the US reimposing a naval blockade on Iran and launching new airstrikes, clearly the same event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700140,
+   "label": "Τραμπ: «Θα διαχειριζόμαστε τα Στενά του Ορμούζ και θα πληρωνόμαστε για αυτό»",
+   "kept_size": 9,
+   "cohesion": 0.9845781326293945,
+   "best_control_overlap": null,
+   "headlines": [
+    "Tραμπ: «Θα γίνουμε ο φύλακας άγγελος των Στενών του Ορμούζ -Θα πρέπει να μας πληρώσουν γι' αυτό»",
+    "Τραμπ: «Θα διαχειριζόμαστε τα Στενά του Ορμούζ και θα πληρωνόμαστε για αυτό»",
+    "Τραμπ: Θα γίνουμε φύλακας άγγελος των Στενών του Ορμούζ και θα πρέπει να αποζημιωθούμε γι΄αυτό",
+    "Τραμπ για Χορμούζ: «Θα γίνουμε ο φύλακας του Στενού και θα πρέπει να αποζημιωνόμαστε γι' αυτό»",
+    "Τραμπ: Οι ΗΠΑ θα «φυλάνε» τα Στενά του Ορμούζ και θα πληρώνονται ακριβά γι' αυτό",
+    "Τραμπ: Θα ελέγχουμε τα Στενά του Ορμούζ και θα μας πληρώνουν για αυτό",
+    "Τραμπ: Θα ελέγχουμε τα Στενά του Ορμούζ και θα πληρωνόμαστε γι αυτό",
+    "Τραμπ: «Εμείς θα ελέγχουμε τα Στενά του Ορμούζ και θα μας πληρώνουν για να τα φυλάμε»",
+    "Τραμπ: Παίρνουμε τον έλεγχο των Στενών του Ορμούζ και θα μας πληρώνουν γι' αυτό"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report Trump's statement about the US controlling the Strait of Hormuz and demanding payment for it."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700103,
+   "label": "Iran warns Strait of Hormuz is 'Red Line' amid US strikes",
+   "kept_size": 10,
+   "cohesion": 0.9752722978591919,
+   "best_control_overlap": null,
+   "headlines": [
+    "US expands attacks on Iran, which calls Strait of Hormuz a 'red line' as it retaliates",
+    "Iran Warns US Of 'Infrastructure For Infrastructure' War, Will Control Hormuz As 'Unbreakable Red Line'",
+    "Iran Warns Strait of Hormuz Is a 'Red Line,' Threatens Regional Infrastructure",
+    "Iran warns Strait of Hormuz is a 'red line' and will resist until the end",
+    "Iran warns of Hormuz 'red line' as clashes with US escalate",
+    "Tehran says Strait of Hormuz 'red line' - as it responds to Trump's threat",
+    "Iran warns U.S. of Hormuz 'red line,' says it will retaliate to Trump's strike threats",
+    "Iran warns Strait of Hormuz a 'red line', will resist until end",
+    "Iran warns Strait of Hormuz is 'Red Line' amid US strikes",
+    "Iran warns Trump against striking infrastructure, calls Strait of Hormuz a ‘red line’"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report Iran's warning that the Strait of Hormuz is a 'red line' in response to US threats, focusing on the same escalating conflict."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700176,
+   "label": "Hormuz gli Usa colpiscono l'Iran I pasdaran | missili su basi in Giordania Bahrein e Kuwai",
+   "kept_size": 8,
+   "cohesion": 0.9813507795333862,
+   "best_control_overlap": null,
+   "headlines": [
+    "Iran raid di Teheran su Bahrein Giordania e Kuwait – La diretta",
+    "Iran Usa | colpiti centri di comando di Teheran Trump | Rilasciata cittadina Usa detenuta dal 2024 – La diretta",
+    "L'Iran colpisce Bahrein Giordania e Kuwait Teheran | 30 civili uccisi in attacchi Usa – La diretta",
+    "Iran Trump | Gli attacchi continueranno finché non dirò basta Teheran colpisce Bahrein Giordania e Kuwait – La diretta",
+    "Gli Usa colpiscono l'Iran Trump | Stiamo prendendo il controllo di Hormuz saremo i custodi e verremo rimborsati – La diretta",
+    "Hormuz gli Usa colpiscono l'Iran Teheran | ci ritiriamo dal memorandum – La diretta",
+    "Iran nuovi raid Usa Centcom | Colpiti decine di obiettivi I Pasdaran | Attaccate basi americane in Giordania Kuwait e Bahrein – La diretta",
+    "Hormuz gli Usa colpiscono l'Iran I pasdaran | missili su basi in Giordania Bahrein e Kuwait – La diretta"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines describe ongoing military conflict between Iran and the US, involving attacks on Bahrain, Jordan, Kuwait, and the Strait of Hormuz."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss a series of military attacks and retaliations involving Iran, the US, and other Middle Eastern countries."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "IR",
+   "cluster_id": 700078,
+   "label": "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups ",
+   "kept_size": 11,
+   "cohesion": 0.9932803511619568,
+   "best_control_overlap": null,
+   "headlines": [
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say",
+    "Iran persecutes Baha'i minority in year of protests, war: rights groups",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | National News",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | Associated Press",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | Nation & World",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | Nation",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | National",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | Us",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | International",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say | National news coverage",
+    "Iran persecutes its Baha'i minority fiercely in a year of protests and war, rights groups say – Winnipeg Free Press"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about the same report on Iran's persecution of the Baha'i minority during protests and war."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300125,
+   "label": "Trump domaga się włączenia sankcji na Iran do ustawy o sankcjach na Rosję",
+   "kept_size": 9,
+   "cohesion": 0.9717604517936707,
+   "best_control_overlap": null,
+   "headlines": [
+    "Trump domaga się włączenia sankcji na Iran do ustawy o sankcjach na Rosję",
+    "Trump uzależnia sankcje przeciw Rosji od nałożenia sankcji na Iran",
+    "Trump žiada, aby sankčný zákon proti Rusku zahŕňal aj Irán, odvoláva sa na senátora Grahama",
+    "Zamieszanie wokół ustawy o sankcjach na Rosję. Trump chce dopisać do niej Iran",
+    "Trump chce pritvrdiť: Do tvrdých sankcií proti Rusku chce pridať aj Irán",
+    "Trump: Irán by mal byť zahrnutý do návrhu o sankciách USA voči Rusku",
+    "Trump chce sankcji na Iran w projekcie ustawy o sankcjach na Rosję. W Kongresie rosną obawy",
+    "Złe informacje dla Putina. Trump popiera sankcje przeciwko Rosji proponowane przez Grahama",
+    "Trump chce podporiť tvrdšie sankcie proti Rusku, návrh počíta aj s clami voči jeho obchodným partnerom"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines focus on Trump's demand to include Iran sanctions in a Russia sanctions bill."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300091,
+   "label": "В Сенат США представили обновленный вариант законопроекта о санкциях против РФ",
+   "kept_size": 11,
+   "cohesion": 0.9767299890518188,
+   "best_control_overlap": null,
+   "headlines": [
+    "Конгрессмены США призвали заблокировать законопроект о санкциях против России",
+    "Санкции против России: В конгрессе США хотят, чтобы законопроект о санкциях против РФ заблокировали",
+    "В Конгрессе США призвали заблокировать проект санкций против России",
+    "В Конгрессе США призвали заблокировать законопроект о санкциях против РФ",
+    "В Сенат США внесли законопроект об \"адских\" санкциях против России",
+    "В Сенате США внесли законопроект о новых масштабных санкциях против России",
+    "В США предложили переименовать законопроект о санкциях против России",
+    "У Сенаті США представили оновлений законопроєкт про санкції проти рф",
+    "У Сенаті США представили законопроєкт про санкції проти РФ",
+    "В Сенат США представили обновленный вариант законопроекта о санкциях против РФ",
+    "В Сенате США представили обновленный вариант законопроекта о санкциях против РФ"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about US Congress/Senate actions on a sanctions bill against Russia, with variations in details but same core event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300119,
+   "label": "Giá xăng dầu hôm nay 16/7: Xăng dầu trong nước bật tăng mạnh theo giá thế giới",
+   "kept_size": 9,
+   "cohesion": 0.9721729755401611,
+   "best_control_overlap": null,
+   "headlines": [
+    "Giá xăng dầu hôm nay 19/7: Dầu thô khó lường, trong nước tăng mạnh",
+    "Giá xăng ở Mỹ dự báo sẽ tiếp tục duy trì ở mức cao trong thời gian dài",
+    "Giá xăng dầu hôm nay 17/7 tăng mạnh theo đà thế giới, có loại tăng hơn 1.500 đồng bảng giá iPhone rẻ",
+    "Giá xăng dầu hôm nay 16/7: Xăng dầu trong nước bật tăng mạnh theo giá thế giới",
+    "Giá xăng dầu hôm nay: Dầu thế giới tăng, giá trong nước sắp có biến động?",
+    "Giá dầu thế giới tiếp tục chuỗi ngày tăng",
+    "Giá xăng dầu hôm nay 14.7.2026: Tăng gần 10%, trong nước được điều chỉnh thế nào?",
+    "Giá xăng dầu hôm nay 14/7: Tiếp đà tăng mạnh",
+    "Giá xăng dầu hôm nay (14-7): Giá dầu thế giới tăng gần 10%, lên mức cao nhất trong một tháng"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about gasoline and oil price changes on specific dates, focusing on global and domestic price increases."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300144,
+   "label": "Bank of Russia raises dollar exchange rate to 78.4 rubles for July 18-20",
+   "kept_size": 9,
+   "cohesion": 0.9603240489959717,
+   "best_control_overlap": null,
+   "headlines": [
+    "Bank of Russia raises dollar exchange rate to 78.4 rubles for July 18-20",
+    "Bank of Russia raises dollar exchange rate to 78.3 rubles for July 17",
+    "Russia’s international reserves up $0.7 bln in one week to $722 bln — Central Bank",
+    "Bank of Russia raises dollar exchange rate to 77.9 rubles for July 16",
+    "Russia's current account surplus up to $27 bln in January-May — Central Bank",
+    "Bank of Russia raises official dollar rate to 77.49 rubles, euro to 88.53 for July 15",
+    "Russia's foreign trade surplus rises 9.4 pct in Jan.-May",
+    "Russia's trade surplus rises to $14.2 bln in May — Central Bank",
+    "Russia's trade surplus rises 9.44% to $59.1 bln in January-May"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple distinct economic indicators (exchange rates, reserves, trade surplus) rather than a single event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300050,
+   "label": "Việt Anh và Quỳnh Nga xác nhận yêu nhau sau thời gian dài giữ kín",
+   "kept_size": 13,
+   "cohesion": 0.9759236574172974,
+   "best_control_overlap": null,
+   "headlines": [
+    "Món quà bất ngờ của Cục trưởng Xuân Bắc, Quỳnh Nga sau công khai yêu Việt Anh",
+    "Sau 7 năm vướng tin đồn, Việt Anh và Quỳnh Nga lại khiến mạng xã hội dậy sóng vì câu trả lời lấp lửng về đám cưới",
+    "Quỳnh Nga và Việt Anh chính thức hẹn hò: Thông tin gây xôn xao hậu trường",
+    "Quỳnh Nga đính chính về thông tin hẹn hò Việt Anh",
+    "Quỳnh Nga: Tôi và NSƯT Việt Anh yêu nhau được hơn một năm - Sao việt",
+    "Việt Anh và Quỳnh Nga xác nhận yêu nhau sau thời gian dài giữ kín",
+    "Việt Anh: Tôi và Quỳnh Nga đã chính thức yêu nhau 1 năm - Sao việt",
+    "7 năm bên nhau của NSƯT Việt Anh và Quỳnh Nga",
+    "Việt Anh từng ly hôn 2 lần trước khi công khai thành đôi với Quỳnh Nga",
+    "Lý do Việt Anh, Quỳnh Nga công khai sau 7 năm yêu 'kín'",
+    "Việt Anh: \"Tôi và Quỳnh Nga đã chính thức yêu nhau 1 năm\"",
+    "Việt Anh và Quỳnh Nga ngầm xác nhận hẹn hò sau 7 năm: Nói không yêu ai tin?"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about the romantic relationship between Vietnamese actors Việt Anh and Quỳnh Nga, with variations on confirmation, duration, and reactions."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300010,
+   "label": "Rusya'nın e-ticaret devi vuruldu! Çok sayıda ölü var, büyük yangın çıktı",
+   "kept_size": 22,
+   "cohesion": 0.9571149349212646,
+   "best_control_overlap": null,
+   "headlines": [
+    "Almanya ve Rusya arasında benzin krizi: Büyükelçiyi kovmaktan beter ettiler",
+    "Zelenskiy, Rusya'da 3 petrol rafinerisine saldırılar düzenlediklerini açıkladı",
+    "Kraliyet düğününü bile geride bıraktı! Dünyanın en pahalı düğünün maliyeti şoke etti",
+    "İşte tarihin en pahalı düğünü! Tam 1,4 milyar dolar harcama yapıldı!",
+    "Ukrayna İHA'larla Rusya'nın en büyük e-ticaret platformu depolarını vurdu: 7 ölü onlarca yaralı",
+    "Zelenskiy, Rusya'da iki lojistik merkezine saldırı düzenlediklerini bildirdi",
+    "Rusya alev alev, yüzlerce İHA ile en büyük darbe vuruldu! Çok sayıda ölü var",
+    "Rusya'da İHA saldırıları: 7 kişi hayatını kaybetti, tesislerde yangın çıktı",
+    "Rusya'nın e-ticaret devi vuruldu! Çok sayıda ölü var, büyük yangın çıktı",
+    "Rusya'ya İHA saldırısı: Çok sayıda ölü ve yaralı var",
+    "Rusya’da İHA saldırılarında 7 kişi öldü, bazı tesislerde yangın çıktı",
+    "Rusya Dışişleri: Batı'nın Moskova'ya yönelik siber saldırı iddiaları kanıtsız"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple distinct events: Ukraine drone attacks on Russian targets, a luxury wedding, and a diplomatic dispute, with no single story dominating 80%."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300030,
+   "label": "В Белгородской области при атаке ВСУ погибла женщина",
+   "kept_size": 15,
+   "cohesion": 0.9807494282722473,
+   "best_control_overlap": null,
+   "headlines": [
+    "В Белгородской области мирная жительница пострадала при атаке БПЛА",
+    "В Белгородской области мирная жительница пострадала при ударе БПЛА",
+    "В Белгородской области при атаке дрона ВСУ пострадала мирная жительница",
+    "Женщина погибла при атаке беспилотников ВСУ на Белгородскую область",
+    "В Белгородской области женщина пострадала в результате детонации дрона ВСУ",
+    "В Белгородской области при атаке дрона ВСУ на частный дом ранена женщина",
+    "В Белгородской области при атаке БПЛА ранена мирная жительница",
+    "В Белгородской области во время атаки БПЛА ранена женщина",
+    "В Белгородской области из-за атаки ВСУ ранена женщина",
+    "В Старобельске в результате атаки ВСУ погибла женщина",
+    "Жительница Запорожской области погибла в результате атаки ВСУ",
+    "Женщина погибла ночью в Белгородской области в результате атаки ВСУ"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines 1-9 and 12 are about attacks in Belgorod region, but headlines 10 and 11 refer to different locations (Starobelsk and Zaporozhye), so not all cover the same story."
+   },
+   "openai": {
+    "same_story": false,
+    "reason": "Headlines 1-9 and 12 cover a drone attack in Belgorod region, but 10 and 11 mention different locations."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "RU",
+   "cluster_id": 300132,
+   "label": "Выпуск программы «Время» от 18.07.2026. Новости. Первый канал",
+   "kept_size": 9,
+   "cohesion": 0.9866266250610352,
+   "best_control_overlap": null,
+   "headlines": [
+    "Выпуск программы «Время» от 19.07.2026. Новости. Первый канал",
+    "Выпуск программы «Время» от 18.07.2026. Новости. Первый канал",
+    "Выпуск новостей в 18:00 от 18.07.2026. Новости. Первый канал",
+    "Выпуск новостей в 12:00 от 18.07.2026. Новости. Первый канал",
+    "Выпуск программы «Время» от 17.07.2026. Новости. Первый канал",
+    "Выпуск программы «Время» от 16.07.2026. Новости. Первый канал",
+    "Выпуск новостей в 15:00 от 16.07.2026. Новости. Первый канал",
+    "Выпуск новостей в 12:00 от 16.07.2026. Новости. Первый канал",
+    "Выпуск программы «Время» от 15.07.2026. Новости. Первый канал"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "These are different news broadcasts from different dates and times, not a single story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800007,
+   "label": "Офис генпрокурора Украины показал момент покушения на Ермолаева в Монако",
+   "kept_size": 23,
+   "cohesion": 0.9582492113113403,
+   "best_control_overlap": null,
+   "headlines": [
+    "Єрмолаєв заявив про причетність ГУР МО до вибуху в Монако",
+    "Момент взрыва при покушении на Вадима Ермолаева в Монако попал на камеру. Новости. Первый канал",
+    "Восстановлено видео покушения на миллиардера Ермолаева в Монако ::  Новости дня  / ВЗГЛЯД",
+    "Генпрокуратура Украины распространила видео покушения на Вадима Ермолаева в Монако. Новости. Первый канал",
+    "Генпрокурор України показав кадри замаху на Єрмолаєва в Монако",
+    "Момент подрыва украинского олигарха Ермолаева в Монако попал на видео",
+    "Офис генпрокурора Украины показал момент покушения на Ермолаева в Монако",
+    "Офис генпрокурора Украины показал момент подрыва олигарха Ермолаева в Монако",
+    "СБУ відновила видалений відеозапис із моментом замаху на Єрмолаєва в Монако",
+    "Жертва взрыва в Монако обвинил в теракте спецслужбы Украины",
+    "Юсов відреагував на заяву Єрмолаєва про причетність офіцерів ГУР до вибуху в Монако",
+    "Хто стоїть за замахом на Єрмолаєва: бізнесмен висунув звинувачення та звернувся до Зеленського"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about the assassination attempt on Vadim Yermolaev in Monaco, with variations in details and sources."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800037,
+   "label": "Devastating Russian attacks make June deadliest month for Ukraine’s civilians since 2022",
+   "kept_size": 14,
+   "cohesion": 0.9581512212753296,
+   "best_control_overlap": null,
+   "headlines": [
+    "UN Records June as Deadliest Month for Ukrainian Civilians Since April 2022",
+    "Devastating Russian attacks make June deadliest month for Ukraine’s civilians since 2022",
+    "Junio fue el mes más mortífero para la población civil de Ucrania desde el inicio de la guerra",
+    "Ukraine War, Day 1,603: Deadliest Month for Civilians from Russia's Strikes Since April 2022",
+    "June marks worst month of the war for Ukraine as Russian invasion drags on with no end in sight",
+    "Devastating Russian attacks make June deadliest month for Ukraine's civilians since 2022",
+    "'Hunted' by drones: UN reports worst month for Ukraine's civilians since 2022 — Global Issues",
+    "Devastating Russian attacks make June deadliest month for Ukraine's civilians since 2022 - LocalNews8.com",
+    "Devastating Russian attacks make June deadliest month for Ukraine's civilians since 2022 | National & World",
+    "Junio fue el mes más mortífero para los civiles en Ucrania desde el inicio de la guerra, según la ONU – EntornoInteligente.com",
+    "June was deadliest month for Ukraine civilians in over four years",
+    "UN Reports Record Civilian Casualties in Ukraine – June 2026"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report that June was the deadliest month for Ukrainian civilians since 2022, based on UN data."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines report on June being the deadliest month for Ukrainian civilians since 2022, due to Russian attacks."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800073,
+   "label": "Russia’s Battlegroup North artillery destroys 15 Ukrainian UAV control centers overnight",
+   "kept_size": 11,
+   "cohesion": 0.9623863101005554,
+   "best_control_overlap": null,
+   "headlines": [
+    "Over 160 Ukrainian drones taken down over Russian regions during day",
+    "Air defense shoot down 120 Ukrainian drones in Kursk region over past day — governor",
+    "140 Ukrainian UAVs shot down overnight over Russian regions, Sea of Azov, Black Sea",
+    "Russia’s Battlegroup North artillery destroys 15 Ukrainian UAV control centers overnight",
+    "Russia’s Battlegroup North destroys four Ukrainian ground robotic systems in Sumy area",
+    "Russia’s Lis interceptor unit destroys 37 Ukrainian UAVs overnight",
+    "Russia’s Battlegroup South downs over 170 Ukrainian drones over past day",
+    "Russia’s Battlegroup South destroys over 90 Ukrainian robotic vehicles in half-month",
+    "Russia’s Battlegroup North destroys Ukrainian UAV control antenna in Sumy Region",
+    "Russian air defenses destroy over 180,000 UAVs in Ukraine operation — top brass",
+    "Russia’s Battlegroup South UAVs disrupt Ukrainian ammunition supplies in Druzhkovka"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover various drone-related events across different regions and timeframes, not a single specific story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800070,
+   "label": "Russian attacks kill six and expose gaps in Ukraine's air defences | Chester and District ",
+   "kept_size": 11,
+   "cohesion": 0.979518711566925,
+   "best_control_overlap": null,
+   "headlines": [
+    "Russian attacks kill six in Kyiv and other cities",
+    "Russian attacks kill 6 in Kyiv and other cities and expose gaps in Ukraine's air defenses",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | Clacton and Frinton Gazette",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | Chester and District Standard",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | Maldon and Burnham Standard",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | Darlington and Stockton Times",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | Richmond and Twickenham Times",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | The Wiltshire Gazette and Herald",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | Wilts and Gloucestershire Standard",
+    "Russian attacks kill six and expose gaps in Ukraine's air defences | East London and West Essex Guardian Series"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the same event: Russian attacks killing six in Kyiv and other cities, highlighting gaps in Ukraine's air defenses."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "UA",
+   "cluster_id": 800056,
+   "label": "Бійці НГУ знищили російський Су-24М на аеродромі в Криму",
+   "kept_size": 12,
+   "cohesion": 0.9757203459739685,
+   "best_control_overlap": null,
+   "headlines": [
+    "Україна знищила російський бомбардувальник Су-24М у Криму",
+    "Бійці НГУ знищили російський Су-24М на аеродромі в Криму",
+    "BlackSeaNews | Спецпризначенці НГУ знищили російський Су-24М на аеродромі в окупованому Криму",
+    "Нацгвардійці знищили ще один бомбардувальник Су-24М на військовому аеродромі «Саки»",
+    "Украинский спецназ уничтожил российский бомбардировщик Су-24М в Крыму",
+    "Українські дрони знищили бомбардувальник Су-24М росіян на аеродромі «Саки» в Криму",
+    "Бойові водолази Нацгвардії знищили Су-24М, який готувався бомбити українські міста",
+    "Спецпризначенці НГУ «Омега» знищили російський Су-24М на аеродромі «Саки» в Криму",
+    "Російський бомбардувальник Су-24М у Криму знищили бойові водолази Нацгвардії",
+    "Бійці НГУ знищили російський Су-24М на військовому аеродромі \"Саки\" в окупованому Криму",
+    "Українські дрони знищили бомбардувальник Су-24М росіян на аеродромі \"Саки\" в Криму. ВІДЕО",
+    "Війна в Україні: спецпризначенці НГУ знищили російський бомбардувальник Су-24М у Криму"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the destruction of a Russian Su-24M bomber in Crimea by Ukrainian forces, with minor variations in details."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines report on the destruction of a Russian Su-24M bomber in Crimea by Ukrainian forces."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "nonlatin",
+   "country": "GR",
+   "cluster_id": 1700145,
+   "label": "Σαν σήμερα 15 Ιουλίου: Τα σημαντικότερα γεγονότα της ημέρας",
+   "kept_size": 8,
+   "cohesion": 0.9840238094329834,
+   "best_control_overlap": null,
+   "headlines": [
+    "Τα σημαντικότερα γεγονότα που έγιναν σαν σήμερα 20 Ιουλίου",
+    "Σαν σήμερα 19 Ιουλίου: Τα σημαντικότερα γεγονότα της ημέρας",
+    "Τα σημαντικότερα γεγονότα που έγιναν σαν σήμερα 19 Ιουλίου",
+    "Σαν σήμερα 16 Ιουλίου: Τα σημαντικότερα γεγονότα της ημέρας",
+    "Σαν σήμερα 15 Ιουλίου: Τα σημαντικότερα γεγονότα της ημέρας",
+    "Τα σημαντικότερα γεγονότα που έγιναν σαν σήμερα 15 Ιουλίου",
+    "Σαν σήμερα 14 Ιουλίου: Τα σημαντικότερα γεγονότα της ημέρας",
+    "Σαν σήμερα 13 Ιουλίου: Τα σημαντικότερα γεγονότα της ημέρας"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Each headline is about historical events on different dates, not a single specific story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "BR",
+   "cluster_id": 1300042,
+   "label": "Lotofácil hoje: resultado do concurso 3738 e números sorteados",
+   "kept_size": 9,
+   "cohesion": 0.9885196685791016,
+   "best_control_overlap": null,
+   "headlines": [
+    "Resultado da Lotofácil 3739 hoje, 19/07: veja os números sorteados",
+    "Lotofácil hoje: resultado do concurso 3739 e números sorteados",
+    "Lotofácil hoje: resultado do concurso 3738 e números sorteados",
+    "Lotofácil hoje: resultado do concurso 3737 e números sorteados",
+    "Lotofácil hoje: resultado do concurso 3736 e números sorteados",
+    "Lotofácil hoje: resultado do concurso 3735 e números sorteados",
+    "Lotofácil 3735 hoje: confira o resultado desta terça-feira (14)",
+    "Lotofácil 3734 hoje: confira o resultado desta segunda-feira (13)",
+    "Lotofácil hoje: resultado do concurso 3734 e números sorteados"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines refer to different Lotofácil lottery draws (concurso 3739, 3738, 3737, 3736, 3735, 3734), which are separate events."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "BR",
+   "cluster_id": 1300066,
+   "label": "Cratera se abre durante obra da Sabesp em Osasco, e três casas são interditadas",
+   "kept_size": 8,
+   "cohesion": 0.9852049350738525,
+   "best_control_overlap": null,
+   "headlines": [
+    "Sabesp tampa cratera em Osasco; incidente é ao menos o quarto relacionado a obras em 3 meses - 14/07/2026",
+    "Sabesp tampa cratera em Osasco; incidente é ao menos o quarto relacionado a obras em 3 meses",
+    "Sabesp conclui preenchimento de cratera em Osasco e libera duas das três casas interditadas",
+    "Cratera aberta durante obra da Sabesp interdita casas e deixa desabrigados em Osasco",
+    "Sabesp fecha cratera que causou rachaduras em imóveis em Osasco, na Grande SP; 3 casas seguem interditadas",
+    "Cratera se abre durante obra da Sabesp em Osasco e deixa nove desabrigados",
+    "Cratera se abre durante obra da Sabesp em Osasco e deixa nove desabrigados - 13/07/2026",
+    "Cratera se abre durante obra da Sabesp em Osasco, e três casas são interditadas"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report on a crater opened during Sabesp construction in Osasco, with consistent details about house interdictions and displaced residents."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss the same incident involving a crater opening during Sabesp's construction work in Osasco, affecting local homes."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "BR",
+   "cluster_id": 1300043,
+   "label": "El Poder Judicial brasileño determinó que Milei no podrá visitar a Bolsonaro en su prisión",
+   "kept_size": 9,
+   "cohesion": 0.9887208938598633,
+   "best_control_overlap": null,
+   "headlines": [
+    "La Corte de Brasil le prohibió a Milei visitar a Bolsonaro en su prisión domiciliaria",
+    "El Poder Judicial brasileño determinó que Milei no podrá visitar a Bolsonaro en su prisión domiciliaria",
+    "La Justicia brasileña frena a Milei y le impide visitar a Bolsonaro durante su arresto domiciliario",
+    "El Tribunal Supremo de Brasil prohíbe la visita de Javier Milei a Jair Bolsonaro en prisión domiciliaria",
+    "La Corte Suprema de Brasil prohíbe que Milei visite a Jair Bolsonaro en prisión domiciliaria",
+    "La Corte Suprema de Brasil endureció la prisión domiciliaria de Bolsonaro y Milei no podrá visitarlo",
+    "Javier Milei no podrá visitar a Jair Bolsonaro en prisión domiciliaria por orden de la Corte Suprema de Brasil",
+    "Javier Milei no podrá visitar a Jair Bolsonaro: la Justicia de Brasil endureció la prisión domiciliaria del expresidente",
+    "La Justicia de Brasil rechazó que Javier Milei visite a Jair Bolsonaro durante su prisión domiciliaria"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report that Brazil's judiciary prohibited Javier Milei from visiting Jair Bolsonaro during his house arrest."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines report on the Brazilian court's decision to prohibit Javier Milei from visiting Jair Bolsonaro during his house arrest."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "ID",
+   "cluster_id": 1200101,
+   "label": "Rescuers find 5 survivors, seek 20 others after boat sinks in Indonesia",
+   "kept_size": 8,
+   "cohesion": 0.9829602837562561,
+   "best_control_overlap": null,
+   "headlines": [
+    "Five people rescued after Indonesia boat sinks, at least 20 still missing",
+    "Five survivors rescued after Indonesia ferry sinks; search on for 20 missing",
+    "Indonesia boat disaster: Five found alive, search continues for 20 missing",
+    "20 missing, five rescued after boat sinks in Indonesia",
+    "Rescuers find 5 survivors, seek 20 others after boat sinks in Indonesia",
+    "Five survivors found after boat sinks in Indonesia",
+    "Rescuers find 5 survivors and are still looking for 20 others after boat sinks in Indonesia",
+    "Rescuers find five survivors and are still looking for 20 others after boat sinks in Indonesia"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the same incident: a boat sinking in Indonesia with five rescued and 20 missing."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "RO",
+   "cluster_id": 2300014,
+   "label": "Bolojan, atac la Grindeanu după negocieri: „Ce ţine de ţara noastră nu trebuie să fie anul",
+   "kept_size": 8,
+   "cohesion": 0.987440824508667,
+   "best_control_overlap": null,
+   "headlines": [
+    "Cum a încercat Nicușor Dan să-i împace pe Sorin Grindeanu și Ilie Bolojan: „Asta e frustrarea mea din ultimele două luni”",
+    "Grindeanu crede că ura de PSD ține România blocată: „O sectă continuă să aplaude politicile economice proaste ale lui Ilie Bolojan\" VIDEO",
+    "Bolojan îi răspunde lui Grindeanu: „Țintele dificile din PNRR au fost amânate. Cei care trebuiau să le promoveze nu și le-au asumat”",
+    "Bolojan, atac la Grindeanu după negocieri: „Ce ţine de ţara noastră nu trebuie să fie anulat de frustrările pe care le avem fiecare”",
+    "Bolojan refuză să își dea demisia, cerută de Grindeanu la Cotroceni: „Cine mai gestionează cele două ministere pe care le am eu\"",
+    "Bolojan îl acuză pe Grindeanu că „șantajează\" banii din PNRR după eșecul negocierilor politice: „Nu este în regulă pentru țara asta\"",
+    "Siegfried Mureșan, mesaj dur după eșecul consultărilor de la Cotroceni: „Noi în braţele PSD nu ne vom mai întoarce\". Ce spune despre viitorul guvernării și rolul lui Bolojan",
+    "Grindeanu îl amenință pe Bolojan că ar putea să nu voteze legile din PNRR: „PSD este în Opoziție. Să nu dea ordine Parlamentului”"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about the political conflict between Sorin Grindeanu (PSD) and Ilie Bolojan (PNL), including mediation by Nicușor Dan and reactions from Siegfried Mureșan, centered on negotiations a"
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss the political tensions and negotiations between Sorin Grindeanu and Ilie Bolojan, focusing on issues related to PNRR and government roles."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "PL",
+   "cluster_id": 2200006,
+   "label": "Praca KSIĘGOWY K/M - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+   "kept_size": 11,
+   "cohesion": 0.9601127505302429,
+   "best_control_overlap": null,
+   "headlines": [
+    "Praca OSOBA WYKONUJĄCA PRACE CIESIELSKIE - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca KSIĘGOWY K/M - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca PRACOWNIK OCHRONY (K/M) - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca KELNERKA/KELNER - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca SPRZEDAWCA (K/M/X) - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca SPRZEDAWCA-MAGAZYNIER K/M - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca PRACOWNIK PRALNI (K/M) - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca POMOCNICZY ROBOTNIK BUDOWLANY - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca OSOBA DO PRAC POMOCNICZYCH W KUCHNI - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca PRACOWNIK FIZYCZNY K/M - oferty pracy dostarczone przez Centralna Baza Ofert Pracy",
+    "Praca OSOBA DO POMOCNICZYCH PRAC BUDOWLANYCH - oferty pracy dostarczone przez Centralna Baza Ofert Pracy"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "All headlines are job advertisements for different positions, not a single news story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "EC",
+   "cluster_id": 7500000,
+   "label": "Cómo ver EN VIVO Barcelona SC vs Libertad HOY: Hora, canal y alineaciones del duelo por la",
+   "kept_size": 12,
+   "cohesion": 0.9646168351173401,
+   "best_control_overlap": null,
+   "headlines": [
+    "EN VIVO | Barcelona SC vs Libertad: Mira aquí las acciones y las alineaciones del partido de LigaPro",
+    "Cómo ver EN VIVO Barcelona SC vs Libertad HOY: Hora, canal y alineaciones del duelo por la LigaPro",
+    "Barcelona SC vs Libertad HOY: Partido EN VIVO y alineaciones por la fecha 20 de la LigaPro 2026",
+    "A qué hora juegan Barcelona SC vs. Libertad FC por la Liga Ecuabet: canales y horarios para verlo EN VIVO",
+    "Copa Ecuador | Fechas y horarios en los octavos de final: ¿Cuándo juega Barcelona SC y Liga?",
+    "Copa Ecuador 2026: ¿Cuándo y a qué hora son los partidos de octavos de final?",
+    "Barcelona SC salvó un punto y empató 1-1 ante Guayaquil City: Ahora así queda en LigaPro",
+    "EN VIVO | Barcelona SC vs Guayaquil City: sigue el partido, alineaciones y todas las incidencias",
+    "Barcelona SC vs Guayaquil City HOY: Partido EN VIVO, alineaciones y canales para ver la LigaPro",
+    "EN VIVO | Barcelona SC vs. Guayaquil City por el partido de la Fecha 19 de la LigaPro",
+    "Emelec vs Barcelona SC: Así queda sus realidades luego del empate en el Clásico del Astillero",
+    "El drama que vivió Barcelona SC en el Clásico del Astillero revelado por César Farías"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple different matches involving Barcelona SC (vs Libertad, vs Guayaquil City, vs Emelec) and Copa Ecuador, not a single story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "CZ",
+   "cluster_id": 5100003,
+   "label": "Czech news in brief for July 17: Friday's top morning headlines",
+   "kept_size": 14,
+   "cohesion": 0.9818824529647827,
+   "best_control_overlap": null,
+   "headlines": [
+    "Czech news in brief for July 19: Sunday's top afternoon headlines",
+    "Czech news in brief for July 19: Sunday's top morning headlines",
+    "Czech news in brief for July 18: Saturday's top afternoon headlines",
+    "Czech news in brief for July 18: Saturday's top morning headlines",
+    "Czech news in brief for July 17: Friday's top afternoon headlines",
+    "Czech news in brief for July 17: Friday's top morning headlines",
+    "Czech news in brief for July 16: Thursday's top afternoon headlines",
+    "What to do this weekend in Prague: Best events for July 17–19",
+    "Czech news in brief for July 15: Wednesday's top afternoon headlines",
+    "Czech news in brief for July 15: Wednesday's top morning headlines",
+    "Czech news in brief for July 14: Tuesday's top afternoon headlines",
+    "Czech news in brief for July 14: Tuesday's top morning headlines"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "These are daily news summaries covering multiple stories, not a single event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "US",
+   "cluster_id": 439,
+   "label": "Trump says ICE won't halt traffic stops after recent fatal shootings",
+   "kept_size": 8,
+   "cohesion": 0.9891100525856018,
+   "best_control_overlap": null,
+   "headlines": [
+    "In reversal, Trump says ICE won't halt traffic stops after fatal shootings",
+    "Trump says ICE won't halt traffic stops after shootings",
+    "Trump says ICE won't halt traffic stops after recent fatal shootings",
+    "Trump says ICE won't halt traffic stops after recent U.S. fatal shootings",
+    "Trump says ICE won't halt traffic stops after recent fatal shootings despite earlier order",
+    "Trump says ICE won't halt traffic stops after recent fatal shootings",
+    "Trump says ICE won't halt traffic stops after recent fatal shootings | The Mighty 790 KFGO",
+    "Trump says ICE won't halt traffic stops after recent fatal shootings | WKZO | Everything Kalamazoo"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report Trump's reversal on ICE traffic stops after fatal shootings, with only minor wording variations."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss Trump's statement about ICE not halting traffic stops after recent fatal shootings."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "US",
+   "cluster_id": 399,
+   "label": "Medical Stocks To Add to Your Watchlist – July 17th",
+   "kept_size": 8,
+   "cohesion": 0.9812734723091125,
+   "best_control_overlap": null,
+   "headlines": [
+    "Mid Cap Stocks To Add to Your Watchlist – July 18th",
+    "Solar Stocks To Add to Your Watchlist – July 18th",
+    "Healthcare Stocks To Add to Your Watchlist – July 18th",
+    "Best Financial Stocks To Add to Your Watchlist – July 18th",
+    "Top Agriculture Stocks To Watch Now – July 17th",
+    "Fertilizer Stocks To Watch Now – July 17th",
+    "Medical Stocks To Add to Your Watchlist – July 17th",
+    "Oil Stocks To Add to Your Watchlist – July 17th"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines are about different stock sectors (mid cap, solar, healthcare, financial, agriculture, fertilizer, medical, oil) with no common event."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "US",
+   "cluster_id": 117,
+   "label": "2 arrested after Texas teen drowns in lake. Family seeks murder charges",
+   "kept_size": 14,
+   "cohesion": 0.9550896286964417,
+   "best_control_overlap": null,
+   "headlines": [
+    "Who Is Lucas Roper? Texas Man Charged After Daniel Erving Drowns",
+    "Mother of 16-year-old charged in connection with Texas teen's drowning says son tried to help",
+    "2 Texas Teens Arrested Over Drowning Death Of Daniel Erving",
+    "Family calls for justice after evidence tampering charges filed in teen's drowning",
+    "Family of 18-year-old who drowned after jumping into lake with friends calls for murder charges",
+    "2 arrested after Texas teen drowns in lake. Family seeks murder charges",
+    "Daniel Erving family in Texas demands homicide charges after lake drowning",
+    "2 Charged After Daniel Erving's Drowning, Family Demands Homicide Charges",
+    "Daniel Erving death: Lucas Roper, and juvenile arrested on evidence-tampering charges after Texas teen's drowning",
+    "Texas teens arrested after swimmer Daniel Erving drowns",
+    "Lake Ray Hubbard drowning arrest prompts family to seek charges – NBC 5 Dallas-Fort Worth",
+    "2 arrested on evidence-tampering charges after Texas teen's drowning"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about the drowning death of Daniel Erving in Texas and the subsequent arrests and family reactions."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "PE",
+   "cluster_id": 3600023,
+   "label": "Jorge Nieto sobre reunión con Keiko Fujimori: \"Le sugerí que considere rutas para la liber",
+   "kept_size": 8,
+   "cohesion": 0.9736713767051697,
+   "best_control_overlap": null,
+   "headlines": [
+    "Video: Pedro Castillo, reconciliación y Congreso: los temas que Jorge Nieto trató con Keiko Fujimori por RPP Noticias",
+    "Jorge Nieto dice que Keiko Fujimori debería dar el salvoconducto a Betssy Chávez: \"El Perú está en falta en eso\"",
+    "Video:  Jorge Nieto pide a Keiko Fujimori dialogar con familias de víctimas de las protestas en el sur por Exitosa Noticias",
+    "Video: Keiko Fujimori recibe la visita del excandidato Jorge Nieto por TVPerú Noticias",
+    "Video: Jorge Nieto sostuvo una reunión con presidenta electa Keiko Fujimori por RPP Noticias",
+    "Jorge Nieto aboga por la libertad de Pedro Castillo ante Keiko Fujimori: \"Para la despolarización\"",
+    "Keiko Fujimori se reunió con excandidato Jorge Nieto y dialogaron sobre seguridad y El Niño -",
+    "Jorge Nieto sobre reunión con Keiko Fujimori: \"Le sugerí que considere rutas para la libertad del presidente Castillo\""
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about Jorge Nieto's meeting with Keiko Fujimori, discussing topics like Pedro Castillo's freedom, reconciliation, and protests."
+   },
+   "openai": {
+    "same_story": true,
+    "reason": "All headlines discuss the meeting between Jorge Nieto and Keiko Fujimori, focusing on topics like Pedro Castillo, reconciliation, and political issues in Peru."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "IT",
+   "cluster_id": 400115,
+   "label": "Salute, studio italiano: \"Infarti più gravi con microplastiche, fumo e inquinamento\" - il ",
+   "kept_size": 8,
+   "cohesion": 0.9693067073822021,
+   "best_control_overlap": null,
+   "headlines": [
+    "Microplastiche nel sangue coronarico: livelli più alti negli infarti gravi",
+    "Estate, il medico: \"Bambini e adolescenti più a rischio scottature, attenzione al melanoma\" • Vivere San Benedetto notizie per la città e il territorio",
+    "Salute del cuore: le microplastiche possibile fattore di rischio per l'infarto",
+    "Salute, studio italiano: \"Infarti più gravi con microplastiche, fumo e inquinamento\"",
+    "Salute, studio italiano: \"Infarti più gravi con microplastiche, fumo e inquinamento\" • Vivere San Benedetto notizie per la città e il territorio",
+    "Salute, studio italiano: \"Infarti più gravi con microplastiche, fumo e inquinamento\" - il Fatto Nisseno",
+    "Salute studio italiano | Infarti più gravi con microplastiche fumo e inquinamento",
+    "Cuore, scoperto legame tra microplastiche e infarto. Anche fumo e inquinamento svolgono un ruolo important"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines focus on a study linking microplastics, smoking, and pollution to more severe heart attacks."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "TR",
+   "cluster_id": 900052,
+   "label": "10 Jahre Putschversuch gegen Erdogan und die Folgen für die Türkei",
+   "kept_size": 9,
+   "cohesion": 0.9540356397628784,
+   "best_control_overlap": null,
+   "headlines": [
+    "Türkei: 119 IS-Verdächtige festgenommen",
+    "10 Jahre Putschversuch gegen Erdogan und die Folgen für die Türkei",
+    "Jahrestag in der Türkei - Ein Putschversuch, der Erdogans Macht festigte",
+    "Putschversuch von 2016: Die Nacht, die die Türkei veränderte",
+    "Zehn Jahre nach Putsch-Versuch - Ex-Botschafter in der Türkei: Bis heute viele Fragezeichen",
+    "Zehn Jahre Putschversuch Türkei: \"Am nächsten Morgen ging die Hexenjagd los, und sie war blutig\"",
+    "Wie Erdoğans Macht über die Türkei funktioniert – und warum sie so gefährlich ist",
+    "10 Jahre danach: Putschversuch in der Türkei – Triumph, Trauma und offene Fragen",
+    "Türkei: Behörden ordnen zehn Jahre nach Putsch 1.000 Festnahmen an"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines 1 and 9 are about recent arrests of IS suspects and new arrest orders, while the rest are about the 2016 coup attempt anniversary, making them distinct stories."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "AM",
+   "cluster_id": 7700002,
+   "label": "A Taste of Armenian Wines in Germany - The Armenian Mirror-Spectator",
+   "kept_size": 8,
+   "cohesion": 0.952532947063446,
+   "best_control_overlap": null,
+   "headlines": [
+    "A Taste of Armenian Wines in Germany - The Armenian Mirror-Spectator",
+    "NAASR Panel to Explore Healthcare Problems in Armenia - The Armenian Mirror-Spectator",
+    "Armenian POW Fighting for His Life in Azerbaijani Prison, Lawyer Warns - The Armenian Mirror-Spectator",
+    "ArmInfo- News on Armenia and Nagorno-Karabakh",
+    "Ruben Vardanyan's Lawyer to Appeal to European Court - The Armenian Mirror-Spectator",
+    "Armenian Festival - The Armenian Mirror-Spectator",
+    "Armenian Opposition Figure Gagik Tsarukyan Arrested - The Armenian Mirror-Spectator",
+    "A Heartwarming Documentary about Longing for Home - The Armenian Mirror-Spectator"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover diverse topics: wine tasting, healthcare, POW, news portal, legal appeal, festival, arrest, and documentary."
+   },
+   "openai": {
+    "same_story": false,
+    "reason": "The headlines cover a variety of unrelated topics including wine tasting, healthcare, a POW, legal appeals, a festival, an arrest, and a documentary."
+   }
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "AR",
+   "cluster_id": 1100044,
+   "label": "Aprueban un nuevo proyecto RIGI en Catamarca: invertirán US$ 709 millones en litio",
+   "kept_size": 10,
+   "cohesion": 0.973885715007782,
+   "best_control_overlap": null,
+   "headlines": [
+    "La mitad de los RIGI aprobados en minería son para litio y Catamarca suma U$S 1.531 millones",
+    "Litio: inversión china en Catamarca por US$709 millones",
+    "Nuevo RIGI para Catamarca: Liex invertirá 709 millones de dólares para producir litio",
+    "Catamarca suma un nuevo proyecto al RIGI: invertirán 709 millones de dólares en la ampliación de Tres Quebrada",
+    "El Gobierno aprobó el RIGI para una inversión de litio en Catamarca por u$s709 millones",
+    "Luis Caputo anunció un nuevo proyecto minero por 700 millones de dólares en Catamarca que se incorpora al RIGI",
+    "El Gobierno nacional aprobó un proyecto de litio en Catamarca por US$709 millones dentro del RIGI",
+    "RIGI: el Gobierno aprobó una inversión de US$709 millones para producir litio en Catamarca",
+    "Aprueban un nuevo proyecto RIGI en Catamarca: invertirán US$ 709 millones en litio",
+    "El Gobierno anunció un nuevo RIGI: es un proyecto minero para producir carbonato de litio de Catamarca"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report the approval of a RIGI project for a lithium investment in Catamarca, Argentina, with consistent amounts around US$709 million."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "IN",
+   "cluster_id": 100051,
+   "label": "Cong To Join NC's July 20 Statehood Protest In Delhi: JKPCC Chief",
+   "kept_size": 13,
+   "cohesion": 0.9528622031211853,
+   "best_control_overlap": null,
+   "headlines": [
+    "Poonam Pandey Joins CJP Protest At Jantar Mantar To Support The Students",
+    "J&K political divide deepens ahead of NC's Delhi statehood protest",
+    "NC Leaders Head to Delhi for Statehood Protest",
+    "NC's July 20 protest to remind Centre of J-K statehood promise: Dy CM Surinder Choudhary",
+    "NC leaders reach Delhi ahead of statehood protest",
+    "NC Leaders in Delhi for Statehood Protest Amid Permit Uncertainty",
+    "Cong to join July 20 protest of NC in Delhi for Statehood: Karra",
+    "As NC plans Delhi protest, Congress says statehood campaign was its initiative",
+    "Cong To Join NC's July 20 Statehood Protest In Delhi: JKPCC Chief",
+    "National Conference to hold protest in Delhi over statehood on July 20",
+    "Kashmir: NC to Hold Delhi Protest Despite Leader's Death",
+    "NC's protest plan in Delhi on July 20 over J&K statehood demand won't change: Omar Abdullah"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines are about the National Conference's July 20 protest in Delhi for Jammu and Kashmir statehood, with Congress joining."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "ES",
+   "cluster_id": 500079,
+   "label": "Precio de la gasolina y diésel hoy, 17 de julio en España: consulta el precio de los carbu",
+   "kept_size": 9,
+   "cohesion": 0.9780224561691284,
+   "best_control_overlap": null,
+   "headlines": [
+    "Precio de la gasolina y diésel hoy, 19 de julio en España: sube el precio de los carburantes",
+    "Precio de la luz por horas hoy, domingo 19 de julio: cuándo es más barata y más cara",
+    "Precio de la gasolina y diésel hoy, 18 de julio en España: consulta el precio de los carburantes",
+    "Precio de la luz hoy sábado 18 de julio por franjas y tramos: ¿Cuándo es más barata?",
+    "Precio de la gasolina y diésel hoy, 17 de julio en España: consulta el precio de los carburantes",
+    "Precio Gasolina hoy, 17 de julio, en España: Consulte los precios en las principales ciudades",
+    "Precio de la gasolina y diésel hoy, 16 de julio en España: consulta el precio de los carburantes",
+    "Precio de la luz hoy jueves 16 de julio por franjas y tramos: ¿Cuándo es más barata?",
+    "El precio de la luz HOY: las horas más caras y más baratas | El precio de la luz no da respiro este martes, 14 de julio: los tramos más caros y más baratos del día"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines alternate between gas prices and electricity prices, covering two distinct topics rather than one specific story."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "FI",
+   "cluster_id": 4300000,
+   "label": "Финляндия ограничила морское сообщение в части Финского залива из-за дронов ВСУ",
+   "kept_size": 20,
+   "cohesion": 0.9416986703872681,
+   "best_control_overlap": null,
+   "headlines": [
+    "Молния ударила в православную церковь в Финляндии - Новости на Вести.ru",
+    "Финляндия на пороге войны: секретные планы Хельсинки раскрыты",
+    "BlackSeaNews | Фінляндія тимчасово обмежила судноплавство через загрозу дронів",
+    "Финляндия временно ограничивала движение в Финском заливе из-за угрозы беспилотников",
+    "Фінляндія 18 липня обмежувала рух у морі через загрозу БПЛА",
+    "Финляндия 18 июля временно ограничила движение в Финском заливе из-за угрозы со стороны дронов",
+    "Финляндия ограничила движение судов и полеты в восточной части Финского залива",
+    "Финляндия вводила ограничения на полеты в Финском заливе из-за угрозы БПЛА",
+    "Через загрозу дронів Фінляндія тимчасово обмежувала рух суден та авіації",
+    "Ограничения на востоке Финского залива: подробности",
+    "Фінляндія закрила частину Фінської затоки через загрозу дронів",
+    "Финляндия ограничила морское сообщение в части Финского залива из-за дронов ВСУ"
+   ],
+   "deepseek": {
+    "same_story": true,
+    "reason": "All headlines report Finland temporarily restricting maritime and aviation traffic in the Gulf of Finland due to drone threats, referring to the same event on July 18."
+   },
+   "openai": null
+  },
+  {
+   "arm": "control",
+   "stratum": "other",
+   "country": "HN",
+   "cluster_id": 10600000,
+   "label": "Mbappé: “Técnicamente no estuvimos a la altura de una semifinal de un Mundial”",
+   "kept_size": 13,
+   "cohesion": 0.9573143720626831,
+   "best_control_overlap": null,
+   "headlines": [
+    "‘Dibu’ Martínez: “Todos los especialistas de mano me decían que no podía jugar”",
+    "Leo Messi: «Lo de la foto con Lamine es una locura»",
+    "De la Fuente: «Lamine tiene que ser Lamine, Messi es inigualable»",
+    "Spalleti: «Para hablar del ‘Scudetto’ estamos todavía bastante lejos»",
+    "Atlético: “No aceptamos 100 millones por Julián Alvarez ni aceptaremos ni 150 ni 200”",
+    "De la ‘Finalissima’ pendiente a la final del Mundial 114 días después",
+    "Lamine Yamal cumple sueño y jugará final contra Messi casi 19 años después de icónica foto",
+    "Lautaro Martínez: «Siempre soñé con hacer este gol»",
+    "Julio Raudales: “Aunque se ejecute el 100 % del presupuesto, los servicios públicos siguen sin funcionar”",
+    "Mbappé: “Técnicamente no estuvimos a la altura de una semifinal de un Mundial”",
+    "Baena: “¿Presión? Es un partido de fútbol más, tenemos que estar tranquilos”",
+    "Koundé: «Lamine no nos ha faltado al respeto, lo hace para motivarse»"
+   ],
+   "deepseek": {
+    "same_story": false,
+    "reason": "Headlines cover multiple unrelated sports stories (Messi, Lamine Yamal, Atlético, etc.) and one non-sports topic (Julio Raudales)."
+   },
+   "openai": null
+  }
+ ]
+}

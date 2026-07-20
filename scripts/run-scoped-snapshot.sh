@@ -63,6 +63,19 @@ fi
 echo "[scoped-snapshot] $(date '+%Y-%m-%d %H:%M:%S') mode=$MODE budget=${ATLAS_SNAPSHOT_RUN_BUDGET_MIN:-150}min taskpolicy=${TASKPOLICY:-performance-cores}" >&2
 [[ "$MODE" == "weekend" ]] && echo "[scoped-snapshot] WEEKEND MODE: performance cores, run budget ${ATLAS_SNAPSHOT_RUN_BUDGET_MIN:-480}min" >&2
 
+# PCA-128 clustering input (2026-07-20, #229 gold-gate verdict: WIRE) — per-
+# country PCA reduction of the HDBSCAN INPUT to 128 dims. Measured on the
+# same-as_of dry-run pair: 8.62x clustering speedup, yield +3.5% kept /
+# +3.6% promotable, max cluster 276->92 (no blob), and the LLM gold judge
+# passed the marginal clusters (57.5% same-story vs control 62.5% = -5.0pp,
+# inside the 10pp bar; non-Latin stratum 65% >= 60%). Identity, gate,
+# centroids, cohesion all stay raw e5 — only the HDBSCAN input changes.
+# Artifact: docs/research/recall-229/2026-07-20-pca-verdict.md.
+# ROLLBACK: set ATLAS_CLUSTER_PCA_DIM=0 below (or in the environment) —
+# next snapshot clusters raw, byte-identical to the pre-wire path.
+export ATLAS_CLUSTER_PCA_DIM="${ATLAS_CLUSTER_PCA_DIM:-128}"
+echo "[scoped-snapshot] pca_dim=$ATLAS_CLUSTER_PCA_DIM (0 = raw/off)" >&2
+
 # P1.1 heavy-job mutex: the multi-hour clustering chain must never overlap embed/
 # matview/catchup on the shared Supabase (serving statement-timeout incidents).
 if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
