@@ -158,6 +158,40 @@ citation discipline). Client sends nothing new.
 - Acceptance: NATO-Ankara pins vs the manual 4/4 gold (decision 5).
 - Extraction model: DeepSeek temp0 (mechanical); cross-read: chain (dense).
 
+## 5b. F2.5 — LEADS lane (body entities → Atlas expansion; Pedro 2026-07-20)
+
+The information-model answer to "does the fetched text feed Atlas?": three
+layers with different write rules.
+
+1. **Shared content cache** (`pinned_articles`, `ai_readings`): keyed by URL,
+   cross-user, no user data. A second analyst pinning the same article
+   inherits text + reading. This DOES accumulate — it is the content base.
+2. **Engine substrate** (signals_v2 / topic_members / dynamic_topics): the
+   fetched body NEVER writes here. (a) pin-driven sampling bias would warp
+   the corpus; (b) the semantic spaces + taus are headline-calibrated.
+3. **The body INTERROGATES the substrate instead of feeding it.** Every new
+   entity the body reveals (actor/org/country the headline never named)
+   becomes a QUERY against what Atlas already measured.
+
+Mechanism (the investigative flywheel):
+- NER + AI-read entities over `extracted_text` → pass the existing junk
+  gates (`_is_valid_person`, subjects gazetteer) → rarity discipline (the
+  #234 DF lesson: ubiquitous actors NEVER generate leads).
+- `POST /api/v2/research/leads` {investigation evidence urls} → per entity:
+  measured hits in topic_members / nlp_persons / dynamic_topics (the
+  precise `/threads?person=` class of lookup) → leads with (entity, exact
+  body quote, measured hit counts, threads).
+- UI: "LEADS FROM THE TEXT" in the Workbench + dim stars in the
+  constellation with edge basis `body-mention` (stronger than semantic-only,
+  weaker than measured shared-actor; never silently mixed). Every lead is
+  pinnable → pinning fetches ITS content → new entities → new leads. The
+  galaxy grows one ring per pin.
+- Honesty: every lead carries its quote + measured basis ("X in 3 threads /
+  47 signals") — never a bare "related".
+- Long-term learning enters by the CALIBRATION lane only: recurring
+  cross-investigation lead entities are demand evidence for the gold/growth
+  flywheel — never a direct engine write.
+
 ## 6. F3 — mechanical relation upgrades (after F2)
 
 - **F3a:** `/dossier/connections` text_mention basis extended over
