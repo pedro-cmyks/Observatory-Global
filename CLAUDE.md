@@ -1,5 +1,36 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-20 (F3 COMPLETE — BODY MENTIONS + MEASUREMENT-GATED BODY-EMBED
+NEIGHBORS, `6181a0ef`→`ba2a2ec2`, Fly deployed + prod-smoked; enrichment
+spec = ALL PHASES SHIPPED same day).** (1) **F3a body_mention**:
+`/dossier/connections` request gains optional per-pin `evidence_urls`
+(frozen snapshot urls); the SAME `_mention_terms` contract runs over
+`pinned_articles` bodies → basis `body_mention` + terms, weight 0.52
+(under headline text_mention 0.55), NEVER silently mixed; frontend ranks
+it in the 'text' strength class + renders "article body mentions …".
+(2) **F3b MEASURED FIRST then wired** (the engine-surgery rule): harness
+`scripts/measure_body_embed_neighbors.py` (M1 mlvenv, engine-identical
+embed path multilingual-e5-base + snapshot pooling + the served whitening):
+**whitened body AUC 0.9983 vs headline baseline 0.9208, pos@tau(0.40)
+94.1% vs neg 0.7%** (n=17 bodies/11 topics — margin ≫ sample noise; GDELT
+firehose yield 17/144 = walls, consistent) — body embeds separate BETTER
+than headlines; the headline-fit whitening TRANSFERS. Artifact
+`docs/research/body-embed/2026-07-20-body-embed-measurement.{md,json}`
+(re-run as the article cache fattens). Wiring: pins with fetched bodies
+get a mean-body-embed second representation through the SAME whitening +
+NEIGHBOR_TAU; neighbor links carry `basis: 'centroid'|'body-e5-whitened'`
+(additive — lane failure never costs centroid neighbors); embeds via
+research_semantic (local torch / Fly embed service) off-loop with
+to_thread; meta.neighbor_selection.body_lane_pins. PROD SMOKE (Kyiv case,
+dt-5245+5157): 8 body-basis neighbor links (sims .43-.49), body_lane_pins
+1, headline text_mention intact, body_mentions honest-empty for that pair.
+GOTCHAS this pass: topic_members keys are 'dynamic-topic-<n>' strings (a
+bare id query returns nothing); enqueue_fetches needs chunking ≤60 + POLL
+(72+ urls at concurrency 3 need minutes, a fixed 45s wait yielded 3);
+mlvenv runs the harness (backend/.venv lacks torch). The full enrichment
+arc F1→F2→F2.5→§5c→F3a→F3b = designed, judged, spec'd, built, measured,
+deployed and prod-verified in ONE day.**
+
 **2026-07-20 (L1 DAILY-EDITION ENRICHMENT SHIPPED + NIGHTLY SEAL UNBROKEN,
 `3d97ea85`→`d51a71c3`, sealed edition 07-20 LIVE with enrichment).** Pedro:
 apply the enrichment to the daily Brief, all three sections (The World /
