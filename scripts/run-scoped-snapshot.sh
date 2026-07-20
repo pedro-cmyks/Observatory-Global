@@ -209,6 +209,17 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.etl_topic_members \
     --hours "$MEMBERS_HOURS" ) \
   || echo "[scoped-snapshot] ERROR topic_members ETL failed — typed evidence is STALE" >&2
+# Step 3.5b (2026-07-20): FLAG + DEMOTE content-junk topics (listicle / feed-dump
+# / mis-promoted category grab-bags). The mechanism (flag_junk_topics +
+# topic_junk.classify_topic_junk) existed but was NEVER cron'd, so junk piled up
+# in the served set and the is_junk column went stale (25 active junk found +
+# demoted by hand this session). Runs AFTER the members ETL (needs the projected
+# membership for the content-entropy signal). Reversible (UPDATE is_junk=false);
+# non-fatal. NOT the over-merge class — that needs a membership-multimodality
+# detector (separate lane); this is only the content-junk half.
+( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.flag_junk_topics \
+    --sample "${ATLAS_JUNK_SAMPLE:-40}" ) \
+  || echo "[scoped-snapshot] junk flag/demote failed (non-fatal — junk may still serve)" >&2
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.compute_topic_movement ) \
   || echo "[scoped-snapshot] ERROR topic movement failed — movement is STALE" >&2
 
