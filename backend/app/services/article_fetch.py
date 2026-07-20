@@ -279,33 +279,52 @@ async def process_url(url: str) -> None:
     try:
         async with _sem, lock:
             timeout = aiohttp.ClientTimeout(total=FETCH_TIMEOUT_S)
-            headers = {"User-Agent": USER_AGENT, "Accept-Language": "en, es;q=0.8, *;q=0.5"}
-            via = "live"
+            # Standard browser-class Accept header — NOT bot evasion (the UA
+            # stays honest); several CMSes serve the article shell only to
+            # clients that accept text/html (measured: bangkokbiznews 19→185
+            # extracted words with it, 2026-07-20).
+            headers = {
+                "User-Agent": USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en, es;q=0.8, *;q=0.5",
+            }
             async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
-                status_code: int | None = None
-                body: bytes = b""
-                ctype = ""
-                err: str | None = None
-                try:
-                    status_code, ctype, body, _final = await _fetch_raw(session, url)
-                except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, OSError) as exc:
-                    err = type(exc).__name__
-                # Dead page → Wayback fallback (link rot is the enemy).
-                if err is not None or (status_code in (404, 410)):
+
+                async def _attempt(target: str) -> tuple[int | None, str, bytes, str | None]:
+                    try:
+                        st, ct, bd, _final = await _fetch_raw(session, target)
+                        return st, ct, bd, None
+                    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, OSError) as exc:
+                        return None, "", b"", type(exc).__name__
+
+                via = "live"
+                status_code, ctype, body, err = await _attempt(url)
+                extracted = _extract(body, ctype, url) if body else None
+                status, fetch_error = classify_fetch(status_code or 0, extracted) \
+                    if status_code is not None else ("error", err)
+                # Wayback fallback — dead pages (link rot) AND live pages that
+                # yielded no article text (JS shells / walls). The archived crawl
+                # often carries the rendered article; always labeled via=wayback.
+                needs_wayback = (
+                    status_code is None
+                    or status_code in (404, 410)
+                    or (status == "paywall" and (fetch_error or "").startswith(("no_extract", "thin_extract")))
+                )
+                if needs_wayback:
                     wb = await _wayback_lookup(session, url)
                     if wb:
-                        try:
-                            status_code, ctype, body, _final = await _fetch_raw(session, wb)
-                            via = "wayback"
-                            err = None
-                        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, OSError) as exc:
-                            err = err or type(exc).__name__
-                if err is not None and status_code is None:
+                        wb_status, wb_ctype, wb_body, _wb_err = await _attempt(wb)
+                        if wb_status is not None:
+                            wb_extracted = _extract(wb_body, wb_ctype, url) if wb_body else None
+                            wb_class, wb_fe = classify_fetch(wb_status, wb_extracted)
+                            if wb_class == "ok":   # only adopt an archive copy that actually extracts
+                                via = "wayback"
+                                status_code, extracted = wb_status, wb_extracted
+                                status, fetch_error = wb_class, wb_fe
+                if status_code is None:
                     await _persist_terminal(h, status="error", http_status=None, via="live",
-                                            fetch_error=err)
+                                            fetch_error=err or "network_error")
                     return
-                extracted = _extract(body, ctype, url) if body else None
-                status, fetch_error = classify_fetch(status_code or 0, extracted)
                 row: dict = {"status": status, "http_status": status_code, "via": via,
                              "fetch_error": fetch_error}
                 if status == "ok" and extracted:
