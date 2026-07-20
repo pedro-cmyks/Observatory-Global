@@ -95,6 +95,26 @@ if [[ -z "${DATABASE_URL:-}" || -z "${DEEPSEEK_API_KEY:-}" ]]; then
   echo "[scoped-snapshot] missing DATABASE_URL or DEEPSEEK_API_KEY" >&2; exit 2
 fi
 
+# Step -1 (2026-07-20): COMMITTED-STATE SYNC — the durable cure for the
+# recurring ALW-drift disease (07-19/20: umbrella build died on ImportError
+# semantic_chunk_order, temporal_signature missing, narrative_lineage service
+# absent — all because the executed ALW tree lagged the committed repo). Sync
+# backend/app + backend/scripts from the canonical repo's COMMITTED HEAD (never
+# the working tree — uncommitted parallel-session edits must not ship into a
+# nightly). git archive is atomic-per-file via tar; the runner .sh itself is
+# NOT in this set (it is synced by hand with tmp+mv). Non-fatal: a broken or
+# absent repo must never kill the nightly — it just runs the last-synced code.
+REPO_DIR="${ATLAS_REPO_DIR:-/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal}"
+if [[ "$ROOT_DIR" != "$REPO_DIR" && -d "$REPO_DIR/.git" ]]; then
+  if _synced_sha="$(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null)" \
+     && git -C "$REPO_DIR" archive HEAD backend/app backend/scripts 2>/dev/null \
+        | tar -x -C "$ROOT_DIR" 2>/dev/null; then
+    echo "[scoped-snapshot] ALW synced to committed HEAD ${_synced_sha}" >&2
+  else
+    echo "[scoped-snapshot] committed-state sync failed (non-fatal — running last-synced code)" >&2
+  fi
+fi
+
 # Step 0 (2026-07-18 — the 2026-07-04 "durable plan" finally built): CHAIN
 # embed→cluster. Clustering on stale embeddings wastes the whole night — the
 # 07-17/18 runs spent 8h clustering old data while the embed cron starved
@@ -202,8 +222,21 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
 # external volume is unmounted or the key is missing — serving keeps the
 # previous edges (stale lineage beats fabricated lineage).
 if [[ "${ATLAS_LINEAGE_REFRESH:-on}" == "on" && -d /Volumes/Ext/Atlas/Embeddings/openai-3-small && -n "${OPENAI_API_KEY:-}" ]]; then
+  # Cost guard is weekend-aware: a full-scale rebuild grows the member-headline
+  # corpus past the 40k weekday cap (2026-07-20: aborted at "40542 exceeds
+  # --max-embed 40000"). On weekends the durable rule grants the extra embed
+  # budget (~$0.30 at 60k, OpenAI 3-small); weekdays stay lean. Explicit
+  # ATLAS_LINEAGE_MAX_EMBED overrides both.
+  if [[ -n "${ATLAS_LINEAGE_MAX_EMBED:-}" ]]; then
+    LINEAGE_MAX_EMBED="$ATLAS_LINEAGE_MAX_EMBED"
+  elif [[ "${ATLAS_WEEKEND:-0}" == "1" ]]; then
+    LINEAGE_MAX_EMBED=60000
+  else
+    LINEAGE_MAX_EMBED=40000
+  fi
+  echo "[scoped-snapshot] lineage census --max-embed ${LINEAGE_MAX_EMBED} (mode=${MODE})" >&2
   ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.narrative_lineage_census all \
-      --max-embed "${ATLAS_LINEAGE_MAX_EMBED:-40000}" ) \
+      --max-embed "${LINEAGE_MAX_EMBED}" ) \
     || echo "[scoped-snapshot] lineage census failed (non-fatal — lineage serves previous edges)" >&2
   ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.load_narrative_lineage --write --prune-stale ) \
     || echo "[scoped-snapshot] lineage load failed (non-fatal — lineage serves previous edges)" >&2
