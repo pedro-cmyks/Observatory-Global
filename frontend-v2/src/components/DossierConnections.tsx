@@ -601,7 +601,7 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
                 {nbGroups.bridges.map(nb => (
                   <span key={nb.base_id} className="dcx-nearby-item">
                     {nb.label}
-                    <em> ({nb.links.map(l => shortPin(l.pin)).join(' + ')})</em>
+                    <em> ({nb.links.map(l => shortPin(l.pin) + (l.basis === 'body-e5-whitened' ? '·body' : '')).join(' + ')})</em>
                   </span>
                 ))}
               </span>
@@ -611,7 +611,11 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
             <div key={pin} className="dcx-nearby-row">
               <span className="dcx-nearby-tag">near {shortPin(pin)}</span>
               <span className="dcx-nearby-list">
-                {list.map(nb => <span key={nb.base_id} className="dcx-nearby-item">{nb.label}</span>)}
+                {list.map(nb => (
+                  <span key={nb.base_id} className="dcx-nearby-item" data-tip={nb.links.some(l => l.basis === 'body-e5-whitened') ? 'Found via the pin\'s fetched article text (body-embed lane, measurement-gated)' : undefined}>
+                    {nb.label}{nb.links.some(l => l.basis === 'body-e5-whitened') && !nb.links.some(l => l.basis !== 'body-e5-whitened') ? <em> · via body text</em> : null}
+                  </span>
+                ))}
               </span>
             </div>
           ))}

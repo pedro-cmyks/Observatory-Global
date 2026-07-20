@@ -79,7 +79,9 @@ export interface ConnectionNeighbor {
   label: string
   category: string | null
   // which pinned nodes this unpinned story sits near (>1 = a bridge).
-  links: Array<{ pin: string; sim: number }>
+  /** F3b: basis 'centroid' (topic centroid) | 'body-e5-whitened' (mean of the
+   *  pin's fetched-body embeds — measurement-gated lane, 2026-07-20). */
+  links: Array<{ pin: string; sim: number; basis?: string }>
 }
 
 export interface ConnectionsData {

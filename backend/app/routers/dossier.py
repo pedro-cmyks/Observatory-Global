@@ -565,6 +565,7 @@ async def dossier_connections(req: ConnectionsRequest):
     # mention of the other pin's actor is exactly what headlines hide. Best
     # effort: no fetched text → empty list → zero body edges, never an error.
     bodies_by_base: dict[Any, list[tuple[str, frozenset]]] = {n["base_id"]: [] for n in nodes}
+    bodies_raw_by_base: dict[Any, list[str]] = {n["base_id"]: [] for n in nodes}   # F3b embeds
     if req.evidence_urls:
         try:
             from app.services.article_fetch import full_texts_for
@@ -580,10 +581,12 @@ async def dossier_connections(req: ConnectionsRequest):
                         url_to_base.setdefault(u, b)
             texts = await full_texts_for(list(url_to_base)[:64], cap_chars=6000) if url_to_base else {}
             for u, art in texts.items():
-                low = (art.get("text") or "").lower()
+                raw_text = (art.get("text") or "")
+                low = raw_text.lower()
                 if low:
                     bodies_by_base[url_to_base[u]].append(
                         (low, frozenset(re.split(r"[^\w]+", low))))
+                    bodies_raw_by_base[url_to_base[u]].append(raw_text)
         except Exception as exc:
             logger.warning("connections body-mention load failed: %s", str(exc)[:200])
 
@@ -707,6 +710,7 @@ async def dossier_connections(req: ConnectionsRequest):
     # dots. A neighbor near >1 pin is a bridge (an unpinned link you didn't pin).
     neighbors: list[dict] = []
     neighbor_candidate_count = 0
+    body_lane_pins = 0
     if centroids:
         exclude_ids = set(dyn_ids) | set(umbrella_ids) | {
             int(t[len("dynamic-topic-"):]) for t in child_topic_to_umb
@@ -761,7 +765,53 @@ async def dossier_connections(req: ConnectionsRequest):
                     if e is None:
                         e = nb[cid] = {"base_id": _tid(cid), "label": cand[ci]["label"],
                                        "category": cand[ci]["category"], "links": []}
-                    e["links"].append({"pin": pin_ids[pj], "sim": round(s, 4)})
+                    e["links"].append({"pin": pin_ids[pj], "sim": round(s, 4),
+                                       "basis": "centroid"})
+            # ── F3b body-informed neighbors (measurement gate PASSED 2026-07-20:
+            # whitened body AUC 0.9983 vs headline 0.9208, pos@tau 94%/neg 0.7% —
+            # docs/research/body-embed/2026-07-20-body-embed-measurement.json).
+            # Pins with fetched bodies get a SECOND representation (mean body
+            # embed) run through the SAME whitening + tau; links labeled
+            # basis='body-e5-whitened', never mixed with centroid links.
+            try:
+                b_keys = [k for k in pin_keys if bodies_raw_by_base.get(k)]
+                if b_keys:
+                    import asyncio
+                    from app.services.research_semantic import embed_texts as _embed_texts
+                    to_embed: list[str] = []
+                    owners: list[Any] = []
+                    for bkey in b_keys:
+                        for raw_text in bodies_raw_by_base[bkey][:3]:
+                            to_embed.append("passage: " + raw_text[:4000])
+                            owners.append(bkey)
+                    vecs = await asyncio.to_thread(_embed_texts, to_embed) if to_embed else None
+                    if vecs:
+                        acc: dict[Any, list] = {}
+                        for bkey, v in zip(owners, vecs):
+                            acc.setdefault(bkey, []).append(np.asarray(v, dtype=np.float32))
+                        eb_keys = list(acc.keys())
+                        body_lane_pins = len(eb_keys)
+                        eb_ids = [node_by_base.get(k, {}).get("id", k) for k in eb_keys]
+                        b_mat = np.asarray([np.mean(np.stack(vs), axis=0) for vs in acc.values()],
+                                           dtype=np.float32)
+                        b_sims = _wnorm(cand_mat) @ _wnorm(b_mat).T
+                        for ci in range(len(cand_ids)):
+                            for pj in range(len(eb_keys)):
+                                s = float(b_sims[ci, pj])
+                                if s < NEIGHBOR_TAU:
+                                    continue
+                                cid = cand_ids[ci]
+                                e = nb.get(cid)
+                                if e is None:
+                                    e = nb[cid] = {"base_id": _tid(cid), "label": cand[ci]["label"],
+                                                   "category": cand[ci]["category"], "links": []}
+                                if not any(l["pin"] == eb_ids[pj] and l.get("basis") == "body-e5-whitened"
+                                           for l in e["links"]):
+                                    e["links"].append({"pin": eb_ids[pj], "sim": round(s, 4),
+                                                       "basis": "body-e5-whitened"})
+            except Exception as exc:
+                # body lane is additive — its failure never costs centroid neighbors
+                logger.warning("body-embed neighbor lane unavailable: %s", str(exc)[:200])
             neighbor_candidate_count = len(nb)
             # bridges (near >1 pin) first, then strongest single link; cap 8.
             neighbors = sorted(
@@ -804,6 +854,10 @@ async def dossier_connections(req: ConnectionsRequest):
                 "display_slots": 8,
                 "method": "bridges_first_then_strongest_similarity",
                 "truncated": neighbor_candidate_count > len(neighbors),
+                # F3b: per-link basis 'centroid' | 'body-e5-whitened' (mean of
+                # the pin's fetched-body embeds, same whitening + tau; gate
+                # measurement docs/research/body-embed/2026-07-20).
+                "body_lane_pins": body_lane_pins,
             },
         },
     }

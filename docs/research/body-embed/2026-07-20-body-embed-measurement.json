@@ -1,0 +1,51 @@
+{
+  "verdict": "PASS",
+  "samples": 17,
+  "topics": 11,
+  "neighbor_tau": 0.4,
+  "body": {
+    "raw": {
+      "n_pos": 17,
+      "n_neg": 136,
+      "pos_p50": 0.893,
+      "neg_p50": 0.7614,
+      "gap_p50": 0.1316,
+      "auc": 0.9879,
+      "pos_ge_tau": 1.0,
+      "neg_ge_tau": 1.0
+    },
+    "whitened": {
+      "n_pos": 17,
+      "n_neg": 136,
+      "pos_p50": 0.5884,
+      "neg_p50": -0.005,
+      "gap_p50": 0.5934,
+      "auc": 0.9983,
+      "pos_ge_tau": 0.941,
+      "neg_ge_tau": 0.007
+    }
+  },
+  "headline_baseline": {
+    "raw": {
+      "n_pos": 17,
+      "n_neg": 136,
+      "pos_p50": 0.932,
+      "neg_p50": 0.8178,
+      "gap_p50": 0.1142,
+      "auc": 0.958,
+      "pos_ge_tau": 1.0,
+      "neg_ge_tau": 1.0
+    },
+    "whitened": {
+      "n_pos": 17,
+      "n_neg": 136,
+      "pos_p50": 0.5989,
+      "neg_p50": -0.014,
+      "gap_p50": 0.613,
+      "auc": 0.9208,
+      "pos_ge_tau": 0.647,
+      "neg_ge_tau": 0.0
+    }
+  },
+  "criteria": "whitened body AUC >= headline AUC - 0.05 AND pos@tau>=0.60 AND neg@tau<=0.10"
+}
