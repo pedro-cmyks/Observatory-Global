@@ -521,6 +521,7 @@ SELECT
     country_code,
     country_name,
     source_lang,
+    source_origin_country,
     timestamp,
     nlp_sentiment,
     confidence,
@@ -537,6 +538,7 @@ FROM (
         s.country_code,
         COALESCE(c.name, s.country_code) AS country_name,
         s.source_lang,
+        s.source_origin_country,
         s.timestamp,
         s.nlp_sentiment,
         s.themes,
@@ -912,6 +914,12 @@ def _serialize_evidence(row: Any) -> dict[str, Any]:
         # B2 (L1 review 2026-07-05): the Brief translates evidence headlines
         # by default; the viewer needs the source language to decide.
         "source_lang": _record_get(row, "source_lang"),
+        # Council R2 N1: the OUTLET's origin country (ingestion-recorded), the
+        # only legal basis for a frontend origin/LOCAL assertion. Distinct from
+        # `country_code` (the story's subject/coverage country) — conflating the
+        # two produced the "LOCAL IR" / "COVERED FROM: Iran" lies. None when the
+        # outlet's origin is unknown (the chip then simply does not render).
+        "source_origin_country": _record_get(row, "source_origin_country"),
         "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else timestamp,
         "sentiment": _record_get(row, "nlp_sentiment"),
         "confidence": _record_get(row, "confidence"),
@@ -1062,6 +1070,7 @@ _EMERGENT_SAMPLE_SIGNALS_SQL = """
            NULL::text       AS country_name,
            source_family,
            source_lang,
+           source_origin_country,
            timestamp,
            persons,
            themes,
@@ -2117,6 +2126,20 @@ async def _attach_discussion_counts(
         num = sum(sents[s] * counts.get(s, 0) for s in anchors if s in sents)
         den = sum(counts.get(s, 0) for s in anchors if s in sents)
         t["forum_sentiment"] = round(num / den, 3) if den > 0 else None
+
+
+def stamped_counts(threads: list[dict[str, Any]]) -> dict[str, int]:
+    """N15 fold-coverage observability: census of Label Court verdicts over the
+    SERVED page. Cheap (pure iteration over the rows being returned), attached
+    to /threads meta so per-request fold coverage is measurable — the council
+    found 31/37 served threads unstamped including ALL leads, and without this
+    number the gap is invisible. Unknown/missing statuses count as 'unchecked'
+    (absence over guess)."""
+    counts = {"entailed": 0, "partial": 0, "failed": 0, "unchecked": 0}
+    for t in threads:
+        status = str(t.get("label_status") or "").strip().lower()
+        counts[status if status in counts else "unchecked"] += 1
+    return counts
 
 
 async def fetch_threads(

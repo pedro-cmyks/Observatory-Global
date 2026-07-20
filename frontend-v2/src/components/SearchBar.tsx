@@ -6,6 +6,7 @@ import type { RegionFilter } from '../contexts/FocusContext'
 import { Search } from '../lib/icons'
 import { hasVisibleSearchResults } from '../lib/searchResults'
 import { decodeEntities } from '../lib/decodeEntities'
+import { LabelReviewChip } from '../lib/labelReviewChip'
 import { Flag } from './Flag'
 import { classifyQuery } from '../lib/searchIntent'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
@@ -190,6 +191,8 @@ interface LiveThreadResult {
     total_signals: number
     is_umbrella: boolean
     match: 'all' | 'partial'
+    /** Label Court verdict (N15): 'entailed' | 'partial' | 'failed' | null. */
+    label_status?: string | null
 }
 
 interface SearchResult {
@@ -588,7 +591,12 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                             {results.live_threads.map(t => (
                                 <div key={t.id} className="search-item search-item--thread" onClick={() => handleLiveThreadClick(t)}>
                                     <span className="search-item-tag thread-tag">{t.is_umbrella ? 'EVENT' : 'THREAD'}</span>
-                                    <span className="search-item-name">{decodeEntities(t.label)}</span>
+                                    <span className="search-item-name">
+                                        {decodeEntities(t.label)}
+                                        {/* N15: court failed/partial → compact under-review dot
+                                            (dense row; the shared chip's dot variant). */}
+                                        <LabelReviewChip labelStatus={t.label_status} variant="dot" />
+                                    </span>
                                     <span className="search-item-meta">
                                         {t.total_signals.toLocaleString()} signals
                                         {t.category ? ` · ${t.category}` : ''}

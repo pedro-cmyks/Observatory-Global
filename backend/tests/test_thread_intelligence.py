@@ -548,6 +548,50 @@ def test_serialize_evidence_includes_syndication_metadata():
     assert serialized["country_code"] == "UA"
 
 
+# --- council R2 N1: outlet origin threads through evidence payloads ----------
+
+
+def test_serialize_evidence_carries_source_origin_country():
+    """The OUTLET origin (source_origin_country) is the only legal basis for a
+    frontend origin/LOCAL chip; it must reach the payload distinct from the
+    subject `country_code` (a MX outlet covering IR: origin=MX, subject=IR)."""
+    row = {
+        "id": 7,
+        "headline": "Irán anuncia nuevas sanciones",
+        "source_name": "globalmedia.mx",
+        "source_url": "https://globalmedia.mx/x",
+        "country_code": "IR",  # story SUBJECT country
+        "country_name": "Iran",
+        "source_origin_country": "MX",  # outlet ORIGIN country
+        "timestamp": None,
+        "nlp_sentiment": 0.0,
+        "confidence": 0.9,
+        "syndication_count": 1,
+    }
+    serialized = _serialize_evidence(row)
+    assert serialized["source_origin_country"] == "MX"
+    assert serialized["country_code"] == "IR"
+
+
+def test_serialize_evidence_origin_absent_is_none_never_subject():
+    """Unknown origin stays None (absence over guess) — it must never be
+    backfilled from the subject country."""
+    row = {
+        "id": 8,
+        "headline": "Iran tensions rise",
+        "source_name": "iowaradio.example",
+        "source_url": "https://iowaradio.example/x",
+        "country_code": "IR",
+        "country_name": "Iran",
+        "timestamp": None,
+        "nlp_sentiment": 0.0,
+        "confidence": 0.9,
+        "syndication_count": 1,
+    }
+    serialized = _serialize_evidence(row)
+    assert serialized["source_origin_country"] is None
+
+
 # --- atlas-fill evidence enrichment (briefing LIST path regression) ---------
 
 

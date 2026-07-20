@@ -94,4 +94,16 @@ describe('CountryBrief thread summary', () => {
     expect(summary.rows[0].rawCount).toBe(44)
     expect(summary.count).toBe(0) // not a confident thread
   })
+
+  it('carries the Label Court verdict through to the row (N15 — chip on every label surface)', () => {
+    const summary = buildCountryBriefThreadSummary({
+      threads: [
+        { thread_id: 'dynamic-topic-7', label: 'Failed label', signal_count: 12, label_status: 'failed' },
+        { thread_id: 'dynamic-topic-8', label: 'Unchecked label', signal_count: 9 },
+      ],
+      fallbackThemes: [],
+    })
+    expect(summary.rows[0].labelStatus).toBe('failed')
+    expect(summary.rows[1].labelStatus).toBeNull()
+  })
 })

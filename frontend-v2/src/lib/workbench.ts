@@ -15,6 +15,10 @@ export interface PinSnapshot {
   /** ISO country code for metadata-only pins (event/anomaly) so the typed graph
    *  can join them to same-country stories as coverage context. */
   countryCode?: string
+  /** Label Court verdict at PIN TIME (N15): 'entailed' | 'partial' | 'failed'
+   *  | null (unchecked). Frozen like the rest of the snapshot — the dossier
+   *  marks a failed/partial label under review as the analyst SAW it. */
+  labelStatus?: string | null
   /** `date` = signal date (ISO day) when the payload carried one — the report
    *  renders "— outlet, Jul 8" (P0.3: dates everywhere). */
   evidence?: Array<{ headline: string; source?: string; url?: string; date?: string }>
@@ -38,8 +42,16 @@ export interface Citation {
   headline: string
   source?: string
   url?: string
-  /** ISO country code of the coverage row (source_country / country_code). */
+  /** @deprecated Council R2 N1: this field was historically populated from the
+   *  story's SUBJECT country (country_code) and therefore must NEVER be
+   *  rendered as an outlet origin ("LOCAL IR" / "COVERED FROM" lie class).
+   *  Legacy records keep it (frozen pins are never destroyed); surfaces render
+   *  {@link Citation.originCountry} only. */
   sourceCountry?: string
+  /** ISO country code of the OUTLET's origin (signals_v2.source_origin_country)
+   *  — the only legal basis for an origin/LOCAL assertion. Absent when the
+   *  outlet's origin is unknown (absence over guess). */
+  originCountry?: string
   /** ISO 639-1 base language of the receipt (source_lang). */
   sourceLang?: string
   gateStatus: CitationGateStatus
@@ -341,7 +353,9 @@ export function addCitation(
   if (added) {
     track('citation_pin', {
       gate_status: input.gateStatus,
-      source_country: input.sourceCountry,
+      // N1: origin (outlet home) is the provenance dimension; the deprecated
+      // subject-derived source_country is no longer emitted.
+      origin_country: input.originCountry,
       source_lang: input.sourceLang,
     })
     // A pinned receipt is an investigation value moment (parity with addPin).

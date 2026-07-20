@@ -15,6 +15,7 @@ import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { humanizeReadinessValue } from '../lib/humanizeInternals'
 import { removePin, renameInvestigation, type Investigation } from '../lib/workbench'
+import { LabelReviewChip } from '../lib/labelReviewChip'
 import { deriveVerdictChips, type NodeStateRef, type VerdictChipDescriptor } from '../lib/verdictChips'
 import { VerdictChip } from './VerdictChip'
 import { buildClaimTable, claimTableMarkdown } from '../lib/claimLedger'
@@ -584,7 +585,13 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                             return (
                             <div key={p.anchorId} className="dossier-pin">
                                 <div className="dossier-pin-head">
-                                    <span className="dossier-pin-label">{p.label}</span>
+                                    <span className="dossier-pin-label">
+                                        {p.label}
+                                        {/* N15: Label Court verdict FROZEN at pin time —
+                                            failed/partial pinned labels stay marked under
+                                            review in the report (dot variant, dense head). */}
+                                        <LabelReviewChip labelStatus={p.snapshot?.labelStatus} variant="dot" />
+                                    </span>
                                     <span className="dossier-pin-type">{p.anchorType}</span>
                                     {!hasEvidence && (
                                         <span className="dossier-pin-noev" data-tip="This pin froze metadata only — no evidence headlines were captured at pin time. Re-open the source to inspect it live.">

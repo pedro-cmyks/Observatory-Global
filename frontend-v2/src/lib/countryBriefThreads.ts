@@ -11,6 +11,8 @@ export interface CountryBriefThreadInput {
   gated_signal_count?: number
   /** #214: signals the gate has scored. 0 = gate hasn't run on this topic yet. */
   gate_scored_count?: number
+  /** Label Court verdict (N15): 'entailed' | 'partial' | 'failed' | null. */
+  label_status?: string | null
   anchor_topics?: string[]
 }
 
@@ -24,6 +26,9 @@ export interface CountryBriefThreadRow {
   /** Gate scored this topic but kept ZERO — raw headlines exist but none cleared
    *  the relevance gate. These belong in the UNVERIFIED tray, not the lead list. */
   belowGate: boolean
+  /** Label Court verdict carried through so the row can mark a failed/partial
+   *  label under review (N15 — every label surface, one chip). */
+  labelStatus: string | null
 }
 
 interface CountryBriefThreadSummaryInput {
@@ -54,6 +59,7 @@ export function buildCountryBriefThreadSummary({
         count: scored > 0 ? gated : raw,
         rawCount: raw,
         belowGate,
+        labelStatus: thread.label_status ?? null,
       }
     })
 

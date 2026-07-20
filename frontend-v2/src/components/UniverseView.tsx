@@ -28,6 +28,7 @@ import {
 } from '../lib/universeLayout'
 import { OrbitalThreadView } from './OrbitalThreadView'
 import { LoadingMoment } from './LoadingMoment'
+import { LabelReviewChip } from '../lib/labelReviewChip'
 import './UniverseView.css'
 
 interface UniversePayload {
@@ -786,7 +787,14 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                 {hovered && (
                     <div className="universe-hover">
                         <span style={{ color: categoryColor(hovered.category) }}>{hovered.category}</span>
-                        <strong>{hovered.label}</strong>
+                        <strong>
+                            {hovered.label}
+                            {/* N15: Label Court verdict on the hover card — the ONE shared
+                                chip. Full copy (not the dot): the card tracks the pointer so
+                                its data-tip can never open; the chip must self-explain.
+                                Fires only on failed/partial; entailed/unchecked stay clean. */}
+                            <LabelReviewChip labelStatus={hovered.label_status} />
+                        </strong>
                         <em>{hovered.n.toLocaleString()} signals{isSurging(hovered) ? ' · SURGING' : ''}{hovered.crisis_relevant ? ' · crisis-relevant' : ''}{isOrphan(hovered) ? ' · ORPHAN (unlike every other story)' : ''}</em>
                         <em>
                             {hovered.first_seen ? new Date(hovered.first_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}

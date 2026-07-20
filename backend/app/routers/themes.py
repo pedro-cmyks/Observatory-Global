@@ -782,6 +782,11 @@ async def _dynamic_topic_detail(
         # nightly classifier runs (chip renders nothing then — honest absence).
         "temporalSignature": _rec.get("temporal_signature"),
         "signatureMeta": _parse_json_obj(_rec.get("signature_meta")),
+        # Label Court verdict (N15, additive): entailed/partial/failed, NULL
+        # until the court judges this topic. dict.get keeps callers whose
+        # SELECT doesn't carry the columns serving NULL honestly.
+        "label_status": _rec.get("label_status"),
+        "label_proposed": _rec.get("label_proposed"),
         "velocity": None,
         "cohesion": float(topic_row["mean_cohesion"])
             if topic_row["mean_cohesion"] is not None else None,
@@ -1340,6 +1345,8 @@ async def get_theme_details(
                             dt.first_seen,
                             dt.temporal_signature,
                             dt.signature_meta,
+                            dt.label_status,
+                            dt.label_proposed,
                             COALESCE((
                                 SELECT array_agg(DISTINCT sid.signal_id)
                                 FROM dynamic_topic_members dtm

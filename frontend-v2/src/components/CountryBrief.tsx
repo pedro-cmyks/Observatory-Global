@@ -33,6 +33,7 @@ import { optionalFetchResponse } from '../lib/countryBriefFetch';
 import { decodeEntities } from '../lib/decodeEntities';
 import { humanizeCameoEvent } from '../lib/humanizeInternals';
 import { CountQualifierChip, countQualifier } from '../lib/countQualifier';
+import { LabelReviewChip } from '../lib/labelReviewChip';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -570,7 +571,12 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                 ? `${countQualifier(thread.count, `${timeWindow}h`, 'verified').tip} ${thread.rawCount.toLocaleString()} were assigned before the gate. Click to open the thread.`
                                 : `Click to open ${thread.label} narrative thread`}
                         >
-                            <span className="theme-name">{thread.label}</span>
+                            <span className="theme-name">
+                                {thread.label}
+                                {/* N15: court failed/partial → compact under-review dot
+                                    (shared chip, dot variant — dense chip row). */}
+                                <LabelReviewChip labelStatus={thread.labelStatus} variant="dot" />
+                            </span>
                             <span className="theme-count">
                                 {thread.count}
                                 {thread.rawCount > thread.count && (
@@ -596,7 +602,10 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     onClick={() => onThemeSelect?.(thread.name)}
                                     data-tip={`${thread.rawCount} assigned, 0 cleared the gate — open to inspect the raw coverage`}
                                 >
-                                    <span className="theme-name">{thread.label}</span>
+                                    <span className="theme-name">
+                                        {thread.label}
+                                        <LabelReviewChip labelStatus={thread.labelStatus} variant="dot" />
+                                    </span>
                                     <span className="theme-count">{thread.rawCount}</span>
                                 </button>
                             ))}
@@ -954,7 +963,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                                 headline: story.headline || extractDomain(story.url),
                                                 source: extractDomain(story.url) || undefined,
                                                 url: story.url || undefined,
-                                                sourceCountry: countryCode || undefined,
+                                                // N1: countryCode is the BRIEF's country (story
+                                                // subject scope), not the outlet's origin — never
+                                                // stored as an origin assertion.
                                                 sourceLang: story.source_lang || undefined,
                                                 gateStatus: 'unknown',
                                                 publishedDate: story.timestamp ? String(story.timestamp).slice(0, 10) : undefined,

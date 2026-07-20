@@ -15,6 +15,7 @@ from app.services.thread_intelligence import (
     fetch_thread_detail,
     fetch_threads,
     fetch_topic_relationship,
+    stamped_counts,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["threads"])
@@ -59,20 +60,26 @@ async def get_threads(
     if cached is not None:
         return cached
 
+    threads = await fetch_threads(
+        hours=hours,
+        # #234: when filtering by person, search a wider ranked pool so the
+        # person's threads aren't lost below the display limit.
+        limit=40 if person_q else limit,
+        country_codes=[country] if country else None,
+        person=person_q,
+    )
     payload = {
         "beta": True,
         "hours": hours,
         "contract": "living-narrative-threads-v0",
         "country_code": country,
         "person": person_q,
-        # #234: when filtering by person, search a wider ranked pool so the
-        # person's threads aren't lost below the display limit.
-        "threads": await fetch_threads(
-            hours=hours,
-            limit=40 if person_q else limit,
-            country_codes=[country] if country else None,
-            person=person_q,
-        ),
+        "threads": threads,
+        # N15 fold-coverage observability: Label Court verdict census of the
+        # SERVED page — {entailed, partial, failed, unchecked}. Cheap (pure
+        # count over the rows above); the weekly read greps it to see how much
+        # of the fold the court actually covers per request.
+        "meta": {"stamped_counts": stamped_counts(threads)},
     }
     await _cache_set(cache_key, payload, THREADS_CACHE_TTL)
     return payload

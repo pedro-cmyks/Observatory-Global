@@ -10,8 +10,18 @@ MAIN_SOURCE = Path("app/main_v2.py").read_text(encoding="utf-8")
 def test_threads_router_exposes_beta_collection_endpoint():
     assert '@router.get("/threads")' in ROUTER_SOURCE
     assert '"contract": "living-narrative-threads-v0"' in ROUTER_SOURCE
-    assert '"threads": await fetch_threads(' in ROUTER_SOURCE
+    # N15: the served page is captured once so meta.stamped_counts is computed
+    # over EXACTLY the rows being returned.
+    assert "threads = await fetch_threads(" in ROUTER_SOURCE
+    assert '"threads": threads' in ROUTER_SOURCE
     assert "country_codes=[country] if country else None" in ROUTER_SOURCE
+
+
+def test_threads_router_serves_stamped_counts_meta():
+    """N15 fold-coverage observability: every /threads response carries a Label
+    Court verdict census of the served page, so per-request fold coverage is
+    measurable (the weekly read greps it)."""
+    assert '"meta": {"stamped_counts": stamped_counts(threads)}' in ROUTER_SOURCE
 
 
 def test_threads_router_exposes_beta_detail_endpoint():

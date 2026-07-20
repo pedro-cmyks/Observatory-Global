@@ -12,6 +12,9 @@ import { familyColor } from './categoryFamily'
 export interface UniverseNode {
   id: string
   label: string
+  /** Label Court verdict (N15): 'entailed' | 'partial' | 'failed' | null
+      (unchecked). The hover card marks failed/partial labels under review. */
+  label_status?: string | null
   category: string
   crisis_relevant: boolean | null
   n: number

@@ -100,11 +100,17 @@ async function fetchPanelSnapshot(item: Omit<PinnedItem, 'notes' | 'timestamp'>)
     }
 
     const count = Object.values(metrics)[0]
+    // N15: freeze the Label Court verdict when the detail payload carries one
+    // (theme detail serves label_status) — the dossier marks failed/partial
+    // pinned labels under review exactly as pinned.
+    const rawLabelStatus = json['label_status'] ?? json['labelStatus']
+    const labelStatus = typeof rawLabelStatus === 'string' ? rawLabelStatus : null
     return {
         capturedAt: new Date().toISOString(),
         summary: `${item.title} · ${item.type}${count !== undefined ? ` · ${count} signals` : ''}`,
         metrics,
         evidence,
+        ...(labelStatus !== null ? { labelStatus } : {}),
     }
 }
 

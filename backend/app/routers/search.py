@@ -482,11 +482,13 @@ async def unified_search(
                 # under the R2 umbrella but a label search would list all 6 —
                 # keep the highest-volume one per label.
                 _LIVE_THREADS_SQL = """
-                    SELECT id, label, category, crisis_relevant, agg_n_signals, is_umbrella
+                    SELECT id, label, category, crisis_relevant, agg_n_signals, is_umbrella,
+                           label_status
                     FROM (
                         SELECT DISTINCT ON (LOWER(dt.label))
                                dt.id, dt.label, dt.category, dt.crisis_relevant,
-                               dt.agg_n_signals, dt.is_umbrella, dt.last_seen
+                               dt.agg_n_signals, dt.is_umbrella, dt.last_seen,
+                               dt.label_status
                         FROM dynamic_topics dt
                         WHERE dt.state = 'active'
                           AND dt.label ILIKE {match} ($1::text[])
@@ -534,6 +536,9 @@ async def unified_search(
                         "total_signals": int(r["agg_n_signals"] or 0),
                         "is_umbrella": bool(r["is_umbrella"]),
                         "match": match_kind,
+                        # Label Court verdict (N15): result rows mark
+                        # failed/partial labels under review, same as /threads.
+                        "label_status": r["label_status"],
                     }
                     for r in thread_rows
                 ]

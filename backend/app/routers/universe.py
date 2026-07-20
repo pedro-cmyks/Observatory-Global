@@ -131,7 +131,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             await conn.execute("SET statement_timeout = 20000")
             rows = await conn.fetch("""
                 SELECT id, label, category, crisis_relevant, agg_n_signals,
-                       first_seen, last_seen, centroid_vec
+                       first_seen, last_seen, centroid_vec, label_status
                 FROM dynamic_topics
                 WHERE state = 'active' AND NOT is_umbrella
                   AND centroid_vec IS NOT NULL
@@ -300,6 +300,10 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
         {
             "id": ids[i],
             "label": r["label"],
+            # Label Court verdict (N15): entailed/partial/failed, NULL until
+            # the court has judged this topic — the hover card renders the
+            # shared under-review marker on failed/partial.
+            "label_status": r["label_status"],
             "category": categories[i],
             "crisis_relevant": bool(r["crisis_relevant"])
                 if r["crisis_relevant"] is not None else None,
