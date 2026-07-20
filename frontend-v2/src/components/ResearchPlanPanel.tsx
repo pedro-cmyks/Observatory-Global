@@ -339,7 +339,8 @@ export default function ResearchPlanPanel({
                   citation={{
                     headline: item.headline,
                     source: item.source_name || undefined,
-                    sourceCountry: item.country_code || undefined,
+                    // N1: item.country_code = SUBJECT country, never an origin
+                    // assertion; semantic-evidence rows carry no outlet origin.
                     gateStatus: toCitationGateStatus(item.gate_status),
                     publishedDate: item.timestamp ? item.timestamp.slice(0, 10) : undefined,
                   }}

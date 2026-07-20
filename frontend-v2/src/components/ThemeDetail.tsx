@@ -513,7 +513,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             headline: title,
                             source: sig.source || undefined,
                             url: sig.url || undefined,
-                            sourceCountry: sig.country || undefined,
+                            // N1: sig.country is the story's SUBJECT country, not the
+                            // outlet's origin — never stored as an origin assertion.
+                            // This payload carries no source_origin_country yet, so the
+                            // pin records no origin (absence over guess).
                             sourceLang: sig.source_lang || undefined,
                             gateStatus: 'unknown',
                             publishedDate: sig.timestamp ? sig.timestamp.slice(0, 10) : undefined,

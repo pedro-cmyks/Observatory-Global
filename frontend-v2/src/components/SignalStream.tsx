@@ -541,7 +541,8 @@ export const SignalStream: React.FC = () => {
                                                     headline: sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`,
                                                     source: sig.source || undefined,
                                                     url: sig.url || undefined,
-                                                    sourceCountry: sig.country || undefined,
+                                                    // N1: sig.country = SUBJECT country, never an
+                                                    // origin assertion; no origin in this payload.
                                                     sourceLang: sig.source_lang || undefined,
                                                     gateStatus: 'unknown',
                                                     publishedDate: sig.timestamp ? new Date(sig.timestamp).toISOString().slice(0, 10) : undefined,

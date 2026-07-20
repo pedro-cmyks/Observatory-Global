@@ -8,6 +8,8 @@ export interface DailyPublicationEvidence {
   source_lang?: string | null
   timestamp?: string | null
   country_code?: string | null
+  /** OUTLET origin (source_origin_country) — sealed rows carry it. */
+  source_origin_country?: string | null
 }
 
 export interface DailyPublicationStoryNode {
@@ -80,7 +82,10 @@ export interface DailyPublicationThread {
     url?: string
     source_lang?: string | null
     timestamp?: string | null
+    /** Story SUBJECT/coverage country — never rendered as origin (N1). */
     country_code?: string | null
+    /** OUTLET origin (source_origin_country) — basis for the origin chip. */
+    source_origin_country?: string | null
   }>
 }
 
@@ -145,6 +150,10 @@ export function publicationThreads(artifact: DailyPublicationArtifact | null): D
           source_lang: receipt.source_lang,
           timestamp: receipt.timestamp,
           country_code: receipt.country_code,
+          // N1: the sealed rows carry the outlet's recorded origin
+          // (_DAILY_EVIDENCE_SQL selects source_origin_country) — thread it
+          // through so sealed receipts render honest origin chips too.
+          source_origin_country: receipt.source_origin_country,
         })),
       }
     })

@@ -25,7 +25,7 @@ import {
   type WorkbenchPin,
 } from '../lib/workbench';
 import type { ClaimRelation } from '../lib/claimLedger';
-import { classifyOutlet, coarseTierLabel, TIER_TIP } from '../lib/sourceTiers';
+import { resolveOriginChip, resolveTierChip } from '../lib/sourceProvenance';
 import { Flag } from './Flag';
 import { DossierView } from './DossierView';
 import { AccountSection } from './AccountSection';
@@ -424,20 +424,27 @@ export default function WorkbenchPanel({
                           >×</button>
                         </div>
                         <div className="wb-cit-meta">
-                          {cit.sourceCountry && (
-                            <span className="wb-cit-chip wb-cit-chip--cc">
-                              <Flag code={cit.sourceCountry} title={cit.sourceCountry} className="wb-cit-flag" />
-                              {cit.sourceCountry}
-                            </span>
-                          )}
+                          {/* N1: the flag chip is the OUTLET's recorded origin only.
+                              Legacy pins stored the story's SUBJECT country in
+                              `sourceCountry` — that field is never rendered as origin
+                              (the "LOCAL IR" lie); no chip when origin is unknown. */}
+                          {(() => {
+                            const oc = resolveOriginChip(cit.originCountry);
+                            return oc ? (
+                              <span className="wb-cit-chip wb-cit-chip--cc" data-tip={oc.tip}>
+                                <Flag code={oc.countryCode} title={oc.countryName} className="wb-cit-flag" />
+                                {oc.countryCode}
+                              </span>
+                            ) : null;
+                          })()}
                           {cit.source && <span className="wb-cit-chip">{cit.source}</span>}
                           {(() => {
-                            const t = classifyOutlet(cit.source).tier;
+                            const tc = resolveTierChip(cit.source, cit.originCountry);
                             return (
                               <span
-                                className={`wb-cit-chip wb-cit-tier wb-cit-tier--${t}`}
-                                data-tip={TIER_TIP[t]}
-                              >{coarseTierLabel(t)}</span>
+                                className={`wb-cit-chip wb-cit-tier wb-cit-tier--${tc.tier}`}
+                                data-tip={tc.tip}
+                              >{tc.label}</span>
                             );
                           })()}
                           {cit.sourceLang && !['xx', 'un', 'und', ''].includes(cit.sourceLang.toLowerCase())

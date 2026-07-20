@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
-import { classifyOutlet, coarseTierLabel, TIER_TIP } from '../lib/sourceTiers'
+import { resolveTierChip } from '../lib/sourceProvenance'
 import './Briefing.css'
 
 interface BriefingData {
@@ -250,14 +250,17 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                     <h3>Top Sources</h3>
                     <div className="source-tags">
                         {data.top_sources.map(s => {
-                            const t = classifyOutlet(s.source).tier
+                            // N1: no per-source origin in this aggregate payload →
+                            // LOCAL (which asserts locality) downgrades to UNKNOWN;
+                            // wire/state/major are name-classified, origin-independent.
+                            const tc = resolveTierChip(s.source, undefined)
                             return (
                                 <span key={s.source} className="source-tag">
                                     {s.source} ({s.count})
                                     <span
-                                        className={`source-tier-chip source-tier-chip--${t}`}
-                                        data-tip={TIER_TIP[t]}
-                                    >{coarseTierLabel(t)}</span>
+                                        className={`source-tier-chip source-tier-chip--${tc.tier}`}
+                                        data-tip={tc.tip}
+                                    >{tc.label}</span>
                                 </span>
                             )
                         })}

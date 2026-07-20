@@ -26,7 +26,7 @@ function cite(partial: Partial<Citation> & { headline: string }): Citation {
     headline: partial.headline,
     source: partial.source,
     url: partial.url,
-    sourceCountry: partial.sourceCountry,
+    originCountry: partial.originCountry,
     sourceLang: partial.sourceLang,
     gateStatus: partial.gateStatus ?? 'unknown',
     publishedDate: partial.publishedDate,
@@ -102,15 +102,15 @@ describe('claimId / makeClaim', () => {
 // ── The death-toll fixture (the demo Carolina's spec must handle) ──────────────
 const TOLL_A = cite({
   id: 'cite:a', headline: 'Venezuela quake toll rises to 4,734 dead',
-  source: 'El Nacional', sourceCountry: 'VE', publishedDate: '2026-07-14',
+  source: 'El Nacional', originCountry: 'VE', publishedDate: '2026-07-14',
 })
 const TOLL_B = cite({
   id: 'cite:b', headline: 'Officials put earthquake dead at 4,930',
-  source: 'Últimas Noticias', sourceCountry: 'VE', publishedDate: '2026-07-15',
+  source: 'Últimas Noticias', originCountry: 'VE', publishedDate: '2026-07-15',
 })
 const TOLL_WIRE = cite({
   id: 'cite:w', headline: 'Reuters: Venezuela quake toll reaches 4,800',
-  source: 'Reuters', sourceCountry: 'GB', publishedDate: '2026-07-15',
+  source: 'Reuters', originCountry: 'GB', publishedDate: '2026-07-15',
 })
 
 describe('buildClaimTable', () => {
