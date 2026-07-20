@@ -316,6 +316,32 @@
 .dossier-evidence a { color: var(--color-text-secondary); }
 .dossier-evidence a:hover { color: var(--color-text-primary); }
 .dossier-src { color: var(--color-text-muted); }
+/* Enrichment F1: per-receipt full-text status + source excerpt */
+.dossier-ft-tag {
+    margin-left: 6px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+.dossier-fulltext {
+    margin: 4px 0 8px;
+    padding-left: 10px;
+    border-left: 2px solid var(--color-border, rgba(255,255,255,0.15));
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+}
+.dossier-ft-meta {
+    display: block;
+    margin-top: 2px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
 .dossier-note {
     margin-top: 6px;
     font-size: 12px;

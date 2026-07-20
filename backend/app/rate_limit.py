@@ -88,6 +88,9 @@ def _llm_flag(request: Request) -> bool:
 _RULE_SPECS: list[tuple[str, str, object]] = [
     (r"^/api/v2/theme/[^/]+/external-depth$", "slow", None),
     (r"^/api/v2/research/plan$", "paid", None),
+    # Article fetch spawns real outbound HTTP per URL — pay-bucket it. The
+    # /state lookup is a cheap cache read and stays on the global bucket.
+    (r"^/api/v2/research/articles/fetch$", "paid", None),
     (r"^/api/v2/translate(?:/batch|/text)?$", "paid", None),
     (r"^/api/v2/theme/[^/]+/insight$", "paid", None),
     (r"^/api/v2/briefing/insight$", "paid", None),

@@ -141,6 +141,7 @@ export interface Investigation {
 }
 
 import { track, trackOnce } from './telemetry'
+import { enqueueSnapshotFetch } from './articleEnrichment'
 import { makeClaim, type Claim, type ClaimInput, type ClaimRelation } from './claimLedger'
 export type { Claim, ClaimInput, ClaimRelation } from './claimLedger'
 
@@ -302,6 +303,9 @@ export function addPin(
     track('pin', { anchor_type: pin.anchorType, lane: pin.retrievalLane })
     // Investigation value moment = created + ≥1 pin (decision D4, 2026-07-05).
     trackOnce('first_value_moment', { kind: 'investigation' })
+    // Enrichment F1: fire-and-forget server-side fetch of the frozen evidence
+    // URLs (spec 2026-07-20). Best-effort — the pin never waits or fails on it.
+    enqueueSnapshotFetch(pin.snapshot)
   }
   return inv
 }
@@ -311,11 +315,14 @@ export function addPin(
 export function updatePinSnapshot(
   investigationId: string, anchorId: string, snapshot: PinSnapshot,
 ): Investigation | null {
-  return mutate(investigationId, inv => {
+  const out = mutate(investigationId, inv => {
     const pin = inv.pins.find(p => p.anchorId === anchorId)
     if (!pin) return
     pin.snapshot = snapshot
   })
+  // Enrichment F1: async-landed evidence (panel pins) also gets fetched.
+  if (out) enqueueSnapshotFetch(snapshot)
+  return out
 }
 
 /** #227: edit the analyst's per-pin note (the annotation the dossier carries). */

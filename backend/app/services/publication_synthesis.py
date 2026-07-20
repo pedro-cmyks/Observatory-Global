@@ -177,7 +177,12 @@ def _citation_table(req: SynthesizeRequest) -> list[dict]:
     return table
 
 
-def _synth_user(req: SynthesizeRequest) -> str:
+def _synth_user(req: SynthesizeRequest, article_texts: dict | None = None) -> str:
+    """article_texts: url -> {text, outlet, fetched_at} from pinned_articles
+    (Workbench enrichment F1). An excerpt rides UNDER its evidence line with the
+    SAME [n] — the excerpt is the same source as its headline, never a new
+    receipt number."""
+    article_texts = article_texts or {}
     parts: list[str] = []
     if req.title:
         parts.append(f"Investigation title: {req.title}")
@@ -198,6 +203,13 @@ def _synth_user(req: SynthesizeRequest) -> str:
                 bits = [b for b in (row["source"], row["date"]) if b]
                 attribution = " — " + ", ".join(bits)
             parts.append(f"   [{row['n']}] {row['headline']}{attribution}")
+            art = article_texts.get(row["url"] or "")
+            if art and art.get("text"):
+                fetched = (art.get("fetched_at") or "")[:10]
+                parts.append(
+                    f"       full text of [{row['n']}] (fetched {fetched or 'earlier'}): "
+                    f"\"{art['text'][:600].strip()}\""
+                )
         if p.note:
             parts.append(f"   note: {p.note}")
     c = req.connection
@@ -291,8 +303,21 @@ async def synthesize_publication_article(req: SynthesizeRequest) -> dict:
     contract = "dossier-synthesis-v2"
     empty = {"contract": contract, "headline": None, "lede": None, "body": None,
              "unknowns": None, "citations": None, "synthesis": None, "gap": None}
+    # Workbench enrichment F1: pull cached full texts for the evidence URLs and
+    # feed excerpts under their [n] lines. Best-effort — synthesis never fails
+    # on the enrichment substrate being absent (fresh deploy, table missing, db
+    # down): it degrades to headlines-only exactly as before.
+    article_texts: dict = {}
+    try:
+        from app.services.article_fetch import full_texts_for
+        urls = [row["url"] for row in _citation_table(req) if row.get("url")]
+        if urls:
+            article_texts = await full_texts_for(urls)
+    except Exception:
+        article_texts = {}
+    empty["full_text_used"] = len(article_texts)   # honesty: how many receipts had full text
     text, provider, error, _usage = await generate_insight(
-        _SYNTH_SYSTEM, _synth_user(req), max_tokens=1200, surface="dossier-synthesis",
+        _SYNTH_SYSTEM, _synth_user(req, article_texts), max_tokens=1200, surface="dossier-synthesis",
     )
     if not text:
         return {**empty, "provider": None, "error": error or "insight_unavailable"}

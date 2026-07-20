@@ -230,6 +230,36 @@
     text-transform: uppercase;
     color: var(--color-text-muted);
 }
+/* Enrichment F1: per-receipt full-text status + excerpt disclosure */
+.wb-snap-ft {
+    margin-left: 6px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+.wb-snap-ft--ok { color: var(--color-accent, #34d399); }
+.wb-snap-fulltext {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+.wb-snap-fulltext summary {
+    cursor: pointer;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+.wb-snap-fulltext blockquote {
+    margin: 4px 0 6px;
+    padding-left: 8px;
+    border-left: 2px solid var(--color-border, rgba(255,255,255,0.15));
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+.wb-snap-ft-meta { color: var(--color-text-muted); font-size: 10px; }
 .wb-pin-note {
     width: 100%;
     margin-top: 6px;

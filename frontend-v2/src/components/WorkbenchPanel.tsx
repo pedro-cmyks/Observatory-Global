@@ -1,7 +1,7 @@
 // Workbench panel (Phase 2): the investigation memory. Sidebar of saved
 // investigations + pinned route + trail + JSON export (the v1 durability
 // mechanism — localStorage is evictable by design, spec amendment B3).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addCitation,
   addClaim,
@@ -32,6 +32,7 @@ import { AccountSection } from './AccountSection';
 import WorkbenchConstellation from './WorkbenchConstellation';
 import { connectionTopicIds } from '../lib/dossierConnections';
 import { countQualifier } from '../lib/countQualifier';
+import { extractSnapshotUrls, stateTag, useArticleStates } from '../lib/articleEnrichment';
 import './WorkbenchPanel.css';
 
 // Gate-tier badge copy for pinned receipts — the same honesty labels the
@@ -90,6 +91,14 @@ export default function WorkbenchPanel({
   const investigations = listInvestigations();
   const activeId = getActiveInvestigationId();
   const active: Investigation | null = activeId ? getInvestigation(activeId) : null;
+
+  // Enrichment F1: display states for every pinned evidence URL (server-side
+  // fetched text — status + excerpt only; article text never lives client-side).
+  const evidenceUrls = useMemo(
+    () => Array.from(new Set((active?.pins ?? []).flatMap(p => extractSnapshotUrls(p.snapshot)))),
+    [active],
+  );
+  const articleStates = useArticleStates(evidenceUrls);
 
   // Escape closes the dossier first (if open), else the whole workbench.
   useEffect(() => {
@@ -327,14 +336,43 @@ export default function WorkbenchPanel({
                       {pin.snapshot.summary && <div className="wb-snap-summary">{pin.snapshot.summary}</div>}
                       {pin.snapshot.evidence && pin.snapshot.evidence.length > 0 && (
                         <ul className="wb-snap-evidence">
-                          {pin.snapshot.evidence.map((e, i) => (
+                          {pin.snapshot.evidence.map((e, i) => {
+                            const art = e.url ? articleStates.get(e.url) : undefined;
+                            const tag = stateTag(art);
+                            return (
                             <li key={i}>
                               {e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer">{e.headline}</a> : e.headline}
                               {e.source ? <span className="wb-snap-src"> · {e.source}</span> : null}
+                              {art?.status === 'ok' && (
+                                <span className="wb-snap-ft wb-snap-ft--ok" data-tip={`Fetched at pin time${art.via === 'wayback' ? ' via Wayback Machine' : ''} — excerpt below`}>
+                                  full text ✓{art.via === 'wayback' ? ' · wayback' : ''}
+                                </span>
+                              )}
+                              {tag && <span className="wb-snap-ft">{tag}</span>}
                             </li>
-                          ))}
+                            );
+                          })}
                         </ul>
                       )}
+                      {/* Enrichment F1: work WITH the source text during the
+                          investigation — excerpts only (full text stays server-side). */}
+                      {(() => {
+                        const oks = (pin.snapshot.evidence ?? [])
+                          .map(e => (e.url ? articleStates.get(e.url) : undefined))
+                          .filter(a => a?.status === 'ok' && a.excerpt);
+                        if (oks.length === 0) return null;
+                        return (
+                          <details className="wb-snap-fulltext">
+                            <summary>FROM THE SOURCE · {oks.length} excerpt{oks.length === 1 ? '' : 's'}</summary>
+                            {oks.map((a, i) => (
+                              <blockquote key={i}>
+                                “{a!.excerpt}”
+                                <span className="wb-snap-ft-meta"> — {a!.outlet ?? 'source'}{a!.fetched_at ? ` · fetched ${a!.fetched_at.slice(0, 10)}` : ''}{a!.via === 'wayback' ? ' · wayback' : ''}</span>
+                              </blockquote>
+                            ))}
+                          </details>
+                        );
+                      })()}
                       {(() => {
                         // Count-qualifier contract: snapshot numbers are FROZEN —
                         // say so with the shared base explanation, not just a date.

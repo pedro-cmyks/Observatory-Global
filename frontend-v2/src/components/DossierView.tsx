@@ -15,6 +15,7 @@ import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { humanizeReadinessValue } from '../lib/humanizeInternals'
 import { removePin, renameInvestigation, type Investigation } from '../lib/workbench'
+import { enqueueUrls, extractSnapshotUrls, fullTextYield, stateTag, useArticleStates } from '../lib/articleEnrichment'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { deriveVerdictChips, type NodeStateRef, type VerdictChipDescriptor } from '../lib/verdictChips'
 import { VerdictChip } from './VerdictChip'
@@ -108,6 +109,17 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
     const [copied, setCopied] = useState(false)
     // Export feedback (council wish 12): downloads must confirm themselves too.
     const [downloaded, setDownloaded] = useState(false)
+    // Enrichment F1 (spec 2026-07-20): server-fetched full text per receipt.
+    // Opening the dossier also BACKFILLS old pins (pre-F1 investigations, e.g.
+    // NATO-Ankara) by enqueueing their evidence URLs; the states hook polls
+    // bounded while fetches land — the report renders progressively, never blocks.
+    const evidenceUrls = useMemo(
+        () => Array.from(new Set(investigation.pins.flatMap(p => extractSnapshotUrls(p.snapshot)))),
+        [investigation.pins],
+    )
+    useEffect(() => { enqueueUrls(evidenceUrls) }, [evidenceUrls])
+    const articleStates = useArticleStates(evidenceUrls)
+    const ftYield = fullTextYield(evidenceUrls, articleStates)
     // Title is a presentation/label concern (the frozen pins never change). The
     // H1 leads with the analyst's explicit rename if any, else the synthesis
     // headline (a real thesis, not the worst-conflated first-pin), else the
@@ -332,6 +344,27 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
             const smAt = base.indexOf(smMarker)
             base = smAt === -1 ? `${base}\n${smBlock}` : `${base.slice(0, smAt)}\n${smBlock}${base.slice(smAt)}`
         }
+        // Enrichment F1: source excerpts travel with the export — excerpt +
+        // citation only (legal: the file never republishes full articles).
+        {
+            const oks = evidenceUrls
+                .map(u => articleStates.get(u))
+                .filter(a => a?.status === 'ok' && a.excerpt)
+            if (oks.length > 0) {
+                const lines = [
+                    '## From the source',
+                    '',
+                    `Full text fetched for ${ftYield.ok} of ${ftYield.total} pinned receipts (paywalls/bot walls make partial yield normal).`,
+                    '',
+                    ...oks.map(a => `> “${a!.excerpt}”\n> — ${a!.outlet ?? 'source'} · fetched ${a!.fetched_at ? a!.fetched_at.slice(0, 10) : 'earlier'}${a!.via === 'wayback' ? ' · via Wayback Machine' : ''} · ${a!.url}`),
+                    '',
+                ]
+                const ftBlock = lines.join('\n')
+                const ftMarker = '\n## Timeline'
+                const ftAt = base.indexOf(ftMarker)
+                base = ftAt === -1 ? `${base}\n${ftBlock}` : `${base.slice(0, ftAt)}\n${ftBlock}${base.slice(ftAt)}`
+            }
+        }
         // Claim ledger: the contested-figures table travels with the export.
         if (claimRows.length > 0) {
             const clBlock = claimTableMarkdown(claimRows).join('\n') + '\n'
@@ -425,6 +458,11 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
 
                 <div className="dossier-meta">
                     Generated {new Date(dossier.generatedAt).toLocaleString()} · {dossier.pinCount} pin{dossier.pinCount === 1 ? '' : 's'} · frozen at pin time
+                    {ftYield.total > 0 && (
+                        <span data-tip="Receipts whose article text was fetched and extracted server-side (spec 2026-07-20). Paywalls/bot walls make partial yield the normal state — never an error.">
+                            {' '}· full text {ftYield.ok}/{ftYield.total} source{ftYield.total === 1 ? '' : 's'}
+                        </span>
+                    )}
                     {storyWindow && <> · story window {fmtDay(storyWindow.first)} → {fmtDay(storyWindow.last)}</>}
                     {dossier.queries.length > 0 && <> · queries: {dossier.queries.join(' · ')}</>}
                 </div>
@@ -605,14 +643,26 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                                 {p.snapshot?.summary && <div className="dossier-pin-summary">{p.snapshot.summary}</div>}
                                 {hasEvidence && (
                                     <ul className="dossier-evidence">
-                                        {p.snapshot!.evidence!.map((e, i) => (
+                                        {p.snapshot!.evidence!.map((e, i) => {
+                                            const art = e.url ? articleStates.get(e.url) : undefined
+                                            const tag = stateTag(art)
+                                            return (
                                             <li key={i}>
                                                 {e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer">{e.headline}</a> : e.headline}
                                                 {(e.source || e.date) ? (
                                                     <span className="dossier-src"> — {e.source ?? ''}{e.source && e.date ? ', ' : ''}{e.date ? fmtDay(e.date) : ''}</span>
                                                 ) : null}
+                                                {tag && <span className="dossier-ft-tag">{tag}</span>}
+                                                {/* Enrichment F1: excerpt + citation, never republished full text */}
+                                                {art?.status === 'ok' && art.excerpt && (
+                                                    <blockquote className="dossier-fulltext">
+                                                        “{art.excerpt}”
+                                                        <span className="dossier-ft-meta"> — FROM THE SOURCE · fetched {art.fetched_at ? art.fetched_at.slice(0, 10) : 'earlier'}{art.via === 'wayback' ? ' · via Wayback Machine' : ''}</span>
+                                                    </blockquote>
+                                                )}
                                             </li>
-                                        ))}
+                                            )
+                                        })}
                                     </ul>
                                 )}
                                 {p.note && <div className="dossier-note">Note: {p.note}</div>}
