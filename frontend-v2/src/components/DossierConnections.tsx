@@ -43,6 +43,7 @@ function edgeTag(e: ConnectionEdge): string {
   if (e.shared_persons.length) return e.shared_persons[0].split(' ')[0]
   if (e.shared_countries.length) return e.shared_countries[0]
   if (e.text_mentions?.length) return `“${e.text_mentions[0]}”`
+  if (e.body_mentions?.length) return `“${e.body_mentions[0]}”`
   if (e.basis.includes('semantic') && e.semantic_sim != null) return `≈${e.semantic_sim.toFixed(2)}`
   return ''
 }

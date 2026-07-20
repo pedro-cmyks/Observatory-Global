@@ -9,7 +9,7 @@
 import type { Investigation, WorkbenchPin } from './workbench'
 import { resolveThreadTopicId } from './dossierEnrichment'
 
-export type ConnectionBasis = 'semantic' | 'shared_country' | 'shared_person' | 'text_mention'
+export type ConnectionBasis = 'semantic' | 'shared_country' | 'shared_person' | 'text_mention' | 'body_mention'
 
 export interface ConnectionNode {
   id: string
@@ -60,6 +60,10 @@ export interface ConnectionEdge {
    *  evidence headlines ("nato summit") — entity extraction missed the link,
    *  the TEXT states it. Weaker than shared_person, stronger than semantic. */
   text_mentions?: string[]
+  /** F3a: terms of the other pin found in this pair's FETCHED ARTICLE BODIES
+   *  (pinned_articles cache) — the paragraph-6 reference headlines hide.
+   *  Weaker than a headline text_mention, never silently mixed with it. */
+  body_mentions?: string[]
 }
 
 export interface ConnectionDistributions {
@@ -102,6 +106,22 @@ export function connectionTopicIds(inv: Investigation): string[] {
   return out
 }
 
+/** F3a: per-resolvable-pin FROZEN evidence urls — lets the backend mention
+ *  scan read the fetched bodies (shared pinned_articles cache). */
+export function connectionEvidenceUrls(inv: Investigation): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+  for (const p of inv.pins) {
+    const id = resolveThreadTopicId(p)
+    if (!id) continue
+    const urls = (p.snapshot?.evidence ?? [])
+      .map(e => (e.url ?? '').trim())
+      .filter(u => u.startsWith('http'))
+    if (urls.length === 0) continue
+    out[id] = Array.from(new Set([...(out[id] ?? []), ...urls])).slice(0, 4)
+  }
+  return out
+}
+
 export async function fetchConnections(
   inv: Investigation, days = 30,
 ): Promise<ConnectionsData | null> {
@@ -111,7 +131,7 @@ export async function fetchConnections(
     const res = await fetch('/api/v2/dossier/connections', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic_ids: topicIds, days }),
+      body: JSON.stringify({ topic_ids: topicIds, days, evidence_urls: connectionEvidenceUrls(inv) }),
     })
     if (!res.ok) return null
     const d = await res.json() as ConnectionsData
@@ -193,6 +213,7 @@ export type LinkStrength = 'strong' | 'text' | 'context' | 'weak'
 export function edgeStrength(e: ConnectionEdge): LinkStrength {
   if (e.shared_persons.length > 0) return 'strong'
   if (e.basis.includes('text_mention') && (e.text_mentions?.length ?? 0) > 0) return 'text'
+  if (e.basis.includes('body_mention') && (e.body_mentions?.length ?? 0) > 0) return 'text'
   if (e.shared_countries.length > 0) return 'context'
   return 'weak'
 }
@@ -523,6 +544,7 @@ const BASIS_LABEL: Record<ConnectionBasis, string> = {
   shared_country: 'shared coverage country (context only)',
   shared_person: 'shared actor',
   text_mention: 'evidence-text mention',
+  body_mention: 'article-body mention (fetched text)',
 }
 
 export function edgeReason(e: ConnectionEdge): string {
@@ -542,6 +564,9 @@ export function edgeReason(e: ConnectionEdge): string {
   if (e.shared_persons.length) parts.push(`↔ ${e.shared_persons.slice(0, 2).join(', ')}`)
   if ((e.text_mentions?.length ?? 0) > 0) {
     parts.push(`evidence text mentions “${e.text_mentions!.slice(0, 2).join('”, “')}”`)
+  }
+  if ((e.body_mentions?.length ?? 0) > 0) {
+    parts.push(`article body mentions “${e.body_mentions!.slice(0, 2).join('”, “')}”`)
   }
   return parts.join(' · ') || e.basis.map(b => BASIS_LABEL[b]).join(' · ')
 }

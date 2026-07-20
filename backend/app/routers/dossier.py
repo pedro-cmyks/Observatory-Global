@@ -72,6 +72,11 @@ _cache: dict = {}
 class ConnectionsRequest(BaseModel):
     topic_ids: list[str] = Field(..., min_length=1, max_length=MAX_PINS)
     days: int = Field(30, ge=7, le=90)
+    # F3a (spec 2026-07-20 §6): per-pin FROZEN evidence urls — lets the mention
+    # scan read the fetched article BODIES (pinned_articles cache) in addition
+    # to headlines. Optional + backward compatible; body basis is labeled
+    # `body_mention`, never silently mixed with the headline `text_mention`.
+    evidence_urls: dict[str, list[str]] = Field(default_factory=dict)
     # Constellation assembly (2026-07-06): when a pin is a child of an umbrella
     # (an assembled big story), fold it into ONE umbrella node exposing typed
     # sub-facets, instead of N noisy near-duplicate nodes. Off = legacy flat view.
@@ -555,6 +560,33 @@ async def dossier_connections(req: ConnectionsRequest):
         n["base_id"]: agg.get(n["base_id"], {}).get("headlines", []) for n in nodes
     }
 
+    # F3a: fetched-body texts per base (same (text_lower, tokenset) shape the
+    # headline scan uses — _mention_terms works verbatim on both). A paragraph-6
+    # mention of the other pin's actor is exactly what headlines hide. Best
+    # effort: no fetched text → empty list → zero body edges, never an error.
+    bodies_by_base: dict[Any, list[tuple[str, frozenset]]] = {n["base_id"]: [] for n in nodes}
+    if req.evidence_urls:
+        try:
+            from app.services.article_fetch import full_texts_for
+            base_by_raw = {n["id"]: n["base_id"] for n in nodes}
+            url_to_base: dict[str, Any] = {}
+            for raw, urls in req.evidence_urls.items():
+                b = base_by_raw.get(raw)
+                if b is None:
+                    continue
+                for u in (urls or [])[:4]:
+                    u = str(u or "").strip()
+                    if u.startswith("http"):
+                        url_to_base.setdefault(u, b)
+            texts = await full_texts_for(list(url_to_base)[:64], cap_chars=6000) if url_to_base else {}
+            for u, art in texts.items():
+                low = (art.get("text") or "").lower()
+                if low:
+                    bodies_by_base[url_to_base[u]].append(
+                        (low, frozenset(re.split(r"[^\w]+", low))))
+        except Exception as exc:
+            logger.warning("connections body-mention load failed: %s", str(exc)[:200])
+
     for i in range(len(bases)):
         for j in range(i + 1, len(bases)):
             bi, bj = bases[i], bases[j]
@@ -612,6 +644,21 @@ async def dossier_connections(req: ConnectionsRequest):
                 # weaker than shared_person (0.65+), stronger than a bare
                 # semantic pass at the 0.50 whitened threshold.
                 weight = max(weight, 0.55)
+            # F3a: the same scan over fetched BODY texts — catches the
+            # paragraph-6 reference no headline carries. Distinct basis +
+            # slightly weaker than a headline mention (deep-text reference).
+            body_terms: list[str] = []
+            if bodies_by_base.get(bi) or bodies_by_base.get(bj):
+                for t in (
+                    _mention_terms(bodies_by_base.get(bi, []), label_tokens_by_base[bj], actors_by_base[bj])
+                    + _mention_terms(bodies_by_base.get(bj, []), label_tokens_by_base[bi], actors_by_base[bi])
+                ):
+                    if t not in body_terms and t not in text_terms:
+                        body_terms.append(t)
+                body_terms = body_terms[:4]
+            if body_terms:
+                basis.append("body_mention")
+                weight = max(weight, 0.52)
             if not basis:
                 continue
             edges.append({
@@ -624,6 +671,7 @@ async def dossier_connections(req: ConnectionsRequest):
                 "shared_countries": shared_countries,
                 "shared_persons": shared_persons,
                 "text_mentions": text_terms,
+                "body_mentions": body_terms,
             })
 
     edges.sort(key=lambda e: -e["weight"])
@@ -742,6 +790,7 @@ async def dossier_connections(req: ConnectionsRequest):
             "semantic_space": "whitened-e5-k1" if wcentroids else "raw-e5",
             "distinctive_person_df_max": distinct_df_max,
             "text_mention": "one pin's evidence headlines contain the other pin's label key-tokens or a top actor — weaker than shared_person, stronger than semantic-only; pure token match",
+            "body_mention": "one pin's FETCHED ARTICLE BODY (pinned_articles cache) contains the other pin's label key-tokens or a top actor — the paragraph-6 reference headlines hide; pure token match, weaker than a headline text_mention, never mixed with it",
             "actor_filter": "shared/top actors pass the person gate + subjects gazetteer + geo-feature token guard (NER junk excluded)",
             "position_basis": "PCA top-2 of pinned e5 centroids — approximate; edges are exact",
             "member_selection": {
