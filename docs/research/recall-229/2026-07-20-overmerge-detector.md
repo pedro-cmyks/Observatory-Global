@@ -177,11 +177,68 @@ heavy-lock) and writes a per-run ledger for exact undo:
 python -m scripts.detect_overmerge --revert m4-20260720-s42
 ```
 
-## 6. Status / next
+## 6. EXECUTED — the guarded write (Step 4, 2026-07-20)
 
-- **Audit: PASS at ~93% precision (judge-gated).** This run was **read-only** — no
-  DB writes. `--write` (the demote path) is implemented but GATED and is the next
-  step, and MUST run with `--judge` (structural candidates alone are ~54% and unsafe).
-- Durable stickiness against re-promotion (a `dynamic_topics` over-merge marker, like
-  `is_junk`) is the follow-up so a demoted blob does not re-promote next nightly.
-- Recall refinement: same-country roundups → judge instead of hard-keep (see §3).
+The gate (Verify CONFIRMED 54%→93% ∧ Measure precision-safe 93% > 85% bar ∧ 89
+judge-confirmed demotes) was met, so the write ran. Nightly clear (`pgrep
+run-scoped-snapshot.sh` empty, no `/tmp/atlas-heavy-job.lock`).
+
+```
+python -m scripts.detect_overmerge --write \
+  --artifact docs/research/overmerge/2026-07-20-overmerge-audit.json
+```
+
+**Demoted 89/89** active→candidate (all 89 were still `active` at write time;
+none had shifted in the 16-min artifact age). Each demote printed a loud log with
+the two fused sub-cluster headlines (e.g. dt-244 "Diverse Local Incidents" =
+Novosibirsk quake ∥ Venezuela quake; dt-414 "Russian Strikes Hit Ukraine Ships" =
+Ukrainian counter-strikes ∥ a Brussels building fire). Run ledger:
+`docs/research/overmerge/m4-20260720-s42-demotions.jsonl`.
+
+**Court, measured live before vs after (not predicted):**
+
+| | active pop | failed | failed % |
+|---|---|---|---|
+| before | 1,832 | 372 | **20.31%** |
+| after demoting 89 | 1,743 | 345 | **19.79%** |
+
+Delta **−0.52 pp**. As designed, failed% barely moves — the detector removed
+**62 court-PASSING** fusions (25 entailed + 37 partial) and only **27 court-failing**
+ones. The point is **not** the failed-rate delta (the court already scores these
+green); the delta is honest evidence the detector is doing what only it can:
+**retiring 62 court-invisible fusions** the label court, junk classifier, and M2
+floor all pass. 89 blob-topics retired from serving; the active non-umbrella
+non-junk population is now 1,743.
+
+**Reversal** (per-run ledger, only rows still `candidate`):
+
+```
+python -m scripts.detect_overmerge --revert m4-20260720-s42
+```
+
+## 7. Wired into the nightly — Step 3.5c
+
+`scripts/run-scoped-snapshot.sh` gained **Step 3.5c** right after 3.5b
+(`flag_junk_topics`), the two halves of identity retirement now cron together
+(content-junk ∥ over-merge). It runs the judge-gated audit then `--write
+--force-unsafe` (the step runs inside the nightly, which already holds the heavy
+lock — the write guard is for external contention, not a sequential runner step).
+Precision-first fail-safe: a missing/unhealthy DeepSeek judge confirms nothing →
+demotes nothing, so a keyless nightly is safe. Non-fatal; `ATLAS_OVERMERGE_ENABLED=off`
+disables. Synced byte-identical to AtlasLocalWorker (runner + `detect_overmerge.py`
++ `app/services/overmerge.py` — ALW backend lacked both overmerge files). Commit
+`6e6d8b3f`.
+
+## 8. What remains (not this pass)
+
+- **Durable stickiness against re-promotion.** A demoted blob is `candidate`; the
+  next clustering pass can re-promote it. The follow-up is a `dynamic_topics`
+  over-merge marker (like `is_junk`) so a confirmed fusion stays retired until it
+  genuinely splits. Until then the nightly Step 3.5c re-catches any that re-promote
+  (self-healing but not sticky).
+- **Recall refinement.** The country veto hard-keeps 19 same-country roundups
+  (the mission's own "Indonesian News Roundup: Multiple Events" class) to protect
+  precision. Route same-country wide-gap-balanced topics to the *judge* (borderline)
+  instead of a hard KEEP to recover that recall without spending precision.
+- The e5 `gap_ratio` is compressed (p50 ≈ 1.20); a re-embed to a less-collapsed
+  space would sharpen the multimodality signal and lift recall at fixed precision.
