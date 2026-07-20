@@ -39,6 +39,14 @@ export interface DailyPublicationArtifact {
   edition_date: string | null
   /** Seal moment (generated_at) surfaced top-level for the staleness banner. */
   sealed_at?: string | null
+  /** Council N10: next-attempt truth from the actual launchd schedule
+   * constant — never a hardcoded banner promise. */
+  seal_schedule?: {
+    next_attempt_at?: string | null
+    next_attempt_local?: string
+    attempt_window_open?: boolean
+    basis?: string
+  } | null
   status: 'ready' | 'degraded' | string
   graph: {
     contract: 'atlas-investigation-graph-v1'

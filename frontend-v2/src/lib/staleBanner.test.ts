@@ -88,3 +88,63 @@ describe('buildStaleBanner', () => {
         expect(b.nextAttempt).toBe('next seal attempt 03:00')
     })
 })
+
+describe('buildStaleBanner · seal_schedule truth (council N10)', () => {
+    it('renders relative time to the REAL next attempt when the backend serves it', () => {
+        const b = buildStaleBanner({
+            sealedAt: '2026-07-17T02:30:00Z',
+            editionDate: '2026-07-17',
+            servedFromSeal: true,
+            reasonCodes: [],
+            now: NOW, // 09:00Z
+            nextAttemptAt: '2026-07-17T14:00:00Z', // 5h away
+        })
+        expect(b.nextAttempt).toBe('next seal attempt in 5 h (02:30)')
+        expect(b.sentence).toContain('next seal attempt in 5 h (02:30)')
+    })
+
+    it('uses minutes under an hour', () => {
+        const b = buildStaleBanner({
+            sealedAt: '2026-07-17T02:30:00Z',
+            editionDate: '2026-07-17',
+            servedFromSeal: true,
+            now: NOW,
+            nextAttemptAt: '2026-07-17T09:40:00Z',
+        })
+        expect(b.nextAttempt).toBe('next seal attempt in 40 min (02:30)')
+    })
+
+    it('says an attempt is likely in progress when the schedule window is open', () => {
+        const b = buildStaleBanner({
+            sealedAt: '2026-07-15T02:30:00Z',
+            editionDate: '2026-07-15',
+            servedFromSeal: false,
+            reasonCodes: ['edition_degraded'],
+            now: NOW,
+            nextAttemptAt: '2026-07-18T07:30:00Z',
+            attemptWindowOpen: true,
+        })
+        expect(b.nextAttempt).toBe('seal attempt likely in progress')
+    })
+
+    it('falls back to the 02:30 constant when the backend does not serve the schedule', () => {
+        const b = buildStaleBanner({
+            sealedAt: '2026-07-17T02:30:00Z',
+            editionDate: '2026-07-17',
+            servedFromSeal: true,
+            now: NOW,
+        })
+        expect(b.nextAttempt).toBe('next seal attempt 02:30')
+    })
+
+    it('a past nextAttemptAt (clock skew / stale payload) falls back to the constant, never "in -2 h"', () => {
+        const b = buildStaleBanner({
+            sealedAt: '2026-07-17T02:30:00Z',
+            editionDate: '2026-07-17',
+            servedFromSeal: true,
+            now: NOW,
+            nextAttemptAt: '2026-07-17T07:30:00Z', // already passed
+        })
+        expect(b.nextAttempt).toBe('next seal attempt 02:30')
+    })
+})

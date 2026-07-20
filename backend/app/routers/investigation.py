@@ -21,6 +21,7 @@ from app.services.investigation_graph import (
     assemble_investigation_graph,
     build_publication_package,
 )
+from app.services.seal_schedule import build_seal_schedule
 from app.services.thread_intelligence import fetch_thread_detail
 from app.routers.dossier import ConnectionsRequest, dossier_connections
 
@@ -195,6 +196,7 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
             "contract": "atlas-daily-publication-v1",
             "edition_date": None,
             "sealed_at": None,
+            "seal_schedule": build_seal_schedule(),
             "package": None,
             "graph": None,
             "selection": None,
@@ -221,6 +223,7 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
             "contract": "atlas-daily-publication-v1",
             "edition_date": None,
             "sealed_at": None,
+            "seal_schedule": build_seal_schedule(),
             "package": None,
             "graph": None,
             "selection": None,
@@ -238,6 +241,10 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
         "contract": payload.pop("contract"),
         "edition_date": payload.pop("edition_date"),
         "sealed_at": sealed_at,
+        # Council N10: next-attempt truth from the actual launchd schedule
+        # constant (+ in-flight window inference) — the staleness banner
+        # consumes this instead of promising a hardcoded "02:30".
+        "seal_schedule": build_seal_schedule(last_sealed_at=sealed_at),
         "status": payload.pop("status"),
         "package": _json_value(payload.pop("package")),
         "graph": _json_value(payload.pop("graph")),

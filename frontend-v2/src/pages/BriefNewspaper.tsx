@@ -618,6 +618,11 @@ export function BriefNewspaper() {
             servedFromSeal: dailyGate.useSharedPackage,
             reasonCodes: dailyGate.reasonCodes,
             now,
+            // N10: honest next-attempt from the backend's schedule truth
+            // (02:30 constant remains the no-schedule fallback inside).
+            nextAttemptAt: dailyEdition.seal_schedule?.next_attempt_at ?? null,
+            attemptWindowOpen: dailyEdition.seal_schedule?.attempt_window_open ?? false,
+            nextSealLocal: dailyEdition.seal_schedule?.next_attempt_local,
         })
         : null
     const allThreads = dailyGate.useSharedPackage ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])

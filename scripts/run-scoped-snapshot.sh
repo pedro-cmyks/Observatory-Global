@@ -263,7 +263,9 @@ fi
 # the full active candidate set and stores one compact JSONB row. Vercel/Fly
 # serving only reads that row; it never performs this work in an HTTP request.
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.build_daily_publication --execute ) \
-  || echo "[scoped-snapshot] ERROR daily publication artifact failed — L1 remains on the previous sealed edition" >&2
+  || { echo "[scoped-snapshot] ERROR daily publication artifact failed — L1 remains on the previous sealed edition" >&2; \
+       echo "$(date '+%Y-%m-%d %H:%M:%S') [scoped-snapshot] SEAL_FAILED daily publication artifact failed — L1 remains on the previous sealed edition" \
+         >> "${ATLAS_RELIABILITY_ALERTS_LOG:-$HOME/AtlasLocalWorker/logs/reliability-alerts.log}" 2>/dev/null || true; }
 
 # Step 7 (council N4, 2026-07-20): pre-warm the universe field on the serving
 # box. The endpoint is stale-while-revalidate — after this one hit the field

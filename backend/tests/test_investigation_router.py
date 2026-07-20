@@ -277,3 +277,37 @@ def test_stored_daily_reader_reports_no_seal_when_row_absent(monkeypatch):
     assert payload["sealed_at"] is None
     assert payload["edition_date"] is None
     assert payload["completion"]["stored"] is False
+
+
+def test_stored_daily_reader_serves_seal_schedule(monkeypatch):
+    """Council N10: the payload carries next_attempt truth computed from the
+    launchd schedule constant, so the banner never promises a wrong 02:30."""
+    class Conn:
+        async def fetchrow(self, query, *, timeout):
+            return None
+
+    class Acquire:
+        async def __aenter__(self):
+            return Conn()
+
+        async def __aexit__(self, *args):
+            return False
+
+    class Pool:
+        def acquire(self):
+            return Acquire()
+
+    monkeypatch.setattr(db, "pool", Pool(), raising=False)
+    payload = asyncio.run(fetch_stored_daily_publication())
+
+    sched = payload["seal_schedule"]
+    assert sched["next_attempt_local"] == "02:30"
+    assert "next_attempt_at" in sched
+    assert isinstance(sched["attempt_window_open"], bool)
+    assert "schedule" in sched["basis"]
+
+
+def test_no_db_payload_still_carries_seal_schedule(monkeypatch):
+    monkeypatch.setattr(db, "pool", None, raising=False)
+    payload = asyncio.run(fetch_stored_daily_publication())
+    assert payload["seal_schedule"]["next_attempt_local"] == "02:30"

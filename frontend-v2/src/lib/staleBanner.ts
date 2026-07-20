@@ -24,6 +24,17 @@ export interface StaleBannerInput {
     now?: Date
     /** Local wall-clock time of the nightly seal cron. */
     nextSealLocal?: string
+    /**
+     * REAL next attempt moment (ISO) served by the backend's seal_schedule
+     * (computed from the actual launchd schedule constant). When present the
+     * banner states honest relative time instead of a bare "02:30".
+     */
+    nextAttemptAt?: string | null
+    /**
+     * Backend schedule-window inference: an attempt is plausibly in flight
+     * right now (inside the run window, no seal landed yet).
+     */
+    attemptWindowOpen?: boolean
 }
 
 export interface StaleBannerCopy {
@@ -90,10 +101,30 @@ function isTodayUtc(editionDate: string, now: Date): boolean {
     return editionDate === now.toISOString().slice(0, 10)
 }
 
+/** Honest next-attempt phrase (council N10): prefer the backend's schedule
+ * truth; the hardcoded local time is only the no-schedule fallback. A past
+ * nextAttemptAt (stale payload / clock skew) also falls back — the banner
+ * never promises an attempt "in -2 h". */
+function nextAttemptPhrase(input: StaleBannerInput, now: Date): string {
+    const local = input.nextSealLocal ?? '02:30'
+    if (input.attemptWindowOpen) return 'seal attempt likely in progress'
+    if (input.nextAttemptAt) {
+        const ms = new Date(input.nextAttemptAt).getTime() - now.getTime()
+        if (!Number.isNaN(ms) && ms > 0) {
+            const minutes = Math.round(ms / 60000)
+            const when = minutes < 60
+                ? `${minutes} min`
+                : `${Math.round(minutes / 60)} h`
+            return `next seal attempt in ${when} (${local})`
+        }
+    }
+    return `next seal attempt ${local}`
+}
+
 export function buildStaleBanner(input: StaleBannerInput): StaleBannerCopy {
     const now = input.now ?? new Date()
     const reasonCodes = input.reasonCodes ?? []
-    const nextAttempt = `next seal attempt ${input.nextSealLocal ?? '02:30'}`
+    const nextAttempt = nextAttemptPhrase(input, now)
     const liveNote = 'live view below is current'
 
     // No edition was ever sealed — honest live-only, never invent an age.
