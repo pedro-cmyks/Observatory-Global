@@ -1,5 +1,37 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-20 (L1 DAILY-EDITION ENRICHMENT SHIPPED + NIGHTLY SEAL UNBROKEN,
+`3d97ea85`→`d51a71c3`, sealed edition 07-20 LIVE with enrichment).** Pedro:
+apply the enrichment to the daily Brief, all three sections (The World /
+Under the Radar / Culture-Sport-Life). SHIPPED: `fetch_daily_publication`
+enqueues the edition's receipt URLs (≤4/story, ≤48/edition) with bounded
+≤30s wait BEFORE lead synthesis → front-page article quotes bodies
+(synthesize already reads pinned_articles — the F1 bridge paid off with
+zero new synthesis code); `package.article_enrichment` freezes per-receipt
+excerpts + honest yield at seal; `package.coverage_check` = cross-read
+over the lead's fetched bodies (attaches only when ≥2 sources readable).
+All best-effort: any failure seals exactly as before (logger, not print).
+BriefNewspaper: ONE renderer (`renderReceipt`) serves all three sections →
+one join enriches them; excerpt blockquote clamped 3 lines under its
+receipt (same receipt identity, never a new source); COVERAGE CHECK box
+after the standfirst (⚠ outlets diverge / ✓ agree, both verbatim quotes);
+full-text yield rides the freshness banner. **CRITICAL DISCOVERY: the
+nightly seal was CRASHING since the black-hole-audit commit** — mig 087
+(topic_members quarantine cols) existed in-repo but was NEVER applied to
+prod → `tm.quarantined does not exist` → no editions 07-18/07-20. Applied
+087 + sealed 2026-07-20 manually (--execute): **yield 9/48 with
+Culture/Sport receipts enriched in Turkish (ajansspor/Galatasaray) +
+Russian (ngzt.ru)**; prod endpoint serves it. SECOND FIX (live-view gap):
+degraded seals make the Brief serve LIVE threads whose URLs ≠ sealed set →
+excerpts never showed; live receipt URLs now enqueue through the SAME
+shared cache (no-op when cached) with sealed→live fallback in the join —
+verified 12 excerpts on live World incl. one via Wayback Machine. OPS
+NOTES: the seal runs from THIS repo tree with mlvenv → **trafilatura
+installed into mlvenv** (else nightly yield silently 0); coverage_check
+absent this edition (lead receipts <2 readable — honest); 785 vitest +
+24 artifact pytest green; dry-run + sealed build both verified. Next
+seal 02:30 runs the full path autonomously.**
+
 **2026-07-20 (F2 AI-READ + CROSS-READ + F2.5 LEADS SHIPPED same day,
 `4028ecd0`→`d3ccc0e1`, Fly deployed + pushed, prod-validated live —
 artifact `docs/research/ai-read/2026-07-20-f2-live-validation.md`).**
