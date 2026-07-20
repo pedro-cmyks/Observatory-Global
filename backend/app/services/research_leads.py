@@ -51,21 +51,32 @@ def _fold(s: str) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
 
 
-_PREFIX_MIN = 5
+def _cp(a: str, b: str) -> int:
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n
 
 
 def _name_matches(a: str, b: str) -> bool:
-    """Fold-aware match with token-prefix tolerance for transliteration
-    variants (Zelenski/Zelenskyy/Zelensky). Prefix ≥5 chars per token —
-    loose enough for spelling drift, tight enough not to glue distinct names."""
+    """Fold-aware match with transliteration tolerance
+    (Zelenski/Zelenskyy/Zelensky). Exact/substring first; else the SURNAME
+    (last token) must share a ≥6-char prefix AND, when both carry a first
+    name, the first tokens must share ≥3 — a single shared common word
+    ("actor", "ministry") never glues two distinct names."""
     fa, fb = _fold(a), _fold(b)
     if not fa or not fb:
         return False
     if fa in fb or fb in fa:
         return True
-    ta = [t for t in fa.split() if len(t) >= _PREFIX_MIN]
-    tb = [t for t in fb.split() if len(t) >= _PREFIX_MIN]
-    return any(x.startswith(y) or y.startswith(x) for x in ta for y in tb)
+    ta, tb = fa.split(), fb.split()
+    if _cp(ta[-1], tb[-1]) < 6:
+        return False
+    if len(ta) > 1 and len(tb) > 1:
+        return _cp(ta[0], tb[0]) >= 3
+    return True
 
 
 def _thread_matches(thread: dict, entity_name: str, matching_slugs: set[str]) -> bool:
