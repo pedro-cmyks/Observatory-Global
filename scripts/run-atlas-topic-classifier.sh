@@ -170,10 +170,11 @@ fi
 # --only-unchecked = incremental (label_status IS NULL only, i.e. topics
 # promoted since the last pass — nightly court + this step share the stamp, so
 # they never re-judge each other's work). --limit bounds one cycle's spend;
-# ORDER BY agg_n_signals DESC inside the script means the biggest (most likely
-# to serve/lead) unstamped topics are judged first. Umbrella family bar +
-# fallback receipts handled inside label_court.py. Proposals are NEVER applied
-# here (ATLAS_LABEL_COURT_APPLY stays off — the court stamps, humans decide).
+# incremental passes order id DESC (NEWEST-promoted first — the fold stays
+# stamped, council-R2 N2) while full nightly runs stay biggest-first. Umbrella
+# family bar + fallback receipts handled inside label_court.py. Proposals are
+# NEVER applied here (ATLAS_LABEL_COURT_APPLY stays off — the court stamps,
+# humans decide).
 # Non-fatal; reverse: ATLAS_LABEL_COURT_ENABLED=false.
 if [[ "${ATLAS_LABEL_COURT_ENABLED:-true}" == "true" \
       && -n "${DEEPSEEK_API_KEY:-}" && -x "$MLVENV/bin/python" ]]; then
