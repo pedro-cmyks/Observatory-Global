@@ -341,7 +341,8 @@ async def topic_lineage(conn: Any, theme_code: str) -> dict:
     try:
         n_members = await conn.fetchval(
             """SELECT count(*) FROM topic_members
-               WHERE topic_id = $1 AND role = 'evidence'""", theme_code)
+               WHERE topic_id = $1 AND role = 'evidence'
+                 AND quarantined IS NOT TRUE""", theme_code)
         if n_members:
             hot_n, hot_src = int(n_members), "members"
     except Exception as exc:  # noqa: BLE001 — count is best-effort
@@ -361,6 +362,7 @@ async def topic_lineage(conn: Any, theme_code: str) -> dict:
                FROM topic_members tm
                JOIN signals_v2 s ON s.id = tm.signal_id
                WHERE tm.topic_id = $1 AND tm.role = 'evidence'
+                 AND tm.quarantined IS NOT TRUE
                ORDER BY s.timestamp DESC
                LIMIT 120""", theme_code)
         ccs = Counter(r["country_code"] for r in ev if r["country_code"])

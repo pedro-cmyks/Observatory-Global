@@ -33,6 +33,7 @@ WITH win AS (
   SELECT tm.topic_id, tm.signal_id
   FROM topic_members tm
   WHERE tm.role = 'evidence'
+    AND tm.quarantined IS NOT TRUE
     AND tm.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
 ),
 agg AS (

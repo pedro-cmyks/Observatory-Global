@@ -330,6 +330,7 @@ async def dossier_connections(req: ConnectionsRequest):
                         WHERE tm.topic_id = ANY($1::text[])
                           AND tm.engine_version = 'v1-compat'
                           AND tm.role IN ('evidence','discussion','mood')
+                          AND tm.quarantined IS NOT TRUE
                           AND tm.assigned_at > NOW() - INTERVAL '{int(req.days)} days'
                     )
                     SELECT topic_id, role, country_code, source_lang, persons,

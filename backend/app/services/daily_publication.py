@@ -398,6 +398,7 @@ WITH requested AS (
     JOIN signals_v2 s ON s.id = tm.signal_id
     WHERE tm.role = 'evidence'
       AND tm.engine_version = 'v1-compat'
+      AND tm.quarantined IS NOT TRUE
       AND s.timestamp >= $3::timestamptz - ($2::int * INTERVAL '1 hour')
       AND s.timestamp <= $3::timestamptz
     ORDER BY underlying.requested_id, s.id, tm.assigned_at DESC

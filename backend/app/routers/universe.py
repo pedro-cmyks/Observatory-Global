@@ -191,6 +191,7 @@ async def _build_universe(days: int) -> dict:
                     SELECT tm.topic_id, s.country_code, s.persons
                     FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
                     WHERE tm.topic_id LIKE 'dynamic-topic-%' AND tm.role = 'evidence'
+                      AND tm.quarantined IS NOT TRUE
                       AND tm.assigned_at > NOW() - INTERVAL '{int(days)} days'
                 )
                 SELECT topic_id, country_code, persons FROM mem
@@ -218,6 +219,7 @@ async def _build_universe(days: int) -> dict:
                        COUNT(*) FILTER (WHERE s.timestamp >= NOW() - INTERVAL '20 hours') AS recent_vol
                 FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
                 WHERE tm.topic_id LIKE 'dynamic-topic-%' AND tm.role = 'evidence'
+                  AND tm.quarantined IS NOT TRUE
                 GROUP BY tm.topic_id
             """)
 

@@ -31,6 +31,7 @@ _THREAD_VOICE_SQL = """
     JOIN signals_v2 s ON s.id = tm.signal_id
     WHERE tm.topic_id = $1
       AND tm.role = 'evidence'
+      AND tm.quarantined IS NOT TRUE
       AND tm.engine_version = $2
       AND tm.assigned_at >= NOW() - ($3::int * INTERVAL '1 hour')
 """

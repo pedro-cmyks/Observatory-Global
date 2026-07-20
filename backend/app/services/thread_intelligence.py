@@ -336,6 +336,7 @@ WITH scoped AS (
     LEFT JOIN countries_v2 c ON c.code = s.country_code
     WHERE tm.engine_version = $5::text
       AND tm.role = 'evidence'
+      AND tm.quarantined IS NOT TRUE
       AND tm.assigned_at >= NOW() - ($1::int * INTERVAL '1 hour')
       AND ($3::text IS NULL OR at.slug = $3::text)
       AND ($4::text[] IS NULL OR s.country_code = ANY($4::text[]))
@@ -442,6 +443,7 @@ related_counts AS (
     JOIN topic_members tm2
       ON tm2.signal_id = scoped.signal_id
      AND tm2.role = 'evidence'
+     AND tm2.quarantined IS NOT TRUE
      AND tm2.engine_version = $5::text
      AND tm2.topic_id <> scoped.topic_slug
     GROUP BY scoped.topic_slug, tm2.topic_id
@@ -2359,7 +2361,7 @@ WHERE topic_id = $1
   AND assigned_at >= NOW() - ($3::int * INTERVAL '1 hour')
   AND (
         -- evidence stays engine-versioned (serving parity with the gated counts)
-        (role = 'evidence' AND engine_version = $2)
+        (role = 'evidence' AND engine_version = $2 AND quarantined IS NOT TRUE)
         -- discussion/mood: the v1-compat engine holds ~0 of these (mood is
         -- structurally empty there) while unified-v2 carries the real social
         -- lanes — pinning to $2 made the endpoint assert "no discussion/mood"

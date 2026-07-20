@@ -23,6 +23,7 @@ def thread_focus_filter(value: str) -> tuple[str, str] | None:
     topic_id = v if v.startswith(("dynamic-topic-", "cluster-")) else v.split("--")[0]
     return (
         "id IN (SELECT signal_id FROM topic_members"
-        " WHERE topic_id = $1 AND role = 'evidence' AND signal_id IS NOT NULL)",
+        " WHERE topic_id = $1 AND role = 'evidence' AND signal_id IS NOT NULL"
+        " AND quarantined IS NOT TRUE)",
         topic_id,
     )

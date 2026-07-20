@@ -301,7 +301,8 @@ async def get_theme_external_depth(theme_code: str):
                 urls = await conn.fetch(
                     """SELECT s.source_url FROM topic_members tm
                        JOIN signals_v2 s ON s.id = tm.signal_id
-                       WHERE tm.topic_id = $1 LIMIT 400""", theme_code)
+                       WHERE tm.topic_id = $1
+                         AND tm.quarantined IS NOT TRUE LIMIT 400""", theme_code)
                 known = {r["source_url"] for r in urls if r["source_url"]}
             else:
                 slug = theme_code.split("--")[0].lower()
@@ -635,7 +636,7 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
             JOIN signals_v2 s ON s.id = tm.signal_id
             LEFT JOIN signal_embeddings e ON e.signal_id = tm.signal_id
             WHERE tm.topic_id = $1 AND tm.engine_version = 'v1-compat'
-              AND tm.role = 'evidence'
+              AND tm.role = 'evidence' AND tm.quarantined IS NOT TRUE
               AND tm.assigned_at > NOW() - INTERVAL '30 days'
             LIMIT 300
             """,
@@ -2338,6 +2339,7 @@ async def get_theme_orbital(
                     f"""
                     SELECT DISTINCT signal_id FROM topic_members
                     WHERE topic_id = $1 AND role = 'evidence' AND signal_id IS NOT NULL
+                      AND quarantined IS NOT TRUE
                       AND assigned_at > NOW() - INTERVAL '{int(hours)} hours'
                     """,
                     topic_id_text,
@@ -2356,6 +2358,7 @@ async def get_theme_orbital(
                             SELECT DISTINCT ON (signal_id) signal_id, assigned_at
                             FROM topic_members
                             WHERE topic_id = $1 AND role = 'evidence' AND signal_id IS NOT NULL
+                              AND quarantined IS NOT TRUE
                             ORDER BY signal_id, assigned_at DESC
                         ) m ORDER BY m.assigned_at DESC LIMIT 400
                         """,

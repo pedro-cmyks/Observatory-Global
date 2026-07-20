@@ -182,6 +182,7 @@ async def topic_deep_history(conn: Any, theme_code: str,
                    FROM topic_members tm
                    JOIN signals_v2 s ON s.id = tm.signal_id
                    WHERE tm.topic_id = $1 AND tm.role = 'evidence'
+                     AND tm.quarantined IS NOT TRUE
                      AND s.timestamp::date = $2::date
                    LIMIT 8""", theme_code, day)
             for h in hot:
