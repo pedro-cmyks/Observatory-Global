@@ -342,6 +342,31 @@
     text-transform: uppercase;
     color: var(--color-text-muted);
 }
+/* F2 cross-read findings */
+.dossier-crossread-finding {
+    margin: 10px 0;
+    padding: 8px 10px;
+    border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+    border-radius: 4px;
+}
+.dossier-crossread-finding--tension { border-left: 3px solid #f59e0b; }
+.dossier-crossread-finding--corroboration { border-left: 3px solid var(--color-accent, #34d399); }
+.dossier-crossread-kind {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+.dossier-crossread-note { margin: 4px 0; font-size: 13px; color: var(--color-text-primary); }
+.dossier-crossread-finding blockquote {
+    margin: 4px 0;
+    padding-left: 10px;
+    border-left: 2px solid var(--color-border, rgba(255,255,255,0.15));
+    font-size: 12px;
+    font-style: italic;
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+}
 .dossier-note {
     margin-top: 6px;
     font-size: 12px;

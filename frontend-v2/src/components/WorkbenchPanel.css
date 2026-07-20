@@ -260,6 +260,77 @@
     overflow-wrap: anywhere;
 }
 .wb-snap-ft-meta { color: var(--color-text-muted); font-size: 10px; }
+/* F2 AI-read claims */
+.wb-snap-airead {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+.wb-snap-airead summary {
+    cursor: pointer;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-accent, #34d399);
+}
+.wb-airead-claim { margin: 5px 0; line-height: 1.45; overflow-wrap: anywhere; }
+.wb-airead-claim blockquote {
+    margin: 2px 0 0;
+    padding-left: 8px;
+    border-left: 2px solid var(--color-border, rgba(255,255,255,0.15));
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+.wb-airead-attr {
+    margin-right: 6px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border, rgba(255,255,255,0.2));
+    border-radius: 3px;
+    padding: 0 4px;
+    white-space: nowrap;
+}
+.wb-airead-attr--attributed { color: var(--color-accent-primary, #7dd3fc); }
+/* F2.5 leads */
+.wb-leads { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.wb-lead {
+    border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 11px;
+}
+.wb-lead-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.wb-lead-entity { font-weight: 600; color: var(--color-text-primary); }
+.wb-lead-kind { color: var(--color-text-muted); }
+.wb-lead-basis {
+    margin-left: auto;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+.wb-lead-quote {
+    margin: 4px 0;
+    padding-left: 8px;
+    border-left: 2px solid var(--color-border, rgba(255,255,255,0.15));
+    color: var(--color-text-secondary);
+    font-style: italic;
+    overflow-wrap: anywhere;
+}
+.wb-lead-threads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.wb-lead-pin {
+    background: none;
+    border: 1px solid var(--color-border, rgba(255,255,255,0.2));
+    border-radius: 3px;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+.wb-lead-pin:hover { color: var(--color-text-primary); border-color: var(--color-accent, #34d399); }
+.wb-lead-suppressed { font-size: 10px; color: var(--color-text-muted); }
 .wb-pin-note {
     width: 100%;
     margin-top: 6px;

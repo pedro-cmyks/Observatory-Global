@@ -16,6 +16,7 @@ import { track, trackOnce } from '../lib/telemetry'
 import { humanizeReadinessValue } from '../lib/humanizeInternals'
 import { removePin, renameInvestigation, type Investigation } from '../lib/workbench'
 import { enqueueUrls, extractSnapshotUrls, fullTextYield, stateTag, useArticleStates } from '../lib/articleEnrichment'
+import { fetchCrossRead, type CrossRead } from '../lib/aiRead'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { deriveVerdictChips, type NodeStateRef, type VerdictChipDescriptor } from '../lib/verdictChips'
 import { VerdictChip } from './VerdictChip'
@@ -223,6 +224,18 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
     const [corrobRunning, setCorrobRunning] = useState(false)
     const [corrobFailed, setCorrobFailed] = useState(false)
     const corrobAutoFired = useRef(false)
+    // F2 cross-read: corroboration/tension map over quote-backed claims from
+    // the fetched bodies. Button-triggered (first run pays the read pass per
+    // uncached article; findings cached server-side 15 min).
+    const [crossRead, setCrossRead] = useState<CrossRead | null>(null)
+    const [crossRunning, setCrossRunning] = useState(false)
+    const runCrossRead = useCallback(async () => {
+        if (evidenceUrls.length < 2 || crossRunning) return
+        setCrossRunning(true)
+        track('dossier_crossread', { urls: evidenceUrls.length })
+        const data = await fetchCrossRead(evidenceUrls)
+        if (mounted.current) { setCrossRead(data); setCrossRunning(false) }
+    }, [evidenceUrls, crossRunning])
     const runCorroboration = useCallback(async (force: boolean) => {
         if (dossierRef.current.pinCount === 0) return
         setCorrobRunning(true)
@@ -365,6 +378,23 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                 base = ftAt === -1 ? `${base}\n${ftBlock}` : `${base.slice(0, ftAt)}\n${ftBlock}${base.slice(ftAt)}`
             }
         }
+        // F2 cross-read findings travel with the export — quotes + honest labels.
+        if (crossRead && crossRead.findings.length > 0) {
+            const lines = [
+                '## Source cross-read (AI READ — verify the quotes)',
+                '',
+                ...crossRead.findings.flatMap(f => [
+                    `**${f.kind === 'tension' ? 'Possible tension' : 'Corroboration'}** — ${f.note}`,
+                    `> “${f.a.quote}” — ${f.a.url}`,
+                    `> “${f.b.quote}” — ${f.b.url}`,
+                    '',
+                ]),
+            ]
+            const crBlock = lines.join('\n')
+            const crMarker = '\n## Timeline'
+            const crAt = base.indexOf(crMarker)
+            base = crAt === -1 ? `${base}\n${crBlock}` : `${base.slice(0, crAt)}\n${crBlock}${base.slice(crAt)}`
+        }
         // Claim ledger: the contested-figures table travels with the export.
         if (claimRows.length > 0) {
             const clBlock = claimTableMarkdown(claimRows).join('\n') + '\n'
@@ -450,6 +480,12 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                             disabled={corrobRunning || dossier.pinCount === 0}
                             data-tip="Check every evidence-bearing pin against live web coverage — independent sources weighted. Metadata-only context is marked not applicable. DOC 2.0 permits one query every five seconds, so duration grows with the route."
                         >{corrobRunning ? 'Corroborating every evidence pin…' : corrob ? 'Re-corroborate' : 'Corroborate'}</button>
+                        <button
+                            className="dossier-btn"
+                            onClick={runCrossRead}
+                            disabled={crossRunning || evidenceUrls.length < 2}
+                            data-tip="AI-read the fetched source texts and map corroborations/tensions between their quote-backed claims. Labeled possible — every finding carries both verbatim quotes so you verify in one glance."
+                        >{crossRunning ? 'Reading sources…' : crossRead ? 'Re-cross-read' : 'Cross-read'}</button>
                         <button className="dossier-btn" onClick={copy}>{copied ? 'Copied ✓' : 'Copy MD'}</button>
                         <button className="dossier-btn" onClick={download}>{downloaded ? 'Downloaded ✓' : 'Download'}</button>
                         <button className="dossier-close" onClick={onClose} aria-label="Close">×</button>
@@ -742,6 +778,32 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                             do these stories connect — and which sub-narratives hold?
                         </p>
                         <DossierConnections inv={investigation} onData={onConnections} />
+                    </section>
+                )}
+
+                {(crossRead || crossRunning) && (
+                    <section className="dossier-section dossier-crossread">
+                        <h2>Source cross-read</h2>
+                        {crossRunning ? (
+                            <p className="dossier-meta">AI-reading the fetched source texts and comparing quote-backed claims…</p>
+                        ) : crossRead && (
+                            <>
+                                <p className="dossier-meta" data-tip={crossRead.note ?? ''}>
+                                    AI READ{crossRead.model ? ` · ${crossRead.model}` : ''} · {crossRead.articles_with_claims} of {crossRead.articles_read} read sources with quote-backed claims · possible findings — verify the quotes
+                                </p>
+                                {crossRead.findings.length === 0 && (
+                                    <p className="dossier-meta">{crossRead.reason ? `Not comparable: ${crossRead.reason}.` : 'No corroborations or tensions visible between the quote-backed claims.'}</p>
+                                )}
+                                {crossRead.findings.map((f, i) => (
+                                    <div key={i} className={`dossier-crossread-finding dossier-crossread-finding--${f.kind}`}>
+                                        <span className="dossier-crossread-kind">{f.kind === 'tension' ? '⚠ possible tension' : '✓ corroboration'}</span>
+                                        <p className="dossier-crossread-note">{f.note}</p>
+                                        <blockquote>“{f.a.quote}” <span className="dossier-ft-meta">— {f.a.url}</span></blockquote>
+                                        <blockquote>“{f.b.quote}” <span className="dossier-ft-meta">— {f.b.url}</span></blockquote>
+                                    </div>
+                                ))}
+                            </>
+                        )}
                     </section>
                 )}
 

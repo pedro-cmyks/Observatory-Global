@@ -91,6 +91,9 @@ _RULE_SPECS: list[tuple[str, str, object]] = [
     # Article fetch spawns real outbound HTTP per URL — pay-bucket it. The
     # /state lookup is a cheap cache read and stays on the global bucket.
     (r"^/api/v2/research/articles/fetch$", "paid", None),
+    # F2: LLM passes (read/crossread) + the leads pool query — paid bucket.
+    (r"^/api/v2/research/articles/(?:read|crossread)$", "paid", None),
+    (r"^/api/v2/research/leads$", "paid", None),
     (r"^/api/v2/translate(?:/batch|/text)?$", "paid", None),
     (r"^/api/v2/theme/[^/]+/insight$", "paid", None),
     (r"^/api/v2/briefing/insight$", "paid", None),

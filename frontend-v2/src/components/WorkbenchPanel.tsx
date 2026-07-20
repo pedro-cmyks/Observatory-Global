@@ -33,6 +33,7 @@ import WorkbenchConstellation from './WorkbenchConstellation';
 import { connectionTopicIds } from '../lib/dossierConnections';
 import { countQualifier } from '../lib/countQualifier';
 import { extractSnapshotUrls, stateTag, useArticleStates } from '../lib/articleEnrichment';
+import { fetchLeads, fetchReadings, readProvenance, type LeadsResult, type Reading } from '../lib/aiRead';
 import './WorkbenchPanel.css';
 
 // Gate-tier badge copy for pinned receipts — the same honesty labels the
@@ -99,6 +100,25 @@ export default function WorkbenchPanel({
     [active],
   );
   const articleStates = useArticleStates(evidenceUrls);
+
+  // F2 AI-read + F2.5 leads: explicit trigger (first run pays the LLM pass;
+  // re-runs hit the server-side ai_readings cache). Per-investigation state.
+  const [readings, setReadings] = useState<Map<string, Reading>>(new Map());
+  const [leads, setLeads] = useState<LeadsResult | null>(null);
+  const [aiReading, setAiReading] = useState(false);
+  useEffect(() => { setReadings(new Map()); setLeads(null); }, [activeId]);
+  const runAiRead = useCallback(async () => {
+    if (!active || evidenceUrls.length === 0 || aiReading) return;
+    setAiReading(true);
+    try {
+      const r = await fetchReadings(evidenceUrls);
+      setReadings(r);
+      const pinnedIds = active.pins.map(p => p.anchorId);
+      setLeads(await fetchLeads(evidenceUrls, pinnedIds));
+    } finally {
+      setAiReading(false);
+    }
+  }, [active, evidenceUrls, aiReading]);
 
   // Escape closes the dossier first (if open), else the whole workbench.
   useEffect(() => {
@@ -247,6 +267,12 @@ export default function WorkbenchPanel({
                 <button className="wb-action wb-action--report" onClick={() => { setAutoCorroborate(false); setShowDossier(true); }} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
                 <button className="wb-action wb-action--corroborate" onClick={() => { setAutoCorroborate(true); setShowDossier(true); }} data-tip="Check every evidence-bearing pin against live web coverage; metadata-only context is marked not applicable. Duration grows with the route." disabled={active.pins.length === 0}>CORROBORATE</button>
                 <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">{exported ? 'DOWNLOADED ✓' : 'EXPORT'}</button>
+                <button
+                  className="wb-action wb-action--airead"
+                  onClick={runAiRead}
+                  disabled={evidenceUrls.length === 0 || aiReading}
+                  data-tip="AI-read the fetched source texts: claims with verbatim quotes (quoteless claims are dropped), plus LEADS — actors the bodies reveal, matched against Atlas threads you haven't pinned. First run pays the model; later runs hit the cache."
+                >{aiReading ? 'READING SOURCES…' : (readings.size > 0 ? 'RE-READ' : 'AI READ')}</button>
                 {otherInvestigations.length > 0 && (
                   <select
                     className="wb-action wb-merge-select"
@@ -373,6 +399,30 @@ export default function WorkbenchPanel({
                           </details>
                         );
                       })()}
+                      {/* F2 AI-read: quote-backed claims per pin. Every claim
+                          shows its verbatim quote — verify in one glance. */}
+                      {(() => {
+                        const pinReads = extractSnapshotUrls(pin.snapshot)
+                          .map(u => readings.get(u))
+                          .filter((r): r is Reading => !!r && r.claims.length > 0);
+                        if (pinReads.length === 0) return null;
+                        const claims = pinReads.flatMap(r => r.claims);
+                        return (
+                          <details className="wb-snap-airead" open>
+                            <summary>{readProvenance(pinReads[0])} · {claims.length} claim{claims.length === 1 ? '' : 's'}</summary>
+                            {claims.map((c, i) => (
+                              <div key={i} className="wb-airead-claim">
+                                <span className={`wb-airead-attr wb-airead-attr--${c.attribution}`}
+                                  data-tip={c.attribution === 'attributed' ? `The outlet attributes this${c.attributed_to ? ` to ${c.attributed_to}` : ''} — it does not assert it itself.` : 'The outlet asserts this in its own voice.'}>
+                                  {c.attribution === 'attributed' ? `per ${c.attributed_to ?? 'sources'}` : 'asserted'}
+                                </span>
+                                {c.text}
+                                <blockquote>“{c.quote}”</blockquote>
+                              </div>
+                            ))}
+                          </details>
+                        );
+                      })()}
                       {(() => {
                         // Count-qualifier contract: snapshot numbers are FROZEN —
                         // say so with the shared base explanation, not just a date.
@@ -407,6 +457,58 @@ export default function WorkbenchPanel({
                 <div className="wb-empty">No pins yet — open a research plan and pin useful anchors.</div>
               )}
             </div>
+
+            {/* F2.5 LEADS: actors the fetched bodies reveal, matched against
+                Atlas threads not yet pinned. The body queries the substrate —
+                it never writes it. Every lead shows its quote + measured basis. */}
+            {leads && (leads.leads.length > 0 || leads.suppressed.length > 0) && (
+              <>
+                <div className="wb-section-title" data-tip={leads.basis ?? 'Actors from the fetched article bodies, matched against current Atlas threads.'}>
+                  LEADS FROM THE TEXT ({leads.leads.length})
+                </div>
+                <div className="wb-leads">
+                  {leads.leads.map((l, i) => (
+                    <div key={i} className="wb-lead">
+                      <div className="wb-lead-head">
+                        <span className="wb-lead-entity">{l.entity}</span>
+                        <span className="wb-lead-kind">{l.kind}{l.role ? ` · ${l.role}` : ''}</span>
+                        <span className="wb-lead-basis" data-tip="Measured: how many current Atlas threads this actor appears in (rarest first — a one-thread actor is the investigative one).">
+                          {l.thread_count} thread{l.thread_count === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      {l.quote && <blockquote className="wb-lead-quote">“{l.quote}”</blockquote>}
+                      <div className="wb-lead-threads">
+                        {l.threads.map(t => (
+                          <button
+                            key={t.thread_id}
+                            className="wb-lead-pin"
+                            data-tip={`Pin “${t.label ?? t.thread_id}” — pinning fetches ITS sources too, so the galaxy grows a ring.`}
+                            onClick={() => {
+                              addPin(active.id, {
+                                anchorId: t.thread_id,
+                                anchorType: 'thread',
+                                label: t.label ?? t.thread_id,
+                                retrievalLane: 'body-lead',
+                                open: { surface: 'thread_detail', params: { thread_id: t.thread_id } },
+                              });
+                              rerender();
+                            }}
+                          >◆ {t.label ?? t.thread_id}{t.signal_count != null ? ` · ${t.signal_count}` : ''}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {leads.leads.length === 0 && (
+                    <div className="wb-empty">No new leads — the bodies name no rare actors beyond what you pinned.</div>
+                  )}
+                  {leads.suppressed.length > 0 && (
+                    <div className="wb-lead-suppressed" data-tip="No silent filtering: entities skipped for being the investigation's own subject or matching too many threads (a ubiquitous actor relates nothing).">
+                      {leads.suppressed.length} suppressed: {leads.suppressed.slice(0, 4).map(s => `${s.name} (${s.reason.replace(/_/g, ' ')})`).join(' · ')}{leads.suppressed.length > 4 ? ' · …' : ''}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Receipt-level citations (council wish 1) — SEPARATE from thread
                 pins: each is one headline pinned with frozen provenance. */}
