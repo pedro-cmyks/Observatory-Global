@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSavedWatches, fetchWatchCount } from '../hooks/useSavedWatches'
+import { enqueueUrls, useArticleStates } from '../lib/articleEnrichment'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
@@ -775,6 +776,23 @@ export function BriefNewspaper() {
     const editionYield = dailyEdition?.package?.article_enrichment?.yield ?? null
     const coverageCheck = dailyEdition?.package?.coverage_check ?? null
 
+    // LIVE-view enrichment: when the sealed edition is degraded the Brief
+    // serves live threads whose receipt URLs differ from the sealed set — so
+    // the live receipts go through the SAME shared server cache the Workbench
+    // uses (enqueue is a no-op for already-fetched URLs). Sealed excerpts win;
+    // live states fill the gaps. Best-effort, offline-silent.
+    const liveReceiptUrls = useMemo(
+        () => Array.from(new Set(
+            allThreads.flatMap(t => (t.evidence_samples ?? []).slice(0, 3)
+                .map(ev => (ev.url ?? '').trim())
+                .filter(u => u.startsWith('http'))),
+        )).slice(0, 48),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [allThreads.map(t => t.thread_id).join('|')],
+    )
+    useEffect(() => { enqueueUrls(liveReceiptUrls) }, [liveReceiptUrls])
+    const liveArticleStates = useArticleStates(liveReceiptUrls)
+
     // Receipts: REAL LINKS. Evidence urls render as <a href> (the whole point
     // of a receipt); rows without a url degrade to a plain row.
     const renderReceipt = (
@@ -850,9 +868,12 @@ export function BriefNewspaper() {
                 {meta}
             </div>
         )
-        // Sealed-edition excerpt under its receipt (same [receipt] identity —
-        // never a new source). Clamped; the link above remains the full read.
-        const enriched = ev.url && editionArticles ? editionArticles[ev.url] : null
+        // Excerpt under its receipt (same [receipt] identity — never a new
+        // source). Sealed-edition excerpt wins; live shared-cache state fills
+        // the gap when the edition is degraded. Clamped; the link is the full read.
+        const enriched = ev.url
+            ? (editionArticles?.[ev.url] ?? liveArticleStates.get(ev.url) ?? null)
+            : null
         if (enriched?.status === 'ok' && enriched.excerpt) {
             return (
                 <div key={ev.id ?? i} className="brief-receipt-block">
