@@ -263,11 +263,19 @@ async def main() -> None:
         # Umbrellas INCLUDED (2026-07-18): the label-fold made the served
         # front page umbrella-first — a court that skips them never judges
         # the labels users actually see. Their receipts come from children.
+        #
+        # Ordering (2026-07-20, council R2 N2): the INCREMENTAL pass judges
+        # NEWEST-PROMOTED first (id DESC). The 30-min cadence exists so a topic
+        # that promotes and serves gets its stamp within one cycle — ordering a
+        # bounded pass by lifetime agg_n_signals would stamp the old backlog
+        # (~800 legacy actives) before today's served leads, leaving the fold
+        # unstamped for hours. Full (non-incremental) runs keep biggest-first.
+        order = "id DESC" if args.only_unchecked else "agg_n_signals DESC"
         rows = await conn.fetch(
             "SELECT id, label, is_umbrella FROM dynamic_topics "
             "WHERE state='active' AND label IS NOT NULL "
             f"{unchecked}"
-            "ORDER BY agg_n_signals DESC LIMIT $1", limit)
+            f"ORDER BY {order} LIMIT $1", limit)
         if not rows:
             print("no active topics to try"); return
 

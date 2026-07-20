@@ -22,6 +22,12 @@ set -euo pipefail
 #   on THIS 30-min cron, not nightly, so fresh stories get their badge within a
 #   cycle — the nightly scoped-snapshot pass remains the full sweep + emergent
 #   clustering). DeepSeek-only (no torch load); steady-state = 0 API calls.
+# Step 5: label_court --only-unchecked (council R2 N2: the nightly-only court
+#   left 31/37 served threads unstamped incl. ALL leads — new topics promote and
+#   serve BEFORE the nightly judgment; with lead-eligibility-v2 an unstamped
+#   thread cannot lead, so the stamp must land on the SAME cadence topics are
+#   promoted on). Bounded --limit 40 catches every newly-promoted topic within
+#   one cycle; steady-state = 0 DeepSeek calls (~cents when it fires).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -d "$SCRIPT_DIR/backend" ]]; then
@@ -158,4 +164,22 @@ if [[ -n "${DEEPSEEK_API_KEY:-}" && -x "$MLVENV/bin/python" ]]; then
     || echo "[atlas-topic] non-crisis domain labeling failed (non-fatal)" >&2
 else
   echo "[atlas-topic] skip category typing (DEEPSEEK_API_KEY or mlvenv missing)" >&2
+fi
+
+# Step 5 (2026-07-20, council R2 N2): LABEL COURT on the 30-min cadence.
+# --only-unchecked = incremental (label_status IS NULL only, i.e. topics
+# promoted since the last pass — nightly court + this step share the stamp, so
+# they never re-judge each other's work). --limit bounds one cycle's spend;
+# ORDER BY agg_n_signals DESC inside the script means the biggest (most likely
+# to serve/lead) unstamped topics are judged first. Umbrella family bar +
+# fallback receipts handled inside label_court.py. Proposals are NEVER applied
+# here (ATLAS_LABEL_COURT_APPLY stays off — the court stamps, humans decide).
+# Non-fatal; reverse: ATLAS_LABEL_COURT_ENABLED=false.
+if [[ "${ATLAS_LABEL_COURT_ENABLED:-true}" == "true" \
+      && -n "${DEEPSEEK_API_KEY:-}" && -x "$MLVENV/bin/python" ]]; then
+  ( cd "$ROOT_DIR" && "$MLVENV/bin/python" -m backend.scripts.label_court \
+      --write --only-unchecked --limit "${ATLAS_LABEL_COURT_LIMIT:-40}" ) \
+    || echo "[atlas-topic] label court failed (non-fatal)" >&2
+else
+  echo "[atlas-topic] skip label court (disabled, DEEPSEEK_API_KEY or mlvenv missing)" >&2
 fi
