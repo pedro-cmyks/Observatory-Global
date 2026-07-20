@@ -358,7 +358,8 @@ async def fetch_semantic_signal_matches(
     await _prepare_ann_search(conn)
     rows = await conn.fetch(
         f"""
-        SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
+        SELECT s.id, s.headline, s.country_code, s.source_name, s.source_url,
+               s.timestamp,
                1 - (e.vec <=> $1::halfvec) AS similarity,
                g.gate_kept, g.gate_score, g.topic_slug
         FROM signal_embeddings e
@@ -403,6 +404,10 @@ async def fetch_semantic_signal_matches(
             "headline": headline,
             "country_code": r["country_code"],
             "source_name": r["source_name"],
+            # carried so the corroborate hot lane can emit clickable receipts
+            # (council R3 P1: 16 corroborating rows all url:null — the archive
+            # lane already carries it, the hot lane threw it away here).
+            "source_url": r["source_url"],
             "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
             "similarity": round(sim, 4),
             # W2b: graded gate tier (verified/extended/assigned/below_gate) —

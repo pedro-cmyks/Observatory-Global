@@ -517,7 +517,10 @@ def rows_to_hot_matches(
         out.append(normalize_match(
             basis="atlas_hot",
             source=m.get("source_name"),
-            url=None,   # signal_embeddings join doesn't carry source_url here
+            # source_url now carried through fetch_semantic_signal_matches
+            # (council R3 P1: hot-lane corroboration used to emit url:null =
+            # zero clickable receipts on the surface built to deliver them).
+            url=m.get("source_url"),
             country=m.get("country_code"),
             date=ts[:10] if isinstance(ts, str) else None,
             snippet=headline,

@@ -127,6 +127,29 @@ class TestCorpusQueryBuilders:
         assert out[0]["relation"] == "contradicts"
         assert out[0]["official"] is True
 
+    def test_rows_to_hot_matches_carries_clickable_url(self):
+        # council R3 P1: the hot lane used to emit url=None → zero clickable
+        # receipts on the surface built to deliver them. source_url now flows
+        # through fetch_semantic_signal_matches.
+        matches = [{
+            "headline": "Iran strikes US base in Iraq",
+            "source_name": "Reuters", "source_url": "https://reuters.com/x",
+            "country_code": "IQ", "timestamp": "2026-07-20T10:00:00",
+            "similarity": 0.91,
+        }]
+        out = c.rows_to_hot_matches(matches, ["iran", "us", "base"], None)
+        assert out[0]["url"] == "https://reuters.com/x"
+        assert out[0]["basis"] == "atlas_hot"
+
+    def test_rows_to_hot_matches_degrades_without_url(self):
+        # older cached matches lacking source_url must not crash — url=None.
+        matches = [{
+            "headline": "Some event", "source_name": "Y", "country_code": "US",
+            "timestamp": None, "similarity": 0.9,
+        }]
+        out = c.rows_to_hot_matches(matches, ["some", "event"], None)
+        assert out[0]["url"] is None
+
 
 class TestDedup:
     def test_dedup_by_url_and_title(self):
