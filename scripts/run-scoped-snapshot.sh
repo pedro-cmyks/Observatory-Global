@@ -43,6 +43,26 @@ STATE_DIR="${ATLAS_SNAPSHOT_STATE_DIR:-$ROOT_DIR/state}"
 mkdir -p "$STATE_DIR" 2>/dev/null || true
 export ATLAS_SNAPSHOT_STATE_DIR="$STATE_DIR"
 
+# Weekend compute mode (2026-07-19): weekends = performance cores + bigger
+# budgets (scripts/weekend-mode.sh); weekdays keep the mindful discipline.
+# Resolved at FIRE time, BEFORE the heavy-job mutex, and logged UNCONDITIONALLY —
+# the 07-19 forensics showed a silent mode decision is invisible: a fire that
+# gives up the lock (`|| exit 0`) used to exit with ZERO log lines, and a fire
+# running pre-wire content looked identical to a weekday decision. The mode
+# line below is the per-fire receipt; grep err.log for 'mode=' to audit any night.
+if [[ -r "$SCRIPT_DIR/weekend-mode.sh" ]]; then
+  source "$SCRIPT_DIR/weekend-mode.sh"
+  atlas_weekend_env
+  TASKPOLICY="$ATLAS_TASKPOLICY"
+  if [[ "$ATLAS_WEEKEND" == "1" ]]; then MODE="weekend"; else MODE="weekday"; fi
+else
+  TASKPOLICY=""
+  command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
+  MODE="weekday-default(weekend-mode.sh missing)"
+fi
+echo "[scoped-snapshot] $(date '+%Y-%m-%d %H:%M:%S') mode=$MODE budget=${ATLAS_SNAPSHOT_RUN_BUDGET_MIN:-150}min taskpolicy=${TASKPOLICY:-performance-cores}" >&2
+[[ "$MODE" == "weekend" ]] && echo "[scoped-snapshot] WEEKEND MODE: performance cores, run budget ${ATLAS_SNAPSHOT_RUN_BUDGET_MIN:-480}min" >&2
+
 # P1.1 heavy-job mutex: the multi-hour clustering chain must never overlap embed/
 # matview/catchup on the shared Supabase (serving statement-timeout incidents).
 if [[ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]]; then
@@ -60,18 +80,6 @@ for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY; do
 done
 if [[ -z "${DATABASE_URL:-}" || -z "${DEEPSEEK_API_KEY:-}" ]]; then
   echo "[scoped-snapshot] missing DATABASE_URL or DEEPSEEK_API_KEY" >&2; exit 2
-fi
-
-# Weekend compute mode (2026-07-19): weekends = performance cores + bigger
-# budgets (scripts/weekend-mode.sh); weekdays keep the mindful discipline.
-if [[ -r "$SCRIPT_DIR/weekend-mode.sh" ]]; then
-  source "$SCRIPT_DIR/weekend-mode.sh"
-  atlas_weekend_env
-  TASKPOLICY="$ATLAS_TASKPOLICY"
-  [[ "$ATLAS_WEEKEND" == "1" ]] && echo "[scoped-snapshot] WEEKEND MODE: performance cores, run budget ${ATLAS_SNAPSHOT_RUN_BUDGET_MIN:-480}min" >&2
-else
-  TASKPOLICY=""
-  command -v taskpolicy >/dev/null 2>&1 && TASKPOLICY="taskpolicy -b"
 fi
 
 # Step 0 (2026-07-18 — the 2026-07-04 "durable plan" finally built): CHAIN
