@@ -7,15 +7,22 @@
 // front page (or render as an assembled desk card, label-as-fact) when we
 // actually trust its label.
 //
-// Two gates, in strict precedence:
+// Three gates, in strict precedence (v2, council R2 N2 — the lead REQUIRES a
+// court stamp; v1 let a null label_status lead, which left ALL of today's
+// leads unstamped because new topics promote and serve before the court runs):
 //   1. Label Court (engine, #204/#224): label_status === "failed" ALWAYS blocks
 //      — the label was checked against its own top-N receipts and did not
-//      entail. This wins even above the confidence floor. label_status is NULL
-//      until the nightly court runs; a null status never blocks on its own.
+//      entail. This wins even above the confidence floor.
 //   2. Confidence floor: the measured assignment confidence (avg_confidence,
 //      0..1) must be >= FLOOR. When avg_confidence is absent we derive a
 //      representative value from the served `confidence` band; an entirely
 //      unscored thread cannot clear the floor.
+//   3. Stamp requirement: label_status must be 'entailed' or 'partial'. A NULL
+//      (unstamped) label cannot lead — it blocks as 'awaiting-verification',
+//      a distinct reason so the page can say "stamps land within ~30 min"
+//      instead of the untrue "no story clears the bar". Checked AFTER the
+//      floor: a below-floor thread reports 'low-confidence' because a stamp
+//      alone would not rescue it.
 //
 // This is the ONE source of truth for lead/desk eligibility — the page renders
 // eligible threads as assembled stories and drops the rest to the honest
@@ -33,7 +40,7 @@ export interface LeadGateThread {
   label_status?: LabelStatus
 }
 
-export type LeadBlockReason = 'low-confidence' | 'label-failed' | null
+export type LeadBlockReason = 'low-confidence' | 'label-failed' | 'awaiting-verification' | null
 
 // Representative numeric value for a served confidence band, used only when a
 // numeric avg_confidence is missing. Mirrors thread_intelligence.confidence_band:
@@ -70,13 +77,16 @@ export function resolveLeadConfidence(t: LeadGateThread): number | null {
 
 /**
  * Why a thread cannot lead / cannot be presented as an assembled story.
- * Precedence: a failed Label Court verdict blocks unconditionally; otherwise a
- * below-floor (or unscored) confidence blocks. Returns null when eligible.
+ * Precedence: a failed Label Court verdict blocks unconditionally; then a
+ * below-floor (or unscored) confidence; then a missing court stamp
+ * ('awaiting-verification' — the thread would lead once the 30-min court
+ * cycle stamps it). Returns null when eligible.
  */
 export function leadBlockReason(t: LeadGateThread): LeadBlockReason {
   if (t.label_status === 'failed') return 'label-failed'
   const c = resolveLeadConfidence(t)
   if (c == null || c < LEAD_CONFIDENCE_FLOOR) return 'low-confidence'
+  if (t.label_status !== 'entailed' && t.label_status !== 'partial') return 'awaiting-verification'
   return null
 }
 
@@ -93,6 +103,12 @@ export interface LeadSelection<T extends LeadGateThread> {
   /** true when threads exist but NONE cleared the gate — the caller renders the
    * honest empty-lead state instead of leading with a label it doesn't trust. */
   leadUnavailable: boolean
+  /** true when the empty lead is a TIMING state, not a quality verdict: at
+   * least one thread is blocked ONLY by a missing court stamp
+   * ('awaiting-verification') and would lead once the 30-min court cycle
+   * stamps it. Lets the page distinguish "no story clears the bar" from
+   * "today's stories are awaiting verification". */
+  awaitingVerification: boolean
 }
 
 /**
@@ -108,5 +124,8 @@ export interface LeadSelection<T extends LeadGateThread> {
 export function selectLiveLead<T extends LeadGateThread>(threads: T[]): LeadSelection<T> {
   const eligible = threads.filter(isLeadEligible)
   const lead = eligible[0] ?? null
-  return { lead, eligible, leadUnavailable: lead === null && threads.length > 0 }
+  const leadUnavailable = lead === null && threads.length > 0
+  const awaitingVerification =
+    leadUnavailable && threads.some(t => leadBlockReason(t) === 'awaiting-verification')
+  return { lead, eligible, leadUnavailable, awaitingVerification }
 }

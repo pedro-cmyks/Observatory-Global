@@ -24,7 +24,15 @@ import './labelReviewChip.css'
 // via the `floor` param.
 export const LABEL_REVIEW_FLOOR = LEAD_CONFIDENCE_FLOOR
 
-export type LabelReviewReason = 'label-failed' | 'label-partial' | 'low-confidence'
+// 'awaiting-verification' (lane A lead-eligibility v2) is never DERIVED here —
+// it would chip every unstamped row on every surface. It exists so callers that
+// already gated via leadBlockReason (the Brief tray) can render the honest
+// timing state: the label is fine so far, the court just has not stamped it yet.
+export type LabelReviewReason =
+  | 'label-failed'
+  | 'label-partial'
+  | 'low-confidence'
+  | 'awaiting-verification'
 
 export interface LabelReviewInput {
   /** Label Court verdict: 'failed' | 'partial' | 'entailed' | null (unchecked). */
@@ -73,6 +81,8 @@ export function labelReviewTip(reason: LabelReviewReason, labelProposed?: string
       return `This label only partially matches its receipts.${advisory}`
     case 'low-confidence':
       return `Low assignment confidence — this label may not match its receipts yet.${advisory}`
+    case 'awaiting-verification':
+      return `Not yet verified — this label is queued for its receipt check (stamps land within ~30 min).${advisory}`
   }
 }
 
@@ -95,6 +105,14 @@ export interface LabelReviewChipProps {
    * coarse confidence band and no measured avg_confidence. Pass `null` to hide.
    */
   reason?: LabelReviewReason | null
+  /**
+   * N15 (council R2): presentation density. 'chip' (default) = the full
+   * "LABEL UNDER REVIEW" pill; 'dot' = a compact marker for dense surfaces
+   * (universe hover card, search result rows, CountryBrief thread chips,
+   * dossier pin labels). Same derivation, same tip, same reason — ONE
+   * component, two densities.
+   */
+  variant?: 'chip' | 'dot'
 }
 
 /**
@@ -116,13 +134,26 @@ export function LabelReviewChip(props: LabelReviewChipProps): React.ReactElement
         })
   if (!reason) return null
   const tip = labelReviewTip(reason, props.labelProposed)
+  if (props.variant === 'dot') {
+    // Compact marker for dense surfaces — no visible copy, so the meaning
+    // rides on the tip + accessible name. Same class family = same colors.
+    return (
+      <span
+        className={`label-review-chip label-review-chip--dot${props.className ? ` ${props.className}` : ''}`}
+        data-reason={reason}
+        data-tip={tip}
+        aria-label="Label under review"
+        role="img"
+      />
+    )
+  }
   return (
     <span
       className={`label-review-chip${props.className ? ` ${props.className}` : ''}`}
       data-reason={reason}
       data-tip={tip}
     >
-      LABEL UNDER REVIEW
+      {reason === 'awaiting-verification' ? 'AWAITING VERIFICATION' : 'LABEL UNDER REVIEW'}
     </span>
   )
 }

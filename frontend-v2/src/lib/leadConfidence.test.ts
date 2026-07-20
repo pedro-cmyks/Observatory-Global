@@ -44,49 +44,54 @@ describe('resolveLeadConfidence', () => {
   })
 })
 
-describe('leadBlockReason', () => {
-  it('returns null for a high-confidence, non-failed thread', () => {
-    expect(leadBlockReason(t({ avg_confidence: 0.893 }))).toBeNull()
+describe('leadBlockReason (v2: the lead requires a STAMP)', () => {
+  it('returns null for a high-confidence STAMPED thread (entailed or partial)', () => {
+    expect(leadBlockReason(t({ avg_confidence: 0.893, label_status: 'entailed' }))).toBeNull()
+    expect(leadBlockReason(t({ avg_confidence: 0.893, label_status: 'partial' }))).toBeNull()
   })
 
-  it('blocks below the floor as low-confidence', () => {
-    expect(leadBlockReason(t({ avg_confidence: 0.214 }))).toBe('low-confidence')
-    expect(leadBlockReason(t({ avg_confidence: 0.699 }))).toBe('low-confidence')
+  it('blocks below the floor as low-confidence (even when stamped)', () => {
+    expect(leadBlockReason(t({ avg_confidence: 0.214, label_status: 'entailed' }))).toBe('low-confidence')
+    expect(leadBlockReason(t({ avg_confidence: 0.699, label_status: 'partial' }))).toBe('low-confidence')
   })
 
   it('treats the floor as inclusive (>=)', () => {
-    expect(leadBlockReason(t({ avg_confidence: 0.7 }))).toBeNull()
+    expect(leadBlockReason(t({ avg_confidence: 0.7, label_status: 'entailed' }))).toBeNull()
   })
 
   it('blocks a label-failed thread even when confidence is high', () => {
     expect(leadBlockReason(t({ avg_confidence: 0.99, label_status: 'failed' }))).toBe('label-failed')
   })
 
-  it('label-failed takes precedence over low-confidence', () => {
+  it('label-failed takes precedence over every other reason', () => {
     expect(leadBlockReason(t({ avg_confidence: 0.1, label_status: 'failed' }))).toBe('label-failed')
     expect(leadBlockReason(t({ label_status: 'failed' }))).toBe('label-failed')
   })
 
-  it('does NOT block on partial or entailed statuses (only failed blocks)', () => {
-    expect(leadBlockReason(t({ avg_confidence: 0.8, label_status: 'partial' }))).toBeNull()
-    expect(leadBlockReason(t({ avg_confidence: 0.8, label_status: 'entailed' }))).toBeNull()
+  it('UNSTAMPED (null/undefined status) blocks as awaiting-verification when confidence clears the floor', () => {
+    // The council R2 N2 fold hole: new topics promote and serve BEFORE the
+    // court runs. An unstamped label may not lead — v1 let null lead.
+    expect(leadBlockReason(t({ avg_confidence: 0.893, label_status: null }))).toBe('awaiting-verification')
+    expect(leadBlockReason(t({ avg_confidence: 1.0 }))).toBe('awaiting-verification')
   })
 
-  it('blocks an unscored thread (no confidence signal) as low-confidence', () => {
+  it('below-floor wins over awaiting-verification (a stamp would not rescue it)', () => {
+    expect(leadBlockReason(t({ avg_confidence: 0.214, label_status: null }))).toBe('low-confidence')
     expect(leadBlockReason(t())).toBe('low-confidence')
   })
 
-  it('label_status null does not block a high-confidence thread (today’s live case)', () => {
-    expect(leadBlockReason(t({ avg_confidence: 0.893, label_status: null }))).toBeNull()
+  it('an unscored thread blocks as low-confidence even when entailed', () => {
+    expect(leadBlockReason(t({ label_status: 'entailed' }))).toBe('low-confidence')
   })
 })
 
 describe('isLeadEligible', () => {
-  it('is true exactly when there is no block reason', () => {
-    expect(isLeadEligible(t({ avg_confidence: 0.893 }))).toBe(true)
-    expect(isLeadEligible(t({ avg_confidence: 0.214 }))).toBe(false)
+  it('requires BOTH the stamp and the floor', () => {
+    expect(isLeadEligible(t({ avg_confidence: 0.893, label_status: 'entailed' }))).toBe(true)
+    expect(isLeadEligible(t({ avg_confidence: 0.7, label_status: 'partial' }))).toBe(true)
+    expect(isLeadEligible(t({ avg_confidence: 0.893 }))).toBe(false) // unstamped
+    expect(isLeadEligible(t({ avg_confidence: 0.214, label_status: 'entailed' }))).toBe(false)
     expect(isLeadEligible(t({ avg_confidence: 0.99, label_status: 'failed' }))).toBe(false)
-    expect(isLeadEligible(t({ avg_confidence: 0.7 }))).toBe(true)
   })
 
   it('the Greek-blob live case (0.214) is ineligible', () => {
@@ -116,14 +121,15 @@ describe('selectLiveLead', () => {
     expect(sel.eligible.map(r => r.id)).toEqual(['venezuela-earthquake', 'us-iran-strikes'])
   })
 
-  it('re-reads label_status per call — a null-status high-confidence top thread still leads', () => {
-    // Before the court runs, label_status is null and a high-confidence top
-    // thread leads normally (no premature demotion).
+  it('an UNSTAMPED high-confidence top thread does NOT lead — the next stamped thread wins (v2)', () => {
+    // Council R2 N2: 31/37 served threads incl. ALL leads were unstamped —
+    // the court runs behind promotion. Unstamped rows wait; stamped rows lead.
     const sel = selectLiveLead([
-      row('dt-565', { avg_confidence: 0.893, label_status: null }),
+      row('dt-3667-unstamped', { avg_confidence: 1.0, label_status: null }),
       row('venezuela-earthquake', { avg_confidence: 0.91, label_status: 'entailed' }),
     ])
-    expect(sel.lead?.id).toBe('dt-565')
+    expect(sel.lead?.id).toBe('venezuela-earthquake')
+    expect(sel.awaitingVerification).toBe(false)
   })
 
   it('reports leadUnavailable when threads exist but none clears the bar (honest empty-lead)', () => {
@@ -134,11 +140,25 @@ describe('selectLiveLead', () => {
     expect(sel.lead).toBeNull()
     expect(sel.leadUnavailable).toBe(true)
     expect(sel.eligible).toEqual([])
+    // Nothing here is merely waiting on a stamp — this is a true below-bar day.
+    expect(sel.awaitingVerification).toBe(false)
+  })
+
+  it('flags awaitingVerification when the ONLY blocker is missing stamps (today’s live fold)', () => {
+    const sel = selectLiveLead([
+      row('iran-strikes', { avg_confidence: 1.0, label_status: null }),
+      row('drone-strikes', { avg_confidence: 0.887, label_status: null }),
+      row('greek-blob', { avg_confidence: 0.214 }),
+    ])
+    expect(sel.lead).toBeNull()
+    expect(sel.leadUnavailable).toBe(true)
+    expect(sel.awaitingVerification).toBe(true)
   })
 
   it('leadUnavailable is false for an empty list (no threads is not an empty-lead)', () => {
     const sel = selectLiveLead<Row>([])
     expect(sel.lead).toBeNull()
     expect(sel.leadUnavailable).toBe(false)
+    expect(sel.awaitingVerification).toBe(false)
   })
 })

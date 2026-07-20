@@ -15,7 +15,7 @@ import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline } from '../components/TranslatableHeadline'
 import PinReceiptButton from '../components/PinReceiptButton'
 import type { CitationGateStatus } from '../lib/workbench'
-import { classifyOutlet, coarseTierLabel, TIER_TIP } from '../lib/sourceTiers'
+import { resolveOriginChip, resolveTierChip } from '../lib/sourceProvenance'
 import { TranslatableText } from '../components/TranslatableText'
 import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -75,7 +75,11 @@ interface ThreadEvidence {
     id?: string | number
     headline: string
     source?: string
+    /** Story SUBJECT/coverage country — never an origin assertion (N1). */
     country_code?: string | null
+    /** OUTLET origin country (signals_v2.source_origin_country) — the only
+     *  legal basis for the receipt's origin chip. */
+    source_origin_country?: string | null
     source_lang?: string | null
     url?: string
     timestamp?: string | null
@@ -559,6 +563,9 @@ export function BriefNewspaper() {
                     capturedAt: new Date().toISOString(),
                     summary: `${t.label} · ${t.signal_count.toLocaleString()} signals · 24h brief`,
                     metrics: { signals: t.signal_count, changed_10h: t.changed_10h ?? 0 },
+                    // N15: freeze the Label Court verdict with the pin so the
+                    // dossier can mark a failed/partial label under review.
+                    labelStatus: t.label_status ?? null,
                     evidence: (t.evidence_samples ?? []).slice(0, 3).map(ev => ({
                         headline: ev.headline, source: ev.source, url: ev.url,
                         date: typeof ev.timestamp === 'string' && ev.timestamp.length >= 10
@@ -615,9 +622,13 @@ export function BriefNewspaper() {
         : null
     const allThreads = dailyGate.useSharedPackage ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
 
-    // Council Phase 1: on the LIVE brief the front page may only present a thread
-    // as an assembled story (label-as-fact: lead or desk card) when we trust its
-    // label — measured confidence >= floor AND the Label Court did not fail it.
+    // Council Phase 1 (+ R2 N2, lead-eligibility v2): on the LIVE brief the front
+    // page may only present a thread as an assembled story (label-as-fact: lead
+    // or desk card) when we trust its label — measured confidence >= floor AND
+    // the Label Court STAMPED it (entailed/partial). An unstamped (null) label
+    // can no longer lead: new topics promote and serve before the court cycle,
+    // so null was exactly the fold hole (31/37 served unstamped incl all leads).
+    // Stamps land within ~30 min (court rides the classifier cron).
     // Everything else drops to the honest "Unassembled signals" tray with its raw
     // receipts. Nothing vanishes (no-silent-filtering) — a thread is either an
     // assembled card or a tray entry, exactly once.
@@ -626,6 +637,10 @@ export function BriefNewspaper() {
     // separately-assembled, already-reconciled artifact whose rows may not carry
     // per-row confidence — re-gating it here would dump a curated edition into the
     // tray. When the package is active, trust its assembly (old behavior).
+    // FOLLOW-UP (verified 2026-07-20): DailyPublicationThread carries NO
+    // label_status, so the stamp rule cannot honestly apply there yet — when the
+    // publication builder starts freezing label_status into the sealed graph,
+    // enforce the same stamp requirement at SEAL time (not here). Never fake it.
     //
     // Lead = the TOP-RANKED *eligible* thread (see lib/leadConfidence.ts). Never
     // the first thread that merely carries evidence (broke after unified ranking
@@ -649,6 +664,9 @@ export function BriefNewspaper() {
     const leadThread = countryFilter ? null : (preferredLead ?? liveLead?.lead ?? eligiblePool[0] ?? null)
     // Honest empty-lead (live path only): threads exist but none cleared the bar.
     const leadUnavailable = gateActive && (liveLead?.leadUnavailable ?? false)
+    // Timing vs quality: the empty lead is "awaiting verification" when at least
+    // one thread would lead once the 30-min court cycle stamps it.
+    const leadAwaiting = gateActive && (liveLead?.awaitingVerification ?? false)
 
     // Leak 2: the COUNTRY edition gets the SAME eligibility split as the global
     // path — below-bar / court-failed country threads never render as assembled
@@ -658,6 +676,10 @@ export function BriefNewspaper() {
     const countryPool: TopThread[] = countryThreads ?? []
     const countryEligible = countryFilter ? countryPool.filter(isLeadEligible) : []
     const countryUnassembled = countryFilter ? countryPool.filter(t => !isLeadEligible(t)) : []
+    // Same timing/quality split for the country edition's empty state.
+    const countryAwaiting = countryFilter
+        ? countryEligible.length === 0 && countryPool.some(t => leadBlockReason(t) === 'awaiting-verification')
+        : false
     const restThreads = leadThread
         ? eligiblePool.filter(t => t.thread_id !== leadThread.thread_id)
         : eligiblePool
@@ -761,19 +783,27 @@ export function BriefNewspaper() {
         const meta = (
             <span className="brief-receipt-meta">
                 {ev.source && <span className="brief-receipt-src">{ev.source}</span>}
+                {/* N1: tier + origin chips ENTAIL source_origin_country. The
+                    tier chip is name-classified but LOCAL only renders with a
+                    known origin; the country chip is the OUTLET's origin —
+                    never the story's subject country — and simply does not
+                    render when the origin is unknown (absence over guess). */}
                 {ev.source && (() => {
-                    const t = classifyOutlet(ev.source).tier
+                    const tc = resolveTierChip(ev.source, ev.source_origin_country)
                     return (
-                        <span className={`brief-receipt-tier brief-receipt-tier--${t}`} data-tip={TIER_TIP[t]}>
-                            {coarseTierLabel(t)}
+                        <span className={`brief-receipt-tier brief-receipt-tier--${tc.tier}`} data-tip={tc.tip}>
+                            {tc.label}
                         </span>
                     )
                 })()}
-                {ev.country_code && (
-                    <span className="brief-receipt-cc" data-tip={coverageChipTip(resolveCountryName(ev.country_code, ev.country_code))}>
-                        {ev.country_code}
-                    </span>
-                )}
+                {(() => {
+                    const oc = resolveOriginChip(ev.source_origin_country)
+                    return oc ? (
+                        <span className="brief-receipt-cc" data-tip={oc.tip}>
+                            {oc.countryCode}
+                        </span>
+                    ) : null
+                })()}
                 {ev.url && <span className="brief-receipt-ext" aria-hidden="true">↗</span>}
                 <PinReceiptButton
                     contextLabel={ctx?.contextLabel || headline}
@@ -781,7 +811,7 @@ export function BriefNewspaper() {
                         headline,
                         source: ev.source || undefined,
                         url: ev.url || undefined,
-                        sourceCountry: ev.country_code || undefined,
+                        originCountry: ev.source_origin_country || undefined,
                         sourceLang: ev.source_lang || undefined,
                         gateStatus: ctx?.gateStatus ?? 'unknown',
                         publishedDate: ev.timestamp && ev.timestamp.length >= 10 ? ev.timestamp.slice(0, 10) : undefined,
@@ -907,7 +937,9 @@ export function BriefNewspaper() {
                 <div className="brief-unassembled-head">
                     <span
                         className="brief-unassembled-label"
-                        data-tip="This cluster's machine label was not trusted for the front page. Read the raw sources below — not the label."
+                        data-tip={reason === 'awaiting-verification'
+                            ? 'This cluster is queued for its label check (stamps land within ~30 min) — it can front the page once verified. Meanwhile, read the raw sources below.'
+                            : "This cluster's machine label was not trusted for the front page. Read the raw sources below — not the label."}
                     >
                         {decodeEntities(t.label)}
                     </span>
@@ -963,15 +995,15 @@ export function BriefNewspaper() {
             <span className="reader-section-kicker brief-sub-kicker">The unassembled desk</span>
             <h3
                 className="brief-section-title brief-unassembled-title"
-                data-tip="Clusters Atlas is tracking but has not assembled into a trustworthy story: their machine label is below the front-page confidence bar, or the Label Court could not entail it against its own receipts. The label is under review; the receipts are real. Nothing is deleted."
+                data-tip="Clusters Atlas is tracking but has not assembled into a trustworthy story: their machine label is below the front-page confidence bar, the Label Court could not entail it against its own receipts, or it is still awaiting its label check (stamps land within ~30 min). The receipts are real. Nothing is deleted."
             >
                 Below the confidence bar
             </h3>
             <p className="brief-section-lede">
                 {threads.length} tracked cluster{threads.length === 1 ? '' : 's'}{' '}
-                whose label did not clear the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% bar. Read the
-                sources, not the label — grouped by the country each source is filed from, translated
-                into your language.
+                whose label did not clear the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% bar or is still
+                awaiting its receipt check. Read the sources, not the label — grouped by the country each
+                source is filed from, translated into your language.
             </p>
             <div className="brief-unassembled-grid">
                 {threads.map(renderUnassembledEntry)}
@@ -1294,7 +1326,10 @@ export function BriefNewspaper() {
                                             </div>
                                             {(leadThread.evidence_samples ?? []).length > 0 && (
                                                 <>
-                                                    <div className="brief-rc-lab">Receipts — real source · {COVERAGE_CHIP_LABEL.toLowerCase()}</div>
+                                                    {/* N1: the receipt country chip is now the OUTLET's
+                                                        recorded origin (absent when unknown) — the caption
+                                                        matches what actually renders. */}
+                                                    <div className="brief-rc-lab">Receipts — real source · outlet origin when known</div>
                                                     <div className="brief-receipts">
                                                         {(leadThread.evidence_samples ?? []).slice(0, 3).map((ev, i) => renderReceipt(ev, i, { contextLabel: leadThread.label }))}
                                                     </div>
@@ -1308,18 +1343,37 @@ export function BriefNewspaper() {
                                             </div>
                                         </article>
                                     ) : leadUnavailable ? (
-                                        <article className="brief-lead brief-lead-empty brief-lead-belowbar">
-                                            <div className="reader-kicker">
-                                                <span>Lead</span>
-                                                <span className="cat">no story clears the bar</span>
-                                            </div>
-                                            <p>
-                                                No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
-                                                bar this window — {allThreads.length} tracked cluster{allThreads.length === 1 ? '' : 's'}{' '}
-                                                sit{allThreads.length === 1 ? 's' : ''} below it. Rather than lead with a label we
-                                                don't trust, see the unassembled desk below for the raw receipts.
-                                            </p>
-                                        </article>
+                                        // Two DIFFERENT truths (lead-eligibility v2): "awaiting
+                                        // verification" = timing (stories would lead once the 30-min
+                                        // court cycle stamps them); "no story clears the bar" =
+                                        // quality (nothing would lead even after stamping).
+                                        leadAwaiting ? (
+                                            <article className="brief-lead brief-lead-empty brief-lead-belowbar">
+                                                <div className="reader-kicker">
+                                                    <span>Lead</span>
+                                                    <span className="cat">awaiting verification</span>
+                                                </div>
+                                                <p>
+                                                    Today's top stories are awaiting verification — their labels
+                                                    have not yet been checked against their own receipts (stamps
+                                                    land within ~30 minutes). Rather than lead with an unverified
+                                                    label, see the unassembled desk below for the raw receipts.
+                                                </p>
+                                            </article>
+                                        ) : (
+                                            <article className="brief-lead brief-lead-empty brief-lead-belowbar">
+                                                <div className="reader-kicker">
+                                                    <span>Lead</span>
+                                                    <span className="cat">no story clears the bar</span>
+                                                </div>
+                                                <p>
+                                                    No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
+                                                    bar this window — {allThreads.length} tracked cluster{allThreads.length === 1 ? '' : 's'}{' '}
+                                                    sit{allThreads.length === 1 ? 's' : ''} below it. Rather than lead with a label we
+                                                    don't trust, see the unassembled desk below for the raw receipts.
+                                                </p>
+                                            </article>
+                                        )
                                     ) : (
                                         <article className="brief-lead brief-lead-empty">
                                             <div className="reader-kicker"><span>Lead</span></div>
@@ -1584,18 +1638,28 @@ export function BriefNewspaper() {
                                             // Threads exist but none clears the bar (e.g. GR: the 0.214
                                             // "British Teen Fall" blob) — honest empty-lead, never an
                                             // assembled card. The raw receipts live in the tray below.
+                                            // Timing vs quality split mirrors the global edition.
                                             <article className="brief-lead brief-lead-empty brief-lead-belowbar">
                                                 <div className="reader-kicker">
                                                     <span>Lead</span>
-                                                    <span className="cat">no story clears the bar</span>
+                                                    <span className="cat">{countryAwaiting ? 'awaiting verification' : 'no story clears the bar'}</span>
                                                 </div>
-                                                <p>
-                                                    No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
-                                                    bar for {resolveCountryName(countryFilter, countryDetail?.name)} this window —{' '}
-                                                    {countryUnassembled.length} tracked cluster{countryUnassembled.length === 1 ? '' : 's'}{' '}
-                                                    sit{countryUnassembled.length === 1 ? 's' : ''} below it. Read the unassembled desk
-                                                    below for the raw receipts rather than a label we don't trust.
-                                                </p>
+                                                {countryAwaiting ? (
+                                                    <p>
+                                                        Today's stories for {resolveCountryName(countryFilter, countryDetail?.name)} are
+                                                        awaiting verification — their labels have not yet been checked against their own
+                                                        receipts (stamps land within ~30 minutes). The raw receipts are in the
+                                                        unassembled desk below.
+                                                    </p>
+                                                ) : (
+                                                    <p>
+                                                        No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
+                                                        bar for {resolveCountryName(countryFilter, countryDetail?.name)} this window —{' '}
+                                                        {countryUnassembled.length} tracked cluster{countryUnassembled.length === 1 ? '' : 's'}{' '}
+                                                        sit{countryUnassembled.length === 1 ? 's' : ''} below it. Read the unassembled desk
+                                                        below for the raw receipts rather than a label we don't trust.
+                                                    </p>
+                                                )}
                                             </article>
                                         )}
 

@@ -143,3 +143,34 @@ describe('LabelReviewChip reason override (unassembled-tray path)', () => {
     expect(el.props['data-reason']).toBe('label-failed')
   })
 })
+
+// N15 (council R2): dense surfaces (universe hover, search rows, CountryBrief
+// chips, dossier pin labels) render the SAME component in a compact dot
+// variant — one source of truth for when/why, two densities of how.
+describe('LabelReviewChip dot variant (dense surfaces)', () => {
+  it('renders a dot with the same reason + tip semantics', () => {
+    const el = LabelReviewChip({ labelStatus: 'failed', variant: 'dot' }) as ReactElement
+    expect(el).not.toBeNull()
+    expect(el.props.className).toContain('label-review-chip--dot')
+    expect(el.props['data-reason']).toBe('label-failed')
+    expect(el.props['data-tip']).toContain('did not match its receipts')
+    // Accessible name replaces the visible copy in the dot form.
+    expect(el.props['aria-label']).toBe('Label under review')
+  })
+
+  it('partial verdict also fires with only labelStatus on the row (status-only payloads)', () => {
+    const el = LabelReviewChip({ labelStatus: 'partial', variant: 'dot' }) as ReactElement
+    expect(el.props['data-reason']).toBe('label-partial')
+  })
+
+  it('entailed / unchecked status-only payloads render nothing', () => {
+    expect(LabelReviewChip({ labelStatus: 'entailed', variant: 'dot' })).toBeNull()
+    expect(LabelReviewChip({ labelStatus: null, variant: 'dot' })).toBeNull()
+  })
+
+  it('default variant keeps the visible chip copy', () => {
+    const el = LabelReviewChip({ labelStatus: 'failed' }) as ReactElement
+    expect(el.props.children).toBe('LABEL UNDER REVIEW')
+    expect(el.props.className).not.toContain('label-review-chip--dot')
+  })
+})
