@@ -37,6 +37,11 @@ try:  # dual run-context: ROOT_DIR (backend.scripts.*) vs backend/ (scripts.*)
         plans_to_index_groups, same_event_user, semantic_chunk_order,
     )
     from app.services.label_fold import label_fold_groups, merge_index_groups
+    from app.services.umbrella_child_guard import (
+        ACCEPT, BORDERLINE, CHILD_CONFIRM_SYSTEM, FamilyGuardReport,
+        GuardParams, child_confirm_user, classify_children,
+        compute_family_floor, finalize_family, parse_child_confirm_response,
+    )
     from scripts.ensemble.model_clients import call_llm
 except ImportError:  # pragma: no cover
     from backend.app.services.event_umbrella import (
@@ -45,6 +50,11 @@ except ImportError:  # pragma: no cover
     )
     from backend.app.services.label_fold import (
         label_fold_groups, merge_index_groups,
+    )
+    from backend.app.services.umbrella_child_guard import (
+        ACCEPT, BORDERLINE, CHILD_CONFIRM_SYSTEM, FamilyGuardReport,
+        GuardParams, child_confirm_user, classify_children,
+        compute_family_floor, finalize_family, parse_child_confirm_response,
     )
     from backend.scripts.ensemble.model_clients import call_llm
 
@@ -273,6 +283,109 @@ async def _llm_event_multi(rows, sims: "np.ndarray", *, min_confidence: float,
     return plans_to_index_groups([int(r["id"]) for r in rows], plans)
 
 
+async def _guard_family_children(
+    rows, V: "np.ndarray", multi: dict[int, list[int]],
+) -> dict[int, list[int]]:
+    """M1 child ENTAILMENT guard (council evidence 2026-07-19): the llm-event
+    judge over-merges — a Belgian Molenbeek shooting and Chinese landslide
+    children sat INSIDE the Venezuela earthquake umbrella. Per family, every
+    child must (a) clear a MEASURED per-family floor on child↔family-centroid
+    cosine — median − k·1.4826·MAD over the family's OWN child sims (adaptive
+    per family, never a fixed cutoff: the 2026-07-03 adaptive-noise-floor
+    precedent; robust center/spread so the outlier can't hide itself by
+    dragging the mean) — and (b) if it lands in the gray band just above the
+    floor, be confirmed by ONE cheap judge call for the whole umbrella
+    (precision-first: a different incident in the same broad domain is NOT the
+    same event). Below-floor children are out regardless of the judge (a AND
+    b). Small families (n < min_measure) have no stable floor → all children
+    borderline, the judge decides.
+
+    Bookkeeping is total (no silent filtering): REJECTED children stay
+    TOP-LEVEL ACTIVE — the write path re-parents only kept children, nothing
+    is ever deleted — and every rejection is logged loudly. Judge outages fail
+    OPEN (child kept, labeled kept_judge_unavailable): infrastructure state
+    never silently rejects. A family reduced below 2 kept children DISSOLVES
+    (everyone stays top-level). Kill-switch: ATLAS_UMBRELLA_CHILD_GUARD=off
+    restores the unguarded grouping; k/band/min_measure env-tunable."""
+    params = GuardParams(
+        k=float(os.environ.get("ATLAS_UMBRELLA_GUARD_K", "2.5")),
+        band=float(os.environ.get("ATLAS_UMBRELLA_GUARD_BAND", "1.0")),
+        min_measure=int(os.environ.get("ATLAS_UMBRELLA_GUARD_MIN_MEASURE", "4")),
+    )
+    guarded: dict[int, list[int]] = {}
+    tally = {"rejected_floor": 0, "rejected_judge": 0, "accepted_judge": 0,
+             "kept_judge_unavailable": 0}
+    children_in = sum(len(v) for v in multi.values())
+    dissolved = 0
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        for root, idxs in multi.items():
+            order = sorted(idxs, key=lambda i: -rows[i]["agg_n_signals"])
+            anchor_id = int(rows[order[0]]["id"])
+            head_label = rows[order[0]]["label"] or "?"
+            cen = V[idxs].mean(axis=0)
+            cen = cen / (np.linalg.norm(cen) + 1e-9)
+            fam_sims = V[idxs] @ cen
+            children = [(int(rows[i]["id"]), rows[i]["label"] or "?", float(s))
+                        for i, s in zip(idxs, fam_sims)]
+            sims_only = [s for _, _, s in children]
+            floor = compute_family_floor(sims_only, params)
+            zones = classify_children(sims_only, floor)
+            borderline = [{"id": tid, "label": lab}
+                          for (tid, lab, _s), z in zip(children, zones)
+                          if z == BORDERLINE and tid != anchor_id]
+            judge: dict[int, bool] | None = {}
+            if borderline:
+                core = [lab for (tid, lab, _s), z in zip(children, zones)
+                        if z == ACCEPT and tid != anchor_id][:8]
+                try:
+                    raw = await call_llm(
+                        "deepseek", system=CHILD_CONFIRM_SYSTEM,
+                        user=child_confirm_user(head_label, core, borderline),
+                        client=client, max_tokens=2000, temperature=0.0,
+                        json_mode=True)
+                    judge = parse_child_confirm_response(
+                        raw, [c["id"] for c in borderline])
+                except Exception as exc:  # transport/LLM failure = fail OPEN
+                    print(f"[child-guard] confirm judge call FAILED for "
+                          f"'{head_label[:48]}' ({exc!r}) — failing OPEN",
+                          file=sys.stderr)
+                    judge = None
+                if judge is None:
+                    print(f"[child-guard] '{head_label[:48]}': judge verdict "
+                          f"unavailable/unparseable — {len(borderline)} "
+                          f"borderline child(ren) KEPT, loudly labeled",
+                          file=sys.stderr)
+            verdicts = finalize_family(children, floor, judge,
+                                       anchor_id=anchor_id)
+            report = FamilyGuardReport(head_label=head_label, floor=floor,
+                                       verdicts=verdicts)
+            floor_s = f"{floor.floor:.3f}" if floor else "unmeasured(n<min)"
+            for v in verdicts:
+                if v.final in tally:
+                    tally[v.final] += 1
+                if not v.kept:
+                    print(f"[child-guard] REJECT '{v.label[:60]}' "
+                          f"sim={v.sim:.3f} floor={floor_s} verdict={v.final} "
+                          f"— sheds from family '{head_label[:48]}', stays "
+                          f"top-level ACTIVE")
+            if report.dissolved:
+                dissolved += 1
+                print(f"[child-guard] family '{head_label[:48]}' DISSOLVED "
+                      f"({len(report.kept_ids)} kept < 2) — all children stay "
+                      f"top-level")
+                continue
+            kept = set(report.kept_ids)
+            guarded[root] = [i for i in idxs if int(rows[i]["id"]) in kept]
+    kept_children = sum(len(v) for v in guarded.values())
+    print(f"[child-guard] families {len(multi)}→{len(guarded)} "
+          f"(dissolved {dissolved}) · children {children_in}→{kept_children} · "
+          f"rejected_floor={tally['rejected_floor']} "
+          f"rejected_judge={tally['rejected_judge']} "
+          f"accepted_judge={tally['accepted_judge']} "
+          f"kept_judge_unavailable={tally['kept_judge_unavailable']}")
+    return guarded
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser(description="R2: build umbrella topics over active centroids.")
     ap.add_argument("--linkage", choices=["complete", "llm-event"], default="complete",
@@ -365,6 +478,17 @@ async def main() -> None:
         if fold_on and fold_groups:
             multi = merge_index_groups(n, fold_groups, multi)
             basis = f"{basis}+label-fold-v1"
+        # M1 child ENTAILMENT guard (2026-07-20): prune over-merged children
+        # AFTER fold-group formation, BEFORE the write — rejected children are
+        # simply not re-parented (stay top-level ACTIVE), families below 2
+        # kept children dissolve. ATLAS_UMBRELLA_CHILD_GUARD=off to disable.
+        if _env_flag("ATLAS_UMBRELLA_CHILD_GUARD", default=True):
+            if multi:
+                multi = await _guard_family_children(rows, V, multi)
+                basis = f"{basis}+child-guard-v1"
+        else:
+            print("[child-guard] DISABLED (ATLAS_UMBRELLA_CHILD_GUARD=off) — "
+                  "families written unguarded")
         n_children = sum(len(v) for v in multi.values())
 
         print(f"active_topics={n} · threshold={args.threshold} · umbrellas={len(multi)} · "
