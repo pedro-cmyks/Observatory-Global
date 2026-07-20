@@ -84,6 +84,35 @@ export interface PublicationPackage {
   selection_ledger?: Record<string, unknown> | null
   prose_status: 'not_requested' | 'generated' | 'unavailable'
   article: Record<string, unknown> | null
+  /** Enrichment bridge (spec 2026-07-20): server-fetched page excerpts for the
+   *  edition's receipt URLs, frozen at seal time. Absent on pre-bridge editions. */
+  article_enrichment?: {
+    contract?: string
+    yield?: { ok: number; attempted: number }
+    note?: string
+    articles?: Record<string, {
+      status?: string
+      via?: string
+      excerpt?: string | null
+      outlet?: string | null
+      fetched_at?: string | null
+    }>
+  } | null
+  /** Cross-read over the LEAD story's fetched bodies — possible corroborations/
+   *  tensions with verbatim quotes. Absent when not run / nothing readable. */
+  coverage_check?: {
+    findings?: Array<{
+      kind: 'corroboration' | 'tension'
+      a: { url: string; text: string; quote: string }
+      b: { url: string; text: string; quote: string }
+      note: string
+    }>
+    articles_read?: number
+    articles_with_claims?: number
+    model?: string
+    note?: string
+    story_id?: string
+  } | null
 }
 
 export interface InvestigationPublicationResult {

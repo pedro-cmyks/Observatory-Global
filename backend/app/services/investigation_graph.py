@@ -117,6 +117,13 @@ class PublicationPackage(BaseModel):
     selection_ledger: dict[str, Any] | None = None
     prose_status: Literal["not_requested", "generated", "unavailable"] = "not_requested"
     article: dict[str, Any] | None = None
+    # Workbench-enrichment bridge (spec 2026-07-20): fetched-page excerpts for
+    # the edition's receipt URLs (all three sections), keyed by url, + honest
+    # yield. Frozen at seal time. None = enrichment not attempted.
+    article_enrichment: dict[str, Any] | None = None
+    # Cross-read over the LEAD story's fetched bodies: corroboration/tension
+    # findings with verbatim quotes ("possible — verify quotes"). None = not run.
+    coverage_check: dict[str, Any] | None = None
 
 
 class RelationAdapterResult(BaseModel):

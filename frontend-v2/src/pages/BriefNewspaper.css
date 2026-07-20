@@ -2019,3 +2019,61 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
 .brief-lead-belowbar {
   border-left: 3px solid color-mix(in srgb, var(--r-accent-2) 55%, var(--r-line));
 }
+
+/* ── Enrichment bridge (spec 2026-07-20): sealed-edition excerpts + coverage check ── */
+.brief-receipt-block { display: block; }
+.brief-receipt-excerpt {
+  margin: 4px 0 8px 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--r-line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--r-ink-soft, var(--r-ink));
+  font-style: italic;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.brief-receipt-excerpt-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--r-ink-faint, var(--r-ink-soft, var(--r-ink)));
+}
+.brief-coverage-check {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--r-line);
+  border-left: 3px solid var(--r-accent-2);
+  background: color-mix(in srgb, var(--r-paper, transparent) 92%, var(--r-accent-2) 8%);
+}
+.brief-coverage-check .lab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.brief-coverage-check-meta {
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--r-ink-faint, var(--r-ink-soft, var(--r-ink)));
+}
+.brief-cc-finding { margin-top: 10px; }
+.brief-cc-kind {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.brief-cc-finding--tension .brief-cc-kind { color: #b45309; }
+.brief-cc-finding--corroboration .brief-cc-kind { color: var(--r-accent, #047857); }
+.brief-cc-note { margin: 2px 0 4px; font-size: 14px; }
+.brief-cc-finding blockquote {
+  margin: 3px 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--r-line);
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--r-ink-soft, var(--r-ink));
+  overflow-wrap: anywhere;
+}

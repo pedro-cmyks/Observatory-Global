@@ -767,6 +767,14 @@ export function BriefNewspaper() {
 
     // ---- render helpers ----
 
+    // Enrichment bridge (spec 2026-07-20): the sealed edition may carry
+    // server-fetched excerpts per receipt URL + a lead coverage check. Absent
+    // on pre-bridge editions — everything below degrades to exactly the old
+    // render. All three sections share renderReceipt, so one join enriches them.
+    const editionArticles = dailyEdition?.package?.article_enrichment?.articles ?? null
+    const editionYield = dailyEdition?.package?.article_enrichment?.yield ?? null
+    const coverageCheck = dailyEdition?.package?.coverage_check ?? null
+
     // Receipts: REAL LINKS. Evidence urls render as <a href> (the whole point
     // of a receipt); rows without a url degrade to a plain row.
     const renderReceipt = (
@@ -824,7 +832,7 @@ export function BriefNewspaper() {
                 />
             </span>
         )
-        return ev.url ? (
+        const receiptEl = ev.url ? (
             <a
                 key={ev.id ?? i}
                 className="brief-receipt"
@@ -842,6 +850,23 @@ export function BriefNewspaper() {
                 {meta}
             </div>
         )
+        // Sealed-edition excerpt under its receipt (same [receipt] identity —
+        // never a new source). Clamped; the link above remains the full read.
+        const enriched = ev.url && editionArticles ? editionArticles[ev.url] : null
+        if (enriched?.status === 'ok' && enriched.excerpt) {
+            return (
+                <div key={ev.id ?? i} className="brief-receipt-block">
+                    {receiptEl}
+                    <blockquote className="brief-receipt-excerpt" dir="auto">
+                        “<TranslatableText text={enriched.excerpt} />”
+                        <span className="brief-receipt-excerpt-meta">
+                            FROM THE SOURCE · fetched {enriched.fetched_at ? enriched.fetched_at.slice(0, 10) : 'at seal'}{enriched.via === 'wayback' ? ' · via Wayback Machine' : ''}
+                        </span>
+                    </blockquote>
+                </div>
+            )
+        }
+        return receiptEl
     }
 
     const renderSaveChip = (t: TopThread) => {
@@ -1099,6 +1124,9 @@ export function BriefNewspaper() {
                                         staleBanner.tone === 'stale' ? staleBanner.why : null,
                                         staleBanner.served === 'live' ? staleBanner.liveNote : null,
                                         staleBanner.nextAttempt,
+                                        editionYield && editionYield.attempted > 0
+                                            ? `full text ${editionYield.ok}/${editionYield.attempted} receipts`
+                                            : null,
                                     ].filter(Boolean).join(' · ')}
                                 </span>
                             </section>
@@ -1431,6 +1459,32 @@ export function BriefNewspaper() {
                                             ) : (
                                                 <p className="brief-standfirst">{standfirstFallback}</p>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* COVERAGE CHECK (spec 2026-07-20): cross-read over the
+                                        lead's fetched bodies — where outlets corroborate and
+                                        where their numbers/claims diverge, with both verbatim
+                                        quotes. Possible findings, never asserted. */}
+                                    {coverageCheck && (coverageCheck.findings?.length ?? 0) > 0 && (
+                                        <div className="brief-coverage-check">
+                                            <span
+                                                className="lab"
+                                                data-tip={coverageCheck.note ?? 'AI-read comparison of the lead story\'s fetched source texts — only quote-backed claims are compared; verify the quotes.'}
+                                            >
+                                                Coverage check
+                                                <span className="brief-coverage-check-meta">
+                                                    AI READ{coverageCheck.model ? ` · ${coverageCheck.model}` : ''} · {coverageCheck.articles_with_claims ?? '?'} sources compared · verify quotes
+                                                </span>
+                                            </span>
+                                            {coverageCheck.findings!.map((f, i) => (
+                                                <div key={i} className={`brief-cc-finding brief-cc-finding--${f.kind}`}>
+                                                    <span className="brief-cc-kind">{f.kind === 'tension' ? '⚠ outlets diverge' : '✓ outlets agree'}</span>
+                                                    <p className="brief-cc-note">{f.note}</p>
+                                                    <blockquote dir="auto">“{f.a.quote}”</blockquote>
+                                                    <blockquote dir="auto">“{f.b.quote}”</blockquote>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
 

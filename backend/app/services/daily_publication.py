@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 import html
+import logging
 import os
 import re
 import time
@@ -44,6 +45,8 @@ from app.services.publication_synthesis import (
 )
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.country_codes import fips_to_iso
+
+logger = logging.getLogger(__name__)
 
 
 def evidence_fit_metrics_from_vectors(
@@ -749,6 +752,51 @@ async def fetch_daily_publication(
         },
         input_gaps=input_gaps,
     ))
+    # ── Workbench-enrichment bridge (spec 2026-07-20 — Pedro: all three
+    # sections). Fetch the edition's receipt pages server-side BEFORE the lead
+    # synthesis so (a) the front-page article quotes bodies, not just headlines
+    # (synthesize_publication_article already reads pinned_articles), and
+    # (b) every section's receipts carry a frozen excerpt. Best-effort by
+    # contract: any failure and the edition seals exactly as before. Never runs
+    # under serving_budget (request path stays fast).
+    if not serving_budget:
+        try:
+            from app.services.article_fetch import article_states, enqueue_fetches
+            urls: list[str] = []
+            for tid in list(by_topic):
+                for row in by_topic[tid][:4]:          # cap per story
+                    u = str(row.get("source_url") or row.get("url") or "")
+                    if u.startswith("http"):
+                        urls.append(u)
+            urls = list(dict.fromkeys(urls))[:48]      # cap per edition
+            if urls:
+                await enqueue_fetches(urls)
+                states: list[dict[str, Any]] = []
+                for _ in range(6):                     # bounded wait ≤30s (nightly build)
+                    await asyncio.sleep(5)
+                    states = await article_states(urls)
+                    by_url = {s["url"]: s for s in states}
+                    if all(by_url.get(u, {}).get("status") not in (None, "pending") for u in urls):
+                        break
+                ok_count = sum(1 for s in states if s.get("status") == "ok")
+                package.article_enrichment = {
+                    "contract": "edition-article-enrichment-v0",
+                    "yield": {"ok": ok_count, "attempted": len(urls)},
+                    "note": "server-fetched page text per receipt; partial yield is normal (paywalls/bot walls)",
+                    "articles": {
+                        s["url"]: {
+                            "status": s.get("status"), "via": s.get("via"),
+                            "excerpt": s.get("excerpt"), "outlet": s.get("outlet"),
+                            "fetched_at": s.get("fetched_at"),
+                        }
+                        for s in states
+                    },
+                }
+        except Exception as exc:
+            # Enrichment must never block the seal — degrade to headlines-only.
+            # (logger, not print: the 07-01 matview lesson — bare prints die silent.)
+            logger.warning("daily-publication enrichment skipped: %s: %s",
+                           type(exc).__name__, str(exc)[:200])
     # Front-page cited article: synthesize the lead story into a publishable
     # mini-article (lede → cited body → what we don't know), citations resolved
     # server-side against the frozen receipt table. A single coherent lead is one
@@ -769,6 +817,31 @@ async def fetch_daily_publication(
             package.prose_status = "generated"
         else:
             package.prose_status = "unavailable"
+        # COVERAGE CHECK (spec 2026-07-20): cross-read the LEAD story's fetched
+        # bodies — do the outlets corroborate or diverge on the numbers/actors?
+        # Findings carry both verbatim quotes, labeled possible. Lead-only by
+        # design (cross-story comparison is noise); best-effort like the rest.
+        if not serving_budget:
+            try:
+                from app.services.article_read import cross_read
+                lead_urls = [
+                    str(r.get("source_url") or r.get("url") or "")
+                    for r in by_topic[lead_id]
+                ]
+                lead_urls = [u for u in dict.fromkeys(lead_urls) if u.startswith("http")][:8]
+                if len(lead_urls) >= 2:
+                    cc = await cross_read(lead_urls)
+                    if cc.get("articles_with_claims", 0) >= 2 or cc.get("findings"):
+                        package.coverage_check = {
+                            **{k: cc.get(k) for k in (
+                                "contract", "findings", "articles_read",
+                                "articles_with_claims", "model", "note",
+                            )},
+                            "story_id": lead_id,
+                        }
+            except Exception as exc:
+                logger.warning("daily-publication coverage check skipped: %s: %s",
+                               type(exc).__name__, str(exc)[:200])
     return {
         "contract": "atlas-daily-publication-v1",
         "hours": hours,
