@@ -279,6 +279,35 @@ def set_overlap(a: Iterable, b: Iterable) -> float:
     return len(sa & sb) / len(union)
 
 
+def country_dominant_overlap(actors_a: Iterable[str],
+                             actors_b: Iterable[str]) -> float:
+    """Shared-actor overlap that the DEMOTE veto reads — country-dominant.
+
+    Actors are prefixed tokens: 'c:<CC>' for the subject country, 'p:<name>' for
+    an NER person (see the script's `_member_actors`). The naive Jaccard over the
+    COMBINED set is PERSON-SWAMPED: two halves of a single-country story share the
+    one country token, but each news item names DIFFERENT people, so the many
+    distinct person tokens dilute the intersection below any veto threshold — the
+    single-country story then reads "distinct actors" and is wrongly demoted. That
+    was the measured false-positive mechanism (the FP demotes were ~all single-
+    country, persons dense and disjoint).
+
+    Fix: score the two signals SEPARATELY and take the MAX. Sub-clusters that share
+    EITHER their countries OR their people are one story. Country is the reliable
+    signal (a genuine fusion has DISTINCT countries — "Peru and Ukraine"; NER
+    persons are sparse/noisy and syndication-repeated); the person Jaccard only
+    rescues a rare cross-/no-country ONE story (a summit, or NULL country codes) the
+    country Jaccard misses. A single common wire-service person (Trump in both a
+    Gaza item and a trade item) keeps the person Jaccard low, so it never spuriously
+    vetoes a real cross-country fusion.
+    """
+    ca = {x for x in actors_a if isinstance(x, str) and x.startswith("c:")}
+    cb = {x for x in actors_b if isinstance(x, str) and x.startswith("c:")}
+    pa = {x for x in actors_a if isinstance(x, str) and x.startswith("p:")}
+    pb = {x for x in actors_b if isinstance(x, str) and x.startswith("p:")}
+    return max(set_overlap(ca, cb), set_overlap(pa, pb))
+
+
 def decide(stats: Optional[SplitStats], entity_overlap: Optional[float],
            params: OverMergeParams = OverMergeParams()) -> tuple[str, str]:
     """Final keep/demote/borderline verdict + human reason. Precision-first.

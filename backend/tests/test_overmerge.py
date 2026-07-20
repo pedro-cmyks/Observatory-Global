@@ -34,6 +34,7 @@ from app.services.overmerge import (
     KEEP,
     OverMergeParams,
     SplitStats,
+    country_dominant_overlap,
     decide,
     is_over_merge,
     parse_split_judge_response,
@@ -208,6 +209,62 @@ def test_set_overlap_partial_is_jaccard():
 def test_set_overlap_empty_sides_are_zero_not_crash():
     assert set_overlap(set(), set()) == 0.0
     assert set_overlap({"UA"}, set()) == 0.0
+
+
+# ---------------------------------------------- country_dominant_overlap
+# The Measure-step precision fix. The naive combined-set Jaccard is PERSON-
+# SWAMPED: two halves of a SINGLE-country story share the one country token but
+# each item names different people, so the many distinct person tokens dilute the
+# intersection below the veto threshold -> the story reads "distinct actors" and
+# is wrongly demoted (verified: the FP demotes were ~all single-country). Splitting
+# the two signals and taking the MAX un-swamps the country signal.
+def test_country_dominant_overlap_single_country_is_one_despite_disjoint_persons():
+    """Both sub-clusters are all-US with DISJOINT persons — the swamped combined
+    Jaccard was ~1/7 (below veto); country-dominant reads 1.0 (veto fires)."""
+    a = {"c:US", "p:abbott", "p:cruz", "p:paxton"}
+    b = {"c:US", "p:biden", "p:harris", "p:mayorkas"}
+    # the OLD swamped behaviour (what caused the false positives):
+    assert set_overlap(a, b) < 0.2
+    # the FIX: the shared country is not diluted by the distinct persons
+    assert country_dominant_overlap(a, b) == 1.0
+
+
+def test_country_dominant_overlap_cross_country_fusion_stays_zero():
+    """Peru on one side, Ukraine on the other, no shared person -> genuine fusion,
+    overlap 0 (the demote proceeds)."""
+    a = {"c:PE", "p:boluarte"}
+    b = {"c:UA", "p:zelensky"}
+    assert country_dominant_overlap(a, b) == 0.0
+
+
+def test_country_dominant_overlap_person_rescue_when_country_missing():
+    """A rare cross-/no-country ONE story (e.g. a summit, or NULL country codes)
+    is rescued by shared persons -> the MAX picks up the person signal."""
+    a = {"p:zelensky", "p:putin"}
+    b = {"p:zelensky", "p:putin"}
+    assert country_dominant_overlap(a, b) == 1.0
+
+
+def test_country_dominant_overlap_partial_country_share():
+    # A={US,MX}, B={US}: country Jaccard 1/2 = 0.5 (>= tau_overlap default) -> veto
+    a = {"c:US", "c:MX", "p:x"}
+    b = {"c:US", "p:y"}
+    assert country_dominant_overlap(a, b) == pytest.approx(0.5)
+
+
+def test_country_dominant_overlap_empty_is_zero():
+    assert country_dominant_overlap(set(), set()) == 0.0
+    assert country_dominant_overlap({"p:x"}, set()) == 0.0
+
+
+def test_country_dominant_overlap_one_common_wire_person_does_not_veto():
+    """A genuine fusion whose halves both name one common wire-service person
+    (Trump in a Gaza item AND a trade item) must NOT be vetoed: one shared person
+    among many keeps the person Jaccard low, and the countries differ."""
+    a = {"c:IL", "p:trump", "p:netanyahu", "p:gallant"}
+    b = {"c:CN", "p:trump", "p:xi", "p:wang"}
+    # 1 shared person / 5 union = 0.2, and countries differ -> below the 0.5 veto
+    assert country_dominant_overlap(a, b) < OverMergeParams().tau_overlap
 
 
 # ---------------------------------------------------------------- decide

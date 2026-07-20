@@ -54,15 +54,15 @@ import numpy as np
 
 try:  # module-run from backend/ (pytest pythonpath=.) or repo root
     from app.services.overmerge import (
-        BORDERLINE, DEMOTE, KEEP, OverMergeParams, decide, is_over_merge,
-        normalize_rows, parse_split_judge_response, partition, set_overlap,
-        split_judge_user, SPLIT_JUDGE_SYSTEM,
+        BORDERLINE, DEMOTE, KEEP, OverMergeParams, country_dominant_overlap,
+        decide, is_over_merge, normalize_rows, parse_split_judge_response,
+        partition, split_judge_user, SPLIT_JUDGE_SYSTEM,
     )
 except ImportError:  # pragma: no cover
     from backend.app.services.overmerge import (
-        BORDERLINE, DEMOTE, KEEP, OverMergeParams, decide, is_over_merge,
-        normalize_rows, parse_split_judge_response, partition, set_overlap,
-        split_judge_user, SPLIT_JUDGE_SYSTEM,
+        BORDERLINE, DEMOTE, KEEP, OverMergeParams, country_dominant_overlap,
+        decide, is_over_merge, normalize_rows, parse_split_judge_response,
+        partition, split_judge_user, SPLIT_JUDGE_SYSTEM,
     )
 
 # ---------------------------------------------------------------- constants
@@ -333,7 +333,11 @@ def _score_topic(tid: int, meta: dict, mem: list, params: OverMergeParams,
             (actors_a if labels[i] == 0 else actors_b).update(
                 _member_actors(r["country_code"], r["persons"]))
         if actors_a or actors_b:
-            entity_overlap = set_overlap(actors_a, actors_b)
+            # country-dominant, NOT the combined-set Jaccard: the combined form
+            # is person-swamped (a single-country story's halves share the one
+            # country token but name different people -> diluted below the veto ->
+            # wrongly demoted). See app/services/overmerge.country_dominant_overlap.
+            entity_overlap = country_dominant_overlap(actors_a, actors_b)
     verdict, reason = decide(stats, entity_overlap, params)
     matn = normalize_rows(raw)   # same normalization partition used -> labels align
     rep_a = [int(mem[i]["signal_id"]) for i in _rep_indices(matn, labels, 0)]
