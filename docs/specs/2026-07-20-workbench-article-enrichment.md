@@ -1,6 +1,6 @@
 # Workbench Article Enrichment — fetch pinned pages, AI-read them, feed the investigation
 
-**Date:** 2026-07-20 · **Status:** F1 + F2 + F2.5 + §5c SHIPPED same day
+**Date:** 2026-07-20 · **Status:** ALL PHASES SHIPPED same day (F1+F2+F2.5+§5c+F3a+F3b)
 (`aeb8db3b`→`38980140`, Fly+Vercel deployed, mig 086+087 applied, prod-
 validated — `docs/research/ai-read/2026-07-20-f2-live-validation.md`) ·
 **Owner:** L3 track
@@ -242,7 +242,7 @@ The same treatment, applied to the daily Brief — all three sections
 - Anti-goal respetado: no new surface — the Brief's existing sections got
   denser, nothing new to learn.
 
-## 6. F3 — mechanical relation upgrades (after F2)
+## 6. F3 — mechanical relation upgrades (SHIPPED 2026-07-20)
 
 - **F3a:** `/dossier/connections` text_mention basis extended over
   `extracted_text` (pure token match, basis label `body-text`, never mixed
