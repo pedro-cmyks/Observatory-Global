@@ -1,5 +1,53 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-20 (F2 AI-READ + CROSS-READ + F2.5 LEADS SHIPPED same day,
+`4028ecd0`→`d3ccc0e1`, Fly deployed + pushed, prod-validated live —
+artifact `docs/research/ai-read/2026-07-20-f2-live-validation.md`).**
+The Workbench now READS the fetched bodies and EXPANDS the galaxy.
+**F2 AI-read** (`article_read.py`): one grounded pass per article — the
+QUOTE GATE is the design (every claim must carry a VERBATIM quote from the
+fetched text, validated as a normalized substring at parse; quoteless/
+paraphrased claims are DROPPED → hallucinated claims unrepresentable);
+assertion-vs-attribution separated; cached in `ai_readings` by
+(url_hash, prompt_version) — regenerating never re-pays; chain
+Anthropic→DeepSeek (⚠ Anthropic credits STILL dry since ~06-29 —
+everything runs on deepseek-chat). GOTCHA fixed live: DeepSeek truncates
+JSON at max_tokens → truncation REPAIR parses back to the last complete
+claim (budget 2400, ask 6 claims). **Cross-read**: one pass over all pins'
+quote-backed claims → corroboration/tension map, validator drops unknown
+ids/self-pairs/same-article pairs, labeled "possible — verify quotes".
+LIVE PROOF (Kyiv-attack case): caught a REAL numerical discrepancy —
+cyprus-mail "wounding 16" vs Xinhua "13 injured" — flagged ⚠ possible
+tension with both verbatim quotes (the Carolina claim-ledger class,
+automated). **F2.5 LEADS** (`research_leads.py`): body actors → person
+gate + investigation-DF + ubiquity suppression (>12 threads = trump-class,
+suppressed with reason, never silent) → ONE thread-pool fetch + per-entity
+slugs query → pinnable leads with quote + measured basis, rarest first,
+pinned threads excluded. Matching is diacritic-folded + transliteration-
+tolerant (surname common-prefix ≥6 + first-name ≥3; a shared common WORD
+like "actor" never glues names — test-frozen). LIVE PROOF: Klitschko (only
+in the BODY) → Russia-Ukraine War Escalation; body "Zelenskiy" matched
+pool "zelenskyy" → 2 threads incl. Israel-Lebanon; pinning a lead lands
+`retrievalLane:'body-lead'` — the flywheel ring verified in browser.
+Endpoints `/api/v2/research/articles/read|crossread` + `/api/v2/research/
+leads` (all paid bucket — dev smoke 429s fast; honest error states render,
+the silent-429 gap was found+fixed in DossierView). UI: AI READ button
+(explicit first run, cache after) + per-pin claims w/ attribution chips +
+LEADS FROM THE TEXT in WorkbenchPanel; Cross-read section + md export in
+DossierView. 36 pytest (fetch+read) + 785 vitest green. **NATO-Ankara
+acceptance DEFERRED-BY-DESIGN**: the marquee's dt-390/2044/56 were
+re-founded (dt-390 today = Romania); original URLs live only in Pedro's
+frozen localStorage pins → the replay vs the manual 4/4 gold runs the
+first time Pedro opens that investigation and presses AI READ/Cross-read
+(dossier backfill fetches his URLs automatically). Honest zeros verified:
+Romanian regional case → 0 leads (actors not in top-40 pool), same-story-
+pair cross-read → findings:[] (refused to invent). Residue: outlet-orgs
+can surface as leads (Xinhua→syndication thread) — cheap F2.6 filter
+candidate; F3a/F3b per spec (F3b measurement-gated). ⚠ A PARALLEL session
+was mid-flight editing App.tsx/ThemeDetail/UniverseView/themeLabels +
+build_umbrella_topics (label-court work) — its WIP was NEVER committed by
+this track; a safety stash `parallel-session-labels-wip` exists.**
+
 **2026-07-20 (WORKBENCH ARTICLE ENRICHMENT F1 SHIPPED, `aeb8db3b`→`e9b750d1`,
 Fly+Vercel deployed + mig 086 applied, prod E2E verified).** Pedro's ask:
 fetch the PINNED pages' real content so the Workbench (not just the dossier
