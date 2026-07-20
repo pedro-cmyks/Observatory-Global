@@ -55,6 +55,8 @@ BODY_CAP_BYTES = 2 * 1024 * 1024
 MAX_REDIRECT_HOPS = 5
 MIN_OK_WORDS = 120           # below this a 200 reads as a wall, not an article
 EXCERPT_WORDS = 60           # display/export-safe excerpt length (legal: never full text)
+EXCERPT_MAX_CHARS = 420      # scriptio continua guard: Thai/CJK have no spaces, so a
+                             # "60-word" cut can be ~2000 chars — chars are the real cap
 PENDING_STALE_S = 600        # pending older than this is re-eligible
 CONCURRENCY = 3
 _KNOWN_DOMAINS_TTL_S = 3600
@@ -246,7 +248,11 @@ def _extract(body: bytes, ctype: str, url: str) -> dict | None:
 def _excerpt(text: str) -> str:
     words = text.split()
     cut = " ".join(words[:EXCERPT_WORDS])
-    return cut + ("…" if len(words) > EXCERPT_WORDS else "")
+    truncated = len(words) > EXCERPT_WORDS
+    if len(cut) > EXCERPT_MAX_CHARS:
+        cut = cut[:EXCERPT_MAX_CHARS]
+        truncated = True
+    return cut + ("…" if truncated else "")
 
 
 def classify_fetch(http_status: int, extracted: dict | None) -> tuple[str, str | None]:

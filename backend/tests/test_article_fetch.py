@@ -123,6 +123,12 @@ def test_excerpt_caps_at_60_words():
     assert ex.endswith("…") and len(ex.split()) == 60
     assert af._excerpt("corto texto") == "corto texto"
 
+def test_excerpt_char_cap_for_spaceless_scripts():
+    # Thai/CJK: no spaces → one giant "word"; the char cap is the real guard.
+    text = "ก" * 3000
+    ex = af._excerpt(text)
+    assert ex.endswith("…") and len(ex) <= af.EXCERPT_MAX_CHARS + 1
+
 
 # ── synthesize prompt injection ──────────────────────────────────────────────
 
