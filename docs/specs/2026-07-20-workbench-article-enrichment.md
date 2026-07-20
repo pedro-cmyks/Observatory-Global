@@ -1,6 +1,30 @@
 # Workbench Article Enrichment — fetch pinned pages, AI-read them, feed the investigation
 
-**Date:** 2026-07-20 · **Status:** APPROVED (Pedro) — F1 BUILDING · **Owner:** L3 track
+**Date:** 2026-07-20 · **Status:** F1 + F2 + F2.5 + §5c SHIPPED same day
+(`aeb8db3b`→`38980140`, Fly+Vercel deployed, mig 086+087 applied, prod-
+validated — `docs/research/ai-read/2026-07-20-f2-live-validation.md`) ·
+**Owner:** L3 track
+
+**Shipped deviations (measured, all logged in CLAUDE.md 2026-07-20):**
+- `GET /articles?urls=` → `POST /articles/state` (URLs carry commas/amps).
+- Standard `Accept` header added (NOT bot evasion; bangkokbiznews 19→185
+  extracted words, measured).
+- Wayback fallback extended beyond 404s to zero-extract live pages (JS
+  shells); adopted only when the archive copy actually extracts.
+- Excerpt cap is CHARS (420), not only words — Thai/CJK scriptio continua
+  made "60 words" ≈ 2000 chars.
+- AI-read: DeepSeek truncates JSON at max_tokens → truncation repair
+  (parse back to last complete claim), budget 2400, ask 6 claims.
+  Anthropic credits dry → whole chain runs on deepseek-chat.
+- Leads matching is diacritic-folded + transliteration-tolerant (surname
+  common-prefix ≥6, first name ≥3; a shared common word never glues names).
+- NATO-Ankara acceptance DEFERRED-BY-DESIGN: the marquee's topic ids were
+  re-founded; original URLs live only in Pedro's frozen localStorage pins —
+  the replay vs the manual 4/4 gold runs on his first AI READ/Cross-read
+  of that investigation (dossier backfill fetches automatically).
+- §5c (below) — the L1 daily-edition bridge — was added and shipped the
+  same day at Pedro's ask; found + fixed the nightly seal crash (mig 087
+  existed in-repo, never applied) in the process.
 
 ## 0. Product framing (Pedro, this session)
 
@@ -144,7 +168,7 @@ citation discipline). Client sends nothing new.
   "N of M sources with full text". Old pins (e.g. NATO-Ankara) enqueue at
   generate time — same path.
 
-## 5. F2 — AI-read + cross-read (next session)
+## 5. F2 — AI-read + cross-read (SHIPPED 2026-07-20)
 
 - `article_read.py`: one grounded pass per article (chain reuse:
   `insight_llm.generate_insight` pattern, Anthropic→DeepSeek, cost →
@@ -158,7 +182,7 @@ citation discipline). Client sends nothing new.
 - Acceptance: NATO-Ankara pins vs the manual 4/4 gold (decision 5).
 - Extraction model: DeepSeek temp0 (mechanical); cross-read: chain (dense).
 
-## 5b. F2.5 — LEADS lane (body entities → Atlas expansion; Pedro 2026-07-20)
+## 5b. F2.5 — LEADS lane (body entities → Atlas expansion; Pedro 2026-07-20 — SHIPPED same day)
 
 The information-model answer to "does the fetched text feed Atlas?": three
 layers with different write rules.
@@ -191,6 +215,32 @@ Mechanism (the investigative flywheel):
 - Long-term learning enters by the CALIBRATION lane only: recurring
   cross-investigation lead entities are demand evidence for the gold/growth
   flywheel — never a direct engine write.
+
+## 5c. L1 daily-edition bridge (Pedro 2026-07-20 — SHIPPED same day)
+
+The same treatment, applied to the daily Brief — all three sections
+(The World / Under the Radar / Culture, Sport & Life):
+
+- `fetch_daily_publication` enqueues the edition's receipt URLs (≤4/story,
+  ≤48/edition), bounded ≤30s wait, BEFORE lead synthesis → the front-page
+  article quotes bodies (synthesize already reads `pinned_articles` — the
+  F1 bridge, zero new synthesis code). `package.article_enrichment`
+  freezes per-receipt excerpts + honest yield at seal time.
+- `package.coverage_check` = cross-read over the LEAD story's fetched
+  bodies only (cross-story comparison is noise); attaches when ≥2 sources
+  readable. Brief renders it as the COVERAGE CHECK box (⚠ outlets diverge /
+  ✓ agree, both verbatim quotes).
+- ONE receipt renderer serves all three sections → one url-join enriches
+  them. Excerpt clamped 3 lines under its receipt — same receipt identity,
+  never a new source. Yield rides the freshness banner.
+- LIVE-view fallback: a degraded seal makes the Brief serve live threads
+  (different URLs than the sealed set) → live receipt URLs enqueue through
+  the SAME shared cache (no-op when cached), join falls back sealed→live.
+- Everything best-effort: any enrichment failure seals/renders exactly as
+  before. The seal runs from this repo tree with mlvenv → trafilatura must
+  exist there (installed 2026-07-20).
+- Anti-goal respetado: no new surface — the Brief's existing sections got
+  denser, nothing new to learn.
 
 ## 6. F3 — mechanical relation upgrades (after F2)
 
