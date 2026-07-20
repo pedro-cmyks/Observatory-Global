@@ -282,6 +282,31 @@ export function resolveThreadLabel(themeId: string | null | undefined, knownLabe
     return getThemeLabel(themeId)
 }
 
+/**
+ * Title for a thread surface (council STILL-BROKEN, deep-link cold open):
+ * while the FIRST fetch of an opaque numeric thread id is in flight, the
+ * title is an explicit neutral loading state — never the raw id, and never
+ * the resolved-looking "Narrative Thread" generic (which reads as if the
+ * thread were nameless rather than still loading). Once loading settles the
+ * regular resolveThreadLabel fallback applies (an honest generic when the
+ * fetch failed). Ids that carry their own name (atlas slugs, GDELT codes)
+ * never show a loading state.
+ */
+export function resolveThreadTitle(
+    themeId: string | null | undefined,
+    knownLabel: string | null | undefined,
+    loading: boolean,
+): string {
+    if (knownLabel && knownLabel.trim()) return knownLabel
+    if (
+        loading && themeId
+        && /^(dynamic-topic|emergent-cluster|cluster)-\d+$/.test(themeId.split('--')[0])
+    ) {
+        return 'Loading thread…'
+    }
+    return resolveThreadLabel(themeId, knownLabel)
+}
+
 function formatThemeWords(value: string): string {
     return value
         .replace(/_AND_/g, ' & ')

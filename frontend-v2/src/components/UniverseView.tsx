@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { trackOnce } from '../lib/telemetry'
+import { resolveThreadLabel } from '../lib/themeLabels'
 import {
     bornBetween,
     categoryColor,
@@ -394,7 +395,8 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     // AT an orbit: the story system replaces the field until back/close.
     if (activeTheme && orbitalVisible) {
         const fieldLabel = allNodes.find(n => n.id === activeTheme)?.label
-        const orbitLabel = fieldLabel ?? activeThemeLabel ?? activeTheme
+        // #204 rule: never echo a raw dynamic-topic id as the orbit title.
+        const orbitLabel = fieldLabel ?? activeThemeLabel ?? resolveThreadLabel(activeTheme)
         return (
             <div className="universe-root">
                 <div className="universe-orbit-bar">

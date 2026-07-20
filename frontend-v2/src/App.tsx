@@ -45,7 +45,7 @@ import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
-import { getThemeLabel, resolveThreadLabel } from './lib/themeLabels'
+import { resolveThreadLabel } from './lib/themeLabels'
 import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addPin } from './lib/workbench'
 // #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
 // children with CSS transforms — panels are NEVER unmounted by layout changes,
@@ -1792,7 +1792,7 @@ function AppContent() {
                 <UniverseView
                   onThemeSelect={(themeId, label) => handleThemeSelect(themeId, undefined, undefined, undefined, label)}
                   activeTheme={selectedTheme?.theme ?? null}
-                  activeThemeLabel={selectedTheme ? (selectedTheme.thread?.label ?? getThemeLabel(selectedTheme.theme)) : undefined}
+                  activeThemeLabel={selectedTheme ? (selectedTheme.thread?.label ?? selectedTheme.labelHint ?? resolveThreadLabel(selectedTheme.theme)) : undefined}
                   hours={DAY_WINDOW_HOURS} /* universe field = live day (ambient) */
                   focusKind={focus.type === 'person' ? 'person' : filter.country ? 'country' : null}
                   focusValue={focus.type === 'person' ? focus.value : (filter.country ?? null)}
@@ -1876,7 +1876,7 @@ function AppContent() {
             <button className="drill-back-btn" onClick={themeBackStack.length > 0 ? handleThemeBack : handleStreamBack} style={{ fontSize: 13, marginRight: 6 }}>
               {themeBackStack.length > 0 ? `← ${themeBackStack[0].theme.replace(/_/g, ' ').slice(0, 20)}` : '← STREAM'}
             </button>
-            <span className="ph-ctx">{resolveThreadLabel(selectedTheme!.theme, selectedTheme!.thread?.label).slice(0, 32)}</span>
+            <span className="ph-ctx">{resolveThreadLabel(selectedTheme!.theme, selectedTheme!.thread?.label ?? selectedTheme!.labelHint).slice(0, 32)}</span>
           </>
           if (isStory) panelTitle = <>
             <button className="drill-back-btn" onClick={() => setStoryQuery(null)} style={{ fontSize: 13, marginRight: 6 }}>← STREAM</button>
@@ -1984,6 +1984,17 @@ function AppContent() {
                     onSourceClick={(source) => setSelectedSourceProfile(source)}
                     onCompareClick={(other) => setCompareTheme({ a: selectedTheme!.theme, b: other })}
                     onConflictChipClick={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+                    onLabelResolved={(themeId, label) => {
+                      // Deep-link cold open: hand the resolved label to the
+                      // surfaces that only had the opaque id (focus chip,
+                      // stream header, universe orbit). Guarded no-ops keep
+                      // the re-fired effect from churning state.
+                      setSelectedTheme(prev => prev && prev.theme === themeId && prev.labelHint !== label
+                        ? { ...prev, labelHint: label } : prev)
+                      if (filter.theme === themeId && filter.themeLabel !== label) {
+                        setTheme(themeId, filter.lockedBy, label)
+                      }
+                    }}
                   />
                 ) : isChokepoint ? (
                   <ChokepointPanel

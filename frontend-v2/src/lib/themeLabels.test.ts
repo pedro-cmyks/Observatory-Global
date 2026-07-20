@@ -46,3 +46,24 @@ describe('resolveThreadLabel', () => {
     expect(resolveThreadLabel('ARMEDCONFLICT', 'Custom Name')).toBe('Custom Name')
   })
 })
+
+describe('resolveThreadTitle (council STILL-BROKEN: deep-link cold title)', () => {
+  it('while the first fetch is in flight an opaque thread id titles as a neutral loading state — never the raw id, never a resolved-looking generic', async () => {
+    const { resolveThreadTitle } = await import('./themeLabels')
+    expect(resolveThreadTitle('dynamic-topic-3667', null, true)).toBe('Loading thread…')
+    expect(resolveThreadTitle('emergent-cluster-17', undefined, true)).toBe('Loading thread…')
+  })
+  it('a known label wins even while loading (list row carried it)', async () => {
+    const { resolveThreadTitle } = await import('./themeLabels')
+    expect(resolveThreadTitle('dynamic-topic-3667', 'Iran Attacks US Bases', true)).toBe('Iran Attacks US Bases')
+  })
+  it('after loading settles with no label, falls to the resolveThreadLabel fallback (fetch failed — honest generic, not a fake loading state)', async () => {
+    const { resolveThreadTitle } = await import('./themeLabels')
+    expect(resolveThreadTitle('dynamic-topic-3667', null, false)).toBe('Narrative Thread')
+  })
+  it('atlas slugs and GDELT codes carry their own names — no loading state needed', async () => {
+    const { resolveThreadTitle } = await import('./themeLabels')
+    expect(resolveThreadTitle('election-legitimacy--co', null, true)).toBe('Election Legitimacy')
+    expect(resolveThreadTitle('ARMEDCONFLICT', null, true)).toBe('Armed Conflict')
+  })
+})

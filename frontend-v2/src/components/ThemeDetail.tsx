@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getThemeLabel, getThemeIcon, resolveThreadLabel } from '../lib/themeLabels'
+import { getThemeLabel, getThemeIcon, resolveThreadTitle } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { formatAttachSimilarity, laneTag, truncationNote } from '../lib/discussionHonesty'
 import { buildThreadVoiceModel, canHaveThreadVoice, type ThreadVoiceModel } from '../lib/threadVoice'
@@ -140,6 +140,10 @@ interface ThemeDetailProps {
     /** #232 UX slice: chip click opens the country (CountryBrief carries the
         conflict-events strip). Geography-join only — never a story match. */
     onConflictChipClick?: (code: string, name: string) => void
+    /** Deep-link cold open: fires when the fetch lands a real thread label so
+        surfaces OUTSIDE this panel (focus chip, stream header, universe
+        orbit) can replace their generic placeholder with the real name. */
+    onLabelResolved?: (themeId: string, label: string) => void
 }
 
 interface NarrativeNote {
@@ -201,7 +205,7 @@ function formatAttentionCount(n?: number): string {
     return String(n)
 }
 
-export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, threadContext, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onConflictChipClick }: ThemeDetailProps) {
+export function ThemeDetail({ theme, originCountry, originCountryName, originAttention, threadContext, initialDrillCountry, hours, onClose, onThemeSelect, onCountryCardClick, onPersonClick, onSourceClick, onConflictChipClick, onLabelResolved }: ThemeDetailProps) {
     const [data, setData] = useState<ThemeData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -335,6 +339,16 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         setDrillCountry(initialDrillCountry || null)
         setDrillCountryName(initialDrillCountry ? (originCountryName || initialDrillCountry) : null)
     }, [theme, initialDrillCountry, originCountryName])
+
+    // Deep-link cold open (council STILL-BROKEN): when the fetch lands a real
+    // label, hand it up — the focus chip / stream header / universe orbit
+    // otherwise keep their generic placeholder forever. The parent guards
+    // against no-op updates, so re-fires are harmless.
+    useEffect(() => {
+        const resolved = data?.label ? decodeEntities(data.label) : ''
+        if (resolved.trim()) onLabelResolved?.(theme, resolved)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data?.label, theme])
 
     useEffect(() => {
         setShowDrift(false)
@@ -558,13 +572,16 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // Never serve a placeholder title — ON THE LOADING PATH TOO (council P1-7:
     // "Dynamic Topic 49 — 0 signals" flashed ~3s before resolve). Preference:
     // resolved payload label → the label carried by the list row that opened
-    // this thread (threadContext) → resolveThreadLabel (which refuses to echo
-    // a raw dynamic-topic id back as a title). Labels can arrive HTML-entity-
-    // encoded — decode for display.
+    // this thread (threadContext) → resolveThreadTitle: while the FIRST fetch
+    // of an opaque id is in flight, an honest "Loading thread…" (deep-link
+    // cold open, council STILL-BROKEN) — never the raw id, and never the
+    // resolved-looking "Narrative Thread" generic (that remains the
+    // post-failure fallback inside). Labels can arrive HTML-entity-encoded —
+    // decode for display.
     const displayLabel = decodeEntities(
         data?.label
         || threadContext?.label
-        || (isQueryThread ? queryThreadText : resolveThreadLabel(theme)))
+        || (isQueryThread ? queryThreadText : resolveThreadTitle(theme, null, loading && !data)))
     // While the first fetch is in flight there is no honest count yet — print
     // an ellipsis, never a false "0 signals" next to a skeleton.
     const totalDisplay = loading && !data ? '…' : String(data?.total || 0)
