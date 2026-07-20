@@ -54,15 +54,15 @@ import numpy as np
 
 try:  # module-run from backend/ (pytest pythonpath=.) or repo root
     from app.services.overmerge import (
-        BORDERLINE, DEMOTE, KEEP, OverMergeParams, country_dominant_overlap,
-        decide, is_over_merge, normalize_rows, parse_split_judge_response,
-        partition, split_judge_user, SPLIT_JUDGE_SYSTEM,
+        BORDERLINE, DEMOTE, KEEP, OverMergeParams, apply_judge_verdict,
+        country_dominant_overlap, decide, is_over_merge, normalize_rows,
+        parse_split_judge_response, partition, split_judge_user, SPLIT_JUDGE_SYSTEM,
     )
 except ImportError:  # pragma: no cover
     from backend.app.services.overmerge import (
-        BORDERLINE, DEMOTE, KEEP, OverMergeParams, country_dominant_overlap,
-        decide, is_over_merge, normalize_rows, parse_split_judge_response,
-        partition, split_judge_user, SPLIT_JUDGE_SYSTEM,
+        BORDERLINE, DEMOTE, KEEP, OverMergeParams, apply_judge_verdict,
+        country_dominant_overlap, decide, is_over_merge, normalize_rows,
+        parse_split_judge_response, partition, split_judge_user, SPLIT_JUDGE_SYSTEM,
     )
 
 # ---------------------------------------------------------------- constants
@@ -357,20 +357,32 @@ def _score_topic(tid: int, meta: dict, mem: list, params: OverMergeParams,
 
 async def _run_borderline_judge(records: list[dict], headlines: dict[int, dict],
                                 stats: dict) -> None:
-    """One DeepSeek 'one story or two?' call per borderline topic. Precision-
-    first: a 'two_stories' verdict PROMOTES borderline -> demote; anything else
-    (one_story, unavailable, unparseable) KEEPS. Gated behind --judge."""
+    """One DeepSeek 'one story or two?' call per FLAGGED candidate — BOTH the
+    borderline band AND the structural-demote band.
+
+    The structural+country stage produces a CANDIDATE set; the judge is the
+    precision gate. A candidate becomes a real demote ONLY on a positive
+    'two_stories' confirmation; one_story or an unavailable/unparseable call KEEPS
+    (precision-first — never demote a real story on the absence of a positive
+    confirmation). Gating the demote band too is what catches the cross-country-
+    SAME-story residual (a single global story split by outlet-country/language
+    that the country veto misses because the outlet countries genuinely differ).
+    Gated behind --judge."""
     import httpx
     try:
         from scripts.ensemble.model_clients import call_llm
     except ImportError:  # pragma: no cover
         from backend.scripts.ensemble.model_clients import call_llm
-    borderline = [r for r in records if r["verdict"] == BORDERLINE]
-    if not borderline:
+    candidates = [r for r in records if r["verdict"] in (BORDERLINE, DEMOTE)]
+    if not candidates:
         return
-    print(f"[judge] {len(borderline)} borderline topics -> DeepSeek confirm…")
+    n_bl = sum(1 for r in candidates if r["verdict"] == BORDERLINE)
+    n_dm = len(candidates) - n_bl
+    print(f"[judge] {len(candidates)} flagged candidates -> DeepSeek confirm "
+          f"({n_dm} structural-demote + {n_bl} borderline)…")
     async with httpx.AsyncClient(timeout=90.0) as client:
-        for r in borderline:
+        for r in candidates:
+            band = r["verdict"]            # remember which band it came from
             ha = [headlines[s]["headline"] for s in r["rep_ids_a"]
                   if s in headlines][:REPS_PER_SIDE]
             hb = [headlines[s]["headline"] for s in r["rep_ids_b"]
@@ -381,22 +393,19 @@ async def _run_borderline_judge(records: list[dict], headlines: dict[int, dict],
                     "deepseek", system=SPLIT_JUDGE_SYSTEM,
                     user=split_judge_user(r["label"] or "?", ha, hb),
                     client=client, max_tokens=200, temperature=0.0, json_mode=True)
-                verdict = parse_split_judge_response(out)
+                judge = parse_split_judge_response(out)
             except Exception as exc:
                 print(f"[judge] call FAILED for dt-{r['topic_id']} ({exc!r}) — "
                       f"KEEP (precision-first)", file=sys.stderr)
-                verdict = None
-            if verdict is False:   # two stories -> confirm demote
-                r["verdict"] = DEMOTE
-                r["reason"] = f"borderline -> judge: TWO STORIES ({r['reason']})"
+                judge = None
+            final, note = apply_judge_verdict(judge)
+            r["verdict"] = final
+            r["reason"] = f"{band} -> {note} ({r['reason']})"
+            if judge is False:
                 stats["two_stories_demote"] += 1
-            elif verdict is True:  # one story -> keep
-                r["verdict"] = KEEP
-                r["reason"] = f"borderline -> judge: one story ({r['reason']})"
+            elif judge is True:
                 stats["one_story_keep"] += 1
-            else:                  # unavailable / unparseable -> keep
-                r["verdict"] = KEEP
-                r["reason"] = f"borderline -> judge unavailable, KEPT ({r['reason']})"
+            else:
                 stats["unavailable_keep"] += 1
 
 

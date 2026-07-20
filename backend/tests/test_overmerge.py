@@ -34,6 +34,7 @@ from app.services.overmerge import (
     KEEP,
     OverMergeParams,
     SplitStats,
+    apply_judge_verdict,
     country_dominant_overlap,
     decide,
     is_over_merge,
@@ -358,3 +359,25 @@ def test_parse_split_judge_unavailable_is_none_precision_first():
     assert parse_split_judge_response("") is None
     assert parse_split_judge_response("not json at all") is None
     assert parse_split_judge_response('{"verdict":"maybe"}') is None
+
+
+# ----------------------------------------------------- apply_judge_verdict
+# The judge gates BOTH bands (borderline AND structural-demote): a flagged
+# candidate becomes a real demote only on a positive "two_stories" confirmation.
+def test_apply_judge_verdict_two_stories_demotes():
+    v, note = apply_judge_verdict(False)
+    assert v == DEMOTE and "two stories" in note
+
+
+def test_apply_judge_verdict_one_story_keeps():
+    v, note = apply_judge_verdict(True)
+    assert v == KEEP and "one story" in note
+
+
+def test_apply_judge_verdict_unavailable_keeps_precision_first():
+    """A structural demote whose judge call fails is KEPT — never demote a real
+    story on the ABSENCE of a positive confirmation (this is what rescues the
+    cross-country-same-story residual when the judge is up, and stays safe when
+    it is down)."""
+    v, note = apply_judge_verdict(None)
+    assert v == KEEP and "unavailable" in note

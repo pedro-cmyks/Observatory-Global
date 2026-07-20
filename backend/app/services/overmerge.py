@@ -387,6 +387,30 @@ def _first_json_object(text: str) -> Optional[str]:
     return text[start:end + 1]
 
 
+def apply_judge_verdict(judge: Optional[bool]) -> tuple[str, str]:
+    """Map a split-judge answer to the FINAL verdict for a flagged candidate.
+
+    The structural+country stage produces a CANDIDATE set (borderline OR demote);
+    the judge is the precision gate that confirms each as truly two stories before
+    it becomes a real demote. Precision-first, identical for both bands:
+
+      True  (one_story)             -> KEEP   (the judge vetoes the demote)
+      False (two_stories)           -> DEMOTE (confirmed fusion)
+      None  (unavailable/unparsed)  -> KEEP   (never demote a real story on the
+                                               absence of a positive confirmation)
+
+    This is why the cross-country-SAME-story residual (a single global story split
+    by outlet-country/language — a celebrity death, one war strike reported across
+    Europe — that the country veto misses because the outlet countries genuinely
+    differ) is caught: the judge, shown the two sides' headlines, returns one_story.
+    """
+    if judge is True:
+        return KEEP, "judge: one story"
+    if judge is False:
+        return DEMOTE, "judge: two stories"
+    return KEEP, "judge unavailable, KEPT (precision-first)"
+
+
 def parse_split_judge_response(raw: str) -> Optional[bool]:
     """Tolerant parse of the split judge.
 
