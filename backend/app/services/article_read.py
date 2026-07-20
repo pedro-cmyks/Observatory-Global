@@ -52,8 +52,9 @@ _READ_SYSTEM = (
     "— never paraphrase inside \"quote\"; a claim without a verbatim quote is "
     "forbidden — omit it; use ONLY the supplied text, never outside knowledge; "
     "distinguish what the outlet ASSERTS from what it ATTRIBUTES to sources "
-    "('according to', officials said, etc.); max 8 claims, 10 actors, 6 gaps; "
-    "answer in the article's own language for quotes, English for everything else."
+    "('according to', officials said, etc.); max 6 claims (pick the most "
+    "load-bearing), 8 actors, 5 gaps; keep \"text\" fields short; answer in the "
+    "article's own language for quotes, English for everything else."
 )
 
 _CROSS_SYSTEM = (
@@ -134,7 +135,21 @@ def _extract_json(text: str) -> dict | None:
         try:
             return json.loads(text[start:end + 1])
         except Exception:
-            return None
+            pass
+    if start == -1:
+        return None
+    # Truncation repair: a max_tokens cutoff leaves a dangling object. Walk back
+    # to each complete object boundary and try closing the arrays/root. Claims
+    # already parsed survive; the cut-off tail is lost, never invented.
+    body = text[start:]
+    ends = [m.end() for m in re.finditer(r"\}\s*(?=,|\]|$)", body)]
+    for cut in reversed(ends[-40:]):
+        frag = body[:cut]
+        for closer in ("]}", "]}]}", "}]}", "]}}"):
+            try:
+                return json.loads(frag + closer)
+            except Exception:
+                continue
     return None
 
 
@@ -181,7 +196,7 @@ async def _read_one(url: str, art: dict) -> tuple[str, dict | None]:
         return url, None
     user = f"TITLE: {art.get('title') or '(untitled)'}\nOUTLET: {art.get('outlet') or 'unknown'}\n\nARTICLE TEXT:\n{text}"
     raw, provider, error, usage = await generate_insight(
-        _READ_SYSTEM, user, max_tokens=1400, surface="workbench-ai-read",
+        _READ_SYSTEM, user, max_tokens=2400, surface="workbench-ai-read",
     )
     if not raw:
         logger.warning("ai-read unavailable for %s: %s", url, error)

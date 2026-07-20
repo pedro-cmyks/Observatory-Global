@@ -78,6 +78,18 @@ def test_actor_and_gap_caps():
     assert len(r["actors"]) == 10 and len(r["gaps"]) == 6 and len(r["numbers"]) == 1
 
 
+def test_extract_json_repairs_truncated_output():
+    # a max_tokens cutoff mid-claim: complete claims survive, the tail is lost.
+    truncated = (
+        '{"claims":[{"text":"c1","quote":"q1","attribution":"asserted"},'
+        '{"text":"c2","quote":"q2","attribution":"asserted"},'
+        '{"text":"c3","quote":"q3","attrib'
+    )
+    parsed = ar._extract_json(truncated)
+    assert parsed is not None
+    assert [c["text"] for c in parsed["claims"]] == ["c1", "c2"]
+
+
 # ── read_articles cache path ─────────────────────────────────────────────────
 
 async def test_read_articles_cache_first_never_calls_llm(monkeypatch):
