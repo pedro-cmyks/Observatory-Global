@@ -79,3 +79,124 @@ def test_history_projects_into_current_frame():
     assert abs(replayed[1] - float(positions[0][1])) < 0.02
     # zero vector -> honest None
     assert _project_history([0.0] * 768, "alpha", basis) is None
+
+
+# ---------------------------------------------------------------------------
+# Dark ≠ down (council N4): the endpoint must never serve a silent empty 200
+# when the field actually exists — a cold rebuild blowing the statement
+# timeout serves the LAST GOOD payload (honestly labeled stale), and a truly
+# empty failure states its reason + Retry-After instead of a bare "error".
+# ---------------------------------------------------------------------------
+import asyncio
+
+import asyncpg
+import pytest
+from fastapi import Response
+
+from app.routers import universe as universe_mod
+
+
+@pytest.fixture(autouse=True)
+def _reset_universe_cache():
+    saved = dict(universe_mod._cache)
+    universe_mod._cache.update(
+        {"at": 0.0, "payload": None, "failed_at": 0.0, "fail_reason": None,
+         "refreshing": False})
+    yield
+    universe_mod._cache.clear()
+    universe_mod._cache.update(saved)
+
+
+def _good_payload(n=5):
+    return {
+        "contract": "universe-v0",
+        "nodes": [{"id": f"dynamic-topic-{i}"} for i in range(n)],
+        "edges": [],
+        "anchors": [],
+        "meta": {"topic_count": n},
+    }
+
+
+def test_classify_failure_maps_statement_timeout():
+    assert universe_mod._classify_failure(
+        asyncpg.exceptions.QueryCanceledError("canceling statement due to statement timeout")
+    ) == "db_timeout"
+    assert universe_mod._classify_failure(TimeoutError()) == "db_timeout"
+    assert universe_mod._classify_failure(RuntimeError("boom")) == "error"
+
+
+@pytest.mark.asyncio
+async def test_stale_payload_served_when_rebuild_fails(monkeypatch):
+    """A previously-built field outlives a failed rebuild — dark ≠ down."""
+    stale = _good_payload()
+    universe_mod._cache.update({
+        "payload": stale,
+        "at": 0.0,  # expired long ago
+        "failed_at": universe_mod.time.monotonic(),  # recent failure → backoff
+        "fail_reason": "db_timeout",
+    })
+    async def _boom(days):
+        raise asyncpg.exceptions.QueryCanceledError("statement timeout")
+    monkeypatch.setattr(universe_mod, "_build_universe", _boom)
+
+    resp = Response()
+    out = await universe_mod.get_universe(resp, days=30)
+    assert out["nodes"], "stale nodes must be served, never an empty 200"
+    assert out["meta"]["cache"] == "stale"
+    assert out["meta"]["stale_reason"] == "db_timeout"
+
+
+@pytest.mark.asyncio
+async def test_empty_failure_states_reason_and_retry_after(monkeypatch):
+    """No payload ever built + build fails → honest reason + Retry-After."""
+    async def _boom(days):
+        raise asyncpg.exceptions.QueryCanceledError("statement timeout")
+    monkeypatch.setattr(universe_mod, "_build_universe", _boom)
+
+    resp = Response()
+    out = await universe_mod.get_universe(resp, days=30)
+    assert out["nodes"] == []
+    assert out["reason"] == "db_timeout"
+    assert out["retry_after_s"] == universe_mod.RETRY_AFTER_S
+    assert resp.headers.get("Retry-After") == str(universe_mod.RETRY_AFTER_S)
+
+
+@pytest.mark.asyncio
+async def test_generic_failure_reason_is_error(monkeypatch):
+    async def _boom(days):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(universe_mod, "_build_universe", _boom)
+    resp = Response()
+    out = await universe_mod.get_universe(resp, days=30)
+    assert out["reason"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_stale_serve_triggers_background_revalidate(monkeypatch):
+    """Expired cache with no recent failure → serve stale NOW, rebuild in
+    the background (nobody waits 29-46s on a request thread)."""
+    stale = _good_payload(4)
+    fresh = _good_payload(9)
+    universe_mod._cache.update({"payload": stale, "at": 0.0, "failed_at": 0.0})
+    async def _slow_build(days):
+        return fresh
+    monkeypatch.setattr(universe_mod, "_build_universe", _slow_build)
+
+    resp = Response()
+    out = await universe_mod.get_universe(resp, days=30)
+    assert out["meta"]["topic_count"] == 4  # stale served immediately
+    await asyncio.sleep(0.05)  # let the background task land
+    assert universe_mod._cache["payload"]["meta"]["topic_count"] == 9
+
+
+@pytest.mark.asyncio
+async def test_fresh_cache_untouched(monkeypatch):
+    payload = _good_payload()
+    universe_mod._cache.update(
+        {"payload": payload, "at": universe_mod.time.monotonic()})
+    async def _never(days):
+        raise AssertionError("must not rebuild a fresh cache")
+    monkeypatch.setattr(universe_mod, "_build_universe", _never)
+    resp = Response()
+    out = await universe_mod.get_universe(resp, days=30)
+    assert out is payload

@@ -16,11 +16,13 @@ Honesty constraints:
 - No fabricated bodies: umbrellas (ephemeral roll-ups) are excluded, only
   story-level topics render.
 """
+import asyncio
 import logging
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Query
+import asyncpg
+from fastapi import APIRouter, Query, Response
 
 from app import db
 
@@ -33,8 +35,33 @@ CATEGORY_PULL = 0.55
 NEIGHBORS_PER_NODE = 3
 TIMELINE_DAYS = 30
 _CACHE_TTL_S = 600
+# Dark ≠ down (council N4): when a rebuild fails and there is NOTHING to
+# serve, the empty payload says when to come back (also the failure backoff —
+# a failed rebuild is not retried for this long, stale serves meanwhile).
+RETRY_AFTER_S = 60
 
-_cache: dict = {"at": 0.0, "payload": None}
+_cache: dict = {
+    "at": 0.0,
+    "payload": None,       # last GOOD payload — never cleared on failure
+    "failed_at": 0.0,      # monotonic time of the last failed rebuild
+    "fail_reason": None,   # honest classification of that failure
+    "refreshing": False,   # background revalidate in flight
+}
+
+# The db-busy classes that mean "the database timed out / pushed back", as
+# opposed to a code defect — surfaced honestly as reason='db_timeout'.
+_DB_TIMEOUT_ERRORS = (
+    asyncpg.exceptions.QueryCanceledError,
+    asyncpg.exceptions.TooManyConnectionsError,
+    asyncpg.exceptions.ConnectionDoesNotExistError,
+    TimeoutError,
+    asyncio.TimeoutError,
+)
+
+
+def _classify_failure(exc: BaseException) -> str:
+    """'db_timeout' for statement-timeout/pool-pressure classes, else 'error'."""
+    return "db_timeout" if isinstance(exc, _DB_TIMEOUT_ERRORS) else "error"
 
 
 def _project_universe(vectors, categories):
@@ -118,16 +145,14 @@ def _nearest_edges(M, ids, k: int = NEIGHBORS_PER_NODE):
     return edge_list, nn_sims
 
 
-@router.get("/api/v2/universe")
-async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
-    """The living story universe: bodies + full-space relations + time."""
-    now = time.monotonic()
-    if _cache["payload"] is not None and now - _cache["at"] < _CACHE_TTL_S:
-        return _cache["payload"]
+def _empty_payload() -> dict:
+    return {"contract": "universe-v0", "nodes": [], "edges": [], "meta": None}
 
-    empty = {"contract": "universe-v0", "nodes": [], "edges": [], "meta": None}
-    try:
-        async with db.pool.acquire() as conn:
+
+async def _build_universe(days: int) -> dict:
+    """Build the full universe payload. Raises on DB failure — the caller
+    owns the honest-degradation decision (stale-serve vs reasoned empty)."""
+    async with db.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 20000")
             rows = await conn.fetch("""
                 SELECT id, label, category, crisis_relevant, agg_n_signals,
@@ -138,7 +163,7 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
                 ORDER BY id
             """)
             if len(rows) < 3:
-                return {**empty, "reason": "not_enough_topics"}
+                return {**_empty_payload(), "reason": "not_enough_topics"}
 
             # Trajectories + growth: per-snapshot cluster centroids give each
             # topic a REAL path through the field (spec §7.2), and ec.n_signals
@@ -195,9 +220,6 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
                 WHERE tm.topic_id LIKE 'dynamic-topic-%' AND tm.role = 'evidence'
                 GROUP BY tm.topic_id
             """)
-    except Exception as exc:
-        logger.error("universe query failed: %s", exc)
-        return {**empty, "reason": "error"}
 
     # Aggregate top countries + persons per topic (bounded).
     country_ct: dict = {}
@@ -342,6 +364,69 @@ async def get_universe(days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
             "timeline_days": days,
         },
     }
-    _cache["at"] = now
-    _cache["payload"] = payload
     return payload
+
+
+async def _revalidate(days: int) -> None:
+    """Background rebuild — the request that noticed the stale cache already
+    got its (stale) answer; nobody waits on this."""
+    try:
+        payload = await _build_universe(days)
+        if not payload.get("reason"):
+            _cache["payload"] = payload
+            _cache["at"] = time.monotonic()
+            _cache["fail_reason"] = None
+    except Exception as exc:
+        _cache["failed_at"] = time.monotonic()
+        _cache["fail_reason"] = _classify_failure(exc)
+        logger.error(
+            "universe background rebuild failed (%s): %s",
+            _cache["fail_reason"], exc,
+        )
+    finally:
+        _cache["refreshing"] = False
+
+
+@router.get("/api/v2/universe")
+async def get_universe(response: Response, days: int = Query(TIMELINE_DAYS, ge=7, le=90)):
+    """The living story universe: bodies + full-space relations + time.
+
+    Dark ≠ down (council N4): a failed/expired rebuild NEVER silently blanks
+    the field. Order of truth: fresh cache → stale cache (honestly labeled,
+    revalidated in the background) → reasoned empty with Retry-After.
+    """
+    now = time.monotonic()
+    payload = _cache["payload"]
+    if payload is not None and now - _cache["at"] < _CACHE_TTL_S:
+        return payload
+
+    if payload is not None:
+        # Stale-while-revalidate: serve the last good field NOW; rebuild off
+        # the request path unless one is running or just failed (backoff).
+        if not _cache["refreshing"] and now - _cache["failed_at"] >= RETRY_AFTER_S:
+            _cache["refreshing"] = True
+            asyncio.create_task(_revalidate(days))
+        stale_meta = {**(payload.get("meta") or {}), "cache": "stale"}
+        if _cache["fail_reason"]:
+            stale_meta["stale_reason"] = _cache["fail_reason"]
+        return {**payload, "meta": stale_meta}
+
+    # Nothing ever built in this process — the first hit pays the build.
+    try:
+        fresh = await _build_universe(days)
+    except Exception as exc:
+        reason = _classify_failure(exc)
+        _cache["failed_at"] = time.monotonic()
+        _cache["fail_reason"] = reason
+        logger.error("universe build failed (%s): %s", reason, exc)
+        response.headers["Retry-After"] = str(RETRY_AFTER_S)
+        return {
+            **_empty_payload(),
+            "reason": reason,
+            "retry_after_s": RETRY_AFTER_S,
+        }
+    if not fresh.get("reason"):
+        _cache["payload"] = fresh
+        _cache["at"] = time.monotonic()
+        _cache["fail_reason"] = None
+    return fresh

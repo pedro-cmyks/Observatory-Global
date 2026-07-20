@@ -264,3 +264,11 @@ fi
 # serving only reads that row; it never performs this work in an HTTP request.
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.build_daily_publication --execute ) \
   || echo "[scoped-snapshot] ERROR daily publication artifact failed — L1 remains on the previous sealed edition" >&2
+
+# Step 7 (council N4, 2026-07-20): pre-warm the universe field on the serving
+# box. The endpoint is stale-while-revalidate — after this one hit the field
+# stays servable all day (stale at worst, never a silent empty 200); without
+# it the first reader after a Fly restart pays the ~30-40s cold build.
+ATLAS_API_BASE="${ATLAS_API_BASE:-https://atlas-api-pedro.fly.dev}"
+curl -s -m 120 -o /dev/null "$ATLAS_API_BASE/api/v2/universe" \
+  || echo "[scoped-snapshot] universe warm failed (non-fatal — first reader pays the cold build)" >&2
