@@ -229,12 +229,18 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
     // uncached article; findings cached server-side 15 min).
     const [crossRead, setCrossRead] = useState<CrossRead | null>(null)
     const [crossRunning, setCrossRunning] = useState(false)
+    const [crossFailed, setCrossFailed] = useState(false)
     const runCrossRead = useCallback(async () => {
         if (evidenceUrls.length < 2 || crossRunning) return
         setCrossRunning(true)
+        setCrossFailed(false)
         track('dossier_crossread', { urls: evidenceUrls.length })
         const data = await fetchCrossRead(evidenceUrls)
-        if (mounted.current) { setCrossRead(data); setCrossRunning(false) }
+        if (mounted.current) {
+            setCrossRead(data)
+            setCrossFailed(data == null)   // rate limit / network — say so, never silent
+            setCrossRunning(false)
+        }
     }, [evidenceUrls, crossRunning])
     const runCorroboration = useCallback(async (force: boolean) => {
         if (dossierRef.current.pinCount === 0) return
@@ -781,11 +787,13 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                     </section>
                 )}
 
-                {(crossRead || crossRunning) && (
+                {(crossRead || crossRunning || crossFailed) && (
                     <section className="dossier-section dossier-crossread">
                         <h2>Source cross-read</h2>
                         {crossRunning ? (
                             <p className="dossier-meta">AI-reading the fetched source texts and comparing quote-backed claims…</p>
+                        ) : crossFailed ? (
+                            <p className="dossier-meta">Cross-read unavailable right now (rate limit or network) — the frozen report stands; try again in a few minutes.</p>
                         ) : crossRead && (
                             <>
                                 <p className="dossier-meta" data-tip={crossRead.note ?? ''}>
