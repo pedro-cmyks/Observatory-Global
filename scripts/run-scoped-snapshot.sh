@@ -220,6 +220,34 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.build_umbrella_topics \
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.flag_junk_topics \
     --sample "${ATLAS_JUNK_SAMPLE:-40}" ) \
   || echo "[scoped-snapshot] junk flag/demote failed (non-fatal — junk may still serve)" >&2
+# Step 3.5c (2026-07-20): DETECT + DEMOTE OVER-MERGE blob topics — the OTHER half of
+# identity retirement, the merge-sprint residual that 3.5b (content-junk) does NOT
+# catch. A topic whose member embeddings split into 2+ well-separated substantial
+# sub-clusters is a FUSION of distinct stories wearing a vague umbrella label
+# ("Diverse Local Incidents Across Regions"). Every existing guard MISSES it: the
+# label court passes it (a vague label trivially entails a diverse set), flag_junk
+# passes it (each member is real news, not a feed-dump), and the M2 radial floor
+# passes it (the centroid falls BETWEEN the sub-clusters). Signal = membership
+# MULTIMODALITY (2-means gap_ratio + balance) with a country-dominant shared-actor
+# veto and a DeepSeek "one story or two?" confirm judge. PRECISION-FIRST: a candidate
+# demotes ONLY on a positive two_stories confirmation, so a missing/unhealthy judge
+# demotes NOTHING (never a real story on the absence of a confirm) — a keyless M1
+# nightly is safe. Two calls: audit (--judge writes the dated artifact) then --write
+# (consumes it). --force-unsafe because this runs INSIDE the nightly, which already
+# holds the heavy lock — the write guard is for EXTERNAL contention, not a sequential
+# runner step. Reversible (active->candidate, never delete; --revert RUN_ID); the
+# shared explicit --artifact survives a midnight date-rollover between the two calls.
+# Non-fatal. ATLAS_OVERMERGE_ENABLED=off disables.
+if [[ "${ATLAS_OVERMERGE_ENABLED:-on}" == "on" ]]; then
+  OVERMERGE_ARTIFACT="$ROOT_DIR/docs/research/overmerge/$(date -u +%Y-%m-%d)-overmerge-audit.json"
+  ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.detect_overmerge \
+      --judge --artifact "$OVERMERGE_ARTIFACT" \
+    && $TASKPOLICY "$MLVENV/bin/python" -m scripts.detect_overmerge \
+      --write --force-unsafe --artifact "$OVERMERGE_ARTIFACT" ) \
+    || echo "[scoped-snapshot] over-merge detect/demote failed (non-fatal — blobs may still serve)" >&2
+else
+  echo "[scoped-snapshot] skip over-merge detect (ATLAS_OVERMERGE_ENABLED=off)" >&2
+fi
 ( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.compute_topic_movement ) \
   || echo "[scoped-snapshot] ERROR topic movement failed — movement is STALE" >&2
 
