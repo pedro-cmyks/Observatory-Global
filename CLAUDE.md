@@ -1,5 +1,45 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-20 (WORKBENCH ARTICLE ENRICHMENT F1 SHIPPED, `aeb8db3b`→`e9b750d1`,
+Fly+Vercel deployed + mig 086 applied, prod E2E verified).** Pedro's ask:
+fetch the PINNED pages' real content so the Workbench (not just the dossier
+— his correction) works with source text; brainstormed → judged (5 design
+changes he approved) → spec `docs/specs/2026-07-20-workbench-article-
+enrichment.md` → F1 built same session. SHIPPED: mig 086 `pinned_articles`
++ `ai_readings` (RLS + 082-style revokes; server-only via asyncpg);
+`article_fetch.py` — SSRF gate on EVERY redirect hop + known-domain gate
+(signals_v2 48h ∪ historical_evidence_samples, fail-closed, in-process 1h
+cache; exact-URL match deliberately traded away: signals_v2 can't afford a
+url index) + trafilatura + honest status machine (ok/paywall/robots/error/
+unsupported — partial yield is a STATE: real-world ~50%, JS shells and bot
+walls) + Wayback fallback for dead AND zero-extract pages (labeled
+via=wayback, adopted only if the archive copy extracts); `/api/v2/research/
+articles` fetch+state (paid bucket; full text NEVER crosses the API —
+excerpts only, legal posture); synthesize reads `pinned_articles` server-
+side and appends full-text excerpts under the SAME [n] receipt number
+(verified live: the brief cited Red-Sea/naval-drone details that exist only
+in a THAI article body — cross-language payoff); frontend: addPin/
+updatePinSnapshot fire-and-forget enqueue (article text never touches
+localStorage/sync — 5MB cap + LWW bloat), WorkbenchPanel per-receipt badge
+(`full text ✓`/`fetching…`/honest wall tags) + FROM THE SOURCE excerpt
+disclosure, DossierView yield line ("full text N/M sources") + per-receipt
+excerpt blockquotes + markdown-export block; dossier open BACKFILLS old
+pins (NATO-Ankara) by enqueueing their URLs. MEASURED fixes during verify:
+standard Accept header lifted bangkokbiznews 19→185 extracted words (NOT
+bot evasion — UA stays honest `AtlasResearch/1.0`); excerpt char cap 420
+(Thai/CJK scriptio continua made "60 words" ≈ 2000 chars). 18 pytest new,
+771 vitest + build green; browser-verified badge/excerpt/dossier/synthesis;
+prod smoke: gates reject scheme+unknown-domain, real fetch ok+paywall
+honest. NEXT (spec §5-6): **F2 AI-read** — per-article grounded pass
+(claims WITH exact quote spans — quoteless claims DROPPED at parse; chain
+Anthropic→DeepSeek via insight_llm pattern; cache in ai_readings by
+prompt_version) + cross-read tension map feeding claimLedger; ACCEPTANCE =
+reproduce the manual NATO-Ankara 4/4 corroboration gold. Then F3a
+text_mention over bodies (safe); F3b body-embed neighbors GATED on its own
+measurement (e5+whitening are headline-calibrated). Hard boundaries: AI-read
+is investigation-scoped, NEVER writes engine substrate; no bot/CAPTCHA
+evasion ever; excerpts-only in UI/export.**
+
 **2026-07-18 (ACCOUNTS-V1 SHIPPED + GENERAL REVIEW 50/100 + EMBED-FIRST CHAIN).**
 General review (5-assessment workflow): READINESS 50/100 (presentation 75 ·
 data 55 · processing 55 · publishability 50 · ops 35 · market 20); doc =
