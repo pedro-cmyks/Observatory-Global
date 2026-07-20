@@ -186,6 +186,13 @@ def test_gather_entities_attaches_claim_quote_context():
     assert "Carlos Restrepo" in (ents[0]["quote"] or "")
 
 
+def test_name_matches_diacritics_and_transliteration():
+    assert rl._name_matches("Nicușor Dan", "nicusor dan")
+    assert rl._name_matches("Volodimir Zelenski", "volodymyr zelenskyy")
+    assert not rl._name_matches("Maria Garcia", "Pedro Ramirez")
+    assert not rl._name_matches("Li Wei", "Liu Weimin")   # short tokens never glue
+
+
 # ── leads: lookup ────────────────────────────────────────────────────────────
 
 def _thread(tid, label, entities, n):

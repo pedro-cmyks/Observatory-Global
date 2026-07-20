@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import logging
 
+import unicodedata
+
 from app import db
 from app.services.article_read import read_articles
 from app.services.thread_intelligence import (
     _PERSON_TOPIC_SLUGS_SQL,
     fetch_threads,
-    thread_matches_person,
 )
 from app.utils import _is_valid_person
 
@@ -41,6 +42,43 @@ DF_MIN_ARTICLES = 3        # investigation-DF gate needs ≥3 read articles to a
 
 def _pool_conn():
     return getattr(db, "pool", None)
+
+
+def _fold(s: str) -> str:
+    """Diacritic-fold + lowercase (Nicușor → nicusor). Cross-language press
+    spells the same actor differently; leads must not miss on an ș."""
+    nfkd = unicodedata.normalize("NFKD", s)
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
+
+
+_PREFIX_MIN = 5
+
+
+def _name_matches(a: str, b: str) -> bool:
+    """Fold-aware match with token-prefix tolerance for transliteration
+    variants (Zelenski/Zelenskyy/Zelensky). Prefix ≥5 chars per token —
+    loose enough for spelling drift, tight enough not to glue distinct names."""
+    fa, fb = _fold(a), _fold(b)
+    if not fa or not fb:
+        return False
+    if fa in fb or fb in fa:
+        return True
+    ta = [t for t in fa.split() if len(t) >= _PREFIX_MIN]
+    tb = [t for t in fb.split() if len(t) >= _PREFIX_MIN]
+    return any(x.startswith(y) or y.startswith(x) for x in ta for y in tb)
+
+
+def _thread_matches(thread: dict, entity_name: str, matching_slugs: set[str]) -> bool:
+    """Fold/variant-aware version of the #234 thread_matches_person semantics:
+    dynamic/emergent threads match on top_entities; atlas threads match
+    precisely via the persons-array slug set."""
+    for e in (thread.get("top_entities") or []):
+        if _name_matches(str(e), entity_name):
+            return True
+    tid = str(thread.get("thread_id", ""))
+    if tid.startswith("dynamic-topic-") or tid.startswith("emergent-cluster-"):
+        return False
+    return any(str(s).lower() in matching_slugs for s in (thread.get("anchor_topics") or []))
 
 
 def gather_entities(readings: dict[str, dict]) -> list[dict]:
@@ -131,7 +169,7 @@ async def find_leads(urls: list[str], pinned_ids: list[str] | None = None) -> di
         hits = []
         for t in pool_threads:
             try:
-                if thread_matches_person(t, matching_slugs, person_lower):
+                if _thread_matches(t, ent["name"], matching_slugs):
                     tid = str(t.get("thread_id") or "")
                     slug = str((t.get("anchor_topics") or [""])[0] or "").lower()
                     if tid.lower() in excluded or (slug and slug in excluded):
