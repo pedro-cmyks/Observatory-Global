@@ -153,7 +153,17 @@ async def _build_universe(days: int) -> dict:
     """Build the full universe payload. Raises on DB failure — the caller
     owns the honest-degradation decision (stale-serve vs reasoned empty)."""
     async with db.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 20000")
+            # The full cold build (5 bounded SELECTs over active topics +
+            # per-snapshot centroids) MEASURES ~36s in prod — over the old 20s
+            # cap, so every cold attempt QueryCanceled → db_timeout and the
+            # cache never filled (dark forever, not just dark-once). The
+            # universe is a 10-min-cached, background-revalidated field, never a
+            # hot path: a request is served from fresh/stale cache or a reasoned
+            # empty INSTANTLY (see the caller); only the background rebuild runs
+            # here. So it can afford a generous build budget. 90s covers the
+            # measured 36s with headroom; genuine pool pressure still trips it
+            # and surfaces honestly as db_timeout.
+            await conn.execute("SET statement_timeout = 90000")
             rows = await conn.fetch("""
                 SELECT id, label, category, crisis_relevant, agg_n_signals,
                        first_seen, last_seen, centroid_vec, label_status
