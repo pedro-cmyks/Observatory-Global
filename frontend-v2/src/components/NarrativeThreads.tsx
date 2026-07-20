@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { freezeThreadOrder } from '../lib/threadOrder'
 import { useFocus } from '../contexts/FocusContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { resolveCountryName } from '../lib/countryNames'
@@ -239,6 +240,14 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         return () => clearInterval(interval)
     }, [fetchNarratives])
 
+    // N5: pin the visual row order while the pointer is over the list. The ref
+    // always holds the current live (relation-sorted) id order; entering the
+    // list snapshots it, leaving releases it. See lib/threadOrder.
+    const [frozenOrder, setFrozenOrder] = useState<string[] | null>(null)
+    const liveOrderIdsRef = useRef<string[]>([])
+    const freezeRowOrder = useCallback(() => setFrozenOrder(liveOrderIdsRef.current.slice()), [])
+    const releaseRowOrder = useCallback(() => setFrozenOrder(null), [])
+
     // #234: when a person is focused, fetch the PRECISE set of threads that
     // mention them (backend ?person=, full persons array) for the highlight —
     // more accurate than the capped top_entities. Cleared when no person.
@@ -323,9 +332,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
     // person focus takes precedence; else thread-sibling relation
     const relate = anyPersonMatch ? threadMatchesPerson : (anyThreadRelation ? threadRelated : null)
-    const orderedNarratives = relate
+    const liveOrdered = relate
         ? [...displayedNarratives].sort((a, b) => Number(relate(b)) - Number(relate(a)))
         : displayedNarratives
+    // N5: while the pointer is over the list, pin the row order so a relation
+    // re-sort or a poll refresh can't shuffle a row out from under the cursor
+    // between hover and click (the mis-open bug that survived R2+R3). Content
+    // still updates live — only the order freezes. Touch devices have no hover,
+    // so freezeOnList stays null there and the live order applies as before.
+    const orderedNarratives = freezeThreadOrder(liveOrdered, frozenOrder)
+    liveOrderIdsRef.current = liveOrdered.map(n => n.thread_id)
 
     const handleClick = (n: Narrative) => {
         onThreadSelect?.(n)
@@ -392,7 +408,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     }
 
     return (
-        <div className="narrative-threads-container">
+        <div
+            className="narrative-threads-container"
+            onMouseEnter={freezeRowOrder}
+            onMouseLeave={releaseRowOrder}
+        >
             {(filter.country || (anyPersonMatch && focusPerson)) && (() => {
                 // A3 scope strip: make silent re-scopes legible + reversible.
                 const scopedToCountry = !!filter.country
