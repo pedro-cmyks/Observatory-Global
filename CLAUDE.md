@@ -1,5 +1,78 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-20 (ENGINE SPRINT — MERGE QUALITY + COUNCIL R3 + OVER-MERGE DETECTOR,
+`ce304ca3`→`9d112a08`, all prod/reversible; ran ALONGSIDE 3 parallel chats —
+this is the ENGINE/merge track, read together with the F3 + L1-daily-edition +
+enrichment blocks below which are the WORKBENCH track).** Week plan Tue-Wed
+merge-quality sprint executed + Council R3 re-run + the sprint-surfaced wall.
+**COURT: 47.9% → ~24% failed** (oscillates 19.8-24.9% with the lifecycle churn
++ 30-min court; the whole-population re-judge after relabel is the honest
+number, NOT the 19.9% intermediate). Levers, in order: **M1 umbrella child
+ENTAILMENT guard** (`ce304ca3`, `overmerge`-adjacent — per-family adaptive floor
+median±k·MAD on child↔family cosine + gray-band DeepSeek judge; rejected children
+stay TOP-LEVEL, never deleted; Venezuela umbrella shed its Belgian/Chinese
+children — verified). **M2 black-hole quarantine** (`27305c42`, mig 087
+`topic_members.quarantined` + `audit_topic_blackholes.py` — per-centroid radial
+floor, 1192 members quarantined, reversible, serving counts recompute). **Relabel
+from receipts** (`relabel_court_failed.py`, 926 relabeled; AUDIT: 74%
+specific-honest e.g. "Trump FIFA Scandal"→"Spain tops Argentina", **26% =
+vague-blob "Diverse Local Incidents"** = the over-merge debt the relabel exposed,
+ledger `docs/research/label-court/2026-07-20-relabel-ledger.jsonl`). **Content-junk
+demote** (`flag_junk_topics` was NEVER cron'd — 25 mis-promoted category grab-bags
+hand-demoted + wired to the nightly Step 3.5b, `299e5506`). **OVER-MERGE DETECTOR
+= the sprint-surfaced wall's real fix** (`eebbc6e1`→`9d112a08`, doc
+`docs/research/recall-229/2026-07-20-overmerge-detector.md`): the ~220 vague-blob
+topics are FUSIONS of distinct stories that pass the court (a vague label entails
+a diverse set), invisible to the junk classifier (each member is real news) AND
+the M2 radial floor (the centroid falls BETWEEN the sub-clusters). NEW signal =
+**membership MULTIMODALITY** (`app/services/overmerge.py` pure: 2-means over
+member embeddings → 2 well-separated substantial sub-clusters = fusion). The
+adversarial-verify pattern EARNED ITS KEEP: caught the detector at **54%
+precision** before any prod write (single-country FPs — Texas Floods/Iran
+Hormuz/Venezuela EQ), forced two fixes (`06b110ee` country-dominant shared-actor
+veto — the combined-set Jaccard was person-swamped; `93005c9b` DeepSeek "one story
+or two?" judge gates BOTH bands, demote requires positive confirmation) → **93%
+precision**, hand-labeled. Executed: **89 blob-topics retired** active→candidate
+(reversible; 62 were court-PASSING = invisible fusions the court/junk/M2 all pass
+green), wired to nightly Step 3.5c. **COUNCIL R3** (`6fcf6ca5`,
+`docs/research/ux-council/2026-07-20-council-r3.md` — same 6 personas re-walk
+prod): 4 FIXED (N4 universe dark→1857 nodes, N9 deep-link skeleton, N10 seal
+next-attempt, N13 sentiment tiles) · 3 PARTIAL (N2 court-fold 1/36 null vs R2
+31/37, N3 corroboration, N14 junk-confidence) · 3 STILL-BROKEN (N5 rows-under-
+cursor, N8 count divergence, N11 subject-geo). Council-verified fixes THIS session:
+**N4 universe** (`aa0c4536` stale-serve + honest db_timeout reason + Retry-After;
+then the COMPLETION `universe.py` cold-build budget 20s→90s — the cache could
+never fill so it stayed dark forever, now serves ~1857 nodes/4523 edges), **N9**
+(`339fb14c` neutral "Loading thread…" skeleton, never raw dynamic-topic-N), **N10**
+(`a0b2d9b1` seal_schedule real next-attempt + SEAL_FAILED reliability line), **N5**
+(`f666c265` freeze row order while pointer over list — the mis-open bug that
+survived R2+R3, `lib/threadOrder.ts` pure + 6 vitest). **CORROBORATE receipts**
+(`d97d3eab`, R3 #1 highest-leverage, MY half): the hot lane emitted url:null (16
+corroborating, 0 clickable) — `research_semantic` now carries s.source_url,
+`rows_to_hot_matches` emits it. **RUNNER HARDENING** (the durable ALW-drift cure,
+`35adcb37`): committed-state sync from repo HEAD via git-archive (07-19/20
+nightlies died on ImportError semantic_chunk_order / missing temporal_signature —
+all ALW-lag) + weekend-aware lineage cost guard (`40542 exceeds --max-embed 40000`
+→ 60k weekends). **NODE 24**: local `npm run build` broke under Node v25 + a
+same-day npm reinstall (`browserslist is not a function`, a node_modules interop
+break — NOT code, hit BOTH tracks); fix = `brew install node@24` + `npm ci` under
+it (Vercel already pins Node 24, so deploys were never affected). **ALIGNMENT with
+the 3 parallel WORKBENCH chats** (all their work committed + deployed by Pedro):
+(1) enrichment F1→F3b (blocks below) — the sanctioned-LLM Workbench surface, zero
+engine writes, orthogonal to this engine track; (2) Council R3 P0 **RT state-media**
+(daily edition cited russian.rt.com as neutral — is_state_media existed at ingest,
+never reached the edition; their fix flags it, MY `leadConfidence.ts` demote-path
+is now unblocked since the payload carries the flag — a follow-up); (3) Council R3
+P1 **cross-read independence** (syndicated wire copies were counted as mutual
+corroboration; their fix adds a source-independence gate — reuses the SAME
+syndication signal as thread_ranking `_norm_headline`, the mirror of MY corroborate
+receipts half). Territory held CLEAN all session: engine track never touched
+WorkbenchPanel/DossierView/articleEnrichment/publication_synthesis/article_fetch;
+one `git stash pop` accident popped a parallel stash → recovered to HEAD, stash
+preserved, zero loss. LESSON: never blind `git stash pop` with foreign stashes in
+the list. OPEN: N5/N8/N11 R3 still-broken; leadConfidence state-media demote;
+the over-merge detector runs nightly now so blobs get caught continuously.**
+
 **2026-07-20 (F3 COMPLETE — BODY MENTIONS + MEASUREMENT-GATED BODY-EMBED
 NEIGHBORS, `6181a0ef`→`ba2a2ec2`, Fly deployed + prod-smoked; enrichment
 spec = ALL PHASES SHIPPED same day).** (1) **F3a body_mention**:
