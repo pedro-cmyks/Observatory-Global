@@ -33,6 +33,7 @@ import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { FocusIndicator } from './components/FocusIndicator'
 import { FrameStrip } from './components/FrameStrip'
+import { FrameSheet } from './components/FrameSheet'
 import { maxReplayDays, farEdgeKind, positionForDaysBack, snapDaysBack, isoDayForDaysBack, REPLAY_ENDPOINT_CAP_DAYS } from './lib/scrubberScale'
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, Sun, Moon } from './lib/icons'
 import { useTheme } from './contexts/ThemeContext'
@@ -2309,6 +2310,22 @@ function AppContent() {
           </div>
         )
       })()}
+
+      {/* Flywheel Task 6.3c: the mobile Frame — a quiet pull-up sheet above the
+          tab bar (the desktop strip is !isMobile). The ◎ detected relation
+          renders ONLY inside it, never as a mid-read banner. */}
+      {isMobile && (
+        <FrameSheet
+          onOpenPin={(item) => {
+            const p = new URLSearchParams(item.urlParams)
+            if (item.type === 'theme' && p.get('theme')) handleThemeSelect(p.get('theme')!)
+            else if (item.type === 'person') setFocus('person', decodeURIComponent(p.get('person') || item.title), item.title)
+            else if (item.type === 'country' && p.get('country')) handleCountryClick(p.get('country')!)
+          }}
+          onScopeThread={(threadId, label) => handleThemeSelect(threadId, undefined, undefined, undefined, label)}
+          onOpenReport={() => setWorkbenchOpen(true)}
+        />
+      )}
 
       {/* Mobile L2 bottom navigation — one full-screen surface at a time */}
       {isMobile && (

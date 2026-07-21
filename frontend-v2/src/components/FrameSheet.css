@@ -1,0 +1,110 @@
+/* Mobile Frame pull-up sheet (Task 6.3c). Sits just above the .mobile-tabbar
+   (fixed, bottom:0, height:56px, z-index:9500) so the tabs stay tappable. */
+.frame-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    z-index: 9400;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.frame-sheet-handle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 14px 8px;
+    background: linear-gradient(90deg, rgba(var(--color-accent-deep-rgb), 0.12), transparent 70%);
+    border: none;
+    color: var(--color-text-secondary);
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* Little drag-handle affordance centered on top. */
+.frame-sheet-grip {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(var(--color-neutral-rgb), 0.4);
+}
+
+.frame-sheet-badge {
+    flex-shrink: 0;
+    padding: 1px 8px;
+    background: rgba(var(--color-accent-deep-rgb), 0.18);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.4);
+    border-radius: 999px;
+    color: var(--color-accent-bright, var(--color-accent-primary));
+    font-weight: 600;
+}
+
+.frame-sheet-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-muted);
+}
+
+.frame-sheet-chevron {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+}
+
+.frame-sheet-body {
+    max-height: 46vh;
+    overflow-y: auto;
+    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.15);
+    animation: frameSheetRise 0.16s ease-out;
+}
+
+@keyframes frameSheetRise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The reused FrameStrip inside the sheet: drop the top-strip command-bar
+   clearance, restack lanes + the ◎ callout vertically, and let the callout
+   wrap (there's room in a sheet, unlike the single-row strip). */
+.frame-sheet .frame-strip {
+    margin-top: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 14px 14px;
+    background: none;
+    border: none;
+    overflow: visible;
+    animation: none;
+}
+
+.frame-sheet .frame-strip-header {
+    max-width: none;
+}
+
+.frame-sheet .frame-strip-detect {
+    margin-left: 0;
+    max-width: 100%;
+    padding: 8px 0 0;
+    border-left: none;
+    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.2);
+    flex-wrap: wrap;
+}
+
+.frame-sheet .frame-strip-detect-text {
+    white-space: normal;
+}
