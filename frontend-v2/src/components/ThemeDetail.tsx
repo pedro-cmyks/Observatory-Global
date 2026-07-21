@@ -31,6 +31,7 @@ import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import { buildThemeDetailEmptyState } from '../lib/themeDetailEmptyState'
 import { Flag } from './Flag'
+import { FocusTimeline } from './FocusTimeline'
 import './ThemeDetail.css'
 
 
@@ -1245,28 +1246,21 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             )
                         })()}
 
-                        {/* Timeline */}
-                        {data.timeline.length > 0 && (
+                        {/* Combined activity timeline (Track C4b — spec §3): diverging
+                            volume bars (tone by position) + rarity-normalized key-subject
+                            trend lines + voice-mix band + edge-diff overlay. Replaces the
+                            old red/green sentiment bars; the legacy hourly series is passed
+                            as a fallback so atlas-category threads (which don't resolve to a
+                            dynamic topic in the timeline endpoint) never regress. */}
+                        {(data.timeline.length > 0 || theme.startsWith('dynamic-topic-')) && (
                             <div className="theme-section">
-                                <h3 data-help="Hourly signal volume over the selected time window. Colors show average sentiment: green = positive, yellow = neutral, red = negative.">Activity Timeline</h3>
-                                <div className="timeline-chart">
-                                    {data.timeline.map((t, i) => (
-                                        <div
-                                            key={i}
-                                            className="timeline-bar"
-                                            style={{
-                                                height: `${Math.max(10, (t.count / Math.max(...data.timeline.map(x => x.count))) * 100)}%`,
-                                                backgroundColor: getSentimentColor(t.sentiment)
-                                            }}
-                                            data-tip={`${formatTime(t.hour)}: ${t.count} signals`}
-                                        />
-                                    ))}
-                                </div>
-                                <div style={{ display: 'flex', gap: '12px', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '8px', justifyContent: 'center' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--color-sentiment-positive)' }}></span> Positive</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--color-severity-notable)' }}></span> Neutral</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--color-sentiment-negative)' }}></span> Negative</span>
-                                </div>
+                                <FocusTimeline
+                                    focusRef={theme}
+                                    hours={hours}
+                                    granularity="day"
+                                    label={data.label || getThemeLabel(theme)}
+                                    fallbackTimeline={data.timeline}
+                                />
                             </div>
                         )}
 
