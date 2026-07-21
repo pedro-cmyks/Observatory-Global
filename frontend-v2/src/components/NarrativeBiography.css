@@ -274,6 +274,10 @@
     border-bottom: none !important;
 }
 
+.nb-receipt-pin {
+    margin-left: 6px;
+}
+
 /* glass-box method foot */
 .nb-method {
     margin-top: 8px;

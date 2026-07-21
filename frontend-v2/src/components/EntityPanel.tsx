@@ -10,6 +10,8 @@ import { buildGeoNarrative } from '../lib/geoNarrative'
 import { groupThemeTopics } from '../lib/themeHierarchy'
 import { Pin, PinOff } from '../lib/icons'
 import { CompareSearchModal } from './CompareSearchModal'
+import PinReceiptButton from './PinReceiptButton'
+import { receiptFrom } from '../lib/capturePayloads'
 import './EntityPanel.css'
 
 interface FocusNode {
@@ -449,7 +451,19 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                                             rel="noopener noreferrer"
                                             className="entity-headline"
                                         >
-                                            <span className="entity-headline-source">{h.source}</span>
+                                            <div className="entity-headline-row">
+                                                <span className="entity-headline-source">{h.source}</span>
+                                                <PinReceiptButton
+                                                    className="entity-headline-pin"
+                                                    citation={receiptFrom({
+                                                        headline: h.headline ?? '',
+                                                        source: h.source,
+                                                        url: h.url,
+                                                        publishedDate: h.time?.slice(0, 10),
+                                                    })}
+                                                    contextLabel={displayName}
+                                                />
+                                            </div>
                                             <span className="entity-headline-title" data-tip={displayText}>{displayText}</span>
                                         </a>
                                     )

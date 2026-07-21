@@ -219,15 +219,53 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
+/* Task 3.4 (Exploration Flywheel): person-pip = a chip with two controls —
+   click the name to FOCUS (setPerson), click the small ◆ to PIN into the
+   active investigation. Was a dead <span>{p}</span>; now flex container over
+   two reset <button>s so it keeps the same pill footprint. */
 .person-pip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     font-size: 9px;
     font-weight: 600;
-    padding: 1px 5px;
+    padding: 1px 4px 1px 5px;
     border-radius: 3px;
     background: rgba(167, 139, 250, 0.1);
     color: #a78bfa;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
+
+.person-pip--active {
+    background: rgba(167, 139, 250, 0.22);
+    color: #c4b5fd;
+}
+
+.person-pip-focus {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.person-pip-focus:hover { text-decoration: underline; }
+
+.person-pip-pin {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    font-size: 9px;
+    color: rgba(167, 139, 250, 0.4);
+    cursor: pointer;
+    transition: color 0.12s;
+    flex-shrink: 0;
+}
+.person-pip-pin:hover { color: #a78bfa; }
+.person-pip-pin--active { color: #a78bfa; }
 
 /* Attention badges — public interest indicators */
 .attention-badge {

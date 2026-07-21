@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { trackOnce } from '../lib/telemetry'
 import { resolveThreadLabel } from '../lib/themeLabels'
+import { useWorkspace } from '../contexts/WorkspaceContext'
+import { threadPin } from '../lib/capturePayloads'
 import {
     bornBetween,
     categoryColor,
@@ -61,6 +63,9 @@ interface UniverseViewProps {
 const WEEK_MS = 7 * 24 * 3_600_000
 
 export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hours = 24, focusKind = null, focusValue = null, onPersonSelect, onCountrySelect }: UniverseViewProps) {
+    // One-gesture ◆ capture (Exploration Flywheel 3.2): a hovered body IS a
+    // thread/story — pin it straight into the active investigation.
+    const { pinItem, unpinItem, isPinned } = useWorkspace()
     const [payload, setPayload] = useState<UniversePayload | null>(null)
     const [loading, setLoading] = useState(true)
     const [scrubPct, setScrubPct] = useState(100)
@@ -96,6 +101,27 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const pinchRef = useRef<{ dist: number; cx: number; cy: number; tx: number; ty: number; k: number; angle: number } | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 1200, h: 700 })
+
+    // Hover-exit grace period: the hover card renders at a FIXED corner, far
+    // from the tiny body circle that triggers it. Without this, moving the
+    // mouse toward the card's ◆ pin button leaves the body's hit-region on the
+    // very first pixel of travel — onMouseLeave fires immediately and the card
+    // (with the button) unmounts before the pointer arrives. A short delay,
+    // cancelled by the card's own onMouseEnter, bridges body → card the same
+    // way any hover-tooltip-with-a-button does.
+    const hoverExitTimerRef = useRef<number | null>(null)
+    const cancelHoverExit = () => {
+        if (hoverExitTimerRef.current !== null) {
+            window.clearTimeout(hoverExitTimerRef.current)
+            hoverExitTimerRef.current = null
+        }
+    }
+    const clearHoverSoon = (id: string) => {
+        cancelHoverExit()
+        hoverExitTimerRef.current = window.setTimeout(() => {
+            setHoveredId(h => (h === id ? null : h))
+        }, 220)
+    }
 
     // Ambient spin, THERMALLY POLITE (2026-07-03 kernel panic post-mortem:
     // WindowServer watchdog timeout — a 60fps React re-render of 348 SVG
@@ -731,8 +757,8 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 key={n.id}
                                 className="universe-body"
                                 opacity={(dimmed && !isActive && !lit ? 0.08 : Math.max(alpha, isActive || lit ? 0.95 : 0)) * depthAlpha(p.depth)}
-                                                onMouseEnter={() => { lastInteractionRef.current = performance.now(); setHoveredId(n.id) }}
-                                onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
+                                                onMouseEnter={() => { lastInteractionRef.current = performance.now(); cancelHoverExit(); setHoveredId(n.id) }}
+                                onMouseLeave={() => clearHoverSoon(n.id)}
                             >
                                 {heatingIds.has(n.id) && !dimmed && (
                                     <circle
@@ -787,16 +813,44 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                 )}
 
                 {hovered && (
-                    <div className="universe-hover">
+                    <div
+                        className="universe-hover"
+                        onMouseEnter={cancelHoverExit}
+                        onMouseLeave={() => clearHoverSoon(hovered.id)}
+                    >
                         <span style={{ color: categoryColor(hovered.category) }}>{hovered.category}</span>
-                        <strong>
-                            {hovered.label}
-                            {/* N15: Label Court verdict on the hover card — the ONE shared
-                                chip. Full copy (not the dot): the card tracks the pointer so
-                                its data-tip can never open; the chip must self-explain.
-                                Fires only on failed/partial; entailed/unchecked stay clean. */}
-                            <LabelReviewChip labelStatus={hovered.label_status} />
-                        </strong>
+                        <div className="universe-hover-title-row">
+                            <strong>
+                                {hovered.label}
+                                {/* N15: Label Court verdict on the hover card — the ONE shared
+                                    chip. Full copy (not the dot): the card tracks the pointer so
+                                    its data-tip can never open; the chip must self-explain.
+                                    Fires only on failed/partial; entailed/unchecked stay clean. */}
+                                <LabelReviewChip labelStatus={hovered.label_status} />
+                            </strong>
+                            {/* One-gesture ◆ capture (Exploration Flywheel 3.2): a universe
+                                body IS a thread/story — pin it straight into the active
+                                investigation. stopPropagation on pointerdown/up (not just
+                                click) because the canvas' own drag/click-to-open gesture is
+                                driven by bubbled pointer events + coordinate hit-testing, not
+                                a React onClick on the body — letting them bubble would both
+                                start a drag from this button AND risk hit-testing straight
+                                into opening the story underneath. */}
+                            <button
+                                className={`universe-hover-pin${isPinned(`theme-${hovered.id}`) ? ' universe-hover-pin--active' : ''}`}
+                                data-tip={isPinned(`theme-${hovered.id}`) ? 'Unpin from investigation' : 'Pin to investigation'}
+                                onPointerDown={e => e.stopPropagation()}
+                                onPointerUp={e => e.stopPropagation()}
+                                onClick={e => {
+                                    e.stopPropagation()
+                                    const pinId = `theme-${hovered.id}`
+                                    if (isPinned(pinId)) unpinItem(pinId)
+                                    else pinItem(threadPin(hovered.id, hovered.label))
+                                }}
+                            >
+                                {isPinned(`theme-${hovered.id}`) ? '◆' : '◇'}
+                            </button>
+                        </div>
                         <em>{hovered.n.toLocaleString()} signals{isSurging(hovered) ? ' · SURGING' : ''}{hovered.crisis_relevant ? ' · crisis-relevant' : ''}{isOrphan(hovered) ? ' · ORPHAN (unlike every other story)' : ''}</em>
                         <em>
                             {hovered.first_seen ? new Date(hovered.first_seen).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
