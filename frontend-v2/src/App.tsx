@@ -2316,6 +2316,7 @@ function AppContent() {
           renders ONLY inside it, never as a mid-read banner. */}
       {isMobile && (
         <FrameSheet
+          raised={!!(filter.country || filter.theme || filter.person)}
           onOpenPin={(item) => {
             const p = new URLSearchParams(item.urlParams)
             if (item.type === 'theme' && p.get('theme')) handleThemeSelect(p.get('theme')!)

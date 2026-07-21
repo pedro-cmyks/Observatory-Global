@@ -15,9 +15,12 @@ interface FrameSheetProps {
     onOpenPin?: (item: PinnedItem) => void
     onScopeThread?: (threadId: string, label: string) => void
     onOpenReport?: () => void
+    /** Lift the sheet above the floating focus chip when one is present (both
+     *  are fixed just above the tab bar and would otherwise collide). */
+    raised?: boolean
 }
 
-export function FrameSheet(props: FrameSheetProps) {
+export function FrameSheet({ raised, ...props }: FrameSheetProps) {
     const { items } = useWorkspace()
     const [open, setOpen] = useState(false)
 
@@ -25,7 +28,7 @@ export function FrameSheet(props: FrameSheetProps) {
     if (items.length === 0) return null
 
     return (
-        <div className={`frame-sheet${open ? ' frame-sheet--open' : ''}`}>
+        <div className={`frame-sheet${open ? ' frame-sheet--open' : ''}${raised ? ' frame-sheet--raised' : ''}`}>
             <button
                 type="button"
                 className="frame-sheet-handle"
