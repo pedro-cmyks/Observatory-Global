@@ -220,10 +220,27 @@ export function flyAnchor(geometry: { type: string; coordinates: unknown }): [nu
     } catch { return null }
 }
 
+/** A clickable source line on a marker card — the receipt link (#255). */
+export type SourceLink = { label: string; url: string }
+
 /** Hover card state: country shape hover vs marker (hazard/conflict/chokepoint). */
 type HoverState =
     | { kind: 'country'; name: string; heat: number; x: number; y: number }
-    | { kind: 'marker'; title: string; meta: string[]; hint: string | null; x: number; y: number }
+    | { kind: 'marker'; title: string; meta: string[]; hint: string | null; sourceLink: SourceLink | null; x: number; y: number }
+
+/** Compact host label for a source link ("earthquake.usgs.gov" from its URL).
+ *  Only http(s) URLs earn a link — anything else returns null (omit honestly). */
+export function sourceLinkFrom(rawUrl: unknown): SourceLink | null {
+    const url = String(rawUrl || '').trim()
+    if (!/^https?:\/\//i.test(url)) return null
+    try {
+        const host = new URL(url).hostname.replace(/^www\./, '')
+        if (!host) return null
+        return { label: `Source: ${host}`, url }
+    } catch {
+        return null
+    }
+}
 
 /** "2026-07-11T14:32:00Z" → "Jul 11, 14:32" · date-only strings stay date-only
  *  (rendered in UTC so "2026-07-10" never slips a day in negative offsets). */
@@ -241,7 +258,7 @@ function formatEventDate(iso: string): string | null {
 export function markerHoverContent(
     kind: MarkerKind,
     p: Record<string, unknown>,
-): { title: string; meta: string[]; hint: string | null } {
+): { title: string; meta: string[]; hint: string | null; sourceLink: SourceLink | null } {
     if (kind === 'disaster') {
         const dtype = String(p.dtype || 'hazard')
         const title = dtype.charAt(0).toUpperCase() + dtype.slice(1)
@@ -257,9 +274,13 @@ export function markerHoverContent(
         if (place) meta.push(place)
         const when = formatEventDate(String(p.time || ''))
         if (when) meta.push(when)
+        // #255: when the payload carries the USGS/GDACS event URL, the source
+        // becomes a CLICKABLE receipt line; otherwise fall back to the plain
+        // attribution text (never fabricate a link).
+        const sourceLink = sourceLinkFrom(p.url)
         const src = String(p.source || '').toUpperCase()
-        if (src) meta.push(`Source: ${src}`)
-        return { title, meta, hint: `Click opens the ${src || 'official'} event page` }
+        if (src && !sourceLink) meta.push(`Source: ${src}`)
+        return { title, meta, hint: `Click opens the ${src || 'official'} event page`, sourceLink }
     }
     if (kind === 'anomaly') {
         // #255: the baseline ring is a DERIVED attention signal, not a discrete
@@ -279,6 +300,7 @@ export function markerHoverContent(
             title: `Baseline spike · ${name}`,
             meta,
             hint: 'Derived attention signal (volume vs this country’s own norm) — not a discrete event. Click opens the country.',
+            sourceLink: null,
         }
     }
     if (kind === 'acled') {
@@ -292,12 +314,16 @@ export function markerHoverContent(
         if (when) meta.push(when)
         const fat = Number(p.fatalities)
         if (Number.isFinite(fat) && fat > 0) meta.push(`${fat} reported killed`)
-        return { title: `Conflict event · ${CONFLICT_CLASS_LABELS[cls]}`, meta, hint: 'Click for event details' }
+        // #255: link straight to the ACLED source page when the event carries
+        // its URL; omit honestly when it does not.
+        const sourceLink = sourceLinkFrom(p.url)
+        return { title: `Conflict event · ${CONFLICT_CLASS_LABELS[cls]}`, meta, hint: 'Click for event details', sourceLink }
     }
     return {
         title: String(p.name || 'Maritime chokepoint'),
         meta: [p.active === true ? 'Active vessel traffic' : 'Maritime chokepoint'],
         hint: 'Click for chokepoint panel',
+        sourceLink: null,
     }
 }
 
@@ -748,8 +774,8 @@ export function EqualEarthMap({
         const hit = findMarkerAt(e.clientX - rect.left, e.clientY - rect.top)
         if (hit) {
             e.stopPropagation()
-            const { title, meta, hint } = markerHoverContent(hit.kind, hit.properties)
-            setHover({ kind: 'marker', title, meta, hint, x: e.clientX, y: e.clientY })
+            const { title, meta, hint, sourceLink } = markerHoverContent(hit.kind, hit.properties)
+            setHover({ kind: 'marker', title, meta, hint, sourceLink, x: e.clientX, y: e.clientY })
         } else {
             // Left a marker over open ocean: no country path will overwrite the
             // stale card — clear it ourselves. Country hovers stay untouched.
@@ -1104,6 +1130,17 @@ export function EqualEarthMap({
                     {hover.meta.map((m, i) => (
                         <div key={i} className="equal-earth-tooltip-meta">{m}</div>
                     ))}
+                    {hover.sourceLink && (
+                        <a
+                            className="equal-earth-tooltip-source"
+                            href={hover.sourceLink.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {hover.sourceLink.label}
+                        </a>
+                    )}
                     {hover.hint && (
                         <div className="equal-earth-tooltip-hint">{hover.hint}</div>
                     )}

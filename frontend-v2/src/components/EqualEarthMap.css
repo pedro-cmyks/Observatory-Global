@@ -117,6 +117,18 @@
     line-height: 1.45;
 }
 
+/* #255 — clickable source receipt line (USGS/GDACS/ACLED event page). */
+.equal-earth-tooltip-source {
+    display: block;
+    color: var(--color-accent);
+    font-size: 10px;
+    line-height: 1.45;
+    margin-top: 2px;
+    text-decoration: underline;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
 .equal-earth-tooltip-hint {
     color: var(--color-accent);
     font-size: 9.5px;

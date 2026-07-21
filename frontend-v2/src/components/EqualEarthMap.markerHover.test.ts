@@ -3,7 +3,7 @@
  * must say what it IS before the click throws you onto an external page.
  */
 import { describe, it, expect } from 'vitest'
-import { markerHoverContent } from './EqualEarthMap'
+import { markerHoverContent, sourceLinkFrom } from './EqualEarthMap'
 
 describe('markerHoverContent', () => {
     it('disaster: names hazard type, magnitude, epicenter place, source + click hint', () => {
@@ -23,6 +23,51 @@ describe('markerHoverContent', () => {
         expect(out.meta).toContain('northern Mid-Atlantic Ridge')
         expect(out.meta).toContain('Source: USGS')
         expect(out.hint).toBe('Click opens the USGS event page')
+        // No URL in the payload → no fabricated link (#255).
+        expect(out.sourceLink).toBeNull()
+    })
+
+    it('disaster: URL present → clickable source receipt line replaces plain text (#255)', () => {
+        const out = markerHoverContent('disaster', {
+            dtype: 'earthquake',
+            title: 'M 5.1 - 20km SW of Somewhere',
+            magnitude: 5.1,
+            source: 'usgs',
+            time: '2026-07-20T09:00:00Z',
+            url: 'https://earthquake.usgs.gov/earthquakes/eventpage/us7000abcd',
+        })
+        expect(out.sourceLink).toEqual({
+            label: 'Source: earthquake.usgs.gov',
+            url: 'https://earthquake.usgs.gov/earthquakes/eventpage/us7000abcd',
+        })
+        // The clickable line takes over — no duplicate plain "Source:" meta.
+        expect(out.meta.some(m => m.startsWith('Source:'))).toBe(false)
+    })
+
+    it('acled: URL present → clickable source line; absent → omitted honestly (#255)', () => {
+        const withUrl = markerHoverContent('acled', {
+            type: 'Fight with small arms and light weapons',
+            place: 'Kharkiv', country: 'Ukraine', date: '2026-07-10', fatalities: 3,
+            url: 'https://www.acleddata.com/event/12345',
+        })
+        expect(withUrl.sourceLink).toEqual({ label: 'Source: acleddata.com', url: 'https://www.acleddata.com/event/12345' })
+
+        const noUrl = markerHoverContent('acled', {
+            type: 'Protest violently, riot', place: '', country: 'France', date: '', fatalities: 0,
+        })
+        expect(noUrl.sourceLink).toBeNull()
+    })
+
+    it('sourceLinkFrom: only http(s) earns a link, www stripped, junk → null', () => {
+        expect(sourceLinkFrom('https://www.gdacs.org/report.aspx?eventid=1')).toEqual({
+            label: 'Source: gdacs.org',
+            url: 'https://www.gdacs.org/report.aspx?eventid=1',
+        })
+        expect(sourceLinkFrom('http://example.org/x')).toEqual({ label: 'Source: example.org', url: 'http://example.org/x' })
+        expect(sourceLinkFrom('')).toBeNull()
+        expect(sourceLinkFrom(null)).toBeNull()
+        expect(sourceLinkFrom('javascript:alert(1)')).toBeNull()
+        expect(sourceLinkFrom('not a url')).toBeNull()
     })
 
     it('disaster: GDACS alert level shown when no magnitude', () => {
