@@ -1,5 +1,72 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-21 (COUNTRY EDITION SHIPPED + over-merge country-lane + Natalia class
+closed, `64a6f25b`→`5c3ba577`, Fly+Vercel deployed + prod-smoked +
+browser-verified). Two tracks this session.** (1) **OVER-MERGE COUNTRY-LANE**
+(`0c8e3657`→`5c73c0bb`, doc `docs/research/recall-229/2026-07-21-overmerge-
+detector-blind-to-old-topics.md`): Pedro caught a stale over-merged thread live
+in the CO Brief ("Natalia Villalba Murder Case" dt-726 — 37 members, receipts =
+Bogotá theft + Chilean carabinero + MY fraud, CO 18/CL 11/ES 8). The 3 tools
+that should fix it ALL missed: court flagged `failed`, relabel REFUSED (receipts
+too diverse for one honest label), over-merge detector was BLIND. Measured the
+spec's premise WRONG — `topic_members(v1-compat)` and `signal_embeddings`
+**co-prune** for active topics (0/518 court-failed actives are large-yet-
+embedding-blind), so the "old topics lose embeddings" fallback catches 0. REAL
+blind spot: a fusion of **3+ stories** has no clean bimodal split → 2-means
+`gap_ratio` stays narrow → `decide()` KEEPs it while countries fan out with no
+dominant one. New lane `country_multimodality()` (TAU 3 countries / dominant
+<0.60 — set 0.60 so Natalia's CO 0.585 clears; kill-switch
+`ATLAS_OVERMERGE_COUNTRY_FALLBACK`): court-failed AND embedding-KEPT AND
+country-multimodal → flag BORDERLINE → DeepSeek "one story or two?" judge is the
+required confirmer (raw country signal alone hand-checks 73-87%; World Cup /
+single war-theatre are the FP mode). 540 court-failed KEPT → 26 flagged → judge
+confirmed 22 + 1 pre-existing = **23 demoted active→candidate, precision ≈91%**
+hand-checked (NL shooting+US rape+MY fraud; Ukraine+Iran=two wars; 7-country
+Greek blob). Also this session: **RELABEL wired to the 30-min cadence**
+(`cd5b8c5f`, Step 5b in run-atlas-topic-classifier.sh — was nightly). No Fly
+deploy needed (M1 detector + DB state; nightly Step 3.5c runs --judge→--write
+continuously; reversal `detect_overmerge --revert m4-20260721-s42`). **Why
+Natalia stayed #1 for ~20 days**: black-hole absorbing 20d of CO violence +
+label frozen at creation + volume ranking + thin CO competition (only 2 CO crime
+threads; the healthy generic bucket dt-1343 "Violent Crimes and Incidents" is
+court-ENTAILED because a generic label DESCRIBES a diverse crime bucket, while
+Natalia failed carrying a SPECIFIC label over generic content).
+(2) **COUNTRY EDITION — the L1 country door is now a FULL EDITION** (spec
+`docs/superpowers/specs/2026-07-21-country-edition-enrichment-design.md`, plan
+`docs/superpowers/plans/2026-07-21-country-edition-enrichment.md`, brainstorm→
+spec→plan→6-task subagent-driven build w/ two-stage review each). Pedro's vision:
+L1-filtered-to-a-country was a 1-thread stub; make it a full edition (3 adaptive/
+honest sections) that pulls L2/L3 depth INTO the fast door so the time-poor
+reader answers a lot at a glance and never has to leave. **Backend**
+`GET /api/v2/country-edition?cc=` (`app/services/country_edition.py` +
+`geo.py` handler, paid bucket, 120s cache, live/UNSEALED): country-scoped
+`fetch_threads(country_codes=[cc])`→`rank_threads` + a country-scoped
+coverage-gaps query (the "Under the Radar" band = categories w/ domestic signal
+but 0 gate-kept) + **cache-first article enrichment that NEVER blocks**
+(warm-read `article_states` → fire-and-forget `enqueue_fetches` → return; the
+client polls the fill). Gaps/name SQL wrapped so a secondary-band failure
+degrades to `[]` instead of blanking the door (the mig-087-class lesson).
+**Frontend** `lib/countryEdition.ts` `composeCountrySections` (pure, reuses
+`splitEditionThreads`; adaptive — a section renders only w/ content, else honest-
+empty, never invented) + BriefNewspaper 3-section country render + the KEY move:
+`renderReceipt`'s excerpt sources SWITCH on `countryFilter` (global path
+byte-identical). **Final holistic review caught the marquee bug**: the endpoint
+never blocks so its enrichment seed arrives `pending`, and `seed ?? live`
+short-circuited on the truthy pending object → the poll's later `ok` never
+rendered; fixed to `seed.status==='ok' ? seed : (live ?? seed)` (also fixes
+pending DAILY seeds). Honesty flows free: state-media tier chips + label-court
+chips + source-language excerpts all ride the reused `renderReceipt`.
+PROD-VERIFIED (browser, Turkey edition LIVE): vitals 3538 sig/16 threads, "full
+text 18/48 receipts" progressive fill LANDING, Russian+Turkish excerpts under
+receipts, "ria.ru STATE RU" state-media chip, "LABEL UNDER REVIEW" court chip.
+Smoke: US 15 threads/5 gaps/enrich ok=6/48, CO honest-empty (matches /threads —
+genuine post-demote thinness, NOT a bug), cc-guard 400. 12 pytest + 8 vitest.
+DEFERRED (separate greenlight): coverage_check cross-read on the country lead
+(paid LLM, kept out of MVP); country-scoped attention-eclipse. Ran subagent-
+driven (implementer sonnet, reviews opus); reviews earned their keep — caught a
+resilience gap, a cc keyspace guard, an honesty regression (429→perpetual
+"Assembling…" w/o escape hatch), and the pending-seed short-circuit.**
+
 **2026-07-20 (ENGINE SPRINT — MERGE QUALITY + COUNCIL R3 + OVER-MERGE DETECTOR,
 `ce304ca3`→`9d112a08`, all prod/reversible; ran ALONGSIDE 3 parallel chats —
 this is the ENGINE/merge track, read together with the F3 + L1-daily-edition +
