@@ -10,7 +10,7 @@ interface FocusChip {
     onRemove: () => void
 }
 
-export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
+export function FocusIndicator({ onClear, onRemoveTheme }: { onClear?: () => void; onRemoveTheme?: () => void } = {}) {
     const { filter, clearFilter, setThread, setPerson, setCountry, setTheme, isActive } = useFocus()
 
     if (!isActive) return null
@@ -53,7 +53,10 @@ export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
             key: 'theme',
             typeLabel: 'Theme',
             value: resolveThreadLabel(filter.theme, filter.themeLabel),
-            onRemove: () => setTheme(null),
+            // The theme lives in filter.theme AND in App's local selectedTheme
+            // (the open ThemeDetail panel). setTheme(null) alone leaves the panel
+            // on screen desynced — App passes onRemoveTheme to null both.
+            onRemove: onRemoveTheme ?? (() => setTheme(null)),
         })
     }
 

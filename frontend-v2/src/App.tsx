@@ -380,12 +380,15 @@ function AppContent() {
   // X0 (2026-07-05): the stream slot is L2's core state machine — panel_swap
   // makes the middle of the L0→L3 funnel readable (mirrors the render
   // priority chain of the stream panel).
+  // Flywheel #4: mirror the NEW render ladder (thread/theme now outrank a
+  // standing person — App.tsx streamPanel). Was person>thread>theme, which
+  // mislabeled panel_swap as 'person' while a thread/theme panel rendered.
   const activeStreamPanel = storyQuery ? 'story'
-    : focus.type === 'person' && focus.value ? 'person'
-    : selectedPublicAttention ? 'attention'
     : selectedThread ? 'thread'
-    : (selectedCountry || selectedCountryCode) ? 'country'
     : selectedTheme ? 'theme'
+    : (focus.type === 'person' && focus.value) ? 'person'
+    : (selectedCountry || selectedCountryCode) ? 'country'
+    : selectedPublicAttention ? 'attention'
     : selectedChokepoint ? 'chokepoint'
     : 'stream'
   useEffect(() => {
@@ -934,11 +937,14 @@ function AppContent() {
   // Open ThemeDetail when theme is focused via FocusContext (e.g. NarrativeThreads click)
   useEffect(() => {
     const filterCountry = filter.country || undefined
-    // Flywheel: re-fire ONLY when the theme id itself changed. The old
-    // `originCountry !== filterCountry` clause clobbered a thread-open's own
-    // origin country with a stale compound filter.country (onThreadSelect now
-    // sets filter.theme while keeping a different filter.country).
-    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme)) {
+    // Flywheel: re-fire when the theme id changed OR — for a NON-thread theme
+    // (opened via category/universe, not a thread-open) — when filter.country
+    // changed under it, so a Country-chip ✕ correctly re-scopes the open theme
+    // to global. A thread-open theme (selectedTheme.thread set) keeps its OWN
+    // origin country and is NOT re-scoped (that origin came from the thread,
+    // not the compound filter.country — the R2 protection).
+    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme
+        || (!selectedTheme.thread && selectedTheme.originCountry !== filterCountry))) {
       const countryName = filter.country ? resolveCountryName(filter.country) : undefined
       // Item 8: carry the focus context's known label so a focus-driven open
       // keeps the opener's real thread name.
@@ -1083,15 +1089,21 @@ function AppContent() {
     // the backend computes pairs FOR that country (4fb25a11); the global
     // top-100 rarely contains small-country pairs, which is why focused
     // countries drew zero arcs (capture-doc A2). Unfiltered stays a fallback.
-    const baseFlows = selectedCountryCode
+    // Flywheel #2: filter flows by the country ONLY when country is the
+    // active map dimension (collapsed focus === country). Under a compound
+    // "person over a warm country", selectedCountryCode is still set but the
+    // map follows the person — showing that country's flow arcs would be the
+    // same click-history incoherence the heat fix above removes.
+    const flowCountry = focus.type === 'country' ? selectedCountryCode : null
+    const baseFlows = flowCountry
       ? (flows.length ? flows : (unfilteredFlows || []))
       : flows;
     let filteredFlows = [...baseFlows];
 
-    if (selectedCountryCode) {
+    if (flowCountry) {
       filteredFlows = filteredFlows.filter(f =>
-        f.sourceCountry === selectedCountryCode ||
-        f.targetCountry === selectedCountryCode
+        f.sourceCountry === flowCountry ||
+        f.targetCountry === flowCountry
       );
     }
 
@@ -1101,7 +1113,7 @@ function AppContent() {
     return filteredFlows
       .sort((a, b) => (b.strength || 0) - (a.strength || 0))
       .slice(0, maxFlows)
-  }, [flows, unfilteredFlows, selectedCountryCode])
+  }, [flows, unfilteredFlows, selectedCountryCode, focus.type])
 
   // Get crisis state for terminator auto-hide and anomalies
   const { enabled: crisisEnabled, anomalies } = useCrisis()
@@ -1130,7 +1142,14 @@ function AppContent() {
   // map (feature-states below) and the Equal Earth map (#212). See
   // lib/countryHeatStates. entityFocus mirrors the prior inline logic.
   const heatStates = useMemo(() => {
-    const entityFocus = !selectedCountryCode && isActive && !!focus.value
+    // Flywheel #2: the map's node FETCH scopes by the collapsed `focus`
+    // (person>country>theme). The heat COLORING must agree, or a compound
+    // "person over a warm country" (selectedCountryCode still set) paints
+    // country heat over person-fetched nodes — an incoherent map that depends
+    // on click-history. So drive the country-heat branch off the collapsed
+    // focus too: country heat only when focus.type==='country'; otherwise the
+    // person/theme entityFocus wins (no longer gated on !selectedCountryCode).
+    const entityFocus = isActive && !!focus.value
       && (focus.type === 'person' || focus.type === 'theme')
     return computeCountryHeatStates({
       enhancedNodes,
@@ -1138,7 +1157,7 @@ function AppContent() {
       // the strip label says so; never presented as historical heat.
       heatComposite: replayHeat ?? heatComposite,
       visibleFlows,
-      selectedCountryCode,
+      selectedCountryCode: focus.type === 'country' ? selectedCountryCode : null,
       entityFocus,
     })
   }, [enhancedNodes, heatComposite, replayHeat, visibleFlows, selectedCountryCode, isActive, focus.type, focus.value])
@@ -1542,7 +1561,7 @@ function AppContent() {
 
       {/* A1: persistent focus chip — shows what's focused and gives one ✕ to
           return to the whole, unfocused view (the missing country deselect). */}
-      <FocusIndicator onClear={clearAll} />
+      <FocusIndicator onClear={clearAll} onRemoveTheme={() => { setTheme(null); setSelectedTheme(null); setSelectedThread(null) }} />
 
       <div className="coverage-disclaimer" data-tip="Atlas colors countries by deviation from each country's recent baseline. Raw volume increases evidence density, but it is not treated as real-world importance.">
         Coverage bias: map heat is baseline-normalized; raw volume is evidence density, not importance.
