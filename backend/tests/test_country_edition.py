@@ -153,3 +153,27 @@ async def test_fetch_country_edition_orchestrates(monkeypatch):
     assert out["coverage_gaps"][0]["slug"] == "labor"
     assert out["article_enrichment"]["yield"]["ok"] == 1
     assert out["article_enrichment"]["articles"]["http://a"]["excerpt"] == "hi"
+
+
+@pytest.mark.asyncio
+async def test_country_edition_handler_uppercases_and_delegates(monkeypatch):
+    # app.routers.geo does `from app.main_v2 import app`, and app.main_v2
+    # imports geo back (app.include_router(geo.router)) — importing geo
+    # fresh (before main_v2 has been loaded) hits that circular import
+    # mid-init and raises AttributeError on `geo.router`. Load main_v2
+    # first (same fix used by tests/test_translate_text.py) so geo is
+    # already fully initialized by the time we import it directly.
+    import app.main_v2  # noqa: F401
+    import app.routers.geo as geo
+
+    async def fake(cc, hours=24):
+        return {"contract": "country-edition-v0", "country": cc, "hours": hours}
+
+    monkeypatch.setattr(
+        "app.services.country_edition.fetch_country_edition", fake
+    )
+    monkeypatch.setattr(geo.app.state, "redis", None, raising=False)
+
+    out = await geo.get_country_edition(cc="co")
+    assert out["country"] == "CO"
+    assert out["contract"] == "country-edition-v0"

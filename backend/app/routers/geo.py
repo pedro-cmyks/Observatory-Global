@@ -1257,3 +1257,29 @@ async def evidence_for_day(
                  "frozen from the external archive — not exhaustive coverage"
                  if tier == "archive" else None),
     }
+
+
+@router.get("/api/v2/country-edition")
+async def get_country_edition(cc: str, hours: int = Query(24, ge=1, le=24)):
+    """L1 country edition — country-scoped threads + coverage-gaps band +
+    cache-first article enrichment. Live/on-demand (unsealed). 120s cache."""
+    from app.services.country_edition import fetch_country_edition
+
+    cc = cc.upper()
+    cache_key = f"country-edition:{cc}:{hours}"
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            cached = await app.state.redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
+    result = await fetch_country_edition(cc, hours=hours)
+
+    if hasattr(app.state, "redis") and app.state.redis:
+        try:
+            await app.state.redis.setex(cache_key, 120, json.dumps(result, default=str))
+        except Exception:
+            pass
+    return result
