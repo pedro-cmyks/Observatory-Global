@@ -136,6 +136,46 @@
     opacity: 0.85;
 }
 
+/* ◆ capture affordance (Exploration Flywheel, Task 3.7). The tooltip only
+   becomes pointer-interactive when a pin callback is supplied — without one it
+   stays the pass-through, pointer-events:none hover card it has always been, so
+   non-capturing callers are byte-identical. */
+.equal-earth-tooltip--interactive {
+    pointer-events: auto;
+}
+
+.equal-earth-tooltip-pin {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-left: 8px;
+    padding: 1px 6px;
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.5);
+    border-radius: 4px;
+    background: rgba(var(--color-accent-deep-rgb), 0.14);
+    color: var(--color-accent);
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+    line-height: 1.4;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.equal-earth-tooltip-pin:hover,
+.equal-earth-tooltip-pin:focus-visible {
+    background: rgba(var(--color-accent-deep-rgb), 0.28);
+    color: var(--color-text-primary);
+    outline: none;
+}
+
+/* Marker card variant: a full-width action row under the receipt line. */
+.equal-earth-tooltip-pin--block {
+    display: block;
+    width: 100%;
+    margin: 6px 0 0;
+    padding: 3px 6px;
+    text-align: center;
+}
+
 /* R3c defect 13 — emerald-light: the basemap is dark-by-design (the G1 heat
    ramp's luminance is validated over the dark ocean; see the palette note in
    EqualEarthMap.tsx). A hairline inset frame makes the dark viewport read as

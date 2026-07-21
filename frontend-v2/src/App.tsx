@@ -47,7 +47,8 @@ import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
 import { resolveThreadLabel } from './lib/themeLabels'
-import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addPin } from './lib/workbench'
+import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addPin, addCitation } from './lib/workbench'
+import { countryPin, receiptFrom } from './lib/capturePayloads'
 // #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
 // children with CSS transforms — panels are NEVER unmounted by layout changes,
 // which is what the keep-alive architecture requires.
@@ -267,7 +268,7 @@ function AppContent() {
 
   // W1 (2026-07-05): one L3 store — the context adapts panel pins onto the
   // Workbench investigation; isOpen IS the workbench overlay state now.
-  const { trackVisit, isOpen: workbenchOpen, setIsOpen: setWorkbenchOpen, items: workspaceItems, version: wbVersion } = useWorkspace()
+  const { trackVisit, isOpen: workbenchOpen, setIsOpen: setWorkbenchOpen, items: workspaceItems, version: wbVersion, pinItem } = useWorkspace()
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -584,6 +585,21 @@ function AppContent() {
       setCountryWalkthrough(resolveCountryName(countryCode))
     }
   }
+
+  // Exploration Flywheel (Task 3.7): the map's ◆ gestures. A country pins as a
+  // WHERE-lane entity (pinItem → active investigation); an event marker pins as
+  // an un-gated receipt (receiptFrom defaults gateStatus:'unknown' — never faked
+  // to a tier), creating an investigation from the marker title if none is open.
+  const handlePinMapCountry = useCallback((iso: string, name: string) => {
+    pinItem(countryPin(iso, name))
+  }, [pinItem])
+
+  const handlePinMapMarker = useCallback((payload: { title: string; sourceLink: { url: string; label: string } | null; source?: string }) => {
+    const cit = receiptFrom({ headline: payload.title, url: payload.sourceLink?.url, source: payload.source })
+    let invId = getActiveInvestigationId()
+    if (!invId || !getInvestigation(invId)) invId = createInvestigation(payload.title).id
+    addCitation(invId, cit)
+  }, [])
 
   // A1: one comprehensive deselect — the focus chip's ✕ and the map background
   // click both return to the whole, unfocused view. clearFocus() clears the
@@ -1683,6 +1699,8 @@ function AppContent() {
                   flyCountry={mapFlyCountry}
                   resetNonce={eeResetNonce}
                   overlay={nativeOverlayData}
+                  onPinCountry={handlePinMapCountry}
+                  onPinMarker={handlePinMapMarker}
                   onMarkerClick={(kind, p) => {
                     // Mirrors the MapLibre layer handlers (parity audit).
                     if (kind === 'chokepoint') {
