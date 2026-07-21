@@ -1,5 +1,61 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-21 (EXPLORATION FLYWHEEL — REMAINING JSX WIRING DONE + MERGED,
+`06829457`→`53174260`, pushed to `v3-intel-layer`, Vercel deploying; Pedro ran
+it + eyeballed = "se ve bien").** Finished the remaining flywheel integration
+(design `docs/superpowers/specs/2026-07-21-exploration-flywheel-design.md`, plan
+`docs/superpowers/plans/2026-07-21-exploration-flywheel.md` — status block
+updated to DONE). Controller-driven: implementer subagents wrote+tested, this
+chat committed (subagents HEAD-race the shared branch). **Shipped:** (3.3) verified
+ALREADY landed by the parallel walk-constellation merge — `InvestigativeUniverse`
+`onNodePin` + neighbor-star ◆, report path (`DossierConnections` default) stays
+inert; no new code. (3.7) `EqualEarthMap` gained optional `onPinCountry`/
+`onPinMarker` (map stays STORE-FREE — App owns pins); ◆ in the hover tooltip. To
+make an in-tooltip button reachable on a cursor-tracking card the interactive
+path FREEZES the country card on contact + a 420ms dismiss bridge + a d3-zoom
+`.filter()` veto that EXACTLY replicates d3's default when no ◆ (so non-pin
+callers are byte-identical) — a real prod map-interaction shift, gated behind
+callback presence. (4.3) `FrameStrip` fetches the console thread pool ONCE ≥2
+pins accumulate (warm-cached, failure→no callout), reads the rich WorkbenchPins,
+`detectBriefRelations`→`hasEnoughSignal`→`topBriefRelation`, renders the strongest
+with a never-truncated "measured, not asserted" tag + Scope/＋Report; tier ceiling
+text|context by construction. (5.2–5.6) `resolveLauncherVerbs` drives every verb:
+DossierView `onOpenThread`/`onOpenParams`/`onFreshQuery`; gaps→fresh-query (the
+one place the app GENERATES), contested/tensions→corroborate (existing
+`runCorroboration`, PAID/explicit), leads→open+keep (re-run stays the header's
+explicit RE-READ — no auto paid AI-read); semantic neighbors→in-app open
+(`onSignalOpen` swaps `SignalStream.selectedSignal`; NO signal-by-id endpoint so
+the neighbor→Signal map is identity-only = honest absence, URL kept as "read
+original"); `publication.package.gaps` left inert (readiness reason codes, not
+queryable). (6.2/6.3) carry-context: `openBrief`→`buildBriefParams`, deep-link
+consumes `?q` (own branch) + `?label`; **the #1 trap fixed** — useUrlSync's
+write-back rebuilt a fresh query string and DELETED q/label/attention/entry on
+every focus change → new pure `mergeFocusIntoParams` preserves non-focus params
+(read via a ref, no dep loop); `entrySource` now reactive on `location.search`.
+Mobile: `closeAll`/`popPanel`→`/brief` when Brief-entered; the map cockpit
+UNMOUNTS off the map tab (its 2D-canvas rAF loop stops while reading); new
+`FrameSheet` pull-up (reuses FrameStrip, ◎ ONLY there) with a `raised` prop that
+lifts it above the floating focus chip only when a chip exists. **2 bugs caught
+in the browser + fixed:** ◎ self-loop (a pinned thread matched its own pool
+entry — "Taylor Farms · Taylor Farms"; `isSameStory` prefix-normalizes
+`theme-…`↔`thread_id`, `26055305`) and the mobile sheet↔focus-chip collision
+(`38f846dc`). New pure libs used (already merged/tested): `capturePayloads`,
+`briefRelationDetector` (+`isSameStory`), `launcherVerbs`, `navParams`
+(+`mergeFocusIntoParams`), `pinLanes`, `focusReducer`, `ambientTrail`.
+**Gate: build clean, 875 vitest / 102 files.** BROWSER-VERIFIED live (desktop +
+375px mobile): zero console errors through focus/tab-switch/map/pinning; compound
+focus re-scopes; map ◆ present; FrameStrip WHO/WHERE/WHAT lanes populate
+(thread◆→WHAT, person◆→WHO); ◎ callout fired end-to-end with the honesty tag;
+mobile FrameSheet expands with lanes, no chip overlap. **NOT verifiable this
+session** (prod-data, not the code): universe ◆ gestures — `/api/v2/universe`
+returned "field endpoint did not answer" (cold/rate-limited); build + 42 map
+tests stand. **OPEN follow-ups (not blockers):** backend `GET /api/v2/signal/{id}`
+would upgrade the semantic-neighbor open from a partial Signal to full; a device
+pass on the frozen-tooltip map interaction; re-verify universe ◆ gestures once
+`/api/v2/universe` is warm. Honesty rails held throughout: pins = deliberate
+evidence, detection measured-not-asserted (text/context only), nothing paid fires
+without a click, every scope legible + reversible.
+
 **2026-07-21 (COUNTRY EDITION SHIPPED + over-merge country-lane + Natalia class
 closed, `64a6f25b`→`5c3ba577`, Fly+Vercel deployed + prod-smoked +
 browser-verified). Two tracks this session.** (1) **OVER-MERGE COUNTRY-LANE**
