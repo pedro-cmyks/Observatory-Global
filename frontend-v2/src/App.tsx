@@ -2039,14 +2039,31 @@ function AppContent() {
                     originCountryName: target.originCountryName,
                     thread: target.thread,
                   } : null)
+                  // Flywheel 1.3: thread-open COMPOSES with the active focus
+                  // instead of wiping it. clearFocus() used to null
+                  // filter.country/filter.person unconditionally — dropped so an
+                  // active country/person focus survives (setTheme(theme,...) is
+                  // compound now, Tasks 1.1/1.2). setTheme(null) stays: it keeps
+                  // filter.theme dormant so the focus->ThemeDetail sync effect
+                  // (~line 930) never re-fires and clobbers this handler's own
+                  // selectedTheme.originCountry with a stale filter.country.
+                  // setSelectedCountry/setSelectedCountryCode are ALSO left
+                  // untouched now: nulling them while filter.country stays set
+                  // used to trip the country-focus sync effect (~line 921,
+                  // focus.value !== selectedCountryCode), which calls
+                  // handleCountryClick() — and that itself calls
+                  // setSelectedTheme(null)/setSelectedThread(null), silently
+                  // snapping the just-opened thread back closed. Leaving them be
+                  // matches how handleThemeSelect already opens themes without
+                  // disturbing an active country; isThread/isTheme already
+                  // outrank isCountry in the stream-panel priority ladder, so
+                  // the warm country state is harmless to render and lets Back
+                  // correctly reveal the country panel again.
                   setTheme(null)
-                  setSelectedCountry(null)
-                  setSelectedCountryCode(null)
                   setSelectedPublicAttention(null)
                   setSelectedChokepoint(null)
                   setRightPanelThemeCountry(null)
                   setThemeBackStack([])
-                  clearFocus()
                   setSelectedThread(target ? null : thread)
                   if (thread.top_countries[0]) setMapFlyCountry(thread.top_countries[0])
                 }}
