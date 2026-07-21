@@ -593,6 +593,9 @@ export const SignalStream: React.FC = () => {
                 onThemeClick={(t) => setTheme(t, 'stream')}
                 onCountryClick={(c) => setCountry(c, 'stream')}
                 onPersonClick={(p) => setPerson(p)}
+                // Task 5.5 — open a semantic neighbor in-app: re-point this same
+                // panel at the neighbor (its context re-fetches on signal.id).
+                onSignalOpen={(sig) => setSelectedSignal(sig)}
                 allowlist={allowlist}
                 relatedSignals={
                     items
