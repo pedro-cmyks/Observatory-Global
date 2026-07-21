@@ -85,3 +85,71 @@ def test_build_country_edition_payload_shape():
     assert payload["coverage_gaps"][0]["slug"] == "x"
     assert payload["generated_at"] == "2026-07-21T00:00:00+00:00"
     assert payload["window_hours"] == 24
+
+
+import pytest
+
+import app.services.country_edition as ce
+
+
+@pytest.mark.asyncio
+async def test_fetch_country_edition_no_db_honest_empty(monkeypatch):
+    monkeypatch.setattr(ce.db, "pool", None, raising=False)
+    out = await ce.fetch_country_edition("co")
+    assert out["contract"] == "country-edition-v0"
+    assert out["country"] == "CO"                 # uppercased
+    assert out["country_name"] == "CO"            # falls back to code, honest
+    assert out["threads"] == []
+    assert out["coverage_gaps"] == []
+    assert out["article_enrichment"]["yield"]["attempted"] == 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_country_edition_orchestrates(monkeypatch):
+    async def fake_fetch_threads(**kwargs):
+        assert kwargs["country_codes"] == ["CO"]
+        return [{"thread_id": "t1", "label": "L1",
+                 "evidence_samples": [{"url": "http://a"}]}]
+
+    def fake_rank(threads):
+        return threads
+
+    async def fake_states(urls):
+        return [{"url": "http://a", "status": "ok", "excerpt": "hi",
+                 "via": "live", "outlet": "A", "fetched_at": "t"}]
+
+    async def fake_enqueue(urls):
+        return []
+
+    class _Conn:
+        async def fetchrow(self, *a):
+            return {"name": "Colombia"}
+
+        async def fetch(self, *a):
+            return [{"slug": "labor", "label": "Labor strike",
+                     "raw_signals": 12, "verified": 0, "scored": 12}]
+
+    class _Acquire:
+        async def __aenter__(self):
+            return _Conn()
+
+        async def __aexit__(self, *a):
+            return False
+
+    class _Pool:
+        def acquire(self):
+            return _Acquire()
+
+    monkeypatch.setattr(ce.db, "pool", _Pool(), raising=False)
+    monkeypatch.setattr(ce, "fetch_threads", fake_fetch_threads)
+    monkeypatch.setattr(ce, "rank_threads", fake_rank)
+    import app.services.article_fetch as af
+    monkeypatch.setattr(af, "article_states", fake_states)
+    monkeypatch.setattr(af, "enqueue_fetches", fake_enqueue)
+
+    out = await ce.fetch_country_edition("co")
+    assert out["country_name"] == "Colombia"
+    assert out["threads"][0]["thread_id"] == "t1"
+    assert out["coverage_gaps"][0]["slug"] == "labor"
+    assert out["article_enrichment"]["yield"]["ok"] == 1
+    assert out["article_enrichment"]["articles"]["http://a"]["excerpt"] == "hi"

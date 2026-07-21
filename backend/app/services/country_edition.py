@@ -11,7 +11,12 @@ polls for the progressive fill.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+import os
+from datetime import datetime, timezone
+
+from app import db
+from app.services.thread_intelligence import fetch_threads
+from app.services.thread_ranking import rank_threads
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +26,28 @@ ENRICHMENT_CONTRACT = "country-edition-enrichment-v0"
 _MAX_THREADS = 24
 _RECEIPTS_PER_THREAD = 4
 _MAX_RECEIPT_URLS = 48
+
+# Country-scoped coverage gaps = the "Under the Radar" band. Categories getting
+# real domestic signal in this country but with ZERO rows clearing the gate —
+# the domestic stories not yet surfacing. Mirrors briefing.coverage_gaps but
+# joins signals_v2 for the country predicate and uses a lower floor (per-country
+# volume is smaller than global). Tunable via ATLAS_COUNTRY_GAP_MIN.
+_COUNTRY_GAPS_SQL = """
+    SELECT t.slug, t.label,
+           COUNT(*)::int AS raw_signals,
+           COUNT(*) FILTER (WHERE a.gate_kept)::int AS verified,
+           COUNT(*) FILTER (WHERE a.gate_score IS NOT NULL)::int AS scored
+    FROM signal_topic_assignments a
+    JOIN atlas_topics t ON t.id = a.topic_id
+    JOIN signals_v2 s ON s.id = a.signal_id
+    WHERE a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+      AND s.country_code = $2
+    GROUP BY t.slug, t.label
+    HAVING COUNT(*) >= $3
+       AND COUNT(*) FILTER (WHERE a.gate_kept) = 0
+    ORDER BY raw_signals DESC
+    LIMIT 6
+"""
 
 
 def gather_receipt_urls(
@@ -95,3 +122,76 @@ def build_country_edition_payload(
         "coverage_gaps": coverage_gaps,
         "article_enrichment": enrichment,
     }
+
+
+async def fetch_country_edition(country_code: str, *, hours: int = 24) -> dict:
+    """Compose the live country edition. Never blocks: warm-reads the article
+    cache and enqueues the misses fire-and-forget."""
+    cc = country_code.upper()
+    generated_at = datetime.now(timezone.utc)
+
+    if db.pool is None:
+        return build_country_edition_payload(
+            country=cc,
+            country_name=cc,
+            ranked_threads=[],
+            enrichment=build_article_enrichment([], []),
+            coverage_gaps=[],
+            generated_at=generated_at,
+            window_hours=hours,
+        )
+
+    gap_min = int(os.getenv("ATLAS_COUNTRY_GAP_MIN", "8"))
+    async with db.pool.acquire() as conn:
+        rec = await conn.fetchrow(
+            "SELECT name FROM countries_v2 WHERE code = $1", cc
+        )
+        country_name = rec["name"] if rec else cc
+        gap_rows = await conn.fetch(_COUNTRY_GAPS_SQL, hours, cc, gap_min)
+
+    threads = await fetch_threads(
+        hours=hours,
+        limit=_MAX_THREADS,
+        country_codes=[cc],
+        attach_evidence=True,
+    )
+    ranked = rank_threads(threads)
+
+    urls = gather_receipt_urls(ranked)
+    states: list[dict] = []
+    if urls:
+        try:
+            from app.services.article_fetch import article_states, enqueue_fetches
+            states = await article_states(urls)
+            by_url = {s["url"]: s for s in states}
+            missing = [
+                u for u in urls
+                if by_url.get(u, {}).get("status") in (None, "pending")
+            ]
+            if missing:
+                await enqueue_fetches(missing)      # fire-and-forget, NO wait
+                states = await article_states(urls)  # re-read; warm ones may flip
+        except Exception as exc:  # enrichment never breaks the edition
+            logger.warning(
+                "country-edition enrichment skipped: %s: %s",
+                type(exc).__name__, str(exc)[:200],
+            )
+
+    enrichment = build_article_enrichment(urls, states)
+    coverage_gaps = [dict(r) for r in gap_rows]
+
+    logger.info(
+        "country-edition cc=%s threads=%d gaps=%d enrich ok=%d/%d pending=%d",
+        cc, len(ranked), len(coverage_gaps),
+        enrichment["yield"]["ok"], enrichment["yield"]["attempted"],
+        enrichment["yield"]["pending"],
+    )
+    return build_country_edition_payload(
+        country=cc,
+        country_name=country_name,
+        ranked_threads=ranked,
+        enrichment=enrichment,
+        coverage_gaps=coverage_gaps,
+        generated_at=generated_at,
+        window_hours=hours,
+    )
