@@ -2081,3 +2081,10 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   color: var(--r-ink-soft, var(--r-ink));
   overflow-wrap: anywhere;
 }
+
+/* ===== Country edition (Task 5) ===== */
+.brief-country-section { margin-top: 1.5rem; }
+.brief-country-enrich { font-size: 0.8rem; opacity: 0.75; margin: 0.25rem 0 0.75rem; }
+.brief-coverage-gaps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
+.brief-coverage-gap { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.4rem 0.6rem; border-left: 2px solid var(--r-sec, currentColor); opacity: 0.9; }
+.brief-gap-meta { font-size: 0.78rem; opacity: 0.7; white-space: nowrap; }

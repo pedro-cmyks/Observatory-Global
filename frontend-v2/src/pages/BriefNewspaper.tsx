@@ -32,6 +32,12 @@ import {
     type DailyPublicationArtifact,
 } from '../lib/dailyPublication'
 import { buildStaleBanner } from '../lib/staleBanner'
+import {
+    composeCountrySections,
+    fetchCountryEdition,
+    type CountryEdition,
+    type CountrySection,
+} from '../lib/countryEdition'
 import '../styles/readerTheme.css'
 import './BriefNewspaper.css'
 
@@ -307,8 +313,11 @@ export function BriefNewspaper() {
     const [countryFilter, setCountryFilter] = useState<string | null>(countryParam)
     const [countryDetail, setCountryDetail] = useState<CountryBriefData | null>(null)
     const [countryThreads, setCountryThreads] = useState<TopThread[] | null>(null)
-    const [countryLoading, setCountryLoading] = useState(false)
-    const [countryError, setCountryError] = useState<string | null>(null)
+    // The country door surfaces loading via the countryEdition "assembling" note
+    // and no-data via the honest empty-state, so these track the vitals/threads
+    // fetch without a read binding (value elided to satisfy noUnusedLocals).
+    const [, setCountryLoading] = useState(false)
+    const [, setCountryError] = useState<string | null>(null)
     const [countryQuery, setCountryQuery] = useState('')
     const [showCountryDropdown, setShowCountryDropdown] = useState(false)
     const countryInputRef = useRef<HTMLInputElement>(null)
@@ -514,6 +523,18 @@ export function BriefNewspaper() {
         return () => { cancelled = true }
     }, [countryFilter, hours])
 
+    const [countryEdition, setCountryEdition] = useState<CountryEdition | null>(null)
+
+    useEffect(() => {
+        if (!countryFilter) { setCountryEdition(null); return }
+        let cancelled = false
+        setCountryEdition(null)
+        fetchCountryEdition(countryFilter, hours).then(ed => {
+            if (!cancelled) setCountryEdition(ed)
+        })
+        return () => { cancelled = true }
+    }, [countryFilter, hours])
+
     useEffect(() => {
         if (watches.length === 0) return
         let cancelled = false
@@ -677,18 +698,6 @@ export function BriefNewspaper() {
     // one thread would lead once the 30-min court cycle stamps it.
     const leadAwaiting = gateActive && (liveLead?.awaitingVerification ?? false)
 
-    // Leak 2: the COUNTRY edition gets the SAME eligibility split as the global
-    // path — below-bar / court-failed country threads never render as assembled
-    // cards; they drop to the unassembled tray (or the honest empty-lead when
-    // none clears the bar). Country threads share the /threads contract, so they
-    // carry avg_confidence/label_status too.
-    const countryPool: TopThread[] = countryThreads ?? []
-    const countryEligible = countryFilter ? countryPool.filter(isLeadEligible) : []
-    const countryUnassembled = countryFilter ? countryPool.filter(t => !isLeadEligible(t)) : []
-    // Same timing/quality split for the country edition's empty state.
-    const countryAwaiting = countryFilter
-        ? countryEligible.length === 0 && countryPool.some(t => leadBlockReason(t) === 'awaiting-verification')
-        : false
     const restThreads = leadThread
         ? eligiblePool.filter(t => t.thread_id !== leadThread.thread_id)
         : eligiblePool
@@ -775,7 +784,7 @@ export function BriefNewspaper() {
     // server-fetched excerpts per receipt URL + a lead coverage check. Absent
     // on pre-bridge editions — everything below degrades to exactly the old
     // render. All three sections share renderReceipt, so one join enriches them.
-    const editionArticles = dailyEdition?.package?.article_enrichment?.articles ?? null
+    const dailyEditionArticles = dailyEdition?.package?.article_enrichment?.articles ?? null
     const editionYield = dailyEdition?.package?.article_enrichment?.yield ?? null
     const coverageCheck = dailyEdition?.package?.coverage_check ?? null
 
@@ -794,7 +803,22 @@ export function BriefNewspaper() {
         [allThreads.map(t => t.thread_id).join('|')],
     )
     useEffect(() => { enqueueUrls(liveReceiptUrls) }, [liveReceiptUrls])
-    const liveArticleStates = useArticleStates(liveReceiptUrls)
+    const globalLiveArticleStates = useArticleStates(liveReceiptUrls)
+
+    // Country excerpt sources: warm map from the endpoint + a live poll on the
+    // still-pending receipt URLs (progressive fill — same machinery as the seal).
+    const countryEditionArticles = countryEdition?.article_enrichment?.articles ?? null
+    const countryPendingUrls = useMemo(
+        () => countryEdition?.article_enrichment?.pending_urls ?? [],
+        [countryEdition],
+    )
+    useEffect(() => { enqueueUrls(countryPendingUrls) }, [countryPendingUrls])
+    const countryLiveStates = useArticleStates(countryPendingUrls)
+
+    // renderReceipt reads these two names; select country sources when a country
+    // is open (the two views are mutually exclusive via countryFilter).
+    const editionArticles = countryFilter ? countryEditionArticles : dailyEditionArticles
+    const liveArticleStates = countryFilter ? countryLiveStates : globalLiveArticleStates
 
     // Receipts: REAL LINKS. Evidence urls render as <a href> (the whole point
     // of a receipt); rows without a url degrade to a plain row.
@@ -1036,6 +1060,50 @@ export function BriefNewspaper() {
                     <p className="brief-unassembled-noreceipts">No sample receipts carried for this cluster this window.</p>
                 )}
             </div>
+        )
+    }
+
+    const renderCountryGaps = (gaps: CountrySection<TopThread>['gaps']) => (
+        <ul className="brief-coverage-gaps">
+            {gaps.map(g => (
+                <li key={g.slug} className="brief-coverage-gap">
+                    <span className="brief-gap-label">{g.label}</span>
+                    <span className="brief-gap-meta">
+                        {g.raw_signals} signals · 0 cleared the gate
+                    </span>
+                </li>
+            ))}
+        </ul>
+    )
+
+    const COUNTRY_SECTION_META: Record<
+        CountrySection<TopThread>['kind'],
+        { title: string; kicker: string }
+    > = {
+        country_today: { title: 'Today', kicker: 'The country now' },
+        under_radar: { title: 'Under the Radar', kicker: 'Domestic signal, not yet surfacing' },
+        culture_sport_life: { title: 'Culture, Sport & Life', kicker: 'Where the rest of us live' },
+    }
+
+    const renderCountrySection = (
+        sec: CountrySection<TopThread>,
+        country: string,
+    ) => {
+        const meta = COUNTRY_SECTION_META[sec.kind]
+        return (
+            <section key={sec.kind} className={`brief-country-section brief-country-section-${sec.kind}`}>
+                <span className="reader-section-kicker">{meta.kicker}</span>
+                <h3 className="brief-section-title">{meta.title}</h3>
+                {!sec.present ? (
+                    <p className="brief-empty-note">{sec.empty_reason}</p>
+                ) : sec.kind === 'under_radar' ? (
+                    renderCountryGaps(sec.gaps)
+                ) : (
+                    <div className="brief-cards">
+                        {sec.threads.map((t, i) => renderThreadCard(t, { country, wide: i === 0 }))}
+                    </div>
+                )}
+            </section>
         )
     }
 
@@ -1670,7 +1738,7 @@ export function BriefNewspaper() {
                             </>
                         )}
 
-                        {/* ===== COUNTRY VIEW ===== */}
+                        {/* ===== COUNTRY EDITION ===== */}
                         {countryFilter && (
                             <section className="brief-panel brief-panel-country">
                                 {countryDetail && (
@@ -1682,7 +1750,7 @@ export function BriefNewspaper() {
                                         </div>
                                         <div className="brief-vital">
                                             <div className="k">Threads</div>
-                                            <div className="v">{countryThreads?.length ?? 0}</div>
+                                            <div className="v">{countryEdition?.threads.length ?? countryThreads?.length ?? 0}</div>
                                             <div className="sub">country-scoped narrative threads</div>
                                         </div>
                                         <div className={`brief-vital ${moodClass(countryDetail.sentiment)}`}>
@@ -1697,62 +1765,38 @@ export function BriefNewspaper() {
                                 <h2 className="brief-section-title">
                                     <Flag code={countryFilter} /> {resolveCountryName(countryFilter, countryDetail?.name)}
                                 </h2>
-                                {countryLoading ? (
-                                    <p className="brief-country-note">Checking this country's narrative threads for the selected window…</p>
-                                ) : countryPool.length === 0 ? (
-                                    <div className="brief-country-note">
-                                        <p>
-                                            {countryError
-                                                ? 'Atlas could not load this country brief right now. Open the console to inspect broader context or expand the time range.'
-                                                : 'No coherent narrative thread cleared the quality gate for this country in the current window.'}
+
+                                {(() => {
+                                    const enr = countryEdition?.article_enrichment
+                                    if (!enr?.yield || enr.yield.attempted === 0) return null
+                                    const stillPending = (enr.pending_urls ?? []).filter(u => {
+                                        const s = countryLiveStates.get(u)
+                                        return !s || s.status === 'pending' || s.status === 'queued'
+                                    }).length
+                                    return (
+                                        <p className="brief-country-enrich" aria-live="polite">
+                                            {`full text ${enr.yield.ok}/${enr.yield.attempted} receipts`}
+                                            {stillPending > 0 ? ` · enriqueciendo ${stillPending} más…` : ''}
                                         </p>
-                                        <button
-                                            className="brief-theme-link"
-                                            onClick={() => goToAtlas(`country=${countryFilter}`)}
-                                        >
+                                    )
+                                })()}
+
+                                {!countryEdition ? (
+                                    <p className="brief-country-note">
+                                        Assembling this country's edition for the last {hours}h…
+                                    </p>
+                                ) : countryEdition.threads.length === 0 && countryEdition.coverage_gaps.length === 0 ? (
+                                    <div className="brief-country-note">
+                                        <p>No coherent narrative thread cleared the quality gate for this country in the current window.</p>
+                                        <button className="brief-theme-link" onClick={() => goToAtlas(`country=${countryFilter}`)}>
                                             Open country in Atlas →
                                         </button>
                                     </div>
                                 ) : (
-                                    <>
-                                        {/* Leak 2: only threads that clear the confidence bar AND the
-                                            Label Court render as assembled cards. */}
-                                        {countryEligible.length > 0 ? (
-                                            <div className="brief-cards">
-                                                {countryEligible.map((t, i) => renderThreadCard(t, { country: countryFilter, wide: i === 0 }))}
-                                            </div>
-                                        ) : (
-                                            // Threads exist but none clears the bar (e.g. GR: the 0.214
-                                            // "British Teen Fall" blob) — honest empty-lead, never an
-                                            // assembled card. The raw receipts live in the tray below.
-                                            // Timing vs quality split mirrors the global edition.
-                                            <article className="brief-lead brief-lead-empty brief-lead-belowbar">
-                                                <div className="reader-kicker">
-                                                    <span>Lead</span>
-                                                    <span className="cat">{countryAwaiting ? 'awaiting verification' : 'no story clears the bar'}</span>
-                                                </div>
-                                                {countryAwaiting ? (
-                                                    <p>
-                                                        Today's stories for {resolveCountryName(countryFilter, countryDetail?.name)} are
-                                                        awaiting verification — their labels have not yet been checked against their own
-                                                        receipts (stamps land within ~30 minutes). The raw receipts are in the
-                                                        unassembled desk below.
-                                                    </p>
-                                                ) : (
-                                                    <p>
-                                                        No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
-                                                        bar for {resolveCountryName(countryFilter, countryDetail?.name)} this window —{' '}
-                                                        {countryUnassembled.length} tracked cluster{countryUnassembled.length === 1 ? '' : 's'}{' '}
-                                                        sit{countryUnassembled.length === 1 ? 's' : ''} below it. Read the unassembled desk
-                                                        below for the raw receipts rather than a label we don't trust.
-                                                    </p>
-                                                )}
-                                            </article>
-                                        )}
-
-                                        {/* Same unassembled tray as the global edition. */}
-                                        {countryUnassembled.length > 0 && renderUnassembledSection(countryUnassembled)}
-                                    </>
+                                    composeCountrySections<TopThread>(
+                                        (countryEdition.threads as unknown as TopThread[]),
+                                        countryEdition.coverage_gaps,
+                                    ).map(sec => renderCountrySection(sec, countryFilter))
                                 )}
                             </section>
                         )}
