@@ -181,6 +181,25 @@ if [[ "${ATLAS_LABEL_COURT_ENABLED:-true}" == "true" \
   ( cd "$ROOT_DIR" && "$MLVENV/bin/python" -m backend.scripts.label_court \
       --write --only-unchecked --limit "${ATLAS_LABEL_COURT_LIMIT:-40}" ) \
     || echo "[atlas-topic] label court failed (non-fatal)" >&2
+
+  # Step 5b (2026-07-21): RELABEL the court-failed topics on the SAME 30-min
+  # cadence — closes the detect->correct gap. The court MARKS a stale/over-merged
+  # topic 'failed' every 30 min (e.g. 'Natalia Villalba Murder Case', born 07-01,
+  # now holding diverse Colombia+Chile crimes), but until 2026-07-21 the RELABEL
+  # that regenerates the served headline from the current receipts ran only
+  # manually/nightly — so a failed topic kept serving its stale title for up to a
+  # day. Now relabel_court_failed runs here: biggest-failed-first (agg_n_signals
+  # DESC), bounded to ATLAS_RELABEL_LIMIT/cycle; it rewrites the label from the
+  # receipts + resets label_status=NULL so the NEXT cycle's court re-judges the
+  # new label. Reversible (JSONL ledger). Irreparable over-merges get a vague-blob
+  # relabel here, which the nightly over-merge detector (Step 3.5c) then demotes —
+  # a vague-honest label still beats a stale-lying one. Non-fatal; reverse:
+  # ATLAS_RELABEL_ENABLED=false.
+  if [[ "${ATLAS_RELABEL_ENABLED:-true}" == "true" ]]; then
+    ( cd "$ROOT_DIR" && "$MLVENV/bin/python" -m backend.scripts.relabel_court_failed \
+        --write --limit "${ATLAS_RELABEL_LIMIT:-20}" ) \
+      || echo "[atlas-topic] relabel court-failed failed (non-fatal)" >&2
+  fi
 else
   echo "[atlas-topic] skip label court (disabled, DEEPSEEK_API_KEY or mlvenv missing)" >&2
 fi
