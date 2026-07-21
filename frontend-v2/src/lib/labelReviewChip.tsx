@@ -68,11 +68,23 @@ export function labelReviewReason(input: LabelReviewInput): LabelReviewReason | 
   return null
 }
 
+/** The court's build_neutral_label emits an INTERNAL placeholder
+ * "<geo>: <subject> — from N receipts" for freshly-failed topics before the
+ * DeepSeek relabel regenerates a real headline. That token-triple is not a
+ * human-facing suggestion — it must never surface (#261: "do not surface
+ * anywhere"). Only a real relabel (no "— from N receipts" tail) is presentable
+ * advisory. (#261 gap, 2026-07-21.) */
+export function isPresentableProposedLabel(labelProposed?: string | null): boolean {
+  const t = labelProposed?.trim()
+  if (!t) return false
+  return !/—\s*from\s+\d+\s+receipts?\s*$/i.test(t)
+}
+
 /** Plain-language explanation of the review reason, for the chip's data-tip. */
 export function labelReviewTip(reason: LabelReviewReason, labelProposed?: string | null): string {
   const advisory =
-    labelProposed && labelProposed.trim()
-      ? ` The receipts suggest: ${labelProposed.trim()}`
+    isPresentableProposedLabel(labelProposed)
+      ? ` The receipts suggest: ${labelProposed!.trim()}`
       : ''
   switch (reason) {
     case 'label-failed':

@@ -96,10 +96,17 @@ describe('labelReviewReason', () => {
 })
 
 describe('labelReviewTip', () => {
-  it('explains a court failure and surfaces the proposed neutral label as advisory', () => {
+  it('SUPPRESSES the internal token-triple placeholder (#261 — never surface it)', () => {
+    // build_neutral_label emits "<geo>: <subject> — from N receipts" as an
+    // internal placeholder before the DeepSeek relabel; it must never reach the user.
     const tip = labelReviewTip('label-failed', 'Iran: Hormuz blockade & US strikes — from 6 receipts')
     expect(tip).toContain('did not match its receipts')
-    expect(tip).toContain('receipts suggest: Iran: Hormuz blockade & US strikes — from 6 receipts')
+    expect(tip).not.toContain('receipts suggest')
+  })
+
+  it('surfaces a REAL relabel (no receipts-count tail) as advisory', () => {
+    const tip = labelReviewTip('label-failed', 'Spain tops Argentina in dominant World Cup final')
+    expect(tip).toContain('receipts suggest: Spain tops Argentina in dominant World Cup final')
   })
 
   it('explains a court partial match', () => {
