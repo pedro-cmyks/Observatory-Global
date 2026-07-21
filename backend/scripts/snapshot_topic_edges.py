@@ -208,14 +208,22 @@ async def run(conn, *, snapshot_at: datetime | None = None,
         elif edge_rows:
             summary["edges_written"] = await write_edges(conn, snapshot_at, edge_rows)
 
-    topic_entities = await fetch_topic_entities(conn, window_hours)
-    backbone_rows, meta = compute_backbone_rows(topic_entities)
-    summary["backbone_meta"] = meta
-    if dry_run:
-        summary["backbone_written"] = len(backbone_rows)
-    elif backbone_rows:
-        summary["backbone_written"] = await write_backbone(
-            conn, window_start, snapshot_at, backbone_rows)
+    # Backbone is BEST-EFFORT: the topic_members ⋈ signals_v2 window scan is heavy
+    # and can exceed statement_timeout on a warm/large corpus. A failure here must
+    # NOT lose the kinship edges already written above — degrade honestly.
+    try:
+        topic_entities = await fetch_topic_entities(conn, window_hours)
+        backbone_rows, meta = compute_backbone_rows(topic_entities)
+        summary["backbone_meta"] = meta
+        if dry_run:
+            summary["backbone_written"] = len(backbone_rows)
+        elif backbone_rows:
+            summary["backbone_written"] = await write_backbone(
+                conn, window_start, snapshot_at, backbone_rows)
+    except Exception as exc:  # noqa: BLE001 — best-effort, never blocks the edge write
+        summary["backbone_meta"] = {"skipped": type(exc).__name__,
+                                    "detail": str(exc)[:200]}
+        print(f"backbone skipped ({type(exc).__name__}): {exc}", file=sys.stderr)
 
     return summary
 
@@ -231,7 +239,7 @@ async def _main_async(args: argparse.Namespace) -> int:
     )
     conn = await asyncpg.connect(dsn)
     try:
-        await conn.execute("SET statement_timeout = 30000")
+        await conn.execute("SET statement_timeout = 120000")
         summary = await run(conn, snapshot_at=snapshot_at,
                             window_hours=args.window_hours, dry_run=args.dry_run)
         print(summary)
