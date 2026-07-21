@@ -34,6 +34,7 @@ import { connectionTopicIds } from '../lib/dossierConnections';
 import { countQualifier } from '../lib/countQualifier';
 import { extractSnapshotUrls, stateTag, useArticleStates } from '../lib/articleEnrichment';
 import { fetchLeads, fetchReadings, readProvenance, type LeadsResult, type Reading } from '../lib/aiRead';
+import { resolveLauncherVerbs } from '../lib/launcherVerbs';
 import './WorkbenchPanel.css';
 
 // Gate-tier badge copy for pinned receipts — the same honesty labels the
@@ -258,6 +259,9 @@ export default function WorkbenchPanel({
                 investigation={active}
                 autoCorroborate={autoCorroborate}
                 onMutate={rerender}
+                onOpenThread={onOpenThread}
+                onOpenParams={onOpenParams}
+                onFreshQuery={onStartInvestigation}
                 onClose={() => { setShowDossier(false); setAutoCorroborate(false); }}
               />
             )}
@@ -478,23 +482,56 @@ export default function WorkbenchPanel({
                       </div>
                       {l.quote && <blockquote className="wb-lead-quote">“{l.quote}”</blockquote>}
                       <div className="wb-lead-threads">
-                        {l.threads.map(t => (
-                          <button
-                            key={t.thread_id}
-                            className="wb-lead-pin"
-                            data-tip={`Pin “${t.label ?? t.thread_id}” — pinning fetches ITS sources too, so the galaxy grows a ring.`}
-                            onClick={() => {
-                              addPin(active.id, {
-                                anchorId: t.thread_id,
-                                anchorType: 'thread',
-                                label: t.label ?? t.thread_id,
-                                retrievalLane: 'body-lead',
-                                open: { surface: 'thread_detail', params: { thread_id: t.thread_id } },
-                              });
-                              rerender();
-                            }}
-                          >◆ {t.label ?? t.thread_id}{t.signal_count != null ? ` · ${t.signal_count}` : ''}</button>
-                        ))}
+                        {l.threads.map(t => {
+                          const threadLabel = t.label ?? t.thread_id;
+                          return (
+                            <div key={t.thread_id} className="wb-lead-thread">
+                              <span className="wb-lead-thread-name">
+                                {threadLabel}{t.signal_count != null ? ` · ${t.signal_count}` : ''}
+                              </span>
+                              {/* Task 5.6 — a lead's matched thread gets typed verbs
+                                  (grammar: [open, keep]). OPEN navigates to the Atlas thread
+                                  (gated on onOpenThread so nothing renders when nav is
+                                  unavailable). KEEP pins it — the existing ◆ behavior; pinning
+                                  fetches ITS sources too, so re-running AI READ (header button)
+                                  re-measures the galaxy with the new ring. Re-read stays an
+                                  explicit click — the paid pass never auto-fires. */}
+                              <div className="wb-lead-launchers">
+                                {resolveLauncherVerbs('lead').map(v => {
+                                  if (v.verb === 'open') {
+                                    if (!onOpenThread) return null;
+                                    return (
+                                      <button
+                                        key={v.verb}
+                                        className="wb-launcher wb-launcher--open"
+                                        data-tip={v.tip}
+                                        onClick={() => onOpenThread(t.thread_id, threadLabel)}
+                                      >{v.label}</button>
+                                    );
+                                  }
+                                  // keep — the existing ◆ pin behavior (addPin).
+                                  return (
+                                    <button
+                                      key={v.verb}
+                                      className="wb-launcher wb-launcher--keep"
+                                      data-tip={`${v.tip} — pinning fetches ITS sources too, so the galaxy grows a ring. Re-run AI READ to re-measure.`}
+                                      onClick={() => {
+                                        addPin(active.id, {
+                                          anchorId: t.thread_id,
+                                          anchorType: 'thread',
+                                          label: threadLabel,
+                                          retrievalLane: 'body-lead',
+                                          open: { surface: 'thread_detail', params: { thread_id: t.thread_id } },
+                                        });
+                                        rerender();
+                                      }}
+                                    >◆ {v.label}</button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}

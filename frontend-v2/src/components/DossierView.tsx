@@ -21,6 +21,7 @@ import { LabelReviewChip } from '../lib/labelReviewChip'
 import { deriveVerdictChips, type NodeStateRef, type VerdictChipDescriptor } from '../lib/verdictChips'
 import { VerdictChip } from './VerdictChip'
 import { buildClaimTable, claimTableMarkdown } from '../lib/claimLedger'
+import { resolveLauncherVerbs } from '../lib/launcherVerbs'
 import { sourceMix, formatSourceMix } from '../lib/sourceTiers'
 import {
     validateProse, joinValidatedText, corroborationBackedFrom, type MeasuredContext,
@@ -90,12 +91,24 @@ function renderValidatedProse(text: string, ctx: MeasuredContext) {
 /** Phase 3 report view — a structured dossier generated from the FROZEN
  *  Workbench pins (#227 snapshots), with a Markdown export. Dossier v2 (W3)
  *  adds who-says-what + voice sections MEASURED at generation time. */
-export function DossierView({ investigation, onClose, autoCorroborate, onMutate }: {
+export function DossierView({ investigation, onClose, autoCorroborate, onMutate, onOpenThread, onOpenParams, onFreshQuery }: {
     investigation: Investigation; onClose: () => void; autoCorroborate?: boolean
     /** Called after a verdict chip mutates pinned state (drop receipt) so the
      *  parent re-reads the store and re-renders this frozen view. */
     onMutate?: () => void
+    /** Task 5.2 — typed launcher nav. Every inert "look here next" gets a verb
+     *  (grammar in lib/launcherVerbs). All optional: when a callback is absent
+     *  its launcher is not rendered, so the report-export/inert path is
+     *  byte-identical. onFreshQuery GENERATES a new query (not a navigation). */
+    onOpenThread?: (threadId: string, label: string) => void
+    onOpenParams?: (params: string) => void
+    onFreshQuery?: (query: string) => void
 }) {
+    // onOpenThread / onOpenParams are threaded through for the not-yet-wired
+    // connected-thread / semantic-neighbor launchers; referenced here so the
+    // unused optional props never trip noUnusedLocals while 5.3/5.4 land the
+    // fresh-query + corroborate verbs. onFreshQuery IS consumed (coverage gaps).
+    void onOpenThread; void onOpenParams
     const now = useMemo(() => new Date().toISOString(), [])
     const [enrichment, setEnrichment] = useState<DossierEnrichment | undefined>(undefined)
     const dossier = useMemo(
@@ -786,6 +799,18 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                         {[...new Map(claimRows.filter(r => !r.officialSourcePresent).map(r => [r.claimId, r])).values()].map(r => (
                             <p key={r.claimId} className="dossier-claim-caveat" role="note">
                                 No official/wire source backs this {r.relation.toLowerCase()} figure — treat as contested.
+                                {/* Task 5.4 — a contested figure gets the corroborate verb.
+                                    Corroboration is a PAID LLM pass → explicit click only; it
+                                    forces a fresh web-corroboration run over every evidence pin. */}
+                                {resolveLauncherVerbs('contested-figure').map(v => (
+                                    <button
+                                        key={v.verb}
+                                        className="dossier-launcher dossier-launcher--corroborate"
+                                        data-tip={v.tip}
+                                        disabled={corrobRunning || dossier.pinCount === 0}
+                                        onClick={() => void runCorroboration(true)}
+                                    >{corrobRunning ? 'Corroborating…' : v.label}</button>
+                                ))}
                             </p>
                         ))}
                     </section>
@@ -828,6 +853,42 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                                         <p className="dossier-crossread-note">{f.note}</p>
                                         <blockquote>“{f.a.quote}” <span className="dossier-ft-meta">— {f.a.outlet || f.a.url}</span></blockquote>
                                         <blockquote>“{f.b.quote}” <span className="dossier-ft-meta">— {f.b.outlet || f.b.url}</span></blockquote>
+                                        {/* Task 5.4 — a discrepancy between two sources gets the
+                                            corroborate verb (PAID → explicit click; forces a fresh
+                                            web-corroboration pass). Secondary: open each original
+                                            source to read it directly. Only tensions carry it —
+                                            corroborations/shared-source rows are already resolved. */}
+                                        {f.kind === 'tension' && (
+                                            <div className="dossier-launchers">
+                                                {resolveLauncherVerbs('cross-read-tension').map(v => (
+                                                    <button
+                                                        key={v.verb}
+                                                        className="dossier-launcher dossier-launcher--corroborate"
+                                                        data-tip={v.tip}
+                                                        disabled={corrobRunning || dossier.pinCount === 0}
+                                                        onClick={() => void runCorroboration(true)}
+                                                    >{corrobRunning ? 'Corroborating…' : v.label}</button>
+                                                ))}
+                                                {f.a.url && (
+                                                    <a
+                                                        className="dossier-launcher dossier-launcher--read"
+                                                        href={f.a.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        data-tip="Read the first source directly"
+                                                    >{f.a.outlet || 'source A'} ↗</a>
+                                                )}
+                                                {f.b.url && (
+                                                    <a
+                                                        className="dossier-launcher dossier-launcher--read"
+                                                        href={f.b.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        data-tip="Read the second source directly"
+                                                    >{f.b.outlet || 'source B'} ↗</a>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </>
@@ -978,6 +1039,16 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                                     <span className="dossier-tl-detail">
                                         {g.rawSignals} raw signals · {g.status === 'gate_pending' ? 'awaiting gate' : 'none verified'}
                                     </span>
+                                    {/* Task 5.3 — measured coverage absence: the category has
+                                        attention but no verified coverage. GENERATE a query for it. */}
+                                    {onFreshQuery && resolveLauncherVerbs('coverage-gap').map(v => (
+                                        <button
+                                            key={v.verb}
+                                            className="dossier-launcher dossier-launcher--fresh-query"
+                                            data-tip={v.tip}
+                                            onClick={() => onFreshQuery(g.label)}
+                                        >{v.label}</button>
+                                    ))}
                                 </li>
                             ))}
                         </ul>
@@ -987,7 +1058,23 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                 <section className="dossier-section dossier-gaps">
                     <h2>Gaps &amp; uncertainty</h2>
                     <ul>
-                        {dossier.gaps.map((g, i) => <li key={i}>{g}</li>)}
+                        {dossier.gaps.map((g, i) => (
+                            <li key={i}>
+                                <span className="dossier-gap-text">{g}</span>
+                                {/* Task 5.3 — a gap is an ABSENCE: the one place the app
+                                    GENERATES rather than navigates. The launcher spins a
+                                    fresh query for the missing coverage. Gated on onFreshQuery
+                                    so the report-export/inert path stays byte-identical. */}
+                                {onFreshQuery && resolveLauncherVerbs('coverage-gap').map(v => (
+                                    <button
+                                        key={v.verb}
+                                        className="dossier-launcher dossier-launcher--fresh-query"
+                                        data-tip={v.tip}
+                                        onClick={() => onFreshQuery(g)}
+                                    >{v.label}</button>
+                                ))}
+                            </li>
+                        ))}
                     </ul>
                 </section>
             </div>

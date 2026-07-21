@@ -319,8 +319,22 @@
     font-style: italic;
     overflow-wrap: anywhere;
 }
-.wb-lead-threads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.wb-lead-pin {
+/* Task 5.6 — each matched thread stacks: name + its typed [open, keep] verbs. */
+.wb-lead-threads { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.wb-lead-thread {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.wb-lead-thread-name {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+.wb-lead-launchers { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.wb-launcher {
     background: none;
     border: 1px solid var(--color-border, rgba(255,255,255,0.2));
     border-radius: 3px;
@@ -328,8 +342,12 @@
     font-size: 10px;
     padding: 2px 6px;
     cursor: pointer;
+    white-space: nowrap;
 }
-.wb-lead-pin:hover { color: var(--color-text-primary); border-color: var(--color-accent, #34d399); }
+.wb-launcher:hover { color: var(--color-text-primary); border-color: var(--color-accent, #34d399); }
+/* keep = pin (the flywheel ◆); open = navigate to the thread. */
+.wb-launcher--keep:hover { border-color: var(--color-accent, #34d399); }
+.wb-launcher--open:hover { border-color: rgba(96, 165, 250, 0.6); color: rgba(147, 197, 253, 0.95); }
 .wb-lead-suppressed { font-size: 10px; color: var(--color-text-muted); }
 .wb-pin-note {
     width: 100%;
