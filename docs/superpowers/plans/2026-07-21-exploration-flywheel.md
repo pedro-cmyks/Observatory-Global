@@ -10,6 +10,25 @@
 
 ---
 
+## Execution status — 2026-07-21 (branch `worktree-exploration-flywheel`)
+
+**Done + verified:**
+- **Phase 1 — Compound focus: COMPLETE, adversarially reviewed, all 4 review defects fixed, browser-verified end-to-end.** `country ∧ theme ∧ person` compose; thread-open shows the thread *over* a standing person (Pedro's decision) while keeping the frame; multi-chip indicator with per-dimension ✕ that closes its panel; Back peels one dimension at a time; map + telemetry reconciled. Task 1.6 = documented (map scopes to the single strongest dimension; `/api/v2/nodes` is single-focus; full compound-map needs a new backend endpoint). Commits `efc106bf`→`554c57c4`.
+- **Phase 2 data layer:** `pinLanes.ts` (WHO/WHERE/WHAT classify), `ambientTrail.ts` (wired into `trackVisit`), citation↔pin unify (`anchorId` + `groupCitationsByPin`). `FrameStrip.tsx` **written but NOT mounted** (Task 2.4 remainder).
+- **Pure-lib cores of Phases 3–6 (all tested):** `capturePayloads.ts` (3.1), `briefRelationDetector.ts` (4.1 — text+context tiers only, measured-not-asserted by construction), `launcherVerbs.ts` (5.1), `navParams.ts` (6.1).
+- Full suite: **847 tests / 99 files green**; `npm run build` clean.
+
+**Remaining (all JSX wiring — needs browser verification):**
+- **2.4:** mount `FrameStrip` in App desktop layout + wire `onOpenPin`.
+- **3.2–3.7:** add the ◆ affordance to universe / map / dossier-neighbor / biography / day-evidence / entity-coverage / thread person-chips (using `capturePayloads`).
+- **4.2–4.3:** add `topBriefRelation`/`hasEnoughSignal` gate; render the ◎ detected-relationship callout in `BriefNewspaper` over `data.top_threads` + active pins.
+- **5.2–5.6:** thread nav callbacks App→WorkbenchPanel→DossierView; wire coverage-gap→fresh-query, tension/contested→corroborate, semantic-neighbor→in-app open, leads→open+keep+re-run (using `launcherVerbs`).
+- **6.2–6.3:** carry-context (openBrief emits label/q; deep-link consumes them, guard the `useUrlSync` rebuild; fix stale `entrySource`); mobile thread-close→Brief; unmount the map cockpit while reading; Frame as a pull-up sheet.
+
+**Note:** the pure-lib foundations are the tested substrate; the remainder is integration into `App.tsx` / components, which house-style leaves to build + browser verification. Do it as a batch when the prod API rate-limit (tripped by repeated dev navigations) has cleared.
+
+---
+
 ## Conventions (read once, apply everywhere)
 
 **House test pattern** (from `frontend-v2/src/lib/threadOrder.test.ts`, `workbench.test.ts`, `aiRead.test.ts`):
