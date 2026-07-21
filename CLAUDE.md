@@ -1,5 +1,47 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-21 (PM — CHAINS FOLLOWUPS + TIME-AXIS BUILT, SHIPPED & DEPLOYED,
+`826da723`→`f3683488`, merged to `v3-intel-layer` + Fly/Vercel deployed + §8
+acceptance PASSING in prod). Executed the implementation plan
+(`docs/superpowers/plans/2026-07-21-implementation-plan.md`) after validating the
+parallel-session builds (chains-v1 + markets + flywheel, all faithful).
+**TRACK A** (chains walked-constellation followups): A2 blob-multimodality confirmer
+(`overmerge.py` 2-means behind the shipped entropy first-pass, graceful fallback,
+glass-box `via.blob_basis`); A3 `WalkConstellation` mounted on the FULL
+DossierConnections/DossierView report (compact path byte-identical). **TRACK C**
+(time-axis / versioned relationships, its own spec, ALL BUILT + LIVE in prod):
+C1 edge-snapshot store (mig 089 `topic_edge_snapshots` + `entity_backbone_edges`,
+edges keyed on the churn-resistant `identity_key` NOT the ephemeral id, backbone
+rarity-gated by `MIN(norm_rarity)` so a ubiquitous entity thins its own edges);
+C2/C3 churn-vs-narrative classifier (both identity_keys `state='active'` →
+narrative_change, else substrate_churn — a re-founded topic is never surfaced as a
+dead relationship) + `GET /api/v2/edges/replay` (ambient) + `/api/v2/focus/{ref}/
+edge-diff` (focus, dormant = §4 layer-divergence); C4a `/api/v2/focus/{ref}/timeline`
+(MEASURE-FIRST: threads all-live ~200ms; `signals_v2.persons` has NO GIN index →
+country/person key-subject channels degrade honestly, per-channel statement_timeout,
+never 500; the ONE shared rarity-normalized key-subject function §8); C4b the
+combined-chart activity timeline (diverging volume bars = tone by POSITION freeing
+color for lines, rarity-normalized key-subject trend lines color-stable, voice-mix
+band, edge-diff overlay with churn-vs-narrative in the endpoint hover, NO marker
+layer, degraded = grey gap never zero — REPLACES the old red/green bars in
+ThemeDetail). **GO-LIVE done**: merged to v3-intel-layer (resolved markets+flywheel
+conflicts — main_v2 router tuple, DossierView launcher props, WorkbenchPanel dup
+`onOpenThread`), Fly+Vercel deployed, **§8 acceptance PASSES in prod** (walk from
+dt-452: 9 hermanos / 26 primos, max-degree 3 self-terminated, blob-multimodality
+confirmed 7, genuine cross-story primos — Kyiv-Odesa/Jordan/Russian-fuel), mig 089
+applied to prod, **edge-snapshot cron installed** (`com.atlas.edge-snapshot`, 03:15
+mindful; prod holds 2 snapshots = the first T0/T1 pair for the diff). 906 vitest +
+~200 backend green. **RESIDUALS (honest)**: the chart is browser-verified with
+FIXTURE only (local backend hangs on an unrelated AISStream startup read) → the
+`SENT_FULL` sentiment scale needs a real-data check post-deploy; `DEDUP_TAU`/
+`WEAKEN_DELTA` uncalibrated (need days of T0/T1 accumulation); entity backbone cap
+fills with df=1 one-off pairs (followup: sort by `cooccur·rarity` for the recurring
+spine); **persons GIN index DEFERRED** — the person channel uses ILIKE-on-unnest so a
+plain GIN wouldn't help (real fix = per-channel query+index redesign), country/person
+timeline degrade honestly until then; **markets** merged separately (two mig-089 files
+coexist, project tolerates dup numbers, cf. the two `073_`). Specs:
+`docs/superpowers/specs/2026-07-21-{multi-hop-transitive-chains,time-axis-versioned-relationships}.md`.**
+
 **2026-07-21 (EXPLORATION FLYWHEEL — REMAINING JSX WIRING DONE + MERGED,
 `06829457`→`53174260`, pushed to `v3-intel-layer`, Vercel deploying; Pedro ran
 it + eyeballed = "se ve bien").** Finished the remaining flywheel integration
