@@ -142,12 +142,20 @@ async def fetch_country_edition(country_code: str, *, hours: int = 24) -> dict:
         )
 
     gap_min = int(os.getenv("ATLAS_COUNTRY_GAP_MIN", "8"))
-    async with db.pool.acquire() as conn:
-        rec = await conn.fetchrow(
-            "SELECT name FROM countries_v2 WHERE code = $1", cc
+    country_name = cc
+    gap_rows: list = []
+    try:
+        async with db.pool.acquire() as conn:
+            rec = await conn.fetchrow(
+                "SELECT name FROM countries_v2 WHERE code = $1", cc
+            )
+            country_name = rec["name"] if rec else cc
+            gap_rows = await conn.fetch(_COUNTRY_GAPS_SQL, hours, cc, gap_min)
+    except Exception as exc:  # gaps/name are secondary — never blank the door
+        logger.warning(
+            "country-edition gaps skipped cc=%s: %s: %s",
+            cc, type(exc).__name__, str(exc)[:200],
         )
-        country_name = rec["name"] if rec else cc
-        gap_rows = await conn.fetch(_COUNTRY_GAPS_SQL, hours, cc, gap_min)
 
     threads = await fetch_threads(
         hours=hours,
@@ -164,13 +172,17 @@ async def fetch_country_edition(country_code: str, *, hours: int = 24) -> dict:
             from app.services.article_fetch import article_states, enqueue_fetches
             states = await article_states(urls)
             by_url = {s["url"]: s for s in states}
+            # 'queued' is already in flight — don't re-enqueue (it still counts
+            # as pending in the yield, hence the asymmetry with pending_urls).
             missing = [
                 u for u in urls
                 if by_url.get(u, {}).get("status") in (None, "pending")
             ]
             if missing:
                 await enqueue_fetches(missing)      # fire-and-forget, NO wait
-                states = await article_states(urls)  # re-read; warm ones may flip
+                # re-read: picks up the newly-inserted pending rows + any
+                # concurrent request's fetch that flipped mid-enqueue.
+                states = await article_states(urls)
         except Exception as exc:  # enrichment never breaks the edition
             logger.warning(
                 "country-edition enrichment skipped: %s: %s",
