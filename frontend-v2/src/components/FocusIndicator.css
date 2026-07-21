@@ -40,6 +40,39 @@
     text-overflow: ellipsis;
 }
 
+/* Multi-chip compound focus (country ∧ theme ∧ person can all be active at
+   once) — one small pill per active dimension, each with its own ✕ that
+   drops only that dimension (the band-level ✕ below still clears all). */
+.focus-chips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.focus-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    max-width: 220px;
+    padding: 1px 4px 1px 8px;
+    background: rgba(var(--color-accent-deep-rgb), 0.12);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.28);
+    border-radius: 999px;
+}
+
+.focus-chip .focus-value {
+    max-width: 140px;
+}
+
+.focus-chip-clear {
+    width: 14px;
+    height: 14px;
+    font-size: 12px;
+}
+
 @keyframes focusFade {
     from { opacity: 0; transform: translateY(-3px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -110,6 +143,15 @@
         z-index: 9550;
     }
     .focus-scope-note { display: none; }
+    /* Compound focus on a narrow pill: let the chip row scroll sideways
+       rather than blow out the floating pill's width. */
+    .focus-chips {
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .focus-chips::-webkit-scrollbar { display: none; }
+    .focus-chip { max-width: 140px; }
+    .focus-chip .focus-value { max-width: 90px; }
 }
 
 /* R3c verify residual — emerald: the chip value was a dark-theme literal
