@@ -850,7 +850,8 @@ async def run_write(artifact_path: Path, params: OverMergeParams,
                           f"dominant={cs.get('dominant_share')} "
                           f"located={cs.get('total_located')} "
                           f"ovl={r.get('entity_overlap')}) -> candidate ({changed})")
-                    print(f"           embedding-blind old black-hole, cross-country —")
+                    print(f"           court-failed cross-country fusion "
+                          f"(embedding gap too narrow to split) —")
                     print(f"             top country:      {a}")
                     print(f"             other countries:  {b}")
                 else:
