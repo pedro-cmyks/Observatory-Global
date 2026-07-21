@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 import urllib.request
@@ -24,6 +25,24 @@ from datetime import date
 
 from markets import store
 from markets.instruments import all_symbols, symbol_labels
+
+
+def resolve_symbols() -> list[str]:
+    """The fetch list. SINGLE SOURCE OF TRUTH = the seeded universe in Atlas DB: the
+    runner passes MARKET_SYMBOLS (comma-separated `SELECT symbol FROM market_series`),
+    so adding a country is one migration row and the cron picks it up — no code change.
+    Falls back to the instruments.py seed when MARKET_SYMBOLS is unset (DB unreachable /
+    standalone run)."""
+    env = os.environ.get("MARKET_SYMBOLS", "").strip()
+    if env:
+        seen: dict[str, None] = {}
+        for s in env.split(","):
+            s = s.strip()
+            if s:
+                seen[s] = None
+        if seen:
+            return list(seen)
+    return all_symbols()
 
 
 def fetch_yahoo_daily(symbol: str, rng: str = "4mo") -> dict[str, float]:
@@ -62,9 +81,10 @@ def main() -> int:
     db_path = None if args.db is None else __import__("pathlib").Path(args.db)
     conn = store.connect(db_path)
     labels = symbol_labels()
-    symbols = all_symbols()
-    print(f"price accumulator: {len(symbols)} symbols → {store.default_db_path() if db_path is None else db_path}",
-          file=sys.stderr)
+    symbols = resolve_symbols()
+    src = "MARKET_SYMBOLS (Atlas DB)" if os.environ.get("MARKET_SYMBOLS", "").strip() else "instruments.py seed"
+    print(f"price accumulator: {len(symbols)} symbols from {src} → "
+          f"{store.default_db_path() if db_path is None else db_path}", file=sys.stderr)
 
     ok = 0
     for sym in symbols:

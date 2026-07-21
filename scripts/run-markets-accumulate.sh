@@ -31,6 +31,15 @@ cd "$BASE" || exit 2
 PY="python3"
 [ -x "$HOME/AtlasLocalWorker/mlvenv/bin/python" ] && PY="$HOME/AtlasLocalWorker/mlvenv/bin/python"
 
+# SINGLE SOURCE OF TRUTH for the fetch list = the seeded universe in Atlas DB. Pull
+# every symbol from market_series (088/089 seed all countries) so adding a country is
+# one migration row, no code change. Falls back to instruments.py if the DB is
+# unreachable (MARKET_SYMBOLS stays unset).
+if [ -n "${DATABASE_URL:-}" ] && command -v psql >/dev/null 2>&1; then
+  SYMS="$(psql "$DATABASE_URL" -tAc "SELECT string_agg(symbol, ',') FROM market_series" 2>/dev/null)"
+  [ -n "$SYMS" ] && export MARKET_SYMBOLS="$SYMS" && echo "fetch list from Atlas DB: $(echo "$SYMS" | tr ',' '\n' | wc -l | tr -d ' ') symbols"
+fi
+
 # 1. accumulate (mindful: efficiency cores + nice)
 taskpolicy -b "$PY" -m markets.accumulate
 
