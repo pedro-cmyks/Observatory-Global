@@ -1583,12 +1583,18 @@ function AppContent() {
           pinned items auto-sorted into WHO/WHERE/WHAT lanes. Invisible until the
           first pin (prominence gradient). Clicking a pin re-opens it by type. */}
       {!isMobile && (
-        <FrameStrip onOpenPin={(item) => {
-          const p = new URLSearchParams(item.urlParams)
-          if (item.type === 'theme' && p.get('theme')) handleThemeSelect(p.get('theme')!)
-          else if (item.type === 'person') setFocus('person', decodeURIComponent(p.get('person') || item.title), item.title)
-          else if (item.type === 'country' && p.get('country')) handleCountryClick(p.get('country')!)
-        }} />
+        <FrameStrip
+          onOpenPin={(item) => {
+            const p = new URLSearchParams(item.urlParams)
+            if (item.type === 'theme' && p.get('theme')) handleThemeSelect(p.get('theme')!)
+            else if (item.type === 'person') setFocus('person', decodeURIComponent(p.get('person') || item.title), item.title)
+            else if (item.type === 'country' && p.get('country')) handleCountryClick(p.get('country')!)
+          }}
+          // ◎ callout: Scope opens+scopes the connected thread (compound focus);
+          // ＋Report opens the Workbench to build from these pins.
+          onScopeThread={(threadId, label) => handleThemeSelect(threadId, undefined, undefined, undefined, label)}
+          onOpenReport={() => setWorkbenchOpen(true)}
+        />
       )}
 
       <div className="coverage-disclaimer" data-tip="Atlas colors countries by deviation from each country's recent baseline. Raw volume increases evidence density, but it is not treated as real-world importance.">
