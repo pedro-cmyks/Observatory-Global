@@ -116,3 +116,4 @@ docs/.obsidian/
 markets/.yahoo_verify_cache.json
 markets/__pycache__/
 markets/tests/__pycache__/
+markets/country_universe_verified.json
