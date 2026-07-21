@@ -1,0 +1,61 @@
+/* EvidenceRoute.css — #173 breadcrumb chip trail in the CountryBrief header.
+   The honest coverage funnel: Country -> Source Mix -> Atlas Topics ->
+   Narrative Threads -> Evidence Signals. Compact, wraps on narrow panels. */
+
+.evidence-route {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.35rem;
+    margin-top: 0.5rem;
+}
+
+.evidence-route-arrow {
+    color: var(--color-text-tertiary);
+    font-size: 0.75rem;
+    line-height: 1;
+    user-select: none;
+}
+
+.evidence-route-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid rgba(var(--color-ink-rgb), 0.15);
+    border-radius: 4px;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.evidence-route-chip:hover {
+    border-color: var(--color-accent-primary);
+    color: var(--color-text-primary);
+}
+
+.evidence-route-label {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.evidence-route-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+/* Absent count — an honest em dash, never a fabricated 0. */
+.evidence-route-count--absent {
+    color: var(--color-text-tertiary);
+    font-weight: 400;
+}
+
+.evidence-route-detail {
+    color: var(--color-text-tertiary);
+    font-size: 0.65rem;
+    white-space: nowrap;
+}

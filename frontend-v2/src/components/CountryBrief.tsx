@@ -34,6 +34,8 @@ import { decodeEntities } from '../lib/decodeEntities';
 import { humanizeCameoEvent } from '../lib/humanizeInternals';
 import { CountQualifierChip, countQualifier } from '../lib/countQualifier';
 import { LabelReviewChip } from '../lib/labelReviewChip';
+import { EvidenceRoute } from './EvidenceRoute';
+import { buildEvidenceRoute } from '../lib/evidenceRoute';
 
 // ThemeChange interface reserved for future use
 // interface ThemeChange {
@@ -450,9 +452,27 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
         fallbackThemes: data.top_themes,
     })
 
+    // #173 Evidence Route breadcrumb — the coverage funnel from this Country
+    // down to the raw Evidence Signals. Foreign share prefers the ownership-based
+    // voice-mix ratio; falls back to foreignSourcePct; omitted when neither known.
+    const foreignPct = voiceMix && voiceMix.attributable_voices > 0
+        ? Math.round(voiceMix.foreign_voice_ratio * 100)
+        : (typeof data.foreignSourcePct === 'number' ? data.foreignSourcePct : null)
+    const evidenceRouteSteps = buildEvidenceRoute({
+        countryName: displayCountryName,
+        outletCount: data.top_sources.length,
+        foreignSourcePct: foreignPct,
+        atlasTopicCount: data.top_themes.length,
+        narrativeThreadCount: threadSummary.count,
+        evidenceSignalCount: data.signal_count,
+    })
+    const scrollToSection = (targetId: string) => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
     return (
         <div className={cls}>
-            <div className="brief-header">
+            <div className="brief-header" id="cb-header">
                 <div className="brief-title">
                     <div className="cb-kicker">COUNTRY INTELLIGENCE</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -496,6 +516,10 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     </button>
                 </div>
             </div>
+
+            {/* #173 Evidence Route — the honest coverage funnel, each chip its real
+                count, clickable to scroll to the panel it names. */}
+            <EvidenceRoute steps={evidenceRouteSteps} onStepClick={scrollToSection} />
 
             <div className="cb-metrics">
                 <div>
@@ -551,7 +575,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             </p>
 
             {/* Narrative Threads */}
-            <section className="brief-section">
+            <section className="brief-section" id="cb-threads">
                 <div className="cb-section-label">Narrative Threads</div>
                 <div className="theme-list">
                     {/* B1: no positional "critical" marker — a country volume spike
@@ -848,7 +872,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             </section>
 
             {/* Top Sources */}
-            <section className="brief-section">
+            <section className="brief-section" id="cb-sources">
                 <div className="cb-section-label">Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>who's covering this country</span></div>
                 <div className="source-list">
                     {(showAllSources ? data.top_sources : data.top_sources.slice(0, 5)).map((source, i) => {
@@ -941,7 +965,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Recent Signals — actual articles detected, not synthetic titles */}
             {data.top_stories && data.top_stories.length > 0 && (
-                <section className="brief-section">
+                <section className="brief-section" id="cb-signals">
                     <div className="cb-section-label">Recent Signals <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>articles detected in last {timeWindow}h</span></div>
                     <div className="story-list">
                         {data.top_stories.slice(0, 6).map((story, i) => (
