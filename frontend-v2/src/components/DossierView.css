@@ -516,3 +516,51 @@
 [data-theme^='noir'] .dossier-claim-caveat {
     color: rgb(248, 120, 120);
 }
+
+/* ── Typed launchers (Tasks 5.3/5.4) — every inert "look here next" gets a verb.
+   Small inline pills so a gap/tension/contested-figure row carries its action
+   without breaking the reading flow. Absent when the callback isn't supplied. ── */
+.dossier-launchers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+.dossier-launcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    vertical-align: baseline;
+    font-family: 'SF Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--color-neutral-rgb), 0.35);
+    background: rgba(var(--color-neutral-rgb), 0.08);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.dossier-launchers .dossier-launcher { margin-left: 0; }
+.dossier-launcher:hover { color: var(--color-text-primary); }
+.dossier-launcher:disabled { opacity: 0.5; cursor: default; }
+/* fresh-query GENERATES a new query (not a navigation) — accent it as a create. */
+.dossier-launcher--fresh-query {
+    border-color: rgba(var(--color-accent-deep-rgb), 0.4);
+    background: rgba(var(--color-accent-deep-rgb), 0.1);
+    color: var(--color-accent-primary);
+}
+.dossier-launcher--fresh-query:hover { background: rgba(var(--color-accent-deep-rgb), 0.18); }
+/* corroborate = the same blue PAID web-corroboration action as the header btn. */
+.dossier-launcher--corroborate {
+    border-color: rgba(96, 165, 250, 0.4);
+    background: rgba(96, 165, 250, 0.08);
+    color: var(--color-info);
+}
+.dossier-launcher--corroborate:hover:not(:disabled) { background: rgba(96, 165, 250, 0.16); }
+.dossier-launcher--read { font-style: normal; }
+.dossier-launcher--read:hover { border-color: var(--color-info); color: var(--color-info); }

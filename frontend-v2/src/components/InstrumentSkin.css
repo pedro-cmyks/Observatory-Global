@@ -1,0 +1,199 @@
+/* ============================================================================
+   The Instrument Skin — one namespaced presentation system for MEASURED market
+   data (design §7 "one Markets grooming system"). Everything market-numeric
+   renders inside `.atlas-instrument`; this container is the QUARANTINE that keeps
+   a price from ever fusing into or sitting adjacent to a narrative claim, arrow,
+   or headline. Mono/tabular numerals; a market-specific diverging up/down ramp;
+   a two-state honesty chip; the shared <InstrumentSpark>.
+
+   COLOR DISCIPLINE (design §7 + palette decision 2026-07-21, DESIGN.md):
+   Atlas's palette is fully semantically allocated — emerald=action/live, blue=geo/country,
+   violet=people, amber=caution, red=crisis, green/red=sentiment. Markets are a DIFFERENT
+   data type held in quarantine, so they take NO semantic hue at all: everything renders in
+   the Atlas NEUTRAL slate (#94a3b8 family) with Geist-Mono tabular numerals. Direction is
+   NON-chromatic — carried only by the ▲/▼ glyph, the signed %, and the sparkline shape — so
+   a price can never read as sentiment, geography, or a crisis alarm, and it is CVD-safe by
+   construction. (An earlier blue↔magenta ramp was rejected: blue collides with Atlas's
+   country color and magenta was off-palette.) `[data-rtheme="light"]` covers the light Brief.
+   ============================================================================ */
+
+.atlas-instrument {
+  /* NON-chromatic — up/down/flat are all neutral; direction is glyph + sign + shape, not hue */
+  --mkt-up: #97a0b2;
+  --mkt-down: #97a0b2;
+  --mkt-flat: #8b93a7;
+  --mkt-ink: #e6e9f2;
+  --mkt-ink-dim: #9aa2b5;
+  --mkt-box: rgba(255, 255, 255, 0.035);
+  --mkt-box-border: rgba(255, 255, 255, 0.10);
+  --mkt-chip-bg: rgba(255, 255, 255, 0.05);
+
+  font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  color: var(--mkt-ink);
+  box-sizing: border-box;
+}
+
+/* Light Brief (reader theme) — same ramp, adjusted for light backgrounds. */
+[data-rtheme='light'] .atlas-instrument {
+  --mkt-up: #5c6472;
+  --mkt-down: #5c6472;
+  --mkt-flat: #5c6472;
+  --mkt-ink: #1b2030;
+  --mkt-ink-dim: #5c6472;
+  --mkt-box: rgba(20, 24, 40, 0.03);
+  --mkt-box-border: rgba(20, 24, 40, 0.12);
+  --mkt-chip-bg: rgba(20, 24, 40, 0.05);
+}
+
+/* ---- the boxed tile ---- */
+.atlas-instrument-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--mkt-box);
+  border: 1px solid var(--mkt-box-border);
+  border-radius: 6px;
+  overflow: hidden; /* safety: nothing (incl. the spark) ever spills the tile box */
+}
+
+.atlas-instrument-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.atlas-instrument-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--mkt-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.atlas-instrument-class {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--mkt-ink-dim);
+  flex-shrink: 0;
+}
+
+.atlas-instrument-level {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--mkt-ink);
+}
+
+.atlas-instrument-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.atlas-instrument-change {
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.atlas-instrument-change--up { color: var(--mkt-up); }
+.atlas-instrument-change--down { color: var(--mkt-down); }
+.atlas-instrument-change--flat { color: var(--mkt-flat); }
+
+/* pending price — honest "price pending", never a fabricated tick */
+.atlas-instrument-pending {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--mkt-ink-dim);
+  padding: 6px 0 4px;
+}
+
+/* ---- the shared sparkline (full-width bottom row of the tile) ---- */
+.atlas-instrument-spark {
+  display: block;
+  width: 100%;
+  margin-top: 1px;
+  color: var(--mkt-flat);
+  opacity: 0.9;
+}
+.atlas-instrument-spark--up { color: var(--mkt-up); }
+.atlas-instrument-spark--down { color: var(--mkt-down); }
+.atlas-instrument-spark--flat { color: var(--mkt-flat); }
+.atlas-instrument-spark svg { display: block; width: 100%; }
+.atlas-instrument-spark--empty {
+  width: 100%;
+  height: 22px;
+  border-bottom: 1px dashed var(--mkt-box-border);
+  opacity: 0.5;
+}
+
+/* ---- the two-state honesty chip ---- */
+.atlas-instrument-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: default;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+/* DESCRIPTIVE · LAST CLOSE — the lit, active state (what ships now, #151). */
+.atlas-instrument-chip--descriptive {
+  color: var(--mkt-ink-dim);
+  background: var(--mkt-chip-bg);
+  border: 1px solid var(--mkt-box-border);
+}
+.atlas-instrument-chip--descriptive::before {
+  content: '◆';
+  font-size: 6px;
+  color: var(--mkt-up);
+}
+/* RELATION · pending #226 — the reserved-but-DARK slot. Greyed, never a number. */
+.atlas-instrument-chip--relation-dark {
+  color: var(--mkt-flat);
+  background: transparent;
+  border: 1px dashed var(--mkt-box-border);
+  opacity: 0.7;
+}
+.atlas-instrument-chip--relation-dark::before {
+  content: '○';
+  font-size: 7px;
+  color: var(--mkt-flat);
+}
+
+/* ---- the greyed relation-analysis slot (full line) ---- */
+.atlas-instrument-relation-slot {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  color: var(--mkt-flat);
+  opacity: 0.68;
+  padding: 6px 2px;
+  border-top: 1px dashed var(--mkt-box-border);
+}
+
+/* ---- not-investment-advice microcopy ---- */
+.atlas-instrument-advice {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--mkt-ink-dim);
+  opacity: 0.8;
+}

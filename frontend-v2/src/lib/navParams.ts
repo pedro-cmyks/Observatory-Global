@@ -32,3 +32,18 @@ export function parseConsoleDeepLink(search: string): ConsoleDeepLink {
     attention: p.get('attention'),
   }
 }
+
+/** Merge the owned focus dims (theme/country/person) into an existing query
+ *  string WITHOUT dropping any other params (q/label/attention/entry — the
+ *  carry-context params). Empty focus dims are removed; everything else is
+ *  preserved. Returns the serialized query string. */
+export function mergeFocusIntoParams(
+  currentSearch: string,
+  focus: { theme?: string | null; country?: string | null; person?: string | null },
+): string {
+  const p = new URLSearchParams(currentSearch)
+  focus.theme ? p.set('theme', focus.theme) : p.delete('theme')
+  focus.country ? p.set('country', focus.country) : p.delete('country')
+  focus.person ? p.set('person', focus.person) : p.delete('person')
+  return p.toString()
+}

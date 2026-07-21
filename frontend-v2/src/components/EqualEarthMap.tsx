@@ -223,10 +223,20 @@ export function flyAnchor(geometry: { type: string; coordinates: unknown }): [nu
 /** A clickable source line on a marker card — the receipt link (#255). */
 export type SourceLink = { label: string; url: string }
 
-/** Hover card state: country shape hover vs marker (hazard/conflict/chokepoint). */
+/** Hover card state: country shape hover vs marker (hazard/conflict/chokepoint).
+ *  `iso` rides the country variant so the ◆ capture affordance can pin it. */
 type HoverState =
-    | { kind: 'country'; name: string; heat: number; x: number; y: number }
+    | { kind: 'country'; iso: string; name: string; heat: number; x: number; y: number }
     | { kind: 'marker'; title: string; meta: string[]; hint: string | null; sourceLink: SourceLink | null; x: number; y: number }
+
+/** True when a mouse event's target sits inside the hover tooltip. The
+ *  interactive tooltip (◆ capture) is a pointer-events:auto child of the map
+ *  container, so the container's capture/bubble hover handlers still see moves
+ *  over it — this lets them bow out so hovering the tooltip never re-evaluates
+ *  or clears the hover it belongs to (Task 3.7). */
+function targetInTooltip(e: React.MouseEvent): boolean {
+    return !!(e.target as Element | null)?.closest?.('.equal-earth-tooltip')
+}
 
 /** Compact host label for a source link ("earthquake.usgs.gov" from its URL).
  *  Only http(s) URLs earn a link — anything else returns null (omit honestly). */
@@ -362,6 +372,12 @@ export interface EqualEarthMapProps {
     onCountryClick: (isoCode: string, name: string) => void
     /** Marker click (Mercator parity): chokepoint / conflict-event dots. */
     onMarkerClick?: (kind: 'chokepoint' | 'acled' | 'disaster', properties: Record<string, unknown>) => void
+    /** Exploration Flywheel (Task 3.7): pin the hovered COUNTRY as a WHERE-lane
+     *  entity pin. OPTIONAL — the ◆ affordance renders only when supplied, so
+     *  callers that don't pass it stay byte-identical (no interactive tooltip). */
+    onPinCountry?: (iso: string, name: string) => void
+    /** Pin the hovered event MARKER (acled/disaster) as an un-gated receipt. */
+    onPinMarker?: (payload: { title: string; sourceLink: SourceLink | null; source?: string }) => void
     /** Overlay layers (flows/markers/terminator), same data MapLibre uses. */
     overlay?: OverlayData
 }
@@ -374,6 +390,8 @@ export function EqualEarthMap({
     resetNonce,
     onCountryClick,
     onMarkerClick,
+    onPinCountry,
+    onPinMarker,
     overlay,
 }: EqualEarthMapProps) {
     const containerRef = useRef<HTMLDivElement>(null)
@@ -390,6 +408,29 @@ export function EqualEarthMap({
     // country name — plus marker hover cards (hazard/conflict/chokepoint).
     // Screen-space; cleared on leave/pan.
     const [hover, setHover] = useState<HoverState | null>(null)
+
+    // ── ◆ capture (Exploration Flywheel, Task 3.7) ──────────────────────────
+    // The tooltip normally tracks the cursor and clears the instant you leave
+    // the country/marker — hostile to a button inside it (it runs ahead of the
+    // pointer and vanishes before a click lands). When a pin callback is
+    // supplied we make the matching tooltip INTERACTIVE: the country card freezes
+    // on first contact (a stationary ◆ target) and a short dismiss timer bridges
+    // the hand-off from the shape/marker to the tooltip. With NEITHER callback
+    // the timer never arms and the tooltip clears immediately — byte-identical to
+    // before, so existing callers are untouched.
+    const canPinCountry = !!onPinCountry
+    const canPinMarker = !!onPinMarker
+    const dismissRef = useRef<number | null>(null)
+    const cancelDismiss = useCallback(() => {
+        if (dismissRef.current != null) { window.clearTimeout(dismissRef.current); dismissRef.current = null }
+    }, [])
+    // Fixed countdown (not restarted while pending) so the tooltip reliably
+    // dies ~420ms after you leave a marker/shape unless you reach it in time.
+    const armDismiss = useCallback(() => {
+        if (dismissRef.current != null) return
+        dismissRef.current = window.setTimeout(() => { dismissRef.current = null; setHover(null) }, 420)
+    }, [])
+    useEffect(() => () => { if (dismissRef.current != null) window.clearTimeout(dismissRef.current) }, [])
 
     // Container size — drives the projection fit. The map can mount at 0×0
     // inside a hidden mobile tab and only get a real box when the tab is shown,
@@ -563,12 +604,21 @@ export function EqualEarthMap({
                 stroke={isSel ? '#68dbae' : (heat > 0.3 ? heatGlowColor(heat) : 'rgba(120,140,170,0.18)')}
                 strokeWidth={isSel ? 1.8 : 0.3}
                 onClick={() => handleCountryClick(p.iso, p.name)}
-                onMouseMove={(e) => setHover({ kind: 'country', name: p.name, heat, x: e.clientX, y: e.clientY })}
-                onMouseLeave={() => setHover(null)}
+                onMouseMove={(e) => {
+                    cancelDismiss()
+                    // Freeze the card on first contact when it carries a ◆ so the
+                    // affordance is a stationary target (a cursor-tracking tooltip
+                    // is unclickable — it runs ahead of the pointer).
+                    setHover(prev =>
+                        canPinCountry && prev?.kind === 'country' && prev.iso === p.iso
+                            ? prev
+                            : { kind: 'country', iso: p.iso, name: p.name, heat, x: e.clientX, y: e.clientY })
+                }}
+                onMouseLeave={() => { if (canPinCountry) armDismiss(); else setHover(null) }}
                 style={{ cursor: 'pointer' }}
             />
         )
-    }), [paths, heatFor, showHeatmap, selectedIso, handleCountryClick])
+    }), [paths, heatFor, showHeatmap, selectedIso, handleCountryClick, canPinCountry, cancelDismiss, armDismiss])
 
     // Fit-the-WORLD scale: the k at which the full world width fits the panel.
     // fitHeight alone over-zoomed narrow panels (a 500×625 panel opened on
@@ -630,6 +680,17 @@ export function EqualEarthMap({
         if (!el) return
         const zb = d3zoom<HTMLDivElement, unknown>()
             .scaleExtent([1, 12])
+            // ◆ capture (Task 3.7): a press that STARTS on the interactive
+            // tooltip must reach the button's click, not d3 — otherwise d3's
+            // native pointerdown listener (on this container, above React in the
+            // bubble order) fires 'start' → setHover(null) and unmounts the
+            // button mid-click. Replicates d3-zoom's default filter + the tooltip
+            // veto (no-op when the tooltip is pointer-events:none, i.e. no ◆).
+            .filter((event) => {
+                const t = event.target as Element | null
+                if (t?.closest?.('.equal-earth-tooltip')) return false
+                return (!event.ctrlKey || event.type === 'wheel') && !event.button
+            })
             // d3's own click suppressor defaults to 0px — pair it with our slop
             // so a jittery click still reaches the country path.
             .clickDistance(CLICK_SLOP_PX)
@@ -751,6 +812,7 @@ export function EqualEarthMap({
     // Mercator parity: clicking a chokepoint/conflict/disaster dot opens its
     // panel (or event page) instead of falling through to the country.
     const handleMarkerCapture = useCallback((e: React.MouseEvent) => {
+        if (targetInTooltip(e)) return // a ◆ click never falls through to a marker
         if (!onMarkerClick || movedRef.current) return
         const rect = containerRef.current?.getBoundingClientRect()
         if (!rect) return
@@ -768,6 +830,7 @@ export function EqualEarthMap({
     // Capture phase so a marker hit beats the country path's own hover, and
     // stopPropagation keeps the country tooltip from overwriting it.
     const handleHoverCapture = useCallback((e: React.MouseEvent) => {
+        if (targetInTooltip(e)) return // moving onto the ◆ card must not clear it
         if (gesturing) return
         const rect = containerRef.current?.getBoundingClientRect()
         if (!rect) return
@@ -775,13 +838,18 @@ export function EqualEarthMap({
         if (hit) {
             e.stopPropagation()
             const { title, meta, hint, sourceLink } = markerHoverContent(hit.kind, hit.properties)
+            cancelDismiss()
             setHover({ kind: 'marker', title, meta, hint, sourceLink, x: e.clientX, y: e.clientY })
+        } else if (canPinMarker) {
+            // Left a marker with a ◆ in play: bridge to the tooltip instead of
+            // clearing instantly (the dismiss timer clears it if unreached).
+            armDismiss()
         } else {
             // Left a marker over open ocean: no country path will overwrite the
             // stale card — clear it ourselves. Country hovers stay untouched.
             setHover(prev => (prev?.kind === 'marker' ? null : prev))
         }
-    }, [gesturing, findMarkerAt])
+    }, [gesturing, findMarkerAt, canPinMarker, cancelDismiss, armDismiss])
 
     // Item 7 — tiny-island assist, CLICK side. Runs in the bubble phase, so:
     // markers already won (their capture handler stopPropagation'd), and a real
@@ -789,6 +857,7 @@ export function EqualEarthMap({
     // ocean/graticule miss reaches the assist.
     const handleMissClick = useCallback((e: React.MouseEvent) => {
         if (movedRef.current) return // a pan, not a select
+        if (targetInTooltip(e)) return // ◆ / source-link clicks are not map clicks
         const target = e.target as Element | null
         if (target?.closest?.('.equal-earth-country')) return // polygon priority
         const rect = containerRef.current?.getBoundingClientRect()
@@ -800,6 +869,7 @@ export function EqualEarthMap({
     // Item 7 — HOVER side: an ocean-move near a tiny island shows its tooltip
     // (same card the polygon hover shows). Real polygon/marker hovers win.
     const handleMissHover = useCallback((e: React.MouseEvent) => {
+        if (targetInTooltip(e)) return // moving onto the ◆ card must not clear it
         if (gesturing) return
         const target = e.target as Element | null
         if (target?.closest?.('.equal-earth-country')) return
@@ -808,16 +878,19 @@ export function EqualEarthMap({
         const hit = findIslandAt(e.clientX - rect.left, e.clientY - rect.top)
         if (hit) {
             const st = heatFor(hit.iso)
-            setHover(prev => (prev?.kind === 'marker' ? prev : {
-                kind: 'country', name: hit.name, heat: st ? st.heat : 0,
-                x: e.clientX, y: e.clientY,
-            }))
+            cancelDismiss()
+            setHover(prev =>
+                prev?.kind === 'marker' ? prev
+                : (canPinCountry && prev?.kind === 'country' && prev.iso === hit.iso) ? prev
+                : { kind: 'country', iso: hit.iso, name: hit.name, heat: st ? st.heat : 0, x: e.clientX, y: e.clientY })
+        } else if (canPinCountry) {
+            armDismiss()
         } else {
             // Over open ocean with no island in reach: clear a stale country
             // card (the path's own mouseleave already fired when we left it).
             setHover(prev => (prev?.kind === 'country' ? null : prev))
         }
-    }, [gesturing, findIslandAt, heatFor])
+    }, [gesturing, findIslandAt, heatFor, canPinCountry, cancelDismiss, armDismiss])
 
     const resetView = useCallback(() => {
         const el = containerRef.current
@@ -1046,7 +1119,7 @@ export function EqualEarthMap({
             onClick={handleMissClick}
             onMouseMoveCapture={handleHoverCapture}
             onMouseMove={handleMissHover}
-            onMouseLeave={() => setHover(null)}
+            onMouseLeave={() => { cancelDismiss(); setHover(null) }}
             style={hover?.kind === 'marker' ? { cursor: 'pointer' } : undefined}
         >
             {ee && (
@@ -1109,8 +1182,10 @@ export function EqualEarthMap({
             )}
             {hover && hover.kind === 'country' && (
                 <div
-                    className="equal-earth-tooltip"
+                    className={`equal-earth-tooltip${canPinCountry ? ' equal-earth-tooltip--interactive' : ''}`}
                     style={{ left: hover.x + 12, top: hover.y - 10 }}
+                    onMouseEnter={canPinCountry ? cancelDismiss : undefined}
+                    onMouseLeave={canPinCountry ? () => setHover(null) : undefined}
                 >
                     {hover.name}
                     <span className="equal-earth-tooltip-heat">
@@ -1119,12 +1194,28 @@ export function EqualEarthMap({
                             : hover.heat > 0.05 ? ' · slightly above its norm'
                             : ' · at its baseline'}
                     </span>
+                    {canPinCountry && (
+                        <button
+                            type="button"
+                            className="equal-earth-tooltip-pin"
+                            aria-label="Pin this to your investigation"
+                            data-tip="Pin this to your investigation"
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                onPinCountry?.(hover.iso, hover.name)
+                            }}
+                        >◆</button>
+                    )}
                 </div>
             )}
             {hover && hover.kind === 'marker' && (
                 <div
-                    className="equal-earth-tooltip equal-earth-tooltip--marker"
+                    className={`equal-earth-tooltip equal-earth-tooltip--marker${canPinMarker ? ' equal-earth-tooltip--interactive' : ''}`}
                     style={{ left: hover.x + 12, top: hover.y - 10 }}
+                    onMouseEnter={canPinMarker ? cancelDismiss : undefined}
+                    onMouseLeave={canPinMarker ? () => setHover(null) : undefined}
                 >
                     <div className="equal-earth-tooltip-title">{hover.title}</div>
                     {hover.meta.map((m, i) => (
@@ -1143,6 +1234,26 @@ export function EqualEarthMap({
                     )}
                     {hover.hint && (
                         <div className="equal-earth-tooltip-hint">{hover.hint}</div>
+                    )}
+                    {canPinMarker && (
+                        <button
+                            type="button"
+                            className="equal-earth-tooltip-pin equal-earth-tooltip-pin--block"
+                            aria-label="Pin this to your investigation"
+                            data-tip="Pin this to your investigation"
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                // Best-effort source name off the receipt line ("Source: host")
+                                // or a "Source: X" meta row — un-gated event data, so the
+                                // citation stays gateStatus:'unknown' downstream (honesty rail).
+                                const src = hover.sourceLink
+                                    ? hover.sourceLink.label.replace(/^Source:\s*/i, '')
+                                    : hover.meta.find(m => /^Source:/i.test(m))?.replace(/^Source:\s*/i, '')
+                                onPinMarker?.({ title: hover.title, sourceLink: hover.sourceLink, source: src || undefined })
+                            }}
+                        >◆ Pin to investigation</button>
                     )}
                 </div>
             )}

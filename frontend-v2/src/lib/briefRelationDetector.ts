@@ -129,6 +129,20 @@ function findSharedCountry(pin: BriefPinLike, thread: BriefThreadLike): string |
 }
 
 /**
+ * A pin of a THREAD carries a capture-builder type prefix on its anchorId
+ * (`theme-`/`thread-`/…, see capturePayloads.ts) while a candidate thread's id
+ * has none. When the analyst has pinned a thread that is ALSO in the candidate
+ * pool, matching it against itself yields a trivial, non-informative relation
+ * ("Taylor Farms · Taylor Farms connect on lettuce"). Strip the prefix and
+ * treat that as the same story so the detector surfaces only OTHER threads —
+ * the point of the ◎ callout is a non-obvious connection, never a self-loop.
+ */
+function isSameStory(pinAnchorId: string, threadId: string): boolean {
+  if (pinAnchorId === threadId) return true
+  return pinAnchorId.replace(/^(theme|thread|country|person|source|signal)-/, '') === threadId
+}
+
+/**
  * Detect "these pins connect on topic X" relations between the analyst's
  * pinned anchors and the brief's threads. Pure, synchronous, no network.
  *
@@ -149,6 +163,8 @@ export function detectBriefRelations(
     let best: BriefRelation | null = null
 
     for (const pinItem of pins) {
+      // Never report a pinned thread as connecting to its own pool entry.
+      if (isSameStory(pinItem.anchorId, thread.thread_id)) continue
       const term = findTextMatch(pinItem, thread)
       if (term) {
         best = {

@@ -77,6 +77,10 @@ interface Props {
     relatedSignals?: Signal[]
     onPin?: () => void
     isPinned?: boolean
+    /** Task 5.5 — open a semantic neighbor in-app (swap the panel to it) instead
+     *  of only leaking to its external URL. The parent controls `signal`, so it
+     *  just re-points at the neighbor and the panel re-fetches ITS context. */
+    onSignalOpen?: (signal: Signal) => void
 }
 
 // R3c defect 8: theme vars — noir's var values ARE these literals
@@ -115,9 +119,30 @@ const barLeft = (s: number) => {
     return { left: `${50 - w}%`, width: `${w}%` }
 }
 
+// A semantic neighbor carries only identity + provenance (signal_id, headline,
+// country, source, url) — not sentiment/themes/persons (there is no single-
+// signal-by-id endpoint on the backend). Opening it in-app swaps the panel to
+// this neighbor; the panel then re-fetches ITS context (connected threads +
+// neighbors) by id. The unavailable fields render as empty/neutral — an honest
+// absence (themes/persons show nothing), never a fabricated value; a fuller
+// open would need a backend signal-by-id endpoint (follow-up).
+function neighborToSignal(n: SemanticNeighbor): Signal {
+    return {
+        id: n.signal_id,
+        timestamp: '',
+        country: n.country_code ?? '',
+        source: n.source ?? '',
+        url: n.url ?? '',
+        headline: n.headline,
+        sentiment: 0,
+        themes: [],
+        persons: [],
+    }
+}
+
 export const SignalDetailPanel: React.FC<Props> = ({
     signal, onClose, onThemeClick, onCountryClick, onPersonClick, allowlist = [],
-    relatedSignals, onPin, isPinned
+    relatedSignals, onPin, isPinned, onSignalOpen
 }) => {
     const [context, setContext] = useState<SignalContext | null>(null)
 
@@ -320,26 +345,46 @@ export const SignalDetailPanel: React.FC<Props> = ({
                             </div>
                             <div className="sdp-related-list">
                                 {context.semantic_neighbors.map(n => (
-                                    <a
-                                        key={n.signal_id}
-                                        className="sdp-related-row sdp-related-row--link"
-                                        href={n.url ?? undefined}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        data-tip="Open original article"
-                                    >
-                                        <span className="sdp-related-headline">{decodeEntities(n.headline)}</span>
-                                        <div className="sdp-related-meta">
-                                            {n.country_code && (
-                                                <span className="sdp-related-country">{resolveCountryName(n.country_code, n.country_code)}</span>
-                                            )}
-                                            {n.source && <span className="sdp-related-source">{n.source}</span>}
-                                            <span className="sdp-similarity">{Math.round(n.similarity * 100)}%</span>
-                                            {n.gate_status === 'below_gate' && (
-                                                <span className="sdp-gate-badge">UNVERIFIED</span>
-                                            )}
-                                        </div>
-                                    </a>
+                                    <div key={n.signal_id} className="sdp-related-row sdp-related-row--nav">
+                                        {/* Task 5.5 — in-app open (primary) instead of leaking
+                                            straight to the external URL. Opens the neighbor in
+                                            this panel to explore ITS threads + neighbors; falls
+                                            back to scoping the stream to its country when no
+                                            in-app opener is wired. The original stays as a small
+                                            secondary "read original" escape. */}
+                                        <button
+                                            type="button"
+                                            className="sdp-related-open"
+                                            data-tip={onSignalOpen
+                                                ? 'Open this neighbor in-app — explore its connected threads and neighbors'
+                                                : 'Scope the stream to this neighbor’s country'}
+                                            onClick={() => {
+                                                if (onSignalOpen) onSignalOpen(neighborToSignal(n))
+                                                else if (n.country_code) onCountryClick(n.country_code)
+                                            }}
+                                        >
+                                            <span className="sdp-related-headline">{decodeEntities(n.headline)}</span>
+                                            <div className="sdp-related-meta">
+                                                {n.country_code && (
+                                                    <span className="sdp-related-country">{resolveCountryName(n.country_code, n.country_code)}</span>
+                                                )}
+                                                {n.source && <span className="sdp-related-source">{n.source}</span>}
+                                                <span className="sdp-similarity">{Math.round(n.similarity * 100)}%</span>
+                                                {n.gate_status === 'below_gate' && (
+                                                    <span className="sdp-gate-badge">UNVERIFIED</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                        {n.url && (
+                                            <a
+                                                className="sdp-related-original"
+                                                href={n.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                data-tip="Read the original article"
+                                            >↗</a>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
                         </div>
