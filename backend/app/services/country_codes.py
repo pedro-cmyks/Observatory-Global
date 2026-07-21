@@ -87,7 +87,13 @@ FIPS_TO_ISO = {
     'PU': 'GW',  # Guinea-Bissau
     'GV': 'GN',  # Guinea
     'LI': 'LR',  # Liberia
-    
+    'AJ': 'AZ',  # Azerbaijan (FIPS AJ; ISO AZ)
+    'RI': 'RS',  # Serbia (FIPS RI; distinct from FIPS RS = Russia)
+    'BK': 'BA',  # Bosnia and Herzegovina (FIPS BK; ISO BA)
+    'MJ': 'ME',  # Montenegro (FIPS MJ; ISO ME)
+    'IC': 'IS',  # Iceland (FIPS IC; distinct from FIPS IS = Israel -> IL)
+    'YM': 'YE',  # Yemen (FIPS YM; ISO YE)
+
     # Same in both FIPS and ISO (for completeness)
     'US': 'US',  # United States
     'CA': 'CA',  # Canada
