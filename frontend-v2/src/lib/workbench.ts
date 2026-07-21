@@ -61,6 +61,12 @@ export interface Citation {
   capturedAt: string
   investigationId: string
   note?: string
+  /** Task 2.3: optional link to the {@link WorkbenchPin.anchorId} this receipt
+   *  belongs under — lets a render surface group citations by their pin
+   *  without merging the two arrays. Absent for legacy/unassociated receipts
+   *  (never backfilled — {@link groupCitationsByPin} buckets those as
+   *  unattached rather than guessing). */
+  anchorId?: string
 }
 
 /** Everything the caller supplies; `capturedAt`/`investigationId` are stamped by
@@ -352,6 +358,7 @@ export function addCitation(
       id,
       capturedAt: new Date().toISOString(),
       investigationId,
+      anchorId: input.anchorId,
     }
     inv.citations.push(cit)
     inv.trail.push({ at: cit.capturedAt, action: 'pin', detail: `receipt: ${cit.headline}` })
@@ -399,6 +406,30 @@ export function listCitations(investigationId: string): Citation[] {
 export function isCitationPinned(investigationId: string | null, id: string): boolean {
   if (!investigationId) return false
   return (getInvestigation(investigationId)?.citations ?? []).some(c => c.id === id)
+}
+
+/** Task 2.3: render-time JOIN of receipts under their anchor pin. Citations and
+ *  pins stay separate arrays on the Investigation (never merged in storage) —
+ *  this pure helper groups them for display only. A citation whose `anchorId`
+ *  doesn't (or no longer) resolve to a live pin — legacy receipts pinned before
+ *  this field existed, or a pin that was later removed — lands in
+ *  `unattached` rather than being silently dropped. */
+export function groupCitationsByPin(
+  pins: WorkbenchPin[], citations: Citation[],
+): { byPin: Map<string, Citation[]>; unattached: Citation[] } {
+  const known = new Set(pins.map(p => p.anchorId))
+  const byPin = new Map<string, Citation[]>()
+  const unattached: Citation[] = []
+  for (const c of citations) {
+    if (c.anchorId && known.has(c.anchorId)) {
+      const list = byPin.get(c.anchorId) ?? []
+      list.push(c)
+      byPin.set(c.anchorId, list)
+    } else {
+      unattached.push(c)
+    }
+  }
+  return { byPin, unattached }
 }
 
 // ── Claim ledger (Carolina's spec) ──────────────────────────────────────────

@@ -3,46 +3,94 @@ import { resolveThreadLabel } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import './FocusIndicator.css'
 
-const typeLabels: Record<string, string> = {
-    thread: 'Thread',
-    theme: 'Theme',
-    entity: 'Entity',
-    person: 'Person',
-    country: 'Country',
-    source: 'Source'
+interface FocusChip {
+    key: string
+    typeLabel: string
+    value: string
+    onRemove: () => void
 }
 
-export function FocusIndicator({ onClear }: { onClear?: () => void } = {}) {
-    const { focus, clearFocus, isActive } = useFocus()
+export function FocusIndicator({ onClear, onRemoveTheme }: { onClear?: () => void; onRemoveTheme?: () => void } = {}) {
+    const { filter, clearFilter, setThread, setPerson, setCountry, setTheme, isActive } = useFocus()
 
-    if (!isActive || !focus.type) return null
+    if (!isActive) return null
 
-    // For a theme/thread focus, focus.label is the raw filter.theme id
-    // (dynamic-topic-N / atlas slug). Resolve it to a human label — never show
-    // the raw id — while GDELT theme codes still route through getThemeLabel.
-    // Item 8: the opener's real label (focus.knownLabel) wins; the generic
-    // "Narrative Thread" fallback is a display-only skeleton, never stored.
-    const displayLabel = (focus.type === 'theme' || focus.type === 'thread')
-        ? resolveThreadLabel(focus.label, focus.knownLabel)
-        : focus.type === 'country' && focus.label
-            ? resolveCountryName(focus.label)   // "Australia", never a raw "AU"
-            : focus.label
+    // Compound focus (#country ∧ #theme ∧ #person can all be active at once,
+    // see nextFocusDims in lib/focusReducer.ts) needs ONE chip PER dimension,
+    // each independently dismissible — a single collapsed chip (the old
+    // priority thread>person>country>theme) hid the other active dimensions.
+    // filter.thread is exclusive with country/theme/person (opening a full
+    // thread resets the others; setting any of the three clears thread), so
+    // it renders as its own chip and never co-occurs with the compound trio.
+    const chips: FocusChip[] = []
+
+    if (filter.thread) {
+        chips.push({
+            key: 'thread',
+            typeLabel: 'Thread',
+            value: resolveThreadLabel(filter.thread, filter.themeLabel),
+            onRemove: () => setThread(null),
+        })
+    }
+    if (filter.person) {
+        chips.push({
+            key: 'person',
+            typeLabel: 'Person',
+            value: filter.person,
+            onRemove: () => setPerson(null),
+        })
+    }
+    if (filter.country) {
+        chips.push({
+            key: 'country',
+            typeLabel: 'Country',
+            value: resolveCountryName(filter.country), // "Australia", never a raw "AU"
+            onRemove: () => setCountry(null),
+        })
+    }
+    if (filter.theme) {
+        chips.push({
+            key: 'theme',
+            typeLabel: 'Theme',
+            value: resolveThreadLabel(filter.theme, filter.themeLabel),
+            // The theme lives in filter.theme AND in App's local selectedTheme
+            // (the open ThemeDetail panel). setTheme(null) alone leaves the panel
+            // on screen desynced — App passes onRemoveTheme to null both.
+            onRemove: onRemoveTheme ?? (() => setTheme(null)),
+        })
+    }
+
+    if (chips.length === 0) return null
 
     return (
         <div className="focus-indicator" role="status">
             <span className="focus-dot" aria-hidden="true" />
-            <span className="focus-meta">{typeLabels[focus.type]} focus</span>
-            <span className="focus-value">{displayLabel}</span>
+            <div className="focus-chips">
+                {chips.map(chip => (
+                    <span className="focus-chip" key={chip.key}>
+                        <span className="focus-meta">{chip.typeLabel}</span>
+                        <span className="focus-value">{chip.value}</span>
+                        <button
+                            className="focus-clear focus-chip-clear"
+                            onClick={chip.onRemove}
+                            data-tip={`Clear ${chip.typeLabel.toLowerCase()} focus — keep the rest`}
+                            aria-label={`Clear ${chip.typeLabel} focus`}
+                        >
+                            ×
+                        </button>
+                    </span>
+                ))}
+            </div>
             {/* Pedro 2026-07-16: the floating chip covered the layer chips.
                 Now a full-width in-flow band — and since EVERY surface
                 re-scopes to the focus, the band says so. */}
             <span className="focus-scope-note">map · threads · stream · universe re-scoped</span>
             <button
-                className="focus-clear"
+                className="focus-clear focus-clear-all"
                 data-tour="focus-clear"
-                onClick={onClear ?? clearFocus}
-                data-tip="Clear focus — back to the whole view"
-                aria-label="Clear focus"
+                onClick={onClear ?? clearFilter}
+                data-tip="Clear all focus — back to the whole view"
+                aria-label="Clear all focus"
             >
                 ×
             </button>

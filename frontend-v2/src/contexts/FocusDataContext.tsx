@@ -159,7 +159,16 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             // Fetch nodes first, but preserve flows during the await
             setState(prev => ({ ...prev, flows: previousFlows.current }))
 
-            // Add focus params if active
+            // Add focus params if active.
+            // Flywheel compound-focus note: /api/v2/nodes accepts a SINGLE
+            // focus_type/focus_value (backend workspace.py:150 — theme|person|
+            // country|source, one at a time). Under a compound frame
+            // (country ∧ theme ∧ person) the map therefore scopes to the ONE
+            // strongest dimension via the collapsed `focus` (priority
+            // thread>person>country>theme). This is intentional, not a bug:
+            // SignalStream already ANDs all three into /api/v2/signals and
+            // carries the true intersection. A full compound-scoped map needs a
+            // new backend endpoint accepting combined scope (deferred).
             if (isActive && focus.type && focus.value) {
                 baseParams.set('focus_type', focus.type)
                 baseParams.set('focus_value', focus.value)

@@ -13,6 +13,7 @@ import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { TranslatableText } from './TranslatableText'
+import { personPin } from '../lib/capturePayloads'
 import './NarrativeThreads.css'
 
 interface TimelinePoint {
@@ -548,9 +549,30 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {geography.codes.map((c, index) => (
                                     <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`${geography.label}: ${geography.names[index] || resolveCountryName(c, c)}`}><Flag code={c} /> {c}</button>
                                 ))}
-                                {n.top_entities.slice(0, 4).map(p => (
-                                    <span key={p} className="person-pip">{p}</span>
-                                ))}
+                                {n.top_entities.slice(0, 4).map(p => {
+                                    const personPinId = `person-${p}`
+                                    const personPinned = isPinned(personPinId)
+                                    return (
+                                        <span key={p} className={`person-pip${filter.person === p ? ' person-pip--active' : ''}`}>
+                                            <button
+                                                type="button"
+                                                className="person-pip-focus"
+                                                onClick={e => { e.stopPropagation(); setPerson(p) }}
+                                                data-tip={`Focus on ${p}`}
+                                            >{p}</button>
+                                            <button
+                                                type="button"
+                                                className={`person-pip-pin${personPinned ? ' person-pip-pin--active' : ''}`}
+                                                data-tip={personPinned ? 'Unpin from investigation' : 'Pin person to investigation'}
+                                                onClick={e => {
+                                                    e.stopPropagation()
+                                                    if (personPinned) unpinItem(personPinId)
+                                                    else pinItem(personPin(p))
+                                                }}
+                                            >◆</button>
+                                        </span>
+                                    )
+                                })}
                                 {n.has_public_interest && (
                                     <span className="attention-badge search" data-tip={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
                                         SEARCH

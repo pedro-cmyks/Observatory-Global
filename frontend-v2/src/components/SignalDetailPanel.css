@@ -425,6 +425,58 @@
     border-color: rgba(var(--color-accent-bright-rgb), 0.25);
 }
 
+/* Task 5.5 — a semantic-neighbor row: in-app open (button, primary) + a small
+   secondary "read original ↗" escape. The --nav modifier turns the row into a
+   flex wrapper and moves the card visual onto the button, leaving the legacy
+   --link fallback (used before context loads) untouched. */
+.sdp-related-row--nav {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+}
+
+.sdp-related-open {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    padding: 7px 10px;
+    background: rgba(var(--color-ink-rgb), 0.03);
+    border: 1px solid rgba(var(--color-ink-rgb), 0.06);
+    border-radius: 5px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.sdp-related-open:hover,
+.sdp-related-open:focus-visible {
+    background: rgba(var(--color-accent-bright-rgb), 0.07);
+    border-color: rgba(var(--color-accent-bright-rgb), 0.25);
+    outline: none;
+}
+
+.sdp-related-original {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: 13px;
+    border: 1px solid rgba(var(--color-ink-rgb), 0.06);
+    border-radius: 5px;
+}
+
+.sdp-related-original:hover {
+    color: var(--color-accent-bright, var(--color-accent-primary));
+    border-color: rgba(var(--color-accent-bright-rgb), 0.25);
+}
+
 .sdp-similarity {
     font-size: 9px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);

@@ -460,12 +460,23 @@
     border-color: rgba(99, 179, 237, 0.15);
 }
 
+.entity-headline-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
 .entity-headline-source {
     color: var(--color-info);
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+}
+
+.entity-headline-pin {
+    flex: 0 0 auto;
 }
 
 .entity-headline-url {

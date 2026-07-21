@@ -32,6 +32,8 @@ import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { FocusIndicator } from './components/FocusIndicator'
+import { FrameStrip } from './components/FrameStrip'
+import { FrameSheet } from './components/FrameSheet'
 import { maxReplayDays, farEdgeKind, positionForDaysBack, snapDaysBack, isoDayForDaysBack, REPLAY_ENDPOINT_CAP_DAYS } from './lib/scrubberScale'
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, Sun, Moon } from './lib/icons'
 import { useTheme } from './contexts/ThemeContext'
@@ -46,7 +48,9 @@ import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
 import { resolveThreadLabel } from './lib/themeLabels'
-import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addPin } from './lib/workbench'
+import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addPin, addCitation } from './lib/workbench'
+import { countryPin, receiptFrom } from './lib/capturePayloads'
+import { buildBriefParams, parseConsoleDeepLink } from './lib/navParams'
 // #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
 // children with CSS transforms — panels are NEVER unmounted by layout changes,
 // which is what the keep-alive architecture requires.
@@ -267,7 +271,7 @@ function AppContent() {
 
   // W1 (2026-07-05): one L3 store — the context adapts panel pins onto the
   // Workbench investigation; isOpen IS the workbench overlay state now.
-  const { trackVisit, isOpen: workbenchOpen, setIsOpen: setWorkbenchOpen, items: workspaceItems, version: wbVersion } = useWorkspace()
+  const { trackVisit, isOpen: workbenchOpen, setIsOpen: setWorkbenchOpen, items: workspaceItems, version: wbVersion, pinItem } = useWorkspace()
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -356,10 +360,11 @@ function AppContent() {
   }, [moreMenuOpen])
   const { watches, add: addWatch } = useSavedWatches()
   const [watchNamePrompt, setWatchNamePrompt] = useState<string | null>(null)
-  const entrySource = useMemo(() => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('entry')
-  }, [])
+  // Reactive to the URL (not mount-only): under the #239 keep-alive shell App
+  // stays mounted across Brief↔App switches, so a mount-only read went stale.
+  // (useUrlSync now preserves `entry` across focus changes, so this stays
+  // 'brief' for the whole reading session — 6.3a depends on it.)
+  const entrySource = useMemo(() => new URLSearchParams(location.search).get('entry'), [location.search])
   const tourEntryContext = entrySource === 'brief'
     ? 'You came in from the Brief. Atlas will show the full console first, then you can keep exploring the country or narrative you selected.'
     : undefined
@@ -376,17 +381,20 @@ function AppContent() {
   const [eeResetNonce, setEeResetNonce] = useState(0)
 
   // Focus hook for click-to-focus
-  const { setFocus, focus, clearFocus, setCountry, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
+  const { setFocus, focus, clearFocus, setCountry, setPerson, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
 
   // X0 (2026-07-05): the stream slot is L2's core state machine — panel_swap
   // makes the middle of the L0→L3 funnel readable (mirrors the render
   // priority chain of the stream panel).
+  // Flywheel #4: mirror the NEW render ladder (thread/theme now outrank a
+  // standing person — App.tsx streamPanel). Was person>thread>theme, which
+  // mislabeled panel_swap as 'person' while a thread/theme panel rendered.
   const activeStreamPanel = storyQuery ? 'story'
-    : focus.type === 'person' && focus.value ? 'person'
-    : selectedPublicAttention ? 'attention'
     : selectedThread ? 'thread'
-    : (selectedCountry || selectedCountryCode) ? 'country'
     : selectedTheme ? 'theme'
+    : (focus.type === 'person' && focus.value) ? 'person'
+    : (selectedCountry || selectedCountryCode) ? 'country'
+    : selectedPublicAttention ? 'attention'
     : selectedChokepoint ? 'chokepoint'
     : 'stream'
   useEffect(() => {
@@ -582,6 +590,21 @@ function AppContent() {
     }
   }
 
+  // Exploration Flywheel (Task 3.7): the map's ◆ gestures. A country pins as a
+  // WHERE-lane entity (pinItem → active investigation); an event marker pins as
+  // an un-gated receipt (receiptFrom defaults gateStatus:'unknown' — never faked
+  // to a tier), creating an investigation from the marker title if none is open.
+  const handlePinMapCountry = useCallback((iso: string, name: string) => {
+    pinItem(countryPin(iso, name))
+  }, [pinItem])
+
+  const handlePinMapMarker = useCallback((payload: { title: string; sourceLink: { url: string; label: string } | null; source?: string }) => {
+    const cit = receiptFrom({ headline: payload.title, url: payload.sourceLink?.url, source: payload.source })
+    let invId = getActiveInvestigationId()
+    if (!invId || !getInvestigation(invId)) invId = createInvestigation(payload.title).id
+    addCitation(invId, cit)
+  }, [])
+
   // A1: one comprehensive deselect — the focus chip's ✕ and the map background
   // click both return to the whole, unfocused view. clearFocus() clears the
   // GlobalFilter (closing country/theme panels via their effects); the rest
@@ -720,14 +743,22 @@ function AppContent() {
     if (location.pathname !== '/app') return
     if (deepLinkProcessedRef.current === location.search) return
     deepLinkProcessedRef.current = location.search
-    const params = new URLSearchParams(location.search)
-    const attention = params.get('attention')
-    const theme = params.get('theme')
-    const country = params.get('country') || undefined
+    const dl = parseConsoleDeepLink(location.search)
+    const attention = dl.attention
+    const theme = dl.theme
+    const country = dl.country || undefined
+    // Carry-context (6.2b): a category/search deep-link with NO theme and NO
+    // attention seeds the cross-thread STORY panel. Kept as its OWN branch —
+    // handleThemeSelect nulls storyQuery internally, so the two must not merge.
+    if (dl.q && !theme && !attention) {
+      setStoryQuery(dl.q)
+      return
+    }
     // Brief → console deep-link without attention: open the theme detail on mount.
     // Atlas-topic slugs (e.g. "disease-outbreak") resolve to the gated theme view.
+    // dl.label carries the Brief's real thread label forward (5th arg → labelHint).
     if (theme && !attention) {
-      handleThemeSelect(theme, country, country ? resolveCountryName(country) : undefined)
+      handleThemeSelect(theme, country, country ? resolveCountryName(country) : undefined, undefined, dl.label ?? undefined)
       if (country) setMapFlyCountry(country)
       return
     }
@@ -919,8 +950,13 @@ function AppContent() {
   }, [nodes, mapReady, setMapFlyCountry])
 
   // Sync Global Focus to CountrySlide-over; EE flies via the flyCountry prop.
+  // Flywheel: skip when a thread/theme panel is open — under compound focus a
+  // thread opened while a country is focused keeps filter.country set, and
+  // re-opening CountryBrief here would call handleCountryClick() which nulls
+  // selectedTheme/selectedThread and snaps the just-opened thread closed.
   useEffect(() => {
-    if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
+    if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode
+        && !selectedTheme && !selectedThread) {
       handleCountryClick(focus.value)
       setMapFlyCountry(focus.value)
     }
@@ -930,7 +966,14 @@ function AppContent() {
   // Open ThemeDetail when theme is focused via FocusContext (e.g. NarrativeThreads click)
   useEffect(() => {
     const filterCountry = filter.country || undefined
-    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme || selectedTheme.originCountry !== filterCountry)) {
+    // Flywheel: re-fire when the theme id changed OR — for a NON-thread theme
+    // (opened via category/universe, not a thread-open) — when filter.country
+    // changed under it, so a Country-chip ✕ correctly re-scopes the open theme
+    // to global. A thread-open theme (selectedTheme.thread set) keeps its OWN
+    // origin country and is NOT re-scoped (that origin came from the thread,
+    // not the compound filter.country — the R2 protection).
+    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme
+        || (!selectedTheme.thread && selectedTheme.originCountry !== filterCountry))) {
       const countryName = filter.country ? resolveCountryName(filter.country) : undefined
       // Item 8: carry the focus context's known label so a focus-driven open
       // keeps the opener's real thread name.
@@ -956,18 +999,26 @@ function AppContent() {
     if (showBriefing) { setShowBriefing(false); return true }
     if (selectedSourceProfile) { setSelectedSourceProfile(null); return true }
     if (rightPanelThemeCountry) { setRightPanelThemeCountry(null); return true }
-    if (focus.type === 'person') { clearFocus(); return true }
-    if (selectedTheme) { setSelectedTheme(null); setTheme(null); return true }
-    if (selectedCountry || selectedCountryCode) {
+    // Flywheel compound focus: peel ONE dimension per Back. Close an open
+    // thread/theme first (revealing a standing person/country), then peel the
+    // person, then the country — per-dimension (setPerson/setCountry null),
+    // never clearFocus() which would wipe the whole compound frame at once.
+    if (selectedTheme || selectedThread) { setSelectedTheme(null); setSelectedThread(null); setTheme(null); return true }
+    if (focus.type === 'person') { setPerson(null); return true }
+    if (selectedCountry || selectedCountryCode || filter.country) {
       setSelectedCountry(null)
       setSelectedCountryCode(null)
       setShowFlows(false)
-      clearFocus()
+      setCountry(null)
       return true
     }
+    // 6.3a: nothing left to peel — on mobile, a Brief-entry analyst's swipe-back
+    // exits to the Brief (same reading-first seam as closeAll), never a dead
+    // gesture on a blank Stream tab. Desktop Escape stays a no-op (isMobile).
+    if (isMobile && entrySource === 'brief') { navigate('/brief'); return true }
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedCountry, selectedCountryCode])
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
@@ -1071,15 +1122,21 @@ function AppContent() {
     // the backend computes pairs FOR that country (4fb25a11); the global
     // top-100 rarely contains small-country pairs, which is why focused
     // countries drew zero arcs (capture-doc A2). Unfiltered stays a fallback.
-    const baseFlows = selectedCountryCode
+    // Flywheel #2: filter flows by the country ONLY when country is the
+    // active map dimension (collapsed focus === country). Under a compound
+    // "person over a warm country", selectedCountryCode is still set but the
+    // map follows the person — showing that country's flow arcs would be the
+    // same click-history incoherence the heat fix above removes.
+    const flowCountry = focus.type === 'country' ? selectedCountryCode : null
+    const baseFlows = flowCountry
       ? (flows.length ? flows : (unfilteredFlows || []))
       : flows;
     let filteredFlows = [...baseFlows];
 
-    if (selectedCountryCode) {
+    if (flowCountry) {
       filteredFlows = filteredFlows.filter(f =>
-        f.sourceCountry === selectedCountryCode ||
-        f.targetCountry === selectedCountryCode
+        f.sourceCountry === flowCountry ||
+        f.targetCountry === flowCountry
       );
     }
 
@@ -1089,7 +1146,7 @@ function AppContent() {
     return filteredFlows
       .sort((a, b) => (b.strength || 0) - (a.strength || 0))
       .slice(0, maxFlows)
-  }, [flows, unfilteredFlows, selectedCountryCode])
+  }, [flows, unfilteredFlows, selectedCountryCode, focus.type])
 
   // Get crisis state for terminator auto-hide and anomalies
   const { enabled: crisisEnabled, anomalies } = useCrisis()
@@ -1118,7 +1175,14 @@ function AppContent() {
   // map (feature-states below) and the Equal Earth map (#212). See
   // lib/countryHeatStates. entityFocus mirrors the prior inline logic.
   const heatStates = useMemo(() => {
-    const entityFocus = !selectedCountryCode && isActive && !!focus.value
+    // Flywheel #2: the map's node FETCH scopes by the collapsed `focus`
+    // (person>country>theme). The heat COLORING must agree, or a compound
+    // "person over a warm country" (selectedCountryCode still set) paints
+    // country heat over person-fetched nodes — an incoherent map that depends
+    // on click-history. So drive the country-heat branch off the collapsed
+    // focus too: country heat only when focus.type==='country'; otherwise the
+    // person/theme entityFocus wins (no longer gated on !selectedCountryCode).
+    const entityFocus = isActive && !!focus.value
       && (focus.type === 'person' || focus.type === 'theme')
     return computeCountryHeatStates({
       enhancedNodes,
@@ -1126,7 +1190,7 @@ function AppContent() {
       // the strip label says so; never presented as historical heat.
       heatComposite: replayHeat ?? heatComposite,
       visibleFlows,
-      selectedCountryCode,
+      selectedCountryCode: focus.type === 'country' ? selectedCountryCode : null,
       entityFocus,
     })
   }, [enhancedNodes, heatComposite, replayHeat, visibleFlows, selectedCountryCode, isActive, focus.type, focus.value])
@@ -1288,9 +1352,15 @@ function AppContent() {
   const openBrief = () => {
     // The Brief is the DAY's edition (fixed 24h since 2026-07-05) — the old
     // `range` param was already ignored there; dropped with the selector.
-    const params = new URLSearchParams()
-    if (selectedCountryCode) params.set('country', selectedCountryCode)
-    const qs = params.toString()
+    // Carry-context (6.2): the active theme/label/query ride forward so the
+    // Brief can honor what the analyst was reading. label only rides with a
+    // theme (buildBriefParams enforces that); it asserts nothing on its own.
+    const qs = buildBriefParams({
+      country: selectedCountryCode,
+      theme: selectedTheme?.theme,
+      themeLabel: selectedTheme?.thread?.label ?? selectedTheme?.labelHint,
+      storyQuery,
+    })
     navigate(qs ? `/brief?${qs}` : '/brief')
   }
 
@@ -1530,7 +1600,24 @@ function AppContent() {
 
       {/* A1: persistent focus chip — shows what's focused and gives one ✕ to
           return to the whole, unfocused view (the missing country deselect). */}
-      <FocusIndicator onClear={clearAll} />
+      <FocusIndicator onClear={clearAll} onRemoveTheme={() => { setTheme(null); setSelectedTheme(null); setSelectedThread(null) }} />
+      {/* Flywheel Task 2.4: the always-visible "investigation you're building" —
+          pinned items auto-sorted into WHO/WHERE/WHAT lanes. Invisible until the
+          first pin (prominence gradient). Clicking a pin re-opens it by type. */}
+      {!isMobile && (
+        <FrameStrip
+          onOpenPin={(item) => {
+            const p = new URLSearchParams(item.urlParams)
+            if (item.type === 'theme' && p.get('theme')) handleThemeSelect(p.get('theme')!)
+            else if (item.type === 'person') setFocus('person', decodeURIComponent(p.get('person') || item.title), item.title)
+            else if (item.type === 'country' && p.get('country')) handleCountryClick(p.get('country')!)
+          }}
+          // ◎ callout: Scope opens+scopes the connected thread (compound focus);
+          // ＋Report opens the Workbench to build from these pins.
+          onScopeThread={(threadId, label) => handleThemeSelect(threadId, undefined, undefined, undefined, label)}
+          onOpenReport={() => setWorkbenchOpen(true)}
+        />
+      )}
 
       <div className="coverage-disclaimer" data-tip="Atlas colors countries by deviation from each country's recent baseline. Raw volume increases evidence density, but it is not treated as real-world importance.">
         Coverage bias: map heat is baseline-normalized; raw volume is evidence density, not importance.
@@ -1640,6 +1727,8 @@ function AppContent() {
                   flyCountry={mapFlyCountry}
                   resetNonce={eeResetNonce}
                   overlay={nativeOverlayData}
+                  onPinCountry={handlePinMapCountry}
+                  onPinMarker={handlePinMapMarker}
                   onMarkerClick={(kind, p) => {
                     // Mirrors the MapLibre layer handlers (parity audit).
                     if (kind === 'chokepoint') {
@@ -1810,13 +1899,21 @@ function AppContent() {
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         const streamPanel = (() => {
           const isStory = !!storyQuery
-          const isPerson = focus.type === 'person' && !!focus.value && !isStory
-          const isThread = !!selectedThread && !isPerson && !isStory
-          const isTheme = !!selectedTheme && !isPerson && !isThread && !isStory
+          // Flywheel compound focus: a freshly-opened thread/theme outranks a
+          // standing person focus for the middle panel (Pedro's call — "show the
+          // thread"); the person stays a scope chip driving the map/list. Person
+          // wins the panel only when no thread/theme is open.
+          const isThread = !!selectedThread && !isStory
+          const isTheme = !!selectedTheme && !isThread && !isStory
+          const isPerson = focus.type === 'person' && !!focus.value && !isStory && !isThread && !isTheme
           const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
           const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
-          const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null)
+            // 6.3a: on mobile, an analyst who entered from the Brief returns THERE
+            // when the last reading panel closes — never a drop into the blank
+            // Stream tab. Desktop unchanged (guarded on isMobile).
+            if (isMobile && entrySource === 'brief') navigate('/brief') }
           // Smart back: one step up, not all the way to stream
           const handleStreamBack = () => {
             if (prevStreamCtx?.type === 'chokepoint') {
@@ -2040,14 +2137,21 @@ function AppContent() {
                     originCountryName: target.originCountryName,
                     thread: target.thread,
                   } : null)
-                  setTheme(null)
-                  setSelectedCountry(null)
-                  setSelectedCountryCode(null)
+                  // Flywheel compound focus: thread-open COMPOSES with the active
+                  // focus instead of wiping it. No clearFocus() — an active
+                  // filter.country/filter.person survives (the setters are
+                  // compound, Tasks 1.1/1.2). setTheme() now SETS filter.theme to
+                  // the opened thread's theme so it joins the compound frame as a
+                  // chip; the country/person are preserved. The :930 guard
+                  // (theme-id-only) and :921 guard (skip when a theme/thread is
+                  // open) keep this from clobbering the origin country or snapping
+                  // the thread closed. selectedCountryCode is left warm — the
+                  // country panel reappears on Back; isThread/isTheme outrank it.
+                  setTheme(target ? target.theme : null, undefined, target?.thread?.label ?? undefined)
                   setSelectedPublicAttention(null)
                   setSelectedChokepoint(null)
                   setRightPanelThemeCountry(null)
                   setThemeBackStack([])
-                  clearFocus()
                   setSelectedThread(target ? null : thread)
                   if (thread.top_countries[0]) setMapFlyCountry(thread.top_countries[0])
                 }}
@@ -2182,10 +2286,15 @@ function AppContent() {
 
         if (isMobile) {
           // Mobile keeps the proven tab IA untouched: one CSS class swap shows
-          // one full-screen panel at a time (display-toggle, no unmounts).
+          // one full-screen panel at a time (display-toggle, no unmounts) —
+          // EXCEPT the radar (6.3b): the map's 2D-canvas rAF loop keeps running
+          // while CSS-hidden, burning the phone's battery/main thread during a
+          // read. Mount it only on the map tab so it unmounts (rAF stops) on
+          // stream/threads/pulse. Re-mount re-applies its live props from App
+          // state (flyCountry/resetNonce) — see note in the handoff.
           return (
             <div className={`terminal-layout mobile-tab-${mobileTab}`}>
-              {radarPanel}
+              {mobileTab === 'map' && radarPanel}
               {streamPanel}
               {threadsPanel}
               {matrixPanel}
@@ -2214,6 +2323,23 @@ function AppContent() {
           </div>
         )
       })()}
+
+      {/* Flywheel Task 6.3c: the mobile Frame — a quiet pull-up sheet above the
+          tab bar (the desktop strip is !isMobile). The ◎ detected relation
+          renders ONLY inside it, never as a mid-read banner. */}
+      {isMobile && (
+        <FrameSheet
+          raised={!!(filter.country || filter.theme || filter.person)}
+          onOpenPin={(item) => {
+            const p = new URLSearchParams(item.urlParams)
+            if (item.type === 'theme' && p.get('theme')) handleThemeSelect(p.get('theme')!)
+            else if (item.type === 'person') setFocus('person', decodeURIComponent(p.get('person') || item.title), item.title)
+            else if (item.type === 'country' && p.get('country')) handleCountryClick(p.get('country')!)
+          }}
+          onScopeThread={(threadId, label) => handleThemeSelect(threadId, undefined, undefined, undefined, label)}
+          onOpenReport={() => setWorkbenchOpen(true)}
+        />
+      )}
 
       {/* Mobile L2 bottom navigation — one full-screen surface at a time */}
       {isMobile && (

@@ -22,6 +22,8 @@ import { resolveCountryName } from '../lib/countryNames'
 import { TranslatableHeadline } from './TranslatableHeadline'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { track } from '../lib/telemetry'
+import PinReceiptButton from './PinReceiptButton'
+import { receiptFrom } from '../lib/capturePayloads'
 import './NarrativeBiography.css'
 
 const SVG_H = 132
@@ -244,6 +246,16 @@ export function NarrativeBiography({ theme, temporalSignature, signatureMeta }: 
                                         <span>{decodeEntities(r.headline)}</span>
                                     )}
                                     {r.source && <span className="nb-receipt-src"> — {decodeEntities(r.source)}</span>}
+                                    <PinReceiptButton
+                                        className="nb-receipt-pin"
+                                        citation={receiptFrom({
+                                            headline: r.headline,
+                                            source: r.source ?? undefined,
+                                            url: r.url ?? undefined,
+                                            sourceLang: r.source_lang ?? undefined,
+                                        })}
+                                        contextLabel={decodeEntities(selectedEra.label ?? theme)}
+                                    />
                                 </li>
                             ))}
                         </ul>

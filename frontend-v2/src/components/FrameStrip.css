@@ -1,0 +1,225 @@
+/* Frame strip (Exploration Flywheel Task 2.4) — the deliberate-pins counterpart
+   to FocusIndicator's ephemeral focus band. Same visual family (accent-tinted
+   in-flow strip, monospace meta labels) so the two read as siblings, not
+   competing systems. Compact single row; lanes scroll horizontally rather
+   than wrap, so the strip never grows tall on a narrow desktop viewport. */
+.frame-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    /* The command bar is position:absolute (h=48); when the strip is the first
+       in-flow band it must clear it — same trick as .focus-indicator. When it
+       follows the focus band (which already cleared 48px), the sibling rule
+       below zeroes this so they stack flush. */
+    margin-top: 48px;
+    padding: 5px 14px;
+    background: linear-gradient(
+        90deg,
+        rgba(var(--color-accent-deep-rgb), 0.1),
+        rgba(var(--color-accent-deep-rgb), 0.03) 60%,
+        transparent
+    );
+    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
+    border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    overflow: hidden;
+    animation: frameStripFade 0.18s ease-out;
+}
+
+/* When the focus band is present above the strip it already cleared the
+   absolute command bar — don't double-offset. */
+.focus-indicator + .frame-strip {
+    margin-top: 0;
+}
+
+@keyframes frameStripFade {
+    from { opacity: 0; transform: translateY(-3px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.frame-strip-header {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    flex-shrink: 0;
+    max-width: 200px;
+}
+
+.frame-strip-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.frame-strip-count {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.frame-strip-lanes {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.frame-strip-lanes::-webkit-scrollbar {
+    display: none;
+}
+
+.frame-strip-lane {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.frame-strip-lane-label {
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #5f8f7a;
+    flex-shrink: 0;
+}
+
+[data-theme^='emerald'] .frame-strip-lane-label {
+    color: var(--color-accent-primary, #5f8f7a);
+}
+
+.frame-strip-chips {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.frame-strip-chip {
+    display: block;
+    max-width: 140px;
+    padding: 2px 9px;
+    background: rgba(var(--color-accent-deep-rgb), 0.1);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
+    border-radius: 999px;
+    color: var(--color-text-secondary);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.frame-strip-chip:hover,
+.frame-strip-chip:focus-visible {
+    background: rgba(var(--color-accent-deep-rgb), 0.22);
+    border-color: rgba(var(--color-accent-bright-rgb), 0.5);
+    color: var(--color-text-primary);
+}
+
+.frame-strip-chip:focus-visible {
+    outline: 1px solid rgba(var(--color-accent-bright-rgb), 0.7);
+    outline-offset: 1px;
+}
+
+/* ◎ detected-relationship callout (Task 4.3) — a QUIET, measured invitation
+   pinned to the right of the strip. Never a banner, never interrupts; the
+   "measured, not asserted" tag is mandatory and never truncated. */
+.frame-strip-detect {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;      /* lanes shrink before this does */
+    flex-shrink: 0;
+    max-width: 48%;
+    padding-left: 10px;
+    border-left: 1px solid rgba(var(--color-accent-deep-rgb), 0.2);
+}
+
+.frame-strip-detect-icon {
+    color: var(--color-accent-bright, var(--color-accent-primary));
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.frame-strip-detect-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    color: var(--color-text-secondary);
+}
+
+.frame-strip-detect-text b {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.frame-strip-detect-tag {
+    flex-shrink: 0;
+    padding: 0 5px;
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.35);
+    border-radius: 3px;
+    font-size: 8px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.frame-strip-detect-action {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    background: rgba(var(--color-accent-deep-rgb), 0.14);
+    border: 1px solid rgba(var(--color-accent-deep-rgb), 0.4);
+    border-radius: 999px;
+    color: var(--color-accent-bright, var(--color-accent-primary));
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.frame-strip-detect-action:hover,
+.frame-strip-detect-action:focus-visible {
+    background: rgba(var(--color-accent-deep-rgb), 0.3);
+    color: var(--color-text-primary);
+    outline: none;
+}
+
+.frame-strip-detect-action:focus-visible {
+    outline: 1px solid rgba(var(--color-accent-bright-rgb), 0.7);
+    outline-offset: 1px;
+}
+
+@media (max-width: 768px) {
+    /* Compact single-row scroll on mobile too — the strip's placement in the
+       shell is the controller's call; this just keeps it from blowing out a
+       narrow viewport if mounted there. */
+    .frame-strip {
+        padding: 4px 10px;
+        gap: 8px;
+    }
+    .frame-strip-header {
+        max-width: 120px;
+    }
+    .frame-strip-chip {
+        max-width: 100px;
+    }
+    /* The mobile Frame lives in a pull-up sheet (Task 6.3); until then, keep the
+       callout from dominating a narrow strip. */
+    .frame-strip-detect {
+        max-width: 60%;
+    }
+}

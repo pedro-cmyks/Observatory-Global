@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import { resolveCountryName } from '../lib/countryNames'
 import { decodeEntities } from '../lib/decodeEntities'
 import { track } from '../lib/telemetry'
+import PinReceiptButton from './PinReceiptButton'
+import { receiptFrom } from '../lib/capturePayloads'
 import './DayEvidencePanel.css'
 
 interface DayEvidenceItem {
@@ -94,6 +96,17 @@ export function DayEvidencePanel({ day, country, onClose, onOpenLive }: {
                             ? <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.headline)}</a>
                             : <span>{decodeEntities(it.headline)}</span>}
                         {it.source && <span className="day-evidence-src"> — {decodeEntities(it.source)}</span>}
+                        <PinReceiptButton
+                            className="day-evidence-pin"
+                            citation={receiptFrom({
+                                headline: it.headline,
+                                source: it.source ?? undefined,
+                                url: it.url ?? undefined,
+                                publishedDate: it.timestamp?.slice(0, 10),
+                                originCountry: it.country_code ?? country,
+                            })}
+                            contextLabel={`${name} · ${dateLabel}`}
+                        />
                     </li>
                 ))}
             </ul>

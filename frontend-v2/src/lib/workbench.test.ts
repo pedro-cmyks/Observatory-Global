@@ -23,6 +23,7 @@ import {
   exportInvestigationJSON,
   getActiveInvestigationId,
   getInvestigation,
+  groupCitationsByPin,
   investigationQuery,
   isCitationPinned,
   listCitations,
@@ -283,6 +284,17 @@ describe('workbench citations (receipt-level pinning)', () => {
     addCitation(inv.id, noUrl)
     addCitation(inv.id, noUrl) // idempotent
     expect(listCitations(inv.id)).toHaveLength(1)
+  })
+
+  it('groups citations under their anchor pin, unattached bucket for legacy', () => {
+    const inv = createInvestigation('t2-citation-group')
+    addPin(inv.id, { anchorId: 'theme-1', anchorType: 'theme', label: 'Gaza' } as any)
+    addCitation(inv.id, { headline: 'H1', gateStatus: 'verified', anchorId: 'theme-1' })
+    addCitation(inv.id, { headline: 'H-orphan', gateStatus: 'unknown' })
+    const fresh = getInvestigation(inv.id)!
+    const grouped = groupCitationsByPin(fresh.pins, fresh.citations)
+    expect(grouped.byPin.get('theme-1')!.map(c => c.headline)).toEqual(['H1'])
+    expect(grouped.unattached.map(c => c.headline)).toEqual(['H-orphan'])
   })
 })
 

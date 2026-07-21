@@ -55,9 +55,21 @@
   background: rgba(11, 14, 19, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  pointer-events: none;
+  /* auto (not none): the ◆ pin button needs real hover/click here, and the
+     card's own onMouseEnter bridges the body→card hover gap (see
+     hoverExitTimerRef in UniverseView.tsx). Coordinate-based click-to-open
+     hit-testing on the canvas is unaffected — it bubbles regardless of which
+     descendant received the event. */
+  pointer-events: auto;
   max-width: 280px;
   z-index: 2;
+}
+
+.universe-hover-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
 }
 
 .universe-hover span {
@@ -70,6 +82,22 @@
   color: var(--color-text-primary);
   font-size: 12.5px;
 }
+
+/* Exploration Flywheel 3.2: small, non-intrusive pin toggle beside the label. */
+.universe-hover-pin {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 1px 2px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.universe-hover-pin:hover { color: rgba(255, 255, 255, 0.85); }
+.universe-hover-pin--active { color: #34d399; }
+.universe-hover-pin--active:hover { color: #34d399; }
 
 .universe-hover em {
   color: var(--color-text-muted);
