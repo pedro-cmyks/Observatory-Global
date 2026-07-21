@@ -637,6 +637,49 @@ def parse_thread_id(thread_id: str) -> tuple[str, list[str]]:
     return anchor_slug, country_codes
 
 
+def resolve_thread_country_keys(
+    subject_countries: Any = None,
+    subject_geography_status: str | None = None,
+    coverage_country_codes: Any = None,
+) -> dict[str, Any]:
+    """#238: decide which country codes a thread is keyed under for the
+    country-scoped `/threads` view.
+
+    The country view historically keyed on the coverage dateline (the outlet's
+    `s.country_code`), which conflates "who reported it" with "who it is about"
+    — a domestic story carried mostly by foreign wires got datelined away from
+    its own country. This prefers the already-computed, 86%-precision per-thread
+    subject geography (`verified_subject_countries`, served per thread) and
+    FALLS BACK to the coverage countries whenever the subject inference abstains
+    (status != 'verified', or the verified set is empty). The fallback is honest:
+    it never returns an empty key set while coverage is available, so a thread is
+    never silently dropped just because subject geography could not be resolved.
+    """
+    subj = [str(c).upper() for c in (subject_countries or []) if c]
+    cov = [str(c).upper() for c in (coverage_country_codes or []) if c]
+    if subject_geography_status == "verified" and subj:
+        return {"country_keys": subj, "keying_basis": "subject"}
+    return {"country_keys": cov, "keying_basis": "coverage"}
+
+
+def thread_matches_country(
+    country_code: str,
+    subject_countries: Any = None,
+    subject_geography_status: str | None = None,
+    coverage_country_codes: Any = None,
+) -> bool:
+    """True when `country_code` belongs to the thread's resolved key set
+    (subject when verified, else coverage). See resolve_thread_country_keys."""
+    if not country_code:
+        return False
+    keys = resolve_thread_country_keys(
+        subject_countries=subject_countries,
+        subject_geography_status=subject_geography_status,
+        coverage_country_codes=coverage_country_codes,
+    )["country_keys"]
+    return country_code.upper() in keys
+
+
 def build_thread_label(*, anchor_label: str, top_countries: list[str]) -> str:
     # Momentum is shown by the trend pill (accelerating/stable/fading); the
     # label stays a neutral topic+place phrase to avoid a second, contradictory
@@ -1583,7 +1626,20 @@ async def _fetch_dynamic_threads_with_conn(
             sample_signals = await conn.fetch(
                 _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
             )
-        threads.append(assemble_dynamic_thread(topic, list(sample_signals)))
+        thread = assemble_dynamic_thread(topic, list(sample_signals))
+        # #238: the SQL pre-filters candidates by the coverage dateline primary
+        # country; re-key each on its verified SUBJECT geography and keep it only
+        # when the requested country is in its resolved key set. A thread whose
+        # subject is verified elsewhere drops out of this country's view; one that
+        # abstains falls back to coverage (which already matched) and stays.
+        if country_code and not thread_matches_country(
+            country_code,
+            subject_countries=thread.get("subject_countries"),
+            subject_geography_status=thread.get("subject_geography_status"),
+            coverage_country_codes=thread.get("top_countries"),
+        ):
+            continue
+        threads.append(thread)
     return threads
 
 
