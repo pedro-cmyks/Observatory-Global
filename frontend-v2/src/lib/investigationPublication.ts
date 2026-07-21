@@ -102,13 +102,18 @@ export interface PublicationPackage {
    *  tensions with verbatim quotes. Absent when not run / nothing readable. */
   coverage_check?: {
     findings?: Array<{
-      kind: 'corroboration' | 'tension'
-      a: { url: string; text: string; quote: string }
-      b: { url: string; text: string; quote: string }
+      // 'shared_source' (Council R3 P1): syndicated wire copies agree but are
+      // one source, not independent corroboration.
+      kind: 'corroboration' | 'tension' | 'shared_source'
+      a: { url: string; outlet?: string; text: string; quote: string }
+      b: { url: string; outlet?: string; text: string; quote: string }
       note: string
+      independence?: { independent: boolean; reason: string; label: string }
     }>
     articles_read?: number
     articles_with_claims?: number
+    independent_corroborations?: number
+    shared_source_findings?: number
     model?: string
     note?: string
     story_id?: string

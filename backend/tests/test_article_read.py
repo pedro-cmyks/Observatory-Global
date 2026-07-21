@@ -154,6 +154,120 @@ async def test_cross_read_needs_two_claimful_articles(monkeypatch):
     assert out["findings"] == [] and "fewer than two" in out["reason"]
 
 
+# ── cross-read source independence (Council R3 P1) ───────────────────────────
+# Syndicated wire copies (same story, different mastheads) must NOT count as
+# mutual corroboration — that inflates confidence on the exact surface built to
+# establish it. Reuses thread_ranking's masthead-strip + a content/outlet check.
+
+def test_registrable_folds_subdomain_keeps_wire_family_distinct():
+    assert ar._registrable("edition.cnn.com") == "cnn.com"
+    assert ar._registrable("www.cnn.com") == "cnn.com"
+    # AU wire family: distinct registrable domains — only wire_sig unifies them.
+    assert ar._registrable("katherinetimes.com.au") == "katherinetimes.com.au"
+    assert ar._registrable("katherinetimes.com.au") != ar._registrable("blayneychronicle.com.au")
+
+
+def test_articles_independent_same_outlet():
+    a = ar.source_signature("https://cnn.com/x", {"outlet": "cnn.com", "title": "One"})
+    b = ar.source_signature("https://edition.cnn.com/y", {"outlet": "edition.cnn.com", "title": "Two"})
+    indep, reason = ar.articles_independent(a, b)
+    assert indep is False and reason == "same_outlet"
+
+
+def test_articles_independent_same_wire_headline():
+    a = ar.source_signature("https://katherinetimes.com.au/x",
+                            {"outlet": "katherinetimes.com.au",
+                             "title": "Refinery resumes operations | Katherine Times"})
+    b = ar.source_signature("https://blayneychronicle.com.au/y",
+                            {"outlet": "blayneychronicle.com.au",
+                             "title": "Refinery resumes operations | Blayney Chronicle"})
+    indep, reason = ar.articles_independent(a, b)
+    assert indep is False and reason == "same_wire"
+
+
+def test_articles_independent_same_content_hash_beats_distinct_outlets():
+    a = ar.source_signature("https://a.com/x", {"outlet": "a.com", "title": "T1", "content_hash": "abc"})
+    b = ar.source_signature("https://b.com/y", {"outlet": "b.com", "title": "T2", "content_hash": "abc"})
+    indep, reason = ar.articles_independent(a, b)
+    assert indep is False and reason == "same_wire"   # identical body = one wire copy
+
+
+def test_articles_independent_cross_origin_is_true():
+    a = ar.source_signature("https://cyprus-mail.com/x",
+                            {"outlet": "cyprus-mail.com", "title": "16 wounded in strike", "content_hash": "h1"})
+    b = ar.source_signature("https://xinhuanet.com/y",
+                            {"outlet": "xinhuanet.com", "title": "Kyiv attack injures 13", "content_hash": "h2"})
+    indep, reason = ar.articles_independent(a, b)
+    assert indep is True and reason == "independent"
+
+
+def _syndicated_readings_and_sources():
+    readings = {
+        "https://katherinetimes.com.au/x": {"claims": [{"text": "A1", "quote": "qa", "attribution": "asserted"}]},
+        "https://blayneychronicle.com.au/y": {"claims": [{"text": "B1", "quote": "qb", "attribution": "asserted"}]},
+    }
+    sources = {
+        "https://katherinetimes.com.au/x": {"outlet": "katherinetimes.com.au",
+                                            "title": "Refinery resumes operations | Katherine Times"},
+        "https://blayneychronicle.com.au/y": {"outlet": "blayneychronicle.com.au",
+                                              "title": "Refinery resumes operations | Blayney Chronicle"},
+    }
+    return readings, sources
+
+
+def test_validate_cross_downgrades_syndicated_corroboration():
+    readings, sources = _syndicated_readings_and_sources()
+    _, table = ar.build_cross_input(readings, sources)
+    sigs = {u: ar.source_signature(u, sources[u]) for u in sources}
+    parsed = {"findings": [{"kind": "corroboration", "a": "c1", "b": "c2", "note": "both agree"}]}
+    out = ar.validate_cross(parsed, table, sigs)
+    assert len(out) == 1
+    assert out[0]["kind"] == "shared_source"                 # NOT corroboration
+    assert out[0]["independence"]["independent"] is False
+    assert out[0]["independence"]["reason"] == "same_wire"
+    assert out[0]["independence"]["label"] == "2 outlets, 1 wire source"
+
+
+def test_validate_cross_keeps_independent_corroboration():
+    readings = {
+        "https://cyprus-mail.com/x": {"claims": [{"text": "A1", "quote": "qa", "attribution": "asserted"}]},
+        "https://xinhua.net/y": {"claims": [{"text": "B1", "quote": "qb", "attribution": "asserted"}]},
+    }
+    sources = {
+        "https://cyprus-mail.com/x": {"outlet": "cyprus-mail.com", "title": "16 wounded"},
+        "https://xinhua.net/y": {"outlet": "xinhua.net", "title": "13 injured in Kyiv"},
+    }
+    _, table = ar.build_cross_input(readings, sources)
+    sigs = {u: ar.source_signature(u, sources[u]) for u in sources}
+    parsed = {"findings": [{"kind": "corroboration", "a": "c1", "b": "c2", "note": "both report casualties"}]}
+    out = ar.validate_cross(parsed, table, sigs)
+    assert out[0]["kind"] == "corroboration"
+    assert out[0]["independence"]["independent"] is True
+    assert out[0]["independence"]["label"] == "2 independent sources"
+
+
+async def test_cross_read_gates_syndication_end_to_end(monkeypatch):
+    readings, sources = _syndicated_readings_and_sources()
+
+    async def fake_read(urls):
+        return readings
+
+    async def fake_sources(urls):
+        return sources
+
+    async def fake_insight(*a, **k):
+        return ('{"findings":[{"kind":"corroboration","a":"c1","b":"c2","note":"agree"}]}',
+                "deepseek", None, {"model": "deepseek-chat"})
+    monkeypatch.setattr(ar, "read_articles", fake_read)
+    monkeypatch.setattr(ar, "article_sources", fake_sources)
+    monkeypatch.setattr(ar, "generate_insight", fake_insight)
+    ar._CROSS_CACHE.clear()
+    out = await ar.cross_read(list(readings.keys()))
+    assert out["independent_corroborations"] == 0
+    assert out["shared_source_findings"] == 1
+    assert out["findings"][0]["kind"] == "shared_source"
+
+
 # ── leads: entity gates ──────────────────────────────────────────────────────
 
 def test_gather_entities_gates_states_and_invalid_persons():

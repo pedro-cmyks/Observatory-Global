@@ -21,17 +21,28 @@ export interface Reading {
   read_at?: string | null
 }
 
+/** Source-independence verdict on a corroboration (Council R3 P1): syndicated
+ *  wire copies of one story are 'shared_source', not corroboration. */
+export interface Independence {
+  independent: boolean
+  reason: 'independent' | 'same_outlet' | 'same_wire'
+  label: string
+}
+
 export interface CrossFinding {
-  kind: 'corroboration' | 'tension'
-  a: { id: string; url: string; text: string; quote: string; attribution?: string }
-  b: { id: string; url: string; text: string; quote: string; attribution?: string }
+  kind: 'corroboration' | 'tension' | 'shared_source'
+  a: { id: string; url: string; outlet?: string; text: string; quote: string; attribution?: string }
+  b: { id: string; url: string; outlet?: string; text: string; quote: string; attribution?: string }
   note: string
+  independence?: Independence
 }
 
 export interface CrossRead {
   findings: CrossFinding[]
   articles_read: number
   articles_with_claims: number
+  independent_corroborations?: number
+  shared_source_findings?: number
   model?: string
   reason?: string
   note?: string

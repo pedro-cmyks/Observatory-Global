@@ -27,8 +27,14 @@ import re
 import time
 
 from app import db
-from app.services.article_fetch import full_texts_for, url_hash
+from app.services.article_fetch import (
+    article_sources,
+    full_texts_for,
+    host_of,
+    url_hash,
+)
 from app.services.insight_llm import generate_insight
+from app.services.thread_ranking import _norm_headline as _wire_norm
 
 logger = logging.getLogger(__name__)
 
@@ -241,25 +247,104 @@ async def read_articles(urls: list[str]) -> dict[str, dict]:
     return out
 
 
+# ── Source independence (Council R3 P1) ──────────────────────────────────────
+# Corroboration is only real between INDEPENDENT sources — two syndicated copies
+# of one wire story (same AP/Reuters/AAP body, different mastheads) are one
+# source, not two, and must not inflate confidence on the surface built to
+# establish it. Reuse the measured syndication signal (thread_ranking's
+# masthead-strip) plus a same-outlet and byte-identical-body check. Only
+# cross-origin agreement corroborates; same-wire agreement is labeled honestly.
+
+# Two-level public suffixes we actually see in news ccTLDs. NOT a full public-
+# suffix list — just enough to fold edition.cnn.com→cnn.com without collapsing a
+# whole .com.au wire family (katherinetimes.com.au ≠ blayneychronicle.com.au)
+# into one root (those are separated by the wire-headline signal instead).
+_TWO_LEVEL_TLDS = frozenset({
+    "com.au", "net.au", "org.au", "co.uk", "org.uk", "co.nz", "com.br",
+    "com.mx", "co.za", "com.tr", "co.in", "co.jp", "com.cn", "com.sg",
+    "com.cy", "com.ph", "com.ng", "co.ke", "com.pk", "com.co", "com.ua",
+})
+
+
+def _registrable(host: str) -> str:
+    """Registrable domain from an outlet host. Folds subdomains
+    (edition.cnn.com→cnn.com) so two pages of one masthead read as one source,
+    but keeps distinct .com.au wire-family domains distinct."""
+    host = (host or "").strip().lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    parts = [p for p in host.split(".") if p]
+    if len(parts) <= 2:
+        return ".".join(parts)
+    if ".".join(parts[-2:]) in _TWO_LEVEL_TLDS:
+        return ".".join(parts[-3:])
+    return ".".join(parts[-2:])
+
+
+def source_signature(url: str, meta: dict | None) -> dict:
+    """Independence signature for one source article: registrable outlet root,
+    masthead-stripped wire headline (the thread_ranking signal), and the
+    extracted-body hash. Falls back to the URL host when outlet metadata is
+    absent (defensive — a with-claims article is normally status='ok')."""
+    meta = meta or {}
+    outlet = (meta.get("outlet") or "").strip() or host_of(url)
+    return {
+        "outlet_root": _registrable(outlet),
+        "wire_sig": _wire_norm(str(meta.get("title") or "")),
+        "content_hash": (str(meta.get("content_hash") or "").strip() or None),
+    }
+
+
+_INDEPENDENCE_LABEL = {
+    "independent": "2 independent sources",
+    "same_outlet": "same outlet — not independent",
+    "same_wire": "2 outlets, 1 wire source",
+}
+
+
+def articles_independent(a: dict, b: dict) -> tuple[bool, str]:
+    """Are two source articles independent for corroboration? Returns
+    (independent, reason). Byte-identical body OR identical masthead-stripped
+    headline = one wire copy; same registrable outlet = one source; otherwise
+    cross-origin = independent."""
+    ah, bh = a.get("content_hash"), b.get("content_hash")
+    if ah and bh and ah == bh:
+        return False, "same_wire"          # identical extracted body = one wire copy
+    ar_, br_ = a.get("outlet_root") or "", b.get("outlet_root") or ""
+    if ar_ and ar_ == br_:
+        return False, "same_outlet"        # two pages, one masthead
+    aw, bw = a.get("wire_sig") or "", b.get("wire_sig") or ""
+    if aw and aw == bw:
+        return False, "same_wire"          # syndicated: headline identical bar the masthead stamp
+    return True, "independent"
+
+
 # ── Cross-read ───────────────────────────────────────────────────────────────
 
 _CROSS_CACHE: dict[str, tuple[float, dict]] = {}
 _CROSS_TTL_S = 900
 
 
-def build_cross_input(readings: dict[str, dict]) -> tuple[str, dict[str, dict]]:
+def build_cross_input(
+    readings: dict[str, dict], sources: dict[str, dict] | None = None
+) -> tuple[str, dict[str, dict]]:
     """Claims across articles, each with a stable id 'c<n>'. Returns (prompt
-    user text, id -> {url, text, quote}) — the table findings resolve against."""
+    user text, id -> {url, outlet, text, quote}) — the table findings resolve
+    against. `sources` (url -> {outlet, title, ...}) carries the outlet name for
+    display; independence is gated separately in validate_cross."""
+    sources = sources or {}
     table: dict[str, dict] = {}
     lines: list[str] = []
     n = 0
     for url, r in readings.items():
+        outlet = (sources.get(url, {}).get("outlet") or "").strip() or host_of(url)
         outlet_line = f"ARTICLE: {url}"
         claim_lines = []
         for c in r.get("claims", []):
             n += 1
             cid = f"c{n}"
-            table[cid] = {"url": url, "text": c["text"], "quote": c["quote"],
+            table[cid] = {"url": url, "outlet": outlet, "text": c["text"],
+                          "quote": c["quote"],
                           "attribution": c.get("attribution", "asserted")}
             claim_lines.append(f"  [{cid}] ({c.get('attribution','asserted')}) {c['text']}\n"
                                f"        quote: \"{c['quote']}\"")
@@ -270,9 +355,20 @@ def build_cross_input(readings: dict[str, dict]) -> tuple[str, dict[str, dict]]:
     return "\n".join(lines), table
 
 
-def validate_cross(parsed: dict, table: dict[str, dict]) -> list[dict]:
+def validate_cross(
+    parsed: dict, table: dict[str, dict], sigs: dict[str, dict] | None = None
+) -> list[dict]:
     """Findings referencing unknown claim ids — or a claim paired with itself /
-    its own article — are dropped. Kind is closed-vocabulary."""
+    its own article — are dropped. Kind is closed-vocabulary.
+
+    SOURCE-INDEPENDENCE GATE (Council R3 P1): a 'corroboration' whose two
+    articles are NOT independent (syndicated copies of one wire story, or two
+    pages of one masthead) is relabeled 'shared_source' — the claims agree, but
+    that is one source echoing itself, not two sources converging. Every
+    corroboration/shared_source finding carries an `independence` block so the
+    distinction is honest ('2 independent sources' vs '2 outlets, 1 wire
+    source'). Tensions are left untouched."""
+    sigs = sigs or {}
     out = []
     for f in (parsed.get("findings") or [])[:8]:
         if not isinstance(f, dict):
@@ -283,12 +379,25 @@ def validate_cross(parsed: dict, table: dict[str, dict]) -> list[dict]:
             continue
         if table[a]["url"] == table[b]["url"]:
             continue   # intra-article agreement is trivia, not corroboration
-        out.append({
+        finding = {
             "kind": kind,
             "a": {"id": a, **table[a]},
             "b": {"id": b, **table[b]},
             "note": str(f.get("note") or "")[:400],
-        })
+        }
+        if kind == "corroboration":
+            sa = sigs.get(table[a]["url"]) or source_signature(table[a]["url"], None)
+            sb = sigs.get(table[b]["url"]) or source_signature(table[b]["url"], None)
+            indep, reason = articles_independent(sa, sb)
+            finding["independence"] = {
+                "independent": indep,
+                "reason": reason,
+                "label": _INDEPENDENCE_LABEL[reason],
+            }
+            if not indep:
+                # honest: the quotes align, but it is one source, not corroboration
+                finding["kind"] = "shared_source"
+        out.append(finding)
     return out
 
 
@@ -299,12 +408,16 @@ async def cross_read(urls: list[str]) -> dict:
     readings = await read_articles(urls)
     with_claims = {u: r for u, r in readings.items() if r.get("claims")}
     base = {
-        "contract": "workbench-cross-read-v0",
+        "contract": "workbench-cross-read-v1",
         "prompt_version": PROMPT_VERSION,
         "articles_read": len(readings),
         "articles_with_claims": len(with_claims),
         "findings": [],
-        "note": "AI READ — possible corroborations/tensions over quote-backed claims only; verify the quotes",
+        "independent_corroborations": 0,
+        "shared_source_findings": 0,
+        "note": ("AI READ — possible corroborations/tensions over quote-backed claims only; "
+                 "corroboration counts INDEPENDENT sources (syndicated wire copies of one "
+                 "story are labeled 'same source'); verify the quotes"),
     }
     if len(with_claims) < 2:
         return {**base, "reason": "fewer than two articles with quote-backed claims"}
@@ -312,14 +425,23 @@ async def cross_read(urls: list[str]) -> dict:
     hit = _CROSS_CACHE.get(key)
     if hit and time.monotonic() - hit[0] < _CROSS_TTL_S:
         return hit[1]
-    user, table = build_cross_input(with_claims)
+    # Source metadata (outlet/title/content_hash) for the independence gate.
+    sources = await article_sources(list(with_claims.keys()))
+    sigs = {u: source_signature(u, sources.get(u)) for u in with_claims}
+    user, table = build_cross_input(with_claims, sources)
     raw, provider, error, usage = await generate_insight(
         _CROSS_SYSTEM, user, max_tokens=900, surface="workbench-cross-read",
     )
     if not raw:
         return {**base, "reason": error or "insight_unavailable"}
     parsed = _extract_json(raw) or {}
-    payload = {**base, "findings": validate_cross(parsed, table),
-               "model": (usage or {}).get("model") or provider}
+    findings = validate_cross(parsed, table, sigs)
+    payload = {
+        **base,
+        "findings": findings,
+        "independent_corroborations": sum(1 for f in findings if f["kind"] == "corroboration"),
+        "shared_source_findings": sum(1 for f in findings if f["kind"] == "shared_source"),
+        "model": (usage or {}).get("model") or provider,
+    }
     _CROSS_CACHE[key] = (time.monotonic(), payload)
     return payload

@@ -2067,7 +2067,11 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
 }
 .brief-cc-finding--tension .brief-cc-kind { color: #b45309; }
 .brief-cc-finding--corroboration .brief-cc-kind { color: var(--r-accent, #047857); }
+/* Council R3 P1: syndicated wire copies agree but are one source — muted grey,
+   NOT the corroboration accent. */
+.brief-cc-finding--shared_source .brief-cc-kind { color: var(--r-muted, #6b7280); }
 .brief-cc-note { margin: 2px 0 4px; font-size: 14px; }
+.brief-cc-src { color: var(--r-muted, #6b7280); font-style: normal; font-size: 12px; }
 .brief-cc-finding blockquote {
   margin: 3px 0;
   padding-left: 10px;

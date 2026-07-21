@@ -351,12 +351,26 @@
 }
 .dossier-crossread-finding--tension { border-left: 3px solid #f59e0b; }
 .dossier-crossread-finding--corroboration { border-left: 3px solid var(--color-accent, #34d399); }
+/* Council R3 P1: syndicated wire copies agree but are one source — muted, NOT
+   the green corroboration accent. */
+.dossier-crossread-finding--shared_source { border-left: 3px solid var(--color-text-muted, #94a3b8); }
 .dossier-crossread-kind {
     font-size: 9px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--color-text-muted);
 }
+.dossier-crossread-independence {
+    margin-left: 8px;
+    font-size: 9px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--color-border, rgba(255,255,255,0.15));
+}
+.dossier-crossread-independence--yes { color: var(--color-accent, #34d399); }
+.dossier-crossread-independence--no { color: var(--color-text-muted, #94a3b8); }
 .dossier-crossread-note { margin: 4px 0; font-size: 13px; color: var(--color-text-primary); }
 .dossier-crossread-finding blockquote {
     margin: 4px 0;
