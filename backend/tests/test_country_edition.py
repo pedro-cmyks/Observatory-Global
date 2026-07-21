@@ -177,3 +177,15 @@ async def test_country_edition_handler_uppercases_and_delegates(monkeypatch):
     out = await geo.get_country_edition(cc="co")
     assert out["country"] == "CO"
     assert out["contract"] == "country-edition-v0"
+
+
+@pytest.mark.asyncio
+async def test_country_edition_handler_rejects_bad_cc(monkeypatch):
+    import app.main_v2  # noqa: F401  (load first — geo<->main_v2 import cycle)
+    import app.routers.geo as geo
+    from fastapi import HTTPException
+
+    monkeypatch.setattr(geo.app.state, "redis", None, raising=False)
+    for bad in ("usa", "u", "1o", "co "):
+        with pytest.raises(HTTPException):
+            await geo.get_country_edition(cc=bad)

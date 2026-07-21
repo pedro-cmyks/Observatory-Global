@@ -1266,6 +1266,11 @@ async def get_country_edition(cc: str, hours: int = Query(24, ge=1, le=24)):
     from app.services.country_edition import fetch_country_edition
 
     cc = cc.upper()
+    if len(cc) != 2 or not cc.isalpha():
+        raise HTTPException(status_code=400, detail="cc must be a 2-letter country code")
+    # 120s cache is safe: the progressive article fill is polled CLIENT-side via
+    # POST /api/v2/research/articles/state (keyed on pending_urls), NOT by
+    # re-fetching this endpoint — so the cached enrichment seed never stale-traps.
     cache_key = f"country-edition:{cc}:{hours}"
     if hasattr(app.state, "redis") and app.state.redis:
         try:
