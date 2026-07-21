@@ -59,9 +59,9 @@ export interface CountrySection<T> {
 }
 
 const EMPTY_REASONS: Record<CountrySectionKind, string> = {
-  country_today: 'poca actividad en las últimas 24 h',
-  under_radar: 'nada bajo el radar hoy',
-  culture_sport_life: 'sin cultura, deporte ni vida en 24 h',
+  country_today: 'quiet in the last 24h',
+  under_radar: 'nothing under the radar today',
+  culture_sport_life: 'no culture, sport or life in the last 24h',
 }
 
 /**

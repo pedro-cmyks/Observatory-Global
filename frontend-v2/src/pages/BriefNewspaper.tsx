@@ -313,11 +313,6 @@ export function BriefNewspaper() {
     const [countryFilter, setCountryFilter] = useState<string | null>(countryParam)
     const [countryDetail, setCountryDetail] = useState<CountryBriefData | null>(null)
     const [countryThreads, setCountryThreads] = useState<TopThread[] | null>(null)
-    // The country door surfaces loading via the countryEdition "assembling" note
-    // and no-data via the honest empty-state, so these track the vitals/threads
-    // fetch without a read binding (value elided to satisfy noUnusedLocals).
-    const [, setCountryLoading] = useState(false)
-    const [, setCountryError] = useState<string | null>(null)
     const [countryQuery, setCountryQuery] = useState('')
     const [showCountryDropdown, setShowCountryDropdown] = useState(false)
     const countryInputRef = useRef<HTMLInputElement>(null)
@@ -475,13 +470,10 @@ export function BriefNewspaper() {
         if (!countryFilter) {
             setCountryDetail(null)
             setCountryThreads(null)
-            setCountryError(null)
             return
         }
 
         let cancelled = false
-        setCountryLoading(true)
-        setCountryError(null)
 
         Promise.all([
             fetch(`/api/v2/nodes?focus_type=country&focus_value=${countryFilter}&hours=${hours}&limit=5`)
@@ -510,27 +502,25 @@ export function BriefNewspaper() {
                 })
                 setCountryThreads(threads)
             })
-            .catch(e => {
+            .catch(() => {
                 if (cancelled) return
                 setCountryDetail(null)
                 setCountryThreads(null)
-                setCountryError(e instanceof Error ? e.message : 'Country data unavailable')
-            })
-            .finally(() => {
-                if (!cancelled) setCountryLoading(false)
             })
 
         return () => { cancelled = true }
     }, [countryFilter, hours])
 
     const [countryEdition, setCountryEdition] = useState<CountryEdition | null>(null)
+    const [countryEditionFailed, setCountryEditionFailed] = useState(false)
 
     useEffect(() => {
-        if (!countryFilter) { setCountryEdition(null); return }
+        if (!countryFilter) { setCountryEdition(null); setCountryEditionFailed(false); return }
         let cancelled = false
-        setCountryEdition(null)
+        setCountryEdition(null); setCountryEditionFailed(false)
         fetchCountryEdition(countryFilter, hours).then(ed => {
-            if (!cancelled) setCountryEdition(ed)
+            if (cancelled) return
+            if (ed) setCountryEdition(ed); else setCountryEditionFailed(true)
         })
         return () => { cancelled = true }
     }, [countryFilter, hours])
@@ -1776,12 +1766,19 @@ export function BriefNewspaper() {
                                     return (
                                         <p className="brief-country-enrich" aria-live="polite">
                                             {`full text ${enr.yield.ok}/${enr.yield.attempted} receipts`}
-                                            {stillPending > 0 ? ` · enriqueciendo ${stillPending} más…` : ''}
+                                            {stillPending > 0 ? ` · enriching ${stillPending} more…` : ''}
                                         </p>
                                     )
                                 })()}
 
-                                {!countryEdition ? (
+                                {countryEditionFailed ? (
+                                    <div className="brief-country-note">
+                                        <p>Atlas could not assemble this country's edition right now. Try a wider time range, or open it in the console.</p>
+                                        <button className="brief-theme-link" onClick={() => goToAtlas(`country=${countryFilter}`)}>
+                                            Open country in Atlas →
+                                        </button>
+                                    </div>
+                                ) : !countryEdition ? (
                                     <p className="brief-country-note">
                                         Assembling this country's edition for the last {hours}h…
                                     </p>
