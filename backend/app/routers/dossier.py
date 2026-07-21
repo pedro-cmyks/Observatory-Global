@@ -33,6 +33,12 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app import db
+from app.services.constellation_walk import (
+    WalkParams,
+    actor_edge_weight,
+    match_destination,
+    walk_constellation,
+)
 from app.services.insight_llm import generate_insight
 from app.services.publication_synthesis import (  # noqa: F401 (re-exported for tests + endpoint)
     SynthConnection,
@@ -444,6 +450,10 @@ async def dossier_connections(req: ConnectionsRequest):
     # A person is DISTINCTIVE if it appears in a minority of the display nodes
     # (df ≤ min(3, ~40%); df ≤ 2 when only 2 nodes — see _distinctive_df_max).
     distinct_df_max = _distinctive_df_max(len(display_keys))
+    # #234 rarity normalization reference (spec §2.4): df_max in
+    # norm_rarity = (1/df − 1/df_max)/(1 − 1/df_max) is the MAX actor
+    # document-frequency in view. ≥1 guard when no actors were aggregated.
+    df_max_view = max((len(v) for v in person_docs.values()), default=1)
 
     def _facets_for(ukey: str, uid: int) -> list[dict]:
         """Typed sub-facets of an umbrella: the assembled constellation by angle."""
@@ -601,16 +611,25 @@ async def dossier_connections(req: ConnectionsRequest):
                 if bi in wcentroids and bj in wcentroids:
                     wsim = round(float(wcentroids[bi] @ wcentroids[bj]), 4)
             shared_countries = sorted(top_country_sets[bi] & top_country_sets[bj])
-            shared_persons_all = person_sets[bi] & person_sets[bj]
-            shared_persons = sorted(
-                p for p in shared_persons_all
-                if len(person_docs.get(p, ())) <= distinct_df_max
+            # #234 (spec §2.4): SOFTEN the old hard-exclude to a thin CONTINUOUS
+            # link. ALL shared actors participate (rarest first) and the rarity
+            # FORMULA — not a binary df gate — sets the weight, so a ubiquitous-only
+            # pair gets a thin link (no longer a false "isolated" verdict — the N=2
+            # erdogan artifact) yet cannot launder a relation. The DISTINCTIVE subset
+            # (df ≤ gate) stays the CONFIRMING receipt that drives the 'strong' tier.
+            shared_persons_all = sorted(
+                person_sets[bi] & person_sets[bj],
+                key=lambda p: len(person_docs.get(p, ())),
             )
             # GDELT truncation variants ("tayyip erdo" ‖ "tayyip erdogan") read
             # as two actors in the verdict — keep only the longest form.
+            shared_persons_all = [
+                p for p in shared_persons_all
+                if not any(q != p and q.startswith(p) for q in shared_persons_all)
+            ]
             shared_persons = [
-                p for p in shared_persons
-                if not any(q != p and q.startswith(p) for q in shared_persons)
+                p for p in shared_persons_all
+                if len(person_docs.get(p, ())) <= distinct_df_max
             ]
             weight = 0.0
             # Whitened gate when available; raw ≥ 0.88 fallback otherwise.
@@ -626,11 +645,14 @@ async def dossier_connections(req: ConnectionsRequest):
             if shared_countries:
                 basis.append("shared_country")
                 weight = max(weight, 0.6 + 0.1 * len(shared_countries))
-            if shared_persons:
+            if shared_persons_all:
                 basis.append("shared_person")
-                # rarity weight: rarer shared actor => stronger link
-                rarity = sum(1.0 / max(1, len(person_docs.get(p, ()))) for p in shared_persons)
-                weight = max(weight, min(0.98, 0.65 + 0.15 * rarity))
+                # #234 LOCKED (spec §2.4): weight = 0.30 + 0.68·norm_rarity over the
+                # RAREST shared actor — trump df=29 → 0.300 (thin, below the 0.50
+                # gate, barely propagates); a distinctive df=2 → 0.628. The old
+                # 0.65-base formula scored even a ubiquitous actor 0.66 (glue).
+                dfs = [len(person_docs.get(p, ())) for p in shared_persons_all]
+                weight = max(weight, actor_edge_weight(dfs, df_max_view))
             # Text-level cross-check (Frank v2 blocker 1): before this pair can
             # read "isolated/similar-only", ask whether either pin's evidence
             # TEXT mentions the other pin's label tokens or top actors.
@@ -862,6 +884,179 @@ async def dossier_connections(req: ConnectionsRequest):
         },
     }
     _cache[cache_key] = (time.monotonic(), payload)
+    return payload
+
+
+# ── The walked constellation (multi-hop transitive kinship) ──────────────────
+# Spec: docs/superpowers/specs/2026-07-21-multi-hop-transitive-chains.md. The
+# Universe is the map; an investigation is a ROUTE through it. From the analyst's
+# pins, walk outward over the whitened topic kNN graph (the ONE global whitening —
+# NOT the raw universe graph, NOT the connections per-request refit; spec §2.2),
+# max-product with the LOCKED brake (REL_FLOOR 0.35 + HOP_CAP 3). A reached story
+# is labeled by honest DISTANCE: hermano (a direct measured edge) or primo Nº (only
+# reachable transitively — "no direct line, only this trail"). Every hop carries a
+# receipt (the whitened cosine); v1 is UNDIRECTED (no causal arrow). Math-first,
+# NO LLM on the walk. Reversible: ATLAS_WALK_* env knobs.
+
+_WALK_CACHE: dict = {}
+_WALK_CACHE_TTL_S = 120
+# The active-topic universe query the probe locked on (universe.py serving rule):
+# story-level (not umbrella) topics with a centroid. Bounded scan, Python cosine.
+_WALK_TOPICS_SQL = """
+    SELECT id, label, category, centroid_vec
+    FROM dynamic_topics
+    WHERE state = 'active' AND NOT is_umbrella AND centroid_vec IS NOT NULL
+"""
+
+
+class WalkRequest(BaseModel):
+    topic_ids: list[str] = Field(..., min_length=1, max_length=MAX_PINS)
+    # "¿hasta dónde caminar?" — the relative-floor slider (spec §2.3). Lower =
+    # walk further out; HOP_CAP is fixed. Clamped to a sane range.
+    rel_floor: float = Field(0.35, ge=0.10, le=0.90)
+
+
+def _walk_empty(topic_ids: list[str], reason: str) -> dict:
+    return {"contract": "constellation-walk-v0", "seeds": [], "kin": [],
+            "unresolved": topic_ids, "meta": {"reason": reason}}
+
+
+@router.post("/walk")
+async def dossier_walk(req: WalkRequest):
+    """From-pins multi-hop kinship walk. Returns hermanos + primos with degree,
+    accumulated weight (the trail thickness), per-hop receipts, blob flags and
+    same-event fold counts — everything the radial constellation renders. Honest
+    orphan state when a pin has no measured kin (spec §8)."""
+    base_to_raw: dict[str, str] = {}
+    for raw in req.topic_ids:
+        base = _base_topic_id(raw)
+        if base and base not in base_to_raw:
+            base_to_raw[base] = raw
+    seed_bases = [b for b in base_to_raw
+                  if b.startswith("dynamic-topic-") and b[len("dynamic-topic-"):].isdigit()]
+    if not seed_bases:
+        return _walk_empty(req.topic_ids, "no_topic_centroids")
+    if db.pool is None:
+        return _walk_empty(req.topic_ids, "no_db")
+
+    cache_key = (tuple(sorted(seed_bases)), round(req.rel_floor, 3))
+    hit = _WALK_CACHE.get(cache_key)
+    if hit and time.monotonic() - hit[0] < _WALK_CACHE_TTL_S:
+        return hit[1]
+
+    seed_ids = {int(b[len("dynamic-topic-"):]) for b in seed_bases}
+    try:
+        async with db.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 15000")
+            rows = await conn.fetch(_WALK_TOPICS_SQL)
+            # ensure every pinned seed is a node even if it just left 'active'
+            present = {int(r["id"]) for r in rows}
+            missing = [i for i in seed_ids if i not in present]
+            if missing:
+                extra = await conn.fetch(
+                    "SELECT id, label, category, centroid_vec FROM dynamic_topics "
+                    "WHERE id = ANY($1::int[]) AND centroid_vec IS NOT NULL",
+                    missing,
+                )
+                rows = list(rows) + list(extra)
+    except Exception as exc:  # pragma: no cover - defensive I/O
+        logger.warning("walk topic fetch failed: %s", str(exc)[:200])
+        return _walk_empty(req.topic_ids, "db_error")
+
+    import numpy as np
+
+    ids: list[int] = []
+    labels: list[str] = []
+    cats: list[str | None] = []
+    vecs: list[list[float]] = []
+    for r in rows:
+        v = r["centroid_vec"]
+        if v is None or len(v) != 768:
+            continue
+        ids.append(int(r["id"]))
+        labels.append(r["label"] or "")
+        cats.append(r["category"])
+        vecs.append([float(x) for x in v])
+    idx = {tid: i for i, tid in enumerate(ids)}
+    seeds = [idx[i] for i in seed_ids if i in idx]
+    resolved_seed_bases = {f"dynamic-topic-{i}" for i in seed_ids if i in idx}
+    unresolved = [raw for base, raw in base_to_raw.items()
+                  if base not in resolved_seed_bases]
+    if not seeds:
+        return _walk_empty(req.topic_ids, "seeds_have_no_centroid")
+
+    try:
+        from app.services.whitening import apply_whitening, load_whitening
+        whitened = apply_whitening(np.asarray(vecs, dtype=np.float32), load_whitening())
+    except Exception as exc:  # pragma: no cover - asset missing
+        logger.warning("walk whitening unavailable: %s", str(exc)[:200])
+        return _walk_empty(req.topic_ids, "whitening_unavailable")
+
+    import dataclasses
+    params = dataclasses.replace(WalkParams.from_env(), rel_floor=req.rel_floor)
+    result = walk_constellation(whitened, cats, seeds, params)
+
+    seed_payload = [
+        {"id": f"dynamic-topic-{ids[s]}", "label": labels[s], "category": cats[s]}
+        for s in seeds
+    ]
+    # Typed energy/oil destinations (spec §2.7) — word-boundary term match, so the
+    # analyst's marquee (Iran → Hormuz → oil price) reads as a typed arrival.
+    _ENERGY_TERMS = ("oil", "crude", "petroleum", "brent", "opec", "hormuz",
+                     "energy exports", "fuel", "gas price", "strait")
+    _ENERGY_CATS = {"Oil and gas supply risk", "Fuel subsidy unrest"}
+
+    kin: list[dict] = []
+    for rep in result.reps:
+        node = result.reached[rep]
+        parent = node.via_parent
+        folded = result.fold_map.get(rep, [])
+        kin.append({
+            "id": f"dynamic-topic-{ids[rep]}",
+            "label": labels[rep],
+            "category": cats[rep],
+            "degree": node.degree,
+            "kinship": node.kinship,           # hermano | primo
+            "acc_weight": node.acc_weight,     # trail thickness (spec §1.5)
+            "via": {
+                "parent_id": f"dynamic-topic-{ids[parent]}" if parent is not None else None,
+                "parent_label": labels[parent] if parent is not None else None,
+                # v1 receipt basis = whitened semantic cosine (the walk graph is
+                # semantic); the value is the honest measured quantity of the hop.
+                "basis": "semantic",
+                "weight": node.via_weight,
+                "through_blob": node.through_blob,
+            },
+            "is_blob": rep in result.blob_flags,
+            "folded_count": len(folded),
+            "folded_labels": [labels[f] for f in folded][:6],
+            "destination": match_destination(labels[rep], cats[rep], _ENERGY_TERMS,
+                                              categories=_ENERGY_CATS),
+        })
+    kin.sort(key=lambda k: (k["degree"], -k["acc_weight"]))
+
+    payload = {
+        "contract": "constellation-walk-v0",
+        "seeds": seed_payload,
+        "kin": kin,
+        "unresolved": unresolved,
+        "meta": {
+            "reason": None if kin else "no_measured_kin",
+            "topic_universe": len(ids),
+            "rel_floor": req.rel_floor,
+            "hop_cap": params.hop_cap,
+            "k_neighbors": params.k,
+            "blob_connectors": len(result.blob_flags),
+            "dedup_tau": params.dedup_tau,
+            "reached_before_dedup": len(result.reached),
+            "hermanos": sum(1 for k in kin if k["kinship"] == "hermano"),
+            "primos": sum(1 for k in kin if k["kinship"] == "primo"),
+            "max_degree": max((k["degree"] for k in kin), default=0),
+            "semantic_space": "whitened-e5-k1-global",
+            "walk": "from-pins max-product; brake REL_FLOOR+HOP_CAP; undirected; no LLM",
+        },
+    }
+    _WALK_CACHE[cache_key] = (time.monotonic(), payload)
     return payload
 
 

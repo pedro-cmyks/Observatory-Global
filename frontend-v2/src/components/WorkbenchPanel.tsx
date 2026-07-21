@@ -313,7 +313,7 @@ export default function WorkbenchPanel({
                 (absent under 2 thread pins — nothing to connect). The absence
                 gets one honest sentence instead of silent nothing (council
                 wish 21). */}
-            <WorkbenchConstellation inv={active} />
+            <WorkbenchConstellation inv={active} onOpenThread={onOpenThread} onRerender={rerender} />
             {connectionTopicIds(active).length < 2 && (
               <div className="wb-constellation-hint" data-tip="The constellation measures semantic proximity, shared countries and shared actors between pinned topic threads — it needs at least two to have anything to connect.">
                 Pin 2+ topic threads to see their measured connections.

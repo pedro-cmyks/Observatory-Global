@@ -360,8 +360,13 @@ interface PlacedNeighbor {
 
 // Exported: the workbench mini-constellation reuses this field at compact
 // height so the analyst sees the universe build as they pin (report untouched).
-export function InvestigativeUniverse({ data, cluster, compact = false }: {
+export function InvestigativeUniverse({ data, cluster, compact = false, onNodeClick, onNodePin }: {
   data: ConnectionsData; cluster: ClusterResult; compact?: boolean
+  // Journey-map §1: the bridge/neighbor/pin stars were inert (cursor:pointer that
+  // lied). When these handlers are supplied the nodes become CLICKABLE (open) +
+  // PINNABLE (◆) — the app no longer draws "look here next" and disables the click.
+  onNodeClick?: (id: string, label: string) => void
+  onNodePin?: (n: { id: string; label: string; category: string | null }) => void
 }) {
   // hover = a pin id OR `nb:<base_id>` for a neighbor star.
   const [hover, setHover] = useState<string | null>(null)
@@ -520,6 +525,7 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
           return (
             <g key={nb.base_id} transform={`translate(${nb.px},${nb.py})`}
                onMouseEnter={() => setHover(`nb:${nb.base_id}`)} onMouseLeave={() => setHover(null)}
+               onClick={() => onNodeClick?.(nb.base_id, nb.label)}
                style={{ cursor: 'pointer' }} opacity={dim ? 0.35 : 1}>
               {showLabel && nb.bridge && rel < -8 && (
                 <line x1={0} y1={-4} x2={0} y2={rel + 2} stroke="#475569" strokeWidth={0.4} />
@@ -533,6 +539,12 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
                   className={`dcx-neighbor-label${nb.bridge ? ' bridge' : ''}`}>
                   {truncate(nb.label, 22)}
                 </text>
+              )}
+              {/* the bridge/neighbor is now CAPTURABLE — ◆ pins it (journey-map §1). */}
+              {onNodePin && (nb.bridge || nbLabelShown(nb)) && (
+                <text className="dcx-nb-pin" x={(nb.bridge ? 3.5 : 3) + 2} y={3}
+                  onClick={ev => { ev.stopPropagation(); onNodePin({ id: nb.base_id, label: nb.label, category: nb.category }) }}
+                >◆</text>
               )}
             </g>
           )
@@ -552,6 +564,7 @@ export function InvestigativeUniverse({ data, cluster, compact = false }: {
             <g key={n.id}
                transform={`translate(${n.px},${n.py})`}
                onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
+               onClick={() => onNodeClick?.(n.id, n.label)}
                style={{ cursor: 'pointer', opacity: dim ? 0.3 : 1 }}>
               {isolated && (
                 <circle r={r + 4} fill="none" stroke="#64748b" strokeWidth={1}

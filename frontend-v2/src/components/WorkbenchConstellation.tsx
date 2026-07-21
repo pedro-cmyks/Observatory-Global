@@ -10,10 +10,33 @@ import {
   type ConnectionsData,
 } from '../lib/dossierConnections'
 import { InvestigativeUniverse } from './DossierConnections'
-import type { Investigation } from '../lib/workbench'
+import WalkConstellation from './WalkConstellation'
+import { addPin, type Investigation } from '../lib/workbench'
+import type { WalkKin } from '../lib/constellationWalk'
 import './WorkbenchConstellation.css'
 
-export default function WorkbenchConstellation({ inv }: { inv: Investigation }) {
+export default function WorkbenchConstellation({ inv, onOpenThread, onRerender }: {
+  inv: Investigation
+  /** Open a thread (a walked/bridge node clicked). */
+  onOpenThread?: (threadId: string, label: string) => void
+  /** Notify the parent a pin was added so it re-reads localStorage. */
+  onRerender?: () => void
+}) {
+  // Capture a story surfaced by the constellation — the flywheel ring
+  // (journey-map §1/§3.1). Metadata-only pin (no snapshot); opening it later
+  // backfills evidence like any thread pin.
+  const pinStory = (n: { id: string; label: string; category?: string | null }) => {
+    addPin(inv.id, {
+      anchorId: n.id,
+      anchorType: 'thread',
+      label: n.label,
+      category: n.category ?? undefined,
+      retrievalLane: 'constellation-walk',
+      open: { surface: 'thread_detail', params: { thread_id: n.id } },
+    })
+    onRerender?.()
+  }
+  const pinKin = (k: WalkKin) => pinStory({ id: k.id, label: k.label, category: k.category })
   // The refetch key: the SET of connectable topic ids — note edits, trail
   // steps and non-thread pins never trigger a re-measure.
   const topicKey = useMemo(
@@ -38,7 +61,9 @@ export default function WorkbenchConstellation({ inv }: { inv: Investigation }) 
     return () => { alive = false }
   }, [inv.id, topicKey, topicCount])
 
-  if (topicCount < 2) return null // degrade to absence — nothing to connect yet
+  // The connections view needs ≥2 pins (nothing to connect with one); the WALK
+  // needs only ≥1 (it reaches outward from a single seed), so mount at ≥1.
+  if (topicCount < 1) return null
 
   const cluster = data && data.nodes.length >= 2 ? deriveClusters(data.nodes, data.edges) : null
   const countries = data?.distributions?.countries ?? []
@@ -61,7 +86,11 @@ export default function WorkbenchConstellation({ inv }: { inv: Investigation }) 
       </div>
       {data && cluster && (
         <>
-          <InvestigativeUniverse data={data} cluster={cluster} compact />
+          <InvestigativeUniverse
+            data={data} cluster={cluster} compact
+            onNodeClick={onOpenThread}
+            onNodePin={pinStory}
+          />
           {countries.length > 0 && (
             <div className="wbc-countries">
               <span className="wbc-countries-label" data-tip="Countries the pinned coverage touches, by signal volume. This is coverage geography, not subject identity.">touches</span>
@@ -72,11 +101,14 @@ export default function WorkbenchConstellation({ inv }: { inv: Investigation }) 
           )}
         </>
       )}
-      {data === null && (
+      {data === null && topicCount >= 2 && (
         <div className="wbc-status wbc-status--muted">
           connection measure unavailable — pins are unaffected
         </div>
       )}
+      {/* The walked constellation — transitive kin from the pins, clickable +
+          pinnable (the flywheel). Manages its own fetch/degree/empty state. */}
+      <WalkConstellation inv={inv} onOpen={onOpenThread} onPin={pinKin} />
     </div>
   )
 }
