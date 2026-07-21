@@ -22,6 +22,10 @@ class SynthEvidenceItem(BaseModel):
     source: str | None = None
     date: str | None = None
     url: str | None = None
+    # State-controlled/affiliated outlet (signals_v2.is_state_media). Surfaced to
+    # the model (the evidence line is tagged) and carried onto the resolved
+    # citation so the front page never presents state media as neutral (R3 P0).
+    is_state_media: bool = False
 
 
 class SynthPin(BaseModel):
@@ -127,6 +131,15 @@ _SYNTH_SYSTEM = (
     "to') when a headline announces rather than confirms. Surface a date if a "
     "headline carries one (evidence lines may end '— <outlet>, <YYYY-MM-DD>'); date "
     "contested outcomes with it; if outcomes are undated, say the timing is unclear.\n"
+    "4a. STATE MEDIA IS NEVER NEUTRAL. An evidence line tagged '[STATE MEDIA]' is a "
+    "state-controlled or state-affiliated outlet. NEVER state its claim as neutral "
+    "established fact: attribute it to the outlet ('according to <outlet>, Russian "
+    "state media', 'per state broadcaster <outlet>') and, when it is the ONLY source "
+    "for a figure or claim, say the claim is reported by state media and not "
+    "independently corroborated. If a claim is carried by BOTH a state-media line and "
+    "an independent line, you may state it and cite both. A lede or figure resting "
+    "solely on '[STATE MEDIA]' citations MUST carry the state-media attribution in the "
+    "same sentence — never present it bare.\n"
     "5. SURFACE THE NON-OBVIOUS insight visible only across pins (a self-declared "
     "alignment, a coverage asymmetry, an actor bridging two CONFIRMED stories) — but "
     "only over the confirmed spine, never over a bracketed or unreliable pin.\n"
@@ -159,7 +172,8 @@ def _citation_table(req: SynthesizeRequest) -> list[dict]:
     for pin_i, p in enumerate(req.pins):
         if p.evidence_items:
             items = [
-                {"headline": e.headline, "source": e.source, "date": e.date, "url": e.url}
+                {"headline": e.headline, "source": e.source, "date": e.date,
+                 "url": e.url, "is_state_media": e.is_state_media}
                 for e in p.evidence_items
             ]
         else:
@@ -169,9 +183,11 @@ def _citation_table(req: SynthesizeRequest) -> list[dict]:
                 if m:
                     items.append({"headline": m.group("headline"),
                                   "source": m.group("source"),
-                                  "date": m.group("date"), "url": None})
+                                  "date": m.group("date"), "url": None,
+                                  "is_state_media": False})
                 else:
-                    items.append({"headline": h, "source": None, "date": None, "url": None})
+                    items.append({"headline": h, "source": None, "date": None,
+                                  "url": None, "is_state_media": False})
         for it in items:
             table.append({"n": len(table) + 1, "pin": p.label, "pin_i": pin_i, **it})
     return table
@@ -202,7 +218,8 @@ def _synth_user(req: SynthesizeRequest, article_texts: dict | None = None) -> st
             if row["source"] or row["date"]:
                 bits = [b for b in (row["source"], row["date"]) if b]
                 attribution = " — " + ", ".join(bits)
-            parts.append(f"   [{row['n']}] {row['headline']}{attribution}")
+            state_tag = " [STATE MEDIA]" if row.get("is_state_media") else ""
+            parts.append(f"   [{row['n']}] {row['headline']}{attribution}{state_tag}")
             art = article_texts.get(row["url"] or "")
             if art and art.get("text"):
                 fetched = (art.get("fetched_at") or "")[:10]
@@ -290,7 +307,8 @@ def _resolve_citations(texts: list[str], table: list[dict]) -> list[dict]:
                 seen.append(n)
     return [
         {"n": n, "headline": by_n[n]["headline"], "source": by_n[n]["source"],
-         "date": by_n[n]["date"], "url": by_n[n]["url"], "pin": by_n[n]["pin"]}
+         "date": by_n[n]["date"], "url": by_n[n]["url"], "pin": by_n[n]["pin"],
+         "is_state_media": bool(by_n[n].get("is_state_media"))}
         for n in seen
     ]
 

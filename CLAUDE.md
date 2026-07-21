@@ -1,5 +1,37 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-20 (COUNCIL R3 P0 FIX — STATE-MEDIA NEVER PRESENTED AS NEUTRAL on the
+sealed daily edition; NOT yet deployed/resealed).** Council R3 caught a
+trust-destroying P0: `curl /api/v2/investigation/daily-publication` → the sealed
+flagship ("Civilian Casualties in Drone Attacks") led with citations `[1][4][5]`
+= `russian.rt.com`/`rt.com` (Russian state media) with NO state-media marker
+anywhere in the payload — receipts `tier:null`+`is_state_media:null`, citations
+carried none. The `is_state_media` flag exists at ingest (mig 008, WAVE-3 RSS)
+but never flowed to the daily edition. FIX (my territory — daily surface +
+synthesis; council owns leadConfidence.ts/corroboration.py, coordinated):
+(1) `_DAILY_EVIDENCE_SQL` now selects `s.is_state_media, s.source_family`; the
+evidence loop stamps every row with `is_state_media` + a `credibility_tier`
+(source_tiers #217, AUTHORITATIVE — ingest flag wins over the name list, fills
+the previously-null receipt tier → "state" for RT). (2) The flag rides into
+`build_lead_synthesis_payload` items → `SynthEvidenceItem` → `_citation_table` →
+`_resolve_citations`, so `package.article.citations[].is_state_media` is now
+`true` for RT (verified end-to-end pure-path). (3) Synthesis prompt: state-media
+evidence lines tagged `[STATE MEDIA]` + rule 4a "STATE MEDIA IS NEVER NEUTRAL"
+(attribute to the outlet; a lede/figure resting solely on state media must carry
+the attribution). (4) `PublicationReceipt.is_state_media` + `_receipt_rows`
+carry it → `package.receipts[]` too. FRONTEND (hardening — the visible Brief
+receipts ALREADY flag RT via the `sourceTiers.ts` domain classifier, rt.com ∈
+STATE_DOMAINS): `resolveTierChip(source, origin, isStateMedia?)` now forces the
+STATE tier when the authoritative ingest flag is true (catches state outlets the
+name list misses); threaded through `dailyPublication.ts` → `ThreadEvidence` →
+`renderReceipt`. Acceptance = flag path (the alt is demote; leadConfidence.ts
+gate is council's, enabled now that the payload carries the flag). TESTS: 37
+backend (test_dossier_synthesis + test_daily_publication_artifact) green incl. 5
+new state-media assertions; sourceProvenance.test.ts +2. **RESIDUE: not deployed
++ the endpoint serves the STORED artifact — re-curl shows the marker only AFTER
+a reseal (nightly 02:30 build_daily_publication, or manual --execute). Backend
+Fly deploy + frontend Vercel deploy pending.**
+
 **2026-07-20 (F3 COMPLETE — BODY MENTIONS + MEASUREMENT-GATED BODY-EMBED
 NEIGHBORS, `6181a0ef`→`ba2a2ec2`, Fly deployed + prod-smoked; enrichment
 spec = ALL PHASES SHIPPED same day).** (1) **F3a body_mention**:

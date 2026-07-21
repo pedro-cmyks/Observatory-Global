@@ -88,6 +88,10 @@ class PublicationReceipt(BaseModel):
     date: str | None = None
     language: str | None = None
     tier: str | None = None
+    # State-controlled/affiliated outlet (signals_v2.is_state_media). Carried so
+    # a receipt cited on the front page is never presented as a neutral source
+    # (council R3 P0). None on pre-flag editions.
+    is_state_media: bool | None = None
     frozen: bool = True
 
 
@@ -544,6 +548,10 @@ def _receipt_rows(nodes: list[InvestigationNode]) -> list[PublicationReceipt]:
                 date=date,
                 language=item.get("source_lang") or item.get("language"),
                 tier=item.get("credibility_tier") or item.get("tier"),
+                is_state_media=(
+                    bool(item["is_state_media"])
+                    if item.get("is_state_media") is not None else None
+                ),
             ))
     return rows
 

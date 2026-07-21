@@ -34,6 +34,7 @@ from app.services.investigation_graph import (
 )
 from app.services.investigation_nodes import ResolveNodeInput, resolve_investigation_node
 from app.services.subjects import classify_subject
+from app.services.source_tiers import classify_source_tier
 from app.services.subject_geography import (
     decode_headline,
     infer_receipt_subject_geography,
@@ -391,7 +392,8 @@ WITH requested AS (
     SELECT DISTINCT ON (underlying.requested_id, s.id)
            underlying.requested_id, s.id, s.headline, s.source_name,
            s.source_url, s.source_lang, s.source_origin_country,
-           s.country_code, s.timestamp, s.persons,
+           s.country_code, s.timestamp, s.persons, s.is_state_media,
+           s.source_family,
            underlying.edition_cluster_id,
            underlying.edition_cluster_label,
            underlying.edition_cluster_n_signals
@@ -409,6 +411,7 @@ WITH requested AS (
 SELECT ('dynamic-topic-' || requested_id::text) AS topic_id,
        id, headline, source_name, source_url, source_lang,
        source_origin_country, country_code, timestamp, persons,
+       is_state_media, source_family,
        edition_cluster_id, edition_cluster_label, edition_cluster_n_signals
 FROM current_evidence
 ORDER BY requested_id, timestamp DESC, id DESC
@@ -441,6 +444,10 @@ def build_lead_synthesis_payload(
             "source": row.get("source_name") or row.get("source"),
             "date": (str(row.get("timestamp") or row.get("date") or "")[:10] or None),
             "url": row.get("source_url") or row.get("url"),
+            # Carried into the numbered citation table so a state-media source
+            # is flagged in the front-page citations, never presented as neutral
+            # (council R3 P0).
+            "is_state_media": bool(row.get("is_state_media")),
         })
     return {
         "title": label,
@@ -532,6 +539,18 @@ async def fetch_daily_publication(
             for raw in signal_rows:
                 row = dict(raw)
                 topic_id = str(row.pop("topic_id"))
+                # Credibility provenance on every receipt (source_tiers #217).
+                # State-controlled outlets (RT/Sputnik/IRNA/etc, is_state_media
+                # at ingest) MUST NOT ride into a citation as neutral — council
+                # R3 P0. Authoritative: the ingest flag wins even if a name list
+                # would miss the outlet; tier fills the previously-null receipt
+                # tier so `_receipt_rows` and the citation table carry it.
+                row["is_state_media"] = bool(row.get("is_state_media"))
+                row["credibility_tier"] = classify_source_tier(
+                    row.get("source_name"),
+                    is_state_media=row["is_state_media"],
+                    source_family=row.get("source_family"),
+                ).label
                 evidence_counts[topic_id] = evidence_counts.get(topic_id, 0) + 1
                 source = row.get("source_name")
                 if source:

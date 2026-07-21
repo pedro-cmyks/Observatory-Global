@@ -40,7 +40,8 @@ def test_citation_table_parses_legacy_folded_strings():
     ])
     table = dossier._citation_table(req)
     assert table[0] == {"n": 1, "pin": "A", "pin_i": 0, "headline": "Trump orders cutoff",
-                        "source": "Reuters", "date": "2026-07-08", "url": None}
+                        "source": "Reuters", "date": "2026-07-08", "url": None,
+                        "is_state_media": False}
     # "— Digi24" has no date → the legacy regex requires a date; kept whole.
     assert table[1]["headline"] == "Undated claim — Digi24"
     assert table[2]["headline"] == "Bare headline" and table[2]["date"] is None
@@ -94,6 +95,47 @@ def test_synth_system_carries_article_and_receipt_rules():
     assert "GLASS BOX" in s
     assert "COVERAGE CONTEXT" in s
     assert "YYYY-MM-DD" in s
+    # Council R3 P0: state media is never presented as neutral.
+    assert "STATE MEDIA IS NEVER NEUTRAL" in s
+    assert "[STATE MEDIA]" in s
+
+
+def test_synth_user_tags_state_media_evidence_lines():
+    # The state-media flag must reach the model on the evidence line so it can
+    # attribute the claim instead of stating it as neutral fact (R3 P0).
+    req = dossier.SynthesizeRequest(pins=[_pin("Drones", items=[
+        {"headline": "381 drones destroyed", "source": "russian.rt.com",
+         "date": "2026-07-20", "url": "http://rt/1", "is_state_media": True},
+        {"headline": "Strike confirmed", "source": "reuters.com",
+         "date": "2026-07-20", "url": "http://r/2"},
+    ])])
+    out = dossier._synth_user(req)
+    assert "[1] 381 drones destroyed — russian.rt.com, 2026-07-20 [STATE MEDIA]" in out
+    assert "[2] Strike confirmed — reuters.com, 2026-07-20" in out
+    assert "[2] Strike confirmed — reuters.com, 2026-07-20 [STATE MEDIA]" not in out
+
+
+def test_citation_table_carries_state_media_flag():
+    req = dossier.SynthesizeRequest(pins=[_pin("A", items=[
+        {"headline": "h1", "source": "rt.com", "is_state_media": True},
+        {"headline": "h2", "source": "ap.org"},
+    ])])
+    table = dossier._citation_table(req)
+    assert table[0]["is_state_media"] is True
+    assert table[1]["is_state_media"] is False
+
+
+def test_resolve_citations_carries_state_media_flag():
+    table = [
+        {"n": 1, "pin": "A", "pin_i": 0, "headline": "h1", "source": "rt.com",
+         "date": None, "url": "http://rt/1", "is_state_media": True},
+        {"n": 2, "pin": "A", "pin_i": 0, "headline": "h2", "source": "ap.org",
+         "date": None, "url": "http://ap/2", "is_state_media": False},
+    ]
+    cites = dossier._resolve_citations(["lede [1] and [2]."], table)
+    by_n = {c["n"]: c for c in cites}
+    assert by_n[1]["is_state_media"] is True
+    assert by_n[2]["is_state_media"] is False
 
 
 # ── article parsing ────────────────────────────────────────────────────────────

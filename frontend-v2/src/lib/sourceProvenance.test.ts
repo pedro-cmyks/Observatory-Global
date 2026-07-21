@@ -84,4 +84,20 @@ describe('resolveTierChip — LOCAL requires a known origin', () => {
   it('empty source is unknown', () => {
     expect(resolveTierChip(undefined, 'US').tier).toBe('unknown')
   })
+
+  // Council R3 P0: the authoritative ingest flag forces STATE even when the
+  // name classifier would miss the outlet — a state source is never neutral.
+  it('authoritative is_state_media forces STATE tier over the name classifier', () => {
+    // A bare/unlisted outlet the name classifier would call unknown/local:
+    const flagged = resolveTierChip('some-regional-outlet', 'RU', true)
+    expect(flagged.tier).toBe('state')
+    expect(flagged.label).toBe('STATE')
+    expect(flagged.tip).toMatch(/state/i)
+  })
+  it('is_state_media false/undefined leaves the name classifier untouched', () => {
+    expect(resolveTierChip('Reuters', undefined, false).tier).toBe('wire')
+    expect(resolveTierChip('bbc.com', null, undefined).tier).toBe('major')
+    // rt.com still resolves STATE via the domain list even without the flag.
+    expect(resolveTierChip('rt.com', undefined).tier).toBe('state')
+  })
 })
