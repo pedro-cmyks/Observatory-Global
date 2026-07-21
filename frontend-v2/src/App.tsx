@@ -375,7 +375,7 @@ function AppContent() {
   const [eeResetNonce, setEeResetNonce] = useState(0)
 
   // Focus hook for click-to-focus
-  const { setFocus, focus, clearFocus, setCountry, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
+  const { setFocus, focus, clearFocus, setCountry, setPerson, filter, setTheme, mapFlyCountry, setMapFlyCountry, isActive } = useFocus()
 
   // X0 (2026-07-05): the stream slot is L2's core state machine — panel_swap
   // makes the middle of the L0→L3 funnel readable (mirrors the render
@@ -918,8 +918,13 @@ function AppContent() {
   }, [nodes, mapReady, setMapFlyCountry])
 
   // Sync Global Focus to CountrySlide-over; EE flies via the flyCountry prop.
+  // Flywheel: skip when a thread/theme panel is open — under compound focus a
+  // thread opened while a country is focused keeps filter.country set, and
+  // re-opening CountryBrief here would call handleCountryClick() which nulls
+  // selectedTheme/selectedThread and snaps the just-opened thread closed.
   useEffect(() => {
-    if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode) {
+    if (focus.type === 'country' && focus.value && focus.value !== selectedCountryCode
+        && !selectedTheme && !selectedThread) {
       handleCountryClick(focus.value)
       setMapFlyCountry(focus.value)
     }
@@ -929,7 +934,11 @@ function AppContent() {
   // Open ThemeDetail when theme is focused via FocusContext (e.g. NarrativeThreads click)
   useEffect(() => {
     const filterCountry = filter.country || undefined
-    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme || selectedTheme.originCountry !== filterCountry)) {
+    // Flywheel: re-fire ONLY when the theme id itself changed. The old
+    // `originCountry !== filterCountry` clause clobbered a thread-open's own
+    // origin country with a stale compound filter.country (onThreadSelect now
+    // sets filter.theme while keeping a different filter.country).
+    if (filter.theme && (!selectedTheme || selectedTheme.theme !== filter.theme)) {
       const countryName = filter.country ? resolveCountryName(filter.country) : undefined
       // Item 8: carry the focus context's known label so a focus-driven open
       // keeps the opener's real thread name.
@@ -955,18 +964,22 @@ function AppContent() {
     if (showBriefing) { setShowBriefing(false); return true }
     if (selectedSourceProfile) { setSelectedSourceProfile(null); return true }
     if (rightPanelThemeCountry) { setRightPanelThemeCountry(null); return true }
-    if (focus.type === 'person') { clearFocus(); return true }
-    if (selectedTheme) { setSelectedTheme(null); setTheme(null); return true }
-    if (selectedCountry || selectedCountryCode) {
+    // Flywheel compound focus: peel ONE dimension per Back. Close an open
+    // thread/theme first (revealing a standing person/country), then peel the
+    // person, then the country — per-dimension (setPerson/setCountry null),
+    // never clearFocus() which would wipe the whole compound frame at once.
+    if (selectedTheme || selectedThread) { setSelectedTheme(null); setSelectedThread(null); setTheme(null); return true }
+    if (focus.type === 'person') { setPerson(null); return true }
+    if (selectedCountry || selectedCountryCode || filter.country) {
       setSelectedCountry(null)
       setSelectedCountryCode(null)
       setShowFlows(false)
-      clearFocus()
+      setCountry(null)
       return true
     }
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedCountry, selectedCountryCode])
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
@@ -1809,9 +1822,13 @@ function AppContent() {
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         const streamPanel = (() => {
           const isStory = !!storyQuery
-          const isPerson = focus.type === 'person' && !!focus.value && !isStory
-          const isThread = !!selectedThread && !isPerson && !isStory
-          const isTheme = !!selectedTheme && !isPerson && !isThread && !isStory
+          // Flywheel compound focus: a freshly-opened thread/theme outranks a
+          // standing person focus for the middle panel (Pedro's call — "show the
+          // thread"); the person stays a scope chip driving the map/list. Person
+          // wins the panel only when no thread/theme is open.
+          const isThread = !!selectedThread && !isStory
+          const isTheme = !!selectedTheme && !isThread && !isStory
+          const isPerson = focus.type === 'person' && !!focus.value && !isStory && !isThread && !isTheme
           const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
           const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
@@ -2039,27 +2056,17 @@ function AppContent() {
                     originCountryName: target.originCountryName,
                     thread: target.thread,
                   } : null)
-                  // Flywheel 1.3: thread-open COMPOSES with the active focus
-                  // instead of wiping it. clearFocus() used to null
-                  // filter.country/filter.person unconditionally — dropped so an
-                  // active country/person focus survives (setTheme(theme,...) is
-                  // compound now, Tasks 1.1/1.2). setTheme(null) stays: it keeps
-                  // filter.theme dormant so the focus->ThemeDetail sync effect
-                  // (~line 930) never re-fires and clobbers this handler's own
-                  // selectedTheme.originCountry with a stale filter.country.
-                  // setSelectedCountry/setSelectedCountryCode are ALSO left
-                  // untouched now: nulling them while filter.country stays set
-                  // used to trip the country-focus sync effect (~line 921,
-                  // focus.value !== selectedCountryCode), which calls
-                  // handleCountryClick() — and that itself calls
-                  // setSelectedTheme(null)/setSelectedThread(null), silently
-                  // snapping the just-opened thread back closed. Leaving them be
-                  // matches how handleThemeSelect already opens themes without
-                  // disturbing an active country; isThread/isTheme already
-                  // outrank isCountry in the stream-panel priority ladder, so
-                  // the warm country state is harmless to render and lets Back
-                  // correctly reveal the country panel again.
-                  setTheme(null)
+                  // Flywheel compound focus: thread-open COMPOSES with the active
+                  // focus instead of wiping it. No clearFocus() — an active
+                  // filter.country/filter.person survives (the setters are
+                  // compound, Tasks 1.1/1.2). setTheme() now SETS filter.theme to
+                  // the opened thread's theme so it joins the compound frame as a
+                  // chip; the country/person are preserved. The :930 guard
+                  // (theme-id-only) and :921 guard (skip when a theme/thread is
+                  // open) keep this from clobbering the origin country or snapping
+                  // the thread closed. selectedCountryCode is left warm — the
+                  // country panel reappears on Back; isThread/isTheme outrank it.
+                  setTheme(target ? target.theme : null, undefined, target?.thread?.label ?? undefined)
                   setSelectedPublicAttention(null)
                   setSelectedChokepoint(null)
                   setRightPanelThemeCountry(null)
