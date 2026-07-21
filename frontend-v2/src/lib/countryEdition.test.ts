@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { composeCountrySections, type CountryGap } from './countryEdition'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import {
+  composeCountrySections,
+  fetchCountryEdition,
+  type CountryGap,
+} from './countryEdition'
 
 const worldA = { label: 'Election dispute', category: 'election-legitimacy' }
 const worldB = { label: 'Flood disaster', category: 'weather-and-climate' }
@@ -40,5 +44,35 @@ describe('composeCountrySections', () => {
     const [today, radar] = composeCountrySections([worldA], [gap])
     expect(today.present).toBe(today.threads.length > 0)
     expect(radar.present).toBe(radar.gaps.length > 0)
+  })
+})
+
+describe('fetchCountryEdition (honest degrade)', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('returns the edition on a valid contract response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ contract: 'country-edition-v0', country: 'CO' }),
+    })))
+    const ed = await fetchCountryEdition('CO')
+    expect(ed?.country).toBe('CO')
+  })
+
+  it('returns null on non-ok response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}) })))
+    expect(await fetchCountryEdition('CO')).toBeNull()
+  })
+
+  it('returns null on wrong contract', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => ({ contract: 'something-else' }),
+    })))
+    expect(await fetchCountryEdition('CO')).toBeNull()
+  })
+
+  it('returns null when fetch throws', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('net') }))
+    expect(await fetchCountryEdition('CO')).toBeNull()
   })
 })

@@ -108,7 +108,9 @@ export async function fetchCountryEdition(
   hours = 24,
 ): Promise<CountryEdition | null> {
   try {
-    const resp = await fetch(`/api/v2/country-edition?cc=${cc}&hours=${hours}`)
+    const resp = await fetch(
+      `/api/v2/country-edition?cc=${encodeURIComponent(cc)}&hours=${hours}`,
+    )
     if (!resp.ok) return null
     const data = await resp.json()
     if (data?.contract !== 'country-edition-v0') return null
