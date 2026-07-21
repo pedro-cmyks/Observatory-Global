@@ -18,14 +18,18 @@
 - **Pure-lib cores of Phases 3–6 (all tested):** `capturePayloads.ts` (3.1), `briefRelationDetector.ts` (4.1 — text+context tiers only, measured-not-asserted by construction), `launcherVerbs.ts` (5.1), `navParams.ts` (6.1).
 - Full suite: **847 tests / 99 files green**; `npm run build` clean.
 
-**Remaining (all JSX wiring — needs browser verification):**
-- **2.4:** mount `FrameStrip` in App desktop layout + wire `onOpenPin`.
-- **3.2–3.7:** add the ◆ affordance to universe / map / dossier-neighbor / biography / day-evidence / entity-coverage / thread person-chips (using `capturePayloads`).
-- **4.2–4.3:** add `topBriefRelation`/`hasEnoughSignal` gate; render the ◎ detected-relationship callout in `BriefNewspaper` over `data.top_threads` + active pins.
+**Also DONE + merged (later 2026-07-21):**
+- **2.4 mounted + browser-verified** — Frame strip live in L2 (appears on first pin, WHO/WHERE/WHAT lanes, chip reopens pin, header clearance fixed).
+- **Phase 3 core capture (3.2/3.4/3.5/3.6)** — ◆ on universe body, thread person-chips (verified: pins a person → WHO lane), and receipt ◆ (PinReceiptButton + receiptFrom) on NarrativeBiography / DayEvidencePanel / EntityPanel. Universe ◆ added a hover-grace-period + `pointer-events:auto` fix — flagged for a deployed-build eyeball on canvas gestures.
+- **4.2 detector gate** — `topBriefRelation` + `hasEnoughSignal` (the ◎ debounce). Detector pure core complete.
+
+**Remaining (JSX wiring — needs browser verification):**
+- **3.3 dossier-neighbor ◆** (thread `onPinNeighbor` through `InvestigativeUniverse`) + **3.7 map ◆** (`onPinCountry`/`onPinMarker` callbacks through `EqualEarthMap` → App). Both thread a callback through read-only/merged components.
+- **4.3:** render the ◎ detected-relationship callout — needs the console's thread pool shared into the FrameStrip (no shared threads source in App today; lift it or fetch).
 - **5.2–5.6:** thread nav callbacks App→WorkbenchPanel→DossierView; wire coverage-gap→fresh-query, tension/contested→corroborate, semantic-neighbor→in-app open, leads→open+keep+re-run (using `launcherVerbs`).
 - **6.2–6.3:** carry-context (openBrief emits label/q; deep-link consumes them, guard the `useUrlSync` rebuild; fix stale `entrySource`); mobile thread-close→Brief; unmount the map cockpit while reading; Frame as a pull-up sheet.
 
-**Note:** the pure-lib foundations are the tested substrate; the remainder is integration into `App.tsx` / components, which house-style leaves to build + browser verification. Do it as a batch when the prod API rate-limit (tripped by repeated dev navigations) has cleared.
+**Note:** the pure-lib foundations + capture + compound-focus are the tested/verified substrate now on main. The remainder is deeper integration (thread-pool sharing, DossierView launcher threading, mobile) best done as a focused batch with fresh context. Prod API rate-limits under repeated dev navigations — pace browser verification.
 
 ---
 
