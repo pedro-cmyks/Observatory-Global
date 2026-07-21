@@ -14,7 +14,7 @@ import {
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { humanizeReadinessValue } from '../lib/humanizeInternals'
-import { removePin, renameInvestigation, type Investigation } from '../lib/workbench'
+import { addPin, removePin, renameInvestigation, type Investigation } from '../lib/workbench'
 import { enqueueUrls, extractSnapshotUrls, fullTextYield, stateTag, useArticleStates } from '../lib/articleEnrichment'
 import { fetchCrossRead, type CrossRead } from '../lib/aiRead'
 import { LabelReviewChip } from '../lib/labelReviewChip'
@@ -90,11 +90,14 @@ function renderValidatedProse(text: string, ctx: MeasuredContext) {
 /** Phase 3 report view — a structured dossier generated from the FROZEN
  *  Workbench pins (#227 snapshots), with a Markdown export. Dossier v2 (W3)
  *  adds who-says-what + voice sections MEASURED at generation time. */
-export function DossierView({ investigation, onClose, autoCorroborate, onMutate }: {
+export function DossierView({ investigation, onClose, autoCorroborate, onMutate, onOpenThread }: {
     investigation: Investigation; onClose: () => void; autoCorroborate?: boolean
     /** Called after a verdict chip mutates pinned state (drop receipt) so the
      *  parent re-reads the store and re-renders this frozen view. */
     onMutate?: () => void
+    /** Open a walked-kin node from the connection-analysis section (chains spec
+     *  §4) — same contract WorkbenchPanel already threads into WorkbenchConstellation. */
+    onOpenThread?: (threadId: string, label: string) => void
 }) {
     const now = useMemo(() => new Date().toISOString(), [])
     const [enrichment, setEnrichment] = useState<DossierEnrichment | undefined>(undefined)
@@ -144,6 +147,22 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
     const onConnections = useCallback((data: ConnectionsData, cluster: ClusterResult) => {
         setConn({ data, cluster })
     }, [])
+    // Chains spec §4: pinning a walked-kin node from the connection-analysis
+    // section grows the investigation — the same flywheel move as the
+    // workbench's WorkbenchConstellation → pinStory, just on the full-report
+    // side. Metadata-only pin (no snapshot); opening it later backfills
+    // evidence like any thread pin.
+    const pinWalkedTopic = useCallback((n: { id: string; label: string; category: string | null }) => {
+        addPin(investigation.id, {
+            anchorId: n.id,
+            anchorType: 'thread',
+            label: n.label,
+            category: n.category ?? undefined,
+            retrievalLane: 'constellation-walk',
+            open: { surface: 'thread_detail', params: { thread_id: n.id } },
+        })
+        onMutate?.()
+    }, [investigation.id, onMutate])
 
     // P0.3 story windows: header = whole-investigation span; per-pin windows
     // render on the pin cards once the connection measurement lands.
@@ -797,7 +816,10 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                         <p className="dossier-meta" data-tip="Do these pinned stories form one narrative, and which sub-clusters connect? Semantic proximity + shared entities, measured now.">
                             do these stories connect — and which sub-narratives hold?
                         </p>
-                        <DossierConnections inv={investigation} onData={onConnections} />
+                        <DossierConnections
+                            inv={investigation} onData={onConnections}
+                            onOpenThread={onOpenThread} onPinTopic={pinWalkedTopic}
+                        />
                     </section>
                 )}
 

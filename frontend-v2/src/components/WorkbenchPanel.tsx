@@ -259,6 +259,7 @@ export default function WorkbenchPanel({
                 autoCorroborate={autoCorroborate}
                 onMutate={rerender}
                 onClose={() => { setShowDossier(false); setAutoCorroborate(false); }}
+                onOpenThread={onOpenThread}
               />
             )}
             <div className="wb-header">
