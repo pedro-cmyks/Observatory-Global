@@ -6,6 +6,50 @@ from app import db
 
 router = APIRouter()
 
+
+def build_funnel_stages(raw_counts):
+    """
+    Pure point-in-time funnel shape builder.
+
+    Input: an ORDERED list of (stage_key, label, count) tuples, raw ingest
+    first. A ``count`` of ``None`` means that stage degraded (slow query /
+    missing table) — it is NOT treated as zero, so no drop is fabricated
+    across an unknown stage.
+
+    Output: a list of stage dicts, each with:
+      - stage, label, count
+      - dropped_from_previous: prev.count - count (None if either side is None)
+      - pct_of_raw: count / raw_count * 100 rounded (None if raw or count is None)
+
+    Honesty rule: a ``None`` count never becomes 0 and never yields a delta;
+    it just reports the null so a slow stage degrades visibly instead of
+    implying signal was dropped there.
+    """
+    raw_count = raw_counts[0][2] if raw_counts else None
+    stages = []
+    prev_count = None
+    for stage_key, label, count in raw_counts:
+        dropped = None
+        if count is not None and prev_count is not None:
+            dropped = prev_count - count
+
+        pct_of_raw = None
+        if count is not None and raw_count:
+            pct_of_raw = round(count / raw_count * 100, 1)
+
+        stages.append({
+            "stage": stage_key,
+            "label": label,
+            "count": count,
+            "dropped_from_previous": dropped,
+            "pct_of_raw": pct_of_raw,
+        })
+        # A null stage propagates: we cannot know the drop into OR out of an
+        # unknown count, so the next stage's delta is null too rather than
+        # attributing the combined drop across the gap.
+        prev_count = count
+    return stages
+
 @router.get("/api/v2/stats")
 async def get_system_stats():
     """
@@ -97,6 +141,85 @@ async def get_system_stats():
                 "note": "Check data_lifecycle_config table for settings"
             }
         }
+
+
+@router.get("/api/v2/stats/funnel")
+async def get_stats_funnel(hours: int = 24):
+    """
+    Point-in-time processing funnel: raw ingest -> deduped -> classified ->
+    gate-survived -> thread-served over the last `hours` window, with the
+    signal drop at each stage.
+
+    Read-only, NO per-day persistence and NO drop-cause taxonomy — just the
+    live snapshot. Each stage query is best-effort: a slow/missing stage
+    degrades to a null count (never fabricated as zero) plus a note, so the
+    endpoint never 500s on a single slow stage.
+    """
+    hours = max(1, min(int(hours), 168))
+    window = f"{hours} hours"
+    notes: list[str] = []
+
+    async with db.pool.acquire() as conn:
+        await conn.execute("SET statement_timeout = 4000")
+
+        async def stage_count(stage_key: str, query: str):
+            # Returns an int on success, None (degraded) on failure — the
+            # null is what keeps the funnel honest instead of implying 0.
+            try:
+                value = await conn.fetchval(query)
+                return int(value) if value is not None else 0
+            except Exception as e:
+                print(f"⚠️  /api/v2/stats/funnel stage '{stage_key}' failed: {e}")
+                notes.append(f"stage '{stage_key}' degraded (slow/unavailable); reported as null")
+                return None
+
+        # 1. raw: signals ingested in the window
+        raw = await stage_count("raw", f"""
+            SELECT COUNT(*) FROM signals_v2
+            WHERE created_at > NOW() - INTERVAL '{window}'
+        """)
+        # 2. deduped: distinct headlines (clustering dedupes on headline text)
+        deduped = await stage_count("deduped", f"""
+            SELECT COUNT(DISTINCT headline) FROM signals_v2
+            WHERE created_at > NOW() - INTERVAL '{window}'
+        """)
+        # 3. classified: signals with a topic assignment
+        classified = await stage_count("classified", f"""
+            SELECT COUNT(DISTINCT signal_id) FROM signal_topic_assignments
+            WHERE assigned_at > NOW() - INTERVAL '{window}'
+        """)
+        # 4. gate_survived: assignments that cleared the scope gate
+        #    (gate_kept IS NULL = not yet scored = kept, per migration 045)
+        gate_survived = await stage_count("gate_survived", f"""
+            SELECT COUNT(DISTINCT signal_id) FROM signal_topic_assignments
+            WHERE assigned_at > NOW() - INTERVAL '{window}'
+              AND COALESCE(gate_kept, TRUE) = TRUE
+        """)
+        # 5. thread_served: signals surfaced as evidence in a served thread
+        thread_served = await stage_count("thread_served", f"""
+            SELECT COUNT(DISTINCT signal_id) FROM topic_members
+            WHERE role = 'evidence'
+              AND assigned_at > NOW() - INTERVAL '{window}'
+        """)
+
+    stages = build_funnel_stages([
+        ("raw", "Ingested (raw)", raw),
+        ("deduped", "Deduped (distinct headline)", deduped),
+        ("classified", "Classified (topic-assigned)", classified),
+        ("gate_survived", "Gate-survived", gate_survived),
+        ("thread_served", "Thread-served (evidence)", thread_served),
+    ])
+
+    result = {
+        "contract": "stats-funnel-v0",
+        "point_in_time": True,
+        "window_hours": hours,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "stages": stages,
+    }
+    if notes:
+        result["notes"] = notes
+    return result
 
 
 @router.get("/health")
