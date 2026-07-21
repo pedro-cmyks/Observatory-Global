@@ -36,6 +36,8 @@ from app import db
 from app.services.constellation_walk import (
     WalkParams,
     actor_edge_weight,
+    blob_connector_flags,
+    build_knn_graph,
     match_destination,
     walk_constellation,
 )
@@ -908,6 +910,35 @@ _WALK_TOPICS_SQL = """
     WHERE state = 'active' AND NOT is_umbrella AND centroid_vec IS NOT NULL
 """
 
+# Blob CONFIRMER (spec §2.4 A2 followup): the cheap entropy first-pass
+# (`blob_connector_flags`) flags CANDIDATES; this bounded fetch is the ONLY
+# member-embedding I/O the walk does, and only for those candidates — never
+# every node (mindful). Mirrors `scripts/detect_overmerge.py`'s member fetch:
+# topic_members JOIN signal_embeddings, engine_version v1-compat = the serving
+# default, quarantined rows excluded. Capped per-topic via ROW_NUMBER so one
+# giant candidate topic can't blow the query's cost or memory.
+BLOB_CONFIRM_MAX_CANDIDATES = 40   # never confirm more than this many candidates
+                                   # per walk — bounds the fetch even if the
+                                   # entropy pass flags a large set.
+BLOB_CONFIRM_MEMBERS_CAP = 200     # member rows per candidate topic (well above
+                                   # overmerge.MIN_MEMBERS=12, bounded query cost)
+_WALK_BLOB_MEMBERS_SQL = """
+    WITH ranked AS (
+        SELECT (split_part(tm.topic_id, '-', 3))::int AS tid,
+               se.vec::text AS vec,
+               ROW_NUMBER() OVER (
+                   PARTITION BY tm.topic_id ORDER BY tm.signal_id
+               ) AS rn
+        FROM topic_members tm
+        JOIN signal_embeddings se ON se.signal_id = tm.signal_id
+        WHERE tm.topic_id = ANY($1::text[])
+          AND tm.role = 'evidence'
+          AND tm.engine_version = 'v1-compat'
+          AND tm.quarantined IS NOT TRUE
+    )
+    SELECT tid, vec FROM ranked WHERE rn <= $2
+"""
+
 
 class WalkRequest(BaseModel):
     topic_ids: list[str] = Field(..., min_length=1, max_length=MAX_PINS)
@@ -994,7 +1025,50 @@ async def dossier_walk(req: WalkRequest):
 
     import dataclasses
     params = dataclasses.replace(WalkParams.from_env(), rel_floor=req.rel_floor)
-    result = walk_constellation(whitened, cats, seeds, params)
+
+    # Blob CONFIRMER (spec §2.4 A2 followup): run the cheap entropy first-pass
+    # here (not inside walk_constellation) so we know the CANDIDATE set before
+    # bounding a DB fetch to just those topics' member embeddings — membership
+    # multimodality (overmerge.decide, no LLM) then confirms or spares each one.
+    # Graceful fallback by construction: any failure below (no candidates, the
+    # fetch errors, a candidate has too few embedded members) leaves
+    # `member_vecs` empty for that node and `walk_constellation` falls back to
+    # the entropy-only flag — never crashes, never blocks the walk.
+    graph = build_knn_graph(whitened, k=params.k)
+    blob_candidates = blob_connector_flags(graph, cats, params)
+    member_vecs: dict[int, np.ndarray] = {}
+    if blob_candidates:
+        try:
+            # bound even the candidate set itself (mindful: never an unbounded
+            # fetch), preferring the strongest connectors if there are many.
+            capped = sorted(blob_candidates, key=lambda i: -int(graph.indeg[i]))
+            capped = capped[:BLOB_CONFIRM_MAX_CANDIDATES]
+            idx_by_db_id = {ids[i]: i for i in capped}
+            candidate_topic_ids = [f"dynamic-topic-{ids[i]}" for i in capped]
+            async with db.pool.acquire() as conn:
+                await conn.execute("SET statement_timeout = 8000")
+                member_rows = await conn.fetch(
+                    _WALK_BLOB_MEMBERS_SQL, candidate_topic_ids, BLOB_CONFIRM_MEMBERS_CAP,
+                )
+            by_idx: dict[int, list] = {}
+            for r in member_rows:
+                node_i = idx_by_db_id.get(int(r["tid"]))
+                if node_i is None:
+                    continue
+                try:
+                    vec = np.asarray(json.loads(r["vec"]), dtype=np.float32)
+                except Exception:
+                    continue
+                by_idx.setdefault(node_i, []).append(vec)
+            member_vecs = {i: np.vstack(v) for i, v in by_idx.items() if v}
+        except Exception as exc:  # pragma: no cover - defensive I/O
+            logger.warning("walk blob-confirm member fetch failed (entropy-only "
+                           "fallback): %s", str(exc)[:200])
+            member_vecs = {}
+
+    result = walk_constellation(whitened, cats, seeds, params, graph=graph,
+                                blob_candidates=blob_candidates,
+                                member_vecs=member_vecs)
 
     seed_payload = [
         {"id": f"dynamic-topic-{ids[s]}", "label": labels[s], "category": cats[s]}
@@ -1011,6 +1085,11 @@ async def dossier_walk(req: WalkRequest):
         node = result.reached[rep]
         parent = node.via_parent
         folded = result.fold_map.get(rep, [])
+        # blob provenance (spec §2.4 A2): via_parent is the node whose OUTWARD
+        # hop was penalized when through_blob is set — look up how THAT
+        # decision was made (entropy-only vs multimodality-confirmed) so the
+        # receipt is never a silent penalty.
+        parent_confirm = result.blob_confirmations.get(parent) if parent is not None else None
         kin.append({
             "id": f"dynamic-topic-{ids[rep]}",
             "label": labels[rep],
@@ -1026,8 +1105,10 @@ async def dossier_walk(req: WalkRequest):
                 "basis": "semantic",
                 "weight": node.via_weight,
                 "through_blob": node.through_blob,
+                "blob_basis": parent_confirm.basis if (node.through_blob and parent_confirm) else None,
             },
             "is_blob": rep in result.blob_flags,
+            "blob_basis": result.blob_confirmations[rep].basis if rep in result.blob_flags else None,
             "folded_count": len(folded),
             "folded_labels": [labels[f] for f in folded][:6],
             "destination": match_destination(labels[rep], cats[rep], _ENERGY_TERMS,
@@ -1035,6 +1116,7 @@ async def dossier_walk(req: WalkRequest):
         })
     kin.sort(key=lambda k: (k["degree"], -k["acc_weight"]))
 
+    blob_bases = [c.basis for c in result.blob_confirmations.values() if c.confirmed]
     payload = {
         "contract": "constellation-walk-v0",
         "seeds": seed_payload,
@@ -1047,6 +1129,12 @@ async def dossier_walk(req: WalkRequest):
             "hop_cap": params.hop_cap,
             "k_neighbors": params.k,
             "blob_connectors": len(result.blob_flags),
+            # spec §2.4 A2: how many confirmed blobs were actually structurally
+            # confirmed via member-embedding multimodality vs. fell back to the
+            # entropy-only flag (no DB / no embedded members / an old topic).
+            "blob_candidates": len(blob_candidates),
+            "blob_multimodality_confirmed": sum(1 for b in blob_bases if b == "multimodality_confirmed"),
+            "blob_entropy_only_fallback": sum(1 for b in blob_bases if b == "entropy_only"),
             "dedup_tau": params.dedup_tau,
             "reached_before_dedup": len(result.reached),
             "hermanos": sum(1 for k in kin if k["kinship"] == "hermano"),

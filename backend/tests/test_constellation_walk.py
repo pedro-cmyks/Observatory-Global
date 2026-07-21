@@ -12,18 +12,21 @@ import numpy as np
 import pytest
 
 from app.services.constellation_walk import (
+    BlobConfirmation,
     KnnGraph,
     WalkParams,
     actor_edge_weight,
     blob_connector_flags,
     build_knn_graph,
     category_entropy,
+    confirm_blob_candidates,
     dedup_reached,
     match_destination,
     max_product_walk,
     norm_rarity,
     walk_constellation,
 )
+from app.services.overmerge import BORDERLINE, DEMOTE, KEEP, OverMergeParams
 
 
 def _unit(rows):
@@ -184,6 +187,164 @@ def test_blob_connector_flags_gate_on_indegree_and_entropy():
     lonely = KnnGraph(nbrs=nbrs, bfh=bfh, indeg=np.array([2, 1, 1, 1], np.int32), n=4)
     assert blob_connector_flags(lonely, ["mix", "econ", "sport", "weather"],
                                 WalkParams(blob_indeg_min=3)) == set()
+
+
+# ---------------------------------------------------------------- blob CONFIRMER
+# Spec §2.4 A2 followup: the entropy first-pass above (`blob_connector_flags`) is
+# the CHEAP PRE-FILTER only; `confirm_blob_candidates` CONFIRMS each candidate via
+# membership multimodality (the over-merge detector's 2-means, `overmerge.decide`)
+# over the topic's real member embeddings — a genuine event-hub is SPARED even if
+# entropy flagged it, and a candidate with no/insufficient embeddings gracefully
+# FALLS BACK to the entropy flag alone (never crashes, never blocks the walk).
+def _tight_member_cluster(n, seed=0, dim=8):
+    """One concentrated cluster (small noise around one direction) — a genuine
+    hub's members, NOT a fusion. 2-means still finds *a* split, but the gap is
+    narrow (unimodal) so `overmerge.decide` KEEPs it."""
+    rng = np.random.default_rng(seed)
+    base = np.zeros(dim)
+    base[0] = 1.0
+    pts = base + 0.02 * rng.standard_normal((n, dim))
+    return pts.astype(np.float64)
+
+
+def _bimodal_member_cluster(n_a, n_b, seed=0, dim=8):
+    """Two well-separated, balanced sub-clusters — a genuine fusion's members.
+    Measured (not guessed): gap_ratio ~1070 >> TAU_SEP 1.8 -> DEMOTE."""
+    rng = np.random.default_rng(seed)
+    a = np.zeros(dim)
+    a[0] = 1.0
+    b = np.zeros(dim)
+    b[1] = 1.0
+    pts_a = a + 0.02 * rng.standard_normal((n_a, dim))
+    pts_b = b + 0.02 * rng.standard_normal((n_b, dim))
+    return np.vstack([pts_a, pts_b]).astype(np.float64)
+
+
+def test_confirm_blob_candidates_multimodal_topic_is_confirmed():
+    # a real fusion (two well-separated, balanced sub-clusters) -> CONFIRMED,
+    # basis is the structural evaluation, not the entropy-only shortcut.
+    mat = _bimodal_member_cluster(7, 7, seed=1)
+    out = confirm_blob_candidates({0}, {0: mat})
+    c = out[0]
+    assert c.confirmed is True
+    assert c.basis == "multimodality_confirmed"
+    assert c.verdict in (DEMOTE, BORDERLINE)
+    assert c.gap_ratio is not None and c.gap_ratio >= OverMergeParams().tau_sep_low
+
+
+def test_confirm_blob_candidates_genuine_hub_is_spared():
+    # a genuine tight hub (one concentrated cluster) that the CHEAP entropy pass
+    # flagged as a candidate -> multimodality SPARES it: confirmed=False, even
+    # though it was a candidate. This is the false-positive the entropy-only v1
+    # could not catch (spec §2.4: "cosine coherence FAILS to separate blob from
+    # hub" — the FIX is multimodality, not coherence, and this proves the KEEP
+    # side of the discriminator, not just the DEMOTE side).
+    mat = _tight_member_cluster(14, seed=2)
+    out = confirm_blob_candidates({0}, {0: mat})
+    c = out[0]
+    assert c.confirmed is False
+    assert c.basis == "multimodality_confirmed"
+    assert c.verdict == KEEP
+
+
+def test_confirm_blob_candidates_falls_back_when_embeddings_absent():
+    # no member_vecs entry at all for candidate 0 (no DB / old topic whose
+    # embeddings were pruned at retention) -> graceful fallback to the entropy
+    # flag alone, never crashes.
+    out = confirm_blob_candidates({0, 1}, {1: _tight_member_cluster(14, seed=3)})
+    assert out[0].confirmed is True and out[0].basis == "entropy_only"
+    assert out[0].gap_ratio is None and out[0].verdict is None
+    # too few embedded members (< overmerge.MIN_MEMBERS) -> also a fallback, not
+    # a crash — an old/thin topic is exactly the case this must degrade for.
+    out2 = confirm_blob_candidates({2}, {2: _tight_member_cluster(5, seed=4)})
+    assert out2[2].confirmed is True and out2[2].basis == "entropy_only"
+    # None passed at all for member_vecs (the walk's own default) -> every
+    # candidate falls back, matching pre-A2 shipped behavior exactly.
+    out3 = confirm_blob_candidates({0, 1}, None)
+    assert all(c.confirmed and c.basis == "entropy_only" for c in out3.values())
+
+
+def test_confirm_blob_candidates_unpartitionable_input_falls_back():
+    # a malformed/degenerate embedding matrix must never raise — falls back.
+    out = confirm_blob_candidates({0}, {0: np.zeros((14, 8))})
+    assert out[0].basis in ("entropy_only", "multimodality_confirmed")  # never crashes
+    bad = confirm_blob_candidates({0}, {0: "not-an-array"})  # type: ignore[dict-item]
+    assert bad[0].confirmed is True and bad[0].basis == "entropy_only"
+
+
+# ------------------------------------------------- confirmer wired into the walk
+def _confirmer_graph() -> tuple[KnnGraph, list[str]]:
+    """seed(4) -> connector(0) -> {1,2,3 spread categories, 5 the far primo}.
+    Node 0's OWN 2-hop neighborhood (1,2,3 each a different category, plus their
+    shared neighbor 0) gives it high category-entropy AND in-degree 4 >= 3, so
+    the cheap first pass always flags node 0 as a CANDIDATE — measured via
+    `category_entropy`/`blob_connector_flags` directly below. The confirmer then
+    decides whether node 0's onward hop to the far primo (5, weight 0.4) is
+    actually penalized."""
+    nbrs = {
+        4: [(0, 0.9)],
+        0: [(1, 0.9), (2, 0.9), (3, 0.9), (5, 0.4)],
+        1: [(0, 0.9)], 2: [(0, 0.9)], 3: [(0, 0.9)],
+        5: [],
+    }
+    bfh = np.array([0.9, 0.9, 0.9, 0.9, 0.9, 0.0], dtype=np.float32)
+    indeg = np.zeros(6, dtype=np.int32)
+    for i, lst in nbrs.items():
+        for j, _w in lst:
+            indeg[j] += 1
+    cats = ["mix", "econ", "sport", "weather", "war", "energy"]
+    return KnnGraph(nbrs=nbrs, bfh=bfh, indeg=indeg, n=6), cats
+
+
+def test_confirmer_graph_is_entropy_flagged_precondition():
+    # sanity: the graph fixture actually clears the cheap first pass, so the
+    # walk-level tests below are exercising the CONFIRMER, not a graph that
+    # never reached it.
+    g, cats = _confirmer_graph()
+    assert category_entropy(g.nbrs, cats, 0) >= WalkParams().blob_entropy_tau
+    assert blob_connector_flags(g, cats, WalkParams()) == {0}
+
+
+def test_walk_penalizes_a_confirmed_multimodal_blob():
+    # node 0 is entropy-flagged AND multimodal (real member embeddings) ->
+    # CONFIRMED -> the onward hop to the far primo (5) is penalized below the
+    # floor: 1.0 * 0.9(seed->0) * (0.4*BLOB_PENALTY=0.2) = 0.18 < floor 0.315.
+    g, cats = _confirmer_graph()
+    W = np.eye(6, dtype=np.float32)  # trivial orthogonal rows -> dedup never folds
+    res = walk_constellation(W, cats, seeds=[4], params=WalkParams(), graph=g,
+                             member_vecs={0: _bimodal_member_cluster(7, 7, seed=1)})
+    assert res.blob_flags == {0}
+    assert res.blob_confirmations[0].basis == "multimodality_confirmed"
+    assert 5 not in res.reached          # far primo dies — penalized out
+
+
+def test_walk_spares_a_confirmed_genuine_hub():
+    # SAME entropy-flagged candidate, but its real members are NOT multimodal
+    # (one concentrated cluster) -> the confirmer SPARES it -> the far primo
+    # survives at full weight: 1.0 * 0.9 * 0.4 = 0.36 >= floor 0.315.
+    g, cats = _confirmer_graph()
+    W = np.eye(6, dtype=np.float32)
+    res = walk_constellation(W, cats, seeds=[4], params=WalkParams(), graph=g,
+                             member_vecs={0: _tight_member_cluster(14, seed=2)})
+    assert res.blob_flags == set()       # candidate flagged by entropy, spared here
+    assert res.blob_confirmations[0].confirmed is False
+    assert res.blob_confirmations[0].basis == "multimodality_confirmed"
+    assert 5 in res.reached              # far primo survives — NOT penalized
+    assert res.reached[5].acc_weight == pytest.approx(0.9 * 0.4, abs=1e-3)
+
+
+def test_walk_falls_back_to_entropy_only_when_embeddings_absent():
+    # no member embeddings supplied at all (no DB / no embedded members / an old
+    # topic whose embeddings were pruned) -> graceful fallback to the entropy
+    # flag alone -> SAME penalized outcome as the confirmed-multimodal case
+    # (today's shipped v1 behavior for that node), never a crash.
+    g, cats = _confirmer_graph()
+    W = np.eye(6, dtype=np.float32)
+    res = walk_constellation(W, cats, seeds=[4], params=WalkParams(), graph=g,
+                             member_vecs=None)
+    assert res.blob_flags == {0}
+    assert res.blob_confirmations[0].basis == "entropy_only"
+    assert 5 not in res.reached
 
 
 # ---------------------------------------------------------------- dedup
