@@ -307,8 +307,13 @@ def test_sample_queue_cleanup_is_batched_and_exists_based():
     assert "FROM candidates c" in sql
     assert "JOIN signals_v2 s ON s.id = c.id" in sql
     assert "LIMIT $1" in sql
+    # Orphans: queue rows whose signal was retention-deleted never match the
+    # drained JOIN and would accumulate forever — the cleanup must also purge
+    # ids with no signals_v2 row, inside the same batched candidate window.
+    assert "orphaned AS" in sql
+    assert "NOT EXISTS" in sql
     assert "DELETE FROM nlp_sample_queue q" in sql
-    assert "USING drained d" in sql
+    assert "USING removable d" in sql
     assert "WHERE q.id = d.id" in sql
     assert pipeline.SAMPLE_CLEANUP_LIMIT == 500
     assert pipeline.SAMPLE_CLEANUP_TIMEOUT_SECONDS == 10

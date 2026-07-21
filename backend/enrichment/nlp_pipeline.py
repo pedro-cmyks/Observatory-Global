@@ -539,9 +539,23 @@ def _cleanup_drained_sample_queue_sql(target_column: str) -> str:
         FROM candidates c
         JOIN signals_v2 s ON s.id = c.id
         WHERE s.{target_column} IS NOT NULL
+    ),
+    orphaned AS (
+        -- retention-deleted signals never match the drained JOIN; without
+        -- this clause their queue rows accumulate forever
+        SELECT c.id
+        FROM candidates c
+        WHERE NOT EXISTS (
+            SELECT 1 FROM signals_v2 s WHERE s.id = c.id
+        )
+    ),
+    removable AS (
+        SELECT id FROM drained
+        UNION ALL
+        SELECT id FROM orphaned
     )
     DELETE FROM nlp_sample_queue q
-    USING drained d
+    USING removable d
     WHERE q.id = d.id
     """
 
