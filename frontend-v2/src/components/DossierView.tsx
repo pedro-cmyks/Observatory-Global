@@ -35,6 +35,14 @@ import {
 } from '../lib/investigationPublication'
 import './DossierView.css'
 
+/** Cross-read finding label. 'shared_source' (Council R3 P1) = two syndicated
+ *  copies of one wire story agree — NOT independent corroboration. */
+function crossFindingLabel(kind: string): string {
+    if (kind === 'tension') return '⚠ possible tension'
+    if (kind === 'shared_source') return '⊘ same source (not independent)'
+    return '✓ corroboration'
+}
+
 /** P0.6a: article text with inline [n] receipt markers → clickable superscript
  *  anchors into the numbered receipts list below the article. */
 function renderWithCitations(text: string) {
@@ -389,12 +397,18 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
             const lines = [
                 '## Source cross-read (AI READ — verify the quotes)',
                 '',
-                ...crossRead.findings.flatMap(f => [
-                    `**${f.kind === 'tension' ? 'Possible tension' : 'Corroboration'}** — ${f.note}`,
-                    `> “${f.a.quote}” — ${f.a.url}`,
-                    `> “${f.b.quote}” — ${f.b.url}`,
-                    '',
-                ]),
+                ...crossRead.findings.flatMap(f => {
+                    const label = f.kind === 'tension' ? 'Possible tension'
+                        : f.kind === 'shared_source' ? 'Same source (not independent corroboration)'
+                        : 'Corroboration'
+                    const indep = f.independence ? ` _(${f.independence.label})_` : ''
+                    return [
+                        `**${label}**${indep} — ${f.note}`,
+                        `> “${f.a.quote}” — ${f.a.outlet || f.a.url}`,
+                        `> “${f.b.quote}” — ${f.b.outlet || f.b.url}`,
+                        '',
+                    ]
+                }),
             ]
             const crBlock = lines.join('\n')
             const crMarker = '\n## Timeline'
@@ -797,17 +811,23 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate 
                         ) : crossRead && (
                             <>
                                 <p className="dossier-meta" data-tip={crossRead.note ?? ''}>
-                                    AI READ{crossRead.model ? ` · ${crossRead.model}` : ''} · {crossRead.articles_with_claims} of {crossRead.articles_read} read sources with quote-backed claims · possible findings — verify the quotes
+                                    AI READ{crossRead.model ? ` · ${crossRead.model}` : ''} · {crossRead.articles_with_claims} of {crossRead.articles_read} read sources with quote-backed claims · {crossRead.independent_corroborations ?? 0} independent corroboration{(crossRead.independent_corroborations ?? 0) === 1 ? '' : 's'}{(crossRead.shared_source_findings ?? 0) > 0 ? ` · ${crossRead.shared_source_findings} same-source (not counted)` : ''} · verify the quotes
                                 </p>
                                 {crossRead.findings.length === 0 && (
                                     <p className="dossier-meta">{crossRead.reason ? `Not comparable: ${crossRead.reason}.` : 'No corroborations or tensions visible between the quote-backed claims.'}</p>
                                 )}
                                 {crossRead.findings.map((f, i) => (
                                     <div key={i} className={`dossier-crossread-finding dossier-crossread-finding--${f.kind}`}>
-                                        <span className="dossier-crossread-kind">{f.kind === 'tension' ? '⚠ possible tension' : '✓ corroboration'}</span>
+                                        <span className="dossier-crossread-kind">{crossFindingLabel(f.kind)}</span>
+                                        {f.independence && (
+                                            <span className={`dossier-crossread-independence dossier-crossread-independence--${f.independence.independent ? 'yes' : 'no'}`}
+                                                data-tip={f.independence.independent ? 'Two independent sources agree — corroboration.' : 'The claims agree but come from one wire source echoing itself — not independent corroboration.'}>
+                                                {f.independence.label}
+                                            </span>
+                                        )}
                                         <p className="dossier-crossread-note">{f.note}</p>
-                                        <blockquote>“{f.a.quote}” <span className="dossier-ft-meta">— {f.a.url}</span></blockquote>
-                                        <blockquote>“{f.b.quote}” <span className="dossier-ft-meta">— {f.b.url}</span></blockquote>
+                                        <blockquote>“{f.a.quote}” <span className="dossier-ft-meta">— {f.a.outlet || f.a.url}</span></blockquote>
+                                        <blockquote>“{f.b.quote}” <span className="dossier-ft-meta">— {f.b.outlet || f.b.url}</span></blockquote>
                                     </div>
                                 ))}
                             </>

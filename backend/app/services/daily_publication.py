@@ -854,7 +854,8 @@ async def fetch_daily_publication(
                         package.coverage_check = {
                             **{k: cc.get(k) for k in (
                                 "contract", "findings", "articles_read",
-                                "articles_with_claims", "model", "note",
+                                "articles_with_claims", "independent_corroborations",
+                                "shared_source_findings", "model", "note",
                             )},
                             "story_id": lead_id,
                         }

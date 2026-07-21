@@ -1503,10 +1503,14 @@ export function BriefNewspaper() {
                                             </span>
                                             {coverageCheck.findings!.map((f, i) => (
                                                 <div key={i} className={`brief-cc-finding brief-cc-finding--${f.kind}`}>
-                                                    <span className="brief-cc-kind">{f.kind === 'tension' ? '⚠ outlets diverge' : '✓ outlets agree'}</span>
+                                                    <span className="brief-cc-kind">{
+                                                        f.kind === 'tension' ? '⚠ outlets diverge'
+                                                            : f.kind === 'shared_source' ? '⊘ same wire source'
+                                                            : '✓ independent outlets agree'
+                                                    }</span>
                                                     <p className="brief-cc-note">{f.note}</p>
-                                                    <blockquote dir="auto">“{f.a.quote}”</blockquote>
-                                                    <blockquote dir="auto">“{f.b.quote}”</blockquote>
+                                                    <blockquote dir="auto">“{f.a.quote}”{f.a.outlet ? <span className="brief-cc-src"> — {f.a.outlet}</span> : null}</blockquote>
+                                                    <blockquote dir="auto">“{f.b.quote}”{f.b.outlet ? <span className="brief-cc-src"> — {f.b.outlet}</span> : null}</blockquote>
                                                 </div>
                                             ))}
                                         </div>

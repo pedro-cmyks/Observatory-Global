@@ -461,6 +461,27 @@ async def article_states(urls: list[str]) -> list[dict]:
     return out
 
 
+async def article_sources(urls: list[str]) -> dict[str, dict]:
+    """url -> {outlet, title, content_hash} for cross-read source-independence
+    (Council R3 P1). Only status='ok' rows — an un-read article carries no
+    claims to compare, so it never reaches the corroboration gate. Metadata
+    only (no text crosses this path); safe to compute independence from."""
+    hashes = {url_hash(u): u for u in urls if (u or "").strip()}
+    if not hashes or _pool() is None:
+        return {}
+    async with _pool().acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT url, outlet, title, content_hash FROM pinned_articles "
+            "WHERE url_hash = ANY($1) AND status = 'ok'",
+            list(hashes.keys()),
+        )
+    return {
+        r["url"]: {"outlet": r["outlet"], "title": r["title"],
+                   "content_hash": r["content_hash"]}
+        for r in rows
+    }
+
+
 async def full_texts_for(urls: list[str], *, cap_chars: int = 6000) -> dict[str, dict]:
     """Server-side consumer path (synthesize / F2 AI-read): url -> {text, title,
     outlet, fetched_at}. Full text never crosses the public API."""
