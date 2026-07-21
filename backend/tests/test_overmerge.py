@@ -32,10 +32,12 @@ from app.services.overmerge import (
     BORDERLINE,
     DEMOTE,
     KEEP,
+    CountryMultimodality,
     OverMergeParams,
     SplitStats,
     apply_judge_verdict,
     country_dominant_overlap,
+    country_multimodality,
     decide,
     is_over_merge,
     parse_split_judge_response,
@@ -266,6 +268,99 @@ def test_country_dominant_overlap_one_common_wire_person_does_not_veto():
     b = {"c:CN", "p:trump", "p:xi", "p:wang"}
     # 1 shared person / 5 union = 0.2, and countries differ -> below the 0.5 veto
     assert country_dominant_overlap(a, b) < OverMergeParams().tau_overlap
+
+
+# ----------------------------------------- country multimodality (Natalia gap)
+# The embedding-FREE over-merge signal for old topics whose embeddings were pruned
+# at 7-day retention (the 2-means path is blind to them). A genuine cross-country
+# fusion (dt-726 'Natalia Villalba Murder Case': Bogotá theft + Chilean carabinero
+# killing + Spanish crime, CO 24 / CL 13 / ES 4) fans across countries with no
+# dominant one; a healthy single story concentrates in one country.
+def test_country_multimodality_natalia_case_is_multimodal():
+    """The exact fusion Pedro caught: three countries, no dominant one -> flagged."""
+    cm = country_multimodality({"CO": 24, "CL": 13, "ES": 4})
+    assert cm.distinct == 3
+    assert cm.total == 41
+    assert cm.dominant_share == pytest.approx(24 / 41)  # 0.585
+    assert cm.is_multimodal is True
+
+
+def test_country_multimodality_full_natalia_distribution_is_multimodal():
+    """The full dt-726 distribution CO24/CL13/ES4/EC2/AR1 — dominant 0.545."""
+    cm = country_multimodality({"CO": 24, "CL": 13, "ES": 4, "EC": 2, "AR": 1})
+    assert cm.distinct == 5
+    assert cm.dominant_share == pytest.approx(24 / 44)  # 0.545
+    assert cm.is_multimodal is True
+
+
+def test_country_multimodality_dominant_country_not_multimodal():
+    """CO holds 50/51 — one country's story with a stray, not a fusion (KEEP)."""
+    cm = country_multimodality({"CO": 50, "CL": 1})
+    assert cm.distinct == 2
+    assert cm.dominant_share == pytest.approx(50 / 51)
+    assert cm.is_multimodal is False
+
+
+def test_country_multimodality_three_countries_but_dominant_not_multimodal():
+    """>= tau_countries distinct BUT one country dominates -> the dominance gate
+    (independent of the country-count gate) keeps it."""
+    cm = country_multimodality({"CO": 50, "CL": 1, "ES": 1})
+    assert cm.distinct == 3
+    assert cm.dominant_share == pytest.approx(50 / 52)  # 0.96
+    assert cm.is_multimodal is False
+
+
+def test_country_multimodality_single_country_not_multimodal():
+    """One country cannot be a cross-country fusion (KEEP)."""
+    cm = country_multimodality({"CO": 20})
+    assert cm.distinct == 1
+    assert cm.dominant_share == pytest.approx(1.0)
+    assert cm.is_multimodal is False
+
+
+def test_country_multimodality_empty_not_multimodal():
+    """No located members -> honest not-multimodal, no divide-by-zero."""
+    cm = country_multimodality({})
+    assert cm.distinct == 0
+    assert cm.total == 0
+    assert cm.dominant_share == 0.0
+    assert cm.is_multimodal is False
+
+
+def test_country_multimodality_ignores_null_and_blank_country_keys():
+    """Un-located members (NULL / '' country_code) are not countries."""
+    cm = country_multimodality({"CO": 24, None: 5, "": 3, "CL": 13, "ES": 4})
+    assert cm.distinct == 3
+    assert cm.total == 41  # the 5 NULL + 3 blank dropped
+    assert cm.is_multimodal is True
+
+
+def test_country_multimodality_tau_overrides_respected():
+    """Env-tunable: tighten dominance or raise the country floor -> Natalia no
+    longer qualifies (guards the re-tuning path)."""
+    tight = country_multimodality({"CO": 24, "CL": 13, "ES": 4}, tau_dominance=0.50)
+    assert tight.is_multimodal is False       # 0.585 not < 0.50
+    higher = country_multimodality({"CO": 24, "CL": 13, "ES": 4}, tau_countries=4)
+    assert higher.is_multimodal is False      # only 3 distinct < 4
+
+
+def test_country_multimodality_returns_dataclass():
+    cm = country_multimodality({"CO": 24, "CL": 13, "ES": 4})
+    assert isinstance(cm, CountryMultimodality)
+
+
+def test_params_from_env_reads_country_taus(monkeypatch):
+    monkeypatch.setenv("ATLAS_OVERMERGE_TAU_COUNTRIES", "4")
+    monkeypatch.setenv("ATLAS_OVERMERGE_TAU_DOMINANCE", "0.5")
+    p = OverMergeParams.from_env()
+    assert p.tau_countries == 4
+    assert p.tau_dominance == pytest.approx(0.5)
+
+
+def test_params_default_country_taus():
+    p = OverMergeParams()
+    assert p.tau_countries == 3
+    assert p.tau_dominance == pytest.approx(0.60)
 
 
 # ---------------------------------------------------------------- decide

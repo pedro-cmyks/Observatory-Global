@@ -70,6 +70,25 @@ TAU_BAL = 0.20
 TAU_OVERLAP = 0.5
 MIN_MEMBERS = 12
 
+# COUNTRY-MULTIMODALITY FALLBACK (the "Natalia gap", 2026-07-21). The embedding
+# 2-means path is BLIND to old persistent black-holes: their members are >7d old,
+# their embeddings pruned at retention, so the JOIN drops them below MIN_MEMBERS
+# and the topic is skipped (dt-726 'Natalia Villalba Murder Case' — CO 24 + CL 13
+# + ES 4 diverse crimes — was invisible). The embedding-FREE signal that catches
+# them is MEMBER COUNTRY MULTIMODALITY: a genuine cross-country fusion splits over
+# several countries with NO dominant one (a healthy single story concentrates in
+# one country, or — a cross-border summit — shares actors). Only the SCRIPT's
+# fallback lane consumes these, and ONLY when the topic is ALSO court-failed +
+# embedding-unevaluable (the black-hole signature); a court-ENTAILED generic
+# bucket is protected. Seeds:
+#   TAU_COUNTRIES  >= this many distinct member countries to even consider a fusion.
+#   TAU_DOMINANCE  the top country must hold LESS than this share (no clear
+#                  majority country) — above it the topic is one country's story
+#                  with a few strays, not a fusion. 0.60 seed clears the Natalia
+#                  case (top share CO 24/41 = 0.585); re-tuned in Measure.
+TAU_COUNTRIES = 3
+TAU_DOMINANCE = 0.60
+
 # verdicts
 KEEP = "keep"
 DEMOTE = "demote"
@@ -87,6 +106,8 @@ class OverMergeParams:
     tau_bal: float = TAU_BAL
     tau_overlap: float = TAU_OVERLAP
     min_members: int = MIN_MEMBERS
+    tau_countries: int = TAU_COUNTRIES
+    tau_dominance: float = TAU_DOMINANCE
     seed: int = DEFAULT_SEED
 
     @classmethod
@@ -99,6 +120,8 @@ class OverMergeParams:
             tau_bal=float(g("ATLAS_OVERMERGE_TAU_BAL", str(TAU_BAL))),
             tau_overlap=float(g("ATLAS_OVERMERGE_TAU_OVERLAP", str(TAU_OVERLAP))),
             min_members=int(g("ATLAS_OVERMERGE_MIN_MEMBERS", str(MIN_MEMBERS))),
+            tau_countries=int(g("ATLAS_OVERMERGE_TAU_COUNTRIES", str(TAU_COUNTRIES))),
+            tau_dominance=float(g("ATLAS_OVERMERGE_TAU_DOMINANCE", str(TAU_DOMINANCE))),
             seed=int(g("ATLAS_OVERMERGE_SEED", str(DEFAULT_SEED))),
         )
 
@@ -306,6 +329,67 @@ def country_dominant_overlap(actors_a: Iterable[str],
     pa = {x for x in actors_a if isinstance(x, str) and x.startswith("p:")}
     pb = {x for x in actors_b if isinstance(x, str) and x.startswith("p:")}
     return max(set_overlap(ca, cb), set_overlap(pa, pb))
+
+
+# ----------------------------------------- country multimodality (embedding-free)
+@dataclass(frozen=True)
+class CountryMultimodality:
+    """Country distribution shape of one topic's members — the embedding-FREE
+    over-merge signal for old topics whose embeddings were pruned at retention.
+
+    distinct        number of distinct member countries (NULL/blank excluded).
+    dominant_share  largest single country's share of located members, in (0, 1].
+    total           located members (those with a country code).
+    is_multimodal   distinct >= tau_countries AND dominant_share < tau_dominance —
+                    the members fan across several countries with no dominant one,
+                    the country-signature of a cross-country fusion.
+    """
+
+    distinct: int
+    dominant_share: float
+    total: int
+    is_multimodal: bool
+
+
+def country_multimodality(counts, *, tau_countries: int = TAU_COUNTRIES,
+                          tau_dominance: float = TAU_DOMINANCE) -> CountryMultimodality:
+    """Country-distribution multimodality of a topic's members. Pure, no DB.
+
+    `counts` maps country_code -> member count. NULL / blank keys and non-positive
+    counts are ignored (an un-located member is not a country). A topic is
+    country-multimodal when its located members span >= tau_countries distinct
+    countries AND no single country holds >= tau_dominance of them:
+
+      {CO:24, CL:13, ES:4}          distinct 3, dominant 0.585 -> MULTIMODAL (fusion)
+      {CO:24,CL:13,ES:4,EC:2,AR:1}  distinct 5, dominant 0.545 -> MULTIMODAL (Natalia)
+      {CO:50, CL:1}                 distinct 2                 -> not (too few countries)
+      {CO:50, CL:1, ES:1}           distinct 3, dominant 0.96  -> not (CO dominates)
+      {CO:20}                       distinct 1                 -> not (single country)
+      {}                            total 0                    -> not (no members)
+
+    Empty / single-country / dominant-country distributions are honestly NOT
+    multimodal. This is only ONE of the fallback's gates: the script demotes on it
+    solely for a topic that is ALSO court-failed and embedding-unevaluable, and a
+    cross-country SINGLE story (a summit) is spared by the shared-actor veto."""
+    clean: dict[str, int] = {}
+    for k, v in dict(counts).items():
+        if not (isinstance(k, str) and k.strip()):
+            continue
+        try:
+            c = int(v)
+        except (TypeError, ValueError):
+            continue
+        if c > 0:
+            clean[k.strip()] = clean.get(k.strip(), 0) + c
+    total = sum(clean.values())
+    distinct = len(clean)
+    if total == 0:
+        return CountryMultimodality(distinct=0, dominant_share=0.0, total=0,
+                                    is_multimodal=False)
+    dominant_share = max(clean.values()) / total
+    is_multimodal = distinct >= tau_countries and dominant_share < tau_dominance
+    return CountryMultimodality(distinct=distinct, dominant_share=dominant_share,
+                                total=total, is_multimodal=is_multimodal)
 
 
 def decide(stats: Optional[SplitStats], entity_overlap: Optional[float],
