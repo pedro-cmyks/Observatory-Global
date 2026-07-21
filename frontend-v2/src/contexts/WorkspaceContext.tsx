@@ -22,6 +22,7 @@ import {
     type PinSnapshot,
 } from '../lib/workbench'
 import { extractSnapshotEvidence } from '../lib/pinEvidence'
+import { recordTrailStep } from '../lib/ambientTrail'
 
 export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot' | 'event' | 'anomaly'
 
@@ -200,10 +201,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     const isPinned = useCallback((id: string) => items.some(i => i.id === id), [items])
 
-    // Visits feed the ACTIVE investigation's trail (deduped against the last
-    // step) — no investigation, no trail; we don't record browsing outside an
-    // investigation context.
+    // Ambient exploration Trail (Task 2.2): every panel visit is recorded,
+    // investigation or not — this is passive browsing history, separate from
+    // deliberate pins and from the per-investigation trail below.
+    //
+    // Visits ALSO feed the ACTIVE investigation's trail (deduped against the
+    // last step) — no investigation, no investigation-trail; we don't record
+    // browsing outside an investigation context into investigation state.
     const trackVisit = useCallback((item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
+        recordTrailStep({ surface: item.type, kind: item.type, value: item.id, label: item.title, at: new Date().toISOString() })
         const activeId = getActiveInvestigationId()
         if (!activeId || !getInvestigation(activeId)) return
         if (lastTrailRef.current === item.id) return
