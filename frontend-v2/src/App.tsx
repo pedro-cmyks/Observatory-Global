@@ -49,6 +49,7 @@ import { UniverseView } from './components/UniverseView'
 import { resolveThreadLabel } from './lib/themeLabels'
 import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addPin, addCitation } from './lib/workbench'
 import { countryPin, receiptFrom } from './lib/capturePayloads'
+import { buildBriefParams, parseConsoleDeepLink } from './lib/navParams'
 // #233 grid revival: desktop panels live in a drag/resize grid. RGL positions
 // children with CSS transforms — panels are NEVER unmounted by layout changes,
 // which is what the keep-alive architecture requires.
@@ -357,10 +358,11 @@ function AppContent() {
   }, [moreMenuOpen])
   const { watches, add: addWatch } = useSavedWatches()
   const [watchNamePrompt, setWatchNamePrompt] = useState<string | null>(null)
-  const entrySource = useMemo(() => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('entry')
-  }, [])
+  // Reactive to the URL (not mount-only): under the #239 keep-alive shell App
+  // stays mounted across Brief↔App switches, so a mount-only read went stale.
+  // (useUrlSync now preserves `entry` across focus changes, so this stays
+  // 'brief' for the whole reading session — 6.3a depends on it.)
+  const entrySource = useMemo(() => new URLSearchParams(location.search).get('entry'), [location.search])
   const tourEntryContext = entrySource === 'brief'
     ? 'You came in from the Brief. Atlas will show the full console first, then you can keep exploring the country or narrative you selected.'
     : undefined
@@ -739,14 +741,22 @@ function AppContent() {
     if (location.pathname !== '/app') return
     if (deepLinkProcessedRef.current === location.search) return
     deepLinkProcessedRef.current = location.search
-    const params = new URLSearchParams(location.search)
-    const attention = params.get('attention')
-    const theme = params.get('theme')
-    const country = params.get('country') || undefined
+    const dl = parseConsoleDeepLink(location.search)
+    const attention = dl.attention
+    const theme = dl.theme
+    const country = dl.country || undefined
+    // Carry-context (6.2b): a category/search deep-link with NO theme and NO
+    // attention seeds the cross-thread STORY panel. Kept as its OWN branch —
+    // handleThemeSelect nulls storyQuery internally, so the two must not merge.
+    if (dl.q && !theme && !attention) {
+      setStoryQuery(dl.q)
+      return
+    }
     // Brief → console deep-link without attention: open the theme detail on mount.
     // Atlas-topic slugs (e.g. "disease-outbreak") resolve to the gated theme view.
+    // dl.label carries the Brief's real thread label forward (5th arg → labelHint).
     if (theme && !attention) {
-      handleThemeSelect(theme, country, country ? resolveCountryName(country) : undefined)
+      handleThemeSelect(theme, country, country ? resolveCountryName(country) : undefined, undefined, dl.label ?? undefined)
       if (country) setMapFlyCountry(country)
       return
     }
@@ -1000,9 +1010,13 @@ function AppContent() {
       setCountry(null)
       return true
     }
+    // 6.3a: nothing left to peel — on mobile, a Brief-entry analyst's swipe-back
+    // exits to the Brief (same reading-first seam as closeAll), never a dead
+    // gesture on a blank Stream tab. Desktop Escape stays a no-op (isMobile).
+    if (isMobile && entrySource === 'brief') { navigate('/brief'); return true }
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country])
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
@@ -1336,9 +1350,15 @@ function AppContent() {
   const openBrief = () => {
     // The Brief is the DAY's edition (fixed 24h since 2026-07-05) — the old
     // `range` param was already ignored there; dropped with the selector.
-    const params = new URLSearchParams()
-    if (selectedCountryCode) params.set('country', selectedCountryCode)
-    const qs = params.toString()
+    // Carry-context (6.2): the active theme/label/query ride forward so the
+    // Brief can honor what the analyst was reading. label only rides with a
+    // theme (buildBriefParams enforces that); it asserts nothing on its own.
+    const qs = buildBriefParams({
+      country: selectedCountryCode,
+      theme: selectedTheme?.theme,
+      themeLabel: selectedTheme?.thread?.label ?? selectedTheme?.labelHint,
+      storyQuery,
+    })
     navigate(qs ? `/brief?${qs}` : '/brief')
   }
 
@@ -1887,7 +1907,11 @@ function AppContent() {
           const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
           const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
-          const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null) }
+          const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null)
+            // 6.3a: on mobile, an analyst who entered from the Brief returns THERE
+            // when the last reading panel closes — never a drop into the blank
+            // Stream tab. Desktop unchanged (guarded on isMobile).
+            if (isMobile && entrySource === 'brief') navigate('/brief') }
           // Smart back: one step up, not all the way to stream
           const handleStreamBack = () => {
             if (prevStreamCtx?.type === 'chokepoint') {
@@ -2248,10 +2272,15 @@ function AppContent() {
 
         if (isMobile) {
           // Mobile keeps the proven tab IA untouched: one CSS class swap shows
-          // one full-screen panel at a time (display-toggle, no unmounts).
+          // one full-screen panel at a time (display-toggle, no unmounts) —
+          // EXCEPT the radar (6.3b): the map's 2D-canvas rAF loop keeps running
+          // while CSS-hidden, burning the phone's battery/main thread during a
+          // read. Mount it only on the map tab so it unmounts (rAF stops) on
+          // stream/threads/pulse. Re-mount re-applies its live props from App
+          // state (flyCountry/resetNonce) — see note in the handoff.
           return (
             <div className={`terminal-layout mobile-tab-${mobileTab}`}>
-              {radarPanel}
+              {mobileTab === 'map' && radarPanel}
               {streamPanel}
               {threadsPanel}
               {matrixPanel}

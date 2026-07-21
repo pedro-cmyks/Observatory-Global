@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useFocus } from '../contexts/FocusContext'
+import { mergeFocusIntoParams } from '../lib/navParams'
 
 /**
  * Bidirectional sync between FocusContext filter state and URL search params.
@@ -21,6 +22,11 @@ export function useUrlSync() {
     const [searchParams, setSearchParams] = useSearchParams()
     const isHydrating = useRef(true)
     const prevFilterRef = useRef<string>('')
+    // Track the live params in a ref so the write-back can PRESERVE non-focus
+    // carry-context params (q/label/attention/entry) without adding
+    // `searchParams` to the effect deps (which would re-fire on our own write).
+    const searchParamsRef = useRef(searchParams)
+    searchParamsRef.current = searchParams
 
     // On mount: read URL → hydrate FocusContext (once)
     useEffect(() => {
@@ -38,19 +44,20 @@ export function useUrlSync() {
         if (!hydrated) { isHydrating.current = false }
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // On filter change: write to URL
+    // On filter change: write to URL, MERGING focus dims into the live params
+    // (so carry-context params q/label/attention/entry survive — the prior
+    // fresh-URLSearchParams build deleted them on every focus change).
     useEffect(() => {
         if (isHydrating.current) return
 
-        const params = new URLSearchParams()
-        if (filter.theme) params.set('theme', filter.theme)
-        if (filter.country) params.set('country', filter.country)
-        if (filter.person) params.set('person', filter.person)
-
-        const serialized = params.toString()
+        const serialized = mergeFocusIntoParams(searchParamsRef.current.toString(), {
+            theme: filter.theme,
+            country: filter.country,
+            person: filter.person,
+        })
         if (serialized !== prevFilterRef.current) {
             prevFilterRef.current = serialized
-            setSearchParams(params, { replace: true })
+            setSearchParams(new URLSearchParams(serialized), { replace: true })
         }
     }, [filter.theme, filter.country, filter.person, setSearchParams])
 }
