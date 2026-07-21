@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { nextFocusDims } from '../lib/focusReducer'
 
 export type FocusType = 'thread' | 'theme' | 'entity' | 'person' | 'country' | 'source' | null
 export type LockedBy = 'radar' | 'stream' | 'matrix' | 'anomaly' | null
@@ -94,80 +95,79 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [filter, setFilter] = useState<GlobalFilter>(defaultFilter)
     const [mapFlyCountry, setMapFlyCountry] = useState<string | null>(null)
 
+    // These five setters route dimension transitions through the pure
+    // nextFocusDims reducer (lib/focusReducer.ts) so country/theme/person can
+    // co-exist (compound focus) instead of clobbering each other. Only the
+    // string dimensions are pulled off the reducer result — concept/region
+    // stay untouched here (they're typed `unknown` on FocusDims and are only
+    // ever managed by setConcept/setRegion).
     const setThread = useCallback((thread: string | null, label: string | null = null) => {
-        setFilter(prev => ({
-            ...prev,
-            thread,
-            entity: null,
-            person: null,
-            country: null,
-            theme: null,
-            concept: null,
-            region: null,
-            // Item 8: a label-less re-set of the SAME thread (URL sync, deep-link
-            // re-fire) must not erase the opener's label.
-            themeLabel: thread ? (label ?? (prev.thread === thread ? prev.themeLabel : null)) : null,
-            lockedBy: null,
-        }))
+        setFilter(prev => {
+            const d = nextFocusDims(prev, { dim: 'thread', value: thread, label })
+            return {
+                ...prev,
+                thread: d.thread, country: d.country, theme: d.theme,
+                entity: d.entity, person: d.person, themeLabel: d.themeLabel,
+                // thread stays an exclusive full reset, same as before.
+                concept: null,
+                region: null,
+                lockedBy: null,
+            }
+        })
         console.log(`[GlobalFilter] Set thread=${thread}`)
     }, [])
 
     const setCountry = useCallback((country: string | null, source: LockedBy = null) => {
-        setFilter(prev => ({ 
-            ...prev, 
-            country, 
-            thread: null,
-            entity: null,
-            person: null,
-            lockedBy: country ? source : prev.theme ? prev.lockedBy : null 
-        }))
+        setFilter(prev => {
+            const d = nextFocusDims(prev, { dim: 'country', value: country })
+            return {
+                ...prev,
+                thread: d.thread, country: d.country, theme: d.theme,
+                entity: d.entity, person: d.person, themeLabel: d.themeLabel,
+                lockedBy: country ? source : prev.theme ? prev.lockedBy : null
+            }
+        })
         console.log(`[GlobalFilter] Set country=${country} by ${source || 'unknown'}`)
     }, [])
 
     const setTheme = useCallback((theme: string | null, source: LockedBy = null, label: string | null = null) => {
-        setFilter(prev => ({
-            ...prev,
-            theme,
-            thread: null,
-            entity: null,
-            person: null,
-            // Item 8: a label-less re-set of the SAME theme (URL sync, deep-link
-            // re-fire) must not erase the opener's label.
-            themeLabel: theme ? (label ?? (prev.theme === theme ? prev.themeLabel : null)) : null,
-            lockedBy: theme ? source : prev.country ? prev.lockedBy : null
-        }))
+        setFilter(prev => {
+            const d = nextFocusDims(prev, { dim: 'theme', value: theme, label })
+            return {
+                ...prev,
+                thread: d.thread, country: d.country, theme: d.theme,
+                entity: d.entity, person: d.person, themeLabel: d.themeLabel,
+                lockedBy: theme ? source : prev.country ? prev.lockedBy : null
+            }
+        })
         console.log(`[GlobalFilter] Set theme=${theme} by ${source || 'unknown'}`)
     }, [])
 
     const setEntity = useCallback((entity: string | null) => {
-        setFilter(prev => ({
-            ...prev,
-            entity,
-            person: null,
-            thread: null,
-            country: null,
-            theme: null,
-            themeLabel: null,
-            concept: null,
-            region: null,
-            lockedBy: null,
-        }))
+        setFilter(prev => {
+            const d = nextFocusDims(prev, { dim: 'entity', value: entity })
+            return {
+                ...prev,
+                thread: d.thread, country: d.country, theme: d.theme,
+                entity: d.entity, person: d.person, themeLabel: d.themeLabel,
+                concept: null,
+                region: null,
+                lockedBy: null,
+            }
+        })
         console.log(`[GlobalFilter] Set entity=${entity}`)
     }, [])
 
     const setPerson = useCallback((person: string | null) => {
-        setFilter(prev => ({
-            ...prev,
-            person,
-            entity: person,
-            thread: null,
-            country: null,
-            theme: null,
-            themeLabel: null,
-            concept: null,
-            region: null,
-            lockedBy: null,
-        }))
+        setFilter(prev => {
+            const d = nextFocusDims(prev, { dim: 'person', value: person })
+            return {
+                ...prev, // preserves concept, region, streamLevel, lockedBy, etc.
+                thread: d.thread, country: d.country, theme: d.theme,
+                entity: d.entity, person: d.person, themeLabel: d.themeLabel,
+                lockedBy: person ? prev.lockedBy : (prev.country || prev.theme ? prev.lockedBy : null),
+            }
+        })
         console.log(`[GlobalFilter] Set person=${person}`)
     }, [])
 
@@ -224,6 +224,10 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [])
 
     // Legacy API mappings
+    // Compound-focus note: filter.country/filter.theme/filter.person can now all
+    // be non-null at once (see nextFocusDims) — this collapse into a single
+    // legacy FocusType/value pair is a priority ORDER for outbound endpoints
+    // that only accept one dimension, not a claim that only one is active.
     const threadAnchor = filter.thread?.split('--')[0] ?? null
     const entityFocusValue = filter.person || filter.entity
     const focus: FocusState = {
