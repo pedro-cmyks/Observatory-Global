@@ -22,6 +22,23 @@ describe('detectBriefRelations', () => {
     expect(rels[0].tier === 'text' || rels[0].tier === 'context').toBe(true)
     expect(rels.find(r => r.threadId === 't2')).toBeUndefined()
   })
+  it('excludes a pinned thread from matching its own pool entry (prefix-normalized)', () => {
+    // A thread pin carries a capture-builder prefix (theme-…); the pool id has none.
+    const pinnedThread = {
+      anchorId: 'theme-dynamic-topic-5589', anchorType: 'theme',
+      label: 'Taylor Farms Lettuce Recall',
+      snapshot: { evidence: [{ headline: 'Taylor Farms lettuce recall widens' }] },
+    } as any
+    const threads = [
+      thread('dynamic-topic-5589', 'Taylor Farms Lettuce Recall', ['Taylor Farms lettuce recall widens']), // self
+      thread('dynamic-topic-42', 'Lettuce recall spreads to spinach', ['Second lettuce recall hits stores']), // other
+    ]
+    const rels = detectBriefRelations([pinnedThread], threads)
+    // never a self-loop…
+    expect(rels.find(r => r.threadId === 'dynamic-topic-5589')).toBeUndefined()
+    // …but a genuinely different thread on the same term still surfaces.
+    expect(rels.find(r => r.threadId === 'dynamic-topic-42')).toBeTruthy()
+  })
   it('never returns the strong tier (measured-not-asserted ceiling)', () => {
     const rels = detectBriefRelations([pin('Gaza mediation', ['x'])], [thread('t', 'Gaza mediation', ['Gaza mediation'])])
     expect(rels.every(r => r.tier !== 'strong' && r.tier !== 'weak')).toBe(true)
