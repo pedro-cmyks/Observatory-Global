@@ -67,6 +67,65 @@ driven (implementer sonnet, reviews opus); reviews earned their keep — caught 
 resilience gap, a cc keyspace guard, an honesty regression (429→perpetual
 "Assembling…" w/o escape hatch), and the pending-seed short-circuit.**
 
+**2026-07-21 (DESIGN SESSION — MULTI-HOP TRANSITIVE CHAINS "walked constellation" +
+TIME AXIS / versioned relationships; brainstorm-first + measure-first; NO code shipped
+this track = 2 specs + 2 build chips + read-only probes). Pedro's idea: follow
+topic→topic relationship CHAINS across hops (Netanyahu→Gaza→Hormuz→oil-transport→
+oil-price), surfacing non-obvious connections the analyst didn't pin. CRUX resolved:
+Atlas edges = ASSOCIATION (undirected, non-causal); a chain rendered as a chain smuggles
+in causation, each hop compounds it. FIX (Pedro's word) = KINSHIP: **hermano** (direct
+measured edge, with receipt) vs **primo** (indirect walk, degree=hops); the analyst's
+mind supplies causation, the app supplies the honest measured walk = DISCOVERY not
+explanation. SPEC `docs/superpowers/specs/2026-07-21-multi-hop-transitive-chains.md`
+(v3, BUILDABLE): from-pins max-product walk over the EXISTING substrate (Universe kNN
+768-dim `universe.py:123-145` + dossier 6-basis edges `dossier.py:599-664` + whitening
+`whitening.py:49,72` — ~70% reuse); accumulated weight = PRODUCT of hop weights = the
+thickness of the far primo (honesty & brake, ONE number). TWO measure-first probe rounds
+(read-only, M1, `scratchpad/walk_probe*.py`): **Phase-0** proved the Iran→Hormuz/energy→
+oil-price chain EXISTS + is reachable (1594 active topics, whitening loaded); an
+ADVERSARIAL review (code-checked file:line) caught 2 BLOCKING holes → **Phase-0b LOCKED**
+across 5 seeds (best-first-hop 0.544→0.863): **REL_FLOOR 0.35 + HOP_CAP 3, both required**
+(absolute floor explodes to 5º+ on tight seeds; relative alone insufficient; hop-cap
+load-bearing; all seeds self-terminate at 3º, marquee primo preserved); **DEDUP_TAU 0.85**
+(0.75 over-merged — folded "Messi"+"New UK PM", measured); **#234 formula fix
+`weight = 0.30 + 0.68·norm_rarity`, `norm_rarity=(1/df−1/df_max)/(1−1/df_max)`** — the
+naive "soften the gate" was mathematically FALSE (0.65 base floor → trump df=29 stays
+0.655 above the 0.50 gate AND propagates transitively; new formula → trump **0.300**,
+rare df=2 → 0.628; apply at `dossier.py:632-633` — softens the #234 hard-exclude
+`dossier.py:604-608` to a thin continuous link); **blob≠hub by membership multimodality
+(`overmerge.py`) + neighborhood category-entropy — cosine coherence FAILED** (a blob is
+coherent with its own under-merged fragments; all top-in-degree scored 0.74–0.83); flag
+blobs UP FRONT (the dedup is itself blob-confounded). HONESTY locked: **v1 UNDIRECTED**
+(the `▸` temporal-precedence marker DROPPED — Kalman lead/lag = COVERAGE precedence ≠
+event precedence, a directional glyph on a causal-framed layout is post-hoc ergo propter
+hoc); **RADIAL constellation, FORBID linear chain layout** (form beats label); every hop
+carries a receipt; honest orphan state; closes journey-map §3.1 (inert bridge stars →
+walkable + pinnable). **TIME AXIS extracted to its OWN spec**
+`docs/superpowers/specs/2026-07-21-time-axis-versioned-relationships.md` (Pedro corrected
+my mis-file of time-under-markets): time = first-class axis, orthogonal to markets.
+UNIVERSAL activity timeline on EVERY focus (thread/country/person/theme/anomaly/subject —
+most carry none today; = "everything relates to everything over time" + fixes the
+journey-map truncated connection). TWO contexts, ONE time-state: ambient (nothing
+selected)=REPLAY (whole field scrubs — extend `map/replay` to EDGES); focused=DIFF, lives
+IN the activity timeline (it IS the focus-scoped handle on the global time-state; scrub →
+everything moves, focus stays anchored = compound-focus + time, journey-map §2 fix).
+Combined chart: **diverging volume bars** (sentiment by POSITION not color → frees color
+for lines) + **key-subject trend lines** (rarity-normalized presence-WITHIN-this-focus,
+SAME formula every focus type → Trump never pins every line high) + **voice-mix band**
+(who covers it over time = the wedge on the time axis) + movement toggle; **NO marker
+layer** (line shape carries transitions; churn-vs-narrative label in the line-endpoint
+hover). Anchor = TWO layers **`identity_key`** (churn-resistant, survives re-founding) +
+**ENTITIES** (long-arc backbone, rarity-gated over the window) → separates NARRATIVE
+CHANGE from SUBSTRATE CHURN (a re-founded topic ≠ a dead relationship); layer divergence
+= dormant/latent-relationship signal. DEFERRED from chains v1. CHIPS SPAWNED (Pedro's
+separate-chat rule for big independent arcs): **build `task_b3eff2d8`** (implement the
+chains spec — running in its own session), **markets-L4 `task_23a4591b`** (BIDIRECTIONAL:
+news→price AND price→news; discovered-not-mapped co-movement/lead-lag; markets = a NEW
+first-class axis on the same rails, NOT a dead-end destination). METHOD: math-first, LLM
+only on sanctioned surfaces, vanilla-CSS radial SVG; every design decision MEASURED before
+code (two probe rounds + adversarial verify). This track committed NO engine/frontend
+code — pure design + specs + chips.**
+
 **2026-07-20 (ENGINE SPRINT — MERGE QUALITY + COUNCIL R3 + OVER-MERGE DETECTOR,
 `ce304ca3`→`9d112a08`, all prod/reversible; ran ALONGSIDE 3 parallel chats —
 this is the ENGINE/merge track, read together with the F3 + L1-daily-edition +
