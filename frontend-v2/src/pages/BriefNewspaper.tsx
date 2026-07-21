@@ -886,11 +886,14 @@ export function BriefNewspaper() {
             </div>
         )
         // Excerpt under its receipt (same [receipt] identity — never a new
-        // source). Sealed-edition excerpt wins; live shared-cache state fills
-        // the gap when the edition is degraded. Clamped; the link is the full read.
-        const enriched = ev.url
-            ? (editionArticles?.[ev.url] ?? liveArticleStates.get(ev.url) ?? null)
-            : null
+        // source). A READY seed (sealed excerpt) wins; otherwise the live poll
+        // fills the gap. The seed can arrive `pending` (the country edition's
+        // endpoint never blocks, so its seed carries not-yet-fetched rows) — a
+        // plain `seed ?? live` would short-circuit on that truthy pending object
+        // and the poll's later `ok` would never render. Clamped; link = full read.
+        const seed = ev.url ? (editionArticles?.[ev.url] ?? null) : null
+        const live = ev.url ? (liveArticleStates.get(ev.url) ?? null) : null
+        const enriched = seed?.status === 'ok' ? seed : (live ?? seed)
         if (enriched?.status === 'ok' && enriched.excerpt) {
             return (
                 <div key={ev.id ?? i} className="brief-receipt-block">
