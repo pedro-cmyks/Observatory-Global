@@ -352,7 +352,8 @@ class TestFocusTimelineThreadIntegration:
 
         b0 = out["buckets"][0]
         assert b0["volume"]["count"] == 5
-        assert b0["volume"]["avg_sentiment"] == 1.2
+        # raw fixture tone 1.2 ÷10 → the frontend ±1 sentiment convention
+        assert b0["volume"]["avg_sentiment"] == 0.12
         subj_names = {e["name"] for e in b0["key_subjects"]}
         assert subj_names == {"donald trump", "ali khamenei"}
         # ubiquitous-in-pool (trump, df=8/8) reads a lower rarity_weight than

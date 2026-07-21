@@ -365,7 +365,9 @@ async def focus_timeline(
             bucket_totals[bucket_key] = n
             buckets_out[bucket_key] = {
                 "bucket_start": bucket_key,
-                "volume": {"count": n, "avg_sentiment": round(float(avg_sent), 4) if avg_sent is not None else None},
+                # ÷10 to the frontend ±1 sentiment convention (raw GDELT/nlp tone is
+                # ~±10) — else the chart's diverging bars saturate all-up/all-down.
+                "volume": {"count": n, "avg_sentiment": round(float(avg_sent) / 10.0, 4) if avg_sent is not None else None},
                 "key_subjects": None,
                 "voice_mix": None,
             }

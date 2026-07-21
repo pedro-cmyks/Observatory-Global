@@ -184,11 +184,12 @@ def compute_backbone_rows(
     how rare its partner is that specific time — the spec §7 guarantee.
 
     Sparse by construction: edges are capped to the top `max_edges`, ranked
-    by rarity_weight (distinctive relationships first — the backbone is a
-    long-arc SPINE of notable co-occurrence, not merely a frequency count),
-    then by `cooccur_count` as a tiebreaker. `cooccur_count` itself is never
-    blended into the weight — the two columns are deliberately independent
-    signals (raw frequency vs. measured distinctiveness).
+    by `cooccur_count × rarity_weight` — the backbone SPINE is co-occurrence
+    that BOTH recurs AND is distinctive (pure-rarity ranking fills the cap
+    with single-co-occurrence df=1 one-offs, measured 2000/2000 at rarity
+    0.98). The stored `rarity_weight` column stays pure rarity — recurrence
+    enters only the cap RANKING, never the weight — so the two columns remain
+    independent signals (raw frequency vs. measured distinctiveness).
 
     Returns (rows, meta): meta carries the pre-cap pair count, entity count,
     and df_max — honest provenance for the caller to log.
@@ -225,7 +226,13 @@ def compute_backbone_rows(
         weight = round(ACTOR_WEIGHT_BASE + ACTOR_WEIGHT_SPAN * r, 6)
         scored.append(BackboneRow(entity_a=a, entity_b=b,
                                   cooccur_count=count, rarity_weight=weight))
-    scored.sort(key=lambda r: (-r.rarity_weight, -r.cooccur_count, r.entity_a, r.entity_b))
+    # Rank the cap by cooccur × rarity: the backbone SPINE is co-occurrence that
+    # BOTH recurs AND is distinctive — pure-rarity ranking fills the cap with
+    # single-co-occurrence (df=1, max-rarity) one-offs (measured: 2000/2000 at
+    # rarity 0.98). The stored rarity_weight stays pure rarity (unchanged); only
+    # the cap RANKING blends in recurrence.
+    scored.sort(key=lambda r: (-(r.cooccur_count * r.rarity_weight),
+                               -r.rarity_weight, r.entity_a, r.entity_b))
     kept = scored[:max_edges]
     meta = {
         "pairs_considered": len(scored),
