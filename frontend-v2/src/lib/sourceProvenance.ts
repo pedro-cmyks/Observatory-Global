@@ -58,11 +58,24 @@ export interface ProvenanceTierChip {
 
 /** Tier chip with the origin-entailment rule applied: LOCAL only renders when
  *  the outlet's origin country is actually known; wire/state/major/unknown are
- *  origin-independent name classifications. */
+ *  origin-independent name classifications.
+ *
+ *  `isStateMedia` is the AUTHORITATIVE ingest flag (signals_v2.is_state_media).
+ *  When true it forces the STATE tier even if the name classifier would miss
+ *  the outlet — a state-controlled source is never shown as neutral (council
+ *  R3 P0). The name classifier remains the fallback when the flag is absent. */
 export function resolveTierChip(
   source: string | null | undefined,
   originCountry: string | null | undefined,
+  isStateMedia?: boolean | null,
 ): ProvenanceTierChip {
+  if (isStateMedia === true) {
+    return {
+      tier: 'state',
+      label: coarseTierLabel('state'),
+      tip: 'State-controlled or state-affiliated outlet (recorded at ingestion) — a perspective label, weigh accordingly.',
+    }
+  }
   const { tier } = classifyOutlet(source)
   if (tier !== 'local') {
     return { tier, label: coarseTierLabel(tier), tip: TIER_TIP[tier] }

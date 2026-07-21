@@ -10,6 +10,9 @@ export interface DailyPublicationEvidence {
   country_code?: string | null
   /** OUTLET origin (source_origin_country) — sealed rows carry it. */
   source_origin_country?: string | null
+  /** State-controlled/affiliated outlet (signals_v2.is_state_media) — a sealed
+   *  receipt from RT/Sputnik/IRNA is flagged, never presented as neutral (R3 P0). */
+  is_state_media?: boolean | null
 }
 
 export interface DailyPublicationStoryNode {
@@ -94,6 +97,8 @@ export interface DailyPublicationThread {
     country_code?: string | null
     /** OUTLET origin (source_origin_country) — basis for the origin chip. */
     source_origin_country?: string | null
+    /** State-media flag threaded from the sealed receipt (R3 P0). */
+    is_state_media?: boolean | null
   }>
 }
 
@@ -162,6 +167,9 @@ export function publicationThreads(artifact: DailyPublicationArtifact | null): D
           // (_DAILY_EVIDENCE_SQL selects source_origin_country) — thread it
           // through so sealed receipts render honest origin chips too.
           source_origin_country: receipt.source_origin_country,
+          // R3 P0: authoritative state-media flag (ingest is_state_media) rides
+          // to the receipt chip so a state outlet is never shown as neutral.
+          is_state_media: receipt.is_state_media,
         })),
       }
     })

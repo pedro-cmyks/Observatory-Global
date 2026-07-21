@@ -3,7 +3,14 @@ from pathlib import Path
 
 import numpy as np
 
-from app.services.investigation_graph import ReadinessItem
+from datetime import datetime, timezone
+
+from app.services.investigation_graph import ReadinessItem, _receipt_rows
+from app.services.investigation_nodes import (
+    InvestigationNode,
+    ObservationWindow,
+    ResolutionReceipt,
+)
 from app.services.daily_publication import (
     _openai_embed_publication_texts,
     build_lead_synthesis_payload,
@@ -391,10 +398,58 @@ def test_lead_synthesis_payload_dedupes_and_builds_one_pin_citation_table():
     items = payload["pins"][0]["evidence_items"]
     assert len(items) == 2  # duplicate headline collapsed
     assert items[0] == {
-        "headline": "Iran plot alleged", "source": "Reuters", "date": "2026-07-10", "url": "https://r/1",
+        "headline": "Iran plot alleged", "source": "Reuters", "date": "2026-07-10",
+        "url": "https://r/1", "is_state_media": False,
     }
     assert payload["pins"][0]["low_coherence"] is False
     assert payload["gaps"] == ["causal_explanation_not_measured"]
+
+
+def test_lead_synthesis_payload_carries_state_media_flag_into_citations():
+    # Council R3 P0: a state-media receipt (RT) must reach the numbered citation
+    # table flagged, never as a neutral source. build_lead_synthesis_payload runs
+    # over rows already stamped by the evidence loop.
+    receipts = [
+        {"headline": "381 drones destroyed overnight", "source_name": "russian.rt.com",
+         "timestamp": "2026-07-20", "source_url": "https://rt/1", "is_state_media": True},
+        {"headline": "Air defence reports strike", "source_name": "reuters.com",
+         "timestamp": "2026-07-20", "source_url": "https://r/2", "is_state_media": False},
+    ]
+    payload = build_lead_synthesis_payload("Drone attacks", receipts, gaps=[])
+    items = payload["pins"][0]["evidence_items"]
+    assert items[0]["source"] == "russian.rt.com" and items[0]["is_state_media"] is True
+    assert items[1]["is_state_media"] is False
+
+
+def _story_node(evidence_samples):
+    now = datetime(2026, 7, 20, tzinfo=timezone.utc)
+    return InvestigationNode(
+        node_id="node-1", node_type="story", subtype="thread", label="Drones",
+        live_ref={"kind": "thread", "id": "dynamic-topic-1"}, pinned_at=now,
+        observation_window=ObservationWindow(range_start=now, range_end=now, mode="live"),
+        snapshot={"evidence_samples": evidence_samples},
+        resolution_status="resolved",
+        resolution_receipt=ResolutionReceipt(
+            adapter="test", resolved_at=now, retryable=False,
+        ),
+    )
+
+
+def test_receipt_rows_carry_state_media_and_tier():
+    # Council R3 P0: a frozen RT receipt must reach package.receipts with the
+    # state-media flag and the state credibility tier stamped by the evidence
+    # loop — never a null neutral row.
+    node = _story_node([
+        {"headline": "381 drones destroyed", "source_name": "russian.rt.com",
+         "source_url": "https://rt/1", "is_state_media": True, "credibility_tier": "state"},
+        {"headline": "Strike confirmed", "source_name": "reuters.com",
+         "source_url": "https://r/2", "is_state_media": False, "credibility_tier": "wire"},
+    ])
+    rows = _receipt_rows([node])
+    by_source = {r.source: r for r in rows}
+    assert by_source["russian.rt.com"].is_state_media is True
+    assert by_source["russian.rt.com"].tier == "state"
+    assert by_source["reuters.com"].is_state_media is False
 
 
 def test_lead_synthesis_payload_marks_grab_bag_lead_low_coherence():

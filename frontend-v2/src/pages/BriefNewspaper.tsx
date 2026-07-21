@@ -84,6 +84,9 @@ interface ThreadEvidence {
     source_lang?: string | null
     url?: string
     timestamp?: string | null
+    /** Authoritative state-media flag (signals_v2.is_state_media) — forces the
+     *  STATE tier chip so a state outlet is never shown neutral (R3 P0). */
+    is_state_media?: boolean | null
 }
 
 interface TimelinePoint {
@@ -820,7 +823,7 @@ export function BriefNewspaper() {
                     never the story's subject country — and simply does not
                     render when the origin is unknown (absence over guess). */}
                 {ev.source && (() => {
-                    const tc = resolveTierChip(ev.source, ev.source_origin_country)
+                    const tc = resolveTierChip(ev.source, ev.source_origin_country, ev.is_state_media)
                     return (
                         <span className={`brief-receipt-tier brief-receipt-tier--${tc.tier}`} data-tip={tc.tip}>
                             {tc.label}
