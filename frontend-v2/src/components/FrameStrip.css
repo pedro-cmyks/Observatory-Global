@@ -8,6 +8,11 @@
     align-items: center;
     gap: 10px;
     width: 100%;
+    /* The command bar is position:absolute (h=48); when the strip is the first
+       in-flow band it must clear it — same trick as .focus-indicator. When it
+       follows the focus band (which already cleared 48px), the sibling rule
+       below zeroes this so they stack flush. */
+    margin-top: 48px;
     padding: 5px 14px;
     background: linear-gradient(
         90deg,
@@ -20,6 +25,12 @@
     font-family: 'SF Mono', 'Fira Mono', monospace;
     overflow: hidden;
     animation: frameStripFade 0.18s ease-out;
+}
+
+/* When the focus band is present above the strip it already cleared the
+   absolute command bar — don't double-offset. */
+.focus-indicator + .frame-strip {
+    margin-top: 0;
 }
 
 @keyframes frameStripFade {

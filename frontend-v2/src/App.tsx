@@ -32,6 +32,7 @@ import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { FocusIndicator } from './components/FocusIndicator'
+import { FrameStrip } from './components/FrameStrip'
 import { maxReplayDays, farEdgeKind, positionForDaysBack, snapDaysBack, isoDayForDaysBack, REPLAY_ENDPOINT_CAP_DAYS } from './lib/scrubberScale'
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, Sun, Moon } from './lib/icons'
 import { useTheme } from './contexts/ThemeContext'
@@ -1562,6 +1563,17 @@ function AppContent() {
       {/* A1: persistent focus chip — shows what's focused and gives one ✕ to
           return to the whole, unfocused view (the missing country deselect). */}
       <FocusIndicator onClear={clearAll} onRemoveTheme={() => { setTheme(null); setSelectedTheme(null); setSelectedThread(null) }} />
+      {/* Flywheel Task 2.4: the always-visible "investigation you're building" —
+          pinned items auto-sorted into WHO/WHERE/WHAT lanes. Invisible until the
+          first pin (prominence gradient). Clicking a pin re-opens it by type. */}
+      {!isMobile && (
+        <FrameStrip onOpenPin={(item) => {
+          const p = new URLSearchParams(item.urlParams)
+          if (item.type === 'theme' && p.get('theme')) handleThemeSelect(p.get('theme')!)
+          else if (item.type === 'person') setFocus('person', decodeURIComponent(p.get('person') || item.title), item.title)
+          else if (item.type === 'country' && p.get('country')) handleCountryClick(p.get('country')!)
+        }} />
+      )}
 
       <div className="coverage-disclaimer" data-tip="Atlas colors countries by deviation from each country's recent baseline. Raw volume increases evidence density, but it is not treated as real-world importance.">
         Coverage bias: map heat is baseline-normalized; raw volume is evidence density, not importance.
