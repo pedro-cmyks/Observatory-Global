@@ -1,0 +1,139 @@
+/* L1 Brief markets BAND — a full-width franja promoted to the top of the edition.
+   Numerals / colors come from the Instrument Skin (InstrumentSkin.css); this file is
+   layout only. It is a DIFFERENT data type from the narrative edition, so it gets its
+   own banded container (own background + rules) — the visual quarantine (design §7). */
+
+/* full-bleed: break out of the centered reader column to span the viewport. */
+.brief-markets-band {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  box-sizing: border-box;
+  background: var(--mkt-band-bg, rgba(20, 24, 40, 0.025));
+  border-top: 1px solid var(--r-rule, rgba(0, 0, 0, 0.10));
+  border-bottom: 1px solid var(--r-rule, rgba(0, 0, 0, 0.10));
+  padding: 12px 0 14px;
+  margin-top: 14px;
+  margin-bottom: 18px;
+  overflow: hidden; /* never let the band itself cause horizontal page scroll */
+}
+
+/* inner content re-aligns to the reader column width. */
+.brief-markets-band-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* Country card — the focused country's own instruments, INLINE in the country edition
+   body (NOT full-bleed; the top band carries the world data). */
+.brief-markets-card {
+  margin: 14px 0 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--r-rule, rgba(0, 0, 0, 0.12));
+}
+.brief-markets-card .brief-markets-band-inner {
+  max-width: none;
+  margin: 0;
+  padding: 0; /* already inside the centered reader column */
+}
+
+.brief-markets-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.brief-markets-title {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--r-ink, #1b2030);
+}
+
+/* the live-overlay divider rides to the right of the head line. */
+.brief-markets-head .brief-markets-divider {
+  margin-left: auto;
+  margin-bottom: 0;
+}
+
+.brief-markets-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--r-ink-dim, #6b7280);
+}
+
+.brief-markets-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.brief-markets-live::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor; /* neutral — matches the divider ink, no valence hue */
+  opacity: 0.7;
+}
+
+.brief-markets-asof {
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+/* the tiles: fill the band width evenly, squared, wrap on narrow screens. */
+.brief-markets-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.brief-markets-note {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--r-ink-dim, #6b7280);
+}
+.brief-markets-note--error {
+  color: var(--r-warn, #b45309);
+}
+
+.brief-markets-footline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.brief-markets-foot {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--r-ink-dim, #6b7280);
+  opacity: 0.85;
+}
+
+/* Mobile: tighter tiles, keep the band full-bleed. */
+@media (max-width: 640px) {
+  .brief-markets-band-inner {
+    padding: 0 16px;
+  }
+  .brief-markets-row {
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  }
+}

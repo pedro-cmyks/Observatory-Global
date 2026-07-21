@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- L4 markets daily accumulator (the #226 gate prerequisite).
+     Off-peak (18:15), mindful (Background QoS + nice), runs the synced runner from
+     ~/AtlasLocalWorker. Install:
+       cp infra/launchd/com.atlas.markets-accumulate.plist ~/Library/LaunchAgents/
+       # ensure ~/AtlasLocalWorker has a synced copy of the runner + markets/ package
+       launchctl load ~/Library/LaunchAgents/com.atlas.markets-accumulate.plist
+     Verify:  launchctl list | grep markets-accumulate  (LastExitStatus 0)
+     Prices backfill Yahoo's ~4mo on first run, then append daily; news intensity
+     accumulates forward from the first run (never backfilled). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.atlas.markets-accumulate</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/pedro/AtlasLocalWorker/run-markets-accumulate.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>18</integer>
+        <key>Minute</key><integer>15</integer>
+    </dict>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Nice</key>
+    <integer>10</integer>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/pedro/AtlasLocalWorker/logs/markets-accumulate.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/pedro/AtlasLocalWorker/logs/markets-accumulate.err.log</string>
+</dict>
+</plist>

@@ -75,6 +75,7 @@ import { DayEvidencePanel } from './components/DayEvidencePanel'
 import { CorrelationMatrix } from './components/CorrelationMatrix'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { EclipseLens } from './components/EclipseLens'
+import { MarketsPanel } from './components/MarketsPanel'
 import { buildEclipsePin, type EclipseItem } from './lib/attentionEclipse'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
@@ -328,7 +329,7 @@ function AppContent() {
   // Bottom dock active tab (#228 §3): anomaly | sources. The HEAT tab was
   // removed (#231) — heat is a map property (drives country color), not a
   // bottom list. The composite now colors the map directly.
-  const [dockTab, setDockTab] = useState<'anomaly' | 'sources' | 'eclipse'>('anomaly')
+  const [dockTab, setDockTab] = useState<'anomaly' | 'sources' | 'eclipse' | 'markets'>('anomaly')
 
   // X0 (L2 review 2026-07-05): the stream slot is L2's core state machine and
   // it was invisible to telemetry — panel_swap makes the middle of the
@@ -2120,6 +2121,13 @@ function AppContent() {
               >
                 UNDER THE RADAR
               </button>
+              <button
+                className={`dock-tab ${dockTab === 'markets' ? 'active' : ''}`}
+                onClick={() => { track('dock_tab', { tab: 'markets' }); setDockTab('markets') }}
+                data-tip="Descriptive market data — world basket + a focused country's own instruments. Level and trend only; not a claim news moved these, and never a trade signal."
+              >
+                MARKETS
+              </button>
             </div>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               {dockTab === 'anomaly' && <span className="honesty-chip" data-tip="Alerts are deviations vs each country's own 7-day baseline — never a raw volume ranking.">MEASURED · VS 7-DAY BASELINE</span>}
@@ -2161,6 +2169,11 @@ function AppContent() {
                   onOpenTopic={(id, label) => handleResearchOpenThread(id, label)}
                   onInvestigate={handleEclipseInvestigate}
                 />
+              </PanelErrorBoundary>
+            )}
+            {dockTab === 'markets' && (
+              <PanelErrorBoundary panelName="MARKETS">
+                <MarketsPanel />
               </PanelErrorBoundary>
             )}
           </div>

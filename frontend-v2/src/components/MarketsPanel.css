@@ -1,0 +1,68 @@
+/* L2 MARKETS dock tab layout. Colors / numerals come from the Instrument Skin
+   (InstrumentSkin.css, `.atlas-instrument`); this file is layout only. */
+.markets-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 10px 12px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.markets-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.markets-asof {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #8b93a7);
+  white-space: nowrap;
+}
+
+.markets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.markets-section-title {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #8b93a7);
+}
+
+.markets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+}
+
+.markets-rescope {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted, #8b93a7);
+  opacity: 0.85;
+}
+
+.markets-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-muted, #8b93a7);
+  line-height: 1.4;
+}
+
+.markets-note--error {
+  color: var(--color-severity-notable, #d0a24c);
+}

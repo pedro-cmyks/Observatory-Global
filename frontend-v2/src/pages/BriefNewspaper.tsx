@@ -23,6 +23,7 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
 import { decodeEntities, type EclipseData } from '../lib/attentionEclipse'
+import { BriefWorldMarketsBand, BriefCountryMarketsCard } from '../components/BriefMarkets'
 import { formatSentimentPm1, formatTone10, measuredSentimentChip } from '../lib/sentimentScale'
 import { reconcileSentimentProse } from '../lib/reconcileSentimentProse'
 import { useReaderTheme, ReaderThemeToggle } from '../lib/readerTheme'
@@ -1220,6 +1221,12 @@ export function BriefNewspaper() {
                             </div>
                         </section>
 
+                        {/* ============ WORLD MARKETS BAND (full-width franja, top) ============
+                            Global bellwethers — NOT the country's data, so it never swaps on
+                            country focus; the country's own instruments live in the country
+                            edition below (BriefCountryMarketsCard). */}
+                        <BriefWorldMarketsBand />
+
                         {/* ============ COUNTRY FILTER ============ */}
                         {(() => {
                             const signalCounts = new Map(data.top_countries.map(c => [c.code, c.signals]))
@@ -1556,6 +1563,7 @@ export function BriefNewspaper() {
                                             </div>
                                         </section>
                                     )}
+                                    {/* Markets moved to the top full-width band (BriefMarketsBand). */}
                                 </section>
 
                                 {/* ---------- PANEL 2 · UNDER THE RADAR ---------- */}
@@ -1692,11 +1700,14 @@ export function BriefNewspaper() {
                                         </div>
                                     </div>
                                 )}
-
                                 <span className="reader-section-kicker brief-sub-kicker">Country edition</span>
                                 <h2 className="brief-section-title">
                                     <Flag code={countryFilter} /> {resolveCountryName(countryFilter, countryDetail?.name)}
                                 </h2>
+                                {/* COUNTRY MARKETS — this country's OWN instruments (its data),
+                                    below the country edition header. Renders nothing when the
+                                    country has no tracked instrument (honest absence). */}
+                                <BriefCountryMarketsCard countryCode={countryFilter} />
                                 {countryLoading ? (
                                     <p className="brief-country-note">Checking this country's narrative threads for the selected window…</p>
                                 ) : countryPool.length === 0 ? (

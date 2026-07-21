@@ -111,3 +111,8 @@ backend/enrichment/lexicons/*.mined.json.bak
 docs/.obsidian/
 .vercel
 .env*
+
+# L4 markets build artifacts (regenerable)
+markets/.yahoo_verify_cache.json
+markets/__pycache__/
+markets/tests/__pycache__/
