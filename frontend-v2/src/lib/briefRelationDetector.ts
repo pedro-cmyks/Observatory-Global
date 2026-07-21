@@ -184,3 +184,22 @@ export function detectBriefRelations(
 
   return [...textRelations, ...contextRelations].slice(0, cap)
 }
+
+/** The single strongest relation (text ranks above context), or null. */
+export function topBriefRelation(rels: BriefRelation[]): BriefRelation | null {
+  return rels[0] ?? null
+}
+
+/**
+ * The threshold gate for the ◎ callout: it should surface only once the
+ * analyst has accumulated enough — at least `minPins` pins AND at least one
+ * detected relation — so it never nags on the first pin (the "you've pinned a
+ * lot; these connect" debounce, not per-click).
+ */
+export function hasEnoughSignal(
+  pinCount: number,
+  rels: BriefRelation[],
+  opts: { minPins?: number } = {},
+): boolean {
+  return pinCount >= (opts.minPins ?? 2) && rels.length > 0
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { detectBriefRelations } from './briefRelationDetector'
+import { detectBriefRelations, topBriefRelation, hasEnoughSignal } from './briefRelationDetector'
 
 const pin = (label: string, headlines: string[], countryCode?: string) => ({
   anchorId: 'p-' + label, anchorType: 'theme', label,
@@ -34,5 +34,20 @@ describe('detectBriefRelations', () => {
     const pins = [pin('Ceasefire mediation', ['Ceasefire mediation'])]
     // a thread whose id matches a pin anchor would be self — but pins use anchorId p-<label>, threads use thread_id; ensure no crash + returns array
     expect(Array.isArray(detectBriefRelations(pins, [thread('t', 'Ceasefire mediation', ['Ceasefire mediation'])]))).toBe(true)
+  })
+})
+
+describe('topBriefRelation + hasEnoughSignal', () => {
+  it('topBriefRelation returns the strongest (first) or null', () => {
+    expect(topBriefRelation([])).toBeNull()
+    const rels = detectBriefRelations([pin('Gaza mediation', ['Gaza mediation'])], [thread('t', 'Gaza mediation', ['Gaza mediation'])])
+    expect(topBriefRelation(rels)?.threadId).toBe('t')
+  })
+  it('hasEnoughSignal gates on ≥2 pins AND ≥1 relation (never nags on the first pin)', () => {
+    const oneRel = [{ threadId: 't', threadLabel: 'T', pinAnchorId: 'p', pinLabel: 'P', tier: 'text' as const }]
+    expect(hasEnoughSignal(1, oneRel)).toBe(false) // only 1 pin
+    expect(hasEnoughSignal(2, [])).toBe(false)      // no relations
+    expect(hasEnoughSignal(2, oneRel)).toBe(true)
+    expect(hasEnoughSignal(3, oneRel, { minPins: 4 })).toBe(false) // custom threshold
   })
 })
