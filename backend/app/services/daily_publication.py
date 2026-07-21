@@ -789,19 +789,38 @@ async def fetch_daily_publication(
                         urls.append(u)
             urls = list(dict.fromkeys(urls))[:48]      # cap per edition
             if urls:
-                await enqueue_fetches(urls)
-                states: list[dict[str, Any]] = []
-                for _ in range(6):                     # bounded wait ≤30s (nightly build)
-                    await asyncio.sleep(5)
-                    states = await article_states(urls)
-                    by_url = {s["url"]: s for s in states}
-                    if all(by_url.get(u, {}).get("status") not in (None, "pending") for u in urls):
-                        break
+                # CACHE-FIRST (2026-07-21): the enrichment fetch (48 urls @ conc 3,
+                # paywalls/timeouts) OUTLASTS any seal-time wait — measured 07-20:
+                # the seal closed 16:38, the fetch finished 18:01, so the excerpts
+                # missed the edition entirely (silent absence, no exception). So:
+                # READ the warm pinned_articles cache FIRST (excerpts accumulate
+                # continuously across nightlies), build the block from whatever is
+                # already fetched, and ENQUEUE only the not-yet-fetched ones so
+                # they are ready for the NEXT seal. A brief opportunistic top-up
+                # grabs any that land fast; the seal never blocks on the slow tail.
+                states = await article_states(urls)
+                by_url = {s["url"]: s for s in states}
+                missing = [u for u in urls
+                           if by_url.get(u, {}).get("status") in (None, "pending")]
+                if missing:
+                    await enqueue_fetches(missing)
+                    for _ in range(3):                 # ≤15s opportunistic top-up
+                        await asyncio.sleep(5)
+                        states = await article_states(urls)
+                        by_url = {s["url"]: s for s in states}
+                        if all(by_url.get(u, {}).get("status") not in (None, "pending")
+                               for u in urls):
+                            break
                 ok_count = sum(1 for s in states if s.get("status") == "ok")
+                pending_count = sum(1 for s in states
+                                    if s.get("status") in (None, "pending"))
                 package.article_enrichment = {
                     "contract": "edition-article-enrichment-v0",
-                    "yield": {"ok": ok_count, "attempted": len(urls)},
-                    "note": "server-fetched page text per receipt; partial yield is normal (paywalls/bot walls)",
+                    "yield": {"ok": ok_count, "attempted": len(urls),
+                              "pending": pending_count},
+                    "note": ("server-fetched page text per receipt; partial yield "
+                             "is normal (paywalls/bot walls); pending = still "
+                             "fetching, will be ready for the next seal"),
                     "articles": {
                         s["url"]: {
                             "status": s.get("status"), "via": s.get("via"),
@@ -811,6 +830,13 @@ async def fetch_daily_publication(
                         for s in states
                     },
                 }
+                # Observability: the yield is now ALWAYS logged (07-20 lesson — a
+                # silent absence hid the seal/fetch timing bug for a full day).
+                logger.info(
+                    "daily-publication enrichment: yield ok=%d/%d pending=%d",
+                    ok_count, len(urls), pending_count)
+            else:
+                logger.info("daily-publication enrichment: no receipt urls to fetch")
         except Exception as exc:
             # Enrichment must never block the seal — degrade to headlines-only.
             # (logger, not print: the 07-01 matview lesson — bare prints die silent.)
