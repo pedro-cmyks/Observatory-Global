@@ -167,7 +167,7 @@ from app.routers import (
     nlp_corrections, threads, emergent, translate, waitlist, research,
     voice_mix, public_attention, telemetry, attention_threads, universe,
     dossier, delight, archive_search, investigation, attention_eclipse,
-    corroborate, research_articles, edges,
+    corroborate, research_articles, edges, focus_timeline,
 )
 
 app.include_router(stats.router)
@@ -203,3 +203,4 @@ app.include_router(dossier.router)
 app.include_router(corroborate.router)
 app.include_router(delight.router)
 app.include_router(edges.router)
+app.include_router(focus_timeline.router)
