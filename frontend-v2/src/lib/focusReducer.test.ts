@@ -63,4 +63,40 @@ describe('nextFocusDims — compound intersection', () => {
     nextFocusDims(start, { dim: 'person', value: 'X' })
     expect(start.person).toBeNull()
   })
+
+  it('entity keeps country/theme; drops person only when it was the mirror and differs', () => {
+    const start = dims({ country: 'US', theme: 't', person: 'X', entity: 'X' })
+    const out = nextFocusDims(start, { dim: 'entity', value: 'Y' })
+    expect(out.entity).toBe('Y')
+    expect(out.person).toBeNull()
+    expect(out.country).toBe('US')
+    expect(out.theme).toBe('t')
+  })
+
+  it('entity re-setting the same value keeps person intact', () => {
+    const start = dims({ country: 'US', person: 'X', entity: 'X' })
+    const out = nextFocusDims(start, { dim: 'entity', value: 'X' })
+    expect(out.entity).toBe('X')
+    expect(out.person).toBe('X')
+    expect(out.country).toBe('US')
+  })
+
+  it('concept keeps country, nulls thread/entity/person/themeLabel', () => {
+    const start = dims({ country: 'US', theme: 't', person: 'X', entity: 'X', themeLabel: 'T' })
+    const out = nextFocusDims(start, { dim: 'concept', value: { foo: 'bar' } })
+    expect(out.concept).toEqual({ foo: 'bar' })
+    expect(out.country).toBe('US')
+    expect(out.thread).toBeNull()
+    expect(out.entity).toBeNull()
+    expect(out.person).toBeNull()
+    expect(out.themeLabel).toBeNull()
+    expect(out.theme).toBe('t')
+  })
+
+  it('region is a full reset except region itself', () => {
+    const start = dims({ country: 'US', theme: 't', person: 'X', concept: { foo: 'bar' } })
+    const out = nextFocusDims(start, { dim: 'region', value: { baz: 'qux' } })
+    expect(out.region).toEqual({ baz: 'qux' })
+    expect([out.country, out.theme, out.person, out.concept, out.thread, out.entity]).toEqual([null, null, null, null, null, null])
+  })
 })

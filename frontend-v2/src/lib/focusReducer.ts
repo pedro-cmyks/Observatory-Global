@@ -1,6 +1,7 @@
 // Pure focus-transition reducer. Encodes the FocusContext setter table with the
 // compound-focus edits: country/theme no longer clear person; person no longer
-// clears country/theme/themeLabel. thread/concept/region stay exclusive resets.
+// clears country/theme/themeLabel. thread and region are exclusive full resets;
+// concept keeps country/region and nulls thread/entity/person/themeLabel.
 // ConceptFilter/RegionFilter are opaque here (typed as unknown) — the reducer
 // only ever nulls or passes them through, never inspects them.
 
@@ -54,13 +55,14 @@ export function nextFocusDims(prev: FocusDims, action: FocusAction): FocusDims {
       return {
         ...prev,
         entity: action.value,
-        person: prev.person && prev.person === prev.entity ? null : prev.person,
+        person: prev.person && prev.person === prev.entity && prev.person !== action.value ? null : prev.person,
         thread: null,
       }
     case 'thread':
       return {
         ...EMPTY_DIMS,
         thread: action.value,
+        // themeLabel doubles as the thread's label (no separate threadLabel field in GlobalFilter)
         themeLabel: action.value ? (action.label ?? null) : null,
       }
     case 'concept':
