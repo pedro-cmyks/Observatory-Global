@@ -248,7 +248,7 @@ class EclipseLedgerRow(BaseModel):
 
 
 class EclipseSelection(BaseModel):
-    contract: str = "attention-eclipse-v0"
+    contract: str = "attention-eclipse-v1"
     eclipse: bool
     selected_ids: list[str]
     dominant: dict[str, Any]
@@ -385,7 +385,7 @@ def select_under_radar(
         "eclipse": eclipse_on,
     }
     method = {
-        "contract": "attention-eclipse-v0",
+        "contract": "attention-eclipse-v1",
         "consequence": "0.6*global_breadth_signal + 0.25*|kalman_velocity| + 0.15*kalman_surprise",
         "attention_proxy": "coverage-volume share of window (NOT audience eyeballs)",
         "consequence_floor": {"min_langs": min_langs, "min_countries": min_countries},

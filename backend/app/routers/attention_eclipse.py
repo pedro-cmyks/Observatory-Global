@@ -36,6 +36,7 @@ WITH win AS (
   SELECT tm.topic_id, tm.signal_id
   FROM topic_members tm
   WHERE tm.role = 'evidence'
+    AND tm.engine_version = 'v1-compat'
     AND tm.quarantined IS NOT TRUE
     AND tm.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
 ),
@@ -67,7 +68,9 @@ LEFT JOIN LATERAL (
 _CC_DOMINANCE_SQL = """
 WITH win AS (
   SELECT tm.topic_id, tm.signal_id FROM topic_members tm
-  WHERE tm.role='evidence' AND tm.quarantined IS NOT TRUE
+  WHERE tm.role='evidence'
+    AND tm.engine_version = 'v1-compat'
+    AND tm.quarantined IS NOT TRUE
     AND tm.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
 ),
 per AS (
@@ -79,7 +82,7 @@ per AS (
 cc_tot AS (SELECT country_code, SUM(c) AS tot FROM per GROUP BY country_code),
 cc_top AS (
   SELECT DISTINCT ON (country_code) country_code, topic_id
-  FROM per ORDER BY country_code, c DESC
+  FROM per ORDER BY country_code, c DESC, topic_id
 )
 SELECT
   (SELECT COUNT(*) FROM cc_top t JOIN cc_tot g USING (country_code)
@@ -89,10 +92,13 @@ SELECT
 
 # Daily field entropy over the trailing 7 full days (baseline for entropy-collapse).
 _ENTROPY_BASELINE_SQL = """
+-- 'day' boundaries use the DB session TZ (assumed UTC on Fly/Supabase).
 WITH d AS (
   SELECT date_trunc('day', tm.assigned_at) AS day, tm.topic_id, COUNT(*) AS c
   FROM topic_members tm
-  WHERE tm.role='evidence' AND tm.quarantined IS NOT TRUE
+  WHERE tm.role='evidence'
+    AND tm.engine_version = 'v1-compat'
+    AND tm.quarantined IS NOT TRUE
     AND tm.assigned_at >= date_trunc('day', NOW()) - INTERVAL '7 days'
     AND tm.assigned_at <  date_trunc('day', NOW())
   GROUP BY 1, 2 HAVING COUNT(*) >= 3
@@ -112,8 +118,13 @@ async def get_attention_eclipse(
     limit: int = Query(8, ge=1, le=30),
 ) -> dict:
     if db.pool is None:
-        return {"contract": "attention-eclipse-v1", "eclipse": False, "tier": "none",
-                "selected": [], "notes": ["database unavailable"]}
+        return {"contract": "attention-eclipse-v1", "hours": hours, "eclipse": False,
+                "tier": "none", "intensity": 0.0,
+                "axes": {"country_dominance": None, "entropy_collapse": None,
+                         "top1_share": 0.0, "hhi": 0.0},
+                "dominant": {}, "window": {}, "selected": [], "labeled_out": [],
+                "method": {}, "notes": ["database unavailable"],
+                "generated_at": datetime.now(timezone.utc).isoformat()}
 
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 45000")
@@ -136,12 +147,15 @@ async def get_attention_eclipse(
             if drow:
                 cc_dominance = country_dominance(int(drow["led"] or 0), int(drow["qualifying"] or 0))
 
+        # entropy_collapse compares the field vs a per-CALENDAR-DAY baseline, so it is
+        # only meaningful at the ambient 24h window; skip (honest None) for other spans.
         collapse: float | None = None
-        base_rows = await conn.fetch(_ENTROPY_BASELINE_SQL)
-        baselines = [float(b["h"]) for b in base_rows if b["h"] is not None]
-        if len(baselines) >= 3:
-            h_now = field_entropy([r["attention"] for r in rows])
-            collapse = entropy_collapse(h_now, median(baselines))
+        if hours == 24:
+            base_rows = await conn.fetch(_ENTROPY_BASELINE_SQL)
+            baselines = [float(b["h"]) for b in base_rows if b["h"] is not None]
+            if len(baselines) >= 3:
+                h_now = field_entropy([r["attention"] for r in rows])
+                collapse = entropy_collapse(h_now, median(baselines))
 
     sel = assemble_eclipse(rows, eclipse_top1=eclipse_top1, min_langs=min_langs,
                            min_countries=min_countries, display_limit=limit,
