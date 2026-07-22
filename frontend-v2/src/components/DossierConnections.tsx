@@ -19,6 +19,11 @@ import { createEqualEarth } from '../lib/equalEarthProjection'
 import { LEGACY_GDELT_TO_ISO } from '../lib/countryCodeBoundary'
 import { track } from '../lib/telemetry'
 import type { Investigation } from '../lib/workbench'
+// Chains spec §4 (2026-07-21): the walked constellation lives in
+// WorkbenchConstellation (compact) AND here (full report) — same component,
+// same honesty grammar, mounted in its own section (X2, see below).
+import WalkConstellation from './WalkConstellation'
+import type { WalkKin } from '../lib/constellationWalk'
 import './DossierConnections.css'
 
 // Edge visual truth: green = distinctive shared actor; amber = evidence-text
@@ -50,11 +55,17 @@ function edgeTag(e: ConnectionEdge): string {
 
 
 export function DossierConnections(
-  { inv, onData }: {
+  { inv, onData, onOpenThread, onPinTopic }: {
     inv: Investigation
     /** Hands the measured data + clusters up so the parent can fold a
      *  connection summary into the Markdown export. */
     onData?: (data: ConnectionsData, cluster: ClusterResult) => void
+    /** Open a walked-kin node (chains spec §4) — same contract as
+     *  WorkbenchConstellation's onOpenThread. */
+    onOpenThread?: (topicId: string, label: string) => void
+    /** Pin a walked-kin node — grows the investigation (the flywheel),
+     *  same contract as WorkbenchConstellation's pinStory. */
+    onPinTopic?: (n: { id: string; label: string; category: string | null }) => void
   },
 ) {
   const [data, setData] = useState<ConnectionsData | null | undefined>(undefined)
@@ -98,6 +109,10 @@ export function DossierConnections(
   // lens note. Both pure math over data already in hand.
   const crossRefs = buildFrozenCrossRefs(inv.pins, data)
   const lensNote = coverageLensNote(data.distributions?.languages ?? [])
+  // Adapt WalkConstellation's onPin(WalkKin) contract to the generic
+  // {id,label,category} shape onPinTopic expects (mirrors WorkbenchConstellation's
+  // pinKin — same flywheel, full-report side).
+  const pinKin = (k: WalkKin) => onPinTopic?.({ id: k.id, label: k.label, category: k.category })
 
   return (
     <div className="dcx">
@@ -126,6 +141,23 @@ export function DossierConnections(
       )}
       <AssembledStories data={data} />
       <InvestigativeUniverse data={data} cluster={cluster} />
+      {/* Chains spec §4 (2026-07-21): the walked constellation, mounted here on
+          the FULL report surface (was compact-only, WorkbenchConstellation).
+          X2 — kept in its OWN section with its own title/legend/radial grammar
+          so it never reads as a second "investigative universe" competing with
+          the panel above: that one shows direct semantic neighbors; this one
+          walks OUTWARD through measured intermediaries, revealed one degree at
+          a time. Reuses the SAME pin/open handlers as the compact path. */}
+      <div className="dcx-panel dcx-walk-panel">
+        <div className="dcx-panel-title">Walked kinship (multi-hop)</div>
+        <p className="dcx-sub">
+          Beyond the direct neighbors above: multi-hop trails from your pins, reached
+          only by walking through measured intermediaries. A hermano is a direct
+          measured edge; a primo Nº is N hops out — no direct line, only this trail.
+          Undirected association, never cause.
+        </p>
+        <WalkConstellation inv={inv} onOpen={onOpenThread} onPin={pinKin} />
+      </div>
       <DossierMap data={data} />
       <DossierDistributions data={data} />
     </div>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Time-axis edge-snapshot cron. Persists one topic_edge_snapshots pass + the
+     entity backbone per run so replay/diff accumulate history (spec
+     2026-07-21-time-axis-versioned-relationships.md §5a/§6). Off-peak (03:15,
+     after the nightly clustering + topic_members ETL so members are fresh),
+     mindful (Background QoS + nice), runs the synced runner from ~/AtlasLocalWorker.
+     Install:
+       cp infra/launchd/com.atlas.edge-snapshot.plist ~/Library/LaunchAgents/
+       # sync run-edge-snapshot.sh + backend/{scripts/snapshot_topic_edges.py,
+       #   app/services/topic_edge_snapshot.py, app/services/constellation_walk.py}
+       #   into ~/AtlasLocalWorker
+       launchctl load ~/Library/LaunchAgents/com.atlas.edge-snapshot.plist
+     Verify:  launchctl list | grep edge-snapshot  (LastExitStatus 0) -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.atlas.edge-snapshot</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/pedro/AtlasLocalWorker/run-edge-snapshot.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>3</integer>
+        <key>Minute</key><integer>15</integer>
+    </dict>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Nice</key>
+    <integer>10</integer>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/pedro/AtlasLocalWorker/logs/edge-snapshot.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/pedro/AtlasLocalWorker/logs/edge-snapshot.err.log</string>
+</dict>
+</plist>

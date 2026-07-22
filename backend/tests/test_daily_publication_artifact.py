@@ -457,3 +457,35 @@ def test_lead_synthesis_payload_marks_grab_bag_lead_low_coherence():
         "Mixed umbrella", [{"headline": "A"}], gaps=[], low_coherence=True,
     )
     assert payload["pins"][0]["low_coherence"] is True
+
+
+# --- resolve_edition_end (2026-07-22): freshest-data anchor, not stale snapshot ---
+from datetime import datetime, timezone, timedelta  # noqa: E402
+from app.services.daily_publication import resolve_edition_end  # noqa: E402
+
+_NOW = datetime(2026, 7, 22, 10, 0, tzinfo=timezone.utc)
+
+
+def test_resolve_edition_end_prefers_fresh_signal_over_stale_last_seen():
+    stale = datetime(2026, 7, 21, 7, 42, tzinfo=timezone.utc)   # clustering snapshot_at
+    fresh = datetime(2026, 7, 22, 9, 30, tzinfo=timezone.utc)   # freshest ingested signal
+    assert resolve_edition_end(stale, fresh, _NOW) == fresh
+
+
+def test_resolve_edition_end_capped_at_now():
+    future = _NOW + timedelta(hours=1)  # a bad future-dated signal never leaks
+    assert resolve_edition_end(None, future, _NOW) == _NOW
+
+
+def test_resolve_edition_end_naive_coerced_to_utc():
+    naive = datetime(2026, 7, 22, 9, 0)  # asyncpg can hand back naive
+    assert resolve_edition_end(naive, None, _NOW) == naive.replace(tzinfo=timezone.utc)
+
+
+def test_resolve_edition_end_both_none_falls_to_now():
+    assert resolve_edition_end(None, None, _NOW) == _NOW
+
+
+def test_resolve_edition_end_uses_last_seen_when_signal_missing():
+    ls = datetime(2026, 7, 22, 8, 0, tzinfo=timezone.utc)
+    assert resolve_edition_end(ls, None, _NOW) == ls

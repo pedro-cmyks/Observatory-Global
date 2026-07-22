@@ -72,8 +72,10 @@ function MarketsInner({
 export function BriefWorldMarketsBand() {
   const { data, loading, failed } = useMarkets(null)
   if (loading && !data) return null
-  if (failed) return null
-  const degraded = data?.degraded ?? false
+  // A hard fetch failure (undeployed backend / network / timeout) must NOT vanish
+  // the band silently — that silent-absence hid the "markets disappeared" symptom.
+  // Mirror MarketsPanel: treat `failed` as degraded and render the honest note.
+  const degraded = failed || (data?.degraded ?? false)
   const world = data?.world ?? []
   if (!degraded && world.length === 0) return null
   return (
@@ -95,8 +97,8 @@ export function BriefWorldMarketsBand() {
 export function BriefCountryMarketsCard({ countryCode }: { countryCode: string }) {
   const { data, loading, failed } = useMarkets(countryCode)
   if (loading && !data) return null
-  if (failed) return null
-  const degraded = data?.degraded ?? false
+  // failed → honest degraded note, not a silent vanish (wedge; see world band above).
+  const degraded = failed || (data?.degraded ?? false)
   const instruments = (data?.country?.instruments ?? []).filter(i => i.role !== 'export-commodity')
   if (!degraded && instruments.length === 0) return null
   return (

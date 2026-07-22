@@ -27,6 +27,21 @@ Honesty model (spec §1):
 Locked numbers (two probe rounds, spec §2.3/§2.4/§2.6 — do NOT re-derive):
   REL_FLOOR 0.35 · HOP_CAP 3 (both required — the relative floor alone leaks 4º
   on tight seeds) · DEDUP_TAU 0.85 · actor weight 0.30 + 0.68·norm_rarity.
+
+Blob CONFIRMER (spec §2.4 A2 followup — plan `docs/superpowers/plans/
+2026-07-21-implementation-plan.md`). The shipped `blob_connector_flags` (2-hop
+category-entropy + in-degree, below) is the CHEAP FIRST PASS ONLY — spec §2.4
+names **membership multimodality** (the existing over-merge detector,
+`app/services/overmerge.py` — deterministic 2-means over a topic's MEMBER
+embeddings) as "the measured discriminator". `confirm_blob_candidates` sits
+ABOVE the entropy pass: it takes the entropy-flagged CANDIDATES (never the
+whole graph — mindful) plus whatever real member embeddings the caller could
+fetch for them (bounded, DB I/O lives in the router — this module stays zero-
+DB) and CONFIRMS each via `overmerge.decide` (no LLM judge, no entity-overlap
+veto — the walk is math-only and this is a soft trail-weight, not a permanent
+demote). A candidate with no/insufficient embeddings (no DB, an old topic
+whose embeddings were pruned at retention, too few embedded members) falls
+back to the entropy flag AS-IS — never crashes, never blocks the walk.
 """
 from __future__ import annotations
 
@@ -39,6 +54,13 @@ from math import log2
 from typing import Optional, Sequence
 
 import numpy as np
+
+from app.services.overmerge import (
+    KEEP as _OVERMERGE_KEEP,
+    OverMergeParams,
+    decide as _overmerge_decide,
+    partition as _overmerge_partition,
+)
 
 # ---------------------------------------------------------------- locked knobs
 # Depth brake (spec §2.3, Phase-0b LOCKED over 5 seeds bfh 0.544→0.863). A fixed
@@ -217,6 +239,92 @@ def blob_connector_flags(graph: KnnGraph, categories: Sequence[Optional[str]],
     return flags
 
 
+@dataclass(frozen=True)
+class BlobConfirmation:
+    """One entropy-flagged candidate's CONFIRMED status (spec §2.4 A2 followup).
+
+    `confirmed` is what actually gates `BLOB_PENALTY` in the walk; `basis`
+    records HOW it was decided so the UI/receipt can say why (glass-box, never
+    a silent penalty):
+
+      'entropy_only'              no member embeddings were available for this
+                                   candidate (no DB, an old topic whose
+                                   embeddings were pruned at retention, or too
+                                   few embedded members to partition) -> falls
+                                   back to the entropy first-pass flag AS-IS
+                                   (confirmed=True) — exactly the pre-A2
+                                   behavior for that node.
+      'multimodality_confirmed'   real member embeddings were evaluated via
+                                   the over-merge detector's 2-means
+                                   (`overmerge.decide`, no LLM, no entity-
+                                   overlap veto — the walk never calls the
+                                   judge or fetches actor data, it is a soft
+                                   trail-weight, not a permanent demote).
+                                   `confirmed` iff the verdict is BORDERLINE or
+                                   DEMOTE (spec: "gap_ratio >= its DEMOTE/
+                                   BORDERLINE band = fusion"). A genuine tight
+                                   hub (verdict KEEP) is SPARED even though the
+                                   cheap entropy pass flagged it as a candidate.
+    """
+
+    index: int
+    confirmed: bool
+    basis: str
+    gap_ratio: Optional[float] = None
+    verdict: Optional[str] = None
+
+
+def confirm_blob_candidates(
+    candidates: set[int],
+    member_vecs: Optional[dict[int, np.ndarray]] = None,
+    params: Optional[OverMergeParams] = None,
+) -> dict[int, BlobConfirmation]:
+    """CONFIRM the entropy first-pass's blob CANDIDATES via membership
+    multimodality (spec §2.4 A2 — the measured discriminator sits ABOVE the
+    cheap entropy pre-filter, never replaces it).
+
+    Pure and mindful by construction: only ever iterates `candidates` (never
+    the whole graph — the entropy pass already bounded the set), and only
+    scores whatever `member_vecs` the CALLER already fetched for them (the
+    router bounds that fetch to just the candidates; zero DB happens here).
+
+    Graceful fallback (never crash, never block the walk): a candidate with no
+    entry in `member_vecs`, an unparsable entry, or fewer than
+    `params.min_members` embedded rows stays on the entropy signal alone
+    (`basis='entropy_only'`, `confirmed=True`) — the same effective behavior
+    as the walk had before this confirmer existed."""
+    p = params or OverMergeParams.from_env()
+    member_vecs = member_vecs or {}
+    out: dict[int, BlobConfirmation] = {}
+    for i in candidates:
+        vecs = member_vecs.get(i)
+        n = 0 if vecs is None else len(vecs)
+        if vecs is None or n < p.min_members:
+            out[i] = BlobConfirmation(index=i, confirmed=True, basis="entropy_only")
+            continue
+        try:
+            mat = np.asarray(vecs, dtype=np.float64)
+            _labels, stats = _overmerge_partition(mat, seed=p.seed)
+        except Exception:
+            out[i] = BlobConfirmation(index=i, confirmed=True, basis="entropy_only")
+            continue
+        if stats is None:
+            out[i] = BlobConfirmation(index=i, confirmed=True, basis="entropy_only")
+            continue
+        # entity_overlap=None: the walk never fetches actor data for this soft
+        # confirmer (mindful + no extra DB round-trip) and never calls the
+        # judge — `decide` with overlap unknown still separates unimodal/small/
+        # unbalanced (KEEP) from a wide, balanced gap (BORDERLINE/DEMOTE),
+        # which is exactly the spec's "gap_ratio >= its DEMOTE/BORDERLINE band".
+        verdict, _reason = _overmerge_decide(stats, None, p)
+        out[i] = BlobConfirmation(
+            index=i, confirmed=(verdict != _OVERMERGE_KEEP),
+            basis="multimodality_confirmed",
+            gap_ratio=round(stats.gap_ratio, 4), verdict=verdict,
+        )
+    return out
+
+
 # ---------------------------------------------------------------- the walk
 def max_product_walk(seeds: Sequence[int], graph: KnnGraph,
                      params: WalkParams = WalkParams(),
@@ -390,7 +498,13 @@ class WalkResult:
                   acc/via, ordered strongest-first.
     reps          representative indices after same-event dedup (what to draw).
     fold_map      rep index → [folded near-duplicate indices] (the collapsed count).
-    blob_flags    node indices flagged vague-blob connectors (penalized in the walk).
+    blob_flags    node indices CONFIRMED vague-blob connectors (penalized in the
+                  walk) — the entropy candidates that survived `confirm_blob_
+                  candidates` (spec §2.4 A2: multimodality-confirmed, or
+                  entropy-only when embeddings were unavailable).
+    blob_confirmations  every entropy-flagged CANDIDATE's `BlobConfirmation`
+                  (confirmed or spared, + basis) — glass-box provenance for the
+                  UI/receipt, keyed by node index.
     graph         the kNN graph (so the endpoint can read bfh/indeg for receipts).
     """
 
@@ -398,26 +512,51 @@ class WalkResult:
     reps: list[int]
     fold_map: dict[int, list[int]]
     blob_flags: set[int]
+    blob_confirmations: dict[int, BlobConfirmation]
     graph: KnnGraph
 
 
-def walk_constellation(whitened: np.ndarray, categories: Sequence[Optional[str]],
-                       seeds: Sequence[int],
-                       params: WalkParams = WalkParams()) -> WalkResult:
-    """End-to-end pure walk: build the whitened kNN graph, flag blob connectors UP
-    FRONT (spec §2.4 pipeline order), walk from the seeds with the locked brake +
-    blob penalty, then fold same-event fragments (spec §2.6) — representatives kept
-    strongest-first. Zero DB; the endpoint feeds real whitened centroids + metadata.
+def walk_constellation(
+    whitened: np.ndarray,
+    categories: Sequence[Optional[str]],
+    seeds: Sequence[int],
+    params: WalkParams = WalkParams(),
+    *,
+    graph: Optional[KnnGraph] = None,
+    blob_candidates: Optional[set[int]] = None,
+    member_vecs: Optional[dict[int, np.ndarray]] = None,
+    overmerge_params: Optional[OverMergeParams] = None,
+) -> WalkResult:
+    """End-to-end pure walk: build the whitened kNN graph, flag blob CANDIDATES up
+    front via the cheap entropy pass (spec §2.4 pipeline order), CONFIRM them via
+    membership multimodality when member embeddings are available (spec §2.4 A2 —
+    `confirm_blob_candidates`, entropy-only fallback otherwise), walk from the
+    seeds with the locked brake + confirmed-blob penalty, then fold same-event
+    fragments (spec §2.6) — representatives kept strongest-first. Zero DB; the
+    endpoint feeds real whitened centroids + metadata (+ optionally the member
+    embeddings it bounded its own fetch to).
+
+    `graph` / `blob_candidates` may be pre-computed by the caller — the router
+    needs the entropy CANDIDATE set before it can bound its DB fetch of member
+    embeddings to just those topics, so it calls `build_knn_graph` +
+    `blob_connector_flags` itself first and passes both in here to avoid
+    rebuilding the O(n²) graph twice. Omit either (the default) to have this
+    function compute them itself — unchanged behavior for every existing
+    caller/test.
 
     An empty `reached` is the HONEST ORPHAN state (spec §8): a semantic-orphan pin
     has no measured kin — the caller renders "this story stands alone," never a
     fabricated primo."""
-    graph = build_knn_graph(whitened, k=params.k)
-    blob_flags = blob_connector_flags(graph, categories, params)
+    graph = graph if graph is not None else build_knn_graph(whitened, k=params.k)
+    candidates = (blob_candidates if blob_candidates is not None
+                 else blob_connector_flags(graph, categories, params))
+    confirmations = confirm_blob_candidates(candidates, member_vecs, overmerge_params)
+    blob_flags = {i for i, c in confirmations.items() if c.confirmed}
     reached = max_product_walk(seeds, graph, params, blob_flags=blob_flags)
     # Priority order for dedup: nearest ground first (lowest degree, then strongest
     # accumulated weight) so the representative kept is the most-grounded variant.
     order = sorted(reached, key=lambda i: (reached[i].degree, -reached[i].acc_weight))
     reps, fold_map = dedup_reached(order, whitened, tau=params.dedup_tau)
     return WalkResult(reached=reached, reps=reps, fold_map=fold_map,
-                      blob_flags=blob_flags, graph=graph)
+                      blob_flags=blob_flags, blob_confirmations=confirmations,
+                      graph=graph)

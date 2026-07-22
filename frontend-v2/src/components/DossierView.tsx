@@ -14,7 +14,7 @@ import {
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { humanizeReadinessValue } from '../lib/humanizeInternals'
-import { removePin, renameInvestigation, type Investigation } from '../lib/workbench'
+import { addPin, removePin, renameInvestigation, type Investigation } from '../lib/workbench'
 import { enqueueUrls, extractSnapshotUrls, fullTextYield, stateTag, useArticleStates } from '../lib/articleEnrichment'
 import { fetchCrossRead, type CrossRead } from '../lib/aiRead'
 import { LabelReviewChip } from '../lib/labelReviewChip'
@@ -96,11 +96,12 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
     /** Called after a verdict chip mutates pinned state (drop receipt) so the
      *  parent re-reads the store and re-renders this frozen view. */
     onMutate?: () => void
-    /** Task 5.2 — typed launcher nav. Every inert "look here next" gets a verb
-     *  (grammar in lib/launcherVerbs). All optional: when a callback is absent
-     *  its launcher is not rendered, so the report-export/inert path is
-     *  byte-identical. onFreshQuery GENERATES a new query (not a navigation). */
+    /** Open a thread by id+label. Serves BOTH the walked-kin nodes (chains spec §4,
+     *  the WorkbenchConstellation contract) AND the Task 5.2 typed launchers. */
     onOpenThread?: (threadId: string, label: string) => void
+    /** Task 5.2 — typed launcher nav (grammar in lib/launcherVerbs). All optional:
+     *  when a callback is absent its launcher is not rendered. onFreshQuery GENERATES
+     *  a new query (not a navigation). */
     onOpenParams?: (params: string) => void
     onFreshQuery?: (query: string) => void
 }) {
@@ -157,6 +158,22 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
     const onConnections = useCallback((data: ConnectionsData, cluster: ClusterResult) => {
         setConn({ data, cluster })
     }, [])
+    // Chains spec §4: pinning a walked-kin node from the connection-analysis
+    // section grows the investigation — the same flywheel move as the
+    // workbench's WorkbenchConstellation → pinStory, just on the full-report
+    // side. Metadata-only pin (no snapshot); opening it later backfills
+    // evidence like any thread pin.
+    const pinWalkedTopic = useCallback((n: { id: string; label: string; category: string | null }) => {
+        addPin(investigation.id, {
+            anchorId: n.id,
+            anchorType: 'thread',
+            label: n.label,
+            category: n.category ?? undefined,
+            retrievalLane: 'constellation-walk',
+            open: { surface: 'thread_detail', params: { thread_id: n.id } },
+        })
+        onMutate?.()
+    }, [investigation.id, onMutate])
 
     // P0.3 story windows: header = whole-investigation span; per-pin windows
     // render on the pin cards once the connection measurement lands.
@@ -822,7 +839,10 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                         <p className="dossier-meta" data-tip="Do these pinned stories form one narrative, and which sub-clusters connect? Semantic proximity + shared entities, measured now.">
                             do these stories connect — and which sub-narratives hold?
                         </p>
-                        <DossierConnections inv={investigation} onData={onConnections} />
+                        <DossierConnections
+                            inv={investigation} onData={onConnections}
+                            onOpenThread={onOpenThread} onPinTopic={pinWalkedTopic}
+                        />
                     </section>
                 )}
 

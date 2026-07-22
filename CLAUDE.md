@@ -1,5 +1,47 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-21 (PM — CHAINS FOLLOWUPS + TIME-AXIS BUILT, SHIPPED & DEPLOYED,
+`826da723`→`f3683488`, merged to `v3-intel-layer` + Fly/Vercel deployed + §8
+acceptance PASSING in prod). Executed the implementation plan
+(`docs/superpowers/plans/2026-07-21-implementation-plan.md`) after validating the
+parallel-session builds (chains-v1 + markets + flywheel, all faithful).
+**TRACK A** (chains walked-constellation followups): A2 blob-multimodality confirmer
+(`overmerge.py` 2-means behind the shipped entropy first-pass, graceful fallback,
+glass-box `via.blob_basis`); A3 `WalkConstellation` mounted on the FULL
+DossierConnections/DossierView report (compact path byte-identical). **TRACK C**
+(time-axis / versioned relationships, its own spec, ALL BUILT + LIVE in prod):
+C1 edge-snapshot store (mig 089 `topic_edge_snapshots` + `entity_backbone_edges`,
+edges keyed on the churn-resistant `identity_key` NOT the ephemeral id, backbone
+rarity-gated by `MIN(norm_rarity)` so a ubiquitous entity thins its own edges);
+C2/C3 churn-vs-narrative classifier (both identity_keys `state='active'` →
+narrative_change, else substrate_churn — a re-founded topic is never surfaced as a
+dead relationship) + `GET /api/v2/edges/replay` (ambient) + `/api/v2/focus/{ref}/
+edge-diff` (focus, dormant = §4 layer-divergence); C4a `/api/v2/focus/{ref}/timeline`
+(MEASURE-FIRST: threads all-live ~200ms; `signals_v2.persons` has NO GIN index →
+country/person key-subject channels degrade honestly, per-channel statement_timeout,
+never 500; the ONE shared rarity-normalized key-subject function §8); C4b the
+combined-chart activity timeline (diverging volume bars = tone by POSITION freeing
+color for lines, rarity-normalized key-subject trend lines color-stable, voice-mix
+band, edge-diff overlay with churn-vs-narrative in the endpoint hover, NO marker
+layer, degraded = grey gap never zero — REPLACES the old red/green bars in
+ThemeDetail). **GO-LIVE done**: merged to v3-intel-layer (resolved markets+flywheel
+conflicts — main_v2 router tuple, DossierView launcher props, WorkbenchPanel dup
+`onOpenThread`), Fly+Vercel deployed, **§8 acceptance PASSES in prod** (walk from
+dt-452: 9 hermanos / 26 primos, max-degree 3 self-terminated, blob-multimodality
+confirmed 7, genuine cross-story primos — Kyiv-Odesa/Jordan/Russian-fuel), mig 089
+applied to prod, **edge-snapshot cron installed** (`com.atlas.edge-snapshot`, 03:15
+mindful; prod holds 2 snapshots = the first T0/T1 pair for the diff). 906 vitest +
+~200 backend green. **RESIDUALS (honest)**: the chart is browser-verified with
+FIXTURE only (local backend hangs on an unrelated AISStream startup read) → the
+`SENT_FULL` sentiment scale needs a real-data check post-deploy; `DEDUP_TAU`/
+`WEAKEN_DELTA` uncalibrated (need days of T0/T1 accumulation); entity backbone cap
+fills with df=1 one-off pairs (followup: sort by `cooccur·rarity` for the recurring
+spine); **persons GIN index DEFERRED** — the person channel uses ILIKE-on-unnest so a
+plain GIN wouldn't help (real fix = per-channel query+index redesign), country/person
+timeline degrade honestly until then; **markets** merged separately (two mig-089 files
+coexist, project tolerates dup numbers, cf. the two `073_`). Specs:
+`docs/superpowers/specs/2026-07-21-{multi-hop-transitive-chains,time-axis-versioned-relationships}.md`.**
+
 **2026-07-21 (EXPLORATION FLYWHEEL — REMAINING JSX WIRING DONE + MERGED,
 `06829457`→`53174260`, pushed to `v3-intel-layer`, Vercel deploying; Pedro ran
 it + eyeballed = "se ve bien").** Finished the remaining flywheel integration
@@ -122,6 +164,65 @@ DEFERRED (separate greenlight): coverage_check cross-read on the country lead
 driven (implementer sonnet, reviews opus); reviews earned their keep — caught a
 resilience gap, a cc keyspace guard, an honesty regression (429→perpetual
 "Assembling…" w/o escape hatch), and the pending-seed short-circuit.**
+
+**2026-07-21 (DESIGN SESSION — MULTI-HOP TRANSITIVE CHAINS "walked constellation" +
+TIME AXIS / versioned relationships; brainstorm-first + measure-first; NO code shipped
+this track = 2 specs + 2 build chips + read-only probes). Pedro's idea: follow
+topic→topic relationship CHAINS across hops (Netanyahu→Gaza→Hormuz→oil-transport→
+oil-price), surfacing non-obvious connections the analyst didn't pin. CRUX resolved:
+Atlas edges = ASSOCIATION (undirected, non-causal); a chain rendered as a chain smuggles
+in causation, each hop compounds it. FIX (Pedro's word) = KINSHIP: **hermano** (direct
+measured edge, with receipt) vs **primo** (indirect walk, degree=hops); the analyst's
+mind supplies causation, the app supplies the honest measured walk = DISCOVERY not
+explanation. SPEC `docs/superpowers/specs/2026-07-21-multi-hop-transitive-chains.md`
+(v3, BUILDABLE): from-pins max-product walk over the EXISTING substrate (Universe kNN
+768-dim `universe.py:123-145` + dossier 6-basis edges `dossier.py:599-664` + whitening
+`whitening.py:49,72` — ~70% reuse); accumulated weight = PRODUCT of hop weights = the
+thickness of the far primo (honesty & brake, ONE number). TWO measure-first probe rounds
+(read-only, M1, `scratchpad/walk_probe*.py`): **Phase-0** proved the Iran→Hormuz/energy→
+oil-price chain EXISTS + is reachable (1594 active topics, whitening loaded); an
+ADVERSARIAL review (code-checked file:line) caught 2 BLOCKING holes → **Phase-0b LOCKED**
+across 5 seeds (best-first-hop 0.544→0.863): **REL_FLOOR 0.35 + HOP_CAP 3, both required**
+(absolute floor explodes to 5º+ on tight seeds; relative alone insufficient; hop-cap
+load-bearing; all seeds self-terminate at 3º, marquee primo preserved); **DEDUP_TAU 0.85**
+(0.75 over-merged — folded "Messi"+"New UK PM", measured); **#234 formula fix
+`weight = 0.30 + 0.68·norm_rarity`, `norm_rarity=(1/df−1/df_max)/(1−1/df_max)`** — the
+naive "soften the gate" was mathematically FALSE (0.65 base floor → trump df=29 stays
+0.655 above the 0.50 gate AND propagates transitively; new formula → trump **0.300**,
+rare df=2 → 0.628; apply at `dossier.py:632-633` — softens the #234 hard-exclude
+`dossier.py:604-608` to a thin continuous link); **blob≠hub by membership multimodality
+(`overmerge.py`) + neighborhood category-entropy — cosine coherence FAILED** (a blob is
+coherent with its own under-merged fragments; all top-in-degree scored 0.74–0.83); flag
+blobs UP FRONT (the dedup is itself blob-confounded). HONESTY locked: **v1 UNDIRECTED**
+(the `▸` temporal-precedence marker DROPPED — Kalman lead/lag = COVERAGE precedence ≠
+event precedence, a directional glyph on a causal-framed layout is post-hoc ergo propter
+hoc); **RADIAL constellation, FORBID linear chain layout** (form beats label); every hop
+carries a receipt; honest orphan state; closes journey-map §3.1 (inert bridge stars →
+walkable + pinnable). **TIME AXIS extracted to its OWN spec**
+`docs/superpowers/specs/2026-07-21-time-axis-versioned-relationships.md` (Pedro corrected
+my mis-file of time-under-markets): time = first-class axis, orthogonal to markets.
+UNIVERSAL activity timeline on EVERY focus (thread/country/person/theme/anomaly/subject —
+most carry none today; = "everything relates to everything over time" + fixes the
+journey-map truncated connection). TWO contexts, ONE time-state: ambient (nothing
+selected)=REPLAY (whole field scrubs — extend `map/replay` to EDGES); focused=DIFF, lives
+IN the activity timeline (it IS the focus-scoped handle on the global time-state; scrub →
+everything moves, focus stays anchored = compound-focus + time, journey-map §2 fix).
+Combined chart: **diverging volume bars** (sentiment by POSITION not color → frees color
+for lines) + **key-subject trend lines** (rarity-normalized presence-WITHIN-this-focus,
+SAME formula every focus type → Trump never pins every line high) + **voice-mix band**
+(who covers it over time = the wedge on the time axis) + movement toggle; **NO marker
+layer** (line shape carries transitions; churn-vs-narrative label in the line-endpoint
+hover). Anchor = TWO layers **`identity_key`** (churn-resistant, survives re-founding) +
+**ENTITIES** (long-arc backbone, rarity-gated over the window) → separates NARRATIVE
+CHANGE from SUBSTRATE CHURN (a re-founded topic ≠ a dead relationship); layer divergence
+= dormant/latent-relationship signal. DEFERRED from chains v1. CHIPS SPAWNED (Pedro's
+separate-chat rule for big independent arcs): **build `task_b3eff2d8`** (implement the
+chains spec — running in its own session), **markets-L4 `task_23a4591b`** (BIDIRECTIONAL:
+news→price AND price→news; discovered-not-mapped co-movement/lead-lag; markets = a NEW
+first-class axis on the same rails, NOT a dead-end destination). METHOD: math-first, LLM
+only on sanctioned surfaces, vanilla-CSS radial SVG; every design decision MEASURED before
+code (two probe rounds + adversarial verify). This track committed NO engine/frontend
+code — pure design + specs + chips.**
 
 **2026-07-20 (ENGINE SPRINT — MERGE QUALITY + COUNCIL R3 + OVER-MERGE DETECTOR,
 `ce304ca3`→`9d112a08`, all prod/reversible; ran ALONGSIDE 3 parallel chats —
