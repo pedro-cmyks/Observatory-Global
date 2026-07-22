@@ -212,3 +212,20 @@
   transition: fill 0.12s;
 }
 .dcx-nb-pin:hover { fill: #7dd3fc; }
+
+/* 3D stage: the gesture surface wrapping the constellation svg. */
+.dcx-universe-stage { position: relative; }
+/* Only the ROTATABLE stage swallows touch gestures — on the 2D fallback there
+   is nothing to rotate, so the page must still scroll under a finger. */
+.dcx-universe-stage--3d { touch-action: none; }
+.dcx-universe-stage--compact { max-height: 300px; }
+/* Measured distortion — the honest companion to a positional claim. */
+.dcx-stress { cursor: help; }
+.dcx-stress--exact { color: #34d399; }
+.dcx-stress--good { color: #94a3b8; }
+.dcx-stress--high { color: #fbbf24; }
+.dcx-stress--compact {
+    padding: 2px 8px 6px;
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+}
