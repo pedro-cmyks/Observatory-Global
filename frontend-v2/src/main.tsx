@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { installWarmCache, bumpWarmCacheGeneration } from './lib/fetchWarmCache'
 import { refreshDelightFeed } from './lib/delight'
+import { installTooltips } from './lib/tooltips'
+
+// Global [data-tip] controller: a single body-level fixed node that flips +
+// clamps inside the viewport, so tips never slide under the header or crop off
+// the screen edges. Delegation-based, so it covers every pane at once.
+installTooltips()
 
 // #239 slice 1: route switches remount the whole tree (Brief↔App) and refire
 // every fetch — the warm cache paints the first request per URL instantly

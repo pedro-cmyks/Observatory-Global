@@ -6,20 +6,21 @@
 
 /* ============================================================
    FAST TOOLTIP SYSTEM — [data-tip] attribute
-   Shows instantly (no browser delay) via CSS ::before pseudo-element.
-   Usage: <span data-tip="Explanation text">label</span>
-   Use .tip-below on elements near the top of a panel.
-   Use .tip-left on elements near the right edge.
+   Rendered by the global JS controller (src/lib/tooltips.ts): a single
+   body-level position:fixed node that flips + clamps inside the viewport, so
+   tips never slide under the header or crop off the screen edges. The old
+   CSS ::before render (which could not escape ancestor overflow or detect the
+   viewport) is retired — the .atlas-tip node below carries the same visual.
+   Usage stays: <span data-tip="Explanation text">label</span>
    ============================================================ */
 [data-tip] {
+  /* Kept (harmless) so any unrelated absolutely-positioned descendants that
+     used the trigger as their containing block are unaffected by the swap. */
   position: relative;
 }
-[data-tip]::before {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+.atlas-tip {
+  position: fixed;
+  /* left/top are set by the controller (viewport coordinates). */
   background: rgba(var(--color-shell-rgb), 0.97);
   border: 1px solid var(--color-border-medium, rgba(var(--color-accent-deep-rgb), 0.28));
   color: var(--color-text-primary);
@@ -28,44 +29,16 @@
   padding: 6px 9px;
   border-radius: 4px;
   width: max-content;
-  max-width: 240px;
+  max-width: 260px;
   z-index: 10000;
   pointer-events: none;
-  opacity: 0;
-  /* No fade: opacity transitions never complete across a display:none→block
-     flip (the tip stayed invisible), and the system's goal is instant show. */
-  transition: none;
   font-family: var(--font-sans, system-ui);
   font-weight: 400;
   text-align: left;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.62);
   white-space: normal;
-  /* Round-2 2026-07-17 item 3: at rest the tip must have NO layout box.
-     opacity:0 alone leaves an invisible max-content box in the scrollable
-     overflow — tips anchored near the right edge (e.g. long thread-row label
-     tips, the ··· menu) silently widened document scrollWidth (1587 vs 1526)
-     and the browser auto-scrolled the page sideways on interactions. */
-  display: none;
-}
-[data-tip]:hover::before {
-  opacity: 1;
-  display: block;
-}
-[data-tip].tip-below::before {
-  bottom: auto;
-  top: calc(100% + 6px);
-}
-[data-tip].tip-left::before {
-  left: auto;
-  right: 0;
-  transform: none;
-}
-[data-tip].tip-right::before {
-  left: calc(100% + 8px);
-  right: auto;
-  bottom: auto;
-  top: 50%;
-  transform: translateY(-50%);
+  /* No fade: the goal is an instant, jitter-free show. */
+  transition: none;
 }
 
 .app {
