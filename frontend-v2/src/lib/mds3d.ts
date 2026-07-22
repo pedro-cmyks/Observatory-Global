@@ -25,7 +25,7 @@ export interface Mds3dMeta {
   n: number
   /** Story path: bodies with no vector — rendered as chips, never placed. */
   unplaced?: string[]
-  /** Dossier path: how the six bases collapse into the one scalar. */
+  /** Dossier path: how the five bases collapse into the one scalar. */
   collapse?: string
   note?: string
 }

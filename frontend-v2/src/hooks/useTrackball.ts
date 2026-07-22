@@ -63,7 +63,38 @@ const DEFAULT_VIEW: TrackballView = { k: 1, tx: 0, ty: 0 }
 const AMBIENT_RATE = 0.06
 const AMBIENT_TICK_MS = 100
 const REST_AFTER_MS = 90_000
-const TAP_SLOP_PX = 5
+export const TAP_SLOP_PX = 5
+
+export type DragMode = 'orbit' | 'roll' | 'pan'
+
+/** Which gesture a press starts. Pure so the precedence is pinned by tests
+ *  rather than by reading the handler: pan wins on shift / right / middle
+ *  button, roll on alt-ctrl-meta, orbit otherwise — with `navMode` as the
+ *  no-modifier default. Three surfaces depend on this staying put. */
+export function dragMode(
+  navMode: 'rotate' | 'pan' | 'roll',
+  e: { shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean; button?: number },
+): DragMode {
+  if (navMode === 'pan' || e.shiftKey || e.button === 2 || e.button === 1) return 'pan'
+  if (navMode === 'roll' || e.altKey || e.ctrlKey || e.metaKey) return 'roll'
+  return 'orbit'
+}
+
+/** A press that never travelled further than the slop is a CLICK, not a drag
+ *  (pointer capture eats the SVG onClick, so taps are resolved here). */
+export function isTap(downX: number, downY: number, x: number, y: number): boolean {
+  return Math.hypot(x - downX, y - downY) <= TAP_SLOP_PX
+}
+
+/** Zoom about a canvas-local point, keeping whatever sits under the cursor
+ *  fixed. Pure so the clamp and the anchor formula are test-pinned. */
+export function zoomAt(
+  view: TrackballView, factor: number, lx: number, ly: number,
+  minZoom: number, maxZoom: number,
+): TrackballView {
+  const k = Math.min(maxZoom, Math.max(minZoom, view.k * factor))
+  return { k, tx: lx - (lx - view.tx) * (k / view.k), ty: ly - (ly - view.ty) * (k / view.k) }
+}
 
 export function useTrackball({
   containerRef,
@@ -144,10 +175,7 @@ export function useTrackball({
       lastInteractionRef.current = performance.now()
       const factor = e.deltaY < 0 ? wheelStep : 1 / wheelStep
       const { lx, ly } = localPoint(e.clientX, e.clientY)
-      setView(v => {
-        const k = clampZoom(v.k * factor)
-        return { k, tx: lx - (lx - v.tx) * (k / v.k), ty: ly - (ly - v.ty) * (k / v.k) }
-      })
+      setView(v => zoomAt(v, factor, lx, ly, minZoom, maxZoom))
     },
 
     onPointerDown: (e: PointerEvent<HTMLDivElement>) => {
@@ -167,13 +195,10 @@ export function useTrackball({
         }
         dragRef.current = null
       } else {
-        const mode: 'orbit' | 'roll' | 'pan' =
-          (navMode === 'pan' || e.shiftKey || e.button === 2 || e.button === 1) ? 'pan'
-          : (navMode === 'roll' || e.altKey || e.ctrlKey || e.metaKey) ? 'roll'
-          : 'orbit'
         dragRef.current = {
           lastX: e.clientX, lastY: e.clientY,
-          downX: e.clientX, downY: e.clientY, moved: false, mode,
+          downX: e.clientX, downY: e.clientY, moved: false,
+          mode: dragMode(navMode, e),
         }
       }
     },
@@ -206,7 +231,7 @@ export function useTrackball({
       const dx = e.clientX - d.lastX
       const dy = e.clientY - d.lastY
       d.lastX = e.clientX; d.lastY = e.clientY
-      if (Math.hypot(e.clientX - d.downX, e.clientY - d.downY) > TAP_SLOP_PX) d.moved = true
+      if (!isTap(d.downX, d.downY, e.clientX, e.clientY)) d.moved = true
       if (d.mode === 'pan') {
         setView(v => ({ ...v, tx: v.tx + dx, ty: v.ty + dy }))
       } else if (d.mode === 'roll') {
@@ -238,11 +263,15 @@ export function useTrackball({
 
     onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
     onDragStart: (e: { preventDefault: () => void }) => e.preventDefault(),
-  }), [clampZoom, localPoint, navMode, wheelStep])
+  }), [clampZoom, localPoint, minZoom, maxZoom, navMode, wheelStep])
 
-  return {
-    rot, setRot, view, setView, reset, noteInteraction,
-    isDragging: () => draggingRef.current,
-    handlers,
-  }
+  const isDragging = useCallback(() => draggingRef.current, [])
+
+  // Memoized so a consumer can safely put the trackball (or isDragging) in a
+  // dependency array — three surfaces share this now, and a fresh object every
+  // render would loop the first effect that depends on it.
+  return useMemo(
+    () => ({ rot, setRot, view, setView, reset, noteInteraction, isDragging, handlers }),
+    [rot, view, reset, noteInteraction, isDragging, handlers],
+  )
 }

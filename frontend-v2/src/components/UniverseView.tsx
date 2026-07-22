@@ -267,7 +267,10 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
             if (!p) continue
             const r = universeRadius(n.n) * Math.min(3.5, Math.max(0.8, view.k)) * depthScale(p.depth) * (p.scale ?? 1)
             if (Math.hypot(lx - p.sx, ly - p.sy) <= r + 6) {
-                if (!best || p.depth > best.depth) best = { id: n.id, depth: p.depth }
+                // NEAREST wins: depth 0 is closest, and depthOrdered paints
+                // largest-depth first (underneath) — so picking the larger depth
+                // opened the body hidden BEHIND the one you clicked.
+                if (!best || p.depth < best.depth) best = { id: n.id, depth: p.depth }
             }
         }
         return best?.id ?? null

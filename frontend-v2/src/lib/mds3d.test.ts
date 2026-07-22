@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { IDENTITY_ROT, rotY } from './universeLayout'
 import {
+  STRESS_EXACT,
   STRESS_HIGH,
   centerOfMass,
   perspectiveSpread,
   projectPos3,
   screenXY,
+  stressNote,
   stressPct,
   stressTier,
   type Pos3,
@@ -86,5 +88,43 @@ describe('stress wording', () => {
   it('reports whole percent, never rounding the number away', () => {
     expect(stressPct(0.1449)).toBe(14)
     expect(stressPct(0)).toBe(0)
+  })
+
+  it('pins the exact/good boundary', () => {
+    expect(stressTier(STRESS_EXACT)).toBe('exact')
+    expect(stressTier(STRESS_EXACT + 1e-9)).toBe('good')
+    expect(stressTier(STRESS_HIGH - 1e-9)).toBe('good')
+  })
+
+  // stressNote is the one string in this module that is a PRODUCT CLAIM about
+  // how much the picture can be trusted — it gets a test.
+  it('says plainly when the geometry is distorted', () => {
+    expect(stressNote(STRESS_HIGH)).toContain('high distortion')
+    expect(stressNote(STRESS_HIGH)).toContain('rotate')
+    expect(stressNote(0.01)).toContain('trustworthy')
+    expect(stressNote(0.12)).toBe('low distortion')
+  })
+})
+
+describe('the orthographic claim', () => {
+  // "at k ≤ 1 the view is orthographic — the honest map" is a claim about
+  // distance, so test both halves: at rest distance survives the projection,
+  // and once zoomed the perspective divide measurably bends it.
+  const a: Pos3 = [0.2, 0.3, 0.2]
+  const b: Pos3 = [0.7, 0.6, 0.9]
+  const projectedDist = (spread: number) => {
+    const pa = projectPos3(a, IDENTITY_ROT, CENTER, spread)
+    const pb = projectPos3(b, IDENTITY_ROT, CENTER, spread)
+    return Math.hypot(pa.px - pb.px, pa.py - pb.py)
+  }
+  const flatDist = Math.hypot(a[0] - b[0], a[1] - b[1])
+
+  it('preserves the measured distance while zoom stays at rest', () => {
+    expect(projectedDist(perspectiveSpread(0.9))).toBeCloseTo(flatDist, 9)
+    expect(projectedDist(perspectiveSpread(1))).toBeCloseTo(flatDist, 9)
+  })
+
+  it('and bends it once perspective kicks in', () => {
+    expect(Math.abs(projectedDist(perspectiveSpread(2)) - flatDist)).toBeGreaterThan(1e-3)
   })
 })
