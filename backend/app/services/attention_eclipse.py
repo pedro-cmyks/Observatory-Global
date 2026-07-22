@@ -41,6 +41,41 @@ from pydantic import BaseModel, Field
 from app.services.daily_edition import global_breadth_signal
 
 
+# Measure-first calibration constants (tunable).
+MIN_TOPICS = 40
+MIN_TOTAL = 2000
+COHESION_FLOOR = 0.55
+MIN_DOM_LANGS = 3
+MIN_DOM_COUNTRIES = 8
+DOM_TAU = 0.33
+COLL_TAU = 0.25
+
+
+def eclipse_guards(*, field_size: int, total_coverage: int, dom_is_junk: bool,
+                   dom_is_roundup: bool, dom_cohesion: float | None,
+                   dom_langs: int, dom_countries: int,
+                   min_topics: int = MIN_TOPICS, min_total: int = MIN_TOTAL,
+                   cohesion_floor: float = COHESION_FLOOR,
+                   min_dom_langs: int = MIN_DOM_LANGS,
+                   min_dom_countries: int = MIN_DOM_COUNTRIES) -> tuple[bool, list[str]]:
+    """Reject the measured false-positive modes: thin-substrate days, tiny windows,
+    and over-merged/junk dominant buckets. Returns (passes, reason_codes)."""
+    reasons: list[str] = []
+    if field_size < min_topics:
+        reasons.append(f"thin_field({field_size})")
+    if total_coverage < min_total:
+        reasons.append(f"low_total({total_coverage})")
+    if dom_is_junk:
+        reasons.append("dominant_junk")
+    if dom_is_roundup:
+        reasons.append("dominant_roundup")
+    if dom_cohesion is not None and float(dom_cohesion) < cohesion_floor:
+        reasons.append(f"dominant_low_cohesion({float(dom_cohesion):.2f})")
+    if dom_langs < min_dom_langs or dom_countries < min_dom_countries:
+        reasons.append("dominant_narrow_breadth")
+    return (len(reasons) == 0, reasons)
+
+
 def field_entropy(volumes: list[int]) -> float:
     """Shannon entropy (nats) of the coverage-share distribution. 0 for an empty
     or single-story field; higher = more diverse."""

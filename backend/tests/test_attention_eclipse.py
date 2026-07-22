@@ -243,3 +243,24 @@ def test_country_dominance_fraction_and_zero_guard():
     assert country_dominance(30, 90) == 0.333333
     assert country_dominance(0, 0) == 0.0
     assert country_dominance(45, 45) == 1.0
+
+
+from app.services.attention_eclipse import eclipse_guards
+
+def _dom(**kw):
+    base = dict(field_size=200, total_coverage=20000, dom_is_junk=False,
+               dom_is_roundup=False, dom_cohesion=0.8, dom_langs=10, dom_countries=40)
+    base.update(kw)
+    return base
+
+def test_eclipse_guards_pass_on_healthy_field():
+    ok, reasons = eclipse_guards(**_dom())
+    assert ok is True and reasons == []
+
+def test_eclipse_guards_reject_thin_field_and_blackhole():
+    ok, reasons = eclipse_guards(**_dom(field_size=31))
+    assert ok is False and any("thin_field" in r for r in reasons)
+    ok2, r2 = eclipse_guards(**_dom(dom_cohesion=0.2))
+    assert ok2 is False and any("cohesion" in r for r in r2)
+    ok3, r3 = eclipse_guards(**_dom(dom_countries=3))
+    assert ok3 is False and "dominant_narrow_breadth" in r3
