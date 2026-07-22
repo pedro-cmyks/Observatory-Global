@@ -462,6 +462,36 @@ def build_lead_synthesis_payload(
     }
 
 
+def _as_utc(t: datetime | None) -> datetime | None:
+    if t is None:
+        return None
+    return t if t.tzinfo is not None else t.replace(tzinfo=timezone.utc)
+
+
+def resolve_edition_end(
+    max_last_seen: datetime | None,
+    max_signal_ts: datetime | None,
+    now: datetime,
+) -> datetime:
+    """Anchor the edition's data-window end on the freshest ACTUAL data, capped
+    at ``now``.
+
+    Historically this was ``MAX(last_seen)`` over active top-level topics — but
+    ``last_seen`` equals the *snapshot_at* of the last clustering pass, so on a
+    slow (mindful) pipeline the seal runs hours after that timestamp. The window
+    ``[edition_end - 24h, edition_end]`` then misses the FRESH evidence assigned
+    since, receipt-eligibility drains to 0 (empty degraded edition), and
+    ``data_lag`` trips the >6h degrade even though ingestion is healthy. Using
+    the freshest ingested signal instead keeps the window over fresh evidence and
+    makes ``data_lag`` the REAL ingestion lag (small when healthy, honestly large
+    only when ingestion genuinely stalls).
+    """
+    cands = [t for t in (_as_utc(max_last_seen), _as_utc(max_signal_ts)) if t is not None]
+    if not cands:
+        return now
+    return min(now, max(cands))
+
+
 async def fetch_daily_publication(
     *,
     hours: int = 24,
@@ -483,7 +513,7 @@ async def fetch_daily_publication(
 
     generated_at = datetime.now(timezone.utc)
     async with db.pool.acquire() as conn:
-        edition_end = await conn.fetchval(
+        max_last_seen = await conn.fetchval(
             """
             SELECT MAX(last_seen)
             FROM dynamic_topics
@@ -491,9 +521,14 @@ async def fetch_daily_publication(
             """,
             timeout=5,
         )
-        edition_end = edition_end or generated_at
-        if edition_end.tzinfo is None:
-            edition_end = edition_end.replace(tzinfo=timezone.utc)
+        # Freshest ACTUAL ingested data (bounded to the recent partition so the
+        # MAX rides the timestamp index, never a full scan). Anchors the edition
+        # window on real data, not the stale clustering snapshot_at.
+        max_signal_ts = await conn.fetchval(
+            "SELECT MAX(timestamp) FROM signals_v2 WHERE timestamp > NOW() - INTERVAL '2 days'",
+            timeout=5,
+        )
+        edition_end = resolve_edition_end(max_last_seen, max_signal_ts, generated_at)
         candidates, traversal = await fetch_daily_candidates(
             conn, hours=hours, edition_end=edition_end,
         )
