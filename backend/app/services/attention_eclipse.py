@@ -33,11 +33,34 @@ nothing is silently filtered; sports/entertainment are LABELED, not dropped.
 """
 from __future__ import annotations
 
+import math
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from app.services.daily_edition import global_breadth_signal
+
+
+def field_entropy(volumes: list[int]) -> float:
+    """Shannon entropy (nats) of the coverage-share distribution. 0 for an empty
+    or single-story field; higher = more diverse."""
+    total = sum(v for v in volumes if v and v > 0)
+    if total <= 0:
+        return 0.0
+    h = 0.0
+    for v in volumes:
+        if v and v > 0:
+            p = v / total
+            h -= p * math.log(p)
+    return round(h, 6)
+
+
+def entropy_collapse(h_now: float, h_baseline: float | None) -> float | None:
+    """Fractional drop in field diversity vs a trailing baseline, clamped [0,1].
+    None when there is no usable baseline (cold start) — never fabricated."""
+    if h_baseline is None or h_baseline <= 0:
+        return None
+    return round(max(0.0, min(1.0, (h_baseline - h_now) / h_baseline)), 6)
 
 
 # ── (a) eclipse detector — window-level coverage concentration ───────────────

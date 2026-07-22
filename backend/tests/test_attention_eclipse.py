@@ -217,3 +217,21 @@ def test_assemble_stays_quiet_when_diffuse():
     assert sel.eclipse is False
     assert sel.selected_ids == []
     assert len(sel.ledger) == len(rows)  # complete, nothing silently dropped
+
+
+# ── field entropy + entropy collapse — coverage-diversity signals ────────────
+
+from app.services.attention_eclipse import field_entropy, entropy_collapse
+
+def test_field_entropy_uniform_is_high_and_concentrated_is_low():
+    uniform = field_entropy([10, 10, 10, 10])
+    concentrated = field_entropy([97, 1, 1, 1])
+    assert uniform > concentrated
+    assert field_entropy([]) == 0.0
+    assert field_entropy([0, 0]) == 0.0
+
+def test_entropy_collapse_ratio_and_nulls():
+    assert entropy_collapse(0.5, 2.0) == 0.75
+    assert entropy_collapse(0.5, None) is None
+    assert entropy_collapse(0.5, 0.0) is None
+    assert entropy_collapse(2.5, 2.0) == 0.0
