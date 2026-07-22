@@ -17,6 +17,11 @@
 - Frontend tests: `cd frontend-v2 && npx vitest run src/lib/coverageGaps.test.ts`
 - Frontend build: `cd frontend-v2 && npm run build`
 
+**Two environment gotchas (measured 2026-07-22 — do not re-discover these):**
+1. **Never `import app.routers.<name>` standalone.** It raises `AttributeError: partially initialized module 'app.routers.briefing' has no attribute 'router' (most likely due to a circular import)` — importing a router pulls `main_v2`, which re-imports the router. This is pre-existing and unrelated to this work. To check imports, use the entrypoint: `.venv/bin/python -c "import app.main_v2"`.
+2. **Never run pytest across the whole `tests/` directory** (e.g. `pytest tests/ -k briefing`). Broad collection imports every test module and hangs. Always name the specific test files. Targeted runs are fast (18 tests in 0.74s).
+3. `pytest.ini` wins over `pyproject.toml` in this repo, so asyncio mode is **STRICT** — every async test needs an explicit `@pytest.mark.asyncio` decorator.
+
 ---
 
 ### Task 1: Canonical coverage-gap service
@@ -524,16 +529,16 @@ with:
 
 - [ ] **Step 5: Verify parity against production**
 
-Run the API locally or check the deployed contract is unchanged in shape:
+Check the module still imports cleanly — via the entrypoint, never the router directly (see gotcha 1 in the header):
 
 ```bash
-cd backend && .venv/bin/python -c "import app.routers.briefing"
+cd backend && .venv/bin/python -c "import app.main_v2; print('ok')"
 ```
-Expected: no import error (circular-import guard — `coverage_gaps` imports `themes` lazily inside the function, so importing it at briefing module scope is safe).
+Expected: prints `ok` (a CORS warning line above it is normal)
 
-Run the existing briefing tests:
+Run the affected test files by name (never the whole `tests/` dir — see gotcha 2):
 ```bash
-cd backend && .venv/bin/python -m pytest tests/ -k briefing -v
+cd backend && .venv/bin/python -m pytest tests/test_coverage_gaps.py tests/test_daily_publication_artifact.py -q
 ```
 Expected: PASS (no regressions)
 
@@ -589,11 +594,11 @@ with:
 
 - [ ] **Step 3: Verify it imports and the country-edition tests pass**
 
-Run:
+Run (entrypoint import + named test files — see the header gotchas):
 ```bash
-cd backend && .venv/bin/python -c "import app.services.country_edition" && .venv/bin/python -m pytest tests/ -k country_edition -v
+cd backend && .venv/bin/python -c "import app.main_v2; print('ok')" && .venv/bin/python -m pytest tests/test_country_edition.py tests/test_coverage_gaps.py -q
 ```
-Expected: no import error; country-edition tests PASS
+Expected: prints `ok`; all tests PASS
 
 If `os` becomes unused in `country_edition.py` after this change, leave the import alone only if other code uses it — otherwise remove the now-dead `import os` line (check with `rg -n "os\." backend/app/services/country_edition.py`).
 
@@ -1182,7 +1187,8 @@ Expected: PASS — all suites green, including the new `coverageGaps.test.ts`
 
 - [ ] **Step 2: Run the backend tests**
 
-Run: `cd backend && .venv/bin/python -m pytest tests/test_coverage_gaps.py tests/ -k "briefing or country_edition or coverage" -v`
+Run (named files only — broad `tests/` collection hangs, see header gotcha 2):
+`cd backend && .venv/bin/python -m pytest tests/test_coverage_gaps.py tests/test_country_edition.py tests/test_gap_receipts.py tests/test_daily_publication_artifact.py -q`
 Expected: PASS
 
 - [ ] **Step 3: Smoke the endpoint against a running backend**
