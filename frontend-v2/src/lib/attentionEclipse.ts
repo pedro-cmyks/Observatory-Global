@@ -15,15 +15,29 @@ export interface EclipseItem {
   consequence: number
   language_breadth: number
   country_breadth: number
+  countries?: string[]
   velocity: number
   lane: string
   reason_codes: string[]
 }
 
+export type EclipseTier = 'none' | 'partial' | 'total'
+
+export interface EclipseAxes {
+  country_dominance: number | null
+  entropy_collapse: number | null
+  top1_share: number
+  hhi: number
+}
+
 export interface EclipseData {
   eclipse: boolean
-  dominant: { topic_id?: string; label?: string; attention?: number; share?: number; lane?: string }
-  window: { top1_share?: number; hhi?: number; [k: string]: unknown }
+  tier?: EclipseTier
+  intensity?: number
+  axes?: EclipseAxes
+  dominant: { topic_id?: string; label?: string; attention?: number; share?: number;
+              lane?: string; identity_key?: string; countries?: string[] }
+  window: { top1_share?: number; hhi?: number; tier?: EclipseTier; [k: string]: unknown }
   selected: EclipseItem[]
 }
 
@@ -99,5 +113,41 @@ export function formatEclipseItem(item: EclipseItem): FormattedEclipseItem {
     breadthLabel: `${langs} ${langs === 1 ? 'language' : 'languages'} · ${countries} ${countries === 1 ? 'country' : 'countries'}`,
     sharePct,
     rising: (item.velocity ?? 0) > 0.05,
+  }
+}
+
+export function eclipseTier(d: EclipseData | null | undefined): EclipseTier {
+  if (!d) return 'none'
+  if (d.tier) return d.tier
+  return d.eclipse ? 'total' : 'none'
+}
+
+export function episodeKey(d: EclipseData | null | undefined): string | null {
+  if (!d || eclipseTier(d) !== 'total') return null
+  return d.dominant?.identity_key ?? d.dominant?.topic_id ?? null
+}
+
+export type EclipseMode = 'normal' | 'takeover' | 'ambient' | 'muted'
+export interface EclipseModeState { mode: EclipseMode; seenEpisode: string | null }
+
+/** Fold a fresh poll into the mode. Total+new episode arms the takeover exactly
+ * once; a non-total tier auto-exits to normal; a re-seen episode never re-takes-over. */
+export function nextEclipseMode(state: EclipseModeState, tier: EclipseTier,
+                                episode: string | null): EclipseModeState {
+  if (tier !== 'total') return { mode: 'normal', seenEpisode: null }
+  if (episode && state.seenEpisode === episode) {
+    if (state.mode === 'muted' || state.mode === 'ambient') return state
+    return { mode: 'ambient', seenEpisode: episode }
+  }
+  return { mode: 'takeover', seenEpisode: episode }
+}
+
+export type EclipseAction = 'enter' | 'mute' | 'restore' | 'dismiss'
+export function applyEclipseAction(state: EclipseModeState, action: EclipseAction): EclipseModeState {
+  switch (action) {
+    case 'mute': return { ...state, mode: 'muted' }
+    case 'enter':
+    case 'restore':
+    case 'dismiss': return { ...state, mode: 'ambient' }
   }
 }

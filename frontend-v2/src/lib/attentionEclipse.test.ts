@@ -4,8 +4,13 @@ import {
   eclipseDominantLine,
   formatEclipseItem,
   buildEclipsePin,
+  eclipseTier,
+  episodeKey,
+  nextEclipseMode,
+  applyEclipseAction,
   type EclipseData,
   type EclipseItem,
+  type EclipseModeState,
 } from './attentionEclipse'
 
 const eclipseOn: EclipseData = {
@@ -80,5 +85,38 @@ describe('buildEclipsePin', () => {
   it('encodes topic ids safely into the deep link', () => {
     const pin = buildEclipsePin({ ...item, topic_id: 'a b&c' }, 't')
     expect(pin.open?.params.urlParams).toBe('?theme=a%20b%26c&entry=eclipse')
+  })
+})
+
+const total = (idk = 'k1'): EclipseData => ({
+  eclipse: true, tier: 'total', dominant: { topic_id: 't', identity_key: idk },
+  window: {}, selected: [],
+})
+
+describe('eclipse pure helpers', () => {
+  it('eclipseTier falls back to boolean when tier absent', () => {
+    expect(eclipseTier({ eclipse: true, dominant: {}, window: {}, selected: [] })).toBe('total')
+    expect(eclipseTier({ eclipse: false, dominant: {}, window: {}, selected: [] })).toBe('none')
+    expect(eclipseTier(null)).toBe('none')
+  })
+  it('episodeKey only for total, keyed on identity_key', () => {
+    expect(episodeKey(total('abc'))).toBe('abc')
+    expect(episodeKey({ eclipse: false, tier: 'partial', dominant: {}, window: {}, selected: [] })).toBeNull()
+  })
+  it('nextEclipseMode arms takeover once, then ambient, auto-exits', () => {
+    const s0: EclipseModeState = { mode: 'normal', seenEpisode: null }
+    const s1 = nextEclipseMode(s0, 'total', 'k1')
+    expect(s1.mode).toBe('takeover')
+    const s2 = nextEclipseMode({ mode: 'ambient', seenEpisode: 'k1' }, 'total', 'k1')
+    expect(s2.mode).toBe('ambient')
+    const s3 = nextEclipseMode({ mode: 'ambient', seenEpisode: 'k1' }, 'none', null)
+    expect(s3).toEqual({ mode: 'normal', seenEpisode: null })
+    const s4 = nextEclipseMode({ mode: 'muted', seenEpisode: 'k1' }, 'total', 'k2')
+    expect(s4.mode).toBe('takeover')
+  })
+  it('applyEclipseAction transitions', () => {
+    expect(applyEclipseAction({ mode: 'takeover', seenEpisode: 'k' }, 'enter').mode).toBe('ambient')
+    expect(applyEclipseAction({ mode: 'ambient', seenEpisode: 'k' }, 'mute').mode).toBe('muted')
+    expect(applyEclipseAction({ mode: 'muted', seenEpisode: 'k' }, 'restore').mode).toBe('ambient')
   })
 })
