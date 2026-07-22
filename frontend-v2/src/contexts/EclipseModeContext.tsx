@@ -52,6 +52,12 @@ export const EclipseProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => clearInterval(id)
   }, [poll])
 
+  useEffect(() => {
+    const h = () => poll()
+    window.addEventListener('atlas:eclipse-refresh', h)
+    return () => window.removeEventListener('atlas:eclipse-refresh', h)
+  }, [poll])
+
   const act = useCallback((a: EclipseAction) => setState(prev => applyEclipseAction(prev, a)), [])
 
   return (
