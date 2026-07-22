@@ -106,6 +106,41 @@ def country_dominance(n_led_by_dominant: int, n_qualifying_countries: int) -> fl
     return round(n_led_by_dominant / n_qualifying_countries, 6)
 
 
+def classify_tier(*, guards_pass: bool, guard_reasons: list[str],
+                  country_dominance: float | None, entropy_collapse: float | None,
+                  top1_share: float, hhi: float, dom_langs: int, dom_countries: int,
+                  dom_tau: float = DOM_TAU, coll_tau: float = COLL_TAU) -> dict:
+    """Two-axis tier: total needs BOTH axes high (spread AND field-collapse), which
+    is what filters a black-hole (high volume/entropy-collapse, LOW spread) from a
+    genuine world eclipse. A missing (cold-start) axis is treated as not-lit."""
+    dom_high = country_dominance is not None and country_dominance >= dom_tau
+    coll_high = entropy_collapse is not None and entropy_collapse >= coll_tau
+    if not guards_pass:
+        tier = "none"
+    elif dom_high and coll_high:
+        tier = "total"
+    elif dom_high or coll_high:
+        tier = "partial"
+    else:
+        tier = "none"
+    breadth = global_breadth_signal(dom_langs, dom_countries)
+    cd = country_dominance or 0.0
+    ec = entropy_collapse or 0.0
+    intensity = (0.30 * min(1.0, top1_share / 0.30) + 0.15 * min(1.0, hhi / 0.30)
+                 + 0.20 * breadth + 0.20 * cd + 0.15 * ec)
+    return {
+        "tier": tier,
+        "intensity": round(max(0.0, min(1.0, intensity)), 6),
+        "axes": {
+            "country_dominance": country_dominance,
+            "entropy_collapse": entropy_collapse,
+            "top1_share": round(top1_share, 6),
+            "hhi": round(hhi, 6),
+        },
+        "guard_reasons": guard_reasons,
+    }
+
+
 # ── (a) eclipse detector — window-level coverage concentration ───────────────
 
 def attention_concentration(volumes: list[int], *, eclipse_top1: float = 0.20) -> dict:

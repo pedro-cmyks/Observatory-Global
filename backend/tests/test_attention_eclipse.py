@@ -264,3 +264,30 @@ def test_eclipse_guards_reject_thin_field_and_blackhole():
     assert ok2 is False and any("cohesion" in r for r in r2)
     ok3, r3 = eclipse_guards(**_dom(dom_countries=3))
     assert ok3 is False and "dominant_narrow_breadth" in r3
+
+
+from app.services.attention_eclipse import classify_tier
+
+def _axes(**kw):
+    base = dict(guards_pass=True, guard_reasons=[], country_dominance=0.5,
+               entropy_collapse=0.5, top1_share=0.3, hhi=0.2,
+               dom_langs=10, dom_countries=40)
+    base.update(kw)
+    return base
+
+def test_classify_tier_total_needs_both_axes():
+    assert classify_tier(**_axes())["tier"] == "total"
+
+def test_classify_tier_partial_on_one_axis():
+    assert classify_tier(**_axes(entropy_collapse=0.0))["tier"] == "partial"
+    assert classify_tier(**_axes(country_dominance=0.0))["tier"] == "partial"
+
+def test_classify_tier_none_when_guards_fail_or_neither_axis():
+    assert classify_tier(**_axes(guards_pass=False))["tier"] == "none"
+    assert classify_tier(**_axes(country_dominance=0.0, entropy_collapse=0.0))["tier"] == "none"
+
+def test_classify_tier_null_axes_do_not_crash():
+    out = classify_tier(**_axes(entropy_collapse=None, country_dominance=0.5))
+    assert out["tier"] == "partial"
+    assert 0.0 <= out["intensity"] <= 1.0
+    assert out["axes"]["entropy_collapse"] is None
