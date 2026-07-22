@@ -661,10 +661,13 @@ describe('coverageGapsUrl', () => {
 describe('parseCoverageGaps', () => {
   it('accepts the v0 contract', () => {
     const parsed = parseCoverageGaps({
-      contract: 'coverage-gaps-v0', scope: 'global', country: null, hours: 24, gaps: [GAP],
+      contract: 'coverage-gaps-v0', scope: 'global', country: null, hours: 24,
+      status: 'ok', floor: 20, gaps: [GAP],
     })
     expect(parsed?.gaps).toHaveLength(1)
     expect(parsed?.scope).toBe('global')
+    expect(parsed?.status).toBe('ok')
+    expect(parsed?.floor).toBe(20)
   })
 
   it('rejects a foreign contract', () => {
@@ -679,6 +682,33 @@ describe('parseCoverageGaps', () => {
   it('defaults a missing gaps array to empty', () => {
     const parsed = parseCoverageGaps({ contract: 'coverage-gaps-v0', scope: 'global' })
     expect(parsed?.gaps).toEqual([])
+  })
+
+  it('carries an explicit empty status through', () => {
+    const parsed = parseCoverageGaps({
+      contract: 'coverage-gaps-v0', scope: 'country', country: 'CO',
+      status: 'empty', floor: 8, gaps: [],
+    })
+    expect(parsed?.status).toBe('empty')
+    expect(parsed?.floor).toBe(8)
+  })
+
+  it('carries a degraded status through', () => {
+    const parsed = parseCoverageGaps({
+      contract: 'coverage-gaps-v0', scope: 'global', status: 'degraded', gaps: [],
+    })
+    expect(parsed?.status).toBe('degraded')
+    expect(parsed?.floor).toBeNull()
+  })
+
+  it('treats a missing status with no gaps as degraded, never as honest-empty', () => {
+    const parsed = parseCoverageGaps({ contract: 'coverage-gaps-v0', scope: 'global', gaps: [] })
+    expect(parsed?.status).toBe('degraded')
+  })
+
+  it('treats a missing status with gaps as ok', () => {
+    const parsed = parseCoverageGaps({ contract: 'coverage-gaps-v0', scope: 'global', gaps: [GAP] })
+    expect(parsed?.status).toBe('ok')
   })
 })
 
@@ -730,6 +760,13 @@ export interface CoverageGapsData {
   scope: 'global' | 'country'
   country: string | null
   hours: number
+  /** Machine-readable state. NEVER infer this from `notes` prose.
+   *  ok = gaps returned · empty = query ran clean, genuinely none ·
+   *  degraded = query did not run or failed. */
+  status: 'ok' | 'empty' | 'degraded'
+  /** Raw-signal floor the scope used (20 global / 8 country by default), so the
+   *  UI can state the threshold instead of implying one. */
+  floor: number | null
   gaps: CoverageGap[]
   notes: string[]
 }
@@ -749,12 +786,21 @@ export function parseCoverageGaps(payload: unknown): CoverageGapsData | null {
   if (!payload || typeof payload !== 'object') return null
   const p = payload as Record<string, unknown>
   if (p.contract !== COVERAGE_GAPS_CONTRACT) return null
+  const gaps = Array.isArray(p.gaps) ? (p.gaps as CoverageGap[]) : []
+  // Unknown/missing status degrades CONSERVATIVELY: without the server saying
+  // "empty" we must not render an honest-empty claim we cannot back.
+  const status: CoverageGapsData['status'] =
+    p.status === 'ok' || p.status === 'empty' || p.status === 'degraded'
+      ? p.status
+      : (gaps.length > 0 ? 'ok' : 'degraded')
   return {
     contract: COVERAGE_GAPS_CONTRACT,
     scope: p.scope === 'country' ? 'country' : 'global',
     country: typeof p.country === 'string' ? p.country : null,
     hours: typeof p.hours === 'number' ? p.hours : 24,
-    gaps: Array.isArray(p.gaps) ? (p.gaps as CoverageGap[]) : [],
+    status,
+    floor: typeof p.floor === 'number' ? p.floor : null,
+    gaps,
     notes: Array.isArray(p.notes) ? (p.notes as string[]) : [],
   }
 }
@@ -944,7 +990,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
 import { resolveCountryName } from '../lib/countryNames'
 import {
-  type CoverageGap,
+  type CoverageGapsData,
   coverageGapsUrl,
   maxGapRaw,
   parseCoverageGaps,
@@ -964,7 +1010,10 @@ export function UnderRadarLens({ onOpenTopic }: Props) {
     ? relation.dominantCountry : null
   const scopeCountry = activeCountry ?? relationCountry
 
-  const [gaps, setGaps] = useState<CoverageGap[]>([])
+  // Hold the whole parsed payload — `status` is the ONLY thing allowed to decide
+  // between "nothing under the radar" and "we could not measure". Never infer
+  // that from gaps.length, or a failed request renders a false honest-empty.
+  const [data, setData] = useState<CoverageGapsData | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -975,15 +1024,17 @@ export function UnderRadarLens({ onOpenTopic }: Props) {
     fetch(coverageGapsUrl(scopeCountry, 24), { signal: ctrl.signal })
       .then(r => (r.ok ? r.json() : null))
       .then(payload => {
-        const parsed = parseCoverageGaps(payload)
-        if (!ignore) setGaps(parsed?.gaps ?? [])
+        if (!ignore) setData(parseCoverageGaps(payload))
       })
-      .catch(() => { if (!ignore) setGaps([]) })
+      .catch(() => { if (!ignore) setData(null) })
       .finally(() => { clearTimeout(timer); if (!ignore) setLoaded(true) })
     return () => { ignore = true; clearTimeout(timer); ctrl.abort() }
   }, [scopeCountry])
 
   const scopeName = scopeCountry ? resolveCountryName(scopeCountry) : null
+  const gaps = data?.gaps ?? []
+  // A null parse (network failure / foreign contract) is degraded, not empty.
+  const status = data?.status ?? 'degraded'
   const denominator = maxGapRaw(gaps)
 
   return (
@@ -1017,9 +1068,12 @@ export function UnderRadarLens({ onOpenTopic }: Props) {
           <p>
             {!loaded
               ? 'Checking what the pipeline sees but has not verified…'
-              : scopeName
-                ? `Nothing under the radar in ${scopeName} right now — every category with signal cleared the gate.`
-                : 'Nothing under the radar — every category with signal cleared the gate this window.'}
+              : status === 'degraded'
+                // Say we could not measure. Do NOT claim the field is clear.
+                ? 'Coverage gaps could not be measured right now — this is a gap in the reading, not a clear field.'
+                : scopeName
+                  ? `Nothing under the radar in ${scopeName}: no category reached the ${data?.floor ?? 8}-signal floor with zero verified coverage.`
+                  : `Nothing under the radar: no category reached the ${data?.floor ?? 20}-signal floor with zero verified coverage this window.`}
           </p>
         </div>
       )}
