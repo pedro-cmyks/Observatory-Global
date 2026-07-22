@@ -400,13 +400,20 @@ async def test_endpoint_degrades_when_query_exceeds_wall_clock_budget(monkeypatc
     for the most severe earlier finding. No committed test previously proved
     this line exists; removing it would leave every other test green. Uses
     the REAL timeout machinery with a tiny budget (monkeypatch the module's
-    `asyncio` so `asyncio.timeout(10)` resolves to a real 0.05s timeout
-    instead of the hardcoded 10s) against a fetch that sleeps well past it.
+    `asyncio` so the call resolves to a real 0.05s timeout instead of the
+    hardcoded 10s) against a fetch that sleeps well past it.
 
-    Verified load-bearing by hand: with `async with asyncio.timeout(10):`
-    temporarily removed from attention_threads.py (de-indenting the block
-    beneath it), this test FAILS (status == "ok", gaps populated, no bound
-    on the slow fetch); restoring the line makes it pass again."""
+    Pins the BUDGET VALUE too, not merely the existence of a bound: the stub
+    captures the argument and asserts it is 10. An earlier version discarded
+    it (`lambda _seconds: ...`), so raising the route to `asyncio.timeout(600)`
+    left this test green while effectively removing the request-level bound —
+    a stalled connection would pin one of only ~10 pool slots for 10 minutes.
+
+    Verified load-bearing by hand, twice: (a) with `async with
+    asyncio.timeout(10):` removed from attention_threads.py (de-indenting the
+    block beneath it) this FAILS (status == "ok", gaps populated, no bound on
+    the slow fetch); (b) with the budget changed to `asyncio.timeout(600)` it
+    FAILS on the budget assertion. Restoring the line makes it pass again."""
     from app.routers import attention_threads as at
 
     async def slow_fetch(conn, *, hours, country=None, **kw):
@@ -415,16 +422,23 @@ async def test_endpoint_degrades_when_query_exceeds_wall_clock_budget(monkeypatc
                  "raw_signals": 189, "verified": 0, "scored": 189,
                  "status": "none_verified", "extended_receipts": []}]
 
+    budgets: list[float] = []
+
+    def capturing_timeout(seconds):
+        """Record the budget the route asked for, then run a tiny real one so
+        the test stays fast. The recorded value is asserted below."""
+        budgets.append(seconds)
+        return real_asyncio.timeout(0.05)
+
     monkeypatch.setattr(at, "fetch_coverage_gaps", slow_fetch)
     monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)
-    monkeypatch.setattr(
-        at, "asyncio",
-        SimpleNamespace(timeout=lambda _seconds: real_asyncio.timeout(0.05)),
-    )
+    monkeypatch.setattr(at, "asyncio", SimpleNamespace(timeout=capturing_timeout))
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["status"] == "degraded"
     assert out["gaps"] == []
+    # The budget itself is the contract, not just "some bound exists".
+    assert budgets == [10], f"request wall-clock budget must be 10s, got {budgets}"
 
 
 @pytest.mark.asyncio

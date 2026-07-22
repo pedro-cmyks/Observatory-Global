@@ -131,7 +131,7 @@
 }
 
 .brief-gauge .raw { color: var(--r-ink, var(--color-text-primary)); }
-.brief-gauge .ver { color: var(--r-critical, var(--color-accent-secondary)); }
+.brief-gauge .ver { color: var(--r-critical, var(--color-severity-critical)); }
 
 .brief-gauge .lbl {
   display: block;
@@ -164,7 +164,7 @@
 .brief-gap-status {
   font-family: var(--r-mono, var(--font-mono));
   font-size: 0.66rem;
-  color: var(--r-critical, var(--color-accent-secondary));
+  color: var(--r-critical, var(--color-severity-critical));
   letter-spacing: 0.04em;
   display: inline-flex;
   align-items: center;
