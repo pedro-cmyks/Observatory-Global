@@ -389,6 +389,14 @@ async def get_coverage_gaps(
             logger.exception("coverage-gaps query failed scope=%s cc=%s", scope, cc)
             notes.append("coverage gaps temporarily unavailable")
             degraded = True
+            # Reset explicitly: a real reachable failure mode is the query
+            # succeeding (gaps assigned) and THEN the connection release
+            # raising inside __aexit__ (asyncpg terminates + re-raises on a
+            # failed reset — a genuine Supabase-pooler-drop mode). Without
+            # this, `gaps` would keep its already-assigned value while
+            # `status` reports "degraded" — contradicting the docstring's
+            # promise that a degraded response always carries `gaps: []`.
+            gaps = []
 
     if degraded:
         status = "degraded"

@@ -1,6 +1,8 @@
 """Coverage-gap service — the canonical 'what is a coverage gap' definition."""
+import asyncio as real_asyncio
 import sys
 import types
+from types import SimpleNamespace
 
 import pytest
 
@@ -60,6 +62,27 @@ class _FakePool:
         return _FakeAcquire()
 
 
+class _FakeAcquireRaisesOnExit:
+    """Simulates the real reachable failure mode behind the 1a fix: the query
+    inside the `async with` block succeeds, but releasing the connection
+    raises inside `__aexit__` (asyncpg terminates + re-raises on a failed
+    reset — a genuine Supabase-pooler-drop mode)."""
+
+    async def __aenter__(self):
+        class _C:
+            async def execute(self, *a, **k):
+                return None
+        return _C()
+
+    async def __aexit__(self, *a):
+        raise RuntimeError("connection reset failed")
+
+
+class _FakePoolRaisesOnRelease:
+    def acquire(self):
+        return _FakeAcquireRaisesOnExit()
+
+
 def _themes_stub(per_topic_ext, global_ext=1.0):
     """A fake `app.routers.themes` module exposing only what
     `fetch_extended_receipts_by_slug`'s lazy import needs — lets tests
@@ -68,6 +91,14 @@ def _themes_stub(per_topic_ext, global_ext=1.0):
     stub = types.ModuleType("app.routers.themes")
     stub._extended_gate_thresholds = lambda: (per_topic_ext, global_ext)
     return stub
+
+
+def test_global_gap_floor_is_20():
+    # The whole briefing-refactor equivalence hinges on this constant matching
+    # the value the inline SQL used to hardcode. `args == (24, GLOBAL_GAP_FLOOR)`
+    # assertions elsewhere are tautological on their own — they'd stay green
+    # even if this constant silently changed the served payload. Pin the value.
+    assert GLOBAL_GAP_FLOOR == 20
 
 
 def test_gap_status_gate_pending_when_nothing_scored():
@@ -336,6 +367,64 @@ async def test_endpoint_degrades_on_query_failure(monkeypatch):
     # branch's note also contains that word, so a mutant that routes this
     # scenario through the wrong branch must still be caught.
     assert "coverage gaps temporarily unavailable" in out["notes"]
+
+
+@pytest.mark.asyncio
+async def test_endpoint_gaps_reset_when_release_raises_after_success(monkeypatch):
+    """Pins the docstring's promise: a degraded response ALWAYS carries
+    `gaps: []`. The real reachable failure mode is the query succeeding
+    (fetch_coverage_gaps returns real rows, assigning `gaps`) and THEN the
+    connection release raising inside __aexit__ (asyncpg terminates +
+    re-raises on a failed reset — a genuine Supabase-pooler-drop mode).
+    Without the except-block reset, `gaps` would keep its populated value
+    while `status` reports "degraded" — real gaps rendered under error
+    chrome, which a frontend trusting `status` absolutely would miss."""
+    from app.routers import attention_threads as at
+
+    async def fake_fetch(conn, *, hours, country=None, **kw):
+        return [{"slug": "cyber", "label": "Cyberattack on infrastructure",
+                 "raw_signals": 189, "verified": 0, "scored": 189,
+                 "status": "none_verified", "extended_receipts": []}]
+
+    monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
+    monkeypatch.setattr(at.db, "pool", _FakePoolRaisesOnRelease(), raising=False)
+
+    out = await at.get_coverage_gaps(country=None, hours=24)
+    assert out["status"] == "degraded"
+    assert out["gaps"] == []
+
+
+@pytest.mark.asyncio
+async def test_endpoint_degrades_when_query_exceeds_wall_clock_budget(monkeypatch):
+    """Pins the `async with asyncio.timeout(10):` wall-clock bound — the fix
+    for the most severe earlier finding. No committed test previously proved
+    this line exists; removing it would leave every other test green. Uses
+    the REAL timeout machinery with a tiny budget (monkeypatch the module's
+    `asyncio` so `asyncio.timeout(10)` resolves to a real 0.05s timeout
+    instead of the hardcoded 10s) against a fetch that sleeps well past it.
+
+    Verified load-bearing by hand: with `async with asyncio.timeout(10):`
+    temporarily removed from attention_threads.py (de-indenting the block
+    beneath it), this test FAILS (status == "ok", gaps populated, no bound
+    on the slow fetch); restoring the line makes it pass again."""
+    from app.routers import attention_threads as at
+
+    async def slow_fetch(conn, *, hours, country=None, **kw):
+        await real_asyncio.sleep(1.0)  # far past the 0.05s budget below
+        return [{"slug": "cyber", "label": "Cyberattack on infrastructure",
+                 "raw_signals": 189, "verified": 0, "scored": 189,
+                 "status": "none_verified", "extended_receipts": []}]
+
+    monkeypatch.setattr(at, "fetch_coverage_gaps", slow_fetch)
+    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)
+    monkeypatch.setattr(
+        at, "asyncio",
+        SimpleNamespace(timeout=lambda _seconds: real_asyncio.timeout(0.05)),
+    )
+
+    out = await at.get_coverage_gaps(country=None, hours=24)
+    assert out["status"] == "degraded"
+    assert out["gaps"] == []
 
 
 @pytest.mark.asyncio

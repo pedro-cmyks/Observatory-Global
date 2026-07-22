@@ -37,7 +37,7 @@ from app.services.thread_intelligence import (  # noqa: E402
     clean_thread_label,
     fetch_threads,
 )
-from app.services.coverage_gaps import (
+from app.services.coverage_gaps import (  # noqa: E402
     GLOBAL_GAP_FLOOR,
     GLOBAL_GAPS_SQL,
     fetch_extended_receipts_by_slug,
