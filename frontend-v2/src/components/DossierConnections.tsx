@@ -10,9 +10,18 @@ import {
   edgeStrength, clusterStrength, sharedBasisNames, coverageLensNote, buildFrozenCrossRefs,
   umbrellaChildDivergence, UMBRELLA_DIVERGENCE_MAX,
   type ConnectionsData, type ConnectionEdge, type ClusterResult,
-  type ConnectionNeighbor, type LabelItem, type TextCrossRef,
+  type ConnectionNeighbor, type LabelItem, type TextCrossRef, type PlacedNode,
 } from '../lib/dossierConnections'
 import { categoryColor, universeRadius } from '../lib/universeLayout'
+// Constellation-3D spec (2026-07-22): the pin cloud is placed by MEASURED
+// relation — classical metric MDS over d = 1 − combined edge weight — and
+// rotated with the universe's trackball. Position now says HOW related overall;
+// the per-edge chips/receipts still carry WHY, untouched.
+import { useTrackball } from '../hooks/useTrackball'
+import {
+  centerOfMass, depthAlpha, depthScale, perspectiveSpread, projectPos3,
+  screenXY, stressNote, stressPct, stressTier, type Pos3,
+} from '../lib/mds3d'
 import { createEqualEarth } from '../lib/equalEarthProjection'
 // Item-1 fix round: assigned ISO codes (CH/CG/CF/KN…) are NEVER remapped —
 // the old CH→CN entry painted China for a Switzerland row. Legacy-only table.
@@ -378,6 +387,11 @@ function clusterColor(i: number): string {
 // Approx monospace glyph widths for the two on-canvas label sizes (fontPx*0.6).
 const PIN_CHAR_W = 5.4      // 9px labels
 const NB_CHAR_W = 4.2       // 7px labels
+// The ◆ capture glyph (.dcx-nb-pin, font-size 8px) and a forgiving tap radius
+// around it — on the 3D path the glyph's own onClick is eaten by the trackball's
+// pointer capture, so its box has to be hit-tested by hand.
+const PIN_GLYPH_PX = 8
+const PIN_GLYPH_HIT = 7
 const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + '…' : s)
 
 interface PlacedNeighbor {
@@ -402,10 +416,103 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
 }) {
   // hover = a pin id OR `nb:<base_id>` for a neighbor star.
   const [hover, setHover] = useState<string | null>(null)
-  const placed = useMemo(
-    () => layoutInvestigativeUniverse(data.nodes, data.edges, UNIVERSE_W, UNIVERSE_H),
-    [data],
+
+  // ── the rotatable stage ──────────────────────────────────────────────────
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  // Taps are hit-tested below (pointer capture eats the SVG onClick), so route
+  // them through a ref: the hook is constructed before the projected nodes exist.
+  const tapRef = useRef<(lx: number, ly: number) => void>(() => {})
+  const trackball = useTrackball({
+    containerRef,
+    minZoom: 0.6, maxZoom: 8, wheelStep: 1.15,
+    // No ambient spin: an investigation cloud must hold still to be read, and a
+    // second always-animating SVG is the compositor load the 2026-07-03
+    // kernel-panic post-mortem told us to avoid.
+    ambient: false,
+    paused: hover !== null,
+    onTap: (lx, ly) => tapRef.current(lx, ly),
+  })
+
+  // 3D only when the backend actually solved the layout AND every pin carries a
+  // coordinate. Anything less keeps the 2D field and says so — a measured
+  // position for some pins mixed with an invented one for the rest would be
+  // exactly the dishonesty this layout exists to remove.
+  const mds = data.mds ?? null
+  const use3d = !!mds && data.nodes.length >= 3 && data.nodes.every(n => n.pos3)
+
+  // The svg is viewBox-scaled (0 0 UNIVERSE_W UNIVERSE_H) into whatever CSS
+  // width the panel gives it, so CLIENT pixels ≠ VIEWBOX units. Measure the
+  // rendered box and carry one factor: the trackball's pan arrives in client
+  // pixels and must be converted before it reaches a coordinate the svg reads.
+  const [svgBox, setSvgBox] = useState({ w: UNIVERSE_W, h: UNIVERSE_H })
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const attachSvg = useMemo(() => (el: SVGSVGElement | null) => {
+    svgRef.current = el
+    resizeObserverRef.current?.disconnect()
+    resizeObserverRef.current = null
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const apply = (w: number, h: number) => setSvgBox(prev => {
+      const next = { w: Math.max(1, w), h: Math.max(1, h) }
+      return prev.w === next.w && prev.h === next.h ? prev : next
+    })
+    const rect = el.getBoundingClientRect()
+    apply(rect.width, rect.height)
+    const observer = new ResizeObserver(entries => {
+      const box = entries[0]?.contentRect
+      if (box) apply(box.width, box.height)
+    })
+    observer.observe(el)
+    resizeObserverRef.current = observer
+  }, [])
+  useEffect(() => () => resizeObserverRef.current?.disconnect(), [])
+
+  /** How the viewBox sits inside the rendered svg under the default
+   *  preserveAspectRatio="xMidYMid meet": `perPx` viewBox units per client
+   *  pixel, and the letterbox offset of the viewBox origin (non-zero only in
+   *  the compact variant, whose max-height:300px letterboxes it horizontally).
+   *  The svg is flush with the stage div (block, no padding), so this offset is
+   *  also the offset from the div the trackball measures its gestures against. */
+  const vbMap = useMemo(() => {
+    const raw = Math.min(svgBox.w / UNIVERSE_W, svgBox.h / UNIVERSE_H)
+    const s = Number.isFinite(raw) && raw > 0 ? raw : 1
+    return {
+      perPx: 1 / s,
+      offX: (svgBox.w - UNIVERSE_W * s) / 2,
+      offY: (svgBox.h - UNIVERSE_H * s) / 2,
+    }
+  }, [svgBox])
+
+  const cloud3 = useMemo(
+    () => centerOfMass(data.nodes.map(n => (n.pos3 ?? [0.5, 0.5, 0.5]) as Pos3)),
+    [data.nodes],
   )
+
+  const placed = useMemo<Array<PlacedNode & { depth?: number; scale?: number }>>(() => {
+    if (!use3d) return layoutInvestigativeUniverse(data.nodes, data.edges, UNIVERSE_W, UNIVERSE_H)
+    const spread = perspectiveSpread(trackball.view.k)
+    // Box = the VIEWBOX; the trackball's pan/zoom arrive in CLIENT pixels and are
+    // converted here so every coordinate handed to the svg lives in the svg's own
+    // space — a drag then moves the cloud exactly as far as the finger travelled
+    // at any CSS scale. The `off*(k-1)` term re-anchors the zoom, which the hook
+    // measures from the stage-div edge, onto the viewBox origin (they differ only
+    // when the compact variant letterboxes).
+    const { k } = trackball.view
+    const box = {
+      w: UNIVERSE_W, h: UNIVERSE_H, margin: 40,
+      view: {
+        k,
+        tx: (trackball.view.tx + vbMap.offX * (k - 1)) * vbMap.perPx,
+        ty: (trackball.view.ty + vbMap.offY * (k - 1)) * vbMap.perPx,
+      },
+    }
+    return data.nodes.map(n => {
+      const p = projectPos3(n.pos3 as Pos3, trackball.rot, cloud3, spread)
+      const { sx, sy } = screenXY(p, box)
+      return { ...n, px: sx, py: sy, depth: p.depth, scale: p.scale }
+    })
+  }, [use3d, data, trackball.rot, trackball.view, cloud3, vbMap])
+
   const byId = useMemo(() => new Map(placed.map(n => [n.id, n])), [placed])
   const neighborsOf = useMemo(() => {
     const m = new Map<string, Set<string>>()
@@ -491,6 +598,62 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
 
   const shortPin = (id: string) => truncate(byId.get(id)?.label ?? id, 18)
 
+  // Painter order for the pins ONLY: far bodies first so the nearest sits on
+  // top. `placed` itself is untouched — the label lanes are independent of paint
+  // order, and the 2D path keeps its original array identity.
+  const pinsPainted = useMemo(
+    () => (use3d ? [...placed].sort((a, b) => (b.depth ?? 0) - (a.depth ?? 0)) : placed),
+    [use3d, placed],
+  )
+
+  // A press that never dragged is a CLICK. On the 3D path the trackball captures
+  // the pointer (and preventDefaults the pointerdown), so the SVG onClick never
+  // fires — selection and ◆ capture are hit-tested here instead, for mouse AND
+  // touch. The 2D path never spreads the handlers, so its own onClick still runs.
+  tapRef.current = (lx, ly) => {
+    const cont = containerRef.current?.getBoundingClientRect()
+    const svgRect = svgRef.current?.getBoundingClientRect()
+    if (!cont || !svgRect || svgRect.width <= 0 || svgRect.height <= 0) return
+    // client px → viewBox units, honouring preserveAspectRatio="xMidYMid meet"
+    // (the compact variant letterboxes inside max-height:300px).
+    const s = Math.min(svgRect.width / UNIVERSE_W, svgRect.height / UNIVERSE_H) || 1
+    const vx = (cont.left + lx - svgRect.left - (svgRect.width - UNIVERSE_W * s) / 2) / s
+    const vy = (cont.top + ly - svgRect.top - (svgRect.height - UNIVERSE_H * s) / 2) / s
+
+    // 1. pins — nearest wins on overlap (depth 0 = nearest, drawn last)
+    let best: { id: string; label: string; depth: number } | null = null
+    for (const n of placed) {
+      const r = universeRadius(n.n) * (n.scale ?? 1) * (n.depth !== undefined ? depthScale(n.depth) : 1)
+      if (Math.hypot(vx - n.px, vy - n.py) > r + 4) continue
+      const d = n.depth ?? 0
+      if (!best || d <= best.depth) best = { id: n.id, label: n.label, depth: d }
+    }
+    if (best) { onNodeClick?.(best.id, best.label); return }
+
+    // 2. the ◆ capture glyph, before its own star — it is a deliberate small
+    //    target sitting beside the dot, and pinning must beat opening there.
+    if (onNodePin) {
+      for (const nb of neighborPlaced) {
+        if (!(nb.bridge || nbLabelShown(nb))) continue
+        const gx = nb.px + (nb.bridge ? 3.5 : 3) + 2 + PIN_GLYPH_PX / 2  // text-anchor: start
+        const gy = nb.py + 3 - PIN_GLYPH_PX / 2
+        if (Math.abs(vx - gx) <= PIN_GLYPH_HIT && Math.abs(vy - gy) <= PIN_GLYPH_HIT) {
+          onNodePin({ id: nb.base_id, label: nb.label, category: nb.category })
+          return
+        }
+      }
+    }
+
+    // 3. neighbor stars
+    for (const nb of neighborPlaced) {
+      const r = nb.bridge ? 3.5 : 3
+      if (Math.hypot(vx - nb.px, vy - nb.py) <= r + 4) {
+        onNodeClick?.(nb.base_id, nb.label)
+        return
+      }
+    }
+  }
+
   return (
     <div className={compact ? 'dcx-universe-compact' : 'dcx-panel'}>
       {!compact && (
@@ -501,7 +664,16 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
             <span><b className="dcx-k-pin">●</b> your pins (always labelled)</span>
             <span><b className="dcx-k-nb">◦</b> nearby unpinned story</span>
             <span><b className="dcx-k-bridge">◎</b> bridge — near several pins</span>
-            <span>position ≈ semantic field · closer = more alike</span>
+            {use3d && mds ? (
+              <span
+                className={`dcx-stress dcx-stress--${stressTier(mds.stress)}`}
+                data-tip="Positions are classical metric MDS over the combined measured edge weight (d = 1 − weight; a pair with no measured relation sits at maximum distance). Distortion is Kruskal stress-1. The WHY of any link stays on the edge itself — drag to rotate."
+              >
+                distance ≈ measured relation (5 bases) · the why is on each edge · distortion {stressPct(mds.stress)}% — {stressNote(mds.stress)}
+              </span>
+            ) : (
+              <span data-tip="Fewer than 3 pins, or no measured layout — positions here are an approximate field; the edges carry the exact relation.">position ≈ semantic field · closer = more alike</span>
+            )}
           </div>
           <div className="dcx-howto dcx-edge-legend">
             <span><i className="dcx-k-strong-edge" /> solid green = confirmed distinctive actor</span>
@@ -512,7 +684,16 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
           </div>
         </>
       )}
-      <svg viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className={`dcx-universe${compact ? ' dcx-universe--compact' : ''}`} role="img" aria-label="Investigative universe">
+      {/* The gesture surface. Only the 3D path listens: with no measured layout
+          there is nothing to rotate, so the 2D field stays exactly as inert as
+          it was (and the page still scrolls under a finger on touch). */}
+      <div
+        className={`dcx-universe-stage${use3d ? ' dcx-universe-stage--3d' : ''}${compact ? ' dcx-universe-stage--compact' : ''}`}
+        ref={containerRef}
+        {...(use3d ? trackball.handlers : {})}
+        style={use3d ? { cursor: 'grab', touchAction: 'none', userSelect: 'none' } : undefined}
+      >
+      <svg ref={attachSvg} viewBox={`0 0 ${UNIVERSE_W} ${UNIVERSE_H}`} className={`dcx-universe${compact ? ' dcx-universe--compact' : ''}`} role="img" aria-label="Investigative universe">
         {/* neighbor links — faint, behind everything */}
         {neighborPlaced.map(nb => nb.links.map((l, j) => {
           const p = byId.get(l.pin)
@@ -581,8 +762,8 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
             </g>
           )
         })}
-        {/* nodes (pins) */}
-        {placed.map(n => {
+        {/* nodes (pins) — far to near on the 3D path */}
+        {pinsPainted.map(n => {
           const isolated = cluster.isolated.some(x => x.id === n.id)
           const ci = cluster.clusterOf.get(n.id) ?? -1
           const weakCluster = ci >= 0 && clusterStrengths[ci] === 'caution'
@@ -610,7 +791,11 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
               {rel < -r - 8 && (
                 <line x1={0} y1={-r - 2} x2={0} y2={rel + 2} stroke={clusterColor(ci)} strokeWidth={0.5} strokeOpacity={0.5} />
               )}
-              <circle r={r} style={{ fill: n.category ? categoryColor(n.category) : '#7dd3fc' }}
+              {/* Depth cues ride the PIN circles only (edges and labels stay
+                  legible at every depth) — nearer pins draw bigger and brighter. */}
+              <circle r={r * (n.scale ?? 1) * (n.depth !== undefined ? depthScale(n.depth) : 1)}
+                      style={{ fill: n.category ? categoryColor(n.category) : '#7dd3fc' }}
+                      fillOpacity={n.depth !== undefined ? depthAlpha(n.depth) : 1}
                       stroke={isolated ? '#64748b' : clusterColor(ci)}
                       strokeWidth={active ? 2.5 : 1.5} />
               <text y={rel} textAnchor="middle" className="dcx-node-label">
@@ -620,6 +805,17 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
           )
         })}
       </svg>
+      </div>
+      {/* The compact Workbench variant has no legend row, so the measured
+          distortion gets its own line — a positional claim never ships without it. */}
+      {compact && use3d && mds && (
+        <div
+          className={`dcx-stress dcx-stress--compact dcx-stress--${stressTier(mds.stress)}`}
+          data-tip="Distance between pins IS their measured relation (classical MDS over the combined edge weight). This is the distortion of showing it in 3D. Drag to rotate."
+        >
+          distance = measured relation · distortion {stressPct(mds.stress)}%
+        </div>
+      )}
       {hovered && (
         <div className="dcx-hovercard">
           <strong>{hovered.label}</strong>

@@ -24,6 +24,7 @@ import {
     type UniverseNode,
 } from '../lib/universeLayout'
 import { useTrackball } from '../hooks/useTrackball'
+import { PERSPECTIVE_FLOOR } from '../lib/mds3d'
 import { ConstellationThreadView } from './ConstellationThreadView'
 import { LoadingMoment } from './LoadingMoment'
 import { LabelReviewChip } from '../lib/labelReviewChip'
@@ -235,7 +236,10 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const perspSpread = Math.min(1.6, Math.max(0, (view.k - 1) * 0.8))
     const project3 = (x: number, y: number, z: number | undefined) => {
         const p = applyRot(rot, x, y, z, massX, massY, massZ)
-        const scale = 1 / (1 + (p.depth - 0.5) * 2.4 * perspSpread)
+        // Floor the divisor: past spread ≈ 0.833 a near body drives it through
+        // zero and the body mirrors through the cloud centre with a negative
+        // radius (invalid SVG, and unclickable). Same guard as mds3d's.
+        const scale = 1 / Math.max(PERSPECTIVE_FLOOR, 1 + (p.depth - 0.5) * 2.4 * perspSpread)
         const pxp = 0.5 + (p.px - 0.5) * scale
         const pyp = 0.5 + (p.py - 0.5) * scale
         return { sx: px(pxp), sy: py(pyp), depth: p.depth, scale }

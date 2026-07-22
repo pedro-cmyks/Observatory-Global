@@ -49,6 +49,21 @@ describe('projectPos3', () => {
     expect(p.px).toBeCloseTo(0.1, 6)
   })
 
+  it('never lets the perspective divisor cross zero', () => {
+    // Past spread ≈ 0.833 a near body drives the divisor negative: the scale
+    // flips, radii go negative (invalid SVG — the body vanishes and stops being
+    // clickable) and positions mirror through the cloud centre. perspectiveSpread
+    // caps at 1.6, so this is four wheel notches away, not a theoretical case.
+    // Depths outside [0,1] are reachable too: the centre of mass is not the
+    // bounding-box centre, so a rotated outlier can sit beyond either end.
+    for (let depth = -0.2; depth <= 1.2001; depth += 0.05) {
+      const p = projectPos3([0.9, 0.5, depth] as Pos3, IDENTITY_ROT, CENTER, 1.6)
+      expect(p.scale).toBeGreaterThan(0)
+      expect(Number.isFinite(p.px)).toBe(true)
+      expect(Number.isFinite(p.py)).toBe(true)
+    }
+  })
+
   it('perspective brings near bodies forward and pushes far ones back', () => {
     const near = projectPos3([0.9, 0.5, 0.1], IDENTITY_ROT, CENTER, 1)
     const far = projectPos3([0.9, 0.5, 0.9], IDENTITY_ROT, CENTER, 1)
