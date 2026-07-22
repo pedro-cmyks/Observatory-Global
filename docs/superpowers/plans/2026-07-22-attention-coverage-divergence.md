@@ -12,6 +12,46 @@
 
 ---
 
+## ⛔ STOP — this plan is blocked (2026-07-22)
+
+The spec was undercut by its own measurement the same day it was written. Read
+spec §0 before touching anything. A placebo control shows `coverage_count` is a
+**lexical-match rate, not a coverage measurement** (matching keywords against
+press from *before* they trended yields 42.7–59.4% "silent"; 61% of the bug
+fix's rescues are "covered" by pre-trend press), and the silent set's 22.5%
+story base rate is **not significantly different** from the covered set's 15.8%.
+
+**Do NOT run Tasks 4–6 or 8–15.** Only these survive as written:
+
+- **Task 1, 2, 3** — pure modules. Correct and useful regardless; Task 1 in
+  particular freezes real bugs as tests.
+- **Task 7** — delete `_INFO_DESERT_FLOOR` and retire `/silent-risks`. Measured
+  inverted; the deletion stands on its own evidence.
+
+**Do this instead, first — Task 0.**
+
+### Task 0: Placebo the DOMAIN-LEVEL metric
+
+The placebo tested per-keyword coverage. The metric this plan builds aggregates
+to `(parent_domain, country)` shares, which was never tested. Test it before
+building it.
+
+- [ ] **Step 1: Compute `divergence_table` twice for the same day** — once with
+      coverage from the current window, once with coverage from press published
+      5–7 days *before* the trend window. Same attention side both times.
+- [ ] **Step 2: Correlate the two divergence vectors** across all countries.
+      Run: Spearman ρ over the per-`(domain, country)` divergence values.
+- [ ] **Step 3: Read the verdict honestly.**
+      - ρ high (≳0.7) → domain divergence is the same with fake coverage as with
+        real coverage. **The metric is dead. Close the spec, do not fix it.**
+      - ρ low → domain aggregation survives what per-keyword matching did not;
+        record the number, unblock the spec, and continue to Task 1.
+- [ ] **Step 4: Write the result** to
+      `docs/research/silent-risk/2026-XX-XX-domain-placebo.md` and update the
+      spec status either way.
+
+---
+
 ## Blocking dependency
 
 The GDELT HTML-entity fix (separate task, in flight) changes the corpus every

@@ -1,7 +1,56 @@
 # Attention–Coverage Divergence (silent risk, re-scoped) — design
 
 **Date:** 2026-07-22
-**Status:** APPROVED (Pedro, 2026-07-22) — ready for implementation plan
+**Status:** **BLOCKED (2026-07-22, same day)** — approved, then undercut by its own
+measurement before any code was written. See §0. Do not implement Tasks 10–15 of
+the plan. Tasks 1–3 (pure modules) and Task 7 (delete the inverted info-desert
+floor) survive; everything that depends on `coverage_count` meaning "covered"
+does not.
+
+---
+
+## 0. The blocking result (added after the measurement completed)
+
+This spec was written from partial probe output. The completed synthesis
+(`docs/research/silent-risk/2026-07-22-silent-risk-source-measurement.md`) ran a
+control this design never did, and it invalidates the foundation.
+
+**The placebo.** Score the same trend keywords against press published **5–7 days
+before they trended**:
+
+| matcher arm | silent% vs current press | silent% vs PRE-TREND press | discriminative gap |
+|---|---|---|---|
+| original (buggy) | 44.5% | 59.4% | 15.0pp |
+| both bugs fixed | 33.0% | 50.3% | 17.3pp |
+| + idf-coverage ≥ 0.60 | 26.5% | 42.7% | 16.2pp |
+
+Fixing the matcher makes it claim ~18pp more coverage but **does not make it
+discriminate better**, and the thresholded variant discriminates *worse*. Of the
+761 pairs the bug fix rescues from silence, **465 (61%) are also "covered" by
+press that predates the keyword's trend**. Therefore `coverage_count` is a
+**lexical-match rate, not a coverage measurement**, and §4.2's divergence — which
+is built on it — is unvalidated.
+
+**The missing control.** §3.1 cited a 22.5% story base rate in the silent set.
+The covered set was never measured. It is **15.8%** (z = 1.51, not significant).
+So the silent set is not story-enriched, and 22.5% is a property of Google
+Trends, not of silence.
+
+**What survives.** The GDELT encoder defect, now root-caused in code:
+`ingest_v2.py:427` stores the `<PAGE_TITLE>` capture raw while the same function
+unescapes the same string ~30 lines later. Blast radius far exceeds this feature —
+~47% of GDELT rows were embedded, NER'd and dedup'd from mojibake. Also surviving:
+the deletion of `_INFO_DESERT_FLOOR` (measured inverted), and the finding that
+forums, wiki and the ensemble are not viable sources.
+
+**What must happen before this spec is unblocked.** Run the placebo against the
+**domain-level** metric, not the per-keyword one. §4.2 aggregates to
+`(parent_domain, country)` shares, which the placebo never tested; if domain-level
+divergence against pre-trend press is indistinguishable from divergence against
+current press, the metric is dead and this spec should be closed rather than
+fixed. That test is cheap and is the only thing worth doing next.
+
+---
 **Supersedes:** the parked silent-risk detector (`app/services/silent_risk.py`,
 `app/routers/attention_threads.py`, `GET /api/v2/attention/silent-risks`)
 **Follow-up chip it closes:** `2026-07-22-under-the-radar-rescoped-coverage-gaps-design.md`
