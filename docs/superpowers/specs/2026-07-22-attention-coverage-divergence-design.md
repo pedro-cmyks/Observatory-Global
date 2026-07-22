@@ -300,7 +300,7 @@ Response, per item:
 | field | meaning |
 |---|---|
 | `query` | the trend keyword, verbatim, original script |
-| `country_code`, `script`, `language_guess` | where and in what language |
+| `country_code`, `script` | where, and in what writing system. **Script, not language** — §9 records that no language-ID pass was run, and serving a guessed language would violate rail 5 |
 | `attention_volume`, `attention_rank` | from `trends_v2` |
 | `domain`, `domain_margin` | closest Atlas parent domain + whitened-e5 margin |
 | `noise_class` | the winning negative anchor when it wins (classify, never drop) |
