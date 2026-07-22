@@ -82,3 +82,113 @@
 .markets-note--error {
   color: var(--color-severity-notable, #d0a24c);
 }
+
+/* ── country section header row + the focus-country outbound link ── */
+.markets-section-headrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.markets-focus-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted, #8b93a7);
+  white-space: nowrap;
+}
+.markets-focus-link:hover,
+.markets-focus-link:focus-visible {
+  color: var(--color-text-primary, #e6e9f2);
+  text-decoration: underline;
+  outline: none;
+}
+
+/* ── the in-panel drill chart ── */
+.markets-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px;
+}
+.markets-chart-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #8b93a7);
+}
+.markets-chart-back:hover,
+.markets-chart-back:focus-visible {
+  color: var(--color-text-primary, #e6e9f2);
+  outline: none;
+}
+.markets-chart-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.markets-chart-label {
+  font-family: var(--font-sans, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary, #e6e9f2);
+}
+.markets-chart-symbol {
+  margin-left: auto;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  color: var(--color-text-muted, #8b93a7);
+}
+.markets-chart-levelrow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.markets-chart-level {
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text-primary, #e6e9f2);
+}
+.markets-chart-plot {
+  position: relative;
+  margin-top: 2px;
+}
+.markets-chart-plot svg {
+  display: block;
+  width: 100%;
+}
+.markets-chart-scale {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  color: var(--color-text-muted, #8b93a7);
+  pointer-events: none;
+}
+.markets-chart-foot {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted, #8b93a7);
+  opacity: 0.85;
+}

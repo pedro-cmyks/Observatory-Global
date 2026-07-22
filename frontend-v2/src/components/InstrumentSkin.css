@@ -60,6 +60,18 @@
   overflow: hidden; /* safety: nothing (incl. the spark) ever spills the tile box */
 }
 
+/* console-only: a clickable tile drills to the in-panel chart (Brief tiles stay inert) */
+.atlas-instrument-tile--clickable {
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.atlas-instrument-tile--clickable:hover,
+.atlas-instrument-tile--clickable:focus-visible {
+  border-color: var(--color-border-medium, rgba(127, 127, 127, 0.3));
+  background: var(--color-bg-secondary, rgba(127, 127, 127, 0.09));
+  outline: none;
+}
+
 .atlas-instrument-head {
   display: flex;
   align-items: baseline;

@@ -3,6 +3,7 @@
 // through these primitives so it can never fuse into a narrative claim, arrow, or
 // headline. Descriptive only: level + trend, NEVER a correlation / lead-lag /
 // "news moved this" / trade signal.
+import { type KeyboardEvent } from 'react'
 import {
   type MarketInstrument,
   type MarketDirection,
@@ -65,12 +66,32 @@ export function InstrumentSpark({
 }
 
 // The boxed instrument tile: identity + as-of-implied level + trend, inside the
-// quarantine container. Inert by construction — no onClick that leaves the skin.
-export function InstrumentTile({ inst }: { inst: MarketInstrument }) {
+// quarantine container. Inert by default (the Brief passes no onClick). In the
+// console dock an optional `onClick` drills to a bigger IN-PANEL chart — it never
+// jumps to a narrative panel, so the quarantine holds.
+export function InstrumentTile({ inst, onClick }: { inst: MarketInstrument; onClick?: () => void }) {
   const dir = changeDirection(inst.change_pct)
   const pct = formatChangePct(inst.change_pct)
+  const clickable = !!onClick
   return (
-    <div className={`atlas-instrument atlas-instrument-tile atlas-instrument--${dir}`} data-symbol={inst.symbol}>
+    <div
+      className={`atlas-instrument atlas-instrument-tile atlas-instrument--${dir}${clickable ? ' atlas-instrument-tile--clickable' : ''}`}
+      data-symbol={inst.symbol}
+      {...(clickable
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            onClick,
+            onKeyDown: (e: KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            },
+            'data-tip': 'Open a bigger chart for this instrument (in-panel — stays in markets).',
+          }
+        : {})}
+    >
       <div className="atlas-instrument-head">
         <span className="atlas-instrument-label" title={inst.symbol}>{inst.label || inst.symbol}</span>
         <span className="atlas-instrument-class">{unitTag(inst)}</span>
@@ -92,6 +113,72 @@ export function InstrumentTile({ inst }: { inst: MarketInstrument }) {
             )}
           </div>
           <InstrumentSpark series={inst.spark_30d} direction={dir} />
+        </>
+      )}
+    </div>
+  )
+}
+
+// The in-panel drill chart — a bigger view of ONE instrument (console dock only).
+// Still the quarantine: descriptive level + 30-day close shape + a back control;
+// NEVER a relation, a forecast, or a jump out to a narrative panel.
+export function InstrumentChart({ inst, onBack }: { inst: MarketInstrument; onBack: () => void }) {
+  const dir = changeDirection(inst.change_pct)
+  const pct = formatChangePct(inst.change_pct)
+  const series = (inst.spark_30d ?? []).filter(v => typeof v === 'number' && isFinite(v))
+  const hasChart = series.length >= 2
+  let path = ''
+  let lo = 0
+  let hi = 0
+  if (hasChart) {
+    const min = Math.min(...series)
+    const max = Math.max(...series)
+    const range = max - min || Math.abs(max) || 1
+    const pad = range * 0.1
+    lo = min - pad
+    hi = max + pad
+    const span = hi - lo || 1
+    const W = 300
+    const H = 90
+    const step = W / (series.length - 1)
+    path = series
+      .map((v, i) => `${(i * step).toFixed(1)},${(H - ((v - lo) / span) * H).toFixed(1)}`)
+      .join(' ')
+  }
+  return (
+    <div className="atlas-instrument markets-chart">
+      <button className="markets-chart-back" onClick={onBack}>← Back to markets</button>
+      <div className="markets-chart-head">
+        <span className="markets-chart-label" title={inst.symbol}>{inst.label || inst.symbol}</span>
+        <span className="atlas-instrument-class">{unitTag(inst)}</span>
+        <span className="markets-chart-symbol">{inst.symbol}</span>
+      </div>
+      {inst.price_pending ? (
+        <div className="atlas-instrument-pending">price pending — the cron fills this on the next run.</div>
+      ) : (
+        <>
+          <div className="markets-chart-levelrow">
+            <span className="markets-chart-level">{formatLevel(inst.last_close)}</span>
+            {pct && (
+              <span className={`atlas-instrument-change atlas-instrument-change--${dir}`}>
+                {directionGlyph(dir)} {pct} · 30d
+              </span>
+            )}
+          </div>
+          {hasChart ? (
+            <div className={`markets-chart-plot atlas-instrument-spark--${dir}`}>
+              <svg viewBox="0 0 300 90" width="100%" height="120" preserveAspectRatio="none">
+                <polyline points={path} fill="none" stroke="currentColor" strokeWidth="1.6" />
+              </svg>
+              <div className="markets-chart-scale">
+                <span>{formatLevel(hi)}</span>
+                <span>{formatLevel(lo)}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="markets-note">Not enough history yet — fills over the next cron runs.</p>
+          )}
+          <p className="markets-chart-foot">30-day close series · self-scaled shape · descriptive, not a trade signal.</p>
         </>
       )}
     </div>
