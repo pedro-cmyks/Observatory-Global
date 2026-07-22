@@ -63,6 +63,14 @@ def entropy_collapse(h_now: float, h_baseline: float | None) -> float | None:
     return round(max(0.0, min(1.0, (h_baseline - h_now) / h_baseline)), 6)
 
 
+def country_dominance(n_led_by_dominant: int, n_qualifying_countries: int) -> float:
+    """Fraction of qualifying countries whose #1 story IS the global dominant.
+    The spatial 'eclipse spread' axis; robust to a single global black-hole."""
+    if n_qualifying_countries <= 0:
+        return 0.0
+    return round(n_led_by_dominant / n_qualifying_countries, 6)
+
+
 # ── (a) eclipse detector — window-level coverage concentration ───────────────
 
 def attention_concentration(volumes: list[int], *, eclipse_top1: float = 0.20) -> dict:

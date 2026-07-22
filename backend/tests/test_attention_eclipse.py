@@ -235,3 +235,11 @@ def test_entropy_collapse_ratio_and_nulls():
     assert entropy_collapse(0.5, None) is None
     assert entropy_collapse(0.5, 0.0) is None
     assert entropy_collapse(2.5, 2.0) == 0.0
+
+
+from app.services.attention_eclipse import country_dominance
+
+def test_country_dominance_fraction_and_zero_guard():
+    assert country_dominance(30, 90) == 0.333333
+    assert country_dominance(0, 0) == 0.0
+    assert country_dominance(45, 45) == 1.0
