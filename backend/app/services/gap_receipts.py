@@ -12,6 +12,7 @@ is per-topic gate recall, not this box).
 
 from __future__ import annotations
 
+import html
 from typing import Any
 
 from app.services.research_semantic import is_junk_headline
@@ -34,7 +35,10 @@ def pick_extended_receipts(
         return []
     best: dict[str, dict[str, Any]] = {}
     for row in rows:
-        headline = (row.get("headline") or "").strip()
+        # Stored headlines are 46.4% HTML-entity-encoded (measured
+        # 2026-07-22) and 4,355 texts exist in both forms — decode before the
+        # junk check and the dedup key, else one story shows up twice.
+        headline = html.unescape(row.get("headline") or "").strip()
         score = row.get("gate_score")
         if not headline or score is None or float(score) < threshold:
             continue

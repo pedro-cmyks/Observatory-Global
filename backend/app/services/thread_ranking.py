@@ -19,6 +19,7 @@ Weights are a calibratable v1; tune against live orderings, not in the abstract.
 """
 from __future__ import annotations
 
+import html
 import math
 import os
 import re
@@ -122,7 +123,13 @@ def _norm_headline(text: str) -> str:
     "... | Blayney Chronicle" across 24 distinct .com.au domains — so strip
     the LAST "|"-separated segment (the outlet stamp) before comparing.
     Genuine distinct stories stay distinct; 24 masthead reprints collapse
-    to one."""
+    to one.
+
+    Unescape first: 46.4% of the stored press corpus is HTML-entity-encoded
+    (measured 2026-07-22) and 4,355 headline texts exist in BOTH forms, so
+    without this an encoded and a plain copy of one wire story read as two
+    stories — inflating the volume term that ranks the front page."""
+    text = html.unescape(text)
     parts = text.split("|")
     if len(parts) >= 2:
         text = "|".join(parts[:-1])

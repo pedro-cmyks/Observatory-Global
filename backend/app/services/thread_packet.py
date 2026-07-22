@@ -122,7 +122,10 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
             bucket = ts.replace(minute=0, second=0, microsecond=0)
             timeline_counts.setdefault(bucket, []).append(sentiment)
 
-        _hl_norm = (_val(r, "headline") or "").strip().lower()
+        # Unescape before the dedup key: an encoded and a plain copy of one
+        # wire story would otherwise read as two distinct headlines and
+        # fabricate the corroboration that rank_key_people's floor tests for.
+        _hl_norm = html.unescape(_val(r, "headline") or "").strip().lower()
         for p in (_val(r, "persons") or []):
             person_counts[p] = person_counts.get(p, 0) + 1
             if _hl_norm:

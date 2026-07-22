@@ -424,7 +424,14 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
     if extras_xml:
         m = _re.search(r'<PAGE_TITLE>(.+?)</PAGE_TITLE>', extras_xml)
         if m:
-            candidate = m.group(1).strip()
+            # GKG ships PAGE_TITLE HTML-entity-encoded ("hurac&#xE1;n"), and
+            # the translingual feed almost always does (measured 2026-07-22:
+            # 79.4% of source_lang='xx', 6.6% of 'en'). Decode HERE, at the
+            # write, so nothing downstream ever sees the encoded form: a
+            # folded "&#xE1;" token becomes "xe1", which makes the accented
+            # word unmatchable lexically AND splits reprint dedup into two
+            # "different" stories.
+            candidate = _html.unescape(m.group(1)).strip()
             # Basic validation: at least 4 words, no GDELT doc IDs
             words = candidate.split()
             if len(words) >= 4 and not _re.match(r'^\d{6,}', candidate):
@@ -452,10 +459,10 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
         locations,
         source_lang,
         source_origin_country,
-        # Unescape so HTML-entity-encoded non-Latin headlines (e.g. Arabic
-        # &#x641;&#x644;&#x633;... = فلسطين) corroborate too, not just the
-        # ASCII GDELT themes.
-        corroboration_text=_html.unescape(f"{headline or ''} {themes_raw or ''}"),
+        # Non-Latin headlines (e.g. Arabic فلسطين) corroborate too, not just
+        # the ASCII GDELT themes — the headline is already entity-decoded
+        # above, so no unescape is needed here.
+        corroboration_text=f"{headline or ''} {themes_raw or ''}",
     )
     if not selected:
         return None
