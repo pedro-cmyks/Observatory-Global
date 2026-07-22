@@ -11,10 +11,10 @@ polls for the progressive fill.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timezone
 
 from app import db
+from app.services.coverage_gaps import COUNTRY_GAPS_SQL, country_gap_floor
 from app.services.thread_intelligence import fetch_threads
 from app.services.thread_ranking import rank_threads
 
@@ -26,28 +26,6 @@ ENRICHMENT_CONTRACT = "country-edition-enrichment-v0"
 _MAX_THREADS = 24
 _RECEIPTS_PER_THREAD = 4
 _MAX_RECEIPT_URLS = 48
-
-# Country-scoped coverage gaps = the "Under the Radar" band. Categories getting
-# real domestic signal in this country but with ZERO rows clearing the gate —
-# the domestic stories not yet surfacing. Mirrors briefing.coverage_gaps but
-# joins signals_v2 for the country predicate and uses a lower floor (per-country
-# volume is smaller than global). Tunable via ATLAS_COUNTRY_GAP_MIN.
-_COUNTRY_GAPS_SQL = """
-    SELECT t.slug, t.label,
-           COUNT(*)::int AS raw_signals,
-           COUNT(*) FILTER (WHERE a.gate_kept)::int AS verified,
-           COUNT(*) FILTER (WHERE a.gate_score IS NOT NULL)::int AS scored
-    FROM signal_topic_assignments a
-    JOIN atlas_topics t ON t.id = a.topic_id
-    JOIN signals_v2 s ON s.id = a.signal_id
-    WHERE a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
-      AND s.country_code = $2
-    GROUP BY t.slug, t.label
-    HAVING COUNT(*) >= $3
-       AND COUNT(*) FILTER (WHERE a.gate_kept) = 0
-    ORDER BY raw_signals DESC
-    LIMIT 6
-"""
 
 
 def gather_receipt_urls(
@@ -141,7 +119,7 @@ async def fetch_country_edition(country_code: str, *, hours: int = 24) -> dict:
             window_hours=hours,
         )
 
-    gap_min = int(os.getenv("ATLAS_COUNTRY_GAP_MIN", "8"))
+    gap_min = country_gap_floor()
     country_name = cc
     gap_rows: list = []
     try:
@@ -150,7 +128,7 @@ async def fetch_country_edition(country_code: str, *, hours: int = 24) -> dict:
                 "SELECT name FROM countries_v2 WHERE code = $1", cc
             )
             country_name = rec["name"] if rec else cc
-            gap_rows = await conn.fetch(_COUNTRY_GAPS_SQL, hours, cc, gap_min)
+            gap_rows = await conn.fetch(COUNTRY_GAPS_SQL, hours, cc, gap_min)
     except Exception as exc:  # gaps/name are secondary — never blank the door
         logger.warning(
             "country-edition gaps skipped cc=%s: %s: %s",

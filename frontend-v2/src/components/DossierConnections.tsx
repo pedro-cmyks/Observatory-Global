@@ -19,7 +19,7 @@ import { categoryColor, universeRadius } from '../lib/universeLayout'
 // the per-edge chips/receipts still carry WHY, untouched.
 import { useTrackball } from '../hooks/useTrackball'
 import {
-  centerOfMass, depthAlpha, depthScale, perspectiveSpread, projectPos3,
+  centerOfMass, depthAlpha, depthScale, projectPos3,
   screenXY, stressNote, stressPct, stressTier, type Pos3,
 } from '../lib/mds3d'
 import { createEqualEarth } from '../lib/equalEarthProjection'
@@ -490,7 +490,14 @@ export function InvestigativeUniverse({ data, cluster, compact = false, onNodeCl
 
   const placed = useMemo<Array<PlacedNode & { depth?: number; scale?: number }>>(() => {
     if (!use3d) return layoutInvestigativeUniverse(data.nodes, data.edges, UNIVERSE_W, UNIVERSE_H)
-    const spread = perspectiveSpread(trackball.view.k)
+    // ORTHOGRAPHIC, deliberately (spread 0) — the same decision the story
+    // constellation took. This surface's whole claim is that the distance you
+    // see IS the measured relation, and a perspective divide bends exactly that
+    // distance as you zoom (mds3d's own tests pin it). The zoom in `screenXY` is
+    // a UNIFORM scale, so every distance ratio survives it at any k and the
+    // label's claim holds everywhere in the view. Perspective stays only where
+    // positions are already labelled approximate: the universe's PCA field.
+    const spread = 0
     // Box = the VIEWBOX; the trackball's pan/zoom arrive in CLIENT pixels and are
     // converted here so every coordinate handed to the svg lives in the svg's own
     // space — a drag then moves the cloud exactly as far as the finger travelled

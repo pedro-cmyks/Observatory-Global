@@ -37,6 +37,12 @@ from app.services.thread_intelligence import (  # noqa: E402
     clean_thread_label,
     fetch_threads,
 )
+from app.services.coverage_gaps import (  # noqa: E402
+    GLOBAL_GAP_FLOOR,
+    GLOBAL_GAPS_SQL,
+    fetch_extended_receipts_by_slug,
+    gap_status,
+)
 
 
 TOP_THREADS_CONTRACT = "living-narrative-threads-v0"
@@ -284,56 +290,18 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # gate ("attention without verified coverage" — the wedge's "what is
         # missing"). Honest by construction: raw>=20 avoids thin-noise rows;
         # gate_pending (scored=0) is labeled, never conflated with rejected.
-        coverage_gaps = await _fetch_section(conn, degraded_segments, "coverage_gaps", """
-            SELECT t.slug, t.label,
-                   COUNT(*)::int AS raw_signals,
-                   COUNT(*) FILTER (WHERE a.gate_kept)::int AS verified,
-                   COUNT(*) FILTER (WHERE a.gate_score IS NOT NULL)::int AS scored
-            FROM signal_topic_assignments a
-            JOIN atlas_topics t ON t.id = a.topic_id
-            WHERE a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
-            GROUP BY t.slug, t.label
-            HAVING COUNT(*) >= 20
-               AND COUNT(*) FILTER (WHERE a.gate_kept) = 0
-            ORDER BY raw_signals DESC
-            LIMIT 6
-        """, hours)
+        coverage_gaps = await _fetch_section(
+            conn, degraded_segments, "coverage_gaps",
+            GLOBAL_GAPS_SQL, hours, GLOBAL_GAP_FLOOR,
+        )
 
         # Gap-box extended receipts (measured 2026-07-16, docs/research/gap-pool):
         # the 2-3 most newsworthy hits in a gap category sit above its extended
-        # (~75%) threshold and are recoverable now — max K=3, tier-labeled,
-        # never below the topic threshold. Best-effort PER GAP (the delight
-        # lesson: one shared failure must not kill the section — each query is
-        # guarded separately and a failure just means no receipts for that row).
-        gap_receipts_by_slug: dict = {}
-        if coverage_gaps:
-            from app.routers.themes import _extended_gate_thresholds
-            from app.services.gap_receipts import GAP_RECEIPTS_K, pick_extended_receipts
-            per_topic_ext, _global_ext = _extended_gate_thresholds()
-            for gap_row in coverage_gaps:
-                gap_slug = gap_row["slug"]
-                ext_thr = per_topic_ext.get(gap_slug)
-                if ext_thr is None:
-                    continue
-                try:
-                    ext_rows = await conn.fetch("""
-                        SELECT s.headline, s.source_name AS source,
-                               s.source_url AS url,
-                               a.gate_score::float AS gate_score
-                        FROM signal_topic_assignments a
-                        JOIN atlas_topics t ON t.id = a.topic_id
-                        JOIN signals_v2 s ON s.id = a.signal_id
-                        WHERE t.slug = $1
-                          AND a.assigned_at > NOW() - ($2::int * INTERVAL '1 hour')
-                          AND a.gate_score >= $3
-                        ORDER BY a.gate_score DESC
-                        LIMIT 40
-                    """, gap_slug, hours, float(ext_thr))
-                    gap_receipts_by_slug[gap_slug] = pick_extended_receipts(
-                        [dict(r) for r in ext_rows], float(ext_thr), GAP_RECEIPTS_K
-                    )
-                except Exception:
-                    logger.exception("gap receipts query failed for %s", gap_slug)
+        # (~75%) threshold and are recoverable now — max K=3, tier-labeled.
+        # Guarded per gap inside the shared helper.
+        gap_receipts_by_slug = await fetch_extended_receipts_by_slug(
+            conn, [g["slug"] for g in coverage_gaps], hours
+        )
 
         # Long windows should use compact processed historical tables, not raw
         # historical scans. For hot windows, theme_hourly_v2 remains the live
@@ -828,7 +796,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                     "raw_signals": int(r["raw_signals"]),
                     "verified": int(r["verified"]),
                     "scored": int(r["scored"]),
-                    "status": "gate_pending" if int(r["scored"]) == 0 else "none_verified",
+                    "status": gap_status(int(r["scored"])),
                     # measured gap-slice precision of this tier is 29-43% —
                     # hence K<=3 and the mandatory unverified-extended label.
                     "extended_receipts": gap_receipts_by_slug.get(r["slug"], []),

@@ -53,16 +53,30 @@ export function centerOfMass(points: Pos3[]): CloudCenter3 {
 }
 
 /** Perspective strengthens with zoom; at k ≤ 1 the view is orthographic —
- *  the honest map, where screen distance is exactly measured distance. */
+ *  the honest map, where screen distance is exactly measured distance.
+ *
+ *  A surface whose whole claim IS the distance should pass spread 0 and let
+ *  the uniform screen zoom do the work (uniform scaling preserves every
+ *  distance ratio exactly; a perspective divide does not). Perspective earns
+ *  its place only where positions are already labelled approximate — the
+ *  universe's low-variance PCA depth. */
 export function perspectiveSpread(k: number): number {
   return Math.min(1.6, Math.max(0, (k - 1) * 0.8))
 }
+
+/** Smallest allowed perspective divisor — see `projectPos3`. */
+export const PERSPECTIVE_FLOOR = 0.2
 
 export function projectPos3(
   pos: Pos3, rot: Rot3, center: CloudCenter3, spread: number,
 ): Projected {
   const p = applyRot(rot, pos[0], pos[1], pos[2], center.cx, center.cy, center.cz)
-  const scale = 1 / (1 + (p.depth - 0.5) * 2.4 * spread)
+  // The divisor must stay positive. Past spread ≈ 0.833 a body at depth 0
+  // drives it through zero: the scale flips negative, radii become invalid
+  // SVG (`r` < 0 renders nothing, and the body stops being clickable) and
+  // positions mirror through the cloud centre. `perspectiveSpread` caps at
+  // 1.6, so this is reachable — the floor keeps the camera behind the cloud.
+  const scale = 1 / Math.max(PERSPECTIVE_FLOOR, 1 + (p.depth - 0.5) * 2.4 * spread)
   return {
     px: 0.5 + (p.px - 0.5) * scale,
     py: 0.5 + (p.py - 0.5) * scale,
@@ -88,11 +102,25 @@ export function screenXY(p: { px: number; py: number }, box: ScreenBox): { sx: n
 }
 
 /**
- * Distortion bands. STRESS_HIGH is MEASURED, not guessed: calibrated against
- * real stories and real pin sets (see the plan's Task 8 and the spec addendum).
+ * Distortion bands — MEASURED, not guessed (2026-07-22, prod; the table lives
+ * in the design spec's "Measured" addendum).
+ *
+ *   stories  (n=15–37): 0.124 0.153 0.162 0.171 0.172 0.178 0.179 0.203
+ *   pin sets (n=3–5)  : 0.000 0.000 0.105
+ *
+ * The two surfaces sit in genuinely different regimes, and the threshold is
+ * placed where they separate. A small pin set embeds almost exactly — that is
+ * precisely where the geometry deserves to be trusted, and the label is
+ * allowed to say so. A story squeezes 768-dimensional cosine into three axes
+ * and lands around 0.17, which Kruskal's own convention calls fair-to-poor;
+ * calling that "low distortion" would be the flattering lie this whole feature
+ * exists to avoid, so it reads "high distortion — rotate".
+ *
+ * The design's opening proposal of 0.20 was tested and rejected: nothing
+ * measured crosses it, and a threshold that never fires is a dead label.
  */
 export const STRESS_EXACT = 0.05
-export const STRESS_HIGH = 0.20
+export const STRESS_HIGH = 0.15
 
 export type StressTier = 'exact' | 'good' | 'high'
 
