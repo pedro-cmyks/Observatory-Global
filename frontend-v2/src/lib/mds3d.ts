@@ -53,16 +53,30 @@ export function centerOfMass(points: Pos3[]): CloudCenter3 {
 }
 
 /** Perspective strengthens with zoom; at k ≤ 1 the view is orthographic —
- *  the honest map, where screen distance is exactly measured distance. */
+ *  the honest map, where screen distance is exactly measured distance.
+ *
+ *  A surface whose whole claim IS the distance should pass spread 0 and let
+ *  the uniform screen zoom do the work (uniform scaling preserves every
+ *  distance ratio exactly; a perspective divide does not). Perspective earns
+ *  its place only where positions are already labelled approximate — the
+ *  universe's low-variance PCA depth. */
 export function perspectiveSpread(k: number): number {
   return Math.min(1.6, Math.max(0, (k - 1) * 0.8))
 }
+
+/** Smallest allowed perspective divisor — see `projectPos3`. */
+export const PERSPECTIVE_FLOOR = 0.2
 
 export function projectPos3(
   pos: Pos3, rot: Rot3, center: CloudCenter3, spread: number,
 ): Projected {
   const p = applyRot(rot, pos[0], pos[1], pos[2], center.cx, center.cy, center.cz)
-  const scale = 1 / (1 + (p.depth - 0.5) * 2.4 * spread)
+  // The divisor must stay positive. Past spread ≈ 0.833 a body at depth 0
+  // drives it through zero: the scale flips negative, radii become invalid
+  // SVG (`r` < 0 renders nothing, and the body stops being clickable) and
+  // positions mirror through the cloud centre. `perspectiveSpread` caps at
+  // 1.6, so this is reachable — the floor keeps the camera behind the cloud.
+  const scale = 1 / Math.max(PERSPECTIVE_FLOOR, 1 + (p.depth - 0.5) * 2.4 * spread)
   return {
     px: 0.5 + (p.px - 0.5) * scale,
     py: 0.5 + (p.py - 0.5) * scale,

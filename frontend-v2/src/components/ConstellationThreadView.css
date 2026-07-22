@@ -318,6 +318,29 @@
 [data-theme^='emerald'] .constellation-empty {
   border-color: rgba(var(--color-ink-rgb), 0.18);
 }
+/* The distortion readout and the unplaced chips are CHROME, so they theme.
+   The dark-field slate/amber fail contrast on the light theme — and the tier
+   that fails worst is the "high distortion" warning, the one line that most
+   needs to be read (#247 class). */
+[data-theme^='emerald'] .constellation-stress--exact {
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .constellation-stress--good {
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .constellation-stress--high {
+  color: #92400e;
+}
+[data-theme^='emerald'] .constellation-unplaced {
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .constellation-unplaced-label {
+  color: var(--color-text-muted);
+  border-bottom-color: rgba(var(--color-ink-rgb), 0.35);
+}
+[data-theme^='emerald'] .constellation-unplaced-chip {
+  border-color: rgba(var(--color-ink-rgb), 0.3);
+}
 
 /* — canvas overlays: pinned light text on the dark field — */
 [data-theme^='emerald'] .constellation-hover-link-label,

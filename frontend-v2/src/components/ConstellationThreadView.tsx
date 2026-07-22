@@ -18,7 +18,6 @@ import {
     centerOfMass,
     depthAlpha,
     depthScale,
-    perspectiveSpread,
     projectPos3,
     screenXY,
     stressNote,
@@ -238,7 +237,14 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
         ]),
         [centerPos3, placedIn3d],
     )
-    const spread = perspectiveSpread(view.k)
+    // ORTHOGRAPHIC, deliberately (spread 0). This surface's whole claim is that
+    // the distance you see IS the measured distance — and a perspective divide
+    // breaks exactly that claim as you zoom (mds3d's own tests pin it: zoom
+    // bends the distance the projection otherwise preserves). The screen zoom
+    // in `screenXY` is a UNIFORM scale, so every distance ratio survives it at
+    // any k, and the legend's claim holds everywhere in the view. Perspective
+    // stays where positions are already labelled approximate: the universe.
+    const spread = 0
     const box = useMemo(
         () => ({ w: width, h: height, margin: MARGIN_3D, view }),
         [width, height, view],
