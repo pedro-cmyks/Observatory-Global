@@ -222,11 +222,16 @@ def _project_positions(centroids: dict[str, list[float]]) -> dict[str, dict]:
 def _connection_mds_positions(nodes: list[dict], edges: list[dict]) -> tuple[dict, dict | None]:
     """Distance-preserving 3D placement of the pinned stories (pure).
 
-    The endpoint already collapses the six measured bases into ONE scalar per
-    pair (`edge.weight` = max over the basis weights), so the distance is
+    The endpoint already collapses its measured bases into ONE scalar per pair
+    (`edge.weight` = max over the basis weights), so the distance is
     d = clamp(1 - weight, 0, 1) and a pair with NO measured relation keeps the
     maximum distance — honest absence, never fabricated closeness. Position
     encodes HOW related overall; the per-edge basis chips still carry WHY.
+
+    The basis label says FIVE, not the "6-basis" of the older prose: the edge
+    builder appends exactly five (semantic, shared_country, shared_person,
+    text_mention, body_mention). A glass-box field that miscounts its own
+    evidence is the kind of small dishonesty this product exists to avoid.
     """
     from app.services.mds import edge_weight_distance_matrix, mds_3d, to_unit_cube
 
@@ -237,7 +242,7 @@ def _connection_mds_positions(nodes: list[dict], edges: list[dict]) -> tuple[dic
     coords = to_unit_cube(result.coords)
     meta = {
         "stress": result.stress,
-        "basis": "edge-weight-6basis",
+        "basis": "edge-weight-5basis",
         "n": result.n,
         "collapse": (
             "d = 1 - max(per-basis edge weights); a pair with no measured "

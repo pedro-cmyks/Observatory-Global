@@ -167,7 +167,7 @@ def test_connection_mds_positions_places_every_node():
 
     assert set(pos_by_id) == {f"dynamic-topic-{i}" for i in (1, 2, 3)}
     assert all(len(p) == 3 for p in pos_by_id.values())
-    assert meta["basis"] == "edge-weight-6basis"
+    assert meta["basis"] == "edge-weight-5basis"
     assert meta["n"] == 3
     assert "max" in meta["collapse"]
     assert 0.0 <= meta["stress"] <= 2.0

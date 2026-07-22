@@ -628,7 +628,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 key={n.id}
                                 className="universe-body"
                                 opacity={(dimmed && !isActive && !lit ? 0.08 : Math.max(alpha, isActive || lit ? 0.95 : 0)) * depthAlpha(p.depth)}
-                                                onMouseEnter={() => { cancelHoverExit(); setHoveredId(n.id) }}
+                                onMouseEnter={() => { cancelHoverExit(); trackball.noteInteraction(); setHoveredId(n.id) }}
                                 onMouseLeave={() => clearHoverSoon(n.id)}
                             >
                                 {heatingIds.has(n.id) && !dimmed && (

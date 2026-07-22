@@ -42,6 +42,9 @@ export interface Trackball {
   view: TrackballView
   setView: React.Dispatch<React.SetStateAction<TrackballView>>
   reset: () => void
+  /** Re-arm the ambient spin's 90s rest timer from an interaction the hook
+      cannot see (the universe counts hovering a body as interaction). */
+  noteInteraction: () => void
   /** True while a drag/pinch is in flight (callers pause their own animation). */
   isDragging: () => boolean
   handlers: {
@@ -99,6 +102,10 @@ export function useTrackball({
     const rect = containerRef.current?.getBoundingClientRect()
     return { lx: clientX - (rect?.left ?? 0), ly: clientY - (rect?.top ?? 0) }
   }, [containerRef])
+
+  const noteInteraction = useCallback(() => {
+    lastInteractionRef.current = performance.now()
+  }, [])
 
   const reset = useCallback(() => {
     setRot(IDENTITY_ROT)
@@ -234,7 +241,7 @@ export function useTrackball({
   }), [clampZoom, localPoint, navMode, wheelStep])
 
   return {
-    rot, setRot, view, setView, reset,
+    rot, setRot, view, setView, reset, noteInteraction,
     isDragging: () => draggingRef.current,
     handlers,
   }

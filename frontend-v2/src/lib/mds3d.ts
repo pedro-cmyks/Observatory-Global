@@ -20,7 +20,7 @@ export type Pos3 = [number, number, number]
 export interface Mds3dMeta {
   /** Kruskal stress-1 — the measured distortion of the 3D squeeze. */
   stress: number
-  /** What the distance MEANS on this surface ('cosine' | 'edge-weight-6basis'). */
+  /** What the distance MEANS on this surface ('cosine' | 'edge-weight-5basis'). */
   basis: string
   n: number
   /** Story path: bodies with no vector — rendered as chips, never placed. */
