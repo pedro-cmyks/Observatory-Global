@@ -2156,6 +2156,16 @@ def _vector_text(values) -> str:
     return "[" + ",".join(f"{float(v):.6f}" for v in values) + "]"
 
 
+def _parse_vector_text(text: str | None) -> list[float] | None:
+    """pgvector text output ('[0.1,0.2,...]') → python floats."""
+    if not text:
+        return None
+    body = text.strip().strip("[]")
+    if not body:
+        return None
+    return [float(part) for part in body.split(",")]
+
+
 def _radial_drift(samples: list) -> float | None:
     """Semantic drift of a body: mean centroid-distance of its LATE half of
     signals minus its EARLY half (Pedro 2026-07-02 — the comet tail should
@@ -2272,6 +2282,72 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
     for b in bodies:
         b.pop("_signal_ids", None)
     return bodies
+
+
+# Per-body mean embedding, keyed EXACTLY as build_orbital_bodies builds body
+# ids, so the join needs no second keying convention. Aggregating in SQL keeps
+# the wire small (≤36 vectors) — shipping every member vector would be
+# thousands × 768 floats across the WAN.
+_BODY_VECTOR_SQL = """
+WITH m AS (
+    SELECT s.country_code, s.persons, se.vec::vector(768) AS v
+    FROM signals_v2 s
+    JOIN signal_embeddings se ON se.signal_id = s.id
+    WHERE s.id = ANY($1::bigint[])
+)
+SELECT 'country-' || upper(btrim(country_code)) AS body_id, avg(v)::text AS vec
+FROM m
+WHERE btrim(COALESCE(country_code, '')) <> ''
+GROUP BY 1
+UNION ALL
+SELECT 'entity-' || lower(btrim(p)) AS body_id, avg(v)::text AS vec
+FROM m, LATERAL unnest(m.persons) AS p
+WHERE btrim(COALESCE(p, '')) <> ''
+GROUP BY 1
+"""
+
+
+def orbital_mds_layout(bodies, centroid_vec, body_vectors):
+    """Distance-preserving 3D placement for one story (pure).
+
+    Builds the pairwise COSINE matrix over [story centroid, *bodies with a
+    vector], solves classical metric MDS, and normalizes with ONE uniform
+    scale. Returns (pos3_by_body_id, center_pos3, mds_meta); (({}, None, None))
+    when the layout is degenerate, so the caller falls back to the 2D radial
+    view with an honest note. Bodies with no vector are NEVER given a made-up
+    coordinate — they come back in meta['unplaced'].
+    """
+    from app.services.mds import (
+        MIN_NODES, cosine_distance_matrix, mds_3d, to_unit_cube,
+    )
+
+    if not centroid_vec:
+        return {}, None, None
+    placed_ids = [b["id"] for b in bodies if body_vectors.get(b["id"])]
+    unplaced = [b["id"] for b in bodies if not body_vectors.get(b["id"])]
+    if len(placed_ids) + 1 < MIN_NODES:
+        return {}, None, None
+
+    matrix = cosine_distance_matrix(
+        [list(centroid_vec)] + [body_vectors[i] for i in placed_ids])
+    result = mds_3d(matrix)
+    if result is None:
+        return {}, None, None
+
+    coords = to_unit_cube(result.coords)
+    meta = {
+        "stress": result.stress,
+        "basis": "cosine",
+        "n": result.n,
+        "unplaced": unplaced,
+        "note": (
+            "3D positions are classical metric MDS over pairwise cosine "
+            "distance between the story centroid and each body's MEAN member "
+            "embedding. The per-body `dist` field stays the mean of its "
+            "signals' individual distances to the centroid."
+        ),
+    }
+    return dict(zip(placed_ids, coords[1:])), coords[0], meta
 
 
 @router.get("/api/v2/theme/{theme_code}/orbital")
@@ -2413,6 +2489,29 @@ async def get_theme_orbital(
 
             bodies = build_orbital_bodies([dict(r) for r in rows])
             stamps = sorted(r["timestamp"] for r in rows)
+
+            # Distance-preserving 3D layout. Best effort: any failure serves the
+            # payload exactly as before (the frontend keeps its 2D radial view).
+            pos_by_id: dict = {}
+            center_pos3 = None
+            mds_meta = None
+            try:
+                vec_rows = await conn.fetch(_BODY_VECTOR_SQL, member_ids)
+                body_vectors = {
+                    r["body_id"]: v
+                    for r in vec_rows
+                    if (v := _parse_vector_text(r["vec"])) is not None
+                }
+                pos_by_id, center_pos3, mds_meta = orbital_mds_layout(
+                    bodies, _parse_vector_text(centroid_text), body_vectors)
+            except Exception as exc:
+                logger.warning("orbital mds layout failed for %s: %s", theme_code, exc)
+
+            for b in bodies:
+                pos = pos_by_id.get(b["id"])
+                if pos is not None:
+                    b["pos3"] = pos
+
             return {
                 "contract": "orbital-thread-v0",
                 "theme": theme_code,
@@ -2421,12 +2520,14 @@ async def get_theme_orbital(
                 "center": {
                     **(center or {}),
                     "member_count": len(rows),
+                    "pos3": center_pos3,
                     "window": {
                         "start": stamps[0].isoformat(),
                         "end": stamps[-1].isoformat(),
                     },
                 },
                 "bodies": bodies,
+                "mds": mds_meta,
             }
     except Exception as exc:
         logger.error("orbital view failed for %s: %s", theme_code, exc)
