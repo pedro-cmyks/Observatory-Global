@@ -20,16 +20,12 @@ import {
     universeAlpha,
     universeRadius,
     applyRot,
-    IDENTITY_ROT,
-    mul3,
-    rotX,
-    rotY,
-    rotZ,
-    type Rot3,
     type UniverseEdge,
     type UniverseNode,
 } from '../lib/universeLayout'
-import { OrbitalThreadView } from './OrbitalThreadView'
+import { useTrackball } from '../hooks/useTrackball'
+import { PERSPECTIVE_FLOOR } from '../lib/mds3d'
+import { ConstellationThreadView } from './ConstellationThreadView'
 import { LoadingMoment } from './LoadingMoment'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import './UniverseView.css'
@@ -70,7 +66,6 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const [loading, setLoading] = useState(true)
     const [scrubPct, setScrubPct] = useState(100)
     const [hoveredId, setHoveredId] = useState<string | null>(null)
-    const [view, setView] = useState({ k: 1, tx: 0, ty: 0 })
     // Universe's OWN classifiers (not the globe's HEAT/FLOW): filter the field
     // by what matters semantically here.
     const [crisisOnly, setCrisisOnly] = useState(false)
@@ -81,24 +76,15 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     // Travel state: when a thread is open we are AT its orbit; back returns to the field.
     const [orbitalVisible, setOrbitalVisible] = useState(false)
     const [traveling, setTraveling] = useState(false)
-    // Yaw: rotation around the cloud's center of MASS (spec §7.2). Ambient
-    // spin pauses on any interaction — camera, not time.
-    // Orientation as an accumulated 3x3 rotation matrix (trackball/arcball —
-    // Pedro 2026-07-03 "roll disponible 3D... para donde sea"). Free 3-axis
-    // rotation: no gimbal lock, no clamp, any orientation. Chosen over Euler
-    // yaw/pitch/roll after weighing both (spec §7.4) + web-grounded review.
-    const [rot, setRot] = useState<Rot3>(IDENTITY_ROT)
+    // Camera state (rotation matrix + zoom/pan) and every gesture ref now live
+    // in `useTrackball` — the ONE gesture layer shared with the story
+    // constellation and the investigation cloud. Rotation stays an accumulated
+    // 3x3 matrix about the cloud's center of MASS (spec §7.2/§7.4, Pedro
+    // 2026-07-03 "roll disponible 3D... para donde sea"): no gimbal lock, no
+    // clamp, any orientation.
     // Nav mode: drag ROTATES by default (fly around), or PANS (drag the cloud
     // across the screen). Two-finger touch always pans+zooms regardless.
     const [navMode, setNavMode] = useState<'rotate' | 'pan' | 'roll'>('rotate')
-    const spinPausedRef = useRef(false)
-    const draggingRef = useRef(false) // true during any active drag — spin must not resume mid-drag
-    // Incremental drag: store the LAST pointer pos + mode; each move composes
-    // a small rotation (trackball) or pans. lastAngle tracks two-finger twist.
-    const dragRef = useRef<{ lastX: number; lastY: number; downX: number; downY: number; moved: boolean; mode: 'orbit' | 'roll' | 'pan'; tx: number; ty: number } | null>(null)
-    // Multi-touch: track active pointers for two-finger pan + pinch-zoom.
-    const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
-    const pinchRef = useRef<{ dist: number; cx: number; cy: number; tx: number; ty: number; k: number; angle: number } | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 1200, h: 700 })
 
@@ -125,47 +111,12 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
 
     // Ambient spin, THERMALLY POLITE (2026-07-03 kernel panic post-mortem:
     // WindowServer watchdog timeout — a 60fps React re-render of 348 SVG
-    // bodies contributes exactly that kind of compositor load):
-    //  - yaw updates at ~10fps, not every frame
-    //  - stops entirely while the orbital view covers the field
-    //  - auto-rests after 90s without interaction; any hover/drag re-arms it
-    const lastInteractionRef = useRef(performance.now())
-    useEffect(() => {
-        if (orbitalVisible) return // field hidden — no reason to animate
-        let raf = 0
-        let last = performance.now()
-        let acc = 0
-        const tick = (now: number) => {
-            const dt = now - last
-            last = now
-            acc += dt
-            const resting = now - lastInteractionRef.current > 90_000
-            // Hidden-panel guard: on mobile the radar/universe panel is
-            // CSS-hidden (display:none) when another tab is active, which
-            // `document.hidden` does NOT catch (it only tracks the whole
-            // browser tab). Without this, the ~1000-element SVG kept
-            // re-rendering at 10fps behind a hidden panel — continuous CPU/
-            // battery burn and the "everything is slow" feel on phones.
-            const panelHidden = containerRef.current !== null
-                && containerRef.current.offsetParent === null
-            if (acc >= 100) { // ~10fps
-                if (!spinPausedRef.current && !draggingRef.current && !document.hidden && !resting && !panelHidden) {
-                    const dyaw = (acc / 1000) * 0.06 // ~1 turn / 105s
-                    setRot(r => mul3(rotY(dyaw), r)) // ambient spin about screen-vertical
-                }
-                acc = 0
-            }
-            raf = requestAnimationFrame(tick)
-        }
-        raf = requestAnimationFrame(tick)
-        return () => cancelAnimationFrame(raf)
-    }, [orbitalVisible])
-
-    useEffect(() => {
-        spinPausedRef.current = hoveredId !== null
-    }, [hoveredId])
-    // note: draggingRef independently holds the spin during drags (set in
-    // the pointer handlers) so a hover-leave mid-drag never resumes the spin
+    // bodies contributes exactly that kind of compositor load) — now owned by
+    // useTrackball: ~10fps yaw, stopped while the orbital view covers the field
+    // (`ambient: !orbitalVisible`), while a hover card is open (`paused`),
+    // while dragging, while the tab OR the panel is hidden, and after 90s of
+    // rest. The hook's draggingRef independently holds the spin during a drag
+    // so a hover-leave mid-drag never resumes it.
 
     // Callback ref: the canvas div does NOT exist during the loading/orbital
     // branches, so a mount-only observer never fires and the svg stays at the
@@ -247,6 +198,23 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         return set
     }, [hoveredId, edges])
 
+    // hitTestBody is defined below (it needs `projected`); route the tap through
+    // a ref so the hook can be constructed before it.
+    const tapRef = useRef<(lx: number, ly: number) => void>(() => {})
+    // The ONE gesture layer (shared with the story + investigation clouds).
+    // Ambient spin stops while a story system covers the field.
+    const trackball = useTrackball({
+        containerRef,
+        navMode,
+        minZoom: 0.6, maxZoom: 8, wheelStep: 1.12,
+        ambient: !orbitalVisible,
+        paused: hoveredId !== null,
+        onTap: (lx, ly) => tapRef.current(lx, ly),
+    })
+    // (setRot stays on the hook for other consumers; every rotation write in
+    // this view is a gesture, so the component only READS `rot`.)
+    const { rot, view, setView } = trackball
+
     const margin = 46
     const px = (x: number) => (margin + x * (size.w - 2 * margin)) * view.k + view.tx
     const py = (y: number) => (margin + y * (size.h - 2 * margin)) * view.k + view.ty
@@ -268,7 +236,10 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
     const perspSpread = Math.min(1.6, Math.max(0, (view.k - 1) * 0.8))
     const project3 = (x: number, y: number, z: number | undefined) => {
         const p = applyRot(rot, x, y, z, massX, massY, massZ)
-        const scale = 1 / (1 + (p.depth - 0.5) * 2.4 * perspSpread)
+        // Floor the divisor: past spread ≈ 0.833 a near body drives it through
+        // zero and the body mirrors through the cloud centre with a negative
+        // radius (invalid SVG, and unclickable). Same guard as mds3d's.
+        const scale = 1 / Math.max(PERSPECTIVE_FLOOR, 1 + (p.depth - 0.5) * 2.4 * perspSpread)
         const pxp = 0.5 + (p.px - 0.5) * scale
         const pyp = 0.5 + (p.py - 0.5) * scale
         return { sx: px(pxp), sy: py(pyp), depth: p.depth, scale }
@@ -300,10 +271,27 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
             if (!p) continue
             const r = universeRadius(n.n) * Math.min(3.5, Math.max(0.8, view.k)) * depthScale(p.depth) * (p.scale ?? 1)
             if (Math.hypot(lx - p.sx, ly - p.sy) <= r + 6) {
-                if (!best || p.depth > best.depth) best = { id: n.id, depth: p.depth }
+                // NEAREST wins: depth 0 is closest, and depthOrdered paints
+                // largest-depth first (underneath) — so picking the larger depth
+                // opened the body hidden BEHIND the one you clicked.
+                if (!best || p.depth < best.depth) best = { id: n.id, depth: p.depth }
             }
         }
         return best?.id ?? null
+    }
+
+    // A tap that didn't drag = a CLICK → open the body under the pointer.
+    // Pointer-capture eats the SVG <g> onClick, so the hook hit-tests through
+    // here (works for mouse AND touch). Fixes "click does nothing" (Pedro
+    // 2026-07-03 — free-nav regression).
+    tapRef.current = (lx: number, ly: number) => {
+        const hit = hitTestBody(lx, ly)
+        // Clicking the ALREADY-open thread re-enters its system (onThemeSelect
+        // no-ops when the theme is unchanged, so the same node felt "dead").
+        if (hit && hit === activeTheme) setOrbitalVisible(true)
+        // Item 8: pass the node's REAL label with the id — the opener knows it;
+        // downstream must never re-derive a generic from the raw id.
+        else if (hit) onThemeSelect(hit, allNodes.find(n => n.id === hit)?.label)
     }
 
     // Inverse-focus lens (the GRAVITY WELL): a focused country/person lights
@@ -458,7 +446,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     </span>
                 </div>
                 <div className="universe-orbit-body">
-                    <OrbitalThreadView
+                    <ConstellationThreadView
                         theme={activeTheme}
                         themeLabel={orbitLabel}
                         hours={hours}
@@ -498,9 +486,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     <button
                         className="universe-filter"
                         onClick={() => setOrbitalVisible(true)}
-                        data-tip="Return to the open story's system"
+                        data-tip="Return to the open story's constellation"
                     >
-                        ◉ TO ORBIT
+                        ◉ TO STORY
                     </button>
                 )}
                 <span className="universe-nav-modes">
@@ -520,7 +508,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     </button>
                     <button
                         className="universe-filter"
-                        onClick={() => { setRot(IDENTITY_ROT); setView({ k: 1, tx: 0, ty: 0 }) }}
+                        onClick={trackball.reset}
                         data-tip="Reset the camera: rotation, pan and zoom back to the default view. (Roll still available: alt-drag or two-finger twist)"
                     >
                         ⌖ RESET
@@ -530,117 +518,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
             <div
                 className={`universe-canvas${traveling ? ' universe-canvas--traveling' : ''}`}
                 ref={attachCanvas}
-                onWheel={e => {
-                    e.preventDefault()
-                    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
-                    setView(v => {
-                        const k = Math.min(8, Math.max(0.6, v.k * factor))
-                        const rect = containerRef.current?.getBoundingClientRect()
-                        const mx = (e.clientX - (rect?.left ?? 0))
-                        const my = (e.clientY - (rect?.top ?? 0))
-                        return {
-                            k,
-                            tx: mx - (mx - v.tx) * (k / v.k),
-                            ty: my - (my - v.ty) * (k / v.k),
-                        }
-                    })
-                }}
-                onPointerDown={e => {
-                    e.preventDefault()
-                    try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId) } catch { /* synthetic/inactive pointer */ }
-                    spinPausedRef.current = true
-                    draggingRef.current = true
-                    lastInteractionRef.current = performance.now()
-                    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-                    if (pointersRef.current.size === 2) {
-                        // begin pinch: two fingers = pan + zoom + TWIST→roll (touch)
-                        const pts = [...pointersRef.current.values()]
-                        pinchRef.current = {
-                            dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y),
-                            cx: (pts[0].x + pts[1].x) / 2,
-                            cy: (pts[0].y + pts[1].y) / 2,
-                            angle: Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x),
-                            tx: view.tx, ty: view.ty, k: view.k,
-                        }
-                        dragRef.current = null
-                    } else {
-                        // pan-mode/shift/right/middle = PAN; alt/ctrl = ROLL; else ORBIT
-                        const mode: 'orbit' | 'roll' | 'pan' =
-                            (navMode === 'pan' || e.shiftKey || e.button === 2 || e.button === 1) ? 'pan'
-                            : (navMode === 'roll' || e.altKey || e.ctrlKey || e.metaKey) ? 'roll'
-                            : 'orbit'
-                        dragRef.current = { lastX: e.clientX, lastY: e.clientY, downX: e.clientX, downY: e.clientY, moved: false, mode, tx: view.tx, ty: view.ty }
-                    }
-                }}
-                onPointerMove={e => {
-                    if (pointersRef.current.has(e.pointerId)) {
-                        pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-                    }
-                    // two-finger: pan + pinch-zoom + twist→roll about the midpoint
-                    if (pinchRef.current && pointersRef.current.size === 2) {
-                        const pts = [...pointersRef.current.values()]
-                        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
-                        const cx = (pts[0].x + pts[1].x) / 2
-                        const cy = (pts[0].y + pts[1].y) / 2
-                        const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x)
-                        const p = pinchRef.current
-                        const k = Math.min(8, Math.max(0.6, p.k * (dist / Math.max(1, p.dist))))
-                        setView({ k, tx: p.tx + (cx - p.cx), ty: p.ty + (cy - p.cy) })
-                        const dRoll = angle - p.angle
-                        if (Math.abs(dRoll) > 1e-4) setRot(r => mul3(rotZ(dRoll), r))
-                        pinchRef.current = { ...p, angle }
-                        lastInteractionRef.current = performance.now()
-                        return
-                    }
-                    const d = dragRef.current
-                    if (!d) return
-                    lastInteractionRef.current = performance.now()
-                    const dx = e.clientX - d.lastX
-                    const dy = e.clientY - d.lastY
-                    d.lastX = e.clientX; d.lastY = e.clientY
-                    if (Math.hypot(e.clientX - d.downX, e.clientY - d.downY) > 5) d.moved = true
-                    if (d.mode === 'pan') {
-                        setView(v => ({ ...v, tx: v.tx + dx, ty: v.ty + dy }))
-                    } else if (d.mode === 'roll') {
-                        setRot(r => mul3(rotZ(dx * 0.01), r))
-                    } else {
-                        // free trackball orbit: screen-space incremental rotation
-                        // (premultiply → no fixed up-vector, roll emerges from combined drags)
-                        setRot(r => mul3(mul3(rotX(-dy * 0.006), rotY(dx * 0.006)), r))
-                    }
-                }}
-                onPointerUp={e => {
-                    // A tap that didn't drag = a CLICK → open the body under the
-                    // pointer. Pointer-capture eats the SVG <g> onClick, so we
-                    // hit-test here (works for mouse AND touch). Fixes "click
-                    // does nothing" (Pedro 2026-07-03 — free-nav regression).
-                    const d = dragRef.current
-                    if (d && !d.moved && pointersRef.current.size === 1) {
-                        const rect = containerRef.current?.getBoundingClientRect()
-                        const lx = e.clientX - (rect?.left ?? 0)
-                        const ly = e.clientY - (rect?.top ?? 0)
-                        const hit = hitTestBody(lx, ly)
-                        // Clicking the ALREADY-open thread re-enters its orbit
-                        // (onThemeSelect no-ops when the theme is unchanged, so
-                        // the same node felt "dead" — Pedro 2026-07-03).
-                        if (hit && hit === activeTheme) setOrbitalVisible(true)
-                        // Item 8: pass the node's REAL label with the id — the
-                        // opener knows it; downstream must never re-derive a
-                        // generic from the raw dynamic-topic id.
-                        else if (hit) onThemeSelect(hit, allNodes.find(n => n.id === hit)?.label)
-                    }
-                    pointersRef.current.delete(e.pointerId)
-                    if (pointersRef.current.size < 2) pinchRef.current = null
-                    if (pointersRef.current.size === 0) { dragRef.current = null; draggingRef.current = false }
-                    spinPausedRef.current = hoveredId !== null
-                }}
-                onPointerLeave={e => {
-                    pointersRef.current.delete(e.pointerId)
-                    if (pointersRef.current.size === 0) { pinchRef.current = null; dragRef.current = null; draggingRef.current = false }
-                    spinPausedRef.current = hoveredId !== null
-                }}
-                onContextMenu={e => e.preventDefault()}
-                onDragStart={e => e.preventDefault()}
+                {...trackball.handlers}
             >
                 <svg width={size.w} height={size.h} role="img" aria-label="Atlas story universe">
                     <defs>
@@ -757,7 +635,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 key={n.id}
                                 className="universe-body"
                                 opacity={(dimmed && !isActive && !lit ? 0.08 : Math.max(alpha, isActive || lit ? 0.95 : 0)) * depthAlpha(p.depth)}
-                                                onMouseEnter={() => { lastInteractionRef.current = performance.now(); cancelHoverExit(); setHoveredId(n.id) }}
+                                onMouseEnter={() => { cancelHoverExit(); trackball.noteInteraction(); setHoveredId(n.id) }}
                                 onMouseLeave={() => clearHoverSoon(n.id)}
                             >
                                 {heatingIds.has(n.id) && !dimmed && (

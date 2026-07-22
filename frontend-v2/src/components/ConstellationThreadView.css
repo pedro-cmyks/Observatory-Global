@@ -1,7 +1,8 @@
-/* Constellation Thread View — the constellation re-code of the orbital story
-   system. Chrome (scrubber/legend/hover/empty) themes via vars; the CANVAS is
+/* Constellation Thread View — the per-story surface (it replaced the orbital
+   solar-system on 2026-07-22, when position became a measured 3D claim).
+   Chrome (scrubber/legend/hover/empty) themes via vars; the CANVAS is
    dark-by-design and text on it pins fixed light literals (light-theme vars are
-   dark ink) — same emerald-canvas policy as OrbitalThreadView.css / UniverseView.css. */
+   dark ink) — same emerald-canvas policy as UniverseView.css. */
 
 .constellation-section {
   padding: 4px 0 12px;
@@ -191,6 +192,33 @@
   font-style: italic;
 }
 
+/* Unplaced bodies: measured absence, listed not drawn. */
+.constellation-unplaced {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+.constellation-unplaced-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  border-bottom: 1px dotted #475569;
+  cursor: help;
+}
+.constellation-unplaced-chip {
+  padding: 1px 6px;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  border-radius: 8px;
+}
+/* The measured distortion drives the wording AND the colour. */
+.constellation-stress--exact { color: #34d399; }
+.constellation-stress--good { color: #94a3b8; }
+.constellation-stress--high { color: #fbbf24; }
+
 /* Tone Distributions strip — tone lives here, not on the star rims (eval P1-5). */
 .constellation-distributions {
   display: flex;
@@ -272,7 +300,7 @@
 }
 .constellation-reset:hover { border-color: rgba(255, 255, 255, 0.4); }
 
-/* ── emerald canvas policy (same as OrbitalThreadView.css / UniverseView.css) ──
+/* ── emerald canvas policy (same as UniverseView.css) ──
    The constellation CANVAS is dark-by-design; text ON it pins fixed light
    literals (never vars — light-theme vars are dark ink). Chrome around it
    (scrubber, legend, empty) themes via vars. Scoped; noir/retro byte-identical. */
@@ -289,6 +317,29 @@
 }
 [data-theme^='emerald'] .constellation-empty {
   border-color: rgba(var(--color-ink-rgb), 0.18);
+}
+/* The distortion readout and the unplaced chips are CHROME, so they theme.
+   The dark-field slate/amber fail contrast on the light theme — and the tier
+   that fails worst is the "high distortion" warning, the one line that most
+   needs to be read (#247 class). */
+[data-theme^='emerald'] .constellation-stress--exact {
+  color: var(--color-accent-primary);
+}
+[data-theme^='emerald'] .constellation-stress--good {
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .constellation-stress--high {
+  color: #92400e;
+}
+[data-theme^='emerald'] .constellation-unplaced {
+  color: var(--color-text-muted);
+}
+[data-theme^='emerald'] .constellation-unplaced-label {
+  color: var(--color-text-muted);
+  border-bottom-color: rgba(var(--color-ink-rgb), 0.35);
+}
+[data-theme^='emerald'] .constellation-unplaced-chip {
+  border-color: rgba(var(--color-ink-rgb), 0.3);
 }
 
 /* — canvas overlays: pinned light text on the dark field — */

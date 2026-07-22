@@ -2156,6 +2156,16 @@ def _vector_text(values) -> str:
     return "[" + ",".join(f"{float(v):.6f}" for v in values) + "]"
 
 
+def _parse_vector_text(text: str | None) -> list[float] | None:
+    """pgvector text output ('[0.1,0.2,...]') → python floats."""
+    if not text:
+        return None
+    body = text.strip().strip("[]")
+    if not body:
+        return None
+    return [float(part) for part in body.split(",")]
+
+
 def _radial_drift(samples: list) -> float | None:
     """Semantic drift of a body: mean centroid-distance of its LATE half of
     signals minus its EARLY half (Pedro 2026-07-02 — the comet tail should
@@ -2169,6 +2179,21 @@ def _radial_drift(samples: list) -> float | None:
     early = sum(d for _, d in ordered[:half]) / half
     late = sum(d for _, d in ordered[half:]) / (len(ordered) - half)
     return round(late - early, 5)
+
+
+def _country_body_id(raw: str | None) -> str | None:
+    """The ONE country body-id convention. Shared by the aggregation and the
+    vector join so the two can never drift (a Python/SQL split on this key
+    silently unplaced any body whose name normalizes differently — Turkish
+    İ folds to two codepoints in Python and one in libc)."""
+    cc = (raw or "").strip().upper()
+    return f"country-{cc}" if cc else None
+
+
+def _entity_body_id(raw: str | None) -> str | None:
+    """The ONE entity body-id convention (see _country_body_id)."""
+    name = (raw or "").strip()
+    return f"entity-{name.lower()}" if name else None
 
 
 def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 12) -> list:
@@ -2188,9 +2213,9 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
         dist = float(r["dist"])
         tone = float(r.get("sentiment") or 0)
         sid = r.get("id")
-        cc = (r.get("country_code") or "").strip().upper()
-        if cc:
-            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
+        cc_id = _country_body_id(r.get("country_code"))
+        if cc_id:
+            b = countries.setdefault(cc_id, {"n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
             b["n"] += 1
             b["dist_total"] += dist
             b["tone_total"] += tone
@@ -2199,11 +2224,10 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             if sid is not None:
                 b["signal_ids"].add(sid)
         for person in (r.get("persons") or []):
-            name = (person or "").strip()
-            if not name:
+            ent_id = _entity_body_id(person)
+            if not ent_id:
                 continue
-            key = name.lower()
-            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
+            b = entities.setdefault(ent_id, {"label": (person or "").strip(), "n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
             b["n"] += 1
             b["dist_total"] += dist
             b["tone_total"] += tone
@@ -2213,14 +2237,14 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
                 b["signal_ids"].add(sid)
 
     bodies = []
-    ranked_entities = sorted(entities.values(), key=lambda b: -b["n"])[:max_entities]
-    for b in ranked_entities:
+    ranked_entities = sorted(entities.items(), key=lambda kv: -kv[1]["n"])[:max_entities]
+    for ent_id, b in ranked_entities:
         subject_type = classify_subject(b["label"])
         if subject_type is None:
             continue
         stamps = sorted(b["timestamps"])
         bodies.append({
-            "id": f"entity-{b['label'].lower()}",
+            "id": ent_id,
             "label": b["label"],
             "type": subject_type,
             "n": b["n"],
@@ -2233,11 +2257,11 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "_signal_ids": b["signal_ids"],
         })
     ranked_countries = sorted(countries.items(), key=lambda kv: -kv[1]["n"])[:max_countries]
-    for cc, b in ranked_countries:
+    for cc_id, b in ranked_countries:
         stamps = sorted(b["timestamps"])
         bodies.append({
-            "id": f"country-{cc}",
-            "label": cc,
+            "id": cc_id,
+            "label": cc_id[len("country-"):],
             "type": "country",
             "n": b["n"],
             "dist": round(b["dist_total"] / b["n"], 5),
@@ -2272,6 +2296,122 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
     for b in bodies:
         b.pop("_signal_ids", None)
     return bodies
+
+
+# Per-body mean embedding. Grouped over the RAW (un-folded) country/person
+# strings and filtered ($2/$3) to just the raw strings the caller already
+# holds — bounded to one row per distinct raw string actually present among
+# this story's members, NOT the "≤36 vectors" an earlier draft of this
+# comment claimed (that count was never enforced by the query itself). All
+# normalization happens exactly ONCE, in Python: the caller (fold_body_
+# vectors, below) folds these raw groups into body ids with the SAME helpers
+# build_orbital_bodies uses (_country_body_id / _entity_body_id), so the join
+# cannot drift — Postgres's libc-backed lower() cannot reproduce Python's
+# Unicode full case mapping (Turkish İ folds to TWO codepoints in Python,
+# one in Postgres).
+#
+# Two MEASURED shapes here (dt-5892, 1,753 members, warm cache — this endpoint
+# runs close to its 15s statement timeout on the largest stories, so the cost
+# of the extra query matters):
+#   1. the CTE keeps only rows a wanted body needs (the OR filter). A row that
+#      matches neither list contributes to no group, so dropping it cannot move
+#      any mean — and the 768-dim vector then never rides through the join.
+#   2. avg() runs on the halfvec and only the RESULT is cast, instead of
+#      casting all 1,753 rows to vector(768) first.
+# Together: 4.35s -> 1.26s.
+_BODY_VECTOR_SQL = """
+WITH m AS (
+    SELECT s.country_code, s.persons, se.vec AS v
+    FROM signals_v2 s
+    JOIN signal_embeddings se ON se.signal_id = s.id
+    WHERE s.id = ANY($1::bigint[])
+      AND (s.country_code = ANY($2::text[]) OR s.persons && $3::text[])
+)
+SELECT 'country' AS kind, country_code AS raw, count(*) AS n,
+       avg(v)::vector(768)::text AS vec
+FROM m
+WHERE country_code = ANY($2::text[])
+GROUP BY 1, 2
+UNION ALL
+SELECT 'entity' AS kind, p AS raw, count(*) AS n,
+       avg(v)::vector(768)::text AS vec
+FROM m, LATERAL unnest(m.persons) AS p
+WHERE p = ANY($3::text[])
+GROUP BY 1, 2
+"""
+
+
+def fold_body_vectors(rows) -> dict[str, list[float]]:
+    """Raw grouped means → per-body mean embedding.
+
+    `rows`: dicts with kind ('country'|'entity'), raw, n, vec (already parsed
+    to floats). Two raw spellings can fold to one body id, so the groups are
+    combined by COUNT-WEIGHTED mean — identical to averaging over the union of
+    their signals. The body id comes from the same helpers build_orbital_bodies
+    uses, so there is one normalization, in one language.
+    """
+    totals: dict[str, list[float]] = {}
+    counts: dict[str, int] = {}
+    for row in rows:
+        body_id = (_country_body_id(row["raw"]) if row["kind"] == "country"
+                   else _entity_body_id(row["raw"]))
+        vec = row["vec"]
+        if not body_id or not vec:
+            continue
+        n = int(row["n"] or 0)
+        if n <= 0:
+            continue
+        acc = totals.get(body_id)
+        if acc is None:
+            totals[body_id] = [value * n for value in vec]
+        else:
+            for i, value in enumerate(vec):
+                acc[i] += value * n
+        counts[body_id] = counts.get(body_id, 0) + n
+    return {bid: [value / counts[bid] for value in acc] for bid, acc in totals.items()}
+
+
+def orbital_mds_layout(bodies, centroid_vec, body_vectors):
+    """Distance-preserving 3D placement for one story (pure).
+
+    Builds the pairwise COSINE matrix over [story centroid, *bodies with a
+    vector], solves classical metric MDS, and normalizes with ONE uniform
+    scale. Returns (pos3_by_body_id, center_pos3, mds_meta); (({}, None, None))
+    when the layout is degenerate, so the caller falls back to the 2D radial
+    view with an honest note. Bodies with no vector are NEVER given a made-up
+    coordinate — they come back in meta['unplaced'].
+    """
+    from app.services.mds import (
+        MIN_NODES, cosine_distance_matrix, mds_3d, to_unit_cube,
+    )
+
+    if not centroid_vec:
+        return {}, None, None
+    placed_ids = [b["id"] for b in bodies if body_vectors.get(b["id"])]
+    unplaced = [b["id"] for b in bodies if not body_vectors.get(b["id"])]
+    if len(placed_ids) + 1 < MIN_NODES:
+        return {}, None, None
+
+    matrix = cosine_distance_matrix(
+        [list(centroid_vec)] + [body_vectors[i] for i in placed_ids])
+    result = mds_3d(matrix)
+    if result is None:
+        return {}, None, None
+
+    coords = to_unit_cube(result.coords)
+    meta = {
+        "stress": result.stress,
+        "basis": "cosine",
+        "n": result.n,
+        "unplaced": unplaced,
+        "note": (
+            "3D positions are classical metric MDS over pairwise cosine "
+            "distance between the story centroid and each body's MEAN member "
+            "embedding. The per-body `dist` field stays the mean of its "
+            "signals' individual distances to the centroid."
+        ),
+    }
+    return dict(zip(placed_ids, coords[1:])), coords[0], meta
 
 
 @router.get("/api/v2/theme/{theme_code}/orbital")
@@ -2413,6 +2553,52 @@ async def get_theme_orbital(
 
             bodies = build_orbital_bodies([dict(r) for r in rows])
             stamps = sorted(r["timestamp"] for r in rows)
+
+            # Distance-preserving 3D layout. Best effort: any failure serves the
+            # payload exactly as before (the frontend keeps its 2D radial view).
+            pos_by_id: dict = {}
+            center_pos3 = None
+            mds_meta = None
+            try:
+                # UNSTRIPPED — pass the values exactly as signals_v2 stores
+                # them so `= ANY(...)` is a byte-exact match against the DB;
+                # stripping here (before the DB round-trip) would silently
+                # drop any body whose stored value carries incidental
+                # whitespace the DB doesn't. All normalization happens once,
+                # in Python, when the returned raw groups are folded into
+                # body ids below (fold_body_vectors).
+                # Ask only for the values that map to a body that SURVIVED
+                # (build_orbital_bodies caps at 24 entities + 12 countries and
+                # drops non-subjects). On a 1,753-signal story that is ~36 keys
+                # instead of ~357, and the aggregate query drops from ~7.4s to
+                # well under a second — this endpoint already runs close to its
+                # 15s statement timeout on the largest stories.
+                wanted = {b["id"] for b in bodies}
+                raw_countries = sorted({
+                    r["country_code"] for r in rows
+                    if r["country_code"] and _country_body_id(r["country_code"]) in wanted
+                })
+                raw_persons = sorted({
+                    p for r in rows for p in (r["persons"] or [])
+                    if p and _entity_body_id(p) in wanted
+                })
+                vec_rows = await conn.fetch(
+                    _BODY_VECTOR_SQL, member_ids, raw_countries, raw_persons)
+                body_vectors = fold_body_vectors([
+                    {"kind": r["kind"], "raw": r["raw"], "n": r["n"],
+                     "vec": _parse_vector_text(r["vec"])}
+                    for r in vec_rows
+                ])
+                pos_by_id, center_pos3, mds_meta = orbital_mds_layout(
+                    bodies, _parse_vector_text(centroid_text), body_vectors)
+            except Exception as exc:
+                logger.warning("orbital mds layout failed for %s: %s", theme_code, exc)
+
+            for b in bodies:
+                pos = pos_by_id.get(b["id"])
+                if pos is not None:
+                    b["pos3"] = pos
+
             return {
                 "contract": "orbital-thread-v0",
                 "theme": theme_code,
@@ -2421,12 +2607,14 @@ async def get_theme_orbital(
                 "center": {
                     **(center or {}),
                     "member_count": len(rows),
+                    "pos3": center_pos3,
                     "window": {
                         "start": stamps[0].isoformat(),
                         "end": stamps[-1].isoformat(),
                     },
                 },
                 "bodies": bodies,
+                "mds": mds_meta,
             }
     except Exception as exc:
         logger.error("orbital view failed for %s: %s", theme_code, exc)

@@ -115,3 +115,110 @@ def test_moons_from_co_occurrence():
         assert sat["moon_overlap"] == 1.0
     assert "moon_of" not in by_id["entity-big person"]
     assert "moon_of" not in by_id.get("country-LB", {})
+
+
+def test_orbital_mds_layout_places_center_and_bodies():
+    from app.routers.themes import orbital_mds_layout
+
+    bodies = [
+        {"id": "entity-a", "label": "A"},
+        {"id": "entity-b", "label": "B"},
+        {"id": "country-US", "label": "US"},
+    ]
+    centroid = [1.0, 0.0, 0.0, 0.0]
+    vectors = {
+        "entity-a": [1.0, 0.1, 0.0, 0.0],
+        "entity-b": [0.0, 1.0, 0.0, 0.0],
+        "country-US": [0.0, 0.0, 1.0, 0.0],
+    }
+    pos_by_id, center_pos, meta = orbital_mds_layout(bodies, centroid, vectors)
+
+    assert set(pos_by_id) == {"entity-a", "entity-b", "country-US"}
+    assert all(len(p) == 3 for p in pos_by_id.values())
+    assert center_pos is not None and len(center_pos) == 3
+    assert meta["basis"] == "cosine"
+    assert meta["n"] == 4          # centroid + 3 bodies
+    assert 0.0 <= meta["stress"] <= 2.0
+    assert meta["unplaced"] == []
+    # closest body to the centroid must also be nearest in the layout
+    import math
+    d_a = math.dist(center_pos, pos_by_id["entity-a"])
+    d_b = math.dist(center_pos, pos_by_id["entity-b"])
+    assert d_a < d_b
+
+
+def test_orbital_mds_layout_reports_bodies_without_vectors_as_unplaced():
+    from app.routers.themes import orbital_mds_layout
+
+    bodies = [
+        {"id": "entity-a", "label": "A"},
+        {"id": "entity-b", "label": "B"},
+        {"id": "entity-ghost", "label": "Ghost"},
+    ]
+    vectors = {"entity-a": [1.0, 0.0, 0.0], "entity-b": [0.0, 1.0, 0.0]}
+    pos_by_id, center_pos, meta = orbital_mds_layout(bodies, [1.0, 1.0, 0.0], vectors)
+
+    assert "entity-ghost" not in pos_by_id       # never a made-up coordinate
+    assert meta["unplaced"] == ["entity-ghost"]
+    assert center_pos is not None
+
+
+def test_orbital_mds_layout_degenerates_honestly():
+    from app.routers.themes import orbital_mds_layout
+
+    # one body + centroid = 2 nodes → below MIN_NODES
+    out = orbital_mds_layout(
+        [{"id": "entity-a", "label": "A"}], [1.0, 0.0], {"entity-a": [0.0, 1.0]},
+    )
+    assert out == ({}, None, None)
+    # no centroid at all
+    assert orbital_mds_layout([{"id": "x"}], None, {"x": [1.0]}) == ({}, None, None)
+
+
+def test_parse_vector_text_roundtrips():
+    from app.routers.themes import _parse_vector_text, _vector_text
+
+    assert _parse_vector_text(None) is None
+    assert _parse_vector_text("") is None
+    assert _parse_vector_text("[1.5,-0.25,0]") == [1.5, -0.25, 0.0]
+    assert _parse_vector_text(_vector_text([0.5, 0.25])) == [0.5, 0.25]
+
+
+def test_body_id_helpers_are_the_single_normalization():
+    from app.routers.themes import _country_body_id, _entity_body_id
+
+    assert _country_body_id(" us ") == "country-US"
+    assert _country_body_id("") is None
+    assert _country_body_id(None) is None
+    assert _entity_body_id("  Ada Lovelace ") == "entity-ada lovelace"
+    assert _entity_body_id("") is None
+
+
+def test_body_id_survives_unicode_special_casing():
+    from app.routers.themes import _entity_body_id, fold_body_vectors
+
+    # Python's .lower() expands Turkish U+0130 to TWO codepoints; Postgres
+    # lower() cannot. Normalizing in ONE language is what keeps this joinable.
+    turkish = "İnönü"
+    assert len(turkish.lower()) > len(turkish)
+    body_id = _entity_body_id(turkish)
+    folded = fold_body_vectors([
+        {"kind": "entity", "raw": turkish, "n": 2, "vec": [1.0, 0.0]},
+    ])
+    assert body_id in folded          # the join survives the case expansion
+    assert folded[body_id] == [1.0, 0.0]
+
+
+def test_fold_body_vectors_count_weights_variants():
+    from app.routers.themes import fold_body_vectors
+
+    folded = fold_body_vectors([
+        {"kind": "entity", "raw": "Ada Lovelace", "n": 3, "vec": [1.0, 0.0]},
+        {"kind": "entity", "raw": "ada lovelace", "n": 1, "vec": [0.0, 1.0]},
+        {"kind": "country", "raw": "us", "n": 1, "vec": [2.0]},
+        {"kind": "entity", "raw": "   ", "n": 5, "vec": [9.0]},   # dropped
+        {"kind": "entity", "raw": "Zero", "n": 0, "vec": [9.0]},  # dropped
+    ])
+    assert folded["entity-ada lovelace"] == [0.75, 0.25]
+    assert folded["country-US"] == [2.0]
+    assert len(folded) == 2

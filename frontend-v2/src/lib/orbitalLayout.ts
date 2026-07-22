@@ -27,6 +27,10 @@ export interface OrbitalBody {
       signals (co-occurrence ≥75%) — it orbits THAT body, not the center. */
   moon_of?: string
   moon_overlap?: number
+  /** Distance-preserving 3D position (classical MDS over pairwise cosine,
+      served by the backend). Absent when the body has no member embedding —
+      it is then listed in the payload's `mds.unplaced`, never placed. */
+  pos3?: [number, number, number]
   first_seen: string
   last_seen: string
   timestamps: string[]
