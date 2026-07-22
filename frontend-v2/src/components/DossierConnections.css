@@ -229,3 +229,10 @@
     font-size: 9.5px;
     letter-spacing: 0.04em;
 }
+/* The distortion readout is CHROME, so it themes. The dark-field slate/amber
+   literals above fail contrast on the light theme — and the tier that fails
+   worst is the "high distortion" warning, the one line that most needs to be
+   read (#247 class). Same overrides the story constellation carries. */
+[data-theme^='emerald'] .dcx-stress--exact { color: var(--color-accent-primary); }
+[data-theme^='emerald'] .dcx-stress--good { color: var(--color-text-muted); }
+[data-theme^='emerald'] .dcx-stress--high { color: #92400e; }
