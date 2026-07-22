@@ -1,5 +1,9 @@
-/* L2 MARKETS dock tab layout. Colors / numerals come from the Instrument Skin
-   (InstrumentSkin.css, `.atlas-instrument`); this file is layout only. */
+/* L2 MARKETS dock tab layout. Numerals come from the Instrument Skin
+   (InstrumentSkin.css, `.atlas-instrument`); this file is layout + the CONSOLE
+   theme-binding. The skin's own dark defaults are wrong in a LIGHT console (the
+   skin only theme-flips for the Brief via [data-rtheme]); in the console we bind
+   the neutral --mkt-* to Atlas's theme-aware --color-* tokens so the tiles read
+   correctly in both the emerald-day (light) and emerald-night (dark) schemes. */
 .markets-panel {
   display: flex;
   flex-direction: column;
@@ -7,6 +11,16 @@
   padding: 8px 10px 12px;
   height: 100%;
   overflow-y: auto;
+}
+
+/* console theme-binding — markets numerals follow the active console scheme */
+.markets-panel .atlas-instrument {
+  --mkt-ink: var(--color-text-primary, #e6e9f2);
+  --mkt-ink-dim: var(--color-text-muted, #9aa2b5);
+  --mkt-flat: var(--color-text-muted, #8b93a7);
+  --mkt-box: var(--color-bg-tertiary, rgba(127, 127, 127, 0.05));
+  --mkt-box-border: var(--color-border-subtle, rgba(127, 127, 127, 0.16));
+  --mkt-chip-bg: var(--color-bg-tertiary, rgba(127, 127, 127, 0.06));
 }
 
 .markets-head {
@@ -43,7 +57,9 @@
 
 .markets-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  /* auto-FIT (not auto-fill): collapse empty tracks so the tiles STRETCH to fill
+     the panel width at any size instead of leaving a gap on the right. */
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
 }
 
