@@ -1,0 +1,61 @@
+/* L2 console "Under the Radar" lens — terminal idiom, dock tab. The gap cells
+   themselves are styled by CoverageGapCard.css (shared with the L1 Brief). */
+.under-radar-lens {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 10px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.url-scope-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.url-scope-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary, #9aa1ab);
+}
+
+.url-scope-chip {
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--color-border-subtle);
+    color: var(--color-accent-secondary, #fbbf24);
+    white-space: nowrap;
+}
+
+.url-gapgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px;
+}
+
+.url-foot {
+    margin: 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: var(--color-text-muted, #8a8f98);
+}
+
+.under-radar-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--color-text-muted, #8a8f98);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    padding: 18px;
+    flex: 1;
+}
+
+.under-radar-empty p { margin: 0; }
