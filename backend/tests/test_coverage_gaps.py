@@ -283,6 +283,7 @@ async def test_endpoint_returns_contract_and_global_scope(monkeypatch):
     assert out["contract"] == "coverage-gaps-v0"
     assert out["scope"] == "global"
     assert out["country"] is None
+    assert out["status"] == "ok"
     assert out["gaps"][0]["slug"] == "cyber"
 
 
@@ -293,13 +294,16 @@ async def test_endpoint_country_scope_uppercases_cc(monkeypatch):
 
     async def fake_fetch(conn, *, hours, country=None, **kw):
         seen["country"] = country
+        seen["hours"] = hours
         return []
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
     monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
 
-    out = await at.get_coverage_gaps(country="co", hours=24)
+    out = await at.get_coverage_gaps(country="co", hours=48)
     assert seen["country"] == "CO"
+    assert seen["hours"] == 48  # hours must reach the service, not just the response echo
+    assert out["hours"] == 48
     assert out["scope"] == "country"
     assert out["country"] == "CO"
 
@@ -311,6 +315,7 @@ async def test_endpoint_degrades_when_db_unavailable(monkeypatch):
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["gaps"] == []
+    assert out["status"] == "degraded"
     assert "database unavailable" in out["notes"]
 
 
@@ -326,4 +331,49 @@ async def test_endpoint_degrades_on_query_failure(monkeypatch):
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["gaps"] == []
-    assert any("unavailable" in n for n in out["notes"])
+    assert out["status"] == "degraded"
+    # Exact text, not a substring match on "unavailable" — the db-unavailable
+    # branch's note also contains that word, so a mutant that routes this
+    # scenario through the wrong branch must still be caught.
+    assert "coverage gaps temporarily unavailable" in out["notes"]
+
+
+@pytest.mark.asyncio
+async def test_endpoint_honest_empty_global_scope_names_floor(monkeypatch):
+    from app.routers import attention_threads as at
+
+    async def fake_fetch(conn, *, hours, country=None, **kw):
+        return []
+
+    monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
+    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+
+    out = await at.get_coverage_gaps(country=None, hours=24)
+    assert out["status"] == "empty"
+    assert out["floor"] == GLOBAL_GAP_FLOOR
+    assert any(
+        f"no category reached the {GLOBAL_GAP_FLOOR}-signal floor" in n
+        for n in out["notes"]
+    )
+    # must NOT overclaim verified coverage for categories that never reached
+    # the floor at all (those are unmeasured here, not "cleared the gate")
+    assert not any("cleared the gate" in n for n in out["notes"])
+
+
+@pytest.mark.asyncio
+async def test_endpoint_honest_empty_country_scope_names_floor(monkeypatch):
+    from app.routers import attention_threads as at
+    monkeypatch.delenv("ATLAS_COUNTRY_GAP_MIN", raising=False)  # pin the default floor (8)
+
+    async def fake_fetch(conn, *, hours, country=None, **kw):
+        return []
+
+    monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
+    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+
+    out = await at.get_coverage_gaps(country="co", hours=24)
+    assert out["status"] == "empty"
+    assert out["floor"] == country_gap_floor() == 8
+    assert any(
+        "no category reached the 8-signal floor" in n for n in out["notes"]
+    )
