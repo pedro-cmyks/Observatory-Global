@@ -226,3 +226,88 @@ geometry is most trustworthy — and the label should be allowed to say that too
    starting proposal; check it against real stories and real pin sets).
 4. Decide whether the time scrubber stays on the 3D story view or is re-thought once
    rotation exists (both are "explore the structure" gestures and may compete).
+
+---
+
+## Measured (2026-07-22, built + deployed)
+
+### The four open items, resolved
+
+**1. Do the per-story bodies expose vectors?** No — and the gap was bigger than
+the item assumed. `build_orbital_bodies` aggregates member *signals* into
+entity/country **bodies**; each body carries `dist` = the MEAN of its members'
+cosine distance to the centroid, a scalar with no vector behind it. Pairwise
+cosine therefore needed a new per-body mean embedding, computed by one grouped
+SQL aggregate keyed exactly as body ids are built (`_BODY_VECTOR_SQL`). Shipping
+member vectors instead would have meant thousands × 768 floats over the WAN.
+
+**1b. Does the dossier expose ONE combined edge weight?** Yes. `edges[].weight`
+is already `max()` over the per-basis weights, clamped to 1.0, so `d = 1 − weight`
+applies directly with no new measurement. The collapse is stated in the payload
+(`mds.collapse`) because choosing `max` is itself a measurement decision.
+Correction made while implementing: the label says **five** bases, not six — the
+edge builder appends exactly five (`semantic`, `shared_country`, `shared_person`,
+`text_mention`, `body_mention`). A glass-box field that miscounts its own
+evidence is the small dishonesty this product exists to avoid.
+
+**2. The Orbits/Constellation toggle.** It was not in `ThemeDetail`. The live
+per-story view was `OrbitalThreadView`, mounted inside `UniverseView`'s travel
+slot, and it contained a wrapper with a ◉Constellation/◉Orbits toggle in which
+**constellation was already the default**. Retiring Orbits removed that file, its
+CSS, the toggle and its `atlas.story-view.v1` preference; `ConstellationThreadView`
+now mounts directly. `lib/orbitalLayout.ts` stays (shared types + helpers).
+
+**3. Stress threshold — MEASURED, and the proposal was wrong.**
+
+| surface | n | measured Kruskal stress-1 |
+|---|---|---|
+| story · Vietnamese Crypto Scam | 32 | 0.124 |
+| story · Spain Wins 2026 World Cup | 37 | 0.153 |
+| story · Venezuela Quakes | 29 | 0.162 |
+| story · Drone Strikes / Russian Warehouses | 32 | 0.171 |
+| story · Ebola Outbreak Congo | 15 | 0.172 |
+| story · Zelensky Fires Military Chief | 23 | 0.178 |
+| story · Russia–India tensions | 31 | 0.179 |
+| story · US Forces Strike Iran (6h window) | 37 | 0.203 |
+| dossier · 3 pins | 3 | 0.000 |
+| dossier · 4 pins | 4 | 0.000 |
+| dossier · 5 pins | 5 | 0.105 |
+
+`STRESS_HIGH` set to **0.15**, not the proposed 0.20 — nothing measured crosses
+0.20, and a threshold that never fires is a dead label. 0.15 is where the two
+regimes actually separate: a small pin set embeds almost exactly (trust it, and
+the label says so), while a story squeezing 768-dimensional cosine into three
+axes lands near 0.17 — fair-to-poor on Kruskal's own convention, so it reads
+"high distortion — rotate to see the real geometry" rather than being flattered
+as low. `STRESS_EXACT` stays 0.05.
+
+**4. Does the time scrubber stay?** Yes. Rotation is a *camera* gesture on the
+canvas; the scrubber is a *time* control below it. They occupy different
+controls and different axes — the universe already carries both without
+competing — and the scrubber's "N entered this week" counter is the acceptance
+task the view has to answer faster than a list.
+
+### Decided while building, beyond the spec
+
+- **The story constellation projects ORTHOGRAPHICALLY** (perspective spread 0).
+  A perspective divide bends the very distance this surface claims to show; the
+  screen zoom is a uniform scale, which preserves every ratio at any zoom, so
+  the label's claim holds across the whole view. Perspective stays only in the
+  universe, where positions are already labelled approximate.
+- **Tone stays off the star rims.** §3 lists a "tone rim" among things to keep,
+  but tone was deliberately moved to the tone-of-coverage strip in the
+  2026-07-17 evaluation (one variable per channel). Restoring it would regress
+  that decision, so it was not restored.
+- **The perspective divisor is floored at 0.2.** Past spread ≈ 0.833 it crossed
+  zero: negative SVG radii (the body vanishes and stops being clickable) and
+  positions mirrored through the cloud centre, reachable in about four wheel
+  notches. This was live in the universe before this work.
+
+### Known residue
+
+`GET /api/v2/theme/dynamic-topic-5892/orbital?hours=168` (1,832 signals) still
+returns `reason=error` on a cold cache: the PRE-EXISTING member/centroid queries
+alone measured 22.3s and 13.5s against a 15s statement timeout. It serves
+normally at `hours=6` and warm. The MDS work is not the cause (its own guard
+logs distinctly and never fired), but the added aggregate was tuned from 7.4s to
+1.26s so as not to make a tight budget tighter.
