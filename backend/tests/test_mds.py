@@ -61,6 +61,30 @@ def test_non_euclidean_input_clips_negative_eigenvalues():
     assert res.stress > 0.0
 
 
+def test_negative_eigenvalue_is_actually_clipped_at_three_nodes():
+    # The load-bearing case for the clip. At n > 3 a negative eigenvalue is
+    # usually dropped by the top-3 ranking before it can reach np.clip; at n=3
+    # EVERY eigenvalue is selected, so a negative one would hit sqrt() and
+    # produce NaN coordinates — a fabricated position on a surface whose whole
+    # premise is that positions are measured. This is the real 3-pin dossier
+    # shape: A-B and B-C strongly linked, A-C with NO measured relation.
+    import numpy as np
+
+    d = edge_weight_distance_matrix(
+        ["a", "b", "c"],
+        [{"a": "a", "b": "b", "weight": 0.9}, {"a": "b", "b": "c", "weight": 0.9}],
+    )
+    D = np.asarray(d)
+    J = np.eye(3) - np.ones((3, 3)) / 3
+    eigenvalues = np.linalg.eigvalsh(-0.5 * (J @ (D ** 2) @ J))
+    assert eigenvalues.min() < -1e-9   # the clip is genuinely exercised here
+
+    res = mds_3d(d)
+    assert res is not None
+    assert all(math.isfinite(v) for c in res.coords for v in c)
+    assert res.stress > 0.0
+
+
 def test_degenerate_below_three_nodes_returns_none():
     assert mds_3d([]) is None
     assert mds_3d([[0.0]]) is None
