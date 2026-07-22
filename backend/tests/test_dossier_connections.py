@@ -149,3 +149,53 @@ def test_truncation_variant_prefix_rule():
     shared = ["tayyip erdo", "tayyip erdogan"]
     kept = [p for p in shared if not any(q != p and q.startswith(p) for q in shared)]
     assert kept == ["tayyip erdogan"]
+
+
+# ── Distance-preserving MDS layout (2026-07-22 spec) ──────────────────────────
+
+def test_connection_mds_positions_places_every_node():
+    nodes = [
+        {"id": "dynamic-topic-1", "pos": None},
+        {"id": "dynamic-topic-2", "pos": None},
+        {"id": "dynamic-topic-3", "pos": None},
+    ]
+    edges = [
+        {"a": "dynamic-topic-1", "b": "dynamic-topic-2", "weight": 0.9},
+        {"a": "dynamic-topic-2", "b": "dynamic-topic-3", "weight": 0.2},
+    ]
+    pos_by_id, meta = dossier._connection_mds_positions(nodes, edges)
+
+    assert set(pos_by_id) == {f"dynamic-topic-{i}" for i in (1, 2, 3)}
+    assert all(len(p) == 3 for p in pos_by_id.values())
+    assert meta["basis"] == "edge-weight-6basis"
+    assert meta["n"] == 3
+    assert "max" in meta["collapse"]
+    assert 0.0 <= meta["stress"] <= 2.0
+
+    # the STRONGEST edge must be the SHORTEST distance in the layout
+    import math
+    strong = math.dist(pos_by_id["dynamic-topic-1"], pos_by_id["dynamic-topic-2"])
+    weak = math.dist(pos_by_id["dynamic-topic-2"], pos_by_id["dynamic-topic-3"])
+    assert strong < weak
+
+
+def test_connection_mds_positions_degenerates_below_three_pins():
+    nodes = [{"id": "a"}, {"id": "b"}]
+    assert dossier._connection_mds_positions(nodes, []) == ({}, None)
+    assert dossier._connection_mds_positions([], []) == ({}, None)
+
+
+def test_connection_mds_unconnected_pin_sits_furthest_out():
+    # An isolated pin has NO measured relation → maximum distance to everyone.
+    nodes = [{"id": "a"}, {"id": "b"}, {"id": "c"}, {"id": "lonely"}]
+    edges = [
+        {"a": "a", "b": "b", "weight": 0.95},
+        {"a": "b", "b": "c", "weight": 0.95},
+        {"a": "a", "b": "c", "weight": 0.95},
+    ]
+    pos_by_id, meta = dossier._connection_mds_positions(nodes, edges)
+    import math
+    tight = math.dist(pos_by_id["a"], pos_by_id["b"])
+    apart = math.dist(pos_by_id["a"], pos_by_id["lonely"])
+    assert apart > tight
+    assert meta is not None

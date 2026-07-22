@@ -219,6 +219,34 @@ def _project_positions(centroids: dict[str, list[float]]) -> dict[str, dict]:
             for i in range(len(ids))}
 
 
+def _connection_mds_positions(nodes: list[dict], edges: list[dict]) -> tuple[dict, dict | None]:
+    """Distance-preserving 3D placement of the pinned stories (pure).
+
+    The endpoint already collapses the six measured bases into ONE scalar per
+    pair (`edge.weight` = max over the basis weights), so the distance is
+    d = clamp(1 - weight, 0, 1) and a pair with NO measured relation keeps the
+    maximum distance — honest absence, never fabricated closeness. Position
+    encodes HOW related overall; the per-edge basis chips still carry WHY.
+    """
+    from app.services.mds import edge_weight_distance_matrix, mds_3d, to_unit_cube
+
+    ids = [n["id"] for n in nodes]
+    result = mds_3d(edge_weight_distance_matrix(ids, edges))
+    if result is None:
+        return {}, None
+    coords = to_unit_cube(result.coords)
+    meta = {
+        "stress": result.stress,
+        "basis": "edge-weight-6basis",
+        "n": result.n,
+        "collapse": (
+            "d = 1 - max(per-basis edge weights); a pair with no measured "
+            "relation keeps the maximum distance 1.0"
+        ),
+    }
+    return dict(zip(ids, coords)), meta
+
+
 @router.post("/connections")
 async def dossier_connections(req: ConnectionsRequest):
     """Measure how the pinned stories relate + their distributions."""
@@ -703,6 +731,19 @@ async def dossier_connections(req: ConnectionsRequest):
 
     edges.sort(key=lambda e: -e["weight"])
 
+    # Distance-preserving 3D layout over the measured edges. Best effort: a
+    # failure leaves the payload exactly as before (the frontend keeps its 2D
+    # field), never a 500.
+    mds_meta = None
+    try:
+        pos3_by_id, mds_meta = _connection_mds_positions(nodes, edges)
+        for n in nodes:
+            pos3 = pos3_by_id.get(n["id"])
+            if pos3 is not None:
+                n["pos3"] = pos3
+    except Exception as exc:
+        logger.warning("dossier connections mds layout failed: %s", exc)
+
     # ── Aggregate distributions ──────────────────────────────────────────────
     country_total: dict = {}
     lang_total: dict = {}
@@ -853,6 +894,7 @@ async def dossier_connections(req: ConnectionsRequest):
         "nodes": nodes,
         "edges": edges,
         "neighbors": neighbors,
+        "mds": mds_meta,
         "distributions": distributions,
         "unresolved": unresolved,
         "meta": {
@@ -867,6 +909,7 @@ async def dossier_connections(req: ConnectionsRequest):
             "body_mention": "one pin's FETCHED ARTICLE BODY (pinned_articles cache) contains the other pin's label key-tokens or a top actor — the paragraph-6 reference headlines hide; pure token match, weaker than a headline text_mention, never mixed with it",
             "actor_filter": "shared/top actors pass the person gate + subjects gazetteer + geo-feature token guard (NER junk excluded)",
             "position_basis": "PCA top-2 of pinned e5 centroids — approximate; edges are exact",
+            "position_basis_3d": "classical metric MDS over d = 1 - combined edge weight; spatial distance IS the measured relation, `mds.stress` is the distortion",
             "member_selection": {
                 "method": "most_recent_per_topic_and_role",
                 "rows_per_topic_role": ROWS_PER_TOPIC,
