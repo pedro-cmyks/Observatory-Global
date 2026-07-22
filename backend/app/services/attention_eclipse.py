@@ -49,6 +49,7 @@ MIN_DOM_LANGS = 3
 MIN_DOM_COUNTRIES = 8
 DOM_TAU = 0.33
 COLL_TAU = 0.25
+MIN_CC_SIGNALS = 5
 
 
 def eclipse_guards(*, field_size: int, total_coverage: int, dom_is_junk: bool,
