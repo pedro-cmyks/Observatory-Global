@@ -6,10 +6,10 @@ the wedge's "what is missing". Honest by construction: a raw-count floor avoids
 thin-noise rows, and `gate_pending` (nothing scored yet) is labeled separately
 from `none_verified` (scored, none admitted) — never conflated with "rejected".
 
-This module is meant to become the ONE definition. `routers/briefing.py`
-(global scope) and `services/country_edition.py` (country scope) currently
-duplicate this SQL inline; both are being migrated onto this module, as will
-the new GET /api/v2/attention/coverage-gaps endpoint.
+This module is the ONE definition. `routers/briefing.py` (global scope) and
+`services/country_edition.py` (country scope) both read their SQL and floor
+from here, as does GET /api/v2/attention/coverage-gaps
+(`routers/attention_threads.py`).
 """
 from __future__ import annotations
 
