@@ -2309,19 +2309,32 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
 # cannot drift — Postgres's libc-backed lower() cannot reproduce Python's
 # Unicode full case mapping (Turkish İ folds to TWO codepoints in Python,
 # one in Postgres).
+#
+# Two MEASURED shapes here (dt-5892, 1,753 members, warm cache — this endpoint
+# runs close to its 15s statement timeout on the largest stories, so the cost
+# of the extra query matters):
+#   1. the CTE keeps only rows a wanted body needs (the OR filter). A row that
+#      matches neither list contributes to no group, so dropping it cannot move
+#      any mean — and the 768-dim vector then never rides through the join.
+#   2. avg() runs on the halfvec and only the RESULT is cast, instead of
+#      casting all 1,753 rows to vector(768) first.
+# Together: 4.35s -> 1.26s.
 _BODY_VECTOR_SQL = """
 WITH m AS (
-    SELECT s.country_code, s.persons, se.vec::vector(768) AS v
+    SELECT s.country_code, s.persons, se.vec AS v
     FROM signals_v2 s
     JOIN signal_embeddings se ON se.signal_id = s.id
     WHERE s.id = ANY($1::bigint[])
+      AND (s.country_code = ANY($2::text[]) OR s.persons && $3::text[])
 )
-SELECT 'country' AS kind, country_code AS raw, count(*) AS n, avg(v)::text AS vec
+SELECT 'country' AS kind, country_code AS raw, count(*) AS n,
+       avg(v)::vector(768)::text AS vec
 FROM m
 WHERE country_code = ANY($2::text[])
 GROUP BY 1, 2
 UNION ALL
-SELECT 'entity' AS kind, p AS raw, count(*) AS n, avg(v)::text AS vec
+SELECT 'entity' AS kind, p AS raw, count(*) AS n,
+       avg(v)::vector(768)::text AS vec
 FROM m, LATERAL unnest(m.persons) AS p
 WHERE p = ANY($3::text[])
 GROUP BY 1, 2
@@ -2554,13 +2567,20 @@ async def get_theme_orbital(
                 # whitespace the DB doesn't. All normalization happens once,
                 # in Python, when the returned raw groups are folded into
                 # body ids below (fold_body_vectors).
+                # Ask only for the values that map to a body that SURVIVED
+                # (build_orbital_bodies caps at 24 entities + 12 countries and
+                # drops non-subjects). On a 1,753-signal story that is ~36 keys
+                # instead of ~357, and the aggregate query drops from ~7.4s to
+                # well under a second — this endpoint already runs close to its
+                # 15s statement timeout on the largest stories.
+                wanted = {b["id"] for b in bodies}
                 raw_countries = sorted({
                     r["country_code"] for r in rows
-                    if r["country_code"] and r["country_code"].strip()
+                    if r["country_code"] and _country_body_id(r["country_code"]) in wanted
                 })
                 raw_persons = sorted({
                     p for r in rows for p in (r["persons"] or [])
-                    if p and p.strip()
+                    if p and _entity_body_id(p) in wanted
                 })
                 vec_rows = await conn.fetch(
                     _BODY_VECTOR_SQL, member_ids, raw_countries, raw_persons)
