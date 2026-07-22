@@ -433,7 +433,7 @@ def test_fetch_threads_accepts_external_connection():
     assert sig.parameters["conn"].default is None
 
 
-def test_fetch_threads_uses_supplied_connection_without_pool():
+def test_fetch_threads_uses_supplied_connection_without_pool(monkeypatch):
     """When conn is supplied, fetch_threads must NOT touch db.pool."""
 
     class FakeConn:
@@ -445,19 +445,15 @@ def test_fetch_threads_uses_supplied_connection_without_pool():
             return []
 
     fake = FakeConn()
-    original_pool = getattr(thread_intelligence.db, "pool", None)
-    thread_intelligence.db.pool = None  # prove no pool access
-    try:
-        result = asyncio.run(
-            fetch_threads(
-                hours=12,
-                limit=5,
-                topic_slug="water-stress-drought",
-                conn=fake,
-            )
+    monkeypatch.setattr(thread_intelligence.db, "pool", None)  # prove no pool access
+    result = asyncio.run(
+        fetch_threads(
+            hours=12,
+            limit=5,
+            topic_slug="water-stress-drought",
+            conn=fake,
         )
-    finally:
-        thread_intelligence.db.pool = original_pool
+    )
 
     assert result == []
     assert len(fake.fetch_calls) == 1

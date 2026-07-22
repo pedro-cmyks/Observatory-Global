@@ -4,8 +4,8 @@ Spec acceptance:
 - A query with no lexical match surfaces related anchors labeled
   retrieval_lane=semantic.
 - Cross-language: Spanish query matches a thread built from Persian/English
-  headlines (real-model test, skipped where sentence-transformers is absent —
-  run it on the M1: `.venv` may lack torch; use mlvenv or install locally).
+  headlines (real-model test, marked `integration` — needs --run-integration
+  plus torch/transformers; run it on the M1 with mlvenv).
 - Deployments without the embedder degrade to a visible coverage gap.
 """
 from __future__ import annotations
@@ -165,6 +165,14 @@ def _torch_available() -> bool:
                 and importlib.util.find_spec("transformers"))
 
 
+# `integration` (conftest: skipped unless --run-integration) is load-bearing, not
+# decoration. A torch/transformers PRESENCE check is not a sufficient gate on its
+# own: `import transformers` runs importlib.metadata.packages_distributions() at
+# import time, which reads the file RECORD of every installed distribution —
+# measured here at 141.7s wall for 0.5s of CPU. So once torch landed in `.venv`
+# this test silently flipped from "skipped" to "hangs the whole run", which is why
+# `pytest tests/` could not be run over the directory.
+@pytest.mark.integration
 @pytest.mark.skipif(not _torch_available(),
                     reason="torch/transformers not installed in this venv "
                            "(run via mlvenv on the M1)")

@@ -18,7 +18,11 @@ from app.routers.dossier import WalkRequest, dossier_walk
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # asyncio.run, not get_event_loop(): any earlier asyncio.run() in the
+    # session closes the thread's loop and leaves it unset, so
+    # get_event_loop() raises RuntimeError once these files run alongside
+    # others. asyncio.run owns a fresh loop per call and cannot be poisoned.
+    return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------- request model
@@ -33,7 +37,7 @@ def test_rel_floor_is_clamped_by_the_contract():
 # ---------------------------------------------------------------- empty branches
 def test_walk_no_topic_centroids_is_honest_empty(monkeypatch):
     # country/person pins have no topic centroid → not a story-relation walk.
-    monkeypatch.setattr(db, "pool", object(), raising=False)  # guarded before db
+    monkeypatch.setattr(db, "pool", object())  # guarded before db
     out = _run(dossier_walk(WalkRequest(topic_ids=["country--US", "person--x"])))
     assert out["contract"] == "constellation-walk-v0"
     assert out["meta"]["reason"] == "no_topic_centroids"
@@ -42,7 +46,7 @@ def test_walk_no_topic_centroids_is_honest_empty(monkeypatch):
 
 
 def test_walk_no_db_is_honest_empty(monkeypatch):
-    monkeypatch.setattr(db, "pool", None, raising=False)
+    monkeypatch.setattr(db, "pool", None)
     out = _run(dossier_walk(WalkRequest(topic_ids=["dynamic-topic-31"])))
     assert out["contract"] == "constellation-walk-v0"
     assert out["meta"]["reason"] == "no_db"
@@ -95,7 +99,7 @@ def _rows():
 
 
 def test_walk_endpoint_wires_db_whitening_walk_payload(monkeypatch):
-    monkeypatch.setattr(db, "pool", _FakePool(_rows()), raising=False)
+    monkeypatch.setattr(db, "pool", _FakePool(_rows()))
     dossier._WALK_CACHE.clear()
     out = _run(dossier_walk(WalkRequest(topic_ids=["dynamic-topic-31"])))
     assert out["contract"] == "constellation-walk-v0"
@@ -123,7 +127,7 @@ def test_walk_endpoint_orphan_seed_returns_no_measured_kin(monkeypatch):
         {"id": 501, "label": "Unrelated", "category": "y",
          "centroid_vec": [float(x) for x in b]},
     ]
-    monkeypatch.setattr(db, "pool", _FakePool(rows), raising=False)
+    monkeypatch.setattr(db, "pool", _FakePool(rows))
     dossier._WALK_CACHE.clear()
     out = _run(dossier_walk(WalkRequest(topic_ids=["dynamic-topic-500"], rel_floor=0.9)))
     # high rel_floor + unrelated neighbor → no kin kept → honest reason

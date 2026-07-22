@@ -72,6 +72,13 @@ def test_service_thread_skipped_when_disabled(monkeypatch):
     assert start_embed_service_thread() is None
 
 
+# `integration` (conftest: skipped unless --run-integration) is load-bearing:
+# _build_app() loads the real e5 model, and `import transformers` alone costs
+# ~142s here (packages_distributions() at import time reads every distribution's
+# RECORD — 0.5s CPU, the rest blocked on I/O). The torch PRESENCE check below is
+# necessary but not sufficient; once torch landed in `.venv` this test stopped
+# skipping and started stalling `pytest tests/` at 21%.
+@pytest.mark.integration
 @pytest.mark.skipif(not _torch_available(),
                     reason="torch/transformers not in this venv")
 def test_embed_endpoint_roundtrip():

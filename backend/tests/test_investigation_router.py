@@ -240,7 +240,7 @@ def test_stored_daily_reader_is_one_compact_row_and_parses_json(monkeypatch):
             return Acquire()
 
     conn = Conn()
-    monkeypatch.setattr(db, "pool", Pool(), raising=False)
+    monkeypatch.setattr(db, "pool", Pool())
     payload = asyncio.run(fetch_stored_daily_publication())
 
     assert payload["completion"]["stored"] is True
@@ -271,7 +271,7 @@ def test_stored_daily_reader_reports_no_seal_when_row_absent(monkeypatch):
         def acquire(self):
             return Acquire()
 
-    monkeypatch.setattr(db, "pool", Pool(), raising=False)
+    monkeypatch.setattr(db, "pool", Pool())
     payload = asyncio.run(fetch_stored_daily_publication())
 
     assert payload["sealed_at"] is None
@@ -297,7 +297,7 @@ def test_stored_daily_reader_serves_seal_schedule(monkeypatch):
         def acquire(self):
             return Acquire()
 
-    monkeypatch.setattr(db, "pool", Pool(), raising=False)
+    monkeypatch.setattr(db, "pool", Pool())
     payload = asyncio.run(fetch_stored_daily_publication())
 
     sched = payload["seal_schedule"]
@@ -308,6 +308,6 @@ def test_stored_daily_reader_serves_seal_schedule(monkeypatch):
 
 
 def test_no_db_payload_still_carries_seal_schedule(monkeypatch):
-    monkeypatch.setattr(db, "pool", None, raising=False)
+    monkeypatch.setattr(db, "pool", None)
     payload = asyncio.run(fetch_stored_daily_publication())
     assert payload["seal_schedule"]["next_attempt_local"] == "02:30"

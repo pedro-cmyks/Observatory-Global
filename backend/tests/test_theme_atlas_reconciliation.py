@@ -52,7 +52,7 @@ class _FakePool:
 
 
 def _install(monkeypatch, *, atlas_row, atlas_detail_result):
-    monkeypatch.setattr(db, "pool", _FakePool(_FakeConn(atlas_row)), raising=False)
+    monkeypatch.setattr(db, "pool", _FakePool(_FakeConn(atlas_row)))
     # Long window -> historical branch fires; force it empty.
     monkeypatch.setattr(themes, "use_processed_history", lambda hours: True)
 
