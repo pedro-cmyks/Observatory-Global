@@ -96,21 +96,47 @@ export interface ConstellationGeom {
     ey: number
 }
 
-export interface PlacedStar {
+/** The non-positional, measured attributes of a star at a scrubbed moment.
+ *  Shared by the 2D radial fallback and the 3D MDS render so both read the
+ *  same numbers from the same place. */
+export interface StarState {
     body: OrbitalBody
-    x: number
-    y: number
     /** Presence opacity (birth + decay, floor 0.14 — the field's PRESENCE_FLOOR). */
     alpha: number
     /** Cumulative-activity luminosity [0,1] at the scrubbed moment. */
     ignition: number
     comet: boolean
     moon: boolean
-    /** Radial fraction [0,1] on the FIXED cosine domain (cross-thread comparable). */
-    distFraction: number
     /** Parent star id when this is a co-occurrence satellite (draws a weighted
         edge to that star); null otherwise. */
     moonParentId: string | null
+}
+
+export interface PlacedStar extends StarState {
+    x: number
+    y: number
+    /** Radial fraction [0,1] on the FIXED cosine domain (cross-thread comparable). */
+    distFraction: number
+}
+
+/**
+ * Every measured, NON-positional attribute of each star at the scrubbed moment.
+ * Position is the ONE thing the 2D radial and the 3D MDS renders disagree on —
+ * everything else (presence, ignition, comet, co-occurrence parent) is the same
+ * engine number read from the same place, so neither path can drift from the
+ * other.
+ */
+export function starStates(
+    bodies: OrbitalBody[], scrubT: number, window_: OrbitalWindow,
+): StarState[] {
+    return bodies.map(body => ({
+        body,
+        alpha: presenceAlphaField(body, scrubT),
+        ignition: ignitionGlow(body, scrubT),
+        comet: isComet(body, window_),
+        moon: !!body.moon_of,
+        moonParentId: body.moon_of ?? null,
+    }))
 }
 
 /**
@@ -119,6 +145,10 @@ export interface PlacedStar {
  * is stable; it does not spin — time lives in alpha/ignition + the scrubber).
  * Moons are placed by their OWN distance like any member; their co-occurrence to
  * a parent is drawn as a real weighted EDGE, not a fake sub-orbit position.
+ *
+ * This is the FALLBACK path now: it renders when the backend serves no `mds`
+ * block (too few placed bodies, or members with no embeddings) — an honest
+ * radial where only the radius is measured, never a fabricated 3D geometry.
  */
 export function placeConstellation(
     bodies: OrbitalBody[],
@@ -127,20 +157,15 @@ export function placeConstellation(
     window_: OrbitalWindow,
 ): PlacedStar[] {
     const { cx, cy, rMin, rMax, ex, ey } = geom
-    return bodies.map(body => {
-        const frac = radiusFraction(body.dist)
+    return starStates(bodies, scrubT, window_).map(state => {
+        const frac = radiusFraction(state.body.dist)
         const r = orbitRadius(frac, rMin, rMax)
-        const a = seedAngle(body.id)
+        const a = seedAngle(state.body.id)
         return {
-            body,
+            ...state,
             x: cx + r * ex * Math.cos(a),
             y: cy + r * ey * Math.sin(a),
-            alpha: presenceAlphaField(body, scrubT),
-            ignition: ignitionGlow(body, scrubT),
-            comet: isComet(body, window_),
-            moon: !!body.moon_of,
             distFraction: frac,
-            moonParentId: body.moon_of ?? null,
         }
     })
 }

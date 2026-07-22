@@ -5,6 +5,7 @@ import {
     presenceAlphaField,
     radiusFraction,
     RADIUS_DOMAIN_MAX,
+    starStates,
     type ConstellationGeom,
 } from './constellationLayout'
 import { seedAngle, type OrbitalBody } from './orbitalLayout'
@@ -123,4 +124,29 @@ describe('placeConstellation — fixed shape, radius = absolute distance, co-occ
         expect(p.moon).toBe(false)
         expect(p.moonParentId).toBe(null)
     })
+})
+
+describe('starStates', () => {
+  const window_ = { start: '2026-07-01T00:00:00Z', end: '2026-07-08T00:00:00Z' }
+  const body = {
+    id: 'entity-a', label: 'A', type: 'person' as const, n: 4, dist: 0.1,
+    first_seen: '2026-07-02T00:00:00Z', last_seen: '2026-07-03T00:00:00Z',
+    timestamps: ['2026-07-02T00:00:00Z', '2026-07-03T00:00:00Z'],
+    moon_of: 'entity-b',
+  }
+
+  it('carries the same measured attributes the 2D placement uses', () => {
+    const t = Date.parse('2026-07-03T00:00:00Z')
+    const [s] = starStates([body], t, window_)
+    const [p] = placeConstellation([body], t, { cx: 0, cy: 0, rMin: 1, rMax: 2, ex: 1, ey: 1 }, window_)
+    expect(s.alpha).toBeCloseTo(p.alpha, 12)
+    expect(s.ignition).toBeCloseTo(p.ignition, 12)
+    expect(s.comet).toBe(p.comet)
+    expect(s.moonParentId).toBe('entity-b')
+  })
+
+  it('hides a star before it is first seen', () => {
+    const [s] = starStates([body], Date.parse('2026-07-01T00:00:00Z'), window_)
+    expect(s.alpha).toBe(0)
+  })
 })

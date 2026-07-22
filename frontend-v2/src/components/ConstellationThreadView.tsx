@@ -7,12 +7,27 @@ import {
     type OrbitalBody,
     type OrbitalWindow,
 } from '../lib/orbitalLayout'
-import { universeRadius } from '../lib/universeLayout'
+import { IDENTITY_ROT, universeRadius } from '../lib/universeLayout'
 import {
     placeConstellation,
+    starStates,
     type ConstellationGeom,
-    type PlacedStar,
+    type StarState,
 } from '../lib/constellationLayout'
+import {
+    centerOfMass,
+    depthAlpha,
+    depthScale,
+    perspectiveSpread,
+    projectPos3,
+    screenXY,
+    stressNote,
+    stressPct,
+    stressTier,
+    type Mds3dMeta,
+    type Pos3,
+} from '../lib/mds3d'
+import { useTrackball } from '../hooks/useTrackball'
 import { resolveCountryName } from '../lib/countryNames'
 import './ConstellationThreadView.css'
 
@@ -26,8 +41,14 @@ interface ConstellationPayload {
         crisis_relevant: boolean | null
         member_count: number
         window: OrbitalWindow
+        /** The story core is node 0 of the MDS solve, so "distance to the core"
+            survives the projection as a real measured distance. */
+        pos3?: [number, number, number] | null
     } | null
     bodies: OrbitalBody[]
+    /** Present when the backend could solve a distance-preserving 3D layout.
+        Absent → this view keeps its 2D radial placement and says so. */
+    mds?: Mds3dMeta | null
     reason?: string
 }
 
@@ -56,6 +77,24 @@ const EMPTY_REASONS: Record<string, string> = {
     error: 'Constellation data unavailable right now.',
 }
 
+/** Padding between the projected cloud and the panel edge (3D path). */
+const MARGIN_3D = 54
+
+/**
+ * A star ready to draw, from EITHER placement path. `rScale` folds in the size
+ * cue of the active path (perspective × depth in 3D, the zoom counter-scale in
+ * 2D) and `aScale` the depth dimming (1 in 2D — a flat map has no depth to
+ * cue), so the render below never has to know which path produced it.
+ */
+interface RenderStar extends StarState {
+    x: number
+    y: number
+    /** 0 = nearest … 1 = furthest. Constant on the 2D fallback. */
+    depth: number
+    rScale: number
+    aScale: number
+}
+
 function bodyLabel(b: OrbitalBody): string {
     return b.type === 'country' ? resolveCountryName(b.label) : b.label
 }
@@ -67,9 +106,6 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
     const [hovered, setHovered] = useState<OrbitalBody | null>(null)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [size, setSize] = useState({ w: 560, h: 380 })
-    // Zoom/pan so you can get closer to the satellite stars (conserved from orbital).
-    const [view, setView] = useState({ k: 1, tx: 0, ty: 0 })
-    const panRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null)
 
     // Callback ref, not mount-effect: the canvas div is absent during the
     // loading/empty branches, so a mount-only observer never attaches (the
@@ -109,6 +145,42 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
         return () => { cancelled = true }
     }, [theme, constellationHours])
 
+    const bodies = useMemo(() => payload?.bodies ?? [], [payload])
+
+    // ── which placement is honest for THIS story ──────────────────────────
+    // 3D only when the backend actually solved the layout AND served a real
+    // coordinate for the core plus at least two bodies. Otherwise the fixed
+    // radial stays — a measured radius with an arbitrary angle is honest;
+    // an invented 3D geometry is not.
+    const served = payload?.mds ?? null
+    const centerPos3 = (payload?.center?.pos3 ?? null) as Pos3 | null
+    const placedIn3d = useMemo(() => bodies.filter(b => b.pos3), [bodies])
+    const use3d = !!served && !!centerPos3 && placedIn3d.length >= 2
+    // The label describes the picture actually on screen: a served `mds` block
+    // we could NOT render (no core coordinate, or fewer than two placed bodies)
+    // must not claim a 3D geometry the radial fallback is not showing — and its
+    // `unplaced` list would be a lie there too, since the radial draws every body.
+    const mds = use3d ? served : null
+
+    // hitTestBody is defined below (it needs the projected stars); route the tap
+    // through a ref so the hook can be constructed before it.
+    const tapRef = useRef<(lx: number, ly: number) => void>(() => {})
+    const trackball = useTrackball({
+        containerRef,
+        // 3D: drag rotates the cloud (that IS the reading gesture — the geometry
+        // is real, so turning it reveals structure). 2D fallback: nothing to
+        // rotate, so drag keeps the pan it always had.
+        navMode: use3d ? 'rotate' : 'pan',
+        minZoom: 0.6, maxZoom: 10, wheelStep: 1.2,
+        // No ambient spin here: the universe already spins, and a second
+        // always-animating SVG is exactly the compositor load the 2026-07-03
+        // kernel-panic post-mortem told us to avoid. Drag to rotate.
+        ambient: false,
+        paused: hovered !== null,
+        onTap: (lx, ly) => tapRef.current(lx, ly),
+    })
+    const view = trackball.view
+
     const window_ = payload?.center?.window ?? null
     const scrubT = useMemo(() => {
         if (!window_) return Date.now()
@@ -117,7 +189,6 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
         return start + (end - start) * (scrubPct / 100)
     }, [window_, scrubPct])
 
-    const bodies = payload?.bodies ?? []
     // Thread's distance band — scales drift streaks so they compare within one system.
     const distSpan = useMemo(() => {
         if (bodies.length === 0) return 0
@@ -144,19 +215,101 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
         [cx, cy, rMin, rMax, ex, ey],
     )
 
-    const placed: PlacedStar[] = useMemo(() => {
-        if (!window_) return []
-        return placeConstellation(bodies, scrubT, geom, window_)
-    }, [bodies, scrubT, window_, geom])
+    // Perspective zoom (shared with orbital, 2D path only): counter-scale star
+    // radii by k^-0.55 so as you zoom, separations grow faster than sizes and
+    // satellite stars visibly detach from their parent.
+    const zoomShrink = Math.pow(view.k, -0.55)
 
-    const visible = placed.filter(p => p.alpha > 0)
-    const placedById = useMemo(() => new Map(placed.map(p => [p.body.id, p])), [placed])
+    // ── 2D fallback placement ─────────────────────────────────────────────
+    const stars2d: RenderStar[] = useMemo(() => {
+        if (use3d || !window_) return []
+        return placeConstellation(bodies, scrubT, geom, window_).map(p => ({
+            ...p, depth: 0.5, rScale: zoomShrink, aScale: 1,
+        }))
+    }, [use3d, bodies, scrubT, window_, geom, zoomShrink])
+
+    // ── 3D distance-preserving placement ──────────────────────────────────
+    // Rotation axis = the cloud's center of mass (core included), so the story
+    // never orbits an external point.
+    const cloudCenter3 = useMemo(
+        () => centerOfMass([
+            ...(centerPos3 ? [centerPos3] : []),
+            ...placedIn3d.map(b => b.pos3 as Pos3),
+        ]),
+        [centerPos3, placedIn3d],
+    )
+    const spread = perspectiveSpread(view.k)
+    const box = useMemo(
+        () => ({ w: width, h: height, margin: MARGIN_3D, view }),
+        [width, height, view],
+    )
+
+    const states: StarState[] = useMemo(
+        () => (window_ ? starStates(bodies, scrubT, window_) : []),
+        [bodies, scrubT, window_],
+    )
+
+    const stars3d: RenderStar[] = useMemo(() => {
+        if (!use3d) return []
+        return states
+            .filter(s => s.body.pos3)
+            .map(s => {
+                const p = projectPos3(s.body.pos3 as Pos3, trackball.rot, cloudCenter3, spread)
+                const { sx, sy } = screenXY(p, box)
+                return {
+                    ...s, x: sx, y: sy, depth: p.depth,
+                    rScale: depthScale(p.depth) * p.scale,
+                    aScale: depthAlpha(p.depth),
+                }
+            })
+            // painter order: draw far bodies first so near ones sit on top
+            .sort((a, b) => b.depth - a.depth)
+    }, [use3d, states, trackball.rot, cloudCenter3, spread, box])
+
+    const core3d = useMemo(() => {
+        if (!use3d || !centerPos3) return null
+        const p = projectPos3(centerPos3, trackball.rot, cloudCenter3, spread)
+        const { sx, sy } = screenXY(p, box)
+        return { sx, sy, depth: p.depth, scale: p.scale }
+    }, [use3d, centerPos3, trackball.rot, cloudCenter3, spread, box])
+
+    // ── the ONE render list both paths feed ───────────────────────────────
+    const visible = useMemo(
+        () => (use3d ? stars3d : stars2d).filter(p => p.alpha > 0),
+        [use3d, stars3d, stars2d],
+    )
+    const placedById = useMemo(() => new Map(visible.map(p => [p.body.id, p])), [visible])
     const labelIds = useMemo(() => {
         // Label the 8 highest-volume visible stars; hover/zoom reveals the rest.
         return new Set(
             [...visible].sort((a, b) => b.body.n - a.body.n).slice(0, 8).map(p => p.body.id),
         )
     }, [visible])
+
+    /** Where the story core sits, and how big it draws, on the active path. */
+    const anchor = use3d && core3d
+        ? { x: core3d.sx, y: core3d.sy, k: depthScale(core3d.depth) * core3d.scale }
+        : { x: cx, y: cy, k: 1 }
+
+    // A tap that didn't drag = a CLICK. Pointer capture (the trackball's drag
+    // machinery) eats the SVG <g> onClick, so selection is hit-tested here —
+    // works for mouse AND touch, on both placement paths.
+    tapRef.current = (lx: number, ly: number) => {
+        let best: RenderStar | null = null
+        for (const s of visible) {
+            // The tap arrives in canvas pixels. 3D coordinates already are; 2D
+            // ones live inside the translate/scale group, so map them out first.
+            const sx = use3d ? s.x : s.x * view.k + view.tx
+            const sy = use3d ? s.y : s.y * view.k + view.ty
+            const r = universeRadius(s.body.n) * s.rScale * (use3d ? 1 : view.k)
+            // `<=` so the LAST match in paint order wins — the star actually on
+            // top (nearest, drawn last) is the one you clicked.
+            if (Math.hypot(lx - sx, ly - sy) <= r + 6 && (!best || s.depth <= best.depth)) best = s
+        }
+        if (!best) return
+        if (best.body.type === 'country') onCountrySelect?.(best.body.label)
+        if (best.body.type === 'person') onPersonSelect?.(best.body.label)
+    }
 
     // Stars that entered within the trailing 7 days of the scrubbed moment —
     // the task the view must answer faster than the list.
@@ -194,39 +347,28 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
 
     const scrubDate = new Date(scrubT)
     const atNow = scrubPct === 100
-    // Perspective zoom (shared with orbital): counter-scale star radii by
-    // k^-0.55 so as you zoom, separations grow faster than sizes and satellite
-    // stars visibly detach from their parent.
-    const zoomShrink = Math.pow(view.k, -0.55)
+    // Label sizing: on the 2D path everything rides inside a scale(k) group, so
+    // text must be counter-scaled. The 3D path bakes pan/zoom into the screen
+    // coordinates themselves, so text is already in canvas pixels.
+    const textK = use3d ? 1 : view.k
+    const atRest = view.k === 1 && view.tx === 0 && view.ty === 0 && trackball.rot === IDENTITY_ROT
 
     return (
         <section className="constellation-section">
             <div
                 className="constellation-canvas"
                 ref={attachCanvas}
-                onWheel={e => {
-                    e.preventDefault()
-                    const factor = e.deltaY < 0 ? 1.3 : 1 / 1.3
-                    const rect = containerRef.current?.getBoundingClientRect()
-                    const mx = e.clientX - (rect?.left ?? 0)
-                    const my = e.clientY - (rect?.top ?? 0)
-                    setView(v => {
-                        const k = Math.min(10, Math.max(1, v.k * factor))
-                        return { k, tx: mx - (mx - v.tx) * (k / v.k), ty: my - (my - v.ty) * (k / v.k) }
-                    })
-                }}
-                onPointerDown={e => { panRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty } }}
-                onPointerMove={e => {
-                    const p = panRef.current
-                    if (!p) return
-                    setView(v => ({ ...v, tx: p.tx + (e.clientX - p.x), ty: p.ty + (e.clientY - p.y) }))
-                }}
-                onPointerUp={() => { panRef.current = null }}
-                onPointerLeave={() => { panRef.current = null }}
-                style={{ cursor: view.k > 1 ? 'grab' : 'default' }}
+                {...trackball.handlers}
+                style={{ cursor: 'grab' }}
             >
-                {view.k > 1 && (
-                    <button className="constellation-reset" onClick={() => setView({ k: 1, tx: 0, ty: 0 })} data-tip="Reset zoom">⌖</button>
+                {!atRest && (
+                    <button
+                        className="constellation-reset"
+                        onClick={() => trackball.reset()}
+                        data-tip="Reset rotation and zoom"
+                    >
+                        ⌖
+                    </button>
                 )}
                 <svg width={width} height={height} role="img" aria-label={`Constellation view of ${themeLabel}`}>
                     <defs>
@@ -244,7 +386,10 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                         </radialGradient>
                     </defs>
 
-                    <g transform={`translate(${view.tx} ${view.ty}) scale(${view.k})`}>
+                    {/* The 2D path pans/zooms the whole group; the 3D path already
+                        carries pan/zoom inside every projected coordinate, so it
+                        must NOT be transformed again. */}
+                    <g transform={use3d ? undefined : `translate(${view.tx} ${view.ty}) scale(${view.k})`}>
                     {/* starfield — deterministic backdrop, decorative only */}
                     {Array.from({ length: 70 }, (_, i) => {
                         const h = (i * 2654435761) % 100_000
@@ -261,17 +406,18 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                     })}
 
                     {/* HUB SPOKES: anchor→member. LENGTH carries the semantic
-                        distance (radius = absolute cosine); width + opacity are
-                        UNIFORM — a higher cosine must NEVER read as a thicker or
-                        brighter link (dossier canon: "cosine never thickens").
-                        These are the story's own members, so they are the faint
-                        proximity tier, not a proof claim. */}
+                        distance (3D: the MDS distance itself; 2D: radius =
+                        absolute cosine); width + opacity are UNIFORM — a higher
+                        cosine must NEVER read as a thicker or brighter link
+                        (dossier canon: "cosine never thickens"). These are the
+                        story's own members, so they are the faint proximity
+                        tier, not a proof claim. */}
                     {visible.map(p => (
                         <line
                             key={`spoke-${p.body.id}`}
-                            x1={cx} y1={cy} x2={p.x} y2={p.y}
+                            x1={anchor.x} y1={anchor.y} x2={p.x} y2={p.y}
                             stroke={TYPE_COLORS[p.body.type]}
-                            strokeOpacity={p.alpha * (hovered?.id === p.body.id ? 0.6 : 0.22)}
+                            strokeOpacity={p.alpha * p.aScale * (hovered?.id === p.body.id ? 0.6 : 0.22)}
                             strokeWidth={0.7}
                             strokeDasharray={p.comet ? '3 3' : undefined}
                             strokeLinecap="round"
@@ -294,7 +440,7 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                                 key={`cooc-${p.body.id}`}
                                 x1={parent.x} y1={parent.y} x2={p.x} y2={p.y}
                                 stroke="#e2e8f0"
-                                strokeOpacity={Math.min(p.alpha, parent.alpha) * 0.55}
+                                strokeOpacity={Math.min(p.alpha * p.aScale, parent.alpha * parent.aScale) * 0.55}
                                 strokeWidth={0.8 + overlap * 2.2}
                                 strokeLinecap="round"
                                 pointerEvents="none"
@@ -309,7 +455,7 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                         if (!p) return null
                         return (
                             <g pointerEvents="none">
-                                <text x={(cx + p.x) / 2} y={(cy + p.y) / 2 - 5} className="constellation-hover-link-label">
+                                <text x={(anchor.x + p.x) / 2} y={(anchor.y + p.y) / 2 - 5} className="constellation-hover-link-label">
                                     {hovered.dist.toFixed(3)}
                                 </text>
                             </g>
@@ -317,35 +463,34 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                     })()}
 
                     {/* drift streaks: MEASURED late-vs-early mean distance to the
-                        centroid, drawn along the SEMANTIC radial (center→star).
-                        DIRECTION now agrees with the legend + hover (the eval found
-                        the orbit's render was inverted): receding (drift>0) points
-                        OUTWARD (coverage moving away from the story core), converging
-                        points INWARD. */}
+                        centroid, drawn along the SEMANTIC radial (core→star).
+                        DIRECTION agrees with the legend + hover: receding
+                        (drift>0) points OUTWARD (coverage moving away from the
+                        story core), converging points INWARD. */}
                     {visible.map(p => {
                         const tail = driftTailLength(p.body.drift, distSpan)
                         if (tail === 0) return null
                         const receding = (p.body.drift ?? 0) > 0
-                        const rx = p.x - cx
-                        const ry = p.y - cy
+                        const rx = p.x - anchor.x
+                        const ry = p.y - anchor.y
                         const rlen = Math.hypot(rx, ry) || 1
                         const dir = receding ? 1 : -1
                         const tx = p.x + dir * (rx / rlen) * tail
                         const ty = p.y + dir * (ry / rlen) * tail
-                        const r0 = universeRadius(p.body.n) * zoomShrink
+                        const r0 = universeRadius(p.body.n) * p.rScale
                         return (
                             <g key={`drift-${p.body.id}`} pointerEvents="none">
                                 <line
                                     x1={p.x} y1={p.y} x2={tx} y2={ty}
                                     stroke={TYPE_COLORS[p.body.type]}
-                                    strokeOpacity={p.alpha * 0.16}
+                                    strokeOpacity={p.alpha * p.aScale * 0.16}
                                     strokeWidth={r0 * 1.4}
                                     strokeLinecap="round"
                                 />
                                 <line
                                     x1={p.x} y1={p.y} x2={tx} y2={ty}
                                     stroke={TYPE_COLORS[p.body.type]}
-                                    strokeOpacity={p.alpha * 0.5}
+                                    strokeOpacity={p.alpha * p.aScale * 0.5}
                                     strokeWidth={1.3}
                                     strokeLinecap="round"
                                 />
@@ -353,20 +498,16 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                         )
                     })}
 
-                    {/* stars */}
+                    {/* stars (far → near, so the nearest sits on top) */}
                     {visible.map(p => {
-                        const r = universeRadius(p.body.n) * zoomShrink
+                        const r = universeRadius(p.body.n) * p.rScale
                         return (
                             <g
                                 key={p.body.id}
                                 className={p.body.type === 'person' || p.body.type === 'country' ? 'constellation-body constellation-body--clickable' : 'constellation-body'}
-                                opacity={p.alpha}
+                                opacity={p.alpha * p.aScale}
                                 onMouseEnter={() => setHovered(p.body)}
                                 onMouseLeave={() => setHovered(h => (h?.id === p.body.id ? null : h))}
-                                onClick={() => {
-                                    if (p.body.type === 'country') onCountrySelect?.(p.body.label)
-                                    if (p.body.type === 'person') onPersonSelect?.(p.body.label)
-                                }}
                             >
                                 {/* Rim is a NEUTRAL outline (+ hover-highlight /
                                     comet dash). Tone lives in the Distributions
@@ -395,9 +536,9 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                                 )}
                                 {(labelIds.has(p.body.id) || hovered?.id === p.body.id || view.k >= 1.6) && (
                                     <text
-                                        x={p.x} y={p.y + r + 12 / view.k}
+                                        x={p.x} y={p.y + r + 12 / textK}
                                         className="constellation-body-label"
-                                        style={{ fontSize: `${9.5 / view.k}px` }}
+                                        style={{ fontSize: `${9.5 / textK}px` }}
                                     >
                                         {bodyLabel(p.body)}
                                     </text>
@@ -407,15 +548,17 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                     })}
 
                     {/* the ANCHOR STAR: the thread — glow + compact core; label
-                        BELOW; every member edge originates here. */}
+                        BELOW; every member edge originates here. In 3D it is a
+                        real node of the layout (node 0 of the MDS solve), so it
+                        carries the same depth cues as any star. */}
                     <g>
-                        <circle cx={cx} cy={cy} r={68} fill="url(#con-center-glow)" pointerEvents="none" />
-                        <circle cx={cx} cy={cy} r={22} className="constellation-anchor" />
-                        <text x={cx} y={cy + 40} className="constellation-anchor-label">
+                        <circle cx={anchor.x} cy={anchor.y} r={68 * anchor.k} fill="url(#con-center-glow)" pointerEvents="none" />
+                        <circle cx={anchor.x} cy={anchor.y} r={22 * anchor.k} className="constellation-anchor" />
+                        <text x={anchor.x} y={anchor.y + 40 * anchor.k} className="constellation-anchor-label">
                             {(() => { const l = payload.center.label || themeLabel; return l.length > 30 ? `${l.slice(0, 28)}…` : l })()}
                         </text>
                         {payload.center.category && (
-                            <text x={cx} y={cy + 53} className="constellation-anchor-category">
+                            <text x={anchor.x} y={anchor.y + 53 * anchor.k} className="constellation-anchor-category">
                                 {payload.center.category}{payload.center.crisis_relevant ? ' · crisis' : ''}
                             </text>
                         )}
@@ -490,10 +633,34 @@ export function ConstellationThreadView({ theme, themeLabel, hours, onCountrySel
                 <span data-tip="A bright inner core scaled by how much of the star's coverage has landed by the scrubbed moment — the story filling in"><i className="constellation-legend-ignition" />core = activity</span>
                 <span data-tip="Dashed star: present for under a quarter of the story's lifespan — a brief visitor"><i className="constellation-legend-comet" />comet</span>
                 <span data-tip="The streak is MEASURED drift: mean centroid-distance of the star's late signals vs its early ones. Outward = its coverage is receding from the story; inward = converging"><i className="constellation-legend-drift" />streak = semantic drift</span>
-                <span className="constellation-legend-note" data-tip="Distance to the anchor = semantic distance of the star's coverage to the thread centroid, on a FIXED scale — so a star's distance means the same in every story (comparable across threads)">
-                    fixed scale · comparable across stories{payload.centroid_basis === 'computed' ? ' · computed centroid' : ''}
-                </span>
+                {mds ? (
+                    <span
+                        className={`constellation-legend-note constellation-stress--${stressTier(mds.stress)}`}
+                        data-tip="Positions are classical metric MDS over the measured cosine distances between the story core and each body's mean embedding. Distortion is Kruskal stress-1 — the honest error of squeezing high-dimensional distance into three axes. Drag to rotate."
+                    >
+                        distance ≈ semantic similarity · 3D distortion {stressPct(mds.stress)}% — {stressNote(mds.stress)}
+                    </span>
+                ) : (
+                    <span className="constellation-legend-note" data-tip="No 3D layout for this story (too few placed bodies or no embeddings) — showing the fixed radial view: radius = measured cosine distance to the core.">
+                        fixed scale · comparable across stories{payload.centroid_basis === 'computed' ? ' · computed centroid' : ''}
+                    </span>
+                )}
             </div>
+
+            {mds && mds.unplaced && mds.unplaced.length > 0 && (
+                <div className="constellation-unplaced" aria-label="Bodies without a measured position">
+                    <span
+                        className="constellation-unplaced-label"
+                        data-tip="These bodies have no member embedding, so there is no measured distance to place them by. They are listed, never drawn at an invented coordinate."
+                    >
+                        unplaced ({mds.unplaced.length})
+                    </span>
+                    {mds.unplaced.slice(0, 8).map(id => {
+                        const b = bodies.find(x => x.id === id)
+                        return <span key={id} className="constellation-unplaced-chip">{b ? bodyLabel(b) : id}</span>
+                    })}
+                </div>
+            )}
         </section>
     )
 }

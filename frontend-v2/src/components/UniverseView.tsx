@@ -24,7 +24,7 @@ import {
     type UniverseNode,
 } from '../lib/universeLayout'
 import { useTrackball } from '../hooks/useTrackball'
-import { OrbitalThreadView } from './OrbitalThreadView'
+import { ConstellationThreadView } from './ConstellationThreadView'
 import { LoadingMoment } from './LoadingMoment'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import './UniverseView.css'
@@ -439,7 +439,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     </span>
                 </div>
                 <div className="universe-orbit-body">
-                    <OrbitalThreadView
+                    <ConstellationThreadView
                         theme={activeTheme}
                         themeLabel={orbitLabel}
                         hours={hours}
@@ -479,9 +479,9 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                     <button
                         className="universe-filter"
                         onClick={() => setOrbitalVisible(true)}
-                        data-tip="Return to the open story's system"
+                        data-tip="Return to the open story's constellation"
                     >
-                        ◉ TO ORBIT
+                        ◉ TO STORY
                     </button>
                 )}
                 <span className="universe-nav-modes">
