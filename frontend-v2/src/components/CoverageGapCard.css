@@ -1,0 +1,191 @@
+/* Coverage-gap card — shared by the L1 Brief ("What is missing") and the L2
+   dock ("Under the Radar"). Rules moved verbatim out of BriefNewspaper.css so
+   both surfaces render one definition.
+
+   The Brief supplies the reader-theme vars (--r-*, styles/readerTheme.css); the
+   L2 console does not, so every reader var carries a console fallback
+   (styles/variables.css). In the Brief the reader value wins and the visual is
+   unchanged; in the console the fallback applies. */
+
+.brief-gapgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+  .brief-gapgrid { grid-template-columns: 1fr; }
+}
+
+.brief-gap-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brief-gap {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  background: var(--r-surface, var(--color-bg-tertiary));
+  border: 1px solid var(--r-line, var(--color-border-subtle));
+  border-left: 3px solid var(--r-accent-2, var(--color-accent-secondary));
+  border-radius: 4px;
+  padding: 18px 18px 16px;
+  color: inherit;
+  font-family: var(--r-sans, var(--font-sans));
+  transition: border-color 0.16s ease;
+  flex: 1;
+}
+
+/* Extended-tier receipts recovered from the gap's raw pool (measured
+   2026-07-16: gap-slice precision 29-43% -> K<=3, always tier-labeled). */
+.brief-gap-receipts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px 12px;
+  background: color-mix(in srgb, var(--r-accent-2, var(--color-accent-secondary)) 6%, var(--r-surface, var(--color-bg-tertiary)));
+  border: 1px dashed color-mix(in srgb, var(--r-accent-2, var(--color-accent-secondary)) 45%, var(--r-line, var(--color-border-subtle)));
+  border-radius: 4px;
+}
+
+.brief-gap-receipts-label {
+  font-family: var(--r-mono, var(--font-mono));
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--r-accent-2, var(--color-accent-secondary));
+  font-weight: 600;
+}
+
+.brief-gap-receipt {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.brief-gap-receipt:hover .brief-gap-receipt-headline {
+  color: var(--r-accent-2, var(--color-accent-secondary));
+  text-decoration: underline;
+}
+
+.brief-gap-receipt-headline {
+  font-family: var(--r-serif, var(--font-serif));
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: var(--r-ink, var(--color-text-primary));
+  overflow-wrap: anywhere;
+}
+
+.brief-gap-receipt-meta {
+  font-family: var(--r-mono, var(--font-mono));
+  font-size: 0.62rem;
+  color: var(--r-muted, var(--color-text-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.brief-gap:hover {
+  border-color: color-mix(in srgb, var(--r-accent-2, var(--color-accent-secondary)) 50%, var(--r-line, var(--color-border-subtle)));
+  border-left-color: var(--r-accent-2, var(--color-accent-secondary));
+}
+
+.brief-gap-label {
+  font-family: var(--r-serif, var(--font-serif));
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+  color: var(--r-ink, var(--color-text-primary));
+}
+
+.brief-gap-cat {
+  font-family: var(--r-mono, var(--font-mono));
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--r-muted, var(--color-text-muted));
+  margin-bottom: 14px;
+}
+
+.brief-gauge {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.brief-gauge .num {
+  display: block;
+  font-family: var(--r-serif, var(--font-serif));
+  font-weight: 700;
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.brief-gauge .raw { color: var(--r-ink, var(--color-text-primary)); }
+.brief-gauge .ver { color: var(--r-critical, var(--color-accent-secondary)); }
+
+.brief-gauge .lbl {
+  display: block;
+  font-family: var(--r-mono, var(--font-mono));
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--r-muted, var(--color-text-muted));
+  margin-top: 5px;
+}
+
+.brief-gbar {
+  display: block;
+  height: 8px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--r-accent-2, var(--color-accent-secondary)) 20%, var(--r-chip, var(--color-bg-tertiary)));
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 11px;
+}
+
+.brief-gbar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--r-accent-2, var(--color-accent-secondary));
+}
+
+.brief-gap-status {
+  font-family: var(--r-mono, var(--font-mono));
+  font-size: 0.66rem;
+  color: var(--r-critical, var(--color-accent-secondary));
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.brief-gap-status--gate_pending { color: var(--r-accent-2, var(--color-accent-secondary)); }
+
+.brief-gap-status .d {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* Not used by CoverageGapCard itself — this is the country-edition's simpler
+   <li className="brief-coverage-gap"> gap row (BriefNewspaper.tsx
+   renderCountryGaps), which reuses .brief-gap-label above plus this rule.
+   It moved here with the rest of the block per plan; it still works only
+   because BriefNewspaper.tsx unconditionally imports CoverageGapCard (so this
+   stylesheet is always loaded on the page). See the task report for the
+   cascade-coupling note. */
+.brief-gap-meta { font-size: 0.78rem; opacity: 0.7; white-space: nowrap; }
