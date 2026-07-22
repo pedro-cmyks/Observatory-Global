@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import json as _json
+import logging
 import re
 import urllib.parse
 import urllib.request
@@ -28,6 +29,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Query
 
 from app import db
+from app.services.coverage_gaps import fetch_coverage_gaps
 from app.services.stream_relevance import classify_stream_lane
 from app.services.silent_risk import (
     category_to_lane,
@@ -36,6 +38,8 @@ from app.services.silent_risk import (
     normalize_title,
     why_silent,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _ckey(title: str) -> str:
@@ -318,6 +322,52 @@ async def get_silent_risks(
         "silent_count": silent_count,
         "silent_by_lane": silent_by_lane,
         "items": items,
+        "notes": notes,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/api/v2/attention/coverage-gaps")
+async def get_coverage_gaps(
+    country: str | None = Query(None, min_length=2, max_length=2),
+    hours: int = Query(24, ge=1, le=168),
+) -> dict:
+    """Coverage gaps for one scope — the "Under the Radar" substrate.
+
+    Global (no country) mirrors the Brief's "What is missing"; with a country it
+    is the domestic band. Same definition either way (services/coverage_gaps).
+    Degrades to an empty list with an explicit note — a secondary lens must never
+    500 the dock, and an empty list alone would read as a false "nothing here".
+    """
+    cc = country.upper() if country else None
+    scope = "country" if cc else "global"
+    notes: list[str] = []
+    gaps: list[dict] = []
+
+    if db.pool is None:
+        return {"contract": "coverage-gaps-v0", "scope": scope, "country": cc,
+                "hours": hours, "gaps": [], "notes": ["database unavailable"],
+                "generated_at": datetime.now(timezone.utc).isoformat()}
+
+    try:
+        async with db.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 12000")
+            gaps = await fetch_coverage_gaps(conn, hours=hours, country=cc)
+    except Exception:
+        logger.exception("coverage-gaps query failed scope=%s cc=%s", scope, cc)
+        notes.append("coverage gaps temporarily unavailable")
+
+    if not gaps and not notes:
+        notes.append(
+            "no coverage gaps in this window — every category with signal cleared the gate"
+        )
+
+    return {
+        "contract": "coverage-gaps-v0",
+        "scope": scope,
+        "country": cc,
+        "hours": hours,
+        "gaps": gaps,
         "notes": notes,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }

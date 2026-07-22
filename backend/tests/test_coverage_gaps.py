@@ -44,6 +44,22 @@ class FakeConn:
         return self._rows
 
 
+class _FakeAcquire:
+    async def __aenter__(self):
+        class _C:
+            async def execute(self, *a, **k):
+                return None
+        return _C()
+
+    async def __aexit__(self, *a):
+        return False
+
+
+class _FakePool:
+    def acquire(self):
+        return _FakeAcquire()
+
+
 def _themes_stub(per_topic_ext, global_ext=1.0):
     """A fake `app.routers.themes` module exposing only what
     `fetch_extended_receipts_by_slug`'s lazy import needs — lets tests
@@ -239,3 +255,75 @@ async def test_receipts_guard_isolates_failure_per_gap(monkeypatch):
     assert by_slug["mining-safety"]["extended_receipts"][0]["headline"] == (
         "Collapse reported at regional mine site"
     )
+
+
+# --- Endpoint: GET /api/v2/attention/coverage-gaps -------------------------
+
+@pytest.mark.asyncio
+async def test_endpoint_returns_contract_and_global_scope(monkeypatch):
+    from app.routers import attention_threads as at
+
+    async def fake_fetch(conn, *, hours, country=None, **kw):
+        return [{"slug": "cyber", "label": "Cyberattack on infrastructure",
+                 "raw_signals": 189, "verified": 0, "scored": 189,
+                 "status": "none_verified", "extended_receipts": []}]
+
+    monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
+    # raising=False: `app.db` is shadowed by the sibling `app/db/` package on
+    # this branch (both tracked since ancient commits bf037cf7/d2ae56cb; the
+    # package wins CPython's package-vs-module resolution), so `db.pool` has no
+    # attribute to overwrite until real app startup sets it dynamically.
+    # test_thread_intelligence.py hits the same shadow via plain attribute
+    # assignment; raising=False is the monkeypatch equivalent, with
+    # auto-teardown. Unrelated to this endpoint or Task 1/2 — see all
+    # `raising=False` call sites below.
+    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)
+
+    out = await at.get_coverage_gaps(country=None, hours=24)
+    assert out["contract"] == "coverage-gaps-v0"
+    assert out["scope"] == "global"
+    assert out["country"] is None
+    assert out["gaps"][0]["slug"] == "cyber"
+
+
+@pytest.mark.asyncio
+async def test_endpoint_country_scope_uppercases_cc(monkeypatch):
+    from app.routers import attention_threads as at
+    seen = {}
+
+    async def fake_fetch(conn, *, hours, country=None, **kw):
+        seen["country"] = country
+        return []
+
+    monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
+    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+
+    out = await at.get_coverage_gaps(country="co", hours=24)
+    assert seen["country"] == "CO"
+    assert out["scope"] == "country"
+    assert out["country"] == "CO"
+
+
+@pytest.mark.asyncio
+async def test_endpoint_degrades_when_db_unavailable(monkeypatch):
+    from app.routers import attention_threads as at
+    monkeypatch.setattr(at.db, "pool", None, raising=False)  # see raising=False note above
+
+    out = await at.get_coverage_gaps(country=None, hours=24)
+    assert out["gaps"] == []
+    assert "database unavailable" in out["notes"]
+
+
+@pytest.mark.asyncio
+async def test_endpoint_degrades_on_query_failure(monkeypatch):
+    from app.routers import attention_threads as at
+
+    async def boom(conn, *, hours, country=None, **kw):
+        raise RuntimeError("statement timeout")
+
+    monkeypatch.setattr(at, "fetch_coverage_gaps", boom)
+    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+
+    out = await at.get_coverage_gaps(country=None, hours=24)
+    assert out["gaps"] == []
+    assert any("unavailable" in n for n in out["notes"])
