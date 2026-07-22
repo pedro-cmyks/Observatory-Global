@@ -102,11 +102,25 @@ export function screenXY(p: { px: number; py: number }, box: ScreenBox): { sx: n
 }
 
 /**
- * Distortion bands. STRESS_HIGH is MEASURED, not guessed: calibrated against
- * real stories and real pin sets (see the plan's Task 8 and the spec addendum).
+ * Distortion bands — MEASURED, not guessed (2026-07-22, prod; the table lives
+ * in the design spec's "Measured" addendum).
+ *
+ *   stories  (n=15–37): 0.124 0.153 0.162 0.171 0.172 0.178 0.179 0.203
+ *   pin sets (n=3–5)  : 0.000 0.000 0.105
+ *
+ * The two surfaces sit in genuinely different regimes, and the threshold is
+ * placed where they separate. A small pin set embeds almost exactly — that is
+ * precisely where the geometry deserves to be trusted, and the label is
+ * allowed to say so. A story squeezes 768-dimensional cosine into three axes
+ * and lands around 0.17, which Kruskal's own convention calls fair-to-poor;
+ * calling that "low distortion" would be the flattering lie this whole feature
+ * exists to avoid, so it reads "high distortion — rotate".
+ *
+ * The design's opening proposal of 0.20 was tested and rejected: nothing
+ * measured crosses it, and a threshold that never fires is a dead label.
  */
 export const STRESS_EXACT = 0.05
-export const STRESS_HIGH = 0.20
+export const STRESS_HIGH = 0.15
 
 export type StressTier = 'exact' | 'good' | 'high'
 
