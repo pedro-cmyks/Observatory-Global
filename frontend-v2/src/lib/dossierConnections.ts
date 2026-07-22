@@ -8,6 +8,7 @@
 // universe". Measured at generation time — never mixed with the frozen pins.
 import type { Investigation, WorkbenchPin } from './workbench'
 import { resolveThreadTopicId } from './dossierEnrichment'
+import type { Mds3dMeta } from './mds3d'
 
 export type ConnectionBasis = 'semantic' | 'shared_country' | 'shared_person' | 'text_mention' | 'body_mention'
 
@@ -17,6 +18,10 @@ export interface ConnectionNode {
   label: string
   category: string | null
   pos: { x: number; y: number } | null
+  /** Distance-preserving 3D position (classical MDS over d = 1 − combined
+      edge weight). Spatial distance IS the measured relation; `mds.stress`
+      carries the distortion. */
+  pos3?: [number, number, number]
   countries: Array<{ cc: string; n: number }>
   persons: string[]
   languages: Array<{ lang: string; n: number }>
@@ -90,6 +95,9 @@ export interface ConnectionsData {
   nodes: ConnectionNode[]
   edges: ConnectionEdge[]
   neighbors?: ConnectionNeighbor[]
+  /** Measured 3D-layout distortion + what the distance means (null when the
+      layout is degenerate — the field then falls back to the 2D placement). */
+  mds?: Mds3dMeta | null
   distributions: ConnectionDistributions | null
   unresolved: string[]
   meta?: Record<string, unknown>

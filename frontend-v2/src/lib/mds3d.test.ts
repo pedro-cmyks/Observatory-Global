@@ -1,0 +1,90 @@
+import { describe, expect, it } from 'vitest'
+import { IDENTITY_ROT, rotY } from './universeLayout'
+import {
+  STRESS_HIGH,
+  centerOfMass,
+  perspectiveSpread,
+  projectPos3,
+  screenXY,
+  stressPct,
+  stressTier,
+  type Pos3,
+} from './mds3d'
+
+const CENTER = { cx: 0.5, cy: 0.5, cz: 0.5 }
+
+describe('centerOfMass', () => {
+  it('averages the cloud', () => {
+    const c = centerOfMass([[0, 0, 0], [1, 1, 1]] as Pos3[])
+    expect(c).toEqual({ cx: 0.5, cy: 0.5, cz: 0.5 })
+  })
+  it('falls back to the cube center when empty', () => {
+    expect(centerOfMass([])).toEqual({ cx: 0.5, cy: 0.5, cz: 0.5 })
+  })
+})
+
+describe('projectPos3', () => {
+  it('is the identity at rest with no perspective', () => {
+    const p = projectPos3([0.25, 0.75, 0.5], IDENTITY_ROT, CENTER, 0)
+    expect(p.px).toBeCloseTo(0.25, 9)
+    expect(p.py).toBeCloseTo(0.75, 9)
+    expect(p.scale).toBeCloseTo(1, 9)
+  })
+
+  it('preserves distance under rotation (the whole point of MDS)', () => {
+    const a: Pos3 = [0.2, 0.3, 0.4]
+    const b: Pos3 = [0.8, 0.6, 0.4]
+    const dist = (r: typeof IDENTITY_ROT) => {
+      const pa = projectPos3(a, r, CENTER, 0)
+      const pb = projectPos3(b, r, CENTER, 0)
+      return Math.hypot(pa.px - pb.px, pa.py - pb.py, pa.depth - pb.depth)
+    }
+    expect(dist(rotY(0.9))).toBeCloseTo(dist(IDENTITY_ROT), 9)
+  })
+
+  it('turns the cloud: a half turn about Y mirrors x', () => {
+    const p = projectPos3([0.9, 0.5, 0.5], rotY(Math.PI), CENTER, 0)
+    expect(p.px).toBeCloseTo(0.1, 6)
+  })
+
+  it('perspective brings near bodies forward and pushes far ones back', () => {
+    const near = projectPos3([0.9, 0.5, 0.1], IDENTITY_ROT, CENTER, 1)
+    const far = projectPos3([0.9, 0.5, 0.9], IDENTITY_ROT, CENTER, 1)
+    expect(near.scale).toBeGreaterThan(1)
+    expect(far.scale).toBeLessThan(1)
+    expect(Math.abs(near.px - 0.5)).toBeGreaterThan(Math.abs(far.px - 0.5))
+  })
+})
+
+describe('perspectiveSpread', () => {
+  it('is orthographic at rest and grows with zoom, capped', () => {
+    expect(perspectiveSpread(1)).toBe(0)
+    expect(perspectiveSpread(0.5)).toBe(0)
+    expect(perspectiveSpread(2)).toBeCloseTo(0.8, 9)
+    expect(perspectiveSpread(99)).toBeCloseTo(1.6, 9)
+  })
+})
+
+describe('screenXY', () => {
+  it('maps normalized coords into the padded canvas and honours pan/zoom', () => {
+    const box = { w: 500, h: 300, margin: 50, view: { k: 1, tx: 0, ty: 0 } }
+    expect(screenXY({ px: 0, py: 0 }, box)).toEqual({ sx: 50, sy: 50 })
+    expect(screenXY({ px: 1, py: 1 }, box)).toEqual({ sx: 450, sy: 250 })
+    const zoomed = screenXY({ px: 0, py: 0 }, { ...box, view: { k: 2, tx: 10, ty: -5 } })
+    expect(zoomed).toEqual({ sx: 110, sy: 95 })
+  })
+})
+
+describe('stress wording', () => {
+  it('tiers the measured distortion', () => {
+    expect(stressTier(0)).toBe('exact')
+    expect(stressTier(0.02)).toBe('exact')
+    expect(stressTier(0.1)).toBe('good')
+    expect(stressTier(STRESS_HIGH)).toBe('high')
+    expect(stressTier(0.9)).toBe('high')
+  })
+  it('reports whole percent, never rounding the number away', () => {
+    expect(stressPct(0.1449)).toBe(14)
+    expect(stressPct(0)).toBe(0)
+  })
+})
