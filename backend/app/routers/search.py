@@ -338,7 +338,16 @@ async def query_thread(
             FROM signals_v2
             WHERE timestamp > NOW() - INTERVAL '{hours} hours'
               AND (
-                (headline IS NOT NULL AND LOWER(headline) LIKE ANY($1::text[]))
+                -- f_unaccent both sides (the Mbappé hole again, 2026-07-22):
+                -- like_patterns come from normalize_search_text and are ALREADY
+                -- accent-folded, so plain LOWER(headline) compared '%eleccion%'
+                -- against 'elección' and never matched. Measured on prod (24h):
+                -- peru +16, eleccion +15, mexico +14 rows recovered — and it is
+                -- marginally FASTER, because f_unaccent(lower(headline)) is the
+                -- exact expression migration 064 built the trigram index on.
+                -- persons/themes stay unfolded: array_to_string has no index, so
+                -- folding those only adds scan cost (measured 1.5s -> 2.0s).
+                (headline IS NOT NULL AND f_unaccent(LOWER(headline)) LIKE ANY($1::text[]))
                 OR (source_name IS NOT NULL AND LOWER(source_name) LIKE ANY($1::text[]))
                 OR (themes IS NOT NULL AND LOWER(array_to_string(themes, ' ')) LIKE ANY($1::text[]))
                 OR (persons IS NOT NULL AND LOWER(array_to_string(persons, ' ')) LIKE ANY($1::text[]))

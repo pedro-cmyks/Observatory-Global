@@ -15,6 +15,7 @@ from __future__ import annotations
 import html
 from typing import Any
 
+from app.core.search_normalization import normalize_search_text
 from app.services.research_semantic import is_junk_headline
 
 GAP_RECEIPTS_K = 3
@@ -44,9 +45,12 @@ def pick_extended_receipts(
             continue
         if is_junk_headline(headline):
             continue
-        prev = best.get(headline)
+        # Fold the KEY only — two outlets writing "Perú" and "Peru" filed the
+        # same story. The displayed headline stays exactly as published.
+        key = normalize_search_text(headline) or headline
+        prev = best.get(key)
         if prev is None or float(score) > prev["_score"]:
-            best[headline] = {
+            best[key] = {
                 "headline": headline,
                 "source": row.get("source"),
                 "url": row.get("url"),

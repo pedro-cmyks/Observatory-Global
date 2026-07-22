@@ -57,8 +57,21 @@ def test_search_segments_have_timeouts_and_degraded_response():
 
 
 def test_unified_signal_matches_use_index_compatible_lower_columns():
+    """Headline matching must use an expression a trigram index was BUILT on.
+
+    Two are: lower(headline) (migration 022) and f_unaccent(lower(headline))
+    (migration 064). Both qualify — the assertion is against wrapping the
+    column in something unindexable, e.g. LOWER(COALESCE(headline, '')).
+
+    Updated 2026-07-22: this used to pin the plain lower(headline) form
+    literally, which had become a guard against the CORRECT fix. Every
+    headline predicate now folds accents, because the LIKE patterns arrive
+    accent-folded from normalize_search_text and the raw column never matched
+    them (measured on prod, 24h: peru +16, eleccion +15, mexico +14 rows) —
+    at no cost, since migration 064 indexed exactly that expression.
+    """
     source = _search_source()
 
     assert "LOWER(COALESCE(headline" not in source
-    assert "headline IS NOT NULL AND LOWER(headline) LIKE ANY" in source
+    assert "headline IS NOT NULL AND f_unaccent(LOWER(headline)) LIKE ANY" in source
     assert "source_name IS NOT NULL AND LOWER(source_name) LIKE ANY" in source

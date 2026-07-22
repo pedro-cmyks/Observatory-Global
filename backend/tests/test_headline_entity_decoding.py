@@ -89,6 +89,114 @@ class TestThreadRankingDedup:
         assert headline_diversity({"evidence_samples": samples}) == pytest.approx(0.4)
 
 
+class TestDiacriticFolding:
+    """Decoding is only half the recall fix.
+
+    Once ``hurac&#xE1;n`` becomes ``huracán`` the word EXISTS, but a query for
+    ``huracan`` still misses it, and two outlets writing the same story with
+    and without accents still read as two stories. Search already closed its
+    half (``f_unaccent`` both sides — the Mbappé hole, routers/search.py), so
+    these normalizers are what is left.
+
+    thread_ranking._norm_headline was worse than accent-sensitive: its
+    ``[^a-z0-9]+`` class does not match ``á`` at all, so ``huracán`` folded to
+    ``hurac n`` — the accented word shattered into fragments, exactly the
+    failure the entity encoding caused.
+    """
+
+    ACCENTED = "Alerta por el huracán en Perú"
+    UNACCENTED = "Alerta por el huracan en Peru"
+
+    def test_norm_headline_folds_accents_instead_of_shattering_them(self):
+        from app.services.thread_ranking import _norm_headline
+
+        assert _norm_headline(self.ACCENTED) == _norm_headline(self.UNACCENTED)
+        # and the word survives whole, rather than becoming "hurac n"
+        assert "huracan" in _norm_headline(self.ACCENTED).split()
+
+    def test_accent_variant_reprints_count_as_one_story(self):
+        from app.services.thread_ranking import headline_diversity
+
+        samples = [
+            {"source": f"outlet{i}.com", "headline": h}
+            for i, h in enumerate([self.ACCENTED, self.UNACCENTED, self.ACCENTED])
+        ]
+        assert headline_diversity({"evidence_samples": samples}) == pytest.approx(0.4)
+
+    def test_gap_receipts_dedupe_across_accents_but_display_keeps_them(self):
+        from app.services.gap_receipts import pick_extended_receipts
+
+        rows = [
+            {"headline": self.ACCENTED, "gate_score": 0.9, "source": "a", "url": "u1"},
+            {"headline": self.UNACCENTED, "gate_score": 0.8, "source": "b", "url": "u2"},
+        ]
+        out = pick_extended_receipts(rows, threshold=0.5)
+
+        assert len(out) == 1
+        # folding is a KEY concern, never a display one — the reader gets the
+        # headline as published.
+        assert out[0]["headline"] == self.ACCENTED
+
+    def test_thread_packet_person_corroboration_folds_accents(self):
+        from datetime import datetime, timezone
+
+        from app.services.thread_packet import build_thread_packet
+
+        def _row(headline, person, outlet):
+            return {"id": 1, "source_lang": "es",
+                    "timestamp": datetime(2026, 7, 22, 10, tzinfo=timezone.utc),
+                    "country_code": "PE", "source_name": outlet,
+                    "source_url": f"http://{outlet}/x", "sentiment": -1.0,
+                    "headline": headline, "themes": ["NATURAL_DISASTER"],
+                    "persons": [person]}
+
+        packet = build_thread_packet([
+            _row("Boluarte declara emergencia", "dina boluarte", "a.pe"),
+            _row("Boluarte viaja a la zona", "dina boluarte", "b.pe"),
+            _row(self.ACCENTED, "cesar acuna", "c.pe"),
+            _row(self.UNACCENTED, "cesar acuna", "d.pe"),
+        ])
+
+        names = {p["name"].lower() for p in packet["topPersons"]}
+        assert "dina boluarte" in names
+        assert "cesar acuna" not in names
+
+    def test_query_thread_sql_folds_headline_accents(self):
+        """The query-thread builder (/search/thread) still had the Mbappé hole
+        that unified search closed: its LIKE patterns come from
+        normalize_search_text (already accent-folded), so '%eleccion%' was
+        compared against a raw 'elección' headline and never matched.
+
+        Source-text assertion because the behaviour only shows against the
+        production-sized table — same rationale as
+        test_search_performance_shape. MEASURED on prod (24h): peru +16,
+        eleccion +15, mexico +14, bogota +2 rows recovered. The folded form is
+        also marginally FASTER (1.5s vs 1.8s) because f_unaccent(lower(
+        headline)) is exactly the expression migration 064 indexed.
+        """
+        source = (Path(__file__).resolve().parents[1] / "app" / "routers"
+                  / "search.py").read_text(encoding="utf-8")
+
+        assert "LOWER(headline) LIKE ANY" not in source, (
+            "every headline LIKE must fold accents on BOTH sides"
+        )
+        assert source.count("f_unaccent(LOWER(headline)) LIKE ANY") >= 2
+        # persons stays unfolded ON PURPOSE: array_to_string(persons) has no
+        # index, so folding it only adds scan cost (measured 1.5s -> 2.0s).
+        assert "f_unaccent(LOWER(array_to_string(persons" not in source
+
+    def test_syndication_audit_norm_folds_accents(self):
+        import importlib.util
+
+        path = (Path(__file__).resolve().parents[1] / "scripts"
+                / "syndication_audit.py")
+        spec = importlib.util.spec_from_file_location("syndication_audit", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        assert mod._norm(self.ACCENTED) == mod._norm(self.UNACCENTED)
+
+
 class TestOtherHeadlineConsumers:
     def test_gap_receipts_dedupe_across_encodings(self):
         from app.services.gap_receipts import pick_extended_receipts

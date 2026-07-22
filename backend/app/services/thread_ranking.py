@@ -22,8 +22,8 @@ from __future__ import annotations
 import html
 import math
 import os
-import re
 
+from app.core.search_normalization import normalize_search_text
 from app.services.daily_edition import global_breadth_signal
 from app.services.stream_relevance import classify_stream_lane
 
@@ -105,8 +105,6 @@ _DIVERSITY_MIN_SAMPLES = 3
 # multipliers still differentiate threads at the normalisation floor.
 _V2_SCORE_BASELINE = 0.05
 
-_NON_ALNUM = re.compile(r"[^a-z0-9]+")
-
 
 def rank_v2_enabled() -> bool:
     """ATLAS_RANK_V2 kill-switch — default ON; off/false/0/no reverts to the
@@ -128,12 +126,20 @@ def _norm_headline(text: str) -> str:
     Unescape first: 46.4% of the stored press corpus is HTML-entity-encoded
     (measured 2026-07-22) and 4,355 headline texts exist in BOTH forms, so
     without this an encoded and a plain copy of one wire story read as two
-    stories — inflating the volume term that ranks the front page."""
+    stories — inflating the volume term that ranks the front page.
+
+    Then fold to `normalize_search_text` — the SAME normalizer search uses, so
+    "what counts as one headline" has one definition. This also repairs a
+    quieter bug: the old `[^a-z0-9]+` class does not match `á`, so `huracán`
+    became `hurac n` — the accented word shattered into fragments exactly the
+    way the entity encoding shattered it."""
     text = html.unescape(text)
     parts = text.split("|")
     if len(parts) >= 2:
+        # strip the masthead stamp BEFORE normalizing — the normalizer turns
+        # "|" into whitespace, which would make the split unfindable.
         text = "|".join(parts[:-1])
-    return _NON_ALNUM.sub(" ", text.lower()).strip()
+    return normalize_search_text(text)
 
 
 def headline_diversity(thread: dict) -> float:
