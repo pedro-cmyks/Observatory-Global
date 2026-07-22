@@ -6,14 +6,16 @@ the wedge's "what is missing". Honest by construction: a raw-count floor avoids
 thin-noise rows, and `gate_pending` (nothing scored yet) is labeled separately
 from `none_verified` (scored, none admitted) — never conflated with "rejected".
 
-This module is the ONE definition. Previously the SQL was duplicated in
-`routers/briefing.py` (global) and `services/country_edition.py` (country);
-both now import from here, as does GET /api/v2/attention/coverage-gaps.
+This module is meant to become the ONE definition. `routers/briefing.py`
+(global scope) and `services/country_edition.py` (country scope) currently
+duplicate this SQL inline; both are being migrated onto this module, as will
+the new GET /api/v2/attention/coverage-gaps endpoint.
 """
 from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +74,19 @@ EXTENDED_RECEIPTS_SQL = """
 
 
 def country_gap_floor() -> int:
-    """Per-country raw floor. Tunable via ATLAS_COUNTRY_GAP_MIN (default 8)."""
-    return int(os.getenv("ATLAS_COUNTRY_GAP_MIN", "8"))
+    """Per-country raw floor. Tunable via ATLAS_COUNTRY_GAP_MIN (default 8).
+
+    A garbage env value must not take down every country request — falls back
+    to 8 with a logged warning instead of raising.
+    """
+    raw = os.getenv("ATLAS_COUNTRY_GAP_MIN", "8")
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "ATLAS_COUNTRY_GAP_MIN=%r is not a valid int; falling back to 8", raw
+        )
+        return 8
 
 
 def gap_status(scored: int) -> str:
@@ -81,26 +94,42 @@ def gap_status(scored: int) -> str:
     return "gate_pending" if scored == 0 else "none_verified"
 
 
-async def attach_extended_receipts(conn, gap_rows: list[dict], hours: int) -> dict[str, list]:
-    """Best-effort extended receipts per gap slug, keyed by slug.
+async def fetch_extended_receipts_by_slug(
+    conn,
+    slugs: list[str],
+    hours: int,
+    *,
+    timeout: float | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """Best-effort extended receipts, keyed by gap slug.
 
-    Guarded PER GAP (the delight lesson): one failing query must never blank the
-    whole section — a failure just means that gap carries no receipts.
+    Guarded PER SLUG (the delight lesson): one failing query must never blank
+    the whole section — a failure just means that one slug carries no receipts
+    while every other slug's lookup proceeds normally. Returns a plain dict;
+    the caller (`fetch_coverage_gaps`) does the attaching onto its gap rows.
     """
-    out: dict[str, list] = {}
-    if not gap_rows:
+    out: dict[str, list[dict[str, Any]]] = {}
+    if not slugs:
         return out
+
+    # FOLLOW-UP: this loader belongs in app/services/, not app/routers/themes.py
+    # — a service reaching into a router inverts the layering. Left as a lazy,
+    # in-function import (not module-level) so importing this module never has
+    # to pull in themes.py's heavier router import chain. Moving the loader
+    # into services/ would remove this lazy import, the layering inversion,
+    # and the sys.modules stub the tests use to exercise this path.
     from app.routers.themes import _extended_gate_thresholds
     from app.services.gap_receipts import GAP_RECEIPTS_K, pick_extended_receipts
 
     per_topic_ext, _global_ext = _extended_gate_thresholds()
-    for gap_row in gap_rows:
-        slug = gap_row["slug"]
+    for slug in slugs:
         ext_thr = per_topic_ext.get(slug)
         if ext_thr is None:
             continue
         try:
-            ext_rows = await conn.fetch(EXTENDED_RECEIPTS_SQL, slug, hours, float(ext_thr))
+            ext_rows = await conn.fetch(
+                EXTENDED_RECEIPTS_SQL, slug, hours, float(ext_thr), timeout=timeout
+            )
             out[slug] = pick_extended_receipts(
                 [dict(r) for r in ext_rows], float(ext_thr), GAP_RECEIPTS_K
             )
@@ -114,18 +143,37 @@ async def fetch_coverage_gaps(
     *,
     hours: int,
     country: str | None = None,
-    global_floor: int = GLOBAL_GAP_FLOOR,
-    country_floor: int | None = None,
+    floor: int | None = None,
     with_receipts: bool = True,
-) -> list[dict]:
-    """Assembled coverage gaps for one scope: global (country=None) or country."""
-    if country:
-        floor = country_gap_floor() if country_floor is None else country_floor
-        rows = await conn.fetch(COUNTRY_GAPS_SQL, hours, country, floor)
-    else:
-        rows = await conn.fetch(GLOBAL_GAPS_SQL, hours, global_floor)
+    timeout: float | None = None,
+) -> list[dict[str, Any]]:
+    """Assembled coverage gaps for one scope: global or country.
 
-    gaps = [{
+    `country` is normalized here (trimmed + uppercased); `None`, `""`, and
+    whitespace-only all resolve to the global scope. `floor` overrides the
+    scope's default (GLOBAL_GAP_FLOOR globally, `country_gap_floor()` for a
+    country) when explicitly given.
+
+    The primary query is NOT wrapped in try/except and never degrades to an
+    empty list on failure — callers must be able to tell "no gaps exist" from
+    "the gap query failed" (an empty list read as the former would render a
+    false-confident "nothing under the radar"). Pass `timeout` and let the
+    caller's own guard (`_fetch_section` in briefing.py, a try/except in the
+    endpoint) handle a slow/failing query. Only the per-slug receipts lookup
+    below is best-effort.
+    """
+    cc = (country or "").strip().upper() or None
+    eff_floor = (
+        floor if floor is not None
+        else (country_gap_floor() if cc else GLOBAL_GAP_FLOOR)
+    )
+
+    if cc:
+        rows = await conn.fetch(COUNTRY_GAPS_SQL, hours, cc, eff_floor, timeout=timeout)
+    else:
+        rows = await conn.fetch(GLOBAL_GAPS_SQL, hours, eff_floor, timeout=timeout)
+
+    gaps: list[dict[str, Any]] = [{
         "slug": r["slug"],
         "label": r["label"],
         "raw_signals": r["raw_signals"],
@@ -136,7 +184,8 @@ async def fetch_coverage_gaps(
     } for r in rows]
 
     if with_receipts and gaps:
-        by_slug = await attach_extended_receipts(conn, gaps, hours)
+        slugs = [g["slug"] for g in gaps]
+        by_slug = await fetch_extended_receipts_by_slug(conn, slugs, hours, timeout=timeout)
         for gap in gaps:
             gap["extended_receipts"] = by_slug.get(gap["slug"], [])
     return gaps
