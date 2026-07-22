@@ -2181,6 +2181,21 @@ def _radial_drift(samples: list) -> float | None:
     return round(late - early, 5)
 
 
+def _country_body_id(raw: str | None) -> str | None:
+    """The ONE country body-id convention. Shared by the aggregation and the
+    vector join so the two can never drift (a Python/SQL split on this key
+    silently unplaced any body whose name normalizes differently — Turkish
+    İ folds to two codepoints in Python and one in libc)."""
+    cc = (raw or "").strip().upper()
+    return f"country-{cc}" if cc else None
+
+
+def _entity_body_id(raw: str | None) -> str | None:
+    """The ONE entity body-id convention (see _country_body_id)."""
+    name = (raw or "").strip()
+    return f"entity-{name.lower()}" if name else None
+
+
 def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 12) -> list:
     """Aggregate member-signal rows into orbital bodies (pure, testable).
 
@@ -2198,9 +2213,9 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
         dist = float(r["dist"])
         tone = float(r.get("sentiment") or 0)
         sid = r.get("id")
-        cc = (r.get("country_code") or "").strip().upper()
-        if cc:
-            b = countries.setdefault(cc, {"n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
+        cc_id = _country_body_id(r.get("country_code"))
+        if cc_id:
+            b = countries.setdefault(cc_id, {"n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
             b["n"] += 1
             b["dist_total"] += dist
             b["tone_total"] += tone
@@ -2209,11 +2224,10 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             if sid is not None:
                 b["signal_ids"].add(sid)
         for person in (r.get("persons") or []):
-            name = (person or "").strip()
-            if not name:
+            ent_id = _entity_body_id(person)
+            if not ent_id:
                 continue
-            key = name.lower()
-            b = entities.setdefault(key, {"label": name, "n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
+            b = entities.setdefault(ent_id, {"label": (person or "").strip(), "n": 0, "dist_total": 0.0, "tone_total": 0.0, "timestamps": [], "samples": [], "signal_ids": set()})
             b["n"] += 1
             b["dist_total"] += dist
             b["tone_total"] += tone
@@ -2223,14 +2237,14 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
                 b["signal_ids"].add(sid)
 
     bodies = []
-    ranked_entities = sorted(entities.values(), key=lambda b: -b["n"])[:max_entities]
-    for b in ranked_entities:
+    ranked_entities = sorted(entities.items(), key=lambda kv: -kv[1]["n"])[:max_entities]
+    for ent_id, b in ranked_entities:
         subject_type = classify_subject(b["label"])
         if subject_type is None:
             continue
         stamps = sorted(b["timestamps"])
         bodies.append({
-            "id": f"entity-{b['label'].lower()}",
+            "id": ent_id,
             "label": b["label"],
             "type": subject_type,
             "n": b["n"],
@@ -2243,11 +2257,11 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
             "_signal_ids": b["signal_ids"],
         })
     ranked_countries = sorted(countries.items(), key=lambda kv: -kv[1]["n"])[:max_countries]
-    for cc, b in ranked_countries:
+    for cc_id, b in ranked_countries:
         stamps = sorted(b["timestamps"])
         bodies.append({
-            "id": f"country-{cc}",
-            "label": cc,
+            "id": cc_id,
+            "label": cc_id[len("country-"):],
             "type": "country",
             "n": b["n"],
             "dist": round(b["dist_total"] / b["n"], 5),
@@ -2284,10 +2298,17 @@ def build_orbital_bodies(rows, *, max_entities: int = 24, max_countries: int = 1
     return bodies
 
 
-# Per-body mean embedding, keyed EXACTLY as build_orbital_bodies builds body
-# ids, so the join needs no second keying convention. Aggregating in SQL keeps
-# the wire small (≤36 vectors) — shipping every member vector would be
-# thousands × 768 floats across the WAN.
+# Per-body mean embedding. Grouped over the RAW (un-folded) country/person
+# strings and filtered ($2/$3) to just the raw strings the caller already
+# holds — bounded to one row per distinct raw string actually present among
+# this story's members, NOT the "≤36 vectors" an earlier draft of this
+# comment claimed (that count was never enforced by the query itself). All
+# normalization happens exactly ONCE, in Python: the caller (fold_body_
+# vectors, below) folds these raw groups into body ids with the SAME helpers
+# build_orbital_bodies uses (_country_body_id / _entity_body_id), so the join
+# cannot drift — Postgres's libc-backed lower() cannot reproduce Python's
+# Unicode full case mapping (Turkish İ folds to TWO codepoints in Python,
+# one in Postgres).
 _BODY_VECTOR_SQL = """
 WITH m AS (
     SELECT s.country_code, s.persons, se.vec::vector(768) AS v
@@ -2295,16 +2316,46 @@ WITH m AS (
     JOIN signal_embeddings se ON se.signal_id = s.id
     WHERE s.id = ANY($1::bigint[])
 )
-SELECT 'country-' || upper(btrim(country_code)) AS body_id, avg(v)::text AS vec
+SELECT 'country' AS kind, country_code AS raw, count(*) AS n, avg(v)::text AS vec
 FROM m
-WHERE btrim(COALESCE(country_code, '')) <> ''
-GROUP BY 1
+WHERE country_code = ANY($2::text[])
+GROUP BY 1, 2
 UNION ALL
-SELECT 'entity-' || lower(btrim(p)) AS body_id, avg(v)::text AS vec
+SELECT 'entity' AS kind, p AS raw, count(*) AS n, avg(v)::text AS vec
 FROM m, LATERAL unnest(m.persons) AS p
-WHERE btrim(COALESCE(p, '')) <> ''
-GROUP BY 1
+WHERE p = ANY($3::text[])
+GROUP BY 1, 2
 """
+
+
+def fold_body_vectors(rows) -> dict[str, list[float]]:
+    """Raw grouped means → per-body mean embedding.
+
+    `rows`: dicts with kind ('country'|'entity'), raw, n, vec (already parsed
+    to floats). Two raw spellings can fold to one body id, so the groups are
+    combined by COUNT-WEIGHTED mean — identical to averaging over the union of
+    their signals. The body id comes from the same helpers build_orbital_bodies
+    uses, so there is one normalization, in one language.
+    """
+    totals: dict[str, list[float]] = {}
+    counts: dict[str, int] = {}
+    for row in rows:
+        body_id = (_country_body_id(row["raw"]) if row["kind"] == "country"
+                   else _entity_body_id(row["raw"]))
+        vec = row["vec"]
+        if not body_id or not vec:
+            continue
+        n = int(row["n"] or 0)
+        if n <= 0:
+            continue
+        acc = totals.get(body_id)
+        if acc is None:
+            totals[body_id] = [value * n for value in vec]
+        else:
+            for i, value in enumerate(vec):
+                acc[i] += value * n
+        counts[body_id] = counts.get(body_id, 0) + n
+    return {bid: [value / counts[bid] for value in acc] for bid, acc in totals.items()}
 
 
 def orbital_mds_layout(bodies, centroid_vec, body_vectors):
@@ -2496,12 +2547,28 @@ async def get_theme_orbital(
             center_pos3 = None
             mds_meta = None
             try:
-                vec_rows = await conn.fetch(_BODY_VECTOR_SQL, member_ids)
-                body_vectors = {
-                    r["body_id"]: v
+                # UNSTRIPPED — pass the values exactly as signals_v2 stores
+                # them so `= ANY(...)` is a byte-exact match against the DB;
+                # stripping here (before the DB round-trip) would silently
+                # drop any body whose stored value carries incidental
+                # whitespace the DB doesn't. All normalization happens once,
+                # in Python, when the returned raw groups are folded into
+                # body ids below (fold_body_vectors).
+                raw_countries = sorted({
+                    r["country_code"] for r in rows
+                    if r["country_code"] and r["country_code"].strip()
+                })
+                raw_persons = sorted({
+                    p for r in rows for p in (r["persons"] or [])
+                    if p and p.strip()
+                })
+                vec_rows = await conn.fetch(
+                    _BODY_VECTOR_SQL, member_ids, raw_countries, raw_persons)
+                body_vectors = fold_body_vectors([
+                    {"kind": r["kind"], "raw": r["raw"], "n": r["n"],
+                     "vec": _parse_vector_text(r["vec"])}
                     for r in vec_rows
-                    if (v := _parse_vector_text(r["vec"])) is not None
-                }
+                ])
                 pos_by_id, center_pos3, mds_meta = orbital_mds_layout(
                     bodies, _parse_vector_text(centroid_text), body_vectors)
             except Exception as exc:
