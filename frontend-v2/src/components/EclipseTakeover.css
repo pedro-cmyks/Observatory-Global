@@ -1,0 +1,34 @@
+.eclipse-takeover {
+  position: fixed; inset: 0; z-index: 100000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; color: #e7eaf0;
+  background: radial-gradient(circle at 50% 42%, rgba(8,6,14,.55) 0%, rgba(3,3,7,.99) 60%);
+  animation: eclipse-veil-in .7s ease both;
+}
+@keyframes eclipse-veil-in { from { opacity: 0 } to { opacity: 1 } }
+.eclipse-takeover-disc-wrap { position: relative; margin-bottom: 30px; animation: eclipse-disc-in 1.15s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes eclipse-disc-in { from { transform: scale(.2); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.eclipse-takeover-disc {
+  width: 132px; height: 132px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #04040a 58%, #0b0912 100%);
+  box-shadow: 0 0 0 2px rgba(255,86,54,.7), 0 0 34px 8px rgba(255,120,60,.6),
+              0 0 90px 26px rgba(255,80,40,.32), inset 0 0 20px rgba(0,0,0,.95);
+}
+.eclipse-takeover-disc::after {
+  content: ''; position: absolute; inset: -14px; border-radius: 50%;
+  box-shadow: 0 0 34px 8px rgba(255,150,90,.5); animation: eclipse-corona 3.4s ease-in-out infinite;
+}
+@keyframes eclipse-corona { 0%,100% { transform: scale(1); opacity: .5 } 50% { transform: scale(1.14); opacity: .92 } }
+.eclipse-takeover-content { max-width: 640px; padding: 0 24px; animation: eclipse-text-in 1s ease .5s both; }
+@keyframes eclipse-text-in { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+.eclipse-takeover-eyebrow { font-size: .72rem; letter-spacing: .34em; text-transform: uppercase; color: #ffb38a; margin-bottom: 14px; }
+.eclipse-takeover-headline { font-family: Georgia, 'Times New Roman', serif; font-size: 2.5rem; line-height: 1.1; color: #fff; margin: 0 0 16px; }
+.eclipse-takeover-stats { font-size: .95rem; color: #cdd6e4; margin-bottom: 10px; }
+.eclipse-takeover-honesty { font-size: .72rem; color: #7f8aa0; margin-bottom: 26px; }
+.eclipse-takeover-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.eclipse-btn { border: none; border-radius: 8px; padding: 11px 20px; font-size: .85rem; cursor: pointer; }
+.eclipse-btn-primary { background: #ff5636; color: #fff; }
+.eclipse-btn-ghost { background: transparent; color: #ffb38a; border: 1px solid rgba(255,150,90,.4); }
+@media (prefers-reduced-motion: reduce) {
+  .eclipse-takeover, .eclipse-takeover-disc-wrap, .eclipse-takeover-content, .eclipse-takeover-disc::after { animation: none !important; }
+}
