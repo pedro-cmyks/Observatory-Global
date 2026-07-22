@@ -1,11 +1,26 @@
 # Attention–Coverage Divergence (silent risk, re-scoped) — design
 
 **Date:** 2026-07-22
-**Status:** **BLOCKED (2026-07-22, same day)** — approved, then undercut by its own
-measurement before any code was written. See §0. Do not implement Tasks 10–15 of
-the plan. Tasks 1–3 (pure modules) and Task 7 (delete the inverted info-desert
-floor) survive; everything that depends on `coverage_count` meaning "covered"
-does not.
+**Status:** **CLOSED — DO NOT IMPLEMENT (2026-07-22).** Approved, blocked, then
+killed by its own pre-registered control the same day, before any code was
+written. Task 0 result: `docs/research/silent-risk/2026-07-22-domain-placebo.md`.
+
+Divergence computed from **week-old** coverage reproduces divergence computed
+from current coverage at ρ = 0.714 (pre-registered kill threshold: ≥ 0.7); the
+top-3 domains per country are identical in 36 of 96 countries and overlap 2.27/3
+on average. Divergence tracks the attention side alone at ρ = 0.548 — about the
+shuffled-country null floor (0.497 ± 0.023). Independently of that threshold, the
+metric is only populated at **10 domains**, and the finer `slug` grain was
+rejected on measured honesty grounds — the granularity that makes it honest makes
+it uninformative.
+
+**Salvage, all of it already banked elsewhere:** the GDELT encoder defect
+(`ingest_v2.py:427`, in flight separately), the `_INFO_DESERT_FLOOR` deletion,
+the cross-lingual whitened-e5 typing of public attention, and the negative results
+closing wiki / forums / ensemble / voice-mix.
+
+The sections below are preserved as the record of what was designed and why it
+failed. Do not build from them.
 
 ---
 
