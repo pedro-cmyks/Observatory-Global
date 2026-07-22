@@ -202,7 +202,18 @@ def test_assemble_detects_eclipse_and_surfaces_from_rows():
         _row("dynamic-topic-42", "EU $1bn Gaza aid", 42, 4, 18),
         _row("dynamic-topic-99", "US Bombards Iran", 120, 3, 17, velocity=0.46),
     ]
-    sel = assemble_eclipse(rows, eclipse_top1=0.20)
+    # NOTE (tier system, added by T5): sel.eclipse now means tier=='total' — both
+    # the country_dominance/entropy_collapse axes lit AND the black-hole/thin-field
+    # guards pass — not the raw top1-share gate alone (still exposed as
+    # window['top1_share']/['hhi']). This fixture only has 3 rows, so field_size
+    # is overridden to simulate a healthy field (guards would otherwise reject it
+    # as thin, same as production would for a too-small candidate set) and the two
+    # axes are supplied directly since this pure test doesn't compute them from a
+    # real country-lead/entropy-baseline query. Preserves the original intent:
+    # confirm an eclipsed window surfaces the consequential low-share stories.
+    sel = assemble_eclipse(rows, eclipse_top1=0.20, country_dominance=0.5,
+                           entropy_collapse=0.5, field_size=200)
+    assert sel.tier == "total"
     assert sel.eclipse is True
     assert sel.window["top1_share"] > 0.20
     assert sel.window["hhi"] > 0.0
@@ -291,3 +302,39 @@ def test_classify_tier_null_axes_do_not_crash():
     assert out["tier"] == "partial"
     assert 0.0 <= out["intensity"] <= 1.0
     assert out["axes"]["entropy_collapse"] is None
+
+
+# ── assemble_eclipse — tier/intensity/axes + dominant footprint ──────────────
+# NOTE: named `_erow` (not `_row`) — a module already defines `_row` above with a
+# different positional signature (topic_id, label, attention, langs, countries);
+# redefining `_row` at module scope here would shadow it and break the two
+# existing assemble_eclipse tests above that still call the old `_row`.
+
+from app.services.attention_eclipse import assemble_eclipse
+
+def _erow(topic_id, attention, **kw):
+    base = dict(topic_id=topic_id, label=topic_id, attention=attention, langs=12,
+                countries=40, velocity=0.0, surprise=0.0, category="armed-conflict",
+                crisis_relevant=True, mean_cohesion=0.8, is_junk=False,
+                is_roundup=False, identity_key=f"key-{topic_id}",
+                country_codes=["US", "GB", "FR"])
+    base.update(kw)
+    return base
+
+def test_assemble_eclipse_total_tier_with_axes_and_footprint():
+    rows = [_erow("dominant", 5000)] + [_erow(f"s{i}", 20, countries=9, langs=4,
+              country_codes=["BR", "AR"]) for i in range(60)]
+    sel = assemble_eclipse(rows, country_dominance=0.5, entropy_collapse=0.5,
+                           field_size=len(rows), total_coverage=sum(r["attention"] for r in rows))
+    assert sel.tier == "total"
+    assert sel.eclipse is True
+    assert sel.dominant["identity_key"] == "key-dominant"
+    assert sel.dominant["countries"] == ["US", "GB", "FR"]
+    assert sel.axes["country_dominance"] == 0.5
+
+def test_assemble_eclipse_guard_blocks_blackhole():
+    rows = [_erow("blob", 5000, mean_cohesion=0.2)] + [_erow(f"s{i}", 20) for i in range(5)]
+    sel = assemble_eclipse(rows, country_dominance=0.9, entropy_collapse=0.9,
+                           field_size=len(rows), total_coverage=6000)
+    assert sel.tier == "none"
+    assert sel.eclipse is False

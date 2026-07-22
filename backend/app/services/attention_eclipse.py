@@ -231,6 +231,8 @@ class EclipseCandidate(BaseModel):
     mean_cohesion: float | None = None
     is_junk: bool = False
     is_roundup: bool = False
+    identity_key: str | None = None
+    country_codes: list[str] = Field(default_factory=list)
 
 
 class EclipseLedgerRow(BaseModel):
@@ -252,6 +254,9 @@ class EclipseSelection(BaseModel):
     ledger: list[EclipseLedgerRow]
     window: dict[str, Any]
     method: dict[str, Any]
+    tier: Literal["none", "partial", "total"] = "none"
+    intensity: float = 0.0
+    axes: dict[str, Any] = Field(default_factory=dict)
 
 
 _ROUNDUP_LABEL_HINTS = (
@@ -292,6 +297,8 @@ def select_under_radar(
             "attention": dom.attention,
             "share": round(dom.attention / total, 6) if total else 0.0,
             "lane": lane_of(dom.category, dom.label),
+            "identity_key": dom.identity_key,
+            "countries": list(dom.country_codes or []),
         }
 
     eligible: list[tuple[EclipseCandidate, EclipseLedgerRow]] = []
@@ -399,13 +406,22 @@ def select_under_radar(
 
 def assemble_eclipse(rows: list[dict], *, eclipse_top1: float = 0.20,
                      min_langs: int = 3, min_countries: int = 8,
-                     cohesion_floor: float = 0.55, display_limit: int = 8) -> EclipseSelection:
-    """DB rows -> concentration detector -> eclipse-gated under-radar selection.
+                     cohesion_floor: float = 0.55, display_limit: int = 8,
+                     country_dominance: float | None = None,
+                     entropy_collapse: float | None = None,
+                     field_size: int | None = None,
+                     total_coverage: int | None = None) -> EclipseSelection:
+    """DB rows -> concentration detector -> tier-gated eclipse -> under-radar selection.
 
     `rows` are per-topic dicts (topic_id, label, attention, langs, countries,
     velocity, surprise, category, crisis_relevant, mean_cohesion, is_junk,
-    is_roundup). This is the one impure-input seam between the SQL and the pure
-    logic; the router just runs the query and calls this.
+    is_roundup, identity_key, country_codes). This is the one impure-input seam
+    between the SQL and the pure logic; the router just runs the query, computes
+    the two window-level axes (country_dominance, entropy_collapse) and calls this.
+
+    `eclipse` (and the under-radar surfacing gated on it) now means tier=='total':
+    BOTH axes lit AND the black-hole/thin-field guards pass — not the raw top1
+    concentration gate alone (that stays available via window['top1_share']/['hhi']).
     """
     conc = attention_concentration([int(r.get("attention", 0) or 0) for r in rows],
                                    eclipse_top1=eclipse_top1)
@@ -420,16 +436,39 @@ def assemble_eclipse(rows: list[dict], *, eclipse_top1: float = 0.20,
             category=r.get("category"), crisis_relevant=r.get("crisis_relevant"),
             mean_cohesion=(None if r.get("mean_cohesion") is None else float(r["mean_cohesion"])),
             is_junk=bool(r.get("is_junk")), is_roundup=bool(r.get("is_roundup")),
+            identity_key=r.get("identity_key"),
+            country_codes=list(r.get("country_codes") or []),
         )
         for r in rows
     ]
-    sel = select_under_radar(candidates, eclipse_on=conc["eclipse"],
+    dom = max(candidates, key=lambda c: c.attention) if candidates else None
+    fsize = field_size if field_size is not None else len(candidates)
+    tcov = total_coverage if total_coverage is not None else sum(c.attention for c in candidates)
+    if dom is not None:
+        guards_pass, guard_reasons = eclipse_guards(
+            field_size=fsize, total_coverage=tcov, dom_is_junk=dom.is_junk,
+            dom_is_roundup=dom.is_roundup, dom_cohesion=dom.mean_cohesion,
+            dom_langs=dom.language_breadth, dom_countries=dom.country_breadth)
+    else:
+        guards_pass, guard_reasons = False, ["empty_field"]
+    tinfo = classify_tier(
+        guards_pass=guards_pass, guard_reasons=guard_reasons,
+        country_dominance=country_dominance, entropy_collapse=entropy_collapse,
+        top1_share=conc["top1_share"], hhi=conc["hhi"],
+        dom_langs=(dom.language_breadth if dom else 0),
+        dom_countries=(dom.country_breadth if dom else 0))
+
+    sel = select_under_radar(candidates, eclipse_on=(tinfo["tier"] == "total"),
                              min_langs=min_langs, min_countries=min_countries,
                              cohesion_floor=cohesion_floor, display_limit=display_limit)
+    sel.tier = tinfo["tier"]
+    sel.intensity = tinfo["intensity"]
+    sel.axes = tinfo["axes"]
+    sel.eclipse = tinfo["tier"] == "total"
     sel.window.update({
-        "top1_share": conc["top1_share"],
-        "top3_share": conc["top3_share"],
-        "hhi": conc["hhi"],
-        "eclipse_top1_threshold": eclipse_top1,
+        "top1_share": conc["top1_share"], "top3_share": conc["top3_share"],
+        "hhi": conc["hhi"], "eclipse_top1_threshold": eclipse_top1,
+        "tier": tinfo["tier"], "field_size": fsize, "total_coverage": tcov,
+        "guard_reasons": guard_reasons,
     })
     return sel
