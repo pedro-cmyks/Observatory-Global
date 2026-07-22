@@ -411,6 +411,18 @@ export function FocusTimeline({
                 </div>
             )}
 
+            {/* Legibility: the lines are the SAME key subjects as the panel below,
+                but only those present across multiple days trace a visible line
+                (share × rarity over time). A subject seen on a single day doesn't
+                "move", so it draws no line even if it ranks high by mention count —
+                which is why the line here can differ from the Key Subjects top. */}
+            {linesDrawable && (
+                <div className="ft-note ft-note--subjects">
+                    Lines trace key subjects that move across days — a single-day subject
+                    draws no line even if highly covered. Full ranked list: Key Subjects below.
+                </div>
+            )}
+
             {/* honest note on the diverging encoding */}
             {showBars && barsDrawable && tone && (
                 <div className="ft-note">
