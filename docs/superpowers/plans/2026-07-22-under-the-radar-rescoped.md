@@ -479,10 +479,18 @@ In `backend/app/routers/briefing.py`, add to the imports at the top of the file:
 from app.services.coverage_gaps import (
     GLOBAL_GAP_FLOOR,
     GLOBAL_GAPS_SQL,
-    attach_extended_receipts,
+    fetch_extended_receipts_by_slug,
     gap_status,
 )
 ```
+
+> **Note (post-Task-1 review):** the receipts helper was renamed from
+> `attach_extended_receipts(conn, gap_rows, hours)` to
+> `fetch_extended_receipts_by_slug(conn, slugs, hours, timeout=None)` — it takes a
+> list of slug STRINGS now, and it does not mutate anything (the caller attaches).
+> `_fetch_section` takes a query STRING and runs `conn.fetch` itself, so it cannot
+> wrap a coroutine — that is why the primary query below still goes through it
+> (preserving `degraded_segments` registration) while the receipts call does not.
 
 - [ ] **Step 2: Replace the inline gap SQL**
 
@@ -506,8 +514,8 @@ Replace lines 302-336 (the `gap_receipts_by_slug` block, from the comment throug
         # the 2-3 most newsworthy hits in a gap category sit above its extended
         # (~75%) threshold and are recoverable now — max K=3, tier-labeled.
         # Guarded per gap inside the shared helper.
-        gap_receipts_by_slug = await attach_extended_receipts(
-            conn, [dict(g) for g in coverage_gaps], hours
+        gap_receipts_by_slug = await fetch_extended_receipts_by_slug(
+            conn, [g["slug"] for g in coverage_gaps], hours
         )
 ```
 
