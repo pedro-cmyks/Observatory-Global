@@ -12,14 +12,18 @@ import {
     maxPresence,
     isChannelUsable,
     channelGapLabel,
-    diedReasonKind,
-    diedReasonLabel,
+    dissolvedKind,
+    dissolvedLabel,
+    isDissolvedType,
     summarizeChanges,
+    describeDiffWindow,
+    formatSpanHours,
     dormantForSubject,
     type TimelineBucket,
     type KeySubjectCandidate,
     type EdgeChange,
     type DormantRelationship,
+    type SnapshotIntervalInfo,
 } from './focusTimelineLayout'
 
 // ------------------------------------------------------------ diverging split
@@ -252,17 +256,17 @@ describe('channel honesty', () => {
 
 // ------------------------------------------------------------ edge diff
 describe('edge-diff churn-vs-narrative', () => {
-    it('classifies a died reason as narrative vs churn vs unknown', () => {
-        expect(diedReasonKind('narrative_change')).toBe('narrative')
-        expect(diedReasonKind('substrate_churn')).toBe('churn')
-        expect(diedReasonKind('topic merged into umbrella')).toBe('churn')
-        expect(diedReasonKind(null)).toBe('unknown')
+    it('classifies a reason-only change as narrative vs churn vs unknown', () => {
+        expect(dissolvedKind({ reason: 'narrative_change' })).toBe('narrative')
+        expect(dissolvedKind({ reason: 'substrate_churn' })).toBe('churn')
+        expect(dissolvedKind({ reason: 'topic merged into umbrella' })).toBe('churn')
+        expect(dissolvedKind({ reason: null })).toBe('unknown')
     })
 
     it('produces the honest endpoint labels the spec names', () => {
-        expect(diedReasonLabel('narrative_change')).toBe('connection ended: narrative change')
-        expect(diedReasonLabel('substrate_churn')).toBe('connection ended: substrate churn')
-        expect(diedReasonLabel(undefined)).toMatch(/unrecorded/)
+        expect(dissolvedLabel({ change_type: 'narrative_change' })).toBe('connection ended: narrative change')
+        expect(dissolvedLabel({ change_type: 'substrate_churn' })).toBe('connection ended: substrate churn')
+        expect(dissolvedLabel({ reason: undefined })).toMatch(/unrecorded/)
     })
 
     it('summarizes formed/died/weakened and splits died by cause', () => {
@@ -275,6 +279,128 @@ describe('edge-diff churn-vs-narrative', () => {
         ]
         const s = summarizeChanges(changes)
         expect(s).toEqual({ formed: 1, died: 3, weakened: 1, diedNarrative: 1, diedChurn: 1 })
+    })
+
+    // The wire contract has NO generic 'died' type: the backend emits
+    // narrative_change / substrate_churn with prose reasons. This client used to
+    // look for 'died' only, so every dissolved edge was silently dropped from
+    // both the chips and the churn-vs-narrative caveat.
+    it('counts the REAL backend change types, not a nonexistent "died"', () => {
+        const changes: EdgeChange[] = [
+            mkChange('formed', 'edge absent at the earlier snapshot, present at the later one'),
+            mkChange('narrative_change',
+                'both id-A and id-B are still active topics with no current edge between them — the connection dissolved'),
+            mkChange('substrate_churn',
+                'substrate churn, not a narrative change: id-B is retired'),
+            mkChange('weakened', 'weight dropped 0.200 (>= the material threshold 0.1)'),
+        ]
+        const s = summarizeChanges(changes)
+        expect(s).toEqual({ formed: 1, died: 2, weakened: 1, diedNarrative: 1, diedChurn: 1 })
+    })
+
+    it('reads the cause off change_type, so the churn reason is never read as narrative', () => {
+        // this prose contains BOTH words — change_type is the authority
+        expect(dissolvedKind({
+            change_type: 'substrate_churn',
+            reason: 'substrate churn, not a narrative change: id-B is retired',
+        })).toBe('churn')
+        expect(dissolvedKind({
+            change_type: 'narrative_change',
+            reason: 'both are still active topics — the connection dissolved',
+        })).toBe('narrative')
+        expect(dissolvedLabel({ change_type: 'substrate_churn', reason: null }))
+            .toBe('connection ended: substrate churn')
+        expect(isDissolvedType('narrative_change')).toBe(true)
+        expect(isDissolvedType('substrate_churn')).toBe(true)
+        expect(isDissolvedType('formed')).toBe(false)
+    })
+
+    it('reason-only fallback still tests churn before narrative', () => {
+        expect(dissolvedKind({ reason: 'substrate churn, not a narrative change: x is retired' })).toBe('churn')
+        expect(dissolvedKind({ reason: 'narrative change' })).toBe('narrative')
+        expect(dissolvedKind({ reason: null })).toBe('unknown')
+    })
+})
+
+// ------------------------------------------------------------ diff window label
+describe('describeDiffWindow — a 2-day diff is never labeled as 1 day', () => {
+    const iv = (over: Partial<SnapshotIntervalInfo>): SnapshotIntervalInfo => ({
+        hours: 24, expected_hours: 24, intermediate_snapshots: 0,
+        missing_snapshot_passes: 0, is_standard: true, note: 'one standard snapshot step',
+        ...over,
+    })
+
+    it('anchors on the matched SNAPSHOT, not the requested since', () => {
+        const out = describeDiffWindow({
+            since: '2026-07-25T00:00:00+00:00',
+            matched_since_snapshot_at: '2026-07-24T08:15:03+00:00',
+            interval: iv({}),
+        })
+        expect(out.anchorIso).toBe('2026-07-24T08:15:03+00:00')
+    })
+
+    it('stays quiet on a standard nightly step', () => {
+        const out = describeDiffWindow({
+            matched_since_snapshot_at: '2026-07-26T08:15:03+00:00', interval: iv({}),
+        })
+        expect(out.isStandard).toBe(true)
+        expect(out.spanLabel).toBeNull()
+    })
+
+    it('names the 07-25 gap: 48h, 2 days of change, 1 missing pass', () => {
+        const out = describeDiffWindow({
+            matched_since_snapshot_at: '2026-07-24T08:15:03+00:00',
+            interval: iv({
+                hours: 48, missing_snapshot_passes: 1, is_standard: false,
+                note: '48h apart — 1 snapshot pass missing from the store',
+            }),
+        })
+        expect(out.isStandard).toBe(false)
+        expect(out.spanLabel).toContain('2d')
+        expect(out.spanLabel).toContain('2 days of change')
+        expect(out.spanLabel).toContain('1 snapshot pass missing')
+        expect(out.tip).toContain('48h')
+    })
+
+    it('names a wide since-window as aggregating several steps', () => {
+        const out = describeDiffWindow({
+            matched_since_snapshot_at: '2026-07-22T08:15:00+00:00',
+            interval: iv({
+                hours: 120, intermediate_snapshots: 3, missing_snapshot_passes: 1,
+                is_standard: false, note: '120h apart, aggregating 3 intermediate passes',
+            }),
+        })
+        expect(out.spanLabel).toContain('4 snapshot steps')
+    })
+
+    it('names a sub-cadence step as less than one pass', () => {
+        const out = describeDiffWindow({
+            matched_since_snapshot_at: '2026-07-21T20:24:30+00:00',
+            interval: iv({ hours: 1.42, is_standard: false, note: 'shorter than the cadence' }),
+        })
+        expect(out.spanLabel).toContain('1.4h')
+        expect(out.spanLabel).toContain('less than one full snapshot pass')
+    })
+
+    it('names the single-snapshot case instead of implying a diff', () => {
+        const out = describeDiffWindow({
+            matched_since_snapshot_at: '2026-07-27T08:15:05+00:00',
+            interval: iv({ hours: 0, is_standard: false, note: 'same snapshot both ends' }),
+        })
+        expect(out.spanLabel).toContain('nothing to compare')
+    })
+
+    it('claims nothing when the payload predates the interval field', () => {
+        const out = describeDiffWindow({ since: '2026-07-24T00:00:00+00:00' })
+        expect(out.spanLabel).toBeNull()
+        expect(out.anchorIso).toBe('2026-07-24T00:00:00+00:00')
+    })
+
+    it('formats spans as days only on exact multiples of 24h', () => {
+        expect(formatSpanHours(48)).toBe('2d')
+        expect(formatSpanHours(24)).toBe('1d')
+        expect(formatSpanHours(10.17)).toBe('10.2h')
+        expect(formatSpanHours(0)).toBe('0h')
     })
 
     it('finds dormant relationships touching a subject, case-folded on either side', () => {

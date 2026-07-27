@@ -27,6 +27,7 @@ import app.main_v2  # noqa: F401 — initialize app + routers FIRST. `app.router
 from app import db
 from app.routers import edges
 from app.services.edge_diff import (
+    DEFAULT_SNAPSHOT_INTERVAL_HOURS,
     DEFAULT_WEAKEN_DELTA,
     FORMED,
     NARRATIVE_CHANGE,
@@ -35,6 +36,7 @@ from app.services.edge_diff import (
     WEAKENED,
     classify_dormant_relationships,
     classify_edge_changes,
+    describe_snapshot_interval,
     parse_dynamic_topic_id,
     strip_focus_suffix,
 )
@@ -187,6 +189,84 @@ class TestDormant:
         assert len(out) == 1
 
 
+# ============================================================== snapshot interval
+class TestDescribeSnapshotInterval:
+    """The 2026-07-25 gap is the forcing case: that day's snapshot was a
+    half-written partial (3000 rows = 6 x BATCH_SIZE, aborted by an
+    out-of-bound cosine) and was DELETED, so prod holds 07-24 08:15 ->
+    07-26 08:15 = a real 48h step between consecutive stored passes. Measured
+    on prod 2026-07-27: that step reads 9,789 formed edges against 6,934 and
+    6,304 for the neighbouring 24h steps — ~+50%. A 48h diff rendered like
+    every other 24h diff turns a storage gap into a phantom burst of
+    narrative change, so the interval must travel with the diff."""
+
+    def test_standard_nightly_step_is_standard(self):
+        out = describe_snapshot_interval(
+            _dt("2026-07-26T08:15:03"), _dt("2026-07-27T08:15:05"),
+        )
+        assert out.is_standard is True
+        assert out.interval_hours == 24.0
+        assert out.missing_snapshot_passes == 0
+        assert out.expected_interval_hours == DEFAULT_SNAPSHOT_INTERVAL_HOURS
+
+    def test_cron_drift_within_tolerance_stays_standard(self):
+        # the writer stamps now(); a late pass must not read as a gap
+        out = describe_snapshot_interval(
+            _dt("2026-07-26T08:15:00"), _dt("2026-07-27T08:52:00"),
+        )
+        assert out.is_standard is True
+
+    def test_the_0725_gap_is_flagged_with_the_missing_pass(self):
+        out = describe_snapshot_interval(
+            _dt("2026-07-24T08:15:03"), _dt("2026-07-26T08:15:03"),
+        )
+        assert out.interval_hours == 48.0
+        assert out.is_standard is False
+        assert out.missing_snapshot_passes == 1
+        assert out.intermediate_snapshots == 0
+        assert "48" in out.note and "24" in out.note
+
+    def test_multi_pass_span_reports_intermediates_not_missing(self):
+        # `since` far in the past: the diff aggregates real passes rather than
+        # stepping over a gap — a different honesty problem, same flag
+        out = describe_snapshot_interval(
+            _dt("2026-07-22T08:15:00"), _dt("2026-07-27T08:15:00"),
+            intermediate_snapshots=3,
+        )
+        assert out.interval_hours == 120.0
+        assert out.is_standard is False
+        assert out.intermediate_snapshots == 3
+        # 5 expected passes, 3 actually present between the ends -> 1 missing
+        assert out.missing_snapshot_passes == 1
+
+    def test_shorter_than_cadence_is_not_standard_and_claims_no_missing(self):
+        # prod holds these: manual T0/T1 test passes 1.42h and 0.25h apart
+        out = describe_snapshot_interval(
+            _dt("2026-07-21T20:24:30"), _dt("2026-07-21T21:49:58"),
+        )
+        assert out.is_standard is False
+        assert out.missing_snapshot_passes == 0
+        assert "shorter" in out.note.lower()
+
+    def test_same_snapshot_both_ends_is_named_not_silently_standard(self):
+        t = _dt("2026-07-27T08:15:05")
+        out = describe_snapshot_interval(t, t)
+        assert out.interval_hours == 0.0
+        assert out.is_standard is False
+        assert out.missing_snapshot_passes == 0
+        assert "same snapshot" in out.note.lower()
+
+    def test_intermediate_count_alone_breaks_standard(self):
+        # exactly 24h apart but with a pass in between cannot happen with a
+        # 24h cadence; if it does (an extra manual pass), say so
+        out = describe_snapshot_interval(
+            _dt("2026-07-26T08:00:00"), _dt("2026-07-27T08:00:00"),
+            intermediate_snapshots=1,
+        )
+        assert out.is_standard is False
+        assert out.intermediate_snapshots == 1
+
+
 # ============================================================== router: honest-empty
 class TestRouterHonestEmpty:
     def test_edges_replay_no_db(self, monkeypatch):
@@ -226,7 +306,11 @@ class _FakeConn:
                  nearest_snapshot=None, t0=None, t1=None,
                  edges_t0=None, edges_t1=None, lifecycle_rows=None,
                  focus_entities_rows=None, backbone_rows=None,
-                 entity_active_rows=None):
+                 entity_active_rows=None, snapshots_between=0,
+                 prev_snapshot=None, next_snapshot=None):
+        self.snapshots_between = snapshots_between
+        self.prev_snapshot = prev_snapshot
+        self.next_snapshot = next_snapshot
         self.resolve_row = resolve_row
         self.latest_snapshot = latest_snapshot
         self.nearest_snapshot = nearest_snapshot
@@ -246,6 +330,10 @@ class _FakeConn:
             return self.resolve_row
         if "MAX(snapshot_at) AS s" in sql:
             return {"s": self.latest_snapshot}
+        if "count(DISTINCT snapshot_at)" in sql:
+            return {"n": self.snapshots_between}
+        if "prev_at" in sql:
+            return {"prev_at": self.prev_snapshot, "next_at": self.next_snapshot}
         if "GROUP BY snapshot_at" in sql:
             return {"snapshot_at": self.nearest_snapshot} if self.nearest_snapshot else None
         raise AssertionError(f"unexpected fetchrow: {sql[:80]!r}")
@@ -386,3 +474,86 @@ class TestFocusEdgeDiffRouterIntegration:
                                          since="2026-01-01T00:00:00Z"))
         assert out["changes"] == []
         assert out["matched_since_snapshot_at"] == out["latest_snapshot_at"]
+        assert out["interval"]["hours"] == 0.0
+        assert out["interval"]["is_standard"] is False
+
+
+class TestFocusEdgeDiffIntervalHonesty:
+    """The compared interval must ride along with the changes. Forcing case:
+    prod's 07-24 -> 07-26 pair (07-25's partial snapshot was deleted) is a 48h
+    step between CONSECUTIVE stored passes; unlabeled it reads as one day."""
+
+    def _conn(self, t0, t1, *, between=0):
+        return _FakeConn(
+            resolve_row={"id": 100, "identity_key": "id-A", "state": "active"},
+            latest_snapshot=t1, nearest_snapshot=t0, t0=t0, t1=t1,
+            edges_t0=[_edge("id-A", "id-B", 0.60)],
+            edges_t1=[_edge("id-A", "id-C", 0.60)],
+            lifecycle_rows=[{"identity_key": "id-A", "state": "active"},
+                            {"identity_key": "id-B", "state": "active"},
+                            {"identity_key": "id-C", "state": "active"}],
+            snapshots_between=between,
+        )
+
+    def test_standard_nightly_pair_is_marked_standard(self, monkeypatch):
+        conn = self._conn(_dt("2026-07-26T08:15:03"), _dt("2026-07-27T08:15:05"))
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(edges.focus_edge_diff(ref="dynamic-topic-100",
+                                         since="2026-07-26T08:00:00Z"))
+        iv = out["interval"]
+        assert iv["hours"] == 24.0 and iv["is_standard"] is True
+        assert iv["missing_snapshot_passes"] == 0
+
+    def test_the_0725_gap_pair_is_flagged_not_silent(self, monkeypatch):
+        conn = self._conn(_dt("2026-07-24T08:15:03"), _dt("2026-07-26T08:15:03"))
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(edges.focus_edge_diff(ref="dynamic-topic-100",
+                                         since="2026-07-24T08:00:00Z"))
+        iv = out["interval"]
+        assert iv["hours"] == 48.0
+        assert iv["is_standard"] is False
+        assert iv["missing_snapshot_passes"] == 1
+        assert iv["intermediate_snapshots"] == 0
+        assert iv["note"]  # the receipt is never empty
+        # the changes themselves are still reported — flagged, not filtered
+        assert len(out["changes"]) == 2
+
+    def test_wide_since_window_reports_aggregated_passes(self, monkeypatch):
+        conn = self._conn(_dt("2026-07-22T08:15:00"), _dt("2026-07-27T08:15:00"),
+                          between=3)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(edges.focus_edge_diff(ref="dynamic-topic-100",
+                                         since="2026-07-22T00:00:00Z"))
+        iv = out["interval"]
+        assert iv["hours"] == 120.0
+        assert iv["is_standard"] is False
+        assert iv["intermediate_snapshots"] == 3
+
+
+class TestEdgesReplayNeighbourSteps:
+    """`/edges/replay` reads one pass and does not diff — but a scrubber
+    stepping pass-to-pass does, so each served pass carries the real width of
+    its neighbouring steps."""
+
+    def test_replay_reports_a_48h_previous_step(self, monkeypatch):
+        served = _dt("2026-07-26T08:15:03")
+        conn = _FakeConn(nearest_snapshot=served,
+                         prev_snapshot=_dt("2026-07-24T08:15:03"),
+                         next_snapshot=_dt("2026-07-27T08:15:05"))
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(edges.edges_replay(at="2026-07-26T09:00:00Z"))
+        assert out["previous_snapshot_at"] == "2026-07-24T08:15:03+00:00"
+        assert out["interval_from_previous"]["hours"] == 48.0
+        assert out["interval_from_previous"]["is_standard"] is False
+        assert out["interval_from_previous"]["missing_snapshot_passes"] == 1
+        assert out["interval_to_next"]["hours"] == 24.0
+        assert out["interval_to_next"]["is_standard"] is True
+
+    def test_replay_edge_of_store_has_null_neighbours(self, monkeypatch):
+        served = _dt("2026-07-27T08:15:05")
+        conn = _FakeConn(nearest_snapshot=served, prev_snapshot=None, next_snapshot=None)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(edges.edges_replay(at="2026-07-27T09:00:00Z"))
+        assert out["previous_snapshot_at"] is None
+        assert out["interval_from_previous"] is None
+        assert out["interval_to_next"] is None

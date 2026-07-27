@@ -27,7 +27,9 @@ import {
     isChannelUsable,
     channelGapLabel,
     summarizeChanges,
-    diedReasonLabel,
+    dissolvedLabel,
+    isDissolvedType,
+    describeDiffWindow,
     dormantForSubject,
     type FocusTimelineResponse,
     type EdgeDiffResponse,
@@ -210,8 +212,13 @@ export function FocusTimeline({
         : [0, Math.floor(nB / 2), nB - 1]
 
     const diffSummary = diff ? summarizeChanges(diff.changes) : null
-    const diedChanges = diff ? diff.changes.filter(c => (c.change_type || '').toLowerCase() === 'died') : []
+    const diedChanges = diff ? diff.changes.filter(c => isDissolvedType(c.change_type)) : []
     const dormant = diff?.dormant ?? []
+    // The window the diff ACTUALLY covers: anchored on the matched snapshot
+    // (not the requested `since`) and labeled out loud when the compared step
+    // is not one standard nightly pass — 07-25's deleted partial snapshot
+    // makes 07-24 -> 07-26 a 48h "consecutive" step.
+    const diffWindow = describeDiffWindow(diff, buckets[0]?.bucket_start)
 
     const headerKind = data.focus_type
     const svgH = M.top + PLOT_H + M.bottom + (showVoice ? VOICE_H + 18 : 0)
@@ -435,15 +442,23 @@ export function FocusTimeline({
             {diff && diffSummary && (diffSummary.formed + diffSummary.died + diffSummary.weakened > 0 || dormant.length > 0) && (
                 <div className="ft-diff">
                     <div className="ft-diff-head">
-                        Relationships since {fmtDay(diff.since || buckets[0].bucket_start)}
+                        Relationships since {diffWindow.anchorIso ? fmtDay(diffWindow.anchorIso) : '—'}
+                        {diff.latest_snapshot_at && <> → {fmtDay(diff.latest_snapshot_at)}</>}
                     </div>
+                    {/* a non-standard step is NEVER rendered like a normal one:
+                        two days of change labeled as one day would be the lie */}
+                    {diffWindow.spanLabel && (
+                        <div className="ft-diff-span" data-tip={diffWindow.tip}>
+                            ⚠ {diffWindow.spanLabel}
+                        </div>
+                    )}
                     <div className="ft-diff-row">
                         {diffSummary.formed > 0 && <span className="ft-diff-chip ft-formed">▲ {diffSummary.formed} formed</span>}
                         {diffSummary.weakened > 0 && <span className="ft-diff-chip ft-weak">~ {diffSummary.weakened} weakened</span>}
                         {diedChanges.map((c, i) => (
                             <span key={i} className="ft-diff-chip ft-died"
-                                data-tip={`${diedReasonLabel(c.reason)} · ${c.identity_key_a} ↔ ${c.identity_key_b}`}>
-                                ✖ ended{c.reason ? ` (${c.reason.replace(/_/g, ' ')})` : ''}
+                                data-tip={`${dissolvedLabel(c)} · ${c.identity_key_a} ↔ ${c.identity_key_b}${c.reason ? ` · ${c.reason}` : ''}`}>
+                                ✖ ended ({dissolvedLabel(c).replace('connection ended: ', '')})
                             </span>
                         ))}
                     </div>

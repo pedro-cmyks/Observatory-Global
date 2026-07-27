@@ -39,7 +39,9 @@ from app.services.edge_diff import (
     EdgeChange,
     classify_dormant_relationships,
     classify_edge_changes,
+    describe_snapshot_interval,
     parse_dynamic_topic_id,
+    snapshot_interval_out,
     strip_focus_suffix,
 )
 from app.services.subjects import classify_subject
@@ -122,6 +124,16 @@ _EDGES_AT_SQL = """
     LIMIT $2
 """
 
+# The neighbouring stored passes around the served one. A scrubber stepping
+# snapshot-to-snapshot is performing an implicit diff, so it has to know how
+# wide its next/previous step actually is — 2026-07-25 was deleted, making
+# 07-24 -> 07-26 a 48h step between CONSECUTIVE rows.
+_NEIGHBOUR_SNAPSHOTS_SQL = """
+    SELECT
+      (SELECT MAX(snapshot_at) FROM topic_edge_snapshots WHERE snapshot_at < $1) AS prev_at,
+      (SELECT MIN(snapshot_at) FROM topic_edge_snapshots WHERE snapshot_at > $1) AS next_at
+"""
+
 
 @router.get("/api/v2/edges/replay")
 async def edges_replay(
@@ -139,6 +151,13 @@ async def edges_replay(
     absent, never faked": when the store has NO snapshot at all, or the DB is
     unavailable, the response says so explicitly (`reason`) rather than
     silently serving nothing.
+
+    This endpoint reads ONE pass; it does not diff. But a scrubber stepping
+    from pass to pass is diffing implicitly, and stored passes are NOT evenly
+    spaced (2026-07-25's half-written snapshot was deleted, so 07-24 -> 07-26
+    are consecutive rows 48h apart). `previous_snapshot_at`/`next_snapshot_at`
+    plus their `interval_from_previous`/`interval_to_next` descriptors let the
+    caller label a wide step as wide instead of animating it like a day.
     """
     requested = _parse_iso(at, param="at")
     cache_key = f"edges:replay:v0:{requested.isoformat()}:{limit}"
@@ -151,6 +170,10 @@ async def edges_replay(
         "requested_at": requested.isoformat(),
         "matched_snapshot_at": None,
         "distance_hours": None,
+        "previous_snapshot_at": None,
+        "next_snapshot_at": None,
+        "interval_from_previous": None,
+        "interval_to_next": None,
         "basis": "reconstructed from snapshots",
         "edges": [],
     }
@@ -165,16 +188,30 @@ async def edges_replay(
                 return {**empty, "reason": "no_snapshots_stored"}
             snap_at = nearest["snapshot_at"]
             rows = await conn.fetch(_EDGES_AT_SQL, snap_at, limit)
+            neighbours = await conn.fetchrow(_NEIGHBOUR_SNAPSHOTS_SQL, snap_at)
     except Exception as exc:  # pragma: no cover - defensive I/O
         logger.warning("edges/replay query failed: %s", str(exc)[:200])
         return {**empty, "reason": "db_error"}
 
+    prev_at = neighbours["prev_at"] if neighbours else None
+    next_at = neighbours["next_at"] if neighbours else None
     distance_hours = round(abs((snap_at - requested).total_seconds()) / 3600.0, 2)
     payload = {
         "contract": REPLAY_CONTRACT,
         "requested_at": requested.isoformat(),
         "matched_snapshot_at": snap_at.isoformat(),
         "distance_hours": distance_hours,
+        # neighbouring stored passes — the scrub step is the implicit diff
+        "previous_snapshot_at": prev_at.isoformat() if prev_at else None,
+        "next_snapshot_at": next_at.isoformat() if next_at else None,
+        "interval_from_previous": (
+            snapshot_interval_out(describe_snapshot_interval(prev_at, snap_at))
+            if prev_at else None
+        ),
+        "interval_to_next": (
+            snapshot_interval_out(describe_snapshot_interval(snap_at, next_at))
+            if next_at else None
+        ),
         "basis": "reconstructed from snapshots",
         "edges": [_edge_out(r) for r in rows],
     }
@@ -202,6 +239,17 @@ _FOCUS_EDGES_AT_SQL = """
 """
 
 _LIFECYCLE_SQL = "SELECT identity_key, state FROM dynamic_topics WHERE identity_key = ANY($1::text[])"
+
+# Stored passes strictly BETWEEN the two compared stamps. 0 = a consecutive
+# pair (which is what a same-day diff assumes); >0 = this diff AGGREGATES real
+# intermediate passes. Together with the raw interval this separates a store
+# GAP (wide step, no intermediates — the 07-25 case) from a deliberately wide
+# `since` window. `count(DISTINCT ...)` because one pass writes many rows.
+_SNAPSHOTS_BETWEEN_SQL = """
+    SELECT count(DISTINCT snapshot_at) AS n
+    FROM topic_edge_snapshots
+    WHERE snapshot_at > $1 AND snapshot_at < $2
+"""
 
 _FOCUS_ENTITIES_SQL = """
     SELECT s.persons
@@ -385,6 +433,15 @@ async def focus_edge_diff(
                 await conn.fetch(_FOCUS_EDGES_AT_SQL, t0, focus_identity_key)
             ]
 
+            # How wide the compared step really is (see `SnapshotInterval`):
+            # the passes are NOT evenly spaced, so the interval travels with
+            # the diff rather than being assumed to be one night.
+            between_row = (
+                None if t0 == t1
+                else await conn.fetchrow(_SNAPSHOTS_BETWEEN_SQL, t0, t1)
+            )
+            intermediate = int(between_row["n"]) if between_row else 0
+
             touched = {focus_identity_key}
             for row in edges_t0 + edges_t1:
                 touched.add(row["identity_key_a"])
@@ -418,6 +475,14 @@ async def focus_edge_diff(
         "since": since_dt.isoformat(),
         "matched_since_snapshot_at": t0.isoformat(),
         "latest_snapshot_at": t1.isoformat(),
+        # The measured distance between the two compared passes. The changes
+        # below accumulated over THIS interval, not over the standard nightly
+        # step a reader assumes — 07-25's deleted partial snapshot makes
+        # 07-24 -> 07-26 a 48h "consecutive" pair (measured on prod: ~+50%
+        # more `formed` edges than either adjacent 24h step).
+        "interval": snapshot_interval_out(describe_snapshot_interval(
+            t0, t1, intermediate_snapshots=intermediate,
+        )),
         "changes": [
             {
                 "identity_key_a": c.identity_key_a,

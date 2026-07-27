@@ -243,6 +243,18 @@
     color: var(--color-text-muted);
     margin-bottom: 6px;
 }
+/* non-standard compared interval (e.g. the 07-25 snapshot gap makes
+   07-24 -> 07-26 a 48h step). Warning-toned, never truncated: the counts below
+   it accumulated over this span, not over the usual night. */
+.ft-diff-span {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--color-severity-notable);
+    border-left: 2px solid var(--color-severity-notable);
+    padding-left: 6px;
+    margin-bottom: 6px;
+    cursor: default;
+}
 .ft-diff-row {
     display: flex;
     flex-wrap: wrap;
