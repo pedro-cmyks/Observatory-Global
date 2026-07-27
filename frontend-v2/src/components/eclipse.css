@@ -1,0 +1,26 @@
+/* The world goes DARK while the Eclipse Lens is engaged — toggled on <body> by
+   EclipseModeContext (mode === 'ambient'). The ribbon/sigil are portaled OUTSIDE
+   #root (see EclipseChrome), so they stay full-color above the darkened console.
+   DARKEN, DON'T DESATURATE: the lens recolors the universe/map/threads by
+   membership (eclipse-red vs shadow-cyan), and a grayscale() filter here would
+   eat exactly the encoding the lens exists to show. saturate() is lifted instead
+   so the two hues read against the dark. */
+body.eclipsed #root { filter: brightness(.58) contrast(1.08) saturate(1.15); transition: filter 1s ease; }
+/* Shift the whole app down so the fixed top ribbon never covers the command bar. */
+body.eclipsed { padding-top: 28px; }
+
+.eclipse-ribbon {
+  position: fixed; top: 0; left: 0; right: 0; height: 28px; z-index: 100001; box-sizing: border-box;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+  background: linear-gradient(90deg, rgba(120,22,10,.96), rgba(60,12,7,.9)); color: #ffd9c8;
+}
+.eclipse-ribbon b { color: #fff; }
+.eclipse-ribbon .eclipse-ribbon-x { margin-left: auto; background: none; border: none; color: #ffd9c8; cursor: pointer; font-size: .7rem; }
+
+.eclipse-map-sigil {
+  position: fixed; right: 16px; bottom: 16px; width: 40px; height: 40px; border-radius: 50%;
+  z-index: 100001; border: none; cursor: pointer; background: #07060a;
+  box-shadow: 0 0 0 2px rgba(255,86,54,.85), 0 0 18px 4px rgba(255,90,40,.55);
+}
+.eclipse-map-sigil::after { content: ''; position: absolute; inset: 8px; border-radius: 50%; background: radial-gradient(circle at 50% 42%, #0a0812, #05050a); }

@@ -594,3 +594,36 @@
     font-family: var(--font-mono, monospace);
     pointer-events: none;
 }
+
+
+/* ---- ECLIPSE LENS (ambient mode only) --------------------------------------
+   The panel goes shadow-first: the eclipsing story pins to the top in
+   eclipse-red, the stories it drowns out follow in shadow-cyan, each carrying
+   its own share of coverage next to the eclipse's. Nothing here renders outside
+   lens mode — the classes are only emitted when the lens is engaged. */
+/* Same two colours the lens uses everywhere else (lib/eclipseSets.ts). */
+.narrative-row.ecl-row-eclipse { border-left-color: var(--eclipse-red, #e23a1a) !important; }
+.narrative-row.ecl-row-shadow { border-left-color: var(--eclipse-cyan, #2aa7ad) !important; }
+
+.ecl-section-label {
+    flex: 0 0 auto;
+    padding: 8px 14px 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+.ecl-section-label--eclipse { color: var(--eclipse-red, #e23a1a); }
+.ecl-section-label--shadow { color: #39d0d8; }
+
+/* Share-vs line: same quiet-second-line convention as .narrative-count-lineage */
+.ecl-share-vs {
+    display: block;
+    font-size: 9px;
+    font-weight: 600;
+    color: #39d0d8;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}

@@ -12,7 +12,19 @@
 
 ---
 
-## ⛔ STOP — this plan is blocked (2026-07-22)
+## ⛔⛔ PLAN CLOSED — Task 0 ran and killed the metric (2026-07-22)
+
+Task 0 executed. ρ(divergence_real, divergence_placebo) = **0.714**, at the
+pre-registered kill threshold of 0.7. Full result:
+`docs/research/silent-risk/2026-07-22-domain-placebo.md`. Spec is CLOSED.
+
+**Do not execute any task in this plan.** Tasks 1–3 and 7 remain *correct* code
+if ever wanted for another purpose, but there is no longer a feature for them to
+serve. The plan is kept as the record.
+
+---
+
+## ⛔ STOP — this plan was blocked (2026-07-22, superseded by the line above)
 
 The spec was undercut by its own measurement the same day it was written. Read
 spec §0 before touching anything. A placebo control shows `coverage_count` is a

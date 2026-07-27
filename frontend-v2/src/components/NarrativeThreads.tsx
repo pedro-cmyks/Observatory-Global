@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { freezeThreadOrder } from '../lib/threadOrder'
 import { useFocus } from '../contexts/FocusContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
@@ -14,6 +14,8 @@ import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { TranslatableText } from './TranslatableText'
 import { personPin } from '../lib/capturePayloads'
+import { useEclipseMode } from '../contexts/EclipseModeContext'
+import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import './NarrativeThreads.css'
 
 interface TimelinePoint {
@@ -196,6 +198,23 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // W4 (2026-07-05): thread rows are pinnable into the active investigation.
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
+    /* ECLIPSE LENS: when the reader ENTERED a total eclipse, this panel stops
+       being a volume ranking and becomes SHADOW-FIRST — the eclipsing story pins
+       to the top, the consequential-but-quiet stories it drowns out come next
+       (each carrying its own share next to the eclipse's, so the relation is
+       physical, not asserted), everything else follows untouched. Outside lens
+       mode `eclipseSets` is null and every path below is byte-identical to before. */
+    const { mode: eclipseMode, data: eclipseData } = useEclipseMode()
+    const eclipseSets = useMemo(
+        () => (eclipseMode === 'ambient' && eclipseData ? buildEclipseSets(eclipseData) : null),
+        [eclipseMode, eclipseData])
+    // Share of coverage per shadow topic, for the "x% vs y%" relation line.
+    const shadowShareById = useMemo(() => {
+        const m = new Map<string, number>()
+        for (const it of eclipseData?.selected ?? []) m.set(it.topic_id, it.attention_share)
+        return m
+    }, [eclipseData])
+
     // Threads are ambient — the live day (the VIEW selector is gone,
     // 2026-07-15; the global list was already capped to 24h because
     // spread_pct is meaningless at wider windows). Looking back = the map
@@ -333,9 +352,19 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
     // person focus takes precedence; else thread-sibling relation
     const relate = anyPersonMatch ? threadMatchesPerson : (anyThreadRelation ? threadRelated : null)
-    const liveOrdered = relate
-        ? [...displayedNarratives].sort((a, b) => Number(relate(b)) - Number(relate(a)))
-        : displayedNarratives
+    // Eclipse lens ordering: eclipse row(s) first, the stories in its shadow
+    // next, everything else after. Array.prototype.sort is stable, so the
+    // backend's ranking survives INSIDE each group — the lens re-groups the
+    // list, it never re-ranks within a group.
+    const eclipseRank = (n: Narrative): number => {
+        const role = eclipseSets ? threadEclipseRole(n.anchor_topics, n.thread_id, eclipseSets) : null
+        return role === 'eclipse' ? 0 : role === 'shadow' ? 1 : 2
+    }
+    const liveOrdered = eclipseSets
+        ? [...displayedNarratives].sort((a, b) => eclipseRank(a) - eclipseRank(b))
+        : relate
+            ? [...displayedNarratives].sort((a, b) => Number(relate(b)) - Number(relate(a)))
+            : displayedNarratives
     // N5: while the pointer is over the list, pin the row order so a relation
     // re-sort or a poll refresh can't shuffle a row out from under the cursor
     // between hover and click (the mis-open bug that survived R2+R3). Content
@@ -343,6 +372,25 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // so freezeOnList stays null there and the live order applies as before.
     const orderedNarratives = freezeThreadOrder(liveOrdered, frozenOrder)
     liveOrderIdsRef.current = liveOrdered.map(n => n.thread_id)
+
+    // Per-row lens role, resolved against the RENDERED order so the section
+    // labels land on the first row of each group. indexOf (not "differs from the
+    // previous row") keeps at most ONE label per role even if the hover-freeze
+    // interleaves the groups.
+    const rowRoles = eclipseSets
+        ? orderedNarratives.map(n => threadEclipseRole(n.anchor_topics, n.thread_id, eclipseSets))
+        : null
+    const firstEclipseIdx = rowRoles ? rowRoles.indexOf('eclipse') : -1
+    const firstShadowIdx = rowRoles ? rowRoles.indexOf('shadow') : -1
+    // This shadow story's share of coverage, matched by thread id or any anchor
+    // topic — the eclipse payload keys on topic id.
+    const shadowShare = (n: Narrative): number | null => {
+        for (const id of [n.thread_id, ...(n.anchor_topics ?? [])]) {
+            const v = shadowShareById.get(id)
+            if (v != null) return v
+        }
+        return null
+    }
 
     const handleClick = (n: Narrative) => {
         onThreadSelect?.(n)
@@ -435,7 +483,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     Thread details show last {effectiveHours}h · counts reflect full {cappedHours}h window
                 </div>
             )}
-            {orderedNarratives.map(n => {
+            {orderedNarratives.map((n, rowIdx) => {
+                const eclipseRole = rowRoles ? rowRoles[rowIdx] : null
+                const sectionLabel = rowIdx === firstEclipseIdx
+                    ? '◤ The eclipse'
+                    : rowIdx === firstShadowIdx ? '◢ In its shadow' : null
                 const isFocused = activeThreadId === n.thread_id
                 // Dim conditions:
                 //  - a country is locked AND this thread doesn't cover it -> dim
@@ -463,9 +515,14 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 const threadAccent = familyColor(n.parent_domain)
                 const threadGradient = familyGradient(n.parent_domain)
                 return (
+                    <React.Fragment key={n.thread_id}>
+                    {sectionLabel && (
+                        <div className={`ecl-section-label ecl-section-label--${rowIdx === firstEclipseIdx ? 'eclipse' : 'shadow'}`}>
+                            {sectionLabel}
+                        </div>
+                    )}
                     <div
-                        key={n.thread_id}
-                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''}`}
+                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''} ${eclipseRole === 'eclipse' ? 'ecl-row-eclipse' : eclipseRole === 'shadow' ? 'ecl-row-shadow' : ''}`}
                         data-tip={rowHint}
                         onClick={() => handleClick(n)}
                         style={{ borderLeftColor: threadAccent }}
@@ -527,6 +584,13 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 )}
                                 {n.signal_count >= 10 && n.signal_count < 50 && (
                                     <span className="coverage-badge coverage-badge--limited" data-tip={`${n.signal_count} signals — limited coverage`}>~</span>
+                                )}
+                                {/* Eclipse lens: the relation made physical — this story's sliver
+                                    of coverage next to the share the eclipse is holding. */}
+                                {eclipseRole === 'shadow' && eclipseData?.dominant?.share != null && (
+                                    <span className="ecl-share-vs" data-tip="This story's share of coverage vs the eclipsing story">
+                                        {`${((shadowShare(n) ?? 0) * 100).toFixed(1)}% vs ${Math.round(eclipseData.dominant.share * 100)}%`}
+                                    </span>
                                 )}
                             </span>
                                 )
@@ -616,6 +680,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             <Sparkline data={n.hourly_timeline} color={n.confidence_trend_color} />
                         </div>
                     </div>
+                    </React.Fragment>
                 )
             })}
         </div>

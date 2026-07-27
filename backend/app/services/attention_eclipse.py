@@ -33,11 +33,113 @@ nothing is silently filtered; sports/entertainment are LABELED, not dropped.
 """
 from __future__ import annotations
 
+import math
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from app.services.daily_edition import global_breadth_signal
+
+
+# Measure-first calibration constants (tunable).
+MIN_TOPICS = 40
+MIN_TOTAL = 2000
+COHESION_FLOOR = 0.55
+MIN_DOM_LANGS = 3
+MIN_DOM_COUNTRIES = 8
+DOM_TAU = 0.33
+COLL_TAU = 0.25
+MIN_CC_SIGNALS = 5
+
+
+def eclipse_guards(*, field_size: int, total_coverage: int, dom_is_junk: bool,
+                   dom_is_roundup: bool, dom_cohesion: float | None,
+                   dom_langs: int, dom_countries: int,
+                   min_topics: int = MIN_TOPICS, min_total: int = MIN_TOTAL,
+                   cohesion_floor: float = COHESION_FLOOR,
+                   min_dom_langs: int = MIN_DOM_LANGS,
+                   min_dom_countries: int = MIN_DOM_COUNTRIES) -> tuple[bool, list[str]]:
+    """Reject the measured false-positive modes: thin-substrate days, tiny windows,
+    and over-merged/junk dominant buckets. Returns (passes, reason_codes)."""
+    reasons: list[str] = []
+    if field_size < min_topics:
+        reasons.append(f"thin_field({field_size})")
+    if total_coverage < min_total:
+        reasons.append(f"low_total({total_coverage})")
+    if dom_is_junk:
+        reasons.append("dominant_junk")
+    if dom_is_roundup:
+        reasons.append("dominant_roundup")
+    if dom_cohesion is not None and float(dom_cohesion) < cohesion_floor:
+        reasons.append(f"dominant_low_cohesion({float(dom_cohesion):.2f})")
+    if dom_langs < min_dom_langs or dom_countries < min_dom_countries:
+        reasons.append("dominant_narrow_breadth")
+    return (len(reasons) == 0, reasons)
+
+
+def field_entropy(volumes: list[int]) -> float:
+    """Shannon entropy (nats) of the coverage-share distribution. 0 for an empty
+    or single-story field; higher = more diverse."""
+    total = sum(v for v in volumes if v and v > 0)
+    if total <= 0:
+        return 0.0
+    h = 0.0
+    for v in volumes:
+        if v and v > 0:
+            p = v / total
+            h -= p * math.log(p)
+    return round(h, 6)
+
+
+def entropy_collapse(h_now: float, h_baseline: float | None) -> float | None:
+    """Fractional drop in field diversity vs a trailing baseline, clamped [0,1].
+    None when there is no usable baseline (cold start) — never fabricated."""
+    if h_baseline is None or h_baseline <= 0:
+        return None
+    return round(max(0.0, min(1.0, (h_baseline - h_now) / h_baseline)), 6)
+
+
+def country_dominance(n_led_by_dominant: int, n_qualifying_countries: int) -> float:
+    """Fraction of qualifying countries whose #1 story IS the global dominant.
+    The spatial 'eclipse spread' axis; robust to a single global black-hole."""
+    if n_qualifying_countries <= 0:
+        return 0.0
+    return round(n_led_by_dominant / n_qualifying_countries, 6)
+
+
+def classify_tier(*, guards_pass: bool, guard_reasons: list[str],
+                  country_dominance: float | None, entropy_collapse: float | None,
+                  top1_share: float, hhi: float, dom_langs: int, dom_countries: int,
+                  dom_tau: float = DOM_TAU, coll_tau: float = COLL_TAU) -> dict:
+    """Two-axis tier: total needs BOTH axes high (spread AND field-collapse), which
+    is what filters a black-hole (high volume/entropy-collapse, LOW spread) from a
+    genuine world eclipse. A missing (cold-start) axis is treated as not-lit."""
+    dom_high = country_dominance is not None and country_dominance >= dom_tau
+    coll_high = entropy_collapse is not None and entropy_collapse >= coll_tau
+    if not guards_pass:
+        tier = "none"
+    elif dom_high and coll_high:
+        tier = "total"
+    elif dom_high or coll_high:
+        tier = "partial"
+    else:
+        tier = "none"
+    breadth = global_breadth_signal(dom_langs, dom_countries)
+    cd = country_dominance or 0.0
+    ec = entropy_collapse or 0.0
+    intensity = (0.30 * min(1.0, top1_share / 0.30) + 0.15 * min(1.0, hhi / 0.30)
+                 + 0.20 * breadth + 0.20 * cd + 0.15 * ec)
+    return {
+        "tier": tier,
+        "intensity": round(max(0.0, min(1.0, intensity)), 6),
+        "axes": {
+            "country_dominance": country_dominance,
+            "entropy_collapse": entropy_collapse,
+            "top1_share": round(top1_share, 6),
+            "hhi": round(hhi, 6),
+        },
+        "guard_reasons": guard_reasons,
+    }
 
 
 # ── (a) eclipse detector — window-level coverage concentration ───────────────
@@ -130,6 +232,8 @@ class EclipseCandidate(BaseModel):
     mean_cohesion: float | None = None
     is_junk: bool = False
     is_roundup: bool = False
+    identity_key: str | None = None
+    country_codes: list[str] = Field(default_factory=list)
 
 
 class EclipseLedgerRow(BaseModel):
@@ -144,13 +248,16 @@ class EclipseLedgerRow(BaseModel):
 
 
 class EclipseSelection(BaseModel):
-    contract: str = "attention-eclipse-v0"
+    contract: str = "attention-eclipse-v1"
     eclipse: bool
     selected_ids: list[str]
     dominant: dict[str, Any]
     ledger: list[EclipseLedgerRow]
     window: dict[str, Any]
     method: dict[str, Any]
+    tier: Literal["none", "partial", "total"] = "none"
+    intensity: float = 0.0
+    axes: dict[str, Any] = Field(default_factory=dict)
 
 
 _ROUNDUP_LABEL_HINTS = (
@@ -191,6 +298,8 @@ def select_under_radar(
             "attention": dom.attention,
             "share": round(dom.attention / total, 6) if total else 0.0,
             "lane": lane_of(dom.category, dom.label),
+            "identity_key": dom.identity_key,
+            "countries": list(dom.country_codes or []),
         }
 
     eligible: list[tuple[EclipseCandidate, EclipseLedgerRow]] = []
@@ -276,7 +385,7 @@ def select_under_radar(
         "eclipse": eclipse_on,
     }
     method = {
-        "contract": "attention-eclipse-v0",
+        "contract": "attention-eclipse-v1",
         "consequence": "0.6*global_breadth_signal + 0.25*|kalman_velocity| + 0.15*kalman_surprise",
         "attention_proxy": "coverage-volume share of window (NOT audience eyeballs)",
         "consequence_floor": {"min_langs": min_langs, "min_countries": min_countries},
@@ -298,13 +407,22 @@ def select_under_radar(
 
 def assemble_eclipse(rows: list[dict], *, eclipse_top1: float = 0.20,
                      min_langs: int = 3, min_countries: int = 8,
-                     cohesion_floor: float = 0.55, display_limit: int = 8) -> EclipseSelection:
-    """DB rows -> concentration detector -> eclipse-gated under-radar selection.
+                     cohesion_floor: float = 0.55, display_limit: int = 8,
+                     country_dominance: float | None = None,
+                     entropy_collapse: float | None = None,
+                     field_size: int | None = None,
+                     total_coverage: int | None = None) -> EclipseSelection:
+    """DB rows -> concentration detector -> tier-gated eclipse -> under-radar selection.
 
     `rows` are per-topic dicts (topic_id, label, attention, langs, countries,
     velocity, surprise, category, crisis_relevant, mean_cohesion, is_junk,
-    is_roundup). This is the one impure-input seam between the SQL and the pure
-    logic; the router just runs the query and calls this.
+    is_roundup, identity_key, country_codes). This is the one impure-input seam
+    between the SQL and the pure logic; the router just runs the query, computes
+    the two window-level axes (country_dominance, entropy_collapse) and calls this.
+
+    `eclipse` (and the under-radar surfacing gated on it) now means tier=='total':
+    BOTH axes lit AND the black-hole/thin-field guards pass — not the raw top1
+    concentration gate alone (that stays available via window['top1_share']/['hhi']).
     """
     conc = attention_concentration([int(r.get("attention", 0) or 0) for r in rows],
                                    eclipse_top1=eclipse_top1)
@@ -319,16 +437,39 @@ def assemble_eclipse(rows: list[dict], *, eclipse_top1: float = 0.20,
             category=r.get("category"), crisis_relevant=r.get("crisis_relevant"),
             mean_cohesion=(None if r.get("mean_cohesion") is None else float(r["mean_cohesion"])),
             is_junk=bool(r.get("is_junk")), is_roundup=bool(r.get("is_roundup")),
+            identity_key=r.get("identity_key"),
+            country_codes=list(r.get("country_codes") or []),
         )
         for r in rows
     ]
-    sel = select_under_radar(candidates, eclipse_on=conc["eclipse"],
+    dom = max(candidates, key=lambda c: c.attention) if candidates else None
+    fsize = field_size if field_size is not None else len(candidates)
+    tcov = total_coverage if total_coverage is not None else sum(c.attention for c in candidates)
+    if dom is not None:
+        guards_pass, guard_reasons = eclipse_guards(
+            field_size=fsize, total_coverage=tcov, dom_is_junk=dom.is_junk,
+            dom_is_roundup=dom.is_roundup, dom_cohesion=dom.mean_cohesion,
+            dom_langs=dom.language_breadth, dom_countries=dom.country_breadth)
+    else:
+        guards_pass, guard_reasons = False, ["empty_field"]
+    tinfo = classify_tier(
+        guards_pass=guards_pass, guard_reasons=guard_reasons,
+        country_dominance=country_dominance, entropy_collapse=entropy_collapse,
+        top1_share=conc["top1_share"], hhi=conc["hhi"],
+        dom_langs=(dom.language_breadth if dom else 0),
+        dom_countries=(dom.country_breadth if dom else 0))
+
+    sel = select_under_radar(candidates, eclipse_on=(tinfo["tier"] == "total"),
                              min_langs=min_langs, min_countries=min_countries,
                              cohesion_floor=cohesion_floor, display_limit=display_limit)
+    sel.tier = tinfo["tier"]
+    sel.intensity = tinfo["intensity"]
+    sel.axes = tinfo["axes"]
+    sel.eclipse = tinfo["tier"] == "total"
     sel.window.update({
-        "top1_share": conc["top1_share"],
-        "top3_share": conc["top3_share"],
-        "hhi": conc["hhi"],
-        "eclipse_top1_threshold": eclipse_top1,
+        "top1_share": conc["top1_share"], "top3_share": conc["top3_share"],
+        "hhi": conc["hhi"], "eclipse_top1_threshold": eclipse_top1,
+        "tier": tinfo["tier"], "field_size": fsize, "total_coverage": tcov,
+        "guard_reasons": guard_reasons,
     })
     return sel

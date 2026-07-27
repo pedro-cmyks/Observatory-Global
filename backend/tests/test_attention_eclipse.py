@@ -202,7 +202,18 @@ def test_assemble_detects_eclipse_and_surfaces_from_rows():
         _row("dynamic-topic-42", "EU $1bn Gaza aid", 42, 4, 18),
         _row("dynamic-topic-99", "US Bombards Iran", 120, 3, 17, velocity=0.46),
     ]
-    sel = assemble_eclipse(rows, eclipse_top1=0.20)
+    # NOTE (tier system, added by T5): sel.eclipse now means tier=='total' — both
+    # the country_dominance/entropy_collapse axes lit AND the black-hole/thin-field
+    # guards pass — not the raw top1-share gate alone (still exposed as
+    # window['top1_share']/['hhi']). This fixture only has 3 rows, so field_size
+    # is overridden to simulate a healthy field (guards would otherwise reject it
+    # as thin, same as production would for a too-small candidate set) and the two
+    # axes are supplied directly since this pure test doesn't compute them from a
+    # real country-lead/entropy-baseline query. Preserves the original intent:
+    # confirm an eclipsed window surfaces the consequential low-share stories.
+    sel = assemble_eclipse(rows, eclipse_top1=0.20, country_dominance=0.5,
+                           entropy_collapse=0.5, field_size=200)
+    assert sel.tier == "total"
     assert sel.eclipse is True
     assert sel.window["top1_share"] > 0.20
     assert sel.window["hhi"] > 0.0
@@ -217,3 +228,113 @@ def test_assemble_stays_quiet_when_diffuse():
     assert sel.eclipse is False
     assert sel.selected_ids == []
     assert len(sel.ledger) == len(rows)  # complete, nothing silently dropped
+
+
+# ── field entropy + entropy collapse — coverage-diversity signals ────────────
+
+from app.services.attention_eclipse import field_entropy, entropy_collapse
+
+def test_field_entropy_uniform_is_high_and_concentrated_is_low():
+    uniform = field_entropy([10, 10, 10, 10])
+    concentrated = field_entropy([97, 1, 1, 1])
+    assert uniform > concentrated
+    assert field_entropy([]) == 0.0
+    assert field_entropy([0, 0]) == 0.0
+
+def test_entropy_collapse_ratio_and_nulls():
+    assert entropy_collapse(0.5, 2.0) == 0.75
+    assert entropy_collapse(0.5, None) is None
+    assert entropy_collapse(0.5, 0.0) is None
+    assert entropy_collapse(2.5, 2.0) == 0.0
+
+
+from app.services.attention_eclipse import country_dominance
+
+def test_country_dominance_fraction_and_zero_guard():
+    assert country_dominance(30, 90) == 0.333333
+    assert country_dominance(0, 0) == 0.0
+    assert country_dominance(45, 45) == 1.0
+
+
+from app.services.attention_eclipse import eclipse_guards
+
+def _dom(**kw):
+    base = dict(field_size=200, total_coverage=20000, dom_is_junk=False,
+               dom_is_roundup=False, dom_cohesion=0.8, dom_langs=10, dom_countries=40)
+    base.update(kw)
+    return base
+
+def test_eclipse_guards_pass_on_healthy_field():
+    ok, reasons = eclipse_guards(**_dom())
+    assert ok is True and reasons == []
+
+def test_eclipse_guards_reject_thin_field_and_blackhole():
+    ok, reasons = eclipse_guards(**_dom(field_size=31))
+    assert ok is False and any("thin_field" in r for r in reasons)
+    ok2, r2 = eclipse_guards(**_dom(dom_cohesion=0.2))
+    assert ok2 is False and any("cohesion" in r for r in r2)
+    ok3, r3 = eclipse_guards(**_dom(dom_countries=3))
+    assert ok3 is False and "dominant_narrow_breadth" in r3
+
+
+from app.services.attention_eclipse import classify_tier
+
+def _axes(**kw):
+    base = dict(guards_pass=True, guard_reasons=[], country_dominance=0.5,
+               entropy_collapse=0.5, top1_share=0.3, hhi=0.2,
+               dom_langs=10, dom_countries=40)
+    base.update(kw)
+    return base
+
+def test_classify_tier_total_needs_both_axes():
+    assert classify_tier(**_axes())["tier"] == "total"
+
+def test_classify_tier_partial_on_one_axis():
+    assert classify_tier(**_axes(entropy_collapse=0.0))["tier"] == "partial"
+    assert classify_tier(**_axes(country_dominance=0.0))["tier"] == "partial"
+
+def test_classify_tier_none_when_guards_fail_or_neither_axis():
+    assert classify_tier(**_axes(guards_pass=False))["tier"] == "none"
+    assert classify_tier(**_axes(country_dominance=0.0, entropy_collapse=0.0))["tier"] == "none"
+
+def test_classify_tier_null_axes_do_not_crash():
+    out = classify_tier(**_axes(entropy_collapse=None, country_dominance=0.5))
+    assert out["tier"] == "partial"
+    assert 0.0 <= out["intensity"] <= 1.0
+    assert out["axes"]["entropy_collapse"] is None
+
+
+# ── assemble_eclipse — tier/intensity/axes + dominant footprint ──────────────
+# NOTE: named `_erow` (not `_row`) — a module already defines `_row` above with a
+# different positional signature (topic_id, label, attention, langs, countries);
+# redefining `_row` at module scope here would shadow it and break the two
+# existing assemble_eclipse tests above that still call the old `_row`.
+
+from app.services.attention_eclipse import assemble_eclipse
+
+def _erow(topic_id, attention, **kw):
+    base = dict(topic_id=topic_id, label=topic_id, attention=attention, langs=12,
+                countries=40, velocity=0.0, surprise=0.0, category="armed-conflict",
+                crisis_relevant=True, mean_cohesion=0.8, is_junk=False,
+                is_roundup=False, identity_key=f"key-{topic_id}",
+                country_codes=["US", "GB", "FR"])
+    base.update(kw)
+    return base
+
+def test_assemble_eclipse_total_tier_with_axes_and_footprint():
+    rows = [_erow("dominant", 5000)] + [_erow(f"s{i}", 20, countries=9, langs=4,
+              country_codes=["BR", "AR"]) for i in range(60)]
+    sel = assemble_eclipse(rows, country_dominance=0.5, entropy_collapse=0.5,
+                           field_size=len(rows), total_coverage=sum(r["attention"] for r in rows))
+    assert sel.tier == "total"
+    assert sel.eclipse is True
+    assert sel.dominant["identity_key"] == "key-dominant"
+    assert sel.dominant["countries"] == ["US", "GB", "FR"]
+    assert sel.axes["country_dominance"] == 0.5
+
+def test_assemble_eclipse_guard_blocks_blackhole():
+    rows = [_erow("blob", 5000, mean_cohesion=0.2)] + [_erow(f"s{i}", 20) for i in range(5)]
+    sel = assemble_eclipse(rows, country_dominance=0.9, entropy_collapse=0.9,
+                           field_size=len(rows), total_coverage=6000)
+    assert sel.tier == "none"
+    assert sel.eclipse is False

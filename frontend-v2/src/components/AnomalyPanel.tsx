@@ -3,6 +3,7 @@ import { useCrisis } from '../contexts/CrisisContext'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
+import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { resolveCountryName, isKnownCountry } from '../lib/countryNames'
 import { getThemeLabel, resolveThreadLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl, getTrendingSearchesUrl, getForumAttentionUrl } from '../lib/publicAttention'
@@ -35,6 +36,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
     const relation = useFocusRelation()
+    const { data: eclipseData, tier: eclipseTierNow } = useEclipseMode()
     const activeCountry = filter.country
     // #234: when a non-country entity is focused, re-scope this panel's
     // public-attention + conflicts to the focus's dominant country (the shared
@@ -234,6 +236,23 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                         <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
                                     </div>
                                 ))}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ATTENTION ECLIPSE — window-global (never re-scoped by
+                        scopeCountry/activeCountry: the eclipse measures the
+                        whole 24h field, not a country slice). Partial tier's
+                        ONLY surface is this row (no chrome drama); total
+                        tier also appears here alongside the full-screen
+                        takeover handled elsewhere. */}
+                    {eclipseTierNow !== 'none' && eclipseData?.dominant?.label && (
+                        <>
+                            <div className="col-label">ATTENTION ECLIPSE · {eclipseTierNow === 'total' ? 'TOTAL' : 'PARTIAL'}</div>
+                            <div className="ap-row ap-row--trend">
+                                <span className="ap-src-tag">◑</span>
+                                <span className="ap-keyword">{eclipseData.dominant.label}</span>
+                                <span className="ap-mult">{Math.round((eclipseData.dominant.share ?? 0) * 100)}% of coverage</span>
                             </div>
                         </>
                     )}

@@ -1,5 +1,84 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-22 (SILENT-RISK — MEASURED, RE-SCOPED, THEN KILLED BY ITS OWN CONTROL;
+NO ENGINE/FRONTEND CODE SHIPPED. `aab063d7`→`21d2e670`, all docs. Issue #264
+opened, #172 closed for good.)** Executed the "make silent-risk meaningful"
+follow-up chip from the under-the-radar spec. Measure-first, 7 probes each
+adversarially re-measured by an independent agent told to REFUTE it — **5 of 7
+probes were materially refuted, including this session's own opening number.**
+That layer is what saved the session; without it the deliverable would have been
+a spec built on a 43.8% figure that was mostly a bug. **THE REAL FINDING → #264:
+the GDELT lane stores HTML-entity-encoded headlines** (`ingest_v2.py:427` stores
+the `<PAGE_TITLE>` capture raw while the SAME function unescapes the same string
+~30 lines later). 46.6% of the 48h press corpus; **100% the GDELT lane** (gdelt
+48.7-51.6%, independent 1/8596, wire/state/social 0.0%). One `html.unescape`
+moves the script census: **greek 0→8,202** · hebrew 0→715 · cyrillic 2,730→24,599
+· arabic 2,352→8,691 · devanagari 163→3,014 · thai 15→470 · tamil/telugu 0→149/138.
+**Atlas is NOT blind to Greek.** Blast radius ≫ this feature: ~47% of GDELT rows
+were EMBEDDED, NER'd and DEDUP'd from mojibake, and `thread_ranking._norm_headline`
+doesn't unescape → 4,355 headline texts exist BOTH encoded and plain → syndication
+dedup counts them as different stories → volume feeds `0.45·log(volume)` in
+`rank_threads`, so **front-page ordering may be distorted today**. Fix in flight
+in a parallel session. **WHY SILENT-RISK IS CLOSED, NOT PARKED:** (1) press
+silence is UNVERIFIABLE from our corpus — 5/5 web-checked "uncovered" candidates
+were heavily covered by outlets Atlas doesn't ingest (Greek heatwave work-ban ΤΑ
+ΝΕΑ/LiFO; Nogales flood 1 dead/14 rescued La Jornada/Excélsior; Colombia JEP El
+Heraldo/Semana; Standard Bank R2.1m IOL same-day; RU shadow-fleet spill Reuters);
+(2) **PLACEBO** — scoring the same keywords against press from 5-7 days BEFORE
+they trended gives 42.7-59.4% "silent"; fixing the matcher raises its coverage
+claim ~18pp but does NOT improve discrimination (15.0pp→17.3pp gap, thresholded
+variant WORSE) and 61% of its "rescues" are covered by pre-trend press →
+**`coverage_count` is a lexical-match rate, not a coverage measurement**;
+(3) the 22.5% story base rate in the silent set had **no control** — covered set
+is 15.8%, z=1.51 **not significant**, so 22.5% is a property of Google Trends.
+**RE-SCOPE ATTEMPT (Pedro's, correct instinct) ALSO FAILED, on a PRE-REGISTERED
+threshold:** attention↔coverage **divergence** (share-vs-share per domain×country,
+never claiming silence, sibling of eclipse — eclipse measures concentration INSIDE
+coverage, this measures coverage AGAINST an independent field). Spec'd + planned,
+then Task 0 killed it: **ρ=0.714** between divergence on real coverage and on
+week-old coverage (kill threshold 0.7, written BEFORE the run); top-3 domains per
+country identical in 36/96, mean overlap 2.27/3; divergence ≈ attention alone
+(ρ=0.548 vs a 200-shuffle null floor of 0.497±0.023). Honest residual reported:
+9.4sd above null, top-3 changes in 60/96 — not pure noise, doesn't rescue it.
+**Independent non-threshold kill: only 10 domains populated**; the finer `slug`
+grain was already rejected because the specific category measures wrong
+(`snelheidscontrole`→gang-control) — **the granularity that makes it honest makes
+it uninformative.** **SOURCES SETTLED WITH NUMBERS (do NOT re-investigate):**
+trends = WEAK (99 countries breadth, but the all-tokens matcher fails more on long
+queries so the silent set is CONSTRUCTED to look story-enriched); wiki full
+pageview API = WEAK (true baselines reorder the list but yield 3/25 news-relevant
+press-silent; **per-country top list 404s for 33 countries** — exactly the
+low-press-freedom set); forums = DEAD (press-DERIVATIVE: matches 38.1% of COVERED
+keywords vs 3.2% of silent ones; every surge is a bot — CVE/NWS/AQI/radio/job
+bots; `signals_v2` has no engagement column so post-count surge is a bot detector
+by construction); ensemble ≥2-of-3 = DEAD as a gate (2.4% overlap today — a
+property of `ingest_wiki.py` `rank>25 break`, so "reachable but useless", and
+EVERY agreement axis is anti-correlated with silence; cross-country agreement
+selects sport syndication: `nottm forest vs blackburn rovers` in 21 countries,
+`weather` in 24; 0 of 8 known-good leads survive); voice-mix as ranking driver =
+DEAD (r=−0.185/−0.253, sign OPPOSITE the hypothesis; attention/supply ratio is a
+denominator artifact r=−0.816). **`_INFO_DESERT_FLOOR=40` IS MEASURED INVERTED** —
+labels 74/220 countries a desert and **0 of the 99 countries that actually have
+trends attention**, while silence RISES with press volume (17.9% at 0-50 press vs
+33.6% at 800-1600); DELETE, don't retune. **WHAT SURVIVES AND IS REUSABLE:**
+cross-lingual typing of public attention — whitened e5 (the existing global
+`e5_whitening.npz`) places a LOCAL-LANGUAGE query into Atlas's taxonomy with NO
+per-language lexicon (margin spread 0.122→0.308, max delta +0.052→+0.206; routine
+weather rejected in ar/el/ko/pt/ro, lottery in th/es). Also: public attention is
+today DECORATIVE — `trends_v2` reaches the engine at exactly ONE place,
+`thread_intelligence.py:1668`, as a `LIKE` over English theme words. And the feed
+gap is real and separate: `ingest_rss.py` = 200 domains, at most one flagship
+national outlet per country, **zero regional press and zero Greek/Hebrew/Thai-
+language press** (CO = eltiempo only, MX = jornada only, ZA = empty) → feeds #235.
+**METHOD LESSON (the durable one): pre-register the kill threshold BEFORE running
+the test.** Task 0's ρ≥0.7 was written into the plan before execution; it came
+back 0.714 and there was no room to move the goalposts. Pair that with adversarial
+verification of every probe. **DOCS:** `docs/research/silent-risk/2026-07-22-
+{silent-risk-source-measurement,domain-placebo}.md`; spec+plan
+`docs/superpowers/{specs,plans}/2026-07-22-attention-coverage-divergence*.md`
+both CLOSED, kept as the record of what was designed and why it failed. **ALL
+NUMBERS ARE PRE-ENCODER-FIX — re-measure after #264 lands.**
+
 **2026-07-21 (PM — CHAINS FOLLOWUPS + TIME-AXIS BUILT, SHIPPED & DEPLOYED,
 `826da723`→`f3683488`, merged to `v3-intel-layer` + Fly/Vercel deployed + §8
 acceptance PASSING in prod). Executed the implementation plan

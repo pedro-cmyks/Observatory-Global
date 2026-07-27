@@ -43,6 +43,10 @@ export interface CountryHeatInput {
 export interface HeatState {
     heat: number
     intensity: number
+    /** Eclipse-lens membership (set by the caller while the lens is engaged, never
+     *  by computeCountryHeatStates). A single 0..1 heat scalar cannot carry two
+     *  hues, so membership rides as its own discriminator. */
+    lens?: 'eclipse' | 'shadow'
 }
 
 export type CountryHeatStates = Map<string, HeatState>
@@ -133,6 +137,18 @@ export function heatFillColor(heat: number): string {
         [1.0, [255, 226, 205, 1.0]],
     ]
     return rgbaInterpolate(heat, stops)
+}
+
+export const ECLIPSE_FILL = 'rgba(226,58,26,0.72)'
+export const SHADOW_FILL = 'rgba(42,167,173,0.62)'
+
+/** Lens override for the eclipse view: membership picks the hue, heat still
+ * drives opacity elsewhere. Returns null when no lens applies (caller falls
+ * back to heatFillColor). */
+export function lensFillColor(lens: 'eclipse' | 'shadow' | undefined): string | null {
+    if (lens === 'eclipse') return ECLIPSE_FILL
+    if (lens === 'shadow') return SHADOW_FILL
+    return null
 }
 
 /** Border-glow color for a heat value (0..1), mirroring `country-heat-glow`.
