@@ -72,6 +72,17 @@ DEFAULT_TOP_ENTITIES_PER_TOPIC = 8    # mirrors dossier's actors_by_base cap of 
 DEFAULT_MAX_BACKBONE_EDGES = 2000     # sparsity bound — measured cap, tune at build
 DEFAULT_MIN_COOCCUR = 1
 
+# The DB-side bound on `topic_edge_snapshots.weight` (migration 089:54 —
+# `CHECK (weight >= -1 AND weight <= 1)`), named here so the clamp below and
+# the DDL cannot silently drift apart.
+#
+# NOTE the bound is [-1, 1], NOT [0, 1]: whitening deliberately de-compresses
+# the anisotropic e5 cone (chains spec §2.2), so a genuinely weak top-k pick
+# reading negative is the honest measurement, not an error (migration
+# 089:50-53). Clamping to [0, 1] would destroy that signal.
+WEIGHT_MIN = -1.0
+WEIGHT_MAX = 1.0
+
 
 @dataclass(frozen=True)
 class EdgeRow:
@@ -98,6 +109,30 @@ class BackboneRow:
     entity_b: str
     cooccur_count: int
     rarity_weight: float
+
+
+def clamp_weight(w: float) -> float:
+    """Pin a whitened cosine onto the `weight` CHECK bound [-1, 1] (WEIGHT_MIN /
+    WEIGHT_MAX above, migration 089:54).
+
+    WHY (measured, 2026-07-25): `build_knn_graph` computes similarities as a
+    **float32** `S = W @ W.T`. Over 768 dims the accumulated rounding error on a
+    near-duplicate pair (true cosine ~1.0) can land a few ULPs ABOVE 1.0;
+    `round(w, 6)` then materializes that as 1.000001, which violates the CHECK.
+    On 2026-07-25 that aborted the write mid-`executemany` and left a
+    HALF-WRITTEN snapshot day (3000 of ~9k edges — 6 committed batches of 500).
+    Because `/api/v2/edges/replay` and `/api/v2/focus/{ref}/edge-diff` diff
+    CONSECUTIVE snapshots, a partial day is worse than a missing one: it
+    fabricates ~9k "dissolved" edges and labels them narrative_change /
+    substrate_churn — precisely the signal those endpoints exist to be trusted
+    for.
+
+    CLAMP, never drop: the row is a real measured edge and the excess is a
+    float32 artifact of at most a few ULPs, so the bound IS the honest value.
+    Dropping it would silently thin the graph and produce the same fake
+    "dissolved edge" in the diff that the half-written day did.
+    """
+    return min(WEIGHT_MAX, max(WEIGHT_MIN, float(w)))
 
 
 def compute_edge_rows(
@@ -153,7 +188,10 @@ def compute_edge_rows(
             rows.append(EdgeRow(
                 identity_key_a=a_key, identity_key_b=b_key,
                 topic_id_a=str(a_tid), topic_id_b=str(b_tid),
-                degree=1, weight=round(float(w), 6), basis="semantic",
+                # clamp BEFORE rounding — see `clamp_weight`: a float32
+                # `W @ W.T` overshoot on a near-duplicate pair otherwise rounds
+                # to 1.000001 and trips the CHECK mid-write.
+                degree=1, weight=round(clamp_weight(w), 6), basis="semantic",
             ))
     return rows, skipped
 

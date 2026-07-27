@@ -155,25 +155,50 @@ async def fetch_topic_entities(conn, window_hours: int) -> dict[str, list[str]]:
 
 
 async def write_edges(conn, snapshot_at: datetime, rows: list[EdgeRow]) -> int:
+    """Upsert one snapshot's edge set ATOMICALLY — all rows for `snapshot_at`
+    land, or none do.
+
+    WHY the transaction (measured, 2026-07-25): outside one, each
+    `executemany` autocommits, so a failure on batch N leaves batches 0..N-1
+    committed. A CHECK violation on an out-of-bound weight did exactly that and
+    left 3000 of ~9k edges for the day (6 committed batches of 500). Since
+    `/api/v2/edges/replay` and `/api/v2/focus/{ref}/edge-diff` diff CONSECUTIVE
+    snapshots, a partial day is strictly worse than a skipped one: it fabricates
+    ~9k "dissolved" edges and labels them narrative_change / substrate_churn.
+    A skipped day is a visible gap; a partial day is a silent lie. All-or-
+    nothing is the only honest outcome, so the caller sees the raise and the DB
+    keeps zero rows for that stamp.
+    """
     params = [
         (snapshot_at, r.identity_key_a, r.identity_key_b, r.topic_id_a,
          r.topic_id_b, r.degree, r.weight, r.basis)
         for r in rows
     ]
-    for i in range(0, len(params), BATCH_SIZE):
-        await conn.executemany(EDGE_UPSERT, params[i:i + BATCH_SIZE])
+    async with conn.transaction():
+        for i in range(0, len(params), BATCH_SIZE):
+            await conn.executemany(EDGE_UPSERT, params[i:i + BATCH_SIZE])
     return len(params)
 
 
 async def write_backbone(conn, window_start: datetime, window_end: datetime,
                          rows: list[BackboneRow]) -> int:
+    """Same all-or-nothing guarantee as `write_edges`, for the backbone's own
+    `window_end` key.
+
+    Deliberately its OWN transaction rather than sharing the edge one: the
+    backbone is BEST-EFFORT (see `run` — its window scan can exceed
+    statement_timeout) and a backbone failure must never roll back the kinship
+    edges already committed. Two independent atomic writes preserve both
+    guarantees; one shared transaction would regress that.
+    """
     params = [
         (window_start, window_end, r.entity_a, r.entity_b, r.cooccur_count,
          r.rarity_weight)
         for r in rows
     ]
-    for i in range(0, len(params), BATCH_SIZE):
-        await conn.executemany(BACKBONE_UPSERT, params[i:i + BATCH_SIZE])
+    async with conn.transaction():
+        for i in range(0, len(params), BATCH_SIZE):
+            await conn.executemany(BACKBONE_UPSERT, params[i:i + BATCH_SIZE])
     return len(params)
 
 
