@@ -1,10 +1,57 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
 from app import db
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+async def fetch_metric(conn, degraded_metrics: list[str], metric: str, query: str, default=None):
+    """
+    Fetch ONE stats metric, honestly.
+
+    A query that FAILS (statement timeout, missing table, dead pool) returns
+    ``None`` — unknown — and appends ``metric`` to ``degraded_metrics``. It must
+    never return 0: this endpoint is what operators read to judge system health,
+    and a fabricated zero here reads as a factual "no sources / no ingest" and
+    manufactures a phantom outage (observed 2026-07: /api/v2/stats served
+    ``unique_sources: 0`` and ``ingestion: stalled`` off two timed-out queries
+    while /api/v2/briefing independently counted 49,466 sources).
+
+    A query that SUCCEEDS returns its value. A genuine SQL ``NULL`` (e.g. no
+    rows at all) falls back to ``default`` and is NOT degraded — a measured zero
+    stays zero.
+
+    Mirrors the ``_fetch_section`` / ``degraded_segments`` convention already
+    used by /api/v2/briefing and /api/v2/search.
+    """
+    try:
+        value = await conn.fetchval(query)
+    except Exception as exc:
+        degraded_metrics.append(metric)
+        logger.warning("stats metric degraded: %s: %s", metric, exc)
+        return None
+    return default if value is None else value
+
+
+def build_ingestion_status(recent):
+    """
+    Derive ingestion health from the last-2h signal count.
+
+    ``recent is None`` means the count FAILED, so health is genuinely unknown —
+    it must not collapse into 'stalled'. 'stalled' is reserved for a MEASURED
+    zero.
+    """
+    if recent is None:
+        return "unknown"
+    if recent > 100:
+        return "healthy"
+    if recent == 0:
+        return "stalled"
+    return "low"
 
 
 def build_funnel_stages(raw_counts):
@@ -56,71 +103,72 @@ async def get_system_stats():
     System-wide database statistics.
     Shows total signals, time range, and ingestion health.
     """
+    degraded_metrics: list[str] = []
+
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 3000")
 
-        async def safe_fetchval(query: str, default=0):
-            try:
-                value = await conn.fetchval(query)
-                return default if value is None else value
-            except Exception as e:
-                print(f"⚠️  /api/v2/stats partial metric failed: {e}")
-                return default
+        async def safe_fetchval(metric: str, query: str, default=0):
+            return await fetch_metric(conn, degraded_metrics, metric, query, default)
 
         # Avoid a full COUNT(*) over multi-million-row signals_v2. reltuples is approximate
         # but fast, and the dashboard only needs a coverage badge + rough system state.
-        total_signals = await safe_fetchval("""
+        total_signals = await safe_fetchval("total_signals", """
             SELECT COALESCE(reltuples::bigint, 0)
             FROM pg_class
             WHERE oid = 'signals_v2'::regclass
         """)
-        oldest_signal = await safe_fetchval("""
+        oldest_signal = await safe_fetchval("oldest_signal", """
             SELECT timestamp
             FROM signals_v2
             WHERE timestamp IS NOT NULL
             ORDER BY timestamp ASC
             LIMIT 1
         """, None)
-        newest_signal = await safe_fetchval("""
+        newest_signal = await safe_fetchval("newest_signal", """
             SELECT timestamp
             FROM signals_v2
             WHERE timestamp IS NOT NULL
             ORDER BY timestamp DESC
             LIMIT 1
         """, None)
-        signals_1h = await safe_fetchval("""
+        signals_1h = await safe_fetchval("signals_1h", """
             SELECT COUNT(*) FROM signals_v2
             WHERE timestamp > NOW() - INTERVAL '1 hour'
         """)
-        signals_24h = await safe_fetchval("""
+        signals_24h = await safe_fetchval("signals_24h", """
             SELECT COALESCE(SUM(signal_count), 0)::bigint
             FROM country_hourly_v2
             WHERE hour > NOW() - INTERVAL '24 hours'
         """)
-        signals_7d = await safe_fetchval("""
+        signals_7d = await safe_fetchval("signals_7d", """
             SELECT COALESCE(SUM(signal_count), 0)::bigint
             FROM country_hourly_v2
             WHERE hour > NOW() - INTERVAL '7 days'
         """)
-        unique_countries = await safe_fetchval("""
+        unique_countries = await safe_fetchval("unique_countries", """
             SELECT COUNT(DISTINCT country_code)
             FROM country_hourly_v2
             WHERE hour > NOW() - INTERVAL '24 hours'
         """)
-        unique_sources = await safe_fetchval("""
+        unique_sources = await safe_fetchval("unique_sources", """
             SELECT COUNT(DISTINCT source_name)
             FROM signals_v2
             WHERE timestamp > NOW() - INTERVAL '24 hours'
         """)
 
-        recent = await safe_fetchval("""
+        recent = await safe_fetchval("signals_last_2h", """
             SELECT COUNT(*) FROM signals_v2
             WHERE timestamp > NOW() - INTERVAL '2 hours'
         """)
-        
-        ingestion_status = "healthy" if recent > 100 else "stalled" if recent == 0 else "low"
-        
+
+        ingestion_status = build_ingestion_status(recent)
+
         return {
+            # Which metrics below are UNKNOWN (query failed) rather than measured.
+            # Any name listed here serializes as null, never as 0.
+            "degraded": bool(degraded_metrics),
+            "degraded_metrics": sorted(set(degraded_metrics)),
             "database": {
                 "total_signals": total_signals,
                 "total_signals_estimated": True,
