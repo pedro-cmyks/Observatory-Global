@@ -18,7 +18,7 @@ import {
     type ViewTransform,
     IDENTITY_TRANSFORM,
 } from '../lib/equalEarthProjection'
-import { heatFillColor, heatGlowColor, type CountryHeatStates } from '../lib/countryHeatStates'
+import { heatFillColor, heatGlowColor, lensFillColor, type CountryHeatStates } from '../lib/countryHeatStates'
 import { resolveInboundIso, LEGACY_GDELT_TO_ISO } from '../lib/countryCodeBoundary'
 import { MICRO_CENTROIDS } from '../lib/microstates'
 import { resolveCountryName } from '../lib/countryNames'
@@ -588,7 +588,10 @@ export function EqualEarthMap({
         const st = heatFor(p.iso)
         const heat = showHeatmap && st ? st.heat : 0
         if (heat <= 0) return null
-        return <path key={`h-${p.iso}-${i}`} d={p.d} fill={heatFillColor(heat)} />
+        // Eclipse Lens: membership overrides the hue; heat still carries the
+        // opacity/glow. lensFillColor is null off-lens → byte-identical render.
+        const fill = (showHeatmap ? lensFillColor(st?.lens) : null) ?? heatFillColor(heat)
+        return <path key={`h-${p.iso}-${i}`} d={p.d} fill={fill} />
     }).filter(Boolean), [paths, heatFor, showHeatmap])
 
     const borderEls = useMemo(() => paths.map((p, i) => {

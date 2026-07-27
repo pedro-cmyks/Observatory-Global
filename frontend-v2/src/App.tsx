@@ -16,6 +16,8 @@ import { ThemeDetail } from './components/ThemeDetail'
 import { CountryBrief } from './components/CountryBrief'
 import { EqualEarthMap } from './components/EqualEarthMap'
 import { computeCountryHeatStates } from './lib/countryHeatStates'
+import { useEclipseMode } from './contexts/EclipseModeContext'
+import { buildEclipseSets, countryLens } from './lib/eclipseSets'
 import { FocusProvider, useFocus } from './contexts/FocusContext'
 import { FocusDataProvider, useFocusData, type NodeData } from './contexts/FocusDataContext'
 
@@ -1187,6 +1189,25 @@ function AppContent() {
     })
   }, [enhancedNodes, heatComposite, replayHeat, visibleFlows, selectedCountryCode, isActive, focus.type, focus.value])
 
+  // Eclipse Lens: while engaged, MEMBERSHIP picks the hue (dominant footprint =
+  // eclipse-red, shadow stories = shadow-cyan) and heat keeps driving opacity /
+  // border glow. Off-lens this returns the SAME reference, so the map render is
+  // byte-identical to before.
+  const { mode: eclipseMode, data: eclipseData } = useEclipseMode()
+  const eclipseHeatStates = useMemo(() => {
+    if (eclipseMode !== 'ambient' || !eclipseData) return heatStates
+    const sets = buildEclipseSets(eclipseData)
+    const out = new Map(heatStates)
+    for (const [cc, st] of out) {
+      const lens = countryLens(cc, sets)
+      if (lens) out.set(cc, { ...st, lens })
+    }
+    // Countries in the eclipse/shadow footprint with no heat still must read.
+    for (const cc of sets.eclipseCountries) if (!out.has(cc)) out.set(cc, { heat: 0.15, intensity: 0.15, lens: 'eclipse' })
+    for (const cc of sets.shadowCountries) if (!out.has(cc)) out.set(cc, { heat: 0.12, intensity: 0.12, lens: 'shadow' })
+    return out
+  }, [eclipseMode, eclipseData, heatStates])
+
   const nativeOverlayData = useMemo(() => {
     const activeChokepointSet = new Set(activeChokepoints)
     const flowsVisible = showFlows || !!selectedCountryCode || !!filter.theme
@@ -1713,7 +1734,7 @@ function AppContent() {
             <MapErrorBoundary>
               {(  /* EE canvas — the one map; MapLibre deprecated 2026-07-04 */
                 <EqualEarthMap
-                  heatStates={heatStates}
+                  heatStates={eclipseHeatStates}
                   showHeatmap={showHeatmap}
                   selectedCountryCode={selectedCountryCode}
                   flyCountry={mapFlyCountry}
