@@ -75,3 +75,41 @@ def test_unified_signal_matches_use_index_compatible_lower_columns():
     assert "LOWER(COALESCE(headline" not in source
     assert "headline IS NOT NULL AND f_unaccent(LOWER(headline)) LIKE ANY" in source
     assert "source_name IS NOT NULL AND LOWER(source_name) LIKE ANY" in source
+
+
+def test_query_thread_array_branches_use_migration_090_indexed_expressions():
+    """The /search/thread OR-branches over themes/persons must be spelled
+    exactly as migration 090's trigram indexes were built.
+
+    Measured 2026-07-22: before 090 those two branches
+    (lower(array_to_string(themes|persons,' ')) LIKE) had no index, so a rare
+    keyword seq-scanned the whole window (>45s each vs 0.3s for the indexed
+    headline/source_name branches) and blew the 8s segment timeout. array_to_
+    string is only STABLE, so the index goes through the IMMUTABLE f_arr_text
+    wrapper — and the query must use the identical expression or the planner
+    silently falls back to the seq scan.
+    """
+    source = _search_source()
+
+    assert "array_to_string(themes" not in source
+    assert "array_to_string(persons" not in source
+    assert "lower(f_arr_text(themes)) LIKE ANY" in source
+    assert "f_unaccent(lower(f_arr_text(persons))) LIKE ANY" in source
+
+
+def test_query_thread_degrades_instead_of_500_on_slow_match():
+    """query_thread must never 500 when its match query is slow.
+
+    The fetch caps at SEARCH_SEGMENT_TIMEOUT_SECONDS and the default window is
+    168h, so a bare high-frequency token ('election', 'peru') can still exceed
+    the cap even with the 090 indexes (a sort-bound match set, not a seq scan).
+    On timeout the endpoint must degrade to an empty/thin thread — the same
+    graceful-degrade the unified endpoint uses — not raise QueryCanceledError
+    to the client. build_query_thread([]) already returns a valid thin payload.
+    """
+    source = _search_source()
+
+    # the query_thread fetch is wrapped, and the except path builds a result
+    # from an empty match set rather than propagating.
+    assert "except Exception" in source
+    assert "signal_rows: list = []" in source or "query_thread_rows = []" in source

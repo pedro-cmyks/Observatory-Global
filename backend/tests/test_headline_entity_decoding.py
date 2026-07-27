@@ -181,9 +181,26 @@ class TestDiacriticFolding:
             "every headline LIKE must fold accents on BOTH sides"
         )
         assert source.count("f_unaccent(LOWER(headline)) LIKE ANY") >= 2
-        # persons stays unfolded ON PURPOSE: array_to_string(persons) has no
-        # index, so folding it only adds scan cost (measured 1.5s -> 2.0s).
-        assert "f_unaccent(LOWER(array_to_string(persons" not in source
+
+    def test_query_thread_array_branches_use_indexed_expressions(self):
+        """No OR-branch may be an unindexable expression.
+
+        MEASURED 2026-07-22 (prod, 48h, one branch at a time): headline 0.3s
+        and source_name 0.3s (both index-backed), while
+        lower(array_to_string(themes|persons, ' ')) LIKE each ran past 45s and
+        was cancelled. One rare keyword therefore blew the endpoint's 8s
+        segment timeout. Migration 090 indexes both through the IMMUTABLE
+        f_arr_text() wrapper (array_to_string is only STABLE), so the SQL must
+        spell the branches EXACTLY as the indexes were built or the planner
+        silently falls back to the seq scan this fixes.
+        """
+        source = (Path(__file__).resolve().parents[1] / "app" / "routers"
+                  / "search.py").read_text(encoding="utf-8")
+
+        assert "array_to_string(themes" not in source
+        assert "array_to_string(persons" not in source
+        assert "lower(f_arr_text(themes)) LIKE ANY" in source
+        assert "f_unaccent(lower(f_arr_text(persons))) LIKE ANY" in source
 
     def test_syndication_audit_norm_folds_accents(self):
         import importlib.util

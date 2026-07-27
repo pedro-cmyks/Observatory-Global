@@ -57,7 +57,11 @@ async def search(
                         SELECT unnest(themes) as theme, country_code, COUNT(*) as cnt
                         FROM signals_v2
                         WHERE timestamp > NOW() - INTERVAL '%s hours'
-                          AND LOWER(array_to_string(themes, ' ')) LIKE ANY($1::text[])
+                          -- `themes IS NOT NULL` is not redundant: migration
+                          -- 090's trigram index is PARTIAL on exactly that, and
+                          -- without it the planner cannot use the index.
+                          AND themes IS NOT NULL
+                          AND lower(f_arr_text(themes)) LIKE ANY($1::text[])
                           %s
                         GROUP BY theme, country_code
                         HAVING COUNT(*) >= 2
@@ -103,7 +107,7 @@ async def search(
                         FROM signals_v2
                         WHERE timestamp > NOW() - INTERVAL '%s hours'
                           AND persons IS NOT NULL AND array_length(persons, 1) > 0
-                          AND LOWER(array_to_string(persons, ' ')) LIKE ANY($1::text[])
+                          AND f_unaccent(lower(f_arr_text(persons))) LIKE ANY($1::text[])
                           %s
                         GROUP BY person, country_code
                         HAVING COUNT(*) >= 2
@@ -331,8 +335,16 @@ async def query_thread(
     if country_code:
         params.append(country_code)
 
-    async with db.pool.acquire() as conn:
-        rows = await conn.fetch(f"""
+    # Degrade, never 500: even with the migration-090 indexes a bare
+    # high-frequency token ('election', 'peru') over the default 168h window
+    # is sort-bound and can exceed SEARCH_SEGMENT_TIMEOUT_SECONDS. On timeout
+    # (or any DB error) fall back to an empty match set — build_query_thread([])
+    # returns a valid thin thread — mirroring the unified endpoint's per-segment
+    # graceful degrade rather than raising QueryCanceledError to the client.
+    signal_rows: list = []
+    try:
+        async with db.pool.acquire() as conn:
+            signal_rows = await conn.fetch(f"""
             SELECT timestamp, country_code, source_name, source_url,
                    sentiment, headline, themes, persons
             FROM signals_v2
@@ -345,19 +357,31 @@ async def query_thread(
                 -- peru +16, eleccion +15, mexico +14 rows recovered — and it is
                 -- marginally FASTER, because f_unaccent(lower(headline)) is the
                 -- exact expression migration 064 built the trigram index on.
-                -- persons/themes stay unfolded: array_to_string has no index, so
-                -- folding those only adds scan cost (measured 1.5s -> 2.0s).
+                --
+                -- The themes/persons branches must be spelled EXACTLY as
+                -- migration 090 indexed them (through the IMMUTABLE f_arr_text
+                -- wrapper — array_to_string is only STABLE, so it cannot be
+                -- indexed directly). Before 090 those two branches had no
+                -- index and one rare keyword seq-scanned the whole window:
+                -- measured >45s each, against 0.3s for headline and
+                -- source_name, which is what blew this endpoint's 8s segment
+                -- timeout. Neither branch can simply be dropped — they carry
+                -- most of the recall (6h: themes +794 rows for 'election',
+                -- persons +703 for 'trump').
                 (headline IS NOT NULL AND f_unaccent(LOWER(headline)) LIKE ANY($1::text[]))
                 OR (source_name IS NOT NULL AND LOWER(source_name) LIKE ANY($1::text[]))
-                OR (themes IS NOT NULL AND LOWER(array_to_string(themes, ' ')) LIKE ANY($1::text[]))
-                OR (persons IS NOT NULL AND LOWER(array_to_string(persons, ' ')) LIKE ANY($1::text[]))
+                OR (themes IS NOT NULL AND lower(f_arr_text(themes)) LIKE ANY($1::text[]))
+                OR (persons IS NOT NULL AND f_unaccent(lower(f_arr_text(persons))) LIKE ANY($1::text[]))
               )
               {country_clause}
             ORDER BY timestamp DESC
             LIMIT {QUERY_THREAD_SIGNAL_LIMIT}
         """, *params, timeout=SEARCH_SEGMENT_TIMEOUT_SECONDS)
+    except Exception as exc:
+        logger.warning("query_thread match degraded for q=%r country=%r: %r",
+                       q, country_code, exc)
 
-    result = build_query_thread(rows, q, hours=hours, country=country_code)
+    result = build_query_thread(signal_rows, q, hours=hours, country=country_code)
 
     if app.state.redis:
         try:
