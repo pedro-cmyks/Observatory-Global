@@ -1,5 +1,126 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-27 (ECLIPSE SHIPPED + L1 BLACKOUT FOUND & FIXED + RELIABILITY SWEEP.
+`cfafae9f`→`ab4e4461`, 3 Fly deploys, mig 091 applied, 21→18 issues.
+READ FIRST — a 4-day production outage hid behind green health signals.)**
+
+**THE INCIDENT (found by an audit fleet, not by monitoring).** L1's front page had
+been serving the **2026-07-23** edition with `article={}` for FOUR nights. Chain:
+DeepSeek balance hit 402 (4,486 occurrences) + Anthropic dry since ~06-29 → the
+label court stopped naming topics → `DailyCandidate.label` was a required `str` →
+**ONE null label raised a pydantic ValidationError inside the candidate cursor and
+aborted the entire seal**, while the measured package (65 receipts, who-says-what,
+coverage_check, gaps, readiness) assembled perfectly every time. **Why nobody saw
+it for 5 days: every LLM step is `|| echo '(non-fatal)'` → runner exits 0 → launchd
+records success → the freshness watchdog reports healthy; and the reliability ledger
+was 398/402 lines of per-minute heavy-lock spam, so the 4 real SEAL_FAILED lines were
+invisible.** Fixed: label nullable + unnamed candidates skipped and COUNTED
+(`traversal.unlabelled_skipped`, no silent filtering) + a named regression test;
+`PROVIDER_EXHAUSTED` ledger line + non-zero exit; lock logged on TRANSITION (20
+overdue polls → 2 lines). Front page restored same session (07-27, lead + 6
+citations). **`/api/v2/stats` also stopped publishing timeouts as facts** —
+`safe_fetchval` swallowed every exception into `0`, serving `unique_sources: 0`
+while briefing independently reported 51,496; now `null` + `degraded_metrics[]`,
+and ingestion status is `unknown`, never a fabricated `stalled`.
+
+**ECLIPSE DRAMATIC MOMENT — SHIPPED** (spec `docs/superpowers/specs/2026-07-22-
+eclipse-dramatic-moment-design.md`, plan `docs/superpowers/plans/2026-07-22-
+eclipse-dramatic-moment.md`). Replaces retired crisis-mode in spirit. **Measurement
+v2 = `attention-eclipse-v1`**: tiers `none|partial|total` from TWO ORTHOGONAL axes —
+**country-dominance** (fraction of countries whose #1 story is the dominant) ×
+**entropy-collapse** (field Shannon entropy vs a trailing 7-day median, `null` on
+cold start). They are NOT opposites: a black-hole inflates volume + collapses
+entropy but stays LOW on spread, so requiring BOTH is a built-in artifact filter.
+Plus guards that kill the measured false-positive modes (thin field <40 topics,
+total <2000, dominant junk/roundup/low-cohesion/narrow-breadth). Measured frequency:
+healthy days sit at **3–13% top-1**, so a real eclipse is once-in-weeks; the bare
+20% gate misfired on thin-ETL days and one 4,325-member over-merge. Prod today:
+`tier=none`, guards clean, `country_dominance 0.238 / entropy_collapse 0.0` — the
+detector correctly stays silent. **Partial → an AnomalyPanel row (global, no
+re-scope). Total → the spectacle**: portaled full-screen takeover (once per episode,
+deduped on `dominant.identity_key`) → **DARKENED world** → muted (map sigil) →
+auto-exit when the tier drops. **Eclipse Lens** = the console reframed shadow-first:
+threads pin the eclipse on top and foreground the SHADOW stories with their share
+beside it ("0.4% vs 31%" — the relation made physical), universe + map recolor
+eclipse-red vs shadow-cyan, Brief masthead mark → `?entry=eclipse`. **TWO BUGS ONLY
+THE BROWSER COULD FIND:** the ambient ribbon rendered inside `#root` was fully
+occluded by the absolute command bar AND desaturated by the filter → portaled to
+`document.body` + `body.eclipsed{padding-top}`; and **`grayscale()` ate the lens's
+own encoding** → changed to DARKEN not desaturate (also more faithful to "la pantalla
+se vuelve negra"). Phase 4 (signal-stream Eclipse/Shadow tabs) deferred — needs a
+`/api/v2/signals?topic=` filter.
+
+**RELIABILITY SWEEP** (plan `docs/superpowers/plans/2026-07-27-reliability-sweep.md`,
+from a 5-auditor fleet: issues · roadmap · residuals · product · health):
+- **`/api/v2/universe` was at 0% availability** (502 after 48-92s). The earlier
+  20s→90s `statement_timeout` "fix" COULD NEVER WORK — the ceiling is the **Fly
+  proxy**, not Postgres — so the cache never filled and there was never even a stale
+  payload; the nightly `curl -m 120` warm step had never once succeeded. Build
+  MEASURES 75-84s / 2603 nodes / 3.86 MB. Split build from serve like the daily
+  edition: `build_universe_field.py` → `universe_field_artifacts` (mig 091) →
+  handler is a pure read. **Now 200 in ~2.8s.** Build logic lives in `app/services/`
+  because the M1 mlvenv has torch but NO fastapi. Honest residual: 3.86 MB payload
+  is fast *relative to 84s*, not instant.
+- **Person-focus timeline was dead in prod** (all 3 channels degraded/unavailable
+  while country was live). One shared `where_clause` filtered with an unindexable
+  `EXISTS(unnest(persons) … ILIKE)`. Rewritten onto mig-090's trigram index: prod
+  EXPLAIN **cost 319,329 → 3,020**. Now `live/live/live`. Two things measuring
+  caught: reusing `normalize_search_text` verbatim would have been a SILENT RECALL
+  REGRESSION (it squashes punctuation; 808/68,643 person values keep theirs, mostly
+  Arabic `al-`/`el-`) → use LIKE's `_` wildcard, needle now strictly WIDER than
+  before; and it closes the Mbappé accent hole (0 → 8 rows).
+- **`/attention/eclipse` cached** (Redis 300s + `paid` bucket): 24s → **0.5s**.
+- **2026-07-25 edge snapshot was HALF WRITTEN** — `S = W @ W.T` in float32 rounds a
+  near-duplicate pair to 1.000001, tripping the weight CHECK mid-`executemany`; 3000
+  rows (exactly 6 × BATCH_SIZE) stayed committed. Any diff touching it fabricates
+  ~9k phantom "dissolved" edges. Clamped to **[-1,1]** (NOT [0,1] — mig 089 documents
+  that whitening lets an honest weak pick read negative) + writes now atomic (TWO
+  transactions: the backbone stays best-effort). Partial day deleted from prod; 07-25
+  is now an honest GAP.
+- Silent-risk endpoint DELETED (closed in docs 07-22, still 502-ing in code, −478
+  lines; `coverage-gaps` in the same router preserved). Brief no longer promises
+  "stamps land within ~30 minutes".
+- **DeepSeek peak/valley pricing** (2× in UTC 01-04 and 06-10): `threevendor` 03:00→
+  **00:20** and `goldgrowth` 03:30→**00:50** local, both now valley. NOTE the
+  `scoped-snapshot` runs ~6h (22:00→03:54) so it straddles both peaks regardless —
+  real savings there need the LLM *steps* moved, not the job.
+
+**TWO AUDIT RECOMMENDATIONS WERE FALSE, AND MEASURING CAUGHT BOTH — the durable
+lesson of this session:**
+1. *"DROP the 420 MB `idx_signals_v2_headline_trgm`, idx_scan = 0 for the cluster's
+   life."* **EXPLAIN on the real query** from the live 30-min classifier
+   (`backfill_lexicon_topics`, `lower(s.headline) LIKE`) shows the planner **does**
+   choose it: `BitmapAnd(created_at, headline_trgm)`. The `f_unaccent` index cannot
+   serve that predicate — different expression. **A zero in a stats view is not proof
+   of disuse.**
+2. *"~208K GDELT rows hold embeddings computed from mojibake."* `embed_hot_corpus`
+   has embedded `html.unescape(headline)` since `207fedad` (2026-06-11), predating
+   #264, and is the only writer. Proof against stored prod vectors: **60/60 match the
+   DECODED text at cos 1.00000**, while `cos(stored, ENCODED-raw)` is 0.83-0.98.
+   Real affected count: **0**. Only double-encoded rows can drift: **3 of 716,494**.
+   Retention (7d) also self-heals staleness by construction. A bounded 500-row run
+   came back **byte-identical**. Full run would be ~3.9h of M1 for zero change —
+   **don't**. The tooling shipped anyway (`--reembed-ids` from the existing decode
+   ledger, `--reembed-verify` for cosine drift) because the structural gap is real.
+
+**#264 HAD A SECOND, STILL-ACTIVE LANE** (found while disproving the above): the fix
+covered GDELT only; `ingest_rss.py` had no `html` import at all and 24.kg (Kyrgyz, ru)
+emits `&nbsp;` between every word — 45 rows in 7 days, last seen the same day. Fixed,
+unescaping BEFORE the `[:500]` truncation (slicing first can cut an entity in half,
+after which no backfill can repair it). Embeddings were fine; the STORED headline is
+what `thread_ranking._norm_headline` dedups on.
+
+**CLOSED with evidence:** #255 (both marker commits), #220 (`stats.py` funnel meets
+the stated acceptance), #241 (premise stale — the HNSW index it blames is now
+**ivfflat**). **OPEN/HONEST:** ubiquitous names (`trump`, 26K rows) still degrade the
+timeline — heap-bound, not index-bound, and the window is a post-fetch filter, so a
+composite index is the follow-up; 2 `test_query_thread_router_contract` tests have
+failed since the search merge (`ad47d908`), verified pre-existing at `be37a543`;
+`/edges/replay` now diffs 07-24→07-26 (48h) and should say so. **NEEDS PEDRO:** a
+SECOND LLM provider key — every sanctioned lane rides one balance and Anthropic is
+still 400; and a policy for what the Brief shows when the label court is down for
+hours (`leadConfidence.ts:89` blocks every unstamped thread).
+
 **2026-07-22 (SILENT-RISK — MEASURED, RE-SCOPED, THEN KILLED BY ITS OWN CONTROL;
 NO ENGINE/FRONTEND CODE SHIPPED. `aab063d7`→`21d2e670`, all docs. Issue #264
 opened, #172 closed for good.)** Executed the "make silent-risk meaningful"
