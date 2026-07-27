@@ -214,10 +214,43 @@ def test_candidate_fetch_cursor_exhausts_all_batches_without_semantic_cap():
         "batches": 3,
         "rows_scanned": 3,
         "candidate_count": 2,
+        "unlabelled_skipped": 0,
         "edition_end": "2026-07-12T07:30:00+00:00",
         "cursor_exhausted": True,
         "truncated": False,
     }
+
+
+def test_unlabelled_candidate_is_skipped_and_counted_never_aborts_the_edition():
+    """THE 2026-07-24..27 REGRESSION: the label court is LLM-backed, so when the
+    provider balance ran out the court stopped naming topics. `label` was a
+    required `str`, so ONE null label raised a pydantic ValidationError inside
+    the cursor loop and killed the whole seal — four nights running, while the
+    measured package (65 receipts, gaps, readiness) assembled fine. L1 served a
+    4-day-old edition with an empty article. An unnamed story must degrade
+    itself, never the edition, and must be COUNTED (no silent filtering)."""
+
+    class Conn:
+        async def fetch(self, query, hours, cursor, batch_size, edition_end):
+            if cursor == 0:
+                return [
+                    {**candidate("dynamic-topic-1").model_dump(), "label": None, "id": 1},
+                    {**candidate("dynamic-topic-2").model_dump(), "label": "   ", "id": 2},
+                    {**candidate("dynamic-topic-3").model_dump(), "id": 3},
+                ]
+            return []
+
+    rows, completion = asyncio.run(fetch_daily_candidates(
+        Conn(), hours=24, batch_size=8,
+        edition_end=datetime(2026, 7, 27, 7, 30, tzinfo=timezone.utc),
+    ))
+
+    # The named story still makes the edition; the two unnamed ones do not.
+    assert [row.thread_id for row in rows] == ["dynamic-topic-3"]
+    # ...and their absence is reported, not hidden.
+    assert completion["unlabelled_skipped"] == 2
+    assert completion["rows_scanned"] == 3
+    assert completion["candidate_count"] == 1
 
 
 def test_sample_coverage_enriches_candidates_without_mutating_input():
