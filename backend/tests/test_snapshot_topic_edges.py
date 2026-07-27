@@ -10,6 +10,11 @@ Freezes:
       and survives.
   (d) edges where either side's identity_key is null/missing are skipped,
       never written with a fabricated key, and the skip is counted honestly.
+  (e) the 2026-07-25 half-written-snapshot regression: a weight past the
+      `CHECK (weight >= -1 AND weight <= 1)` bound (migration 089:54) is
+      CLAMPED rather than raising or being dropped, and a per-snapshot write
+      is ATOMIC — a failing batch leaves zero rows for the day, never the
+      partial day that made the C2/C3 edge-diff fabricate dissolved edges.
 
 No real DB: the pure math (`app.services.topic_edge_snapshot`) is tested with
 synthetic in-memory vectors/dicts; the writer I/O (`scripts.snapshot_topic_
@@ -28,9 +33,12 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
+import app.services.topic_edge_snapshot as tes
+from app.services.constellation_walk import KnnGraph
 from app.services.topic_edge_snapshot import (
     BackboneRow,
     EdgeRow,
+    clamp_weight,
     compute_backbone_rows,
     compute_edge_rows,
 )
@@ -204,24 +212,65 @@ class TestBackboneRarityGate:
 
 
 # ---------------------------------------------------------------- (b) idempotent upsert
+class _FakeTxn:
+    """Models asyncpg's `async with conn.transaction():` over the fake stores:
+    rows written inside are STAGED and merged into the visible store only on a
+    clean exit. An exception discards them — a ROLLBACK, which is what makes
+    the "no partial day" test meaningful."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        self._conn._staged = []
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        staged, self._conn._staged = self._conn._staged, None
+        if exc_type is None:                      # COMMIT
+            for kind, key, row in staged:
+                getattr(self._conn, kind)[key] = row
+        # else: ROLLBACK — staged rows are discarded, store untouched
+        return False                              # never swallow the exception
+
+
 class _FakeWriteConn:
     """Emulates the upsert identity for BOTH tables — a keyed store per kind,
-    mirroring `FakeLoadConn` in test_narrative_lineage.py."""
+    mirroring `FakeLoadConn` in test_narrative_lineage.py.
 
-    def __init__(self):
+    Also models TRANSACTION semantics (see `_FakeTxn`) since the writer now
+    wraps each per-snapshot write in one. `fail_on_batch=N` raises on the Nth
+    `executemany`, standing in for the CheckViolationError that half-wrote the
+    2026-07-25 snapshot."""
+
+    def __init__(self, fail_on_batch: int | None = None):
         self.edge_store: dict[tuple, tuple] = {}
         self.backbone_store: dict[tuple, tuple] = {}
         self.executemany_calls = 0
+        self.fail_on_batch = fail_on_batch
+        self._staged: list[tuple[str, tuple, tuple]] | None = None
+
+    def transaction(self):
+        return _FakeTxn(self)
+
+    def _put(self, kind: str, key: tuple, row: tuple) -> None:
+        if self._staged is not None:
+            self._staged.append((kind, key, row))
+        else:                                     # autocommit (no transaction)
+            getattr(self, kind)[key] = row
 
     async def executemany(self, sql, rows):
         assert "ON CONFLICT" in sql
         self.executemany_calls += 1
+        if (self.fail_on_batch is not None
+                and self.executemany_calls == self.fail_on_batch):
+            raise RuntimeError("simulated CheckViolationError mid-batch")
         if "topic_edge_snapshots" in sql:
             for r in rows:
-                self.edge_store[(r[0], r[1], r[2])] = r   # snapshot_at, ik_a, ik_b
+                self._put("edge_store", (r[0], r[1], r[2]), r)   # snapshot_at, ik_a, ik_b
         elif "entity_backbone_edges" in sql:
             for r in rows:
-                self.backbone_store[(r[1], r[2], r[3])] = r  # window_end, entity_a, entity_b
+                self._put("backbone_store", (r[1], r[2], r[3]), r)  # window_end, entity_a, entity_b
         else:
             raise AssertionError(f"unexpected executemany target: {sql[:60]}")
 
@@ -277,20 +326,109 @@ class TestIdempotentUpsert:
         assert len(conn.backbone_store) == 1
 
 
+# ------------------------------------------- (e) the 2026-07-25 half-written day
+#
+# Two independent defenses against ONE incident: a float32 `W @ W.T` overshoot
+# rounded to 1.000001, tripped `CHECK (weight >= -1 AND weight <= 1)`
+# (migration 089:54) mid-`executemany`, and left 3000 of ~9k edges committed —
+# 6 batches of BATCH_SIZE=500. `/api/v2/edges/replay` and
+# `/api/v2/focus/{ref}/edge-diff` diff CONSECUTIVE snapshots, so that partial
+# day fabricated ~9k "dissolved" edges labelled narrative_change /
+# substrate_churn. (1) the weight can no longer exceed the bound; (2) even if
+# some other row ever fails, the day is all-or-nothing.
+class TestWeightClampedToCheckBound:
+    def test_clamp_pins_float32_overshoot_to_the_bound(self):
+        # a few ULPs past 1.0 is exactly what float32 W@W.T yields on a
+        # near-duplicate pair; round(_, 6) turned it into 1.000001.
+        assert clamp_weight(1.0000006) == 1.0
+        assert clamp_weight(1.5) == 1.0
+        assert clamp_weight(-1.0000006) == -1.0
+        assert clamp_weight(np.float32(1.0000006)) <= 1.0
+
+    def test_clamp_leaves_honest_in_range_weights_untouched(self):
+        # including NEGATIVE ones: the bound is [-1, 1], never [0, 1] —
+        # whitening de-compresses the e5 cone, so a weak top-k pick reading
+        # negative is the measurement, not an error (migration 089:50-53).
+        for w in (0.973356, 0.160540, 0.0, -0.42, 1.0, -1.0):
+            assert clamp_weight(w) == pytest.approx(w)
+
+    def test_out_of_bound_knn_weight_is_clamped_not_raised_and_not_dropped(
+            self, monkeypatch):
+        # Stub the graph so the overshoot is deterministic rather than
+        # hardware/BLAS-dependent, and assert on compute_edge_rows' OUTPUT.
+        def _overshooting_graph(whitened, k=6):
+            return KnnGraph(nbrs={0: [(1, 1.0000006)], 1: [(0, 1.0000006)]},
+                            bfh=np.array([1.0, 1.0], dtype=np.float32),
+                            indeg=np.array([1, 1], dtype=np.int32), n=2)
+
+        monkeypatch.setattr(tes, "build_knn_graph", _overshooting_graph)
+        rows, skipped = tes.compute_edge_rows(
+            ["dynamic-topic-1", "dynamic-topic-2"], ["id-1", "id-2"],
+            _unit_vecs(2))
+
+        assert skipped == 0
+        # CLAMPED, never dropped: dropping would silently thin the graph and
+        # produce the very same fake "dissolved edge" in the diff.
+        assert len(rows) == 1
+        assert rows[0].weight == 1.0
+        assert tes.WEIGHT_MIN <= rows[0].weight <= tes.WEIGHT_MAX
+
+
+class TestSnapshotWriteIsAtomic:
+    def _edge_rows(self, n: int) -> list[EdgeRow]:
+        return [
+            EdgeRow(identity_key_a=f"id-{i:05d}", identity_key_b=f"id-{i + 1:05d}",
+                    topic_id_a=f"dynamic-topic-{i}", topic_id_b=f"dynamic-topic-{i + 1}",
+                    degree=1, weight=0.5, basis="semantic")
+            for i in range(n)
+        ]
+
+    def test_failing_batch_leaves_zero_rows_not_a_partial_day(self):
+        # 3 batches; blow up on the 2nd — the shape of the real incident, where
+        # earlier batches had already autocommitted.
+        conn = _FakeWriteConn(fail_on_batch=2)
+        snapshot_at = datetime(2026, 7, 25, 3, 15, tzinfo=timezone.utc)
+        with pytest.raises(RuntimeError):
+            _run(ste.write_edges(conn, snapshot_at,
+                                 self._edge_rows(ste.BATCH_SIZE * 3)))
+        assert conn.executemany_calls == 2          # failed on the 2nd, never reached the 3rd
+        assert conn.edge_store == {}, (
+            "a failed pass must leave ZERO rows for the day — a partial "
+            "snapshot fabricates dissolved edges in the C2/C3 diff")
+
+    def test_successful_multi_batch_write_commits_every_batch(self):
+        # the transaction must not cost us the happy path: all 3 batches land.
+        conn = _FakeWriteConn()
+        snapshot_at = datetime(2026, 7, 26, 3, 15, tzinfo=timezone.utc)
+        n = _run(ste.write_edges(conn, snapshot_at,
+                                 self._edge_rows(ste.BATCH_SIZE * 2 + 7)))
+        assert n == ste.BATCH_SIZE * 2 + 7
+        assert conn.executemany_calls == 3
+        assert len(conn.edge_store) == ste.BATCH_SIZE * 2 + 7
+
+    def test_failing_backbone_batch_also_rolls_back(self):
+        conn = _FakeWriteConn(fail_on_batch=1)
+        ws = datetime(2026, 6, 25, tzinfo=timezone.utc)
+        we = datetime(2026, 7, 25, tzinfo=timezone.utc)
+        rows = [BackboneRow(entity_a=f"a{i:04d}", entity_b=f"b{i:04d}",
+                            cooccur_count=2, rarity_weight=0.6)
+                for i in range(ste.BATCH_SIZE + 3)]
+        with pytest.raises(RuntimeError):
+            _run(ste.write_backbone(conn, ws, we, rows))
+        assert conn.backbone_store == {}
+
+
 # ---------------------------------------------------------------- run() end-to-end (fake conn)
-class _FakeRunConn:
+class _FakeRunConn(_FakeWriteConn):
     """A fake connection that answers `fetch` by which SQL the writer sends —
     the same discrimination trick test_dossier_walk.py's `_FakeConn` uses,
-    extended to two distinct queries + the write path."""
+    extended to two distinct queries + the write path. Inherits the keyed
+    upsert stores and the `_FakeTxn` transaction semantics."""
 
     def __init__(self, topic_rows, entity_rows):
+        super().__init__()
         self._topic_rows = topic_rows
         self._entity_rows = entity_rows
-        self.edge_store: dict[tuple, tuple] = {}
-        self.backbone_store: dict[tuple, tuple] = {}
-
-    async def execute(self, *a, **k):
-        return None
 
     async def fetch(self, sql, *args):
         if "FROM dynamic_topics" in sql:
@@ -298,15 +436,6 @@ class _FakeRunConn:
         if "FROM topic_members" in sql:
             return self._entity_rows
         return []
-
-    async def executemany(self, sql, rows):
-        assert "ON CONFLICT" in sql
-        if "topic_edge_snapshots" in sql:
-            for r in rows:
-                self.edge_store[(r[0], r[1], r[2])] = r
-        elif "entity_backbone_edges" in sql:
-            for r in rows:
-                self.backbone_store[(r[1], r[2], r[3])] = r
 
 
 def _topic_row(tid: int, identity_key, vec: np.ndarray) -> dict:

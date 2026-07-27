@@ -52,9 +52,21 @@ def test_paid_endpoints_map_to_paid_bucket():
         "/api/v2/theme/dynamic-topic-9/insight",
         "/api/v2/briefing/insight",
         "/api/v2/signal/123/context",
+        "/api/v2/attention/eclipse",
     ):
         bucket, _ = mw._bucket_for(_req(path), path)
         assert bucket == "paid", path
+
+
+def test_eclipse_endpoint_paid_bucket_tolerates_a_few_polling_tabs():
+    # EclipseModeContext.tsx polls every 240s from every open tab at the same
+    # default params; a handful of tabs mounting near-simultaneously plus one
+    # poll cycle inside a 300s window should never 429 on the paid bucket.
+    mw = _mw()
+    bucket, (max_hits, window) = mw._bucket_for(_req("/api/v2/attention/eclipse"), "/api/v2/attention/eclipse")
+    assert bucket == "paid"
+    assert window == 300
+    assert max_hits >= 12  # headroom above a plausible multi-tab burst (~6-8)
 
 
 def test_external_depth_maps_to_slow_bucket():

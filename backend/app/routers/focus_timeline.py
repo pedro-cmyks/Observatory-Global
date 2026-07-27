@@ -20,23 +20,37 @@ MEASURE-FIRST result (this track's session — see `focus_timeline.py`'s
 module docstring for the full numbers): a THREAD focus is cheap on every
 channel (topic_members bounds it to a few hundred rows); a COUNTRY focus's
 volume+sentiment channel is cheap via the EXISTING `country_hourly_v2`
-matview but its key-subject/voice-mix channels (and ALL of a PERSON focus,
-including its own volume channel) need a raw `signals_v2` scan that costs
-seconds for a small focus and 8-33s for a big one (no index over the
-`persons` array). Every raw-scan channel therefore runs under a tight,
-independent `statement_timeout` and degrades to an honest `reason` on
-cancellation — it NEVER blocks the rest of the payload, and never a 500.
+matview but its key-subject/voice-mix channels need a raw `signals_v2` scan
+that costs seconds for a small country and 24-33s for a big one. Every
+raw-scan channel therefore runs under a tight, independent
+`statement_timeout` and degrades to an honest `reason` on cancellation — it
+NEVER blocks the rest of the payload, and never a 500.
+
+UPDATE 2026-07-27 — the PERSON focus is no longer in that cost class. All
+three of its channels used to filter with
+`EXISTS (SELECT 1 FROM unnest(persons) pp WHERE LOWER(pp) LIKE LOWER($1))`,
+which is unindexable, so every channel seq-scanned the whole table and all
+three degraded (`volume: degraded, key_subjects/voice_mix: unavailable,
+reason: db_busy` — the state prod actually served). Migration 090 shipped a
+GIN trigram index on `f_unaccent(lower(f_arr_text(persons)))`, so the
+predicate is now spelled as that EXACT expression and the planner uses it:
+Seq Scan cost 319,329 -> Bitmap Index Scan on
+`idx_signals_v2_persons_text_trgm` cost 3,020 (168h window, prod EXPLAIN).
+The degradation machinery below is unchanged and still real — it just no
+longer fires on every person request.
 """
 from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any, Optional
 
 import asyncpg
 from fastapi import APIRouter, Query
 
 from app import db
+from app.core.search_normalization import normalize_search_text
 from app.main_v2 import app
 from app.services.edge_diff import parse_dynamic_topic_id, strip_focus_suffix
 from app.services.focus_timeline import (
@@ -59,10 +73,10 @@ _CACHE_TTL_S = 300  # 5 min — matches the C3 diff endpoint's bounded-scan cade
 # matview): generous — these are measured at ~100-300ms, this is slack, not
 # an expectation of ever needing it.
 _FAST_TIMEOUT_MS = 8000
-# Raw signals_v2 scans (country/person key-subject + voice-mix channels, and
-# the whole of a person's volume channel — no index over `persons`): bounded
-# tight so a big-volume focus degrades fast instead of holding a connection
-# open for 8-33s (measured). Slightly above voice_mix.py's 2500ms precedent
+# Raw signals_v2 scans (country key-subject + voice-mix channels; the person
+# channels, which are index-backed since mig 090 but still land on the heap):
+# bounded tight so a big-volume focus degrades fast instead of holding a
+# connection open for 24-33s (measured). Slightly above voice_mix.py's 2500ms precedent
 # — a medium country's candidate-pool query measured 2.47s, close to that
 # floor; 3000ms gives it room without approaching the big-country cost class.
 _SCAN_TIMEOUT_MS = 3000
@@ -120,6 +134,55 @@ async def _try_query(sql: str, params: list, timeout_ms: int) -> tuple[Optional[
 
 def _trunc(granularity: str) -> str:
     return "day" if granularity == "day" else "hour"
+
+
+# The ONE person predicate, spelled EXACTLY as migration 090 indexed the
+# column (`f_unaccent(lower(f_arr_text(persons)))` — `f_arr_text` is the
+# IMMUTABLE array_to_string wrapper 090 had to add because array_to_string
+# itself is only STABLE and cannot appear in an index expression). Same
+# spelling as `search.py`'s persons branch; a trigram GIN index only serves a
+# predicate that matches its expression character for character, so this
+# string is load-bearing — do not "simplify" it back to unnest/ILIKE.
+_PERSON_MATCH_EXPR = "persons IS NOT NULL AND f_unaccent(lower(f_arr_text(persons))) LIKE"
+
+
+_LIKE_SPECIALS = re.compile(r"([\\%_])")
+
+
+def _person_like_needle(name: str) -> Optional[str]:
+    """Fold a person ref into the LIKE needle the mig-090 index expects.
+
+    The indexed side is accent-folded and lowercased, so the needle must be
+    too or an accented ref silently matches nothing — the "Mbappé hole"
+    `search.py` documents, re-measured here against prod (12h window): the
+    raw `%mbappé%` matched 0 rows, the folded `%mbappe%` matched 8. So the
+    fold is `normalize_search_text`, the SAME helper /search/thread builds
+    its persons/themes patterns with — one normalizer, not two.
+
+    ONE adjustment on top of it, measured. `normalize_search_text` squashes
+    every non-alphanumeric run to a SPACE, but the stored person value keeps
+    its punctuation — 808 of 68,643 distinct values in a 24h window are
+    hyphenated ('abdel fattah al-sisi', 'aaron taylor-johnson'), i.e. mostly
+    Arabic names. A literal-space needle MISSES all of them (measured on
+    'abdel fattah al-sisi': old predicate 1 row, space needle 0, so a plain
+    reuse here would have been a silent recall REGRESSION for that 1.2%).
+    Substituting LIKE's single-character wildcard `_` for the space bridges
+    both spellings at once and still takes the index (Bitmap Index Scan,
+    cost 435). It is strictly wider than the old predicate, never narrower.
+
+    Falls back to a plain lowercase when the fold comes back empty — that
+    happens for a name written wholly in a non-Latin script, where the
+    squash would erase everything and leave the needle '%%', silently
+    matching the entire corpus. `f_unaccent` is the identity for those
+    scripts, so lower() alone already matches the indexed expression. The
+    fallback escapes LIKE metacharacters because, unlike the folded path, it
+    has not been through a character filter.
+    """
+    folded = normalize_search_text(name)
+    if folded:
+        return "%" + folded.replace(" ", "_") + "%"
+    fallback = _LIKE_SPECIALS.sub(r"\\\1", name.strip().lower())
+    return f"%{fallback}%" if fallback else None
 
 
 def _bucket_iso(row_bucket: Any) -> str:
@@ -340,12 +403,30 @@ async def focus_timeline(
     else:  # person
         name = ref.strip()
         resolved = {"person": name}
-        where_clause = ("EXISTS (SELECT 1 FROM unnest(persons) pp WHERE LOWER(pp) LIKE LOWER($1))"
+        needle = _person_like_needle(name)
+        if needle is None:
+            # A ref that folds to nothing at all (punctuation/whitespace
+            # only). Refusing is the honest answer: the alternative needle
+            # is '%%', which would silently serve the whole corpus as if it
+            # were this person's timeline.
+            payload = _empty_payload(ref, kind, "person_not_matchable")
+            await _cache_set(cache_key, payload, _CACHE_TTL_S)
+            return payload
+        where_clause = (f"{_PERSON_MATCH_EXPR} $1"
                         " AND timestamp > NOW() - ($2::int * INTERVAL '1 hour')")
-        where_params = [f"%{name}%", hours]
-        # No index over `persons` — this is the raw-scan cost class
-        # (8-33s measured even at a 24h window), so it runs under the
-        # tight scan timeout, not the fast one, and degrades honestly.
+        where_params = [needle, hours]
+        # Index-backed since mig 090 (see the module docstring): a bitmap
+        # heap scan of the matching rows, not a full-table scan. It stays on
+        # the SCAN timeout, not the fast one, because the residual cost is
+        # HEAP-bound, not index-bound. Measured on prod, 168h window:
+        #   maduro  410 rows /    419 heap blocks ->  271ms  (serves live)
+        #   trump 26,011 rows / 23,127 heap blocks -> 6.3-8.2s (degrades)
+        # — the index scan itself is 12-204ms in BOTH cases; what costs is
+        # fetching tens of thousands of heap pages. Note the window does not
+        # bound that: `timestamp` is a post-fetch Filter on this plan, so a
+        # shorter `hours` does NOT make a ubiquitous name cheaper. A needle
+        # under 3 characters is also weak (no full trigram — '%xi%' plans a
+        # 202K-row bitmap). Both cases degrade honestly, as before.
         rows, ch1_reason = await _try_query(
             _scoped_ch1_sql(granularity, where_clause), where_params, _SCAN_TIMEOUT_MS)
         if rows is not None:

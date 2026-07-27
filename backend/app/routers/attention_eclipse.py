@@ -6,7 +6,8 @@ GET /api/v2/attention/eclipse[?hours=&min_langs=&min_countries=&limit=]
 radar?" Detects whether the window's COVERAGE is concentrated on one dominant event
 (the eclipse) and, if so, surfaces the consequential-but-quiet stories being drowned
 out. Read-only over signals_v2 + topic_members + topic_movement + dynamic_topics; no
-new schema. Sibling of the parked /attention/silent-risks router.
+new schema. (The sibling /attention/silent-risks detector this once paralleled
+was formally closed and removed 2026-07-22 — see CLAUDE.md.)
 
 Honesty: this is COVERAGE-volume concentration, a PROXY for attention (Atlas cannot
 measure audience eyeballs — wiki/trends are decoupled from stories). On a diffuse day
@@ -16,6 +17,8 @@ candidates for an analyst, it does not certify an individual story.
 """
 from __future__ import annotations
 
+import json
+import logging
 from datetime import datetime, timezone
 from statistics import median
 
@@ -27,6 +30,35 @@ from app.services.attention_eclipse import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# Redis cache — the house pattern (app/routers/delight.py, app/routers/
+# research.py): get-then-compute-then-setex, every Redis call wrapped in a
+# try/except so a Redis outage degrades to the live query, NEVER an error.
+# Measured problem: this endpoint runs ~24s uncached (3 SQL blocks under a
+# 45s statement_timeout) with zero caching, while
+# frontend-v2/src/contexts/EclipseModeContext.tsx:7 polls it every 240s
+# (POLL_MS) from EVERY open tab, always at the same default params
+# (?hours=24). TTL=300s (5 min): comfortably inside the requested 180-300s
+# band, and — because 240s < 300s — a single tab's own NEXT poll is
+# guaranteed to land inside the TTL and hit warm, so in steady state at most
+# one request per ~5 minutes ever pays the live query regardless of how many
+# tabs/users are polling. Staleness is semantically free here: the frontend
+# state machine is episode-deduped on the dominant's identity_key, so a
+# read that is up to 5 minutes old cannot corrupt the takeover/ambient state.
+#
+# NOTE the delight.py/research.py house pattern imports `app` from
+# `app.main_v2` at MODULE level (`from app.main_v2 import app`). That import
+# is deferred to inside the handler here instead: main_v2.py imports this
+# router module while ITSELF still mid-import (`app.include_router(...)` at
+# module scope), so a top-level `from app.main_v2 import app` back-reference
+# makes `python -c "import app.routers.attention_eclipse"` fail with a
+# circular-import AttributeError when this module is the first thing
+# imported (verified — the same latent issue already exists in delight.py/
+# research.py, just never triggered because nothing imports them standalone).
+# By request-serving time `app.main_v2` is always already fully loaded, so a
+# call-time import is free and sidesteps the module-load-time cycle entirely.
+_CACHE_TTL_S = 300
 
 # Per-topic coverage in the window: evidence-member volume + distinct languages /
 # countries (breadth), joined to the DeepSeek-typed dynamic_topics fields and the
@@ -109,6 +141,16 @@ FROM d JOIN tot USING (day) GROUP BY d.day
 """
 
 
+def _redis_client():
+    """The shared app-wide Redis client, or None if unavailable.
+
+    Deferred (call-time) import of the FastAPI app singleton — see the module
+    note above on why this can't be a top-level `from app.main_v2 import app`.
+    """
+    from app.main_v2 import app
+    return getattr(app.state, "redis", None)
+
+
 @router.get("/api/v2/attention/eclipse")
 async def get_attention_eclipse(
     hours: int = Query(24, ge=1, le=168),
@@ -117,6 +159,22 @@ async def get_attention_eclipse(
     eclipse_top1: float = Query(0.20, ge=0.02, le=0.90),
     limit: int = Query(8, ge=1, le=30),
 ) -> dict:
+    # Key on the full parameter set that changes the payload — a request with
+    # different hours/min_langs/min_countries/eclipse_top1/limit is a genuinely
+    # different query, not a cache collision.
+    cache_key = (
+        f"attn_eclipse:v1:{hours}:{min_langs}:{min_countries}:"
+        f"{eclipse_top1:.4f}:{limit}"
+    )
+    redis = _redis_client()
+    if redis:
+        try:
+            cached = await redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            logger.warning("eclipse cache read failed, falling back to live query", exc_info=True)
+
     if db.pool is None:
         return {"contract": "attention-eclipse-v1", "hours": hours, "eclipse": False,
                 "tier": "none", "intensity": 0.0,
@@ -186,7 +244,7 @@ async def get_attention_eclipse(
         )
     notes.append("attention = coverage-volume share, a proxy for attention (not audience eyeballs)")
 
-    return {
+    payload = {
         "contract": "attention-eclipse-v1", "hours": hours,
         "eclipse": sel.eclipse, "tier": sel.tier, "intensity": sel.intensity,
         "axes": sel.axes, "dominant": sel.dominant, "window": sel.window,
@@ -200,3 +258,15 @@ async def get_attention_eclipse(
         "method": sel.method, "notes": notes,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    # Only ever cache a REAL computed payload — the early db.pool-unavailable
+    # branch above returns before this point, so a degraded/empty response
+    # is never written to cache and never prolongs an outage past its own
+    # request.
+    if redis:
+        try:
+            await redis.setex(cache_key, _CACHE_TTL_S, json.dumps(payload, default=str))
+        except Exception:
+            logger.warning("eclipse cache write failed", exc_info=True)
+
+    return payload

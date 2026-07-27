@@ -19,10 +19,12 @@
 //      unscored thread cannot clear the floor.
 //   3. Stamp requirement: label_status must be 'entailed' or 'partial'. A NULL
 //      (unstamped) label cannot lead — it blocks as 'awaiting-verification',
-//      a distinct reason so the page can say "stamps land within ~30 min"
-//      instead of the untrue "no story clears the bar". Checked AFTER the
-//      floor: a below-floor thread reports 'low-confidence' because a stamp
-//      alone would not rescue it.
+//      a distinct reason so the page can say the label is still pending its
+//      check instead of the untrue "no story clears the bar" (2026-07-27: the
+//      copy dropped its "~30 min" ETA — the court rides the classifier cron,
+//      which is not always live, so a fixed timing promise can go stale for
+//      days during an outage). Checked AFTER the floor: a below-floor thread
+//      reports 'low-confidence' because a stamp alone would not rescue it.
 //
 // This is the ONE source of truth for lead/desk eligibility — the page renders
 // eligible threads as assembled stories and drops the rest to the honest

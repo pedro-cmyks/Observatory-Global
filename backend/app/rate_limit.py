@@ -89,6 +89,15 @@ _RULE_SPECS: list[tuple[str, str, object]] = [
     (r"^/api/v2/theme/[^/]+/external-depth$", "slow", None),
     (r"^/api/v2/research/plan$", "paid", None),
     (r"^/api/v2/country-edition$", "paid", None),
+    # Heavy read (~24s uncached, 3 SQL blocks under a 45s statement_timeout) —
+    # now Redis-cached (300s TTL), same profile as country-edition/research-plan
+    # above: cache absorbs the repeat-poll traffic, the bucket bounds the
+    # cold/thundering-herd case. NOT the tighter "slow" bucket (8/300s, sized
+    # for the always-uncached external-depth lane) — EclipseModeContext.tsx
+    # polls every 240s from every open tab at the same default params, so a
+    # handful of tabs can plausibly burst 6-8 hits per 5-min window; "paid"
+    # (20/300s) leaves headroom so that normal multi-tab polling never 429s.
+    (r"^/api/v2/attention/eclipse$", "paid", None),
     # Article fetch spawns real outbound HTTP per URL — pay-bucket it. The
     # /state lookup is a cheap cache read and stays on the global bucket.
     (r"^/api/v2/research/articles/fetch$", "paid", None),

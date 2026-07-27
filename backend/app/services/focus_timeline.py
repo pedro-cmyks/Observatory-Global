@@ -33,23 +33,29 @@ drives every design decision below):
     lang/origin. The SAME query costs ~2.3s for a small country (CO, ~6.5K
     lifetime signals) — the cost scales with volume, not with the query
     being wrong.
-  - PERSON focus has NO index over `signals_v2.persons` (no GIN on the
-    array), so ANY unnest/ILIKE filter forces a full sequential scan of the
+  - PERSON focus had NO index over `signals_v2.persons` (no GIN on the
+    array), so ANY unnest/ILIKE filter forced a full sequential scan of the
     whole table REGARDLESS of the requested window (Postgres must still
     visit every row to test the EXISTS(unnest...) predicate): 8-33s
-    measured even at a 24h window. This is the clearest MEASURE-FIRST
+    measured even at a 24h window. This was the clearest MEASURE-FIRST
     negative result of the track.
+    SUPERSEDED 2026-07-27: migration 090 added a GIN trigram index on
+    `f_unaccent(lower(f_arr_text(persons)))`, and the router now spells the
+    person predicate as that exact expression, so all three person channels
+    take a Bitmap Index Scan (prod EXPLAIN, 168h window: cost 319,329 ->
+    3,020). The self-healing the paragraph below anticipated is what
+    happened — no change was needed in this module.
 
 Design consequence (honest degradation, never a blanket "this kind is
 broken"): every DB-bound channel is wrapped by the router in ONE bounded-
 attempt-then-degrade pattern (the `voice_mix.py` `_DB_BUSY_ERRORS`
-precedent) with a tight per-block statement_timeout. A thread or small-
-country focus mostly succeeds live today; a big-country or person focus
-mostly degrades today — but the code never special-cases a focus kind as
-permanently unavailable, so it self-heals the day a `signals_v2.persons`
-GIN index (a migration, explicitly out of scope for this additive-only
-track) lands. A degraded channel reports its own `reason`; the rest of the
-payload still serves (never a 500, spec §7 honesty model).
+precedent) with a tight per-block statement_timeout. A thread, person or
+small-country focus mostly succeeds live today; a big-country focus mostly
+degrades today — but the code never special-cases a focus kind as
+permanently unavailable, which is exactly why the person kind self-healed
+with a one-line predicate swap once the index landed. A degraded channel
+reports its own `reason`; the rest of the payload still serves (never a
+500, spec §7 honesty model).
 """
 from __future__ import annotations
 
