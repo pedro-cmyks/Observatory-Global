@@ -24,6 +24,8 @@ import {
     type UniverseNode,
 } from '../lib/universeLayout'
 import { useTrackball } from '../hooks/useTrackball'
+import { useEclipseMode } from '../contexts/EclipseModeContext'
+import { buildEclipseSets, eclipseTopicColor, ECLIPSE_COLOR, SHADOW_COLOR } from '../lib/eclipseSets'
 import { PERSPECTIVE_FLOOR } from '../lib/mds3d'
 import { ConstellationThreadView } from './ConstellationThreadView'
 import { LoadingMoment } from './LoadingMoment'
@@ -197,6 +199,23 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
         }
         return set
     }, [hoveredId, edges])
+
+    /* ECLIPSE LENS: when the reader ENTERED a total eclipse, the field recolors by
+       MEMBERSHIP instead of category — the dominant story + its measured neighbours
+       burn eclipse-red, the rest of the world reads shadow-cyan. Both stay fully
+       visible (no dimming): the point is to SEE how big the eclipse is. Outside the
+       lens this is null and every fill falls back to categoryColor, byte-identical. */
+    const { mode: eclipseMode, data: eclipseData } = useEclipseMode()
+    const eclipseSets = useMemo(() => {
+        if (eclipseMode !== 'ambient' || !eclipseData?.dominant?.topic_id) return null
+        const domId = eclipseData.dominant.topic_id
+        const neighbors: string[] = []
+        for (const e of edges) {
+            if (e.a === domId) neighbors.push(e.b)
+            else if (e.b === domId) neighbors.push(e.a)
+        }
+        return buildEclipseSets(eclipseData, neighbors)
+    }, [eclipseMode, eclipseData, edges])
 
     // hitTestBody is defined below (it needs `projected`); route the tap through
     // a ref so the hook can be constructed before it.
@@ -582,11 +601,15 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                         if (aa === 0 || ab === 0) return null
                         const highlighted = neighborIds ? (neighborIds.has(e.a) && neighborIds.has(e.b)) : true
                         const depthDim = depthAlpha(Math.max(pa.depth, pb.depth))
+                        // lens echo: an edge INSIDE the eclipse set burns with it
+                        const eclipseEdge = Boolean(eclipseSets
+                            && eclipseSets.eclipseTopics.has(e.a) && eclipseSets.eclipseTopics.has(e.b))
                         return (
                             <line
                                 key={`${e.a}-${e.b}`}
                                 x1={pa.sx} y1={pa.sy} x2={pb.sx} y2={pb.sy}
-                                stroke="#7dd3fc"
+                                /* var() never substitutes in an SVG presentation attr — style it. */
+                                style={{ stroke: eclipseEdge ? ECLIPSE_COLOR : '#7dd3fc' }}
                                 /* U1 (dataviz audit): the field's claim is "relations exact", so
                                    idle edges must be faintly VISIBLE, not hover-only — floor the
                                    sim×depth part at 0.08 (scrub birth/decay alpha still applies,
@@ -657,7 +680,10 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                                 <circle
                                     cx={p.sx} cy={p.sy}
                                     r={r}
-                                    style={{ fill: categoryColor(n.category) }}
+                                    /* eclipse lens: red = the eclipse set, cyan = everything
+                                       else (an unlisted body still belongs to "the rest of
+                                       the world", so it reads shadow). */
+                                    style={{ fill: eclipseSets ? (eclipseTopicColor(n.id, eclipseSets) ?? SHADOW_COLOR) : categoryColor(n.category) }}
                                     fillOpacity={0.85}
                                     stroke={n.crisis_relevant ? 'rgba(248,113,113,0.85)' : orphan ? 'rgba(226,232,240,0.8)' : 'rgba(226,232,240,0.35)'}
                                     strokeWidth={n.crisis_relevant ? 1.4 : orphan ? 1.1 : 0.6}
