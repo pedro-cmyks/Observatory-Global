@@ -17,6 +17,8 @@ Runs every 4 GDELT cycles (~60 min) via ingest_loop.py.
 from __future__ import annotations
 
 import asyncio
+import html as _html
+
 import asyncpg
 
 # The fetch stack is optional: lexicon-only consumers (subject_geography on
@@ -1187,7 +1189,12 @@ async def fetch_feed(
             if not url_str or is_blocked(url_str):
                 continue
 
-            title = (entry.get("title") or "")[:500]
+            # Unescape BEFORE truncating: feeds ship entity-encoded titles
+            # (24.kg emits '&nbsp;' between every word), and slicing first can
+            # cut an entity in half so no later pass can repair it. This is the
+            # #264 defect in a second lane — the GDELT fix did not cover RSS,
+            # and every encoded title poisons _norm_headline dedup the same way.
+            title = _html.unescape(entry.get("title") or "")[:500]
             snippet = strip_html(entry.get("summary") or entry.get("description") or "")[:500]
 
             country_code = extract_country(title, snippet) or source_country

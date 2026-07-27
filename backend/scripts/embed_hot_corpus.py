@@ -12,15 +12,21 @@ on any cadence.
 Usage (from backend/, with DATABASE_URL set; needs torch+transformers):
     python -m scripts.embed_hot_corpus [--hours 168] [--retention-days 7]
         [--batch 256] [--max-signals 200000] [--dry-run]
+
+REFRESH MODE (`--reembed-ids`, opt-in, additive) repairs embeddings whose
+SOURCE TEXT changed after they were written; see `_reembed` for why the
+default path structurally cannot do that.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
 import html
+import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import asyncpg
 
@@ -39,6 +45,183 @@ def _ivfflat_list_count(row_count: int) -> int:
         override = 0
     suggested = override or round(max(0, row_count) / 1000)
     return max(16, min(4096, suggested))
+
+
+# ---------------------------------------------------------------------------
+# REFRESH MODE (--reembed-ids). Additive; the default path below is untouched.
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS. The default selector takes only rows with NO embedding
+# (`e.signal_id IS NULL`) and writes `ON CONFLICT DO NOTHING`. Together those
+# mean an embedding is written once and can NEVER be corrected in place: if a
+# row's headline changes after it was embedded, the stored vector describes
+# text that no longer exists. Nothing in the schema records "headline changed
+# after embedding" — there is no updated_at on signals_v2 — so the affected
+# set cannot be derived in SQL. It has to be supplied by whatever rewrote the
+# headlines; every such backfill in this repo already emits a JSONL ledger of
+# the ids it touched, which is exactly the input this mode takes.
+#
+# MEASURED SCOPE, 2026-07-27 (do not re-derive from first principles): for the
+# #264 GDELT mojibake decode this mode was NOT needed. `embed_texts` is called
+# on `html.unescape(headline)` (see the default batch loop) and has been since
+# the script's first commit, so stored vectors were always computed from the
+# DECODED text. Verified against prod on 60 rows embedded 2026-07-21/22 and
+# decoded 2026-07-23+: cos(stored, decoded) = 1.00000 for 60/60, while
+# cos(stored, raw-encoded) ran 0.83-0.98. The only rows that CAN go stale are
+# double-encoded ones (`&amp;#039;`), where a single unescape leaves entities
+# behind so a later decode pass changes the text again — 3 of 716,494 ledger
+# rows. Retention (7d) also drops and re-derives every vector, so staleness
+# self-heals within a week. Keep this path for correctness-now repairs and for
+# the next backfill that rewrites headlines; do not mass-run it on a hunch —
+# run it with --reembed-verify first and let the drift number decide.
+_REEMBED_UPSERT = """
+    INSERT INTO signal_embeddings (signal_id, vec)
+    SELECT t.id, t.v::halfvec
+    FROM unnest($1::bigint[], $2::text[]) AS t(id, v)
+    WHERE EXISTS (SELECT 1 FROM signals_v2 s WHERE s.id = t.id)
+    ON CONFLICT (signal_id) DO UPDATE
+        SET vec = EXCLUDED.vec, embedded_at = now()
+"""
+# Note: stamping embedded_at = now() also resets that row's retention clock,
+# so a refreshed vector survives ~7 more days. That is the honest reading —
+# the vector really was derived now — but it means refresh mode is not free of
+# retention side effects, and mass-refreshing would pin the whole corpus.
+
+
+def _cosine(a, b) -> float:
+    num = sum(x * y for x, y in zip(a, b))
+    na = sum(x * x for x in a) ** 0.5
+    nb = sum(y * y for y in b) ** 0.5
+    return num / (na * nb) if na and nb else 0.0
+
+
+def _read_reembed_ids(path: Path, after_id: int, limit: int) -> list[int]:
+    """Signal ids to refresh, ascending, deduped, resumable and bounded.
+
+    Accepts either bare ids one per line or the JSONL ledgers the headline
+    backfills already write (records carrying an ``id`` field), so a repair is
+    `--reembed-ids <that ledger>` with no preprocessing. Blank lines and `#`
+    comments are ignored; a malformed line is a hard error rather than a
+    silently skipped row, because silently embedding a subset would look
+    exactly like success.
+    """
+    ids: set[int] = set()
+    with path.open(encoding="utf-8") as fh:
+        for lineno, raw in enumerate(fh, 1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            try:
+                ids.add(int(json.loads(line)["id"]) if line.startswith("{")
+                        else int(line))
+            except (ValueError, KeyError, TypeError) as exc:
+                raise SystemExit(
+                    f"{path}:{lineno}: cannot read a signal id from {line[:80]!r} ({exc})"
+                )
+    return sorted(i for i in ids if i > after_id)[:limit]
+
+
+def _reembed_cursor(path: Path) -> Path:
+    return path.with_suffix(path.suffix + ".reembed-cursor.json")
+
+
+def _load_reembed_cursor(path: Path) -> int:
+    try:
+        return int(json.loads(_reembed_cursor(path).read_text(encoding="utf-8"))["last_id"])
+    except Exception:
+        return 0
+
+
+def _save_reembed_cursor(path: Path, last_id: int) -> None:
+    cur = _reembed_cursor(path)
+    tmp = cur.with_suffix(cur.suffix + ".tmp")
+    tmp.write_text(json.dumps({"last_id": last_id}), encoding="utf-8")
+    tmp.replace(cur)  # atomic: a killed run never leaves a torn cursor
+
+
+async def _reembed(conn: asyncpg.Connection, args) -> int:
+    """Recompute and UPSERT embeddings for an explicit id list.
+
+    Single connection on purpose: a repair set is bounded by --limit, so the
+    default path's 4-way write pool would add failure modes for no throughput
+    that matters here. Idempotent — re-running recomputes the same vector.
+    """
+    from app.services.research_semantic import embed_texts, is_junk_headline
+
+    path = Path(args.reembed_ids)
+    after = args.reembed_after_id
+    if after is None:
+        after = _load_reembed_cursor(path)
+    ids = _read_reembed_ids(path, after, args.limit)
+    print(f"reembed: {len(ids)} ids from {path} (after id={after}, limit={args.limit})",
+          file=sys.stderr)
+    if not ids:
+        print("reembed: nothing to do — cursor is past the end of this id list",
+              file=sys.stderr)
+        return 0
+
+    started = time.monotonic()
+    written = junk = missing = 0
+    drifts: list[float] = []
+    last_id = after
+    for i in range(0, len(ids), args.batch):
+        chunk = ids[i:i + args.batch]
+        rows = await conn.fetch(
+            "SELECT s.id, s.headline"
+            + (", e.vec::text AS vec" if args.reembed_verify else "")
+            + " FROM signals_v2 s"
+            + (" LEFT JOIN signal_embeddings e ON e.signal_id = s.id"
+               if args.reembed_verify else "")
+            + " WHERE s.id = ANY($1::bigint[]) AND s.headline IS NOT NULL"
+              " ORDER BY s.id",
+            chunk,
+        )
+        missing += len(chunk) - len(rows)
+        keep = [r for r in rows if not is_junk_headline(html.unescape(r["headline"]))]
+        junk += len(rows) - len(keep)
+        if keep:
+            # Same embed contract as the default path: unescape, then the e5
+            # "passage: " prefix. Any divergence here would make a refreshed
+            # vector incomparable with the ones around it.
+            vectors = await asyncio.to_thread(
+                embed_texts,
+                [f"passage: {html.unescape(r['headline'])}" for r in keep],
+            )
+            if vectors is None:
+                print("reembed: embedder failed mid-run; aborting cleanly "
+                      f"(resume with --reembed-after-id {last_id})", file=sys.stderr)
+                return 1
+            if args.reembed_verify:
+                for r, v in zip(keep, vectors):
+                    if r["vec"]:
+                        stored = [float(x) for x in r["vec"].strip("[]").split(",")]
+                        drifts.append(_cosine(stored, v))
+            if not args.dry_run:
+                rid = [r["id"] for r in keep]
+                vlits = ["[" + ",".join(f"{x:.5f}" for x in v) + "]" for v in vectors]
+                async with conn.transaction():
+                    await conn.execute("SET LOCAL statement_timeout = 0")
+                    await conn.execute(_REEMBED_UPSERT, rid, vlits)
+                written += len(rid)
+        last_id = chunk[-1]
+        if not args.dry_run:
+            _save_reembed_cursor(path, last_id)
+        print(f"  reembed {min(i + args.batch, len(ids))}/{len(ids)} "
+              f"written={written} last_id={last_id}", file=sys.stderr)
+
+    mode = "DRY-RUN" if args.dry_run else "EXECUTE"
+    print(f"[{mode}] reembed: {written} updated, {junk} junk skipped, "
+          f"{missing} ids absent or headline-NULL, "
+          f"{time.monotonic() - started:.0f}s; next --reembed-after-id {last_id}",
+          file=sys.stderr)
+    if args.reembed_verify and drifts:
+        changed = sum(1 for d in drifts if d < 0.9999)
+        print(f"[verify] compared {len(drifts)} stored vectors: "
+              f"min cos={min(drifts):.5f} mean cos={sum(drifts) / len(drifts):.5f}; "
+              f"{changed} materially changed (cos<0.9999). "
+              f"cos≈1.0 everywhere means the stored vectors were ALREADY correct "
+              f"and a full re-embed would buy nothing.", file=sys.stderr)
+    return 0
 
 
 async def _pending_rows(
@@ -138,6 +321,24 @@ async def main() -> int:
                              "rebuild cost makes 3x/day non-viable) and the semantic lane "
                              "degrades to lexical during the rebuild. The rebuild runs in "
                              "a finally so the index is never left dropped. OFF by default.")
+    parser.add_argument("--reembed-ids", default=None, metavar="PATH",
+                        help="REFRESH MODE (additive, opt-in): recompute the embeddings "
+                             "for the signal ids in PATH and UPSERT them, overwriting "
+                             "vectors the default path can only ever write once. PATH is "
+                             "bare ids one per line OR a JSONL ledger with an 'id' field "
+                             "(what the headline backfills emit). Bounded by --limit, "
+                             "resumable via a cursor beside PATH. Use when a backfill "
+                             "rewrote headlines; measure with --reembed-verify FIRST.")
+    parser.add_argument("--reembed-after-id", type=int, default=None,
+                        help="refresh mode: resume after this signal id (default: the "
+                             "persisted cursor beside --reembed-ids, 0 on a first run)")
+    parser.add_argument("--limit", type=int, default=5000,
+                        help="refresh mode only: max ids per run. Does not affect the "
+                             "default path, which is bounded by --max-signals.")
+    parser.add_argument("--reembed-verify", action="store_true",
+                        help="refresh mode: also read each stored vector and report the "
+                             "cosine between it and the recomputed one — the number that "
+                             "says whether a bigger re-embed is worth paying for.")
     args = parser.parse_args()
 
     from app.services.research_semantic import embed_texts, embedder_available
@@ -154,6 +355,10 @@ async def main() -> int:
         # longer than 2 min on the M1↔Supabase WAN; without this they are killed
         # mid-run and the embed step yields ~0 (the 2026-07-08 starvation).
         await conn.execute("SET statement_timeout = 0")
+        # Refresh mode returns before the selector and the retention sweep: a
+        # repair must never delete vectors, and its row set is given, not found.
+        if args.reembed_ids:
+            return await _reembed(conn, args)
         rows = await _pending_rows(conn, args.hours, args.max_signals)
         from app.services.research_semantic import is_junk_headline
         before = len(rows)
