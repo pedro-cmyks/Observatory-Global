@@ -95,6 +95,95 @@ if [[ -z "${DATABASE_URL:-}" || -z "${DEEPSEEK_API_KEY:-}" ]]; then
   echo "[scoped-snapshot] missing DATABASE_URL or DEEPSEEK_API_KEY" >&2; exit 2
 fi
 
+# ─── silent-failure guard (2026-07-27) ───────────────────────────────────────
+# Identical to the guard in run-atlas-topic-classifier.sh (kept inline in both:
+# each runner is hand-synced into the ALW tree on its own).
+# WHY: every LLM step below used to end in `|| echo '(non-fatal)' >&2`, so a
+# provider outage (DeepSeek 402 / Anthropic credit exhaustion) produced a run
+# that STILL EXITED 0 — launchd recorded success, the freshness watchdog read
+# healthy, and the front page went stale for FOUR nights with nobody alerted.
+# The pipeline converted failure into a plausible success.
+#
+# atlas_step keeps the "one broken step must not abort the rest of the run"
+# behaviour, but CLASSIFIES the failure instead of swallowing it:
+#   - ordinary/transient error  -> logged, counted, run continues
+#   - PROVIDER EXHAUSTION       -> one PROVIDER_EXHAUSTED line to the shared
+#     reliability ledger (same file the SEAL_FAILED alert + freshness watchdog
+#     use) and the RUN exits non-zero at the end, so launchd records a failure.
+# A run where MORE THAN HALF the guarded steps failed also exits non-zero.
+ATLAS_ALERT_TAG="${ATLAS_ALERT_TAG:-scoped-snapshot}"
+ATLAS_RELIABILITY_ALERTS_LOG="${ATLAS_RELIABILITY_ALERTS_LOG:-$HOME/AtlasLocalWorker/logs/reliability-alerts.log}"
+_ATLAS_STEPS_ATTEMPTED=0
+_ATLAS_STEPS_FAILED=0
+_ATLAS_PROVIDER_EXHAUSTED=0
+_ATLAS_FAILED_LABELS=""
+_ATLAS_LAST_STEP_RC=0   # callers that need their own alert (seal) read this
+# Providers refuse in a handful of dialects. Keep this TIGHT: exhaustion is
+# fatal, so a bare "402" appearing in ordinary output (row counts, ids) must
+# never trip it — 402 only matches when preceded by an http/status/code/error
+# token.
+_ATLAS_EXHAUSTED_RE='payment required|credit balance is too low|insufficient balance|insufficient_quota|quota exceeded|(http|status|code|error)[^0-9a-z]{0,8}402([^0-9]|$)'
+
+atlas_alert() {  # ONE dated line to the shared reliability ledger + stderr
+  local line
+  line="$(date '+%Y-%m-%d %H:%M:%S') [$ATLAS_ALERT_TAG] $*"
+  echo "$line" >&2
+  mkdir -p "$(dirname "$ATLAS_RELIABILITY_ALERTS_LOG")" 2>/dev/null || true
+  echo "$line" >> "$ATLAS_RELIABILITY_ALERTS_LOG" 2>/dev/null || true
+}
+
+# atlas_step <label> <cwd> <command...>
+atlas_step() {
+  local label="$1" cwd="$2"; shift 2
+  local tmp rc had_e=0
+  case "$-" in *e*) had_e=1 ;; esac
+  tmp="$(mktemp -t atlas-step 2>/dev/null || echo "/tmp/atlas-step.$$")"
+  _ATLAS_STEPS_ATTEMPTED=$((_ATLAS_STEPS_ATTEMPTED + 1))
+  set +e
+  # PYTHONUNBUFFERED so tee'ing through a pipe does not block-buffer a long
+  # step's logs (the launchd log must stay live, not arrive at step end).
+  ( cd "$cwd" && export PYTHONUNBUFFERED=1 && "$@" ) 2>&1 | tee "$tmp" >&2
+  rc=${PIPESTATUS[0]}
+  [ "$had_e" -eq 1 ] && set -e
+  _ATLAS_LAST_STEP_RC="$rc"
+  if [ "$rc" -ne 0 ]; then
+    _ATLAS_STEPS_FAILED=$((_ATLAS_STEPS_FAILED + 1))
+    _ATLAS_FAILED_LABELS="$_ATLAS_FAILED_LABELS $label"
+    if grep -qiE "$_ATLAS_EXHAUSTED_RE" "$tmp" 2>/dev/null; then
+      # Ledger the FIRST exhaustion only: when the provider is dry every LLM
+      # step fails, and 6 identical lines is the ledger spam that hid the real
+      # SEAL_FAILED alerts. The run verdict below names the full failed set.
+      if [ "$_ATLAS_PROVIDER_EXHAUSTED" -eq 0 ]; then
+        atlas_alert "PROVIDER_EXHAUSTED step=$label rc=$rc — LLM provider refused (payment/credit); this step produced NOTHING"
+      else
+        echo "[$ATLAS_ALERT_TAG] $label also hit provider exhaustion (rc=$rc)" >&2
+      fi
+      _ATLAS_PROVIDER_EXHAUSTED=1
+    else
+      echo "[$ATLAS_ALERT_TAG] $label failed (rc=$rc, non-fatal — run continues)" >&2
+    fi
+  fi
+  rm -f "$tmp" 2>/dev/null || true
+  return 0
+}
+
+atlas_run_verdict() {
+  if [ "$_ATLAS_PROVIDER_EXHAUSTED" -eq 1 ]; then
+    atlas_alert "RUN_FAILED provider exhausted — ${_ATLAS_STEPS_FAILED}/${_ATLAS_STEPS_ATTEMPTED} guarded steps failed (${_ATLAS_FAILED_LABELS# }); exiting non-zero so launchd records the failure"
+    exit 1
+  fi
+  # >half = systemic breakdown, not a hiccup. The >=2 floor keeps ONE ordinary
+  # transient error non-fatal (1/1 is technically "> half"): turning every
+  # flake into a launchd failure rebuilds the alert fatigue this fix exists to
+  # kill. A single step that is genuinely exhausted still exits above.
+  if [ "$_ATLAS_STEPS_ATTEMPTED" -ge 2 ] \
+     && [ "$((_ATLAS_STEPS_FAILED * 2))" -gt "$_ATLAS_STEPS_ATTEMPTED" ]; then
+    atlas_alert "RUN_FAILED ${_ATLAS_STEPS_FAILED}/${_ATLAS_STEPS_ATTEMPTED} guarded steps failed (>half:${_ATLAS_FAILED_LABELS# }); exiting non-zero so launchd records the failure"
+    exit 1
+  fi
+  exit 0
+}
+
 # Step -1 (2026-07-20): COMMITTED-STATE SYNC — the durable cure for the
 # recurring ALW-drift disease (07-19/20: umbrella build died on ImportError
 # semantic_chunk_order, temporal_signature missing, narrative_lineage service
@@ -159,12 +248,12 @@ fi
 # DeepSeek, then emergent super-categories + open non-crisis domains. BEFORE the umbrella
 # build so umbrellas inherit category/crisis_relevant. DeepSeek = cheap API, off-peak.
 cd "$ROOT_DIR"
-$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_category_typing --deepseek --write \
-  || echo "[scoped-snapshot] category typing failed (non-fatal)" >&2
-$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_emergent_categories --write --threshold 0.95 \
-  || echo "[scoped-snapshot] emergent labeling failed (non-fatal)" >&2
-$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.type_noncrisis_domains --write \
-  || echo "[scoped-snapshot] non-crisis domains failed (non-fatal)" >&2
+atlas_step "category typing" "$ROOT_DIR" \
+  $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_category_typing --deepseek --write
+atlas_step "emergent labeling" "$ROOT_DIR" \
+  $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_emergent_categories --write --threshold 0.95
+atlas_step "non-crisis domains" "$ROOT_DIR" \
+  $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.type_noncrisis_domains --write
 
 # Step 2.6: LABEL COURT (#204/#224, council Move 1) — try each active topic's
 # SERVED label against its own receipts (DeepSeek entailment, ~cents). Writes
@@ -172,8 +261,8 @@ $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.type_noncrisis_domains --wri
 # label; on 'failed' proposes a receipt-derived neutral label (NEVER auto-served
 # unless ATLAS_LABEL_COURT_APPLY=on) + logs the failure as #204 training data.
 # Runs AFTER typing so the checked labels are the fresh ones. Non-fatal.
-$TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_court --write \
-  || echo "[scoped-snapshot] label court failed (non-fatal)" >&2
+atlas_step "label court" "$ROOT_DIR" \
+  $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_court --write
 
 # Step 3: R2 — rebuild the umbrella hierarchy (centroid-of-centroids) over the fresh
 # active set. Cheap (~hundreds of centroids, seconds). Collapses same-EVENT
@@ -324,8 +413,8 @@ UNITS_JSONL="${ATLAS_ROBOT_UNITS:-/Volumes/Ext/Atlas/Embeddings/archive-story-un
 if [[ "${ATLAS_CATEGORY_GROWTH:-on}" == "on" && -n "${OPENAI_API_KEY:-}" && -n "${DEEPSEEK_API_KEY:-}" ]]; then
   ROBOT_ARGS=(--min-members 3 --max-new 2 --write)
   [[ -f "$UNITS_JSONL" ]] && ROBOT_ARGS+=(--units-jsonl "$UNITS_JSONL")
-  ( cd "$ROOT_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.robot_categories_v1 "${ROBOT_ARGS[@]}" ) \
-    || echo "[scoped-snapshot] category robot failed (non-fatal)" >&2
+  atlas_step "category robot" "$ROOT_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.robot_categories_v1 "${ROBOT_ARGS[@]}"
 else
   echo "[scoped-snapshot] skip category robot (off or keys missing)" >&2
 fi
@@ -334,10 +423,20 @@ fi
 # This is intentionally the last database consumer in the mutex: it traverses
 # the full active candidate set and stores one compact JSONB row. Vercel/Fly
 # serving only reads that row; it never performs this work in an HTTP request.
-( cd "$BACKEND_DIR" && $TASKPOLICY "$MLVENV/bin/python" -m scripts.build_daily_publication --execute ) \
-  || { echo "[scoped-snapshot] ERROR daily publication artifact failed — L1 remains on the previous sealed edition" >&2; \
-       echo "$(date '+%Y-%m-%d %H:%M:%S') [scoped-snapshot] SEAL_FAILED daily publication artifact failed — L1 remains on the previous sealed edition" \
-         >> "${ATLAS_RELIABILITY_ALERTS_LOG:-$HOME/AtlasLocalWorker/logs/reliability-alerts.log}" 2>/dev/null || true; }
+# Guarded (2026-07-27): the seal is the step whose four-night silent death took
+# the front page down. atlas_step classifies WHY it failed — a provider refusal
+# now also fires PROVIDER_EXHAUSTED + a non-zero run exit, so launchd stops
+# recording a dead seal as a successful night. SEAL_FAILED is kept verbatim:
+# the weekly reliability read greps that exact token.
+atlas_step "daily publication seal" "$BACKEND_DIR" \
+  $TASKPOLICY "$MLVENV/bin/python" -m scripts.build_daily_publication --execute
+if [ "$_ATLAS_LAST_STEP_RC" -ne 0 ]; then
+  # Both markers kept verbatim: the ERROR line is frozen by
+  # tests/test_daily_publication_artifact.py and greppable in the launchd err
+  # log; SEAL_FAILED is the token the weekly reliability read greps.
+  echo "[scoped-snapshot] ERROR daily publication artifact failed — L1 remains on the previous sealed edition" >&2
+  atlas_alert "SEAL_FAILED daily publication artifact failed — L1 remains on the previous sealed edition"
+fi
 
 # Step 7 (council N4, 2026-07-20): pre-warm the universe field on the serving
 # box. The endpoint is stale-while-revalidate — after this one hit the field
@@ -346,3 +445,8 @@ fi
 ATLAS_API_BASE="${ATLAS_API_BASE:-https://atlas-api-pedro.fly.dev}"
 curl -s -m 120 -o /dev/null "$ATLAS_API_BASE/api/v2/universe" \
   || echo "[scoped-snapshot] universe warm failed (non-fatal — first reader pays the cold build)" >&2
+
+# The run's verdict. A provider outage or a majority-failed run now exits
+# non-zero — launchd records the failure instead of a plausible success. The
+# heavy-lock EXIT trap still fires on this exit, so the mutex is released.
+atlas_run_verdict
