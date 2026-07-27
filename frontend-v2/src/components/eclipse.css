@@ -1,7 +1,11 @@
-/* Global desaturation while the Eclipse Lens is engaged. Toggled on <body> by
+/* The world goes DARK while the Eclipse Lens is engaged — toggled on <body> by
    EclipseModeContext (mode === 'ambient'). The ribbon/sigil are portaled OUTSIDE
-   #root (see EclipseChrome), so they stay full-color above the greyed console. */
-body.eclipsed #root { filter: grayscale(.9) brightness(.62) contrast(1.05); transition: filter 1s ease; }
+   #root (see EclipseChrome), so they stay full-color above the darkened console.
+   DARKEN, DON'T DESATURATE: the lens recolors the universe/map/threads by
+   membership (eclipse-red vs shadow-cyan), and a grayscale() filter here would
+   eat exactly the encoding the lens exists to show. saturate() is lifted instead
+   so the two hues read against the dark. */
+body.eclipsed #root { filter: brightness(.58) contrast(1.08) saturate(1.15); transition: filter 1s ease; }
 /* Shift the whole app down so the fixed top ribbon never covers the command bar. */
 body.eclipsed { padding-top: 28px; }
 
