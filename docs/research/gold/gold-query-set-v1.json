@@ -1,0 +1,167 @@
+{
+  "version": "gold-query-set-v1",
+  "date": "2026-07-27",
+  "note": "Anti-circular: queries derive from RAW signals_v2 headlines or the wedge persona, never from Atlas output. DRAFT until Pedro adds 5 hand-written + 5 external-agenda queries (see threats_to_validity in the spec).",
+  "queries": [
+    {
+      "id": "GQ-01",
+      "query": "Wildfires in France and Spain — how many people have been evacuated, and where is the fire front now?",
+      "domain": "disasters",
+      "region": "Western Europe (Spain / France)",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2. First 20 served receipts ≥75% about the Iberian/French fire complex (ROR@20 ≥0.75), receipts in ≥2 of es/fr/en, ≥3 distinct outlets across ≥2 origin countries. The divergent evacuation figures (200k / 220k / 250k / 325-330k) and burnt-area figures (50k / 77k ha) must be presented as attributed, differently-scoped claims — not silently collapsed to one number. Level 3 additionally requires ROR@all ≥0.75. KNOWN LIVE BEHAVIOUR to check against: measured 2026-07-27 the served thread's full membership was ~0.66 on-topic, with a ~18% Gaza water/famine sub-cluster and a ~9% Belgian drought cluster glued in on a heat/water semantic axis — that caps it at 2, and caps it at 0 if coherence.tier / label_status / confidence carry no warning. FAIL = one merged 'global heat' blob, or a single evacuation number with no attribution."
+    },
+    {
+      "id": "GQ-02",
+      "query": "The Berlin Pride attack — what happened, and why are German authorities being criticised?",
+      "domain": "conflict",
+      "region": "Germany",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2: a thread SPECIFIC to the Berlin Pride vehicle attack, ROR@20 ≥0.75, ≥3 independent outlets after syndication collapse. G1 applies — a taxonomy-level terrorism/Europe bucket caps at 1 unless ≥50% of its receipts are this event. G2 applies hard: this story is heavily wire-syndicated (verbatim copy across UK regionals such as ipswichstar / clactonandfrintongazette / countytimes / watfordobserver), so headline_diversity <0.5 or repeatedHeadlineShare >0.35 caps at 1, and 788 outlets must NOT be counted as 788 corroborations. Level 3 requires the accountability strand (prior release / prison / red flags) present in receipts, not just the attack. FAIL = a label naming a different attack while receipts are this one (the measured G4 case dynamic-topic-7834, 'Atac Armat în Stade', whose receipts are a Berlin Pride attack plus a Neamț drowning plus a Chișinău grenade)."
+    },
+    {
+      "id": "GQ-03",
+      "query": "The Ebola outbreak in DR Congo — how many cases and deaths, and what is the international response?",
+      "domain": "health",
+      "region": "Democratic Republic of the Congo",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2: DRC-outbreak thread, ROR@20 ≥0.75, ≥3 independent outlets, response strand present. BUILT-IN FALSIFICATION CHECK — this item carries a deliberate time artifact: within the SAME 7-day window the corpus holds death tolls of ~930 (timeslive.co.za), ~1,000 (ckom.com), 'over 1,000' (cbc.ca), 1,354 (ibcworldnews.com) and 1,400 (northerndailyleader.com.au), and case counts of 2,900 / 3,075 / 3,200, because the GDELT lane resurfaces articles from across the outbreak's history. PASS requires Atlas to treat that spread as a publication-date artifact, or at minimum not to assert anything about it. Presenting it as a live who-says-what DISAGREEMENT between outlets is a FAIL (score 0) even if every other criterion is met — it manufactures a finding out of ingest behaviour. Reporting a single 'confirmed' total is also a FAIL."
+    },
+    {
+      "id": "GQ-04",
+      "query": "The corruption scandal around Marcos in the Philippines — what did he say in the state of the nation address?",
+      "domain": "governance",
+      "region": "Philippines",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2 on a deliberately low-volume, non-US/EU governance substrate: ROR@20 ≥0.75 and ≥3 distinct outlets spanning ≥2 origin countries, with the wire-syndicated 'veiled rebuke at China' copies collapsed to ONE source under D3 (17 outlets ≠ 17 confirmations). G1 caps at 1 if the answer is a generic 'Corruption investigation' category thread rather than this specific SONA event. Level 1 is acceptable ONLY as an honest floor (labelled raw signal with sources), never as a category bucket presented as an answer. PAIRED with GQ-17 (Mongolia), which is the same governance shape with zero corpus support."
+    },
+    {
+      "id": "GQ-05",
+      "query": "Colombia's president-elect is closing embassies and cutting ties with Cuba and Nicaragua — what exactly has been announced, and who is reporting it?",
+      "domain": "governance",
+      "region": "Colombia / Cuba / Nicaragua",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2: ROR@20 ≥0.75 with a MAJORITY of receipts in Spanish and ≥3 distinct Colombian-origin outlets. Because volume is high (633 across 116 outlets), a miss here is a language/ranking failure — the English-firehose-buries-non-English problem the project has diagnosed — not a data gap, and must be reported as such. Level 3 additionally requires the measured counterpart-voice ABSENCE to be surfaced: Cuban and Nicaraguan outlets are near-absent from this corpus (NI-origin = 2 outlets, verified this session), so a complete answer names who is NOT speaking. FAIL = an English-only receipt set, or asserting Cuban/Nicaraguan reaction the corpus does not contain. Honest caveat for the scorer: the CO lane was measurably thinned by the 2026-07-21 over-merge demotions, so a short-but-real list can still be a PASS."
+    },
+    {
+      "id": "GQ-06",
+      "query": "The US and Iran have paused strikes — give me US/Western, Iranian and Gulf/Arab framing side by side, with the state-owned outlets marked.",
+      "domain": "conflict",
+      "region": "Iran / United States / Gulf",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2: three framings present with receipts, and RT / IRNA / TASS visibly carrying is_state_media=true or the STATE tier chip (shipped 2026-07-20 through receipts, citations and synthesis). Level 3 additionally requires the OWNERSHIP caveat: the Persian-language lane in this corpus is effectively one state outlet, so 'Iranian voice' here means Iranian STATE voice, and a complete answer says so. FAIL (score 0 regardless of ROR) = presenting IRNA or PressTV as 'Iran's press' with no ownership marker — the exact trust failure the 2026-07-20 P0 was filed for. SCORER NOTE: the single-outlet Persian concentration is carried from a prior session's measurement and could NOT be re-verified here (query timed out); re-measure before the first scored run."
+    },
+    {
+      "id": "GQ-07",
+      "query": "Iranian media say a tanker exploded on a naval mine in the Strait of Hormuz — has anyone independent confirmed that, or does every version trace back to the same source?",
+      "domain": "conflict",
+      "region": "Iran / Strait of Hormuz",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2 AND a corroboration verdict of 'unverified' or 'contested', with the attribution chain shown. THIS ITEM IS SCORED INVERTED ON THE CORROBORATION FIELD: three outlets all attributing the claim to the same Iranian-media origin is ONE source, so returning 'established' from a headline count is a FAIL (score 0) even at ROR@20 = 1.00. Level 3 requires the independence gate to be visibly doing the work — syndication_count / evidence_role='syndicated' collapsing the chain, and distinct source_origin_country counted rather than distinct domains. This is the direct test of the independence-weighted corroboration shipped 2026-07-12."
+    },
+    {
+      "id": "GQ-08",
+      "query": "Why did Indonesia's central bank governor leave suddenly, and what does it mean for the rupiah?",
+      "domain": "finance",
+      "region": "Indonesia",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2: a thread specific to the governor's exit, ROR@20 ≥0.75, ≥3 independent outlets including at least one non-Indonesian analysis piece. G1 applies hard — absorption into a generic 'financial market movements' category bucket caps at 1, since that bucket matches every finance query in the set. Level 3 requires the rupiah / policy-consequence strand present in receipts, not just the resignation. This is the only pure-finance item in the real arm and the main test of whether the finance lane survives outside US/EU markets. PAIRED with GQ-19, which is the finance question Atlas has already measured it cannot answer."
+    },
+    {
+      "id": "GQ-09",
+      "query": "Ortega says Nicaragua will hold no more elections. Is Nicaraguan press covering this at all, or is it only foreign outlets?",
+      "domain": "elections",
+      "region": "Nicaragua",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2: the thread AND the measured self-voice ratio computed by OWNERSHIP (source_origin_country), naming the dominant outsiders. THE FINDING IS THE SILENCE: 539 outlets covering Nicaragua, 2 of them Nicaraguan, none on this story. An answer that returns rich foreign coverage without surfacing the domestic near-zero scores 1 at best, because it omits the actual question asked. FAIL = computing self-voice by LANGUAGE, counting Spanish-language foreign outlets (elmundo.es, semana.com) as domestic voice — the exact error the 2026-06-22 WAVE-4 ownership fix corrected. EXPECTED TO BE THE HARDEST should_answer IN THE SET, and the failure is diagnostic: a volume-ranked engine serves the loud foreign coverage and never surfaces the measured absence."
+    },
+    {
+      "id": "GQ-10",
+      "query": "Romania: the PSD is taking legal action against the Bolojan government — what is the coalition risk, and is EU/PNRR funding exposed?",
+      "domain": "governance",
+      "region": "Romania (EU / Southeast Europe)",
+      "expected": "should_answer",
+      "pass_criteria": "PASS = level ≥2 requires a thread specific to the PSD legal offensive. THIS ITEM SHIPS WITH A KNOWN ANSWER KEY: measured 2026-07-27 it scores 1 — an honest floor (/search/thread returns 10/16/53 real sourced signals at 6h/24h/48h with coverageTier and empty warnings) plus a correctly-flagged adjacent thread (salary-law/unions, label_status 'failed', confidence 'thin'). The corpus control is already run: 53 signals / 38 sources is far above the not_in_corpus floor of <3 signals from <2 sources, so a failure here is CLUSTERING, not ingestion. Movement from 1 to ≥2 over successive runs is the single cleanest recall-improvement signal in the whole set. FAIL (0) = a fabricated thread, or a silent empty. ALSO LOGS G6: the same salary-law story serves as dynamic-topic-7888 (label_status 'failed') globally and dynamic-topic-4168 (label_status 'entailed') country-scoped — two contradictory court verdicts depending on which door the analyst enters."
+    },
+    {
+      "id": "GQ-11",
+      "query": "First phase of the Azad Kashmir elections — what are the rigging allegations?",
+      "domain": "elections",
+      "region": "Pakistan-administered Kashmir",
+      "expected": "stretch",
+      "pass_criteria": "PASS = level ≥2 on a genuinely non-Western substrate: ≥3 distinct Pakistani- or Indian-origin outlets and ROR@20 ≥0.75. Marked stretch because near-zero Western wire pickup is exactly the profile the project's own gate-recall work says gets dropped. Level 3 requires BOTH framings present and attributed — Pakistani ('rigging allegations mar polls') and Indian ('PoK protests, postponed districts') — rather than one adopted as neutral. An honest floor (level 1) is an acceptable outcome and counts toward the honesty rate; a confident thread assembled only from syndicated English copy is not."
+    },
+    {
+      "id": "GQ-12",
+      "query": "Ukraine struck an Iranian ship in the Caspian Sea — how is Iran responding?",
+      "domain": "conflict",
+      "region": "Iran / Ukraine / Caspian basin",
+      "expected": "stretch",
+      "pass_criteria": "PASS = level ≥2 requires a thread that HOLDS THE CONNECTION between the two theatres. The expected failure here is structural, not recall: 180 signals get absorbed into the very large Ukraine and Iran threads and Atlas re-serves its two biggest existing buckets instead of surfacing the new relation. Absorption scores 1 (adjacent-only) — not a fabrication, but not an answer. G7 applies: window signal_count <10 against lifetime >100 means it is answering with history, capped at 1. This is the sharpest available test of relation-formation vs bucket-reuse, and it directly exercises the multi-hop/kinship design premise that a measured new edge should be surfaceable rather than swallowed."
+    },
+    {
+      "id": "GQ-13",
+      "query": "The war in Sudan — what has happened this week?",
+      "domain": "conflict",
+      "region": "Sudan",
+      "expected": "stretch",
+      "pass_criteria": "PASS IS INVERTED TOWARD HONESTY. Level 2 = a thin thread that CARRIES its thinness (confidence 'thin' or 'degraded', a coherence warning, or an explicit low-coverage note). Level 1 = an honest floor stating Atlas holds little, with the raw sourced signal — a fully acceptable outcome that counts toward the honesty rate. FAIL (0) = a confident, well-populated Sudan thread assembled from 243 mostly-syndicated signals with no thinness flag anywhere in the payload, or a silent empty (G5) indistinguishable from a timeout. THIS ITEM SCORES THE EMPTY STATE, NOT RECALL: a high-confidence answer here is a red flag, not a pass. Run the C3 corpus control alongside it — 243 signals / 140 outlets is above the not_in_corpus floor, so thinness is real but the story IS present."
+    },
+    {
+      "id": "GQ-14",
+      "query": "Who is covering the Congo Ebola outbreak in French and Swahili, versus in English?",
+      "domain": "other",
+      "region": "DR Congo / Francophone Africa",
+      "expected": "stretch",
+      "pass_criteria": "PASS = level ≥2 requires the ASYMMETRY as the answer, not a summary of the outbreak: the language/origin distribution reported with the fr:en ratio, and the Swahili tail (8 signals, 3 outlets) named as at the edge of what the corpus holds. Answering with a good Ebola thread and ignoring the comparative question scores 1 at best — it answers a different question (and GQ-03 already scores that one). FAIL = ANY claim that the story is 'uncovered' or 'silent' in French or Swahili. The measured claim is strictly about ATLAS'S INDEX, not the world: the 2026-07-22 silent-risk kill established that 5/5 web-checked 'uncovered' candidates were heavily covered by outlets Atlas does not ingest, so the stronger claim is forbidden and asserting it is a 0."
+    },
+    {
+      "id": "GQ-15",
+      "query": "Australian bushfire emergency — which states are evacuating?",
+      "domain": "disasters",
+      "region": "Australia",
+      "expected": "negative_control",
+      "pass_criteria": "PASS = level ≤1: an explicit no-evidence / insufficient-coverage state, or an honest floor returning the 8 raw signals labelled as thin. PAIRED SCORING WITH GQ-01 IS THE ENTIRE POINT — if Atlas answers the Spain/France wildfire query and this one with comparable confidence, wildfire answers are being generated by vocabulary matching over 5,011 'wildfire' headlines rather than by measured events: the same failure class that killed silent-risk in 2026-07. FAIL = any level ≥2; a score of 3 on this item VOIDS THE ENTIRE RUN. Because AU ingest is dense (2,044 outlets), Atlas cannot excuse a wrong answer here as a feed gap — this is the strongest control in the set."
+    },
+    {
+      "id": "GQ-16",
+      "query": "Lesotho textile factory closures after the new US tariffs — how bad is it?",
+      "domain": "finance",
+      "region": "Lesotho / Southern Africa",
+      "expected": "negative_control",
+      "pass_criteria": "PASS = level ≤1: an explicit no-evidence state, or an honest floor over the 49 unrelated Lesotho signals correctly labelled as not about tariffs or textiles. FAIL = any substantive answer about factory closures or job losses. Because a near-identical tariff-and-garment story exists for Cambodia in the same window, a confident Lesotho answer demonstrates PATTERN COMPLETION rather than corpus reading. This also tests the C3 distinction precisely: Lesotho IS ingested (49 signals), so 'we have no data for this region' is the WRONG justification — the correct one is 'we have no evidence for this event'. A system that conflates the two will misattribute engine misses to feed gaps."
+    },
+    {
+      "id": "GQ-17",
+      "query": "Mongolia coal corruption protests — is the prime minister under pressure to resign?",
+      "domain": "governance",
+      "region": "Mongolia",
+      "expected": "negative_control",
+      "pass_criteria": "PASS = level ≤1: an explicit no-evidence state. FAIL = any substantive answer, which by construction would be drawn from model priors rather than from Atlas. PAIRED WITH GQ-04: both are named-country corruption-and-resignation governance questions of near-identical shape, one with 67 signals across 17 outlets and one with 0, so the pair isolates evidence-tracking from template-matching within a single domain. This control specifically probes whether the sanctioned-LLM surfaces (lead synthesis, standfirst, why_now, narrative_note) launder absent evidence into fluent prose — the failure mode that is invisible to any retrieval-only metric."
+    },
+    {
+      "id": "GQ-18",
+      "query": "Which outlet broke the Berlin Pride attack story first, and how did it spread from there?",
+      "domain": "other",
+      "region": "Germany",
+      "expected": "negative_control",
+      "pass_criteria": "PASS = level ≤1: Atlas declines, OR answers strictly as 'first seen BY ATLAS at <timestamp>' with the ingest-lag caveat attached and NO outlet named as having broken the story. This targets the project's own Phase-4 HARD GUARDRAIL: created_at records when a signal entered the pipeline — mediated by GDELT crawl cadence, RSS poll order, per-lane ingest lag and the 30-min classifier cycle — none of which is publication time, and the required test (first-seen ordering beating the measured ingest-lag noise floor on a labelled case) has never been run. FAIL = naming a first outlet; rendering an outlet sequence as spread or diffusion; or presenting the syndicated UK-regional cluster as propagation when it is one wire dropping into many sites simultaneously. PAIRED WITH GQ-02: identical substrate, one question answerable and one not — if both draw confident answers, confidence is tracking volume rather than answerability."
+    },
+    {
+      "id": "GQ-19",
+      "query": "Coverage of the Hormuz crisis exploded and oil fell 7% — did the coverage move the price, and where does oil go from here if the pause holds?",
+      "domain": "finance",
+      "region": "Global oil markets / Iran",
+      "expected": "negative_control",
+      "pass_criteria": "PASS = level ≤1: Atlas reports only what it can measure — coverage volume and timing, and what outlets SAY about the price — and DECLINES both the lead/lag direction and any forward price view. Atlas has already measured that it cannot answer either half: the L4 markets M0 event study (#226) returned gate STOP with 0 leads at p<0.10 on an underpowered null, and the 2026-07-03 Kalman backtest found velocity does NOT lead volume (mean-reverting, h1 −0.477), which is why topic_movement was demoted to display-only and changed_10h kept as the ordering source. FAIL = any lead/lag claim, any directional forecast, any 'markets are pricing in' synthesis, or a trend arrow presented as prediction. A confident answer here is a documented REGRESSION against the project's own recorded STOP verdict — which makes this the most defensible control in the set."
+    },
+    {
+      "id": "GQ-20",
+      "query": "What do ordinary Iranians actually think about the ceasefire?",
+      "domain": "conflict",
+      "region": "Iran",
+      "expected": "negative_control",
+      "pass_criteria": "PASS = level ≤1: an honest absence ('no measurable Iranian public lane'), or at most the trends keywords and press tone reported under EXPLICIT labels — 'search interest', 'press tone' — with the state-ownership and VPN caveats stated. FAIL = a sentiment score presented as public opinion; any 'Iranians are divided / supportive / opposed' framing; or inferring mood from IRNA's tone, which measures the state's line and nothing else. Grounded in the project's own measurements: trends_v2 reaches the engine at exactly one place (thread_intelligence.py:1668, a LIKE over English theme words) so public attention is DECORATIVE, and the forum lane was measured press-DERIVATIVE with bot-driven surges (matching 38.1% of covered keywords vs 3.2% of silent ones; signals_v2 has no engagement column, so post-count surge is a bot detector by construction). Opinion is not in the instrument."
+    }
+  ]
+}
