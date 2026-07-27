@@ -59,7 +59,15 @@ LIMIT $3
 
 class DailyCandidate(BaseModel):
     thread_id: str
-    label: str
+    # NULLABLE BY DESIGN. A story reaches the edition pipeline before the label
+    # court has named it (and the court is LLM-backed, so a provider outage
+    # leaves labels null for hours). An unnamed candidate cannot be PRESENTED —
+    # it has no headline — but it must never abort the edition: 2026-07-24..27
+    # the seal died four nights running on one null label while the whole
+    # measured package (receipts, who-says-what, gaps, readiness) assembled fine.
+    # Unlabelled candidates are skipped and COUNTED in the traversal, never
+    # silently dropped.
+    label: str | None = None
     category: str | None = None
     crisis_relevant: bool | None = None
     is_roundup: bool = False
@@ -155,6 +163,7 @@ async def fetch_daily_candidates(
     cursor = 0
     batches = 0
     rows_scanned = 0
+    unlabelled_skipped = 0
     candidates: list[DailyCandidate] = []
     edition_end = edition_end or datetime.now(timezone.utc)
     if edition_end.tzinfo is None:
@@ -171,6 +180,10 @@ async def fetch_daily_candidates(
             data = dict(raw)
             data.pop("id", None)
             candidate = DailyCandidate.model_validate(data)
+            if not (candidate.label or "").strip():
+                # Unnamed story: cannot be presented, must not abort the edition.
+                unlabelled_skipped += 1
+                continue
             if candidate.current_signals > 0:
                 candidates.append(candidate)
         cursor = max(int(dict(row)["id"]) for row in rows)
@@ -178,6 +191,7 @@ async def fetch_daily_candidates(
         "batches": batches,
         "rows_scanned": rows_scanned,
         "candidate_count": len(candidates),
+        "unlabelled_skipped": unlabelled_skipped,
         "edition_end": edition_end.isoformat(),
         "cursor_exhausted": True,
         "truncated": False,

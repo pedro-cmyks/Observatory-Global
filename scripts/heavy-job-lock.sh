@@ -36,6 +36,15 @@ ATLAS_HEAVY_LOCK_LOG="${ATLAS_HEAVY_LOCK_LOG:-$HOME/AtlasLocalWorker/logs/heavy-
 # weekly read has ONE place to grep (shared with the freshness watchdog).
 ATLAS_RELIABILITY_ALERTS_LOG="${ATLAS_RELIABILITY_ALERTS_LOG:-$HOME/AtlasLocalWorker/logs/reliability-alerts.log}"
 _ATLAS_HEAVY_LOCK_HELD=""
+# TRANSITION-ONLY ledgering (2026-07-27). The overdue check below runs on EVERY
+# 60s poll and used to append to the reliability ledger each tick: 398 of 402
+# ledger lines were this ONE incident repeating, which is exactly what buried
+# the 4 real SEAL_FAILED lines of the four-night outage. The ledger now records
+# the TRANSITIONS (entered-overdue / cleared) only; the per-tick heartbeat goes
+# to the heavy-lock debug log and never to the ledger.
+_ATLAS_HEAVY_OVERDUE_MARKER="overdue-reported"   # dir inside the lock dir
+_ATLAS_HEAVY_OVERDUE_TICKS=0
+_ATLAS_HEAVY_HEARTBEAT_EVERY="${ATLAS_HEAVY_HEARTBEAT_EVERY:-15}"   # ticks (~min)
 
 _atlas_heavy_log() {
   local line
@@ -43,6 +52,23 @@ _atlas_heavy_log() {
   echo "$line" >&2
   if [ -d "$(dirname "$ATLAS_HEAVY_LOCK_LOG")" ]; then
     echo "$line" >> "$ATLAS_HEAVY_LOCK_LOG" 2>/dev/null || true
+  fi
+}
+
+_atlas_heavy_debug() {
+  # Debug log ONLY — never stderr, never the alerts ledger. This is where a
+  # still-ongoing incident may repeat.
+  if [ -d "$(dirname "$ATLAS_HEAVY_LOCK_LOG")" ]; then
+    echo "$(date '+%F %T') [heavy-lock] $*" >> "$ATLAS_HEAVY_LOCK_LOG" 2>/dev/null || true
+  fi
+}
+
+_atlas_heavy_alert() {
+  # ONE line to the shared reliability ledger. Callers MUST gate this on a
+  # state transition — anything that can repeat per tick belongs in
+  # _atlas_heavy_debug.
+  if [ -d "$(dirname "$ATLAS_RELIABILITY_ALERTS_LOG")" ]; then
+    echo "$(date '+%F %T') [heavy-lock] $*" >> "$ATLAS_RELIABILITY_ALERTS_LOG" 2>/dev/null || true
   fi
 }
 
@@ -71,18 +97,34 @@ _atlas_heavy_try_reclaim() {
   rest="${rest#*|}"; started="${rest%%|*}"
   owner_ttl="${rest##*|}"
   if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+    # A crashed holder ends any overdue incident it was carrying — report the
+    # cleared transition before the marker dies with the lock dir.
+    if [ -d "$ATLAS_HEAVY_LOCK_DIR/$_ATLAS_HEAVY_OVERDUE_MARKER" ]; then
+      _atlas_heavy_alert "OVERDUE_CLEARED job=${job:-?} pid=${pid:-?} — overdue holder is DEAD, lock reclaimed"
+    fi
     _atlas_heavy_log "stale lock (holder pid=${pid:-?} job=${job:-?} DEAD) — reclaiming"
     rm -rf "$ATLAS_HEAVY_LOCK_DIR" 2>/dev/null
+    _ATLAS_HEAVY_OVERDUE_TICKS=0
     return 0
   fi
   now="$(date +%s)"
   if [ -n "$started" ] && [ -n "$owner_ttl" ] \
       && [ "$(( (now - started) / 60 ))" -gt "$owner_ttl" ]; then
     age_min="$(( (now - started) / 60 ))"
-    _atlas_heavy_log "OVERDUE_ACTIVE lock (job=$job pid=$pid age=${age_min}m > owner_ttl=${owner_ttl}m) — NOT reclaiming a live owner; investigate"
-    if [ -d "$(dirname "$ATLAS_RELIABILITY_ALERTS_LOG")" ]; then
-      echo "$(date '+%F %T') [heavy-lock] OVERDUE_ACTIVE job=$job pid=$pid age=${age_min}m owner_ttl=${owner_ttl}m — live owner NOT evicted" \
-        >> "$ATLAS_RELIABILITY_ALERTS_LOG" 2>/dev/null || true
+    # mkdir is atomic: exactly ONE waiter reports the entered-overdue
+    # transition for a given lock, no matter how many are polling. The marker
+    # lives inside the lock dir, so release/reclaim clears it by construction.
+    if mkdir "$ATLAS_HEAVY_LOCK_DIR/$_ATLAS_HEAVY_OVERDUE_MARKER" 2>/dev/null; then
+      _atlas_heavy_log "OVERDUE_ACTIVE lock (job=$job pid=$pid age=${age_min}m > owner_ttl=${owner_ttl}m) — NOT reclaiming a live owner; investigate"
+      _atlas_heavy_alert "OVERDUE_ACTIVE job=$job pid=$pid age=${age_min}m owner_ttl=${owner_ttl}m — live owner NOT evicted"
+    else
+      # Already reported. Heartbeat to the DEBUG log only, throttled — the
+      # ledger must stay a list of transitions, not a per-minute tape.
+      _ATLAS_HEAVY_OVERDUE_TICKS=$((_ATLAS_HEAVY_OVERDUE_TICKS + 1))
+      if [ "$_ATLAS_HEAVY_HEARTBEAT_EVERY" -gt 0 ] \
+         && [ "$((_ATLAS_HEAVY_OVERDUE_TICKS % _ATLAS_HEAVY_HEARTBEAT_EVERY))" -eq 0 ]; then
+        _atlas_heavy_debug "still OVERDUE (job=$job pid=$pid age=${age_min}m) — already reported, heartbeat only"
+      fi
     fi
   fi
   return 1
@@ -90,6 +132,18 @@ _atlas_heavy_try_reclaim() {
 
 atlas_heavy_lock_release() {
   if [ -n "$_ATLAS_HEAVY_LOCK_HELD" ]; then
+    # Close the incident: if this lock was reported OVERDUE while we held it,
+    # emit the matching cleared transition so the ledger reads as a PAIR
+    # (entered / cleared) instead of one line per minute of overrun.
+    if [ -d "$ATLAS_HEAVY_LOCK_DIR/$_ATLAS_HEAVY_OVERDUE_MARKER" ]; then
+      local info started age_min="?"
+      info="$(_atlas_heavy_holder_info)"
+      started="$(echo "$info" | cut -d'|' -f3)"
+      if [ -n "$started" ]; then
+        age_min="$(( ($(date +%s) - started) / 60 ))"
+      fi
+      _atlas_heavy_alert "OVERDUE_CLEARED job=$_ATLAS_HEAVY_LOCK_HELD pid=$$ age=${age_min}m — overdue holder finished, lock released"
+    fi
     rm -rf "$ATLAS_HEAVY_LOCK_DIR" 2>/dev/null
     _atlas_heavy_log "released by $_ATLAS_HEAVY_LOCK_HELD (pid $$)"
     _ATLAS_HEAVY_LOCK_HELD=""
