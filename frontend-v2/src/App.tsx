@@ -10,7 +10,6 @@ import './App.css'
 // the skin. Intel-noir/retro never match its selectors.
 import './styles/oceanConsole.css'
 import { useCrisis } from './contexts/CrisisContext'
-import { useEclipseMode } from './contexts/EclipseModeContext'
 import { SearchBar } from './components/SearchBar'
 import { Briefing } from './components/Briefing'
 import { ThemeDetail } from './components/ThemeDetail'
@@ -1143,7 +1142,6 @@ function AppContent() {
 
   // Get crisis state for terminator auto-hide and anomalies
   const { enabled: crisisEnabled, anomalies } = useCrisis()
-  const { mode: eclipseMode, data: eclipseData, act: eclipseAct } = useEclipseMode()
 
   // Merge anomaly data into nodes for coloring and pulse — capped at 100 by attention index,
   // not raw volume, so high-volume countries do not crowd out smaller baseline spikes.
@@ -1452,7 +1450,7 @@ function AppContent() {
   }
 
   return (
-    <div className={`app ${crisisEnabled ? 'crisis-mode' : ''} ${eclipseMode === 'ambient' ? 'eclipsed-console' : ''}`}>
+    <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
       <AtlasLoader visible={!appReady} />
       {/* Command Bar */}
       <header className="command-bar">
@@ -1592,13 +1590,6 @@ function AppContent() {
         </div>
       </header>
 
-      {eclipseMode === 'ambient' && eclipseData && (
-        <div className="eclipse-ribbon">
-          ◑ Eclipsed · <b>{`“${eclipseData.dominant?.label ?? 'one story'}”`}</b> is eclipsing the world
-          <button className="eclipse-ribbon-x" onClick={() => eclipseAct('mute')} data-tip="Exit the eclipse view">✕ exit eclipse</button>
-        </div>
-      )}
-
       {/* A1: persistent focus chip — shows what's focused and gives one ✕ to
           return to the whole, unfocused view (the missing country deselect). */}
       <FocusIndicator onClear={clearAll} onRemoveTheme={() => { setTheme(null); setSelectedTheme(null); setSelectedThread(null) }} />
@@ -1719,10 +1710,6 @@ function AppContent() {
             )}
           </div>
           <div className="panel-content">
-            {eclipseMode === 'muted' && (
-              <button className="eclipse-map-sigil" onClick={() => eclipseAct('restore')}
-                      data-tip="An eclipse is active — re-enter the eclipse view" aria-label="Re-enter eclipse view" />
-            )}
             <MapErrorBoundary>
               {(  /* EE canvas — the one map; MapLibre deprecated 2026-07-04 */
                 <EqualEarthMap

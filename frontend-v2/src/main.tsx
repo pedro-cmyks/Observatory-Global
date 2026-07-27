@@ -66,6 +66,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { EclipseProvider } from './contexts/EclipseModeContext'
 import { EclipseTakeover } from './components/EclipseTakeover'
+import { EclipseChrome } from './components/EclipseChrome'
 import './components/eclipse.css'
 import App from './App.tsx'
 import { Landing } from './pages/Landing.tsx'
@@ -119,6 +120,7 @@ createRoot(document.getElementById('root')!).render(
               </Routes>
               <InstallPrompt />
               <EclipseTakeover />
+              <EclipseChrome />
             </EclipseProvider>
           </AuthProvider>
         </BrowserRouter>
