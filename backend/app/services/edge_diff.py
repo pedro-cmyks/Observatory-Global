@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 # ---------------------------------------------------------------- change types
@@ -57,6 +58,124 @@ ACTIVE_STATE = "active"
 # absolute drop is the simplest honest measure. Calibratable v1 default —
 # tune once real snapshot pairs exist (C1 has just landed).
 DEFAULT_WEAKEN_DELTA = 0.10
+
+# ------------------------------------------------------- snapshot cadence
+# The C1 writer runs on one nightly cron pass
+# (`infra/launchd/com.atlas.edge-snapshot.plist`, 03:15 local) -> one stored
+# snapshot per 24h. This is the cadence a diff between CONSECUTIVE snapshots
+# implicitly claims when it shows no interval at all.
+DEFAULT_SNAPSHOT_INTERVAL_HOURS = 24.0
+# Cron drift is seconds and a late/early pass is normal; one hour of slack
+# absorbs that without calling an ordinary night a gap. Anything beyond it is
+# a real deviation the reader has to be told about.
+DEFAULT_INTERVAL_TOLERANCE_HOURS = 1.0
+
+
+@dataclass(frozen=True)
+class SnapshotInterval:
+    """How far apart the two snapshots being compared actually are, and
+    whether that is the standard one-pass step the reader assumes.
+
+    WHY this exists (measured, 2026-07-25): a half-written snapshot for that
+    day was deleted, so the store holds 07-24 -> 07-26 as CONSECUTIVE passes
+    48h apart. `classify_edge_changes` faithfully reports everything that
+    changed across those 48h; presented with no interval, that reads as one
+    day of narrative change. On prod the 48h step yields 9,789 formed edges
+    against 6,934 / 6,304 for the adjacent 24h steps — a ~+50% phantom burst.
+    Two days of change labeled as one day is the same class of lie as
+    coverage-as-corroboration: the number is real, the frame is false.
+
+    `missing_snapshot_passes` separates the two ways a step can be wide:
+      - a GAP in the store (expected passes that produced nothing), vs
+      - a deliberately WIDE window (`since` far in the past) that aggregates
+        real intermediate passes.
+    Both are non-standard; they mean different things and are named apart.
+    """
+
+    interval_hours: float
+    expected_interval_hours: float
+    intermediate_snapshots: int
+    missing_snapshot_passes: int
+    is_standard: bool
+    note: str
+
+
+def describe_snapshot_interval(
+    t0: datetime,
+    t1: datetime,
+    *,
+    intermediate_snapshots: int = 0,
+    expected_interval_hours: float = DEFAULT_SNAPSHOT_INTERVAL_HOURS,
+    tolerance_hours: float = DEFAULT_INTERVAL_TOLERANCE_HOURS,
+) -> SnapshotInterval:
+    """Describe the real distance between the two compared snapshot passes.
+
+    `intermediate_snapshots` = stored passes strictly BETWEEN t0 and t1 (the
+    caller counts them; this function is pure). With a healthy nightly store
+    a consecutive pair has 0.
+
+    Pure and total: any pair of timestamps yields a verdict plus a plain-language
+    `note` (the receipt — same discipline as `EdgeChange.reason`), so a
+    non-standard interval can never reach a surface unlabeled.
+    """
+    interval = round(abs((t1 - t0).total_seconds()) / 3600.0, 2)
+    expected = float(expected_interval_hours)
+    tol = abs(float(tolerance_hours))
+    inter = max(0, int(intermediate_snapshots))
+
+    # How many cadence passes this span covers, and how many of them left no
+    # snapshot behind. Only meaningful once the span exceeds one pass.
+    spanned_passes = int(round(interval / expected)) if expected > 0 else 0
+    missing = max(0, spanned_passes - 1 - inter) if interval > expected + tol else 0
+
+    standard = inter == 0 and interval > 0 and abs(interval - expected) <= tol
+
+    if interval == 0:
+        note = ("both ends of this diff are the same snapshot pass — there is no "
+                "earlier pass to compare against, so no change can be reported")
+    elif standard:
+        note = f"one standard snapshot step ({interval:g}h, cadence {expected:g}h)"
+    elif interval < expected - tol:
+        note = (f"{interval:g}h apart — SHORTER than the standard {expected:g}h "
+                "cadence, so this shows less than a full pass of change")
+    elif missing > 0 and inter == 0:
+        note = (f"{interval:g}h apart — {missing} snapshot "
+                f"{'pass' if missing == 1 else 'passes'} missing from the store, "
+                f"so this covers {interval / expected:.0f} days of change, not the "
+                f"usual {expected:g}h")
+    elif missing > 0:
+        note = (f"{interval:g}h apart, aggregating {inter} intermediate "
+                f"{'pass' if inter == 1 else 'passes'} with {missing} more missing "
+                f"from the store — not a single {expected:g}h step")
+    elif inter > 0:
+        note = (f"{interval:g}h apart, aggregating {inter} intermediate snapshot "
+                f"{'pass' if inter == 1 else 'passes'} — not a single "
+                f"{expected:g}h step")
+    else:
+        note = (f"{interval:g}h apart — off the standard {expected:g}h cadence")
+
+    return SnapshotInterval(
+        interval_hours=interval,
+        expected_interval_hours=expected,
+        intermediate_snapshots=inter,
+        missing_snapshot_passes=missing,
+        is_standard=standard,
+        note=note,
+    )
+
+
+def snapshot_interval_out(iv: SnapshotInterval) -> dict:
+    """Serialize for the API payloads (`app/routers/edges.py`). One shared
+    shape so the replay scrubber and the focus diff describe cadence
+    identically."""
+    return {
+        "hours": iv.interval_hours,
+        "expected_hours": iv.expected_interval_hours,
+        "intermediate_snapshots": iv.intermediate_snapshots,
+        "missing_snapshot_passes": iv.missing_snapshot_passes,
+        "is_standard": iv.is_standard,
+        "note": iv.note,
+    }
 
 
 def strip_focus_suffix(raw: str) -> str:

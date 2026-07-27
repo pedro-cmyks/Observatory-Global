@@ -72,12 +72,30 @@ export interface FocusTimelineResponse {
 export interface EdgeChange {
     identity_key_a: string
     identity_key_b: string
-    change_type: string // 'formed' | 'died' | 'weakened'
+    // Backend `CHANGE_TYPES` (app/services/edge_diff.py): 'formed' | 'weakened'
+    // | 'narrative_change' | 'substrate_churn' | 'stable'. A dissolved edge is
+    // ALREADY classified by cause on the wire — there is no generic 'died'
+    // type (an earlier version of this client looked for one, so every
+    // dissolved edge fell through both the chips and the caveat).
+    change_type: string
     weight_t0: number | null
     weight_t1: number | null
     delta: number | null
     reason: string | null
     basis: string | null
+}
+
+/** Mirrors the backend `snapshot_interval_out` shape: how far apart the two
+ *  compared snapshot passes ACTUALLY are. Stored passes are not evenly spaced
+ *  (2026-07-25's half-written snapshot was deleted, so 07-24 -> 07-26 are
+ *  consecutive rows 48h apart), so a diff must be labeled by its real span. */
+export interface SnapshotIntervalInfo {
+    hours: number
+    expected_hours: number
+    intermediate_snapshots: number
+    missing_snapshot_passes: number
+    is_standard: boolean
+    note: string
 }
 
 export interface DormantRelationship {
@@ -95,6 +113,7 @@ export interface EdgeDiffResponse {
     since?: string
     matched_since_snapshot_at?: string
     latest_snapshot_at?: string
+    interval?: SnapshotIntervalInfo
     changes: EdgeChange[]
     dormant: DormantRelationship[]
     dormant_reason?: string
@@ -319,19 +338,36 @@ export interface DiffSummary {
     diedChurn: number
 }
 
-/** Is a died edge a real NARRATIVE change (the story moved on) or SUBSTRATE
- *  churn (the topic re-founded / merged / retired)? The C2 classifier already
- *  wrote it into `reason`; we only read the honest label off it, never guess. */
-export function diedReasonKind(reason: string | null | undefined): 'narrative' | 'churn' | 'unknown' {
-    const r = (reason || '').toLowerCase()
-    if (r.includes('narrative')) return 'narrative'
+/** Did this edge DISAPPEAR between the two passes? The backend names the cause
+ *  in `change_type` (`narrative_change` / `substrate_churn`); `died` is
+ *  tolerated only as a legacy alias. */
+export function isDissolvedType(changeType: string | null | undefined): boolean {
+    const t = (changeType || '').toLowerCase()
+    return t === 'narrative_change' || t === 'substrate_churn' || t === 'died'
+}
+
+/** Is a dissolved edge a real NARRATIVE change (the story moved on) or
+ *  SUBSTRATE churn (the topic re-founded / merged / retired)? The C2 classifier
+ *  already decided it — read it off `change_type` first and only fall back to
+ *  the prose `reason`, which legitimately mentions both words ("substrate
+ *  churn, not a narrative change: …"), hence churn is tested first. */
+export function dissolvedKind(
+    c: { change_type?: string | null; reason?: string | null },
+): 'narrative' | 'churn' | 'unknown' {
+    const t = (c.change_type || '').toLowerCase()
+    if (t === 'narrative_change') return 'narrative'
+    if (t === 'substrate_churn') return 'churn'
+    const r = (c.reason || '').toLowerCase()
     if (r.includes('substrate') || r.includes('churn') || r.includes('retired') ||
         r.includes('merged') || r.includes('refound') || r.includes('re-found')) return 'churn'
+    if (r.includes('narrative')) return 'narrative'
     return 'unknown'
 }
 
-export function diedReasonLabel(reason: string | null | undefined): string {
-    switch (diedReasonKind(reason)) {
+export function dissolvedLabel(
+    c: { change_type?: string | null; reason?: string | null },
+): string {
+    switch (dissolvedKind(c)) {
         case 'narrative': return 'connection ended: narrative change'
         case 'churn': return 'connection ended: substrate churn'
         default: return 'connection ended: reason unrecorded'
@@ -344,14 +380,87 @@ export function summarizeChanges(changes: EdgeChange[]): DiffSummary {
         const t = (c.change_type || '').toLowerCase()
         if (t === 'formed') out.formed++
         else if (t === 'weakened') out.weakened++
-        else if (t === 'died') {
+        else if (isDissolvedType(t)) {
             out.died++
-            const k = diedReasonKind(c.reason)
+            const k = dissolvedKind(c)
             if (k === 'narrative') out.diedNarrative++
             else if (k === 'churn') out.diedChurn++
         }
     }
     return out
+}
+
+// ------------------------------------------------------ diff window labeling
+export interface DiffWindowLabel {
+    /** ISO stamp the diff actually starts at — the matched SNAPSHOT, not the
+     *  requested `since` (they differ whenever no pass sits on that date). */
+    anchorIso: string | null
+    /** Non-null ONLY when the compared step is not one standard pass: the
+     *  short user-facing warning that must render next to the counts. */
+    spanLabel: string | null
+    isStandard: boolean
+    /** Full backend receipt for the tooltip. */
+    tip: string
+}
+
+/**
+ * Label the window a diff actually covers (project rails: honest degradation,
+ * no silent filtering).
+ *
+ * The forcing case is real: 2026-07-25's snapshot was a half-written partial
+ * and was deleted, so the store holds 07-24 -> 07-26 as CONSECUTIVE passes 48h
+ * apart. Measured on prod, that step reports ~50% more `formed` edges than
+ * either adjacent 24h step. Rendered like every other day, two days of
+ * accumulated change reads as a one-day burst of narrative change — precisely
+ * the misreading these endpoints exist to prevent. So a non-standard interval
+ * gets said out loud, and the counts stay visible (flagged, never filtered).
+ *
+ * `fallbackIso` is used only when the payload carries no snapshot stamp at all.
+ */
+export function describeDiffWindow(
+    diff: Pick<EdgeDiffResponse, 'since' | 'matched_since_snapshot_at' | 'interval'> | null | undefined,
+    fallbackIso?: string,
+): DiffWindowLabel {
+    const anchorIso = diff?.matched_since_snapshot_at || diff?.since || fallbackIso || null
+    const iv = diff?.interval
+    if (!iv) {
+        // Older payload (pre-interval contract): we cannot claim the step is
+        // standard, so say nothing about it rather than implying one day.
+        return { anchorIso, spanLabel: null, isStandard: true, tip: '' }
+    }
+    if (iv.is_standard) {
+        return { anchorIso, spanLabel: null, isStandard: true, tip: iv.note }
+    }
+    const hours = iv.hours
+    let spanLabel: string
+    if (hours === 0) {
+        spanLabel = 'only one snapshot pass stored — nothing to compare yet'
+    } else if (iv.missing_snapshot_passes > 0 && iv.intermediate_snapshots === 0) {
+        const days = Math.round(hours / (iv.expected_hours || 24))
+        spanLabel = `${formatSpanHours(hours)} apart — ${days} days of change in one step ` +
+            `(${iv.missing_snapshot_passes} snapshot ` +
+            `${iv.missing_snapshot_passes === 1 ? 'pass' : 'passes'} missing)`
+    } else if (iv.intermediate_snapshots > 0) {
+        spanLabel = `${formatSpanHours(hours)} apart — aggregates ` +
+            `${iv.intermediate_snapshots + 1} snapshot steps, not one`
+    } else if (hours < iv.expected_hours) {
+        spanLabel = `${formatSpanHours(hours)} apart — less than one full snapshot pass`
+    } else {
+        spanLabel = `${formatSpanHours(hours)} apart — off the usual ` +
+            `${formatSpanHours(iv.expected_hours)} cadence`
+    }
+    return { anchorIso, spanLabel, isStandard: false, tip: iv.note }
+}
+
+/** Hours as a compact span: whole hours stay hours, exact multiples of 24 read
+ *  as days (a 48h gap is easier to judge as "2 days"). */
+export function formatSpanHours(hours: number): string {
+    if (!isFinite(hours) || hours <= 0) return '0h'
+    if (hours >= 24 && Math.abs(hours % 24) < 0.01) {
+        const d = Math.round(hours / 24)
+        return `${d}d`
+    }
+    return `${Math.round(hours * 10) / 10}h`
 }
 
 /** Dormant backbone relationships touching a given subject NAME (§4 divergence
