@@ -94,7 +94,7 @@ import app.services.country_edition as ce
 
 @pytest.mark.asyncio
 async def test_fetch_country_edition_no_db_honest_empty(monkeypatch):
-    monkeypatch.setattr(ce.db, "pool", None, raising=False)
+    monkeypatch.setattr(ce.db, "pool", None)
     out = await ce.fetch_country_edition("co")
     assert out["contract"] == "country-edition-v0"
     assert out["country"] == "CO"                 # uppercased
@@ -140,7 +140,7 @@ async def test_fetch_country_edition_orchestrates(monkeypatch):
         def acquire(self):
             return _Acquire()
 
-    monkeypatch.setattr(ce.db, "pool", _Pool(), raising=False)
+    monkeypatch.setattr(ce.db, "pool", _Pool())
     monkeypatch.setattr(ce, "fetch_threads", fake_fetch_threads)
     monkeypatch.setattr(ce, "rank_threads", fake_rank)
     import app.services.article_fetch as af

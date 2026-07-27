@@ -38,7 +38,11 @@ from scripts import snapshot_topic_edges as ste
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # asyncio.run, not get_event_loop(): any earlier asyncio.run() in the
+    # session closes the thread's loop and leaves it unset, so
+    # get_event_loop() raises RuntimeError once these files run alongside
+    # others. asyncio.run owns a fresh loop per call and cannot be poisoned.
+    return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------- fixtures

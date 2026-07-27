@@ -37,8 +37,35 @@ GLOBAL_GAPS_SQL = """
     LIMIT 6
 """
 
-# Country scope adds the signals_v2 join for the country predicate and uses a
-# lower floor (per-country volume is smaller than global).
+# Country scope adds the country predicate and uses a lower floor (per-country
+# volume is smaller than global).
+#
+# PERF (measured 2026-07-22, docs/research/coverage-gaps-perf/): the country
+# predicate is a CORRELATED SCALAR SUBQUERY, not `JOIN signals_v2 s ON s.id =
+# a.signal_id` + `s.country_code = $2`. That is deliberate and load-bearing —
+# the join form measured 31-70s locally and 113s in prod (cc=US), because it
+# probed signals_v2 by primary key once per windowed assignment (~12.5k random
+# reads into a 1.1 GB heap, each fetching a row only to discard it).
+#
+# It is EQUIVALENT, not merely similar: `signals_v2.id` is the primary key, so
+# the join matched at most one row per assignment and projected NO column of
+# `s` — it was already a semi-join. The subquery reproduces every branch: a
+# signal in another country yields a non-matching value, and BOTH a missing
+# signal (retention deletes signals while assignments linger) and a NULL
+# country_code yield NULL, which `= $2` rejects exactly as the inner join did.
+# Verified empirically: grouped aggregates byte-identical across ALL countries
+# (symmetric-difference EXCEPT returned 0 rows) plus a 15-country end-to-end
+# payload diff, and re-checked under bound parameters past the generic-plan
+# switch.
+#
+# Written this way because the planner CANNOT pull a scalar subquery up into a
+# join, which pins the one good plan: an Index Only Scan on
+# idx_signals_v2_id_country, cost proportional to the ASSIGNMENT WINDOW rather
+# than to the country's signal volume. Left as a plain JOIN (or as EXISTS,
+# which PG rewrites into a hash semi-join) the planner switches to a bitmap
+# heap scan for smaller countries and reads thousands of scattered heap pages —
+# CO measured 10,248ms that way vs 36ms here.
+# Needs the covering indexes from migration 090 to stay fast.
 COUNTRY_GAPS_SQL = """
     SELECT t.slug, t.label,
            COUNT(*)::int AS raw_signals,
@@ -46,9 +73,8 @@ COUNTRY_GAPS_SQL = """
            COUNT(*) FILTER (WHERE a.gate_score IS NOT NULL)::int AS scored
     FROM signal_topic_assignments a
     JOIN atlas_topics t ON t.id = a.topic_id
-    JOIN signals_v2 s ON s.id = a.signal_id
     WHERE a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
-      AND s.country_code = $2
+      AND (SELECT s.country_code FROM signals_v2 s WHERE s.id = a.signal_id) = $2
     GROUP BY t.slug, t.label
     HAVING COUNT(*) >= $3
        AND COUNT(*) FILTER (WHERE a.gate_kept) = 0

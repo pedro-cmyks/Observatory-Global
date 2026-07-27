@@ -300,15 +300,7 @@ async def test_endpoint_returns_contract_and_global_scope(monkeypatch):
                  "status": "none_verified", "extended_receipts": []}]
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
-    # raising=False: `app.db` is shadowed by the sibling `app/db/` package on
-    # this branch (both tracked since ancient commits bf037cf7/d2ae56cb; the
-    # package wins CPython's package-vs-module resolution), so `db.pool` has no
-    # attribute to overwrite until real app startup sets it dynamically.
-    # test_thread_intelligence.py hits the same shadow via plain attribute
-    # assignment; raising=False is the monkeypatch equivalent, with
-    # auto-teardown. Unrelated to this endpoint or Task 1/2 — see all
-    # `raising=False` call sites below.
-    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)
+    monkeypatch.setattr(at.db, "pool", _FakePool())
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["contract"] == "coverage-gaps-v0"
@@ -329,7 +321,7 @@ async def test_endpoint_country_scope_uppercases_cc(monkeypatch):
         return []
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
-    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+    monkeypatch.setattr(at.db, "pool", _FakePool())
 
     out = await at.get_coverage_gaps(country="co", hours=48)
     assert seen["country"] == "CO"
@@ -342,7 +334,7 @@ async def test_endpoint_country_scope_uppercases_cc(monkeypatch):
 @pytest.mark.asyncio
 async def test_endpoint_degrades_when_db_unavailable(monkeypatch):
     from app.routers import attention_threads as at
-    monkeypatch.setattr(at.db, "pool", None, raising=False)  # see raising=False note above
+    monkeypatch.setattr(at.db, "pool", None)
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["gaps"] == []
@@ -358,7 +350,7 @@ async def test_endpoint_degrades_on_query_failure(monkeypatch):
         raise RuntimeError("statement timeout")
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", boom)
-    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+    monkeypatch.setattr(at.db, "pool", _FakePool())
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["gaps"] == []
@@ -387,7 +379,7 @@ async def test_endpoint_gaps_reset_when_release_raises_after_success(monkeypatch
                  "status": "none_verified", "extended_receipts": []}]
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
-    monkeypatch.setattr(at.db, "pool", _FakePoolRaisesOnRelease(), raising=False)
+    monkeypatch.setattr(at.db, "pool", _FakePoolRaisesOnRelease())
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["status"] == "degraded"
@@ -431,7 +423,7 @@ async def test_endpoint_degrades_when_query_exceeds_wall_clock_budget(monkeypatc
         return real_asyncio.timeout(0.05)
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", slow_fetch)
-    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)
+    monkeypatch.setattr(at.db, "pool", _FakePool())
     monkeypatch.setattr(at, "asyncio", SimpleNamespace(timeout=capturing_timeout))
 
     out = await at.get_coverage_gaps(country=None, hours=24)
@@ -449,7 +441,7 @@ async def test_endpoint_honest_empty_global_scope_names_floor(monkeypatch):
         return []
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
-    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+    monkeypatch.setattr(at.db, "pool", _FakePool())
 
     out = await at.get_coverage_gaps(country=None, hours=24)
     assert out["status"] == "empty"
@@ -472,7 +464,7 @@ async def test_endpoint_honest_empty_country_scope_names_floor(monkeypatch):
         return []
 
     monkeypatch.setattr(at, "fetch_coverage_gaps", fake_fetch)
-    monkeypatch.setattr(at.db, "pool", _FakePool(), raising=False)  # see raising=False note above
+    monkeypatch.setattr(at.db, "pool", _FakePool())
 
     out = await at.get_coverage_gaps(country="co", hours=24)
     assert out["status"] == "empty"

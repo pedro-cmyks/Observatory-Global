@@ -160,7 +160,7 @@ class OkBaseConn:
 
 @pytest.mark.asyncio
 async def test_db_timeout_serves_degraded_200_shape(monkeypatch):
-    monkeypatch.setattr(db, "pool", FakePool(BusyConn()), raising=False)
+    monkeypatch.setattr(db, "pool", FakePool(BusyConn()))
     out = await vm_router.get_voice_mix(hours=168, country=None)
     assert out["degraded"] is True
     assert out["reason"] == "db_busy"
@@ -175,7 +175,7 @@ async def test_db_timeout_serves_degraded_200_shape(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_relation_timeout_degrades_only_relation(monkeypatch):
-    monkeypatch.setattr(db, "pool", FakePool(OkBaseConn(), BusyConn()), raising=False)
+    monkeypatch.setattr(db, "pool", FakePool(OkBaseConn(), BusyConn()))
     out = await vm_router.get_voice_mix(hours=168, country="co")
     # base report intact
     assert "degraded" not in out
@@ -202,7 +202,7 @@ async def test_healthy_country_path_serves_relation(monkeypatch):
                 return [{"lang": "en", "n": 4}]
             return await super().fetch(sql, *params)
 
-    monkeypatch.setattr(db, "pool", FakePool(OkBaseConn(), OkRelationConn()), raising=False)
+    monkeypatch.setattr(db, "pool", FakePool(OkBaseConn(), OkRelationConn()))
     out = await vm_router.get_voice_mix(hours=168, country="co")
     assert out["relation"]["self_voice"] == 3
     assert "relation_degraded" not in out

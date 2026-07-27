@@ -33,7 +33,11 @@ from app.services.focus_timeline import (
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # asyncio.run, not get_event_loop(): any earlier asyncio.run() in the
+    # session closes the thread's loop and leaves it unset, so
+    # get_event_loop() raises RuntimeError once these files run alongside
+    # others. asyncio.run owns a fresh loop per call and cannot be poisoned.
+    return asyncio.run(coro)
 
 
 def _call(ref, *, focus_type=None, hours=168, granularity="day", key_subjects_limit=6):
@@ -230,7 +234,7 @@ class TestRebucketHourlyToDay:
 # ============================================================== router: honest-empty
 class TestRouterHonestEmptyNoDb:
     def test_thread_ref_no_db(self, monkeypatch):
-        monkeypatch.setattr(db, "pool", None, raising=False)
+        monkeypatch.setattr(db, "pool", None)
         out = _run(_call(ref="dynamic-topic-31"))
         assert out["contract"] == "focus-timeline-v0"
         assert out["focus_type"] == "thread"
@@ -241,19 +245,19 @@ class TestRouterHonestEmptyNoDb:
         }
 
     def test_country_ref_no_db(self, monkeypatch):
-        monkeypatch.setattr(db, "pool", None, raising=False)
+        monkeypatch.setattr(db, "pool", None)
         out = _run(_call(ref="US"))
         assert out["focus_type"] == "country"
         assert out["reason"] == "db_unavailable"
 
     def test_person_ref_no_db(self, monkeypatch):
-        monkeypatch.setattr(db, "pool", None, raising=False)
+        monkeypatch.setattr(db, "pool", None)
         out = _run(_call(ref="trump"))
         assert out["focus_type"] == "person"
         assert out["reason"] == "db_unavailable"
 
     def test_explicit_focus_type_overrides_autodetect(self, monkeypatch):
-        monkeypatch.setattr(db, "pool", None, raising=False)
+        monkeypatch.setattr(db, "pool", None)
         # "US" would auto-detect as country; force person.
         out = _run(_call(ref="US", focus_type="person"))
         assert out["focus_type"] == "person"
@@ -339,7 +343,7 @@ class TestFocusTimelineThreadIntegration:
                 {"bucket": _dt(2026, 7, 18), "lang": "fa", "origin": "IR", "n": 3},
             ],
         )
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
 
         out = _run(_call(ref="dynamic-topic-31"))
 
@@ -373,7 +377,7 @@ class TestFocusTimelineThreadIntegration:
 
     def test_topic_not_found_is_honest_empty(self, monkeypatch):
         conn = _FakeConn(resolve_row=None)
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
         out = _run(_call(ref="dynamic-topic-999999"))
         assert out["reason"] == "topic_not_found"
         assert out["buckets"] == []
@@ -383,7 +387,7 @@ class TestFocusTimelineThreadIntegration:
             resolve_row={"id": 31, "identity_key": "dyn-31", "label": "Quiet Topic"},
             ch1_rows=[],
         )
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
         out = _run(_call(ref="dynamic-topic-31"))
         assert out["channels"]["volume"] == "live"
         assert out["buckets"] == []
@@ -395,7 +399,7 @@ class TestFocusTimelineThreadIntegration:
             ch1_rows=[{"bucket": _dt(2026, 7, 17), "n": 5, "avg_sent": 0.1}],
             pool_rows=[],
         )
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
         out = _run(_call(ref="dynamic-topic-31"))
         assert out["channels"]["key_subjects"] == "live"
         assert out["key_subjects_candidates"] == []

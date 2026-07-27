@@ -6,6 +6,7 @@ Designed to be thread-safe and efficient.
 """
 
 import logging
+import threading
 from contextlib import contextmanager
 from typing import Generator
 import psycopg2
@@ -22,6 +23,7 @@ class DatabaseSessionManager:
     """
     _instance = None
     _pool = None
+    _pool_lock = threading.Lock()
 
     def __new__(cls):
         if cls._instance is None:
@@ -29,8 +31,27 @@ class DatabaseSessionManager:
         return cls._instance
 
     def __init__(self):
+        """Deliberately does NOT connect.
+
+        `db_manager` at the bottom of this module is constructed at import time,
+        so connecting here made `import app.db.session` dial the database —
+        any importer (a test, a script, a tooling probe) blocked or failed on the
+        import itself, before it could touch a single line of its own code. The
+        pool is built on first use instead; see `_ensure_pool`.
+        """
+
+    def _ensure_pool(self):
+        """Build the pool on first use.
+
+        Double-checked under a lock: `get_cursor` is called from multiple
+        threads, and without it two callers racing the first cursor would each
+        build a ThreadedConnectionPool and one would be orphaned.
+        """
         if self._pool is None:
-            self._initialize_pool()
+            with self._pool_lock:
+                if self._pool is None:
+                    self._initialize_pool()
+        return self._pool
 
     def _initialize_pool(self):
         """Initialize the connection pool."""
@@ -57,8 +78,9 @@ class DatabaseSessionManager:
         Automatically handles commit/rollback and putting connection back in pool.
         """
         conn = None
+        conn_pool = self._ensure_pool()
         try:
-            conn = self._pool.getconn()
+            conn = conn_pool.getconn()
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 yield cur
                 conn.commit()
@@ -69,12 +91,15 @@ class DatabaseSessionManager:
             raise
         finally:
             if conn:
-                self._pool.putconn(conn)
+                conn_pool.putconn(conn)
 
     def close(self):
         """Close all connections in the pool."""
         if self._pool:
             self._pool.closeall()
+            # Drop the reference so a later get_cursor rebuilds instead of
+            # handing out connections from a closed pool.
+            self._pool = None
             logger.info("Database connection pool closed")
 
 # Global instance

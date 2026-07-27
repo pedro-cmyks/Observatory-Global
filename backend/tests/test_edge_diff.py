@@ -41,7 +41,11 @@ from app.services.edge_diff import (
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # asyncio.run, not get_event_loop(): any earlier asyncio.run() in the
+    # session closes the thread's loop and leaves it unset, so
+    # get_event_loop() raises RuntimeError once these files run alongside
+    # others. asyncio.run owns a fresh loop per call and cannot be poisoned.
+    return asyncio.run(coro)
 
 
 def _edge(a, b, weight, basis="semantic"):
@@ -186,7 +190,7 @@ class TestDormant:
 # ============================================================== router: honest-empty
 class TestRouterHonestEmpty:
     def test_edges_replay_no_db(self, monkeypatch):
-        monkeypatch.setattr(db, "pool", None, raising=False)
+        monkeypatch.setattr(db, "pool", None)
         out = _run(edges.edges_replay(at="2026-06-01T00:00:00Z"))
         assert out["contract"] == "edges-replay-v0"
         assert out["reason"] == "db_unavailable"
@@ -198,14 +202,14 @@ class TestRouterHonestEmpty:
         assert exc_info.value.status_code == 422
 
     def test_focus_edge_diff_no_db(self, monkeypatch):
-        monkeypatch.setattr(db, "pool", None, raising=False)
+        monkeypatch.setattr(db, "pool", None)
         out = _run(edges.focus_edge_diff(ref="dynamic-topic-31", since="2026-06-01T00:00:00Z"))
         assert out["contract"] == "focus-edge-diff-v0"
         assert out["reason"] == "db_unavailable"
         assert out["changes"] == [] and out["dormant"] == []
 
     def test_focus_edge_diff_bad_since_is_422(self, monkeypatch):
-        monkeypatch.setattr(db, "pool", None, raising=False)
+        monkeypatch.setattr(db, "pool", None)
         with pytest.raises(HTTPException) as exc_info:
             _run(edges.focus_edge_diff(ref="dynamic-topic-31", since="not-a-date"))
         assert exc_info.value.status_code == 422
@@ -284,7 +288,7 @@ class _FakePool:
 class TestFocusEdgeDiffRouterHonestBranches:
     def test_topic_not_found(self, monkeypatch):
         conn = _FakeConn(resolve_row=None)
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
         out = _run(edges.focus_edge_diff(ref="armed-conflict-escalation",
                                          since="2026-06-01T00:00:00Z"))
         assert out["reason"] == "topic_not_found"
@@ -295,7 +299,7 @@ class TestFocusEdgeDiffRouterHonestBranches:
             resolve_row={"id": 31, "identity_key": "id-A", "state": "active"},
             latest_snapshot=None,
         )
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
         out = _run(edges.focus_edge_diff(ref="dynamic-topic-31",
                                          since="2026-06-01T00:00:00Z"))
         assert out["reason"] == "no_snapshots_stored"
@@ -341,7 +345,7 @@ class TestFocusEdgeDiffRouterIntegration:
                 {"identity_key": "id-Z", "persons": ["carol carrot"]},
             ],
         )
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
 
         out = _run(edges.focus_edge_diff(ref="dynamic-topic-100--US",
                                          since="2026-07-02T00:00:00Z"))
@@ -377,7 +381,7 @@ class TestFocusEdgeDiffRouterIntegration:
             lifecycle_rows=[{"identity_key": "id-A", "state": "active"},
                             {"identity_key": "id-C", "state": "active"}],
         )
-        monkeypatch.setattr(db, "pool", _FakePool(conn), raising=False)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
         out = _run(edges.focus_edge_diff(ref="dynamic-topic-100",
                                          since="2026-01-01T00:00:00Z"))
         assert out["changes"] == []
