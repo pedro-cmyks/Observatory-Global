@@ -24,7 +24,7 @@ import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
 import { CoverageGapCard } from '../components/CoverageGapCard'
 import type { CoverageGap } from '../lib/coverageGaps'
-import { decodeEntities, type EclipseData } from '../lib/attentionEclipse'
+import { decodeEntities, eclipseTier, type EclipseData } from '../lib/attentionEclipse'
 import { BriefWorldMarketsBand, BriefCountryMarketsCard } from '../components/BriefMarkets'
 import { formatSentimentPm1, formatTone10, measuredSentimentChip } from '../lib/sentimentScale'
 import { reconcileSentimentProse } from '../lib/reconcileSentimentProse'
@@ -587,7 +587,7 @@ export function BriefNewspaper() {
         // page satisfies at the surface or fails to invite depth (12.5% ramp).
         if (sectionName) track('brief_section_click', { section: sectionName })
         const next = new URLSearchParams(params)
-        next.set('entry', 'brief')
+        next.set('entry', sectionName === 'eclipse' ? 'eclipse' : 'brief')
         navigate(`/app?${next.toString()}`)
     }
 
@@ -1137,6 +1137,14 @@ export function BriefNewspaper() {
                         >
                             <span className="live" />Measured · Last 24 hours
                         </span>
+                        {eclipse?.eclipse && eclipseTier(eclipse) === 'total' && (
+                            <button
+                                className="brief-eclipse-mark"
+                                onClick={() => goToAtlas(undefined, 'eclipse')}
+                                data-tip="A total attention eclipse is active — enter the console"
+                                aria-label="Enter the eclipse"
+                            >◑</button>
+                        )}
                         <div className="brief-masthead-actions">
                             <button className="reader-chip" onClick={() => navigate('/')}>← Home</button>
                             <button

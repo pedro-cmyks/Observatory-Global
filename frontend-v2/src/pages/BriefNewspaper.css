@@ -47,6 +47,19 @@
   gap: 8px;
 }
 
+.brief-eclipse-mark {
+  border: none;
+  background: #07060a;
+  color: #ffd9c8;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 0.8rem;
+  box-shadow: 0 0 0 2px rgba(255, 86, 54, 0.8), 0 0 10px rgba(255, 90, 40, 0.5);
+}
+
 /* ---------- HORIZONTAL RULES (also consumed by EclipseStrip) ---------- */
 
 .brief-rule {
