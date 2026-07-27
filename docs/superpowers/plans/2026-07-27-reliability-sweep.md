@@ -17,7 +17,7 @@ merged + deployed (`be37a543`).
 | 1.2 | **Cache `/api/v2/attention/eclipse`** — 24s uncached, polled every 4 min by every open tab | Prod 200 in 23.9s vs `/threads` 6.8s. `attention_eclipse.py:112-130` has zero cache hits on grep, `statement_timeout=45000`, 3 SQL blocks/request. `EclipseModeContext.tsx:7` `POLL_MS = 4*60*1000`. Copy the pattern at `universe.py:411-424` | S |
 | 1.3 | **Repair the corrupt 2026-07-25 edge snapshot** — clamp weight ≤1, wrap the write in a transaction, delete the partial day | `edge-snapshot.err.log`: `CheckViolationError … topic_edge_snapshots_weight_check`; `rc=1 @ 2026-07-25T08:15:09Z`. Prod per-day: 07-24 **8053**, 07-25 **3000**, 07-26 **12076** = exactly 6 committed batches of `BATCH_SIZE=500`. Max weight 07-25 = 1 vs 0.97-0.99 elsewhere. `snapshot_topic_edges.py:104,164` — `write_edges` has no enclosing transaction | S |
 | 1.4 | **Delete the killed silent-risk endpoint** — closed in docs 07-22 ("DELETE, don't retune"), still mounted and 502-ing | `attention_threads.py:88` `_INFO_DESERT_FLOOR = 40` (measured INVERTED), served `:170`, returned `:304/:325`; mounted `main_v2.py:178`. Prod → HTTP 502 in 16.8s. **Keep** the sibling `coverage-gaps` in the same router (healthy, feeds Under the Radar) | S |
-| 1.5 | **`DROP INDEX CONCURRENTLY idx_signals_v2_headline_trgm`** — 420 MB, `idx_scan = 0` for the cluster's life | Superseded by `idx_signals_headline_trgm` (`f_unaccent` form, 409 MB, idx_scan 89) when `5fa3f04c` moved every headline predicate to `f_unaccent`. Pure reclaim + removes GIN maintenance from ~200K daily inserts | XS |
+| ~~1.5~~ | ~~`DROP INDEX idx_signals_v2_headline_trgm` (420 MB, idx_scan = 0)~~ **REJECTED — the audit was wrong, verified 2026-07-27** | The `idx_scan = 0` statistic is misleading (pooler/replica counters). `EXPLAIN` on the REAL query shape from the live 30-min classifier (`backfill_lexicon_topics`, Step 1, `lower(s.headline) LIKE '%…%'` over a 30-min window) shows the planner **does** choose it: `BitmapAnd(idx_signals_v2_created_at, idx_signals_v2_headline_trgm)`. The `f_unaccent` index CANNOT serve that predicate — different expression. Dropping it would have degraded the classifier to a seq scan over 3.7 GB. **Lesson: a zero in a stats view is not proof of disuse; EXPLAIN the real query.** If it is ever revisited, first migrate `backfill_lexicon_topics.py` + `classify_topics.py` to the `f_unaccent` form | — |
 | 1.6 | **Brief empty-state stops promising "stamps land within ~30 minutes"** | Copy asserts a schedule the pipeline cannot honour during an outage | XS |
 
 ## Wave 2 — money + hygiene
@@ -34,6 +34,19 @@ merged + deployed (`be37a543`).
 |---|---|---|---|
 | 3.1 | **Universe is permanently dark (0% availability)** — stop building on the request path; precompute on a schedule and make the handler a pure artifact read | `/api/v2/universe` this session: HTTP 000 after 70s; auditors measured 502 at 32.7s/61.1s and 0/5 success up to 92.5s. `universe.py:166 SET statement_timeout = 90000` — the previous 20s→90s "completion" cannot work because the ceiling is the **Fly proxy**, not the statement timeout, so the cache can never fill and there is never even a stale payload | M |
 | 3.2 | **#264 derived-artifact repair** — 208,193 GDELT rows now hold correct headlines against embeddings computed from mojibake | `embed_hot_corpus.py:70-80` selects `LEFT JOIN signal_embeddings e … AND e.signal_id IS NULL` and writes `ON CONFLICT (signal_id) DO NOTHING` — a decoded headline can **never** be re-embedded. Needs a `--reembed-decoded` path (`ON CONFLICT DO UPDATE`, select rows whose headline changed after `embedded_at`), then re-run the script census + `thread_ranking` dedup check | M |
+
+## Found while sweeping (new, not in the original audit)
+- **Latent circular import in the house Redis pattern.** `delight.py` and `research.py` do
+  `from app.main_v2 import app` at MODULE level; `python -c "import app.routers.delight"` fails with a
+  partially-initialized-module `AttributeError`. It never bites in production because nothing imports
+  those modules before `app.main_v2` is loaded. The eclipse cache (`24467277`) deferred the import to
+  request time instead — the two older routers should follow. Low priority, real.
+- **07-25 is now a permanent GAP in `topic_edge_snapshots`** (correct: a visible gap beats a silent
+  lie). Consequence: `/edges/replay` and `/focus/{ref}/edge-diff` will diff 07-24 → 07-26, a 48h
+  interval presented like a 24h step. Spawned as its own task.
+- **The `scoped-snapshot` runs ~6 hours** (22:00 → ~03:54 local), so it straddles BOTH DeepSeek peak
+  windows no matter when it starts. Real savings there need the LLM *steps* moved inside the job, not
+  the job moved. Not attempted — would need step-level timing first.
 
 ## Deferred / needs Pedro
 - **Second LLM provider key** — every sanctioned lane rides one balance; Anthropic dry since ~06-29 (400 verified again today). One top-up away from the same outage.
