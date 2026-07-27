@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.atlas.headline-decode-backfill</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/pedro/AtlasLocalWorker/run-headline-decode-backfill.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/pedro/AtlasLocalWorker</string>
+
+  <!-- Never on load: this is a long DB drain, it belongs off-peak only. -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>Nice</key>
+  <integer>10</integer>
+
+  <!-- 04:30 sits in the gap between goldgrowth (03:30) and the embed cron
+       (05:30), and clear of scoped-snapshot (02:30) / edge-snapshot (03:15).
+       Safe to leave installed: once the corpus is decoded the pass finds no
+       matching rows and exits in seconds. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key>
+      <integer>4</integer>
+      <key>Minute</key>
+      <integer>30</integer>
+    </dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/headline-decode-backfill.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/pedro/AtlasLocalWorker/logs/headline-decode-backfill.err.log</string>
+</dict>
+</plist>

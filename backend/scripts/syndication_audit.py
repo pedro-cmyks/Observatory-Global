@@ -23,9 +23,11 @@ Outputs JSON + Markdown under docs/research/syndication/.
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import sys
+import unicodedata
 import urllib.request
 from pathlib import Path
 
@@ -44,10 +46,21 @@ def _get(path: str) -> dict | list | None:
 
 
 def _norm(h: str) -> str:
-    """Lowercase + strip punctuation + collapse whitespace. (Exact-normalized;
-    near-dup MinHash is a build-time refinement, noted in §4.1 — not needed to
-    flag the 1-headline syndication case.)"""
-    return _WS.sub(" ", _PUNCT.sub(" ", (h or "").lower())).strip()
+    """Unescape + lowercase + strip punctuation + collapse whitespace.
+    (Exact-normalized; near-dup MinHash is a build-time refinement, noted in
+    §4.1 — not needed to flag the 1-headline syndication case.)
+
+    The unescape is load-bearing: 46.4% of stored headlines are HTML-entity-
+    encoded (measured 2026-07-22), and _PUNCT would otherwise turn "&#xE1;"
+    into "xe1" — counting an encoded and a plain copy of one wire story as
+    two distinct headlines, i.e. under-reporting syndication. The accent fold
+    is the same concern one step further ("Perú" vs "Peru").
+
+    Mirrors app.core.search_normalization.normalize_search_text; kept inline
+    because this audit is a standalone API client with no app imports."""
+    decomposed = unicodedata.normalize("NFKD", html.unescape(h or ""))
+    accentless = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return _WS.sub(" ", _PUNCT.sub(" ", accentless.lower())).strip()
 
 
 def _evidence(detail: dict) -> list[dict]:

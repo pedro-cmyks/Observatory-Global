@@ -12,8 +12,10 @@ is per-topic gate recall, not this box).
 
 from __future__ import annotations
 
+import html
 from typing import Any
 
+from app.core.search_normalization import normalize_search_text
 from app.services.research_semantic import is_junk_headline
 
 GAP_RECEIPTS_K = 3
@@ -34,15 +36,21 @@ def pick_extended_receipts(
         return []
     best: dict[str, dict[str, Any]] = {}
     for row in rows:
-        headline = (row.get("headline") or "").strip()
+        # Stored headlines are 46.4% HTML-entity-encoded (measured
+        # 2026-07-22) and 4,355 texts exist in both forms — decode before the
+        # junk check and the dedup key, else one story shows up twice.
+        headline = html.unescape(row.get("headline") or "").strip()
         score = row.get("gate_score")
         if not headline or score is None or float(score) < threshold:
             continue
         if is_junk_headline(headline):
             continue
-        prev = best.get(headline)
+        # Fold the KEY only — two outlets writing "Perú" and "Peru" filed the
+        # same story. The displayed headline stays exactly as published.
+        key = normalize_search_text(headline) or headline
+        prev = best.get(key)
         if prev is None or float(score) > prev["_score"]:
-            best[headline] = {
+            best[key] = {
                 "headline": headline,
                 "source": row.get("source"),
                 "url": row.get("url"),
