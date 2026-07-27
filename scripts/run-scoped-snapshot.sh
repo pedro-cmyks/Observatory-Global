@@ -438,13 +438,34 @@ if [ "$_ATLAS_LAST_STEP_RC" -ne 0 ]; then
   atlas_alert "SEAL_FAILED daily publication artifact failed — L1 remains on the previous sealed edition"
 fi
 
-# Step 7 (council N4, 2026-07-20): pre-warm the universe field on the serving
-# box. The endpoint is stale-while-revalidate — after this one hit the field
-# stays servable all day (stale at worst, never a silent empty 200); without
-# it the first reader after a Fly restart pays the ~30-40s cold build.
-ATLAS_API_BASE="${ATLAS_API_BASE:-https://atlas-api-pedro.fly.dev}"
-curl -s -m 120 -o /dev/null "$ATLAS_API_BASE/api/v2/universe" \
-  || echo "[scoped-snapshot] universe warm failed (non-fatal — first reader pays the cold build)" >&2
+# Step 7 (2026-07-27): BUILD the universe field artifact.
+#
+# REPLACES the old "pre-warm the endpoint with curl" step, which could never
+# work. The build MEASURES 75-84s (2,603 nodes / 6,306 edges / 3.96 MB) —
+# longer than the Fly proxy holds a request open — so the warm curl was killed
+# by the proxy every night (measured 2026-07-27: HTTP 000 after ~70s, 502 at
+# 48.6s), the endpoint's in-process cache could never fill, and with nothing
+# stored there was not even a stale payload to serve. /api/v2/universe sat at
+# 0% availability and the UNIVERSE tab was permanently dark.
+#
+# Now the build runs HERE, on the M1, inside this mutex — like the daily
+# publication seal above — and stores one compact row in
+# universe_field_artifacts (mig 091). The endpoint is a pure read of that row:
+# always fast, honest about the artifact's age, honest about its absence.
+#
+# Runs AFTER the members ETL + movement + typing so the field it freezes is
+# the same substrate the rest of the night produced. Non-fatal: a failed build
+# leaves the PREVIOUS artifact in place (serving degrades to an honestly
+# stale field, never to a dark one). Disable with ATLAS_UNIVERSE_FIELD=off.
+if [[ "${ATLAS_UNIVERSE_FIELD:-on}" == "on" ]]; then
+  atlas_step "universe field artifact" "$BACKEND_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m scripts.build_universe_field --execute
+  if [ "$_ATLAS_LAST_STEP_RC" -ne 0 ]; then
+    echo "[scoped-snapshot] ERROR universe field build failed — /api/v2/universe serves the PREVIOUS artifact (stale, not dark)" >&2
+  fi
+else
+  echo "[scoped-snapshot] skip universe field build (ATLAS_UNIVERSE_FIELD=off)" >&2
+fi
 
 # The run's verdict. A provider outage or a majority-failed run now exits
 # non-zero — launchd records the failure instead of a plausible success. The
