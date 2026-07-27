@@ -94,7 +94,7 @@ export function labelReviewTip(reason: LabelReviewReason, labelProposed?: string
     case 'low-confidence':
       return `Low assignment confidence — this label may not match its receipts yet.${advisory}`
     case 'awaiting-verification':
-      return `Not yet verified — this label is queued for its receipt check (stamps land within ~30 min).${advisory}`
+      return `Not yet verified — this label is queued for its receipt check.${advisory}`
   }
 }
 

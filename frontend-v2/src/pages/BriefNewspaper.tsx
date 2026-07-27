@@ -638,7 +638,9 @@ export function BriefNewspaper() {
     // the Label Court STAMPED it (entailed/partial). An unstamped (null) label
     // can no longer lead: new topics promote and serve before the court cycle,
     // so null was exactly the fold hole (31/37 served unstamped incl all leads).
-    // Stamps land within ~30 min (court rides the classifier cron).
+    // Stamps normally land within ~30 min (court rides the classifier cron),
+    // but the reader-facing copy no longer promises that timing (2026-07-27)
+    // — the cron isn't always live, so a fixed ETA can go stale for days.
     // Everything else drops to the honest "Unassembled signals" tray with its raw
     // receipts. Nothing vanishes (no-silent-filtering) — a thread is either an
     // assembled card or a tray entry, exactly once.
@@ -999,7 +1001,7 @@ export function BriefNewspaper() {
                     <span
                         className="brief-unassembled-label"
                         data-tip={reason === 'awaiting-verification'
-                            ? 'This cluster is queued for its label check (stamps land within ~30 min) — it can front the page once verified. Meanwhile, read the raw sources below.'
+                            ? 'This cluster is queued for its label check — it can front the page once verified. Meanwhile, read the raw sources below.'
                             : "This cluster's machine label was not trusted for the front page. Read the raw sources below — not the label."}
                     >
                         {decodeEntities(t.label)}
@@ -1100,7 +1102,7 @@ export function BriefNewspaper() {
             <span className="reader-section-kicker brief-sub-kicker">The unassembled desk</span>
             <h3
                 className="brief-section-title brief-unassembled-title"
-                data-tip="Clusters Atlas is tracking but has not assembled into a trustworthy story: their machine label is below the front-page confidence bar, the Label Court could not entail it against its own receipts, or it is still awaiting its label check (stamps land within ~30 min). The receipts are real. Nothing is deleted."
+                data-tip="Clusters Atlas is tracking but has not assembled into a trustworthy story: their machine label is below the front-page confidence bar, the Label Court could not entail it against its own receipts, or it is still awaiting its label check. The receipts are real. Nothing is deleted."
             >
                 Below the confidence bar
             </h3>
@@ -1477,9 +1479,9 @@ export function BriefNewspaper() {
                                                 </div>
                                                 <p>
                                                     Today's top stories are awaiting verification — their labels
-                                                    have not yet been checked against their own receipts (stamps
-                                                    land within ~30 minutes). Rather than lead with an unverified
-                                                    label, see the unassembled desk below for the raw receipts.
+                                                    have not yet been checked against their own receipts. Rather
+                                                    than lead with an unverified label, see the unassembled desk
+                                                    below for the raw receipts.
                                                 </p>
                                             </article>
                                         ) : (
