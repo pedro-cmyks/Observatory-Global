@@ -628,7 +628,10 @@ async def fetch_semantic_thread_members(
 
     Surfaces the non-English / un-lexicon'd voice the English lexicon never
     assigned. Empty list when the topic has no centroid or no embeddings exist
-    yet (fresh signals embed on the nightly cron) — caller degrades silently.
+    yet (fresh signals embed on the nightly cron) — those are measured
+    absences and the caller degrades silently. A query TIMEOUT is not one:
+    it raises SemanticSignalLaneTimeout so the caller can name the gap
+    instead of serving "no members" for "could not look".
     """
     centroid_row = await conn.fetchrow(
         "SELECT centroid_vec FROM dynamic_topics "
@@ -641,8 +644,9 @@ async def fetch_semantic_thread_members(
     vec_literal = "[" + ",".join(f"{x:.5f}" for x in centroid) + "]"
     excl = exclude_ids or []
     await _prepare_ann_search(conn)
-    rows = await conn.fetch(
-        f"""
+    try:
+        rows = await conn.fetch(
+            f"""
         SELECT s.id, s.headline, s.country_code, s.source_name, s.source_url,
                s.timestamp, s.sentiment,
                COALESCE(NULLIF(s.source_lang, ''), 'xx') AS source_lang,
@@ -656,9 +660,19 @@ async def fetch_semantic_thread_members(
         ORDER BY e.vec <=> $1::halfvec
         LIMIT {int(limit * 4)}
         """,
-        vec_literal,
-        excl,
-    )
+            vec_literal,
+            excl,
+            # Same ANN index, same load profile as the signal lane: probes=20
+            # measured 1.5s idle but >100s under nightly load. Unbounded, this
+            # was the one ANN query left that could hang a thread-detail
+            # request for the duration of a nightly job.
+            timeout=ANN_QUERY_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:  # == builtin TimeoutError on 3.11+
+        raise SemanticSignalLaneTimeout(
+            f"thread-member ANN lane exceeded {ANN_QUERY_TIMEOUT_SECONDS}s "
+            f"at ivfflat.probes={ANN_IVFFLAT_PROBES}"
+        ) from exc
     raw = [
         {
             "id": r["id"],
