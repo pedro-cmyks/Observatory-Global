@@ -1,5 +1,13 @@
 # Entity-overlap identity — implementation plan
 
+**STATUS: CLOSED at GO/NO-GO 0 (2026-07-29) — see the spec header for the verdict.**
+Phases B–F are dead as designed. What survives the measurements: (a) the M0/M4 infrastructure
+numbers (fingerprint build 14.8s, 146MB/30d) if a future non-transitive consumer wants them;
+(b) the finding that DP-3 (`used_t` removal) should be re-examined UNDER THE EXISTING
+label+cos gate — the shipping rule already halves witness fragmentation and the structural
+one-cluster-per-night cap is now the visible remaining constraint; (c) day-over-day answer
+persistence as the metric any successor must move.
+
 **Spec:** `docs/superpowers/specs/2026-07-28-entity-overlap-identity-design.md` (read first —
 measurements M0–M7, kill rules K1–K5, stages 0–5 are defined THERE; this plan sequences them).
 **Baseline:** gold answer rate **7–14%** (n=14, two runs); GQ-05 story coverage **6.4%**;
