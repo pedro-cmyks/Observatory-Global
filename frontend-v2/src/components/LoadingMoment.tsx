@@ -5,36 +5,14 @@
 // bundled evergreen facts) — the delight itself never waits on the network.
 import { useEffect, useMemo, useState } from 'react'
 import { factLabel, readDelightRotation } from '../lib/delight'
+// Tiny procedural constellation derived from the fact id — option (b) of the
+// delight plan: generated vector art, zero assets. Deterministic per fact.
+// The generator is the shared brand grammar (lib/constellation): the same
+// function at seed 'atlas' is the canonical AtlasMark + favicon.
+import { constellationFor } from '../lib/constellation'
 import './LoadingMoment.css'
 
 const ROTATE_MS = 4500
-
-// Tiny procedural constellation derived from the fact id — option (b) of the
-// delight plan: generated vector art, zero assets. Deterministic per fact.
-function constellationFor(id: string): { x: number; y: number; r: number }[] {
-    let h = 2166136261
-    for (let i = 0; i < id.length; i++) {
-        h ^= id.charCodeAt(i)
-        h = Math.imul(h, 16777619)
-    }
-    const stars: { x: number; y: number; r: number }[] = []
-    let x = h >>> 0
-    const next = () => {
-        x ^= x << 13; x >>>= 0
-        x ^= x >> 17
-        x ^= x << 5; x >>>= 0
-        return x / 0xffffffff
-    }
-    const n = 5 + Math.floor(next() * 3)
-    for (let i = 0; i < n; i++) {
-        stars.push({
-            x: 8 + next() * 104,
-            y: 6 + next() * 24,
-            r: 0.8 + next() * 1.4,
-        })
-    }
-    return stars
-}
 
 interface LoadingMomentProps {
     // Visual density: 'full' for the app-shell overlay, 'compact' for panels.

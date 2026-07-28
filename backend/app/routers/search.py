@@ -202,7 +202,9 @@ async def search(
             "degraded_segments": degraded_segments,
         }
 
-    if app.state.redis:
+    # NEVER cache a degraded answer (same rule as query_thread): a 120s TTL
+    # would freeze one timeout into two minutes of confident-looking emptiness.
+    if app.state.redis and not degraded_segments:
         try:
             await app.state.redis.setex(cache_key, 120, json.dumps(result))
         except Exception:
@@ -793,7 +795,10 @@ async def unified_search(
         "degraded_segments": sorted(set(degraded_segments)),
     }
 
-    if app.state.redis:
+    # NEVER cache a degraded answer (same rule as query_thread): degraded means
+    # a lane FAILED, and caching it would serve the failure for 120s after the
+    # DB recovered — the frontend's failed-lookup notice would lie stale.
+    if app.state.redis and not degraded_segments:
         try:
             await app.state.redis.setex(cache_key, 120, json.dumps(result))
         except Exception:

@@ -207,3 +207,21 @@ def test_query_thread_degrades_instead_of_500_on_slow_match():
     # from an empty match set rather than propagating.
     assert "except Exception" in source
     assert "signal_rows: list = []" in source or "query_thread_rows = []" in source
+
+
+def test_search_never_caches_degraded_responses():
+    """A degraded payload means a retrieval lane FAILED — degraded_segments is
+    appended only inside except blocks around timed-out queries, never for
+    "ran and found nothing". Caching one would freeze that failure into 120s
+    of confident-looking emptiness for every caller (the query_thread rule,
+    now applied to both /search and /search/unified cache writes; gold UI
+    eval batch 3 caught the frontend rendering these as 'No results')."""
+    source = _search_source()
+
+    # both cache sites (/api/v2/search and /api/v2/search/unified) gate on a
+    # clean degraded_segments before writing to Redis
+    assert source.count("if app.state.redis and not degraded_segments:") == 2
+    # query_thread keeps its own no-cache-degraded gate
+    assert "if app.state.redis and not degraded_reason:" in source
+    # and no cache write is left unguarded on the degraded state
+    assert "if app.state.redis:\n        try:\n            await app.state.redis.setex" not in source

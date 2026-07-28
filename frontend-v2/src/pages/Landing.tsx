@@ -5,6 +5,7 @@ import { resolveVoiceStats, VOICE_BASELINE_LABEL, type VoiceStats } from '../lib
 import { formatSignalCount, formatCountriesCovering, resolveLiveStat, type CountriesCovering } from '../lib/landingStats'
 import { decodeEntities } from '../lib/attentionEclipse'
 import { useReaderTheme, ReaderThemeToggle, type ReaderTheme } from '../lib/readerTheme'
+import { AtlasMark } from '../components/AtlasMark'
 import '../styles/readerTheme.css'
 import './Landing.css'
 
@@ -305,7 +306,7 @@ export function Landing() {
 
                 {/* ============ NAV ============ */}
                 <header className="lp-nav">
-                    <div className="lp-mk">ATLAS<span className="lp-dot">.</span></div>
+                    <div className="lp-mk"><AtlasMark size={15} />ATLAS<span className="lp-dot">.</span></div>
                     <nav className="lp-navr" aria-label="Primary">
                         <button className="lp-nlink lp-hidesm" onClick={() => navigate('/app')}>Console</button>
                         <button className="lp-nlink lp-hidesm" onClick={() => navigate('/docs')}>Docs</button>
@@ -493,7 +494,7 @@ export function Landing() {
                         </div>
                     </div>
                     <div className="lp-mmeta">
-                        <div className="lp-wordmark-sm">ATLAS<span className="lp-dot">.</span></div>
+                        <div className="lp-wordmark-sm"><AtlasMark size={13} />ATLAS<span className="lp-dot">.</span></div>
                         <div>The Front Door · L0</div>
                         <div>Atlas · Observatory Global · Free &amp; Open</div>
                         <div>Measured · last 24 hours</div>
