@@ -8,7 +8,7 @@ import { useFocus } from '../contexts/FocusContext';
 import { Download, Pin, PinOff } from '../lib/icons';
 import './CountryBrief.css';
 import { getThemeLabel } from '../lib/themeLabels';
-import { resolveTierChip } from '../lib/sourceProvenance';
+import { TierChip } from './TierChip';
 import { buildKeySubjects, type KeySubject, type SubjectType } from '../lib/countryBriefSubjects';
 import { Flag } from './Flag';
 
@@ -889,11 +889,6 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             ? localStories
                             : (isOpen && sourceFetch?.name === source.name ? sourceFetch.stories : [])
                         const srcLoading = isOpen && localStories.length === 0 && sourceFetch?.name === source.name && sourceFetch.loading
-                        // Gold-eval defect (batch 4): this row had zero tier reference —
-                        // state media (irna.ir) rendered indistinguishable from any other
-                        // outlet. No per-source origin/is_state_media in this aggregate,
-                        // so 'unknown' is suppressed rather than guessed (absence over noise).
-                        const tc = resolveTierChip(source.name, undefined)
                         return (
                             <div key={i} className="source-group">
                                 <button
@@ -903,9 +898,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     data-tip={`Read ${source.name}'s recent coverage of this country`}
                                 >
                                     <span className="source-name">{source.name}</span>
-                                    {tc.tier !== 'unknown' && (
-                                        <span className={`l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>{tc.label}</span>
-                                    )}
+                                    <TierChip source={source.name} />
                                     <span className="source-count">{source.count} signals</span>
                                     <span className="source-see-articles">{isOpen ? '▴' : '▾'}</span>
                                 </button>

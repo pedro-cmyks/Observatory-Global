@@ -1880,15 +1880,29 @@
 }
 
 /* Story Lens Task 8 (gold-eval defect, batch 4): shared tier chip for L2
-   receipt rows that had zero tier reference at all — CountryBrief Top
-   Publishers, SignalStream footer, ThemeDetail article meta + PA evidence
-   rows, SignalDetailPanel header + semantic-neighbor meta. One class used by
-   every one of those sites so state media can never render unmarked next to
-   an unrelated signal again. 'unknown' is never rendered by any caller
-   (absence over noise) — this is distinct from the richer backend
+   receipt rows, rendered via the shared <TierChip> component
+   (components/TierChip.tsx) — one resolve-and-render implementation instead
+   of six inline copies. Same resolveTierChip() semantic as
+   .source-tier-chip (Briefing.css) / .brief-receipt-tier (BriefNewspaper.css)
+   / .wb-cit-tier (WorkbenchPanel.css); DIFFERENT from the richer backend
    credibility.label chip in ThemeDetail's Top Sources LIST
-   (.source-tier-badge), which already exists and must never be duplicated. */
+   (.source-tier-badge) — never double-chip a row with both.
+
+   Outline (border-currentColor, no fill) is a deliberate departure from
+   those three siblings' tinted-background style: these rows are dense (many
+   receipts per screen) and a filled badge here would add too much visual
+   weight.
+
+   Palette is SPLIT PER SCHEME, not a single hex, because no color can clear
+   AA 4.5:1 against both a near-black console panel and the emerald-light
+   paper ground (#eef1ef) at once — those two grounds sit at opposite ends of
+   the luminance range, so the base rule below (verified against
+   intel-noir/retro-radar/emerald-dark panel grounds) is overridden for
+   emerald-light with independently-verified light-tuned hexes (state reuses
+   themes.ts's own emerald-light accentSecondary #8f5b0a). */
 .l2-tier-chip {
+  display: inline-block;
+  vertical-align: middle;
   font-size: 9px;
   letter-spacing: 0.08em;
   padding: 0 4px;
@@ -1897,10 +1911,15 @@
   margin-left: 6px;
   white-space: nowrap;
 }
-.l2-tier-chip--state { color: #e23a1a; }
-.l2-tier-chip--wire { color: #2aa7ad; }
-.l2-tier-chip--major { color: #8fa2bd; }
-.l2-tier-chip--local { color: #8fa2bd; }
+.l2-tier-chip--wire { color: #60a5fa; }
+.l2-tier-chip--state { color: #f59e0b; }
+.l2-tier-chip--major { color: #34d399; }
+.l2-tier-chip--local { color: #cbd5e1; }
+
+[data-theme='emerald-light'] .l2-tier-chip--wire { color: #1d4ed8; }
+[data-theme='emerald-light'] .l2-tier-chip--state { color: #8f5b0a; }
+[data-theme='emerald-light'] .l2-tier-chip--major { color: #047857; }
+[data-theme='emerald-light'] .l2-tier-chip--local { color: #55657a; }
 
 /* R3c defect 3 — emerald: globe scrubber pill themes (hardcoded dark ground
    under themed neutral text → dark-on-dark in emerald-light). Noir keeps its

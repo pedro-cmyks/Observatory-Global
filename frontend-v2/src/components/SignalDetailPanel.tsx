@@ -3,7 +3,7 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { resolveCountryName } from '../lib/countryNames'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
-import { resolveTierChip } from '../lib/sourceProvenance'
+import { TierChip } from './TierChip'
 import './SignalDetailPanel.css'
 
 // Per-signal narrative context (#228 §2.3): the Narrative Threads this signal
@@ -198,15 +198,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         <span className={`sdp-source ${getSourceClass(signal.source)}`}>
                             {signal.source}
                         </span>
-                        {(() => {
-                            // Gold-eval defect: this header carried no tier reference — no
-                            // origin/is_state_media on this shape, so 'unknown' is
-                            // suppressed rather than guessed (absence over noise).
-                            const tc = resolveTierChip(signal.source, undefined)
-                            return tc.tier !== 'unknown' ? (
-                                <span className={`l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>{tc.label}</span>
-                            ) : null
-                        })()}
+                        <TierChip source={signal.source} />
                         <span className="sdp-time">{formatTimestamp(signal.timestamp)}</span>
                     </div>
 
@@ -379,12 +371,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                                     <span className="sdp-related-country">{resolveCountryName(n.country_code, n.country_code)}</span>
                                                 )}
                                                 {n.source && <span className="sdp-related-source">{n.source}</span>}
-                                                {n.source && (() => {
-                                                    const tc = resolveTierChip(n.source, undefined)
-                                                    return tc.tier !== 'unknown' ? (
-                                                        <span className={`l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>{tc.label}</span>
-                                                    ) : null
-                                                })()}
+                                                {n.source && <TierChip source={n.source} />}
                                                 <span className="sdp-similarity">{Math.round(n.similarity * 100)}%</span>
                                                 {n.gate_status === 'below_gate' && (
                                                     <span className="sdp-gate-badge">UNVERIFIED</span>
