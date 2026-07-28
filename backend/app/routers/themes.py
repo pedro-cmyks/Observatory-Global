@@ -847,7 +847,9 @@ async def _dynamic_topic_detail(
     # non-English signals, so they can't appear above via sample_ids. Route
     # their thread membership through the multilingual e5 centroid ANN. Append
     # honestly-labeled, never folded into the gated counts. Degrade silently —
-    # a semantic miss must never break the thread detail.
+    # a semantic miss must never break the thread detail — EXCEPT a timeout,
+    # which is "could not look", not "nothing there": it gets a named warning
+    # so zero semantic members never masquerades as a measured absence.
     warnings = ["dynamic_topic_member_preview_sample"]
     semantic_members: list = []
     try:
@@ -860,6 +862,11 @@ async def _dynamic_topic_detail(
             semantic_members = [
                 m for m in semantic_members if m.get("country_code") == country_code
             ]
+    except TimeoutError:
+        # SemanticSignalLaneTimeout subclasses TimeoutError — same contract
+        # corroboration.py uses to mark atlas_hot unavailable.
+        semantic_members = []
+        warnings.append("semantic_members_ann_timeout")
     except Exception:
         semantic_members = []
     non_english = [m for m in semantic_members if m.get("source_lang") not in ("en", "xx")]

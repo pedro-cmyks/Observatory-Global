@@ -3,12 +3,16 @@
 import asyncio
 from pathlib import Path
 
+import pytest
+
 from app.services.research_semantic import (
     ANN_IVFFLAT_PROBES,
     ANN_QUERY_TIMEOUT_SECONDS,
+    SemanticSignalLaneTimeout,
     THREAD_MEMBER_MIN_SIMILARITY,
     _prepare_ann_search,
     build_semantic_members,
+    fetch_semantic_thread_members,
 )
 
 
@@ -103,3 +107,83 @@ def test_each_database_ann_lane_prepares_ivfflat_probes():
     ).read_text()
 
     assert source.count("await _prepare_ann_search(conn)") >= 2
+
+
+# ── Member lane: a timeout must never look like an empty membership ─────────
+
+
+class _MemberConn:
+    """asyncpg stand-in: serves a centroid, records the ANN query kwargs."""
+
+    def __init__(self, centroid=None, rows=None, fetch_raises=None):
+        self.centroid = centroid
+        self.rows = rows or []
+        self.fetch_raises = fetch_raises
+        self.statements: list[str] = []
+        self.fetch_kwargs: dict = {}
+
+    async def fetchrow(self, query, *args, **kwargs):
+        if self.centroid is None:
+            return None
+        return {"centroid_vec": self.centroid}
+
+    async def fetch(self, query, *args, **kwargs):
+        self.fetch_kwargs = kwargs
+        if self.fetch_raises is not None:
+            raise self.fetch_raises
+        return self.rows
+
+    async def execute(self, statement):
+        self.statements.append(statement)
+
+
+def test_member_ann_timeout_raises_a_named_degradation_not_an_empty_list():
+    """Same ANN index, same load profile as the signal lane: probes=20 ran
+    >100s under nightly load against an idle 1.5s. Unbounded, this lane
+    would hang the thread detail; bounded-but-silent, a timeout would read
+    as 'this thread has no semantic members' — the one thing it does not
+    mean."""
+    conn = _MemberConn(centroid=[0.1] * 8, fetch_raises=asyncio.TimeoutError())
+
+    with pytest.raises(SemanticSignalLaneTimeout) as excinfo:
+        asyncio.run(fetch_semantic_thread_members(conn, 42, hours=24))
+
+    assert excinfo.value.degraded_reason == "ann_timeout"
+    # still a TimeoutError, so themes.py / corroboration-style degrade paths
+    # keep catching it without importing the named class
+    assert isinstance(excinfo.value, TimeoutError)
+    assert conn.statements == [f"SET ivfflat.probes = {ANN_IVFFLAT_PROBES}"]
+
+
+def test_member_ann_query_is_bounded_by_the_shared_budget():
+    conn = _MemberConn(centroid=[0.1] * 8, rows=[])
+
+    out = asyncio.run(fetch_semantic_thread_members(conn, 42, hours=24))
+
+    assert out == []
+    assert conn.fetch_kwargs.get("timeout") == ANN_QUERY_TIMEOUT_SECONDS
+
+
+def test_missing_centroid_stays_a_silent_measured_absence():
+    """The honest empty keeps its contract: no centroid = nothing to search,
+    an [] with no exception — only the timeout gets the named degradation."""
+    conn = _MemberConn(centroid=None)
+
+    out = asyncio.run(fetch_semantic_thread_members(conn, 42, hours=24))
+
+    assert out == []
+    assert conn.statements == []  # never reached the ANN prepare
+
+
+def test_theme_detail_names_the_member_timeout_instead_of_swallowing_it():
+    """themes.py wraps this lane in a bare `except Exception: []`. A timeout
+    must exit through the TimeoutError branch and stamp a named warning —
+    otherwise the raise above just becomes a quieter silent empty."""
+    source = (Path(__file__).parents[1] / "app/routers/themes.py").read_text()
+
+    timeout_branch = source.find("except TimeoutError")
+    generic_branch = source.find("except Exception:", timeout_branch)
+    assert timeout_branch != -1
+    # TimeoutError must be caught BEFORE the generic swallow to ever fire
+    assert generic_branch > timeout_branch
+    assert "semantic_members_ann_timeout" in source
