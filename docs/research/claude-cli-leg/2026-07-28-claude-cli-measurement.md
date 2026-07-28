@@ -153,12 +153,24 @@ Load 40 is not an anomaly: the nightly window IS the scoped-snapshot regime
   byte-copy of `_ATLAS_EXHAUSTED_RE` asserts leg-level lines never match and
   the total-failure line matches exactly once.
 
-## NEEDS PEDRO
-1. ~~`claude auth login`~~ DONE 07-28 PM — auth live, post-auth numbers above.
-2. Decide the flip: `ATLAS_CLAUDE_CLI=on` in the M1 runner env (chain order
-   default `anthropic,deepseek,claude_cli` is correct per measurement — leave
-   it). Fly needs nothing (leg is guarded off there by construction).
-3. `subscriptionType` reads "pro" — if this machine is supposed to ride a Max
-   plan, the CLI may be logged into the wrong account; caps differ.
-4. When a real cap-hit is ever observed, check its text against
-   `CLI_EXHAUSTED_MARKERS` in insight_llm.py and extend if the dialect is new.
+## STATUS: FLIPPED ON (2026-07-28 PM, Pedro's call)
+1. ~~`claude auth login`~~ DONE — auth live, post-auth numbers above. The
+   fresh login also fixed the stale `subscriptionType` reading: it now says
+   **"max"** (the earlier "pro" was month-old cached metadata, not a wrong
+   account). CLI itself is current (2.1.220, self-updated at login).
+2. ~~Flip~~ DONE: `ATLAS_CLAUDE_CLI=on` + `ATLAS_CLAUDE_CLI_BIN=
+   /Users/pedro/.local/bin/claude` (absolute — launchd's minimal PATH can't
+   find `claude`; the path is the stable symlink, survives self-updates) in
+   `/Users/pedro/AtlasLocalWorker/.env`. The classifier runner full-sources
+   .env (`set -a`); run-scoped-snapshot.sh loads only whitelisted keys, so
+   both vars were added to its key loop (repo + ALW copies, byte-identical
+   block verified). Chain order stays the measured default
+   `anthropic,deepseek,claude_cli`. Fly needs nothing (leg guarded off there
+   by construction).
+3. Verified under a launchd-like env (env -i, minimal PATH, only the two
+   vars): `claude_cli_available() == True` and a live `generate_insight`
+   returned `provider=claude_cli` with a coherent verdict — keychain auth
+   works from that context, so the seal's failover leg is armed for tonight.
+4. Open watch-item: when a real cap-hit is ever observed, check its text
+   against `CLI_EXHAUSTED_MARKERS` in insight_llm.py and extend if the
+   dialect is new.

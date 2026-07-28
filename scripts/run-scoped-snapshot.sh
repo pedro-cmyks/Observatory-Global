@@ -85,7 +85,10 @@ else
   echo "[scoped-snapshot] heavy-job-lock.sh missing — running UNSERIALIZED" >&2
 fi
 
-for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY; do
+# ATLAS_CLAUDE_CLI* (2026-07-28): the insight chain's claude_cli failover leg
+# (insight_llm.py) — the seal's synthesis step needs them; BIN is absolute
+# because launchd's minimal PATH can't find `claude`.
+for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY ATLAS_CLAUDE_CLI ATLAS_CLAUDE_CLI_BIN; do
   if [[ -z "${!key:-}" && -r "$LOCAL_ENV" ]]; then
     v="$(grep -E "^${key}=" "$LOCAL_ENV" | tail -n 1 | sed -E "s/^${key}=//" | tr -d '\r' || true)"
     [[ -n "$v" ]] && export "$key=$v"
