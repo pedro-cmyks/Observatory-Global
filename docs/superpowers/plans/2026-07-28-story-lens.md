@@ -451,6 +451,8 @@ async def get_story_siblings(thread_id: str) -> dict:
                 "degree": s.degree,
                 "kinship": s.kinship,
                 "through_blob": s.through_blob,
+                "is_blob": s.is_blob,
+                "via_parent": s.via_parent_label,
                 "folded": list(s.folded),
                 "label_status": status_by_key.get(s.topic_key),
                 "countries": _countries(s.topic_key),
@@ -539,8 +541,8 @@ const data: StoryLensData = {
   generated_at: '2026-07-28T00:00:00Z',
   anchor: { id: 'dynamic-topic-1', label: 'Anchor', label_status: 'entailed', countries: ['IR'] },
   siblings: [
-    { id: 'dynamic-topic-2', label: 'Sib A', weight: 0.7, degree: 1, kinship: 'hermano', through_blob: false, folded: ['dynamic-topic-9'], label_status: null, countries: ['IR'], reasons: [{ basis: 'whitened_cos', value: '0.70' }] },
-    { id: 'dynamic-topic-3', label: 'Sib B', weight: 0.4, degree: 2, kinship: 'primo', through_blob: false, folded: [], label_status: 'failed', countries: [], reasons: [{ basis: 'whitened_cos', value: '0.40' }] },
+    { id: 'dynamic-topic-2', label: 'Sib A', weight: 0.7, degree: 1, kinship: 'hermano', through_blob: false, is_blob: false, via_parent: null, folded: ['dynamic-topic-9'], label_status: null, countries: ['IR'], reasons: [{ basis: 'whitened_cos', value: '0.70' }] },
+    { id: 'dynamic-topic-3', label: 'Sib B', weight: 0.4, degree: 2, kinship: 'primo', through_blob: false, is_blob: true, via_parent: 'Sib A', folded: [], label_status: 'failed', countries: [], reasons: [{ basis: 'whitened_cos', value: '0.40' }] },
   ],
   notes: [],
 }
@@ -589,6 +591,8 @@ export interface StoryLensSibling {
   degree: number
   kinship: 'hermano' | 'primo'
   through_blob: boolean
+  is_blob: boolean
+  via_parent: string | null
   folded: string[]
   label_status?: string | null
   countries: string[]
@@ -892,6 +896,8 @@ Mirror the eclipse section-label pattern (488–523): when `lensSets` is active,
   </span>
 ) : null}
 ```
+
+Blob honesty (T1 review #5): when the sibling's `is_blob` is true, append a `⚠ grab-bag` marker to the reason chip text (`data-tip`: "Flagged as a possible multi-story blob — relation may be inflated") — a flagged topic never renders as an unmarked peer.
 
 CSS in `NarrativeThreads.css`:
 
