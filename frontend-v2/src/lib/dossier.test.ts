@@ -150,3 +150,28 @@ describe('Frank v2 — named metadata-only pins + dated evidence', () => {
     expect(md).toContain('— Reuters, Jul 8')
   })
 })
+
+// Story Lens Task 9 (spec-review fold): the exported dossier is the
+// analyst's deliverable — it must carry the same frozen neighborhood
+// DossierView renders on-screen, not silently drop it.
+describe('Story Lens Task 9 — frozen neighborhood in the markdown export', () => {
+  it('renders the measured-neighborhood section when a pin carries siblings', () => {
+    const md = dossierToMarkdown(buildDossier(inv([
+      { anchorId: 'theme-x', anchorType: 'theme', label: 'X', pinnedAt: NOW,
+        snapshot: {
+          capturedAt: NOW,
+          siblings: [{ id: 'dynamic-topic-2', label: 'Sib', weight: 0.7, reason: 'whitened_cos 0.70' }],
+        } },
+    ]), NOW))
+    expect(md).toContain('**Measured neighborhood (frozen):**')
+    expect(md).toContain('- Sib — ↔ whitened_cos 0.70')
+  })
+
+  it('omits the section entirely when a pin carries no siblings', () => {
+    const md = dossierToMarkdown(buildDossier(inv([
+      { anchorId: 'theme-y', anchorType: 'theme', label: 'Y', pinnedAt: NOW,
+        snapshot: { capturedAt: NOW, summary: 'no neighborhood here' } },
+    ]), NOW))
+    expect(md).not.toContain('Measured neighborhood')
+  })
+})

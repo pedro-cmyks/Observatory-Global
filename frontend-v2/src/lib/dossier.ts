@@ -129,6 +129,15 @@ export function dossierToMarkdown(d: DossierModel): string {
           : (e.date ? ` — ${fmtDay(e.date)}` : '')
         lines.push(`- ${e.url ? `[${e.headline}](${e.url})` : e.headline}${attribution}`)
       }
+      // Story Lens Task 9 (spec-review fold): the neighborhood frozen at pin
+      // time — DossierView shows it on-screen as "MEASURED NEIGHBORHOOD", and
+      // the export is the analyst's deliverable, so it must not silently drop.
+      if (p.snapshot?.siblings && p.snapshot.siblings.length > 0) {
+        lines.push('**Measured neighborhood (frozen):**')
+        for (const s of p.snapshot.siblings) {
+          lines.push(`- ${s.label} — ↔ ${s.reason}`)
+        }
+      }
       if (p.note) lines.push(`> **Note:** ${p.note}`)
       lines.push(`*pinned ${fmt(p.pinnedAt)}*`)
       lines.push('')

@@ -37,7 +37,7 @@ export function StoryLensBanner() {
   // so whichever lands second never erases the other.
   const onPin = () => {
     if (!state.anchorId || !anchor) return
-    pinItem(threadPin(state.anchorId, anchor.label, { lens: true }))
+    pinItem(threadPin(state.anchorId, knownLabel ?? anchor.label, { lens: true }))
     const invId = getActiveInvestigationId()
     if (invId) {
       mergePinSnapshot(invId, `theme-${state.anchorId}`, {
