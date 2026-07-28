@@ -17,6 +17,7 @@ import { Pin, PinOff } from '../lib/icons'
 import PinReceiptButton from './PinReceiptButton'
 import { SignalDetailPanel } from './SignalDetailPanel'
 import type { Signal } from './SignalDetailPanel'
+import { resolveTierChip } from '../lib/sourceProvenance'
 import './SignalStream.css'
 
 type StreamItem = Signal & { type: 'signal'; addedAt?: number }
@@ -640,6 +641,15 @@ export const SignalStream: React.FC = () => {
                                         </div>
                                         <div className="signal-footer">
                                             <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
+                                            {(() => {
+                                                // Gold-eval defect: this row carried no tier reference —
+                                                // no origin/is_state_media in this payload, so 'unknown' is
+                                                // suppressed rather than guessed (absence over noise).
+                                                const tc = resolveTierChip(sig.source, undefined)
+                                                return tc.tier !== 'unknown' ? (
+                                                    <span className={`l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>{tc.label}</span>
+                                                ) : null
+                                            })()}
                                             {(sig.lane === 'sports' || sig.lane === 'entertainment') && (
                                                 <span className={`stream-lane-badge stream-lane-badge--${sig.lane}`}
                                                     data-tip={`${sig.lane === 'sports' ? 'Sports' : 'Entertainment'} — separated from analyst workflows`}>

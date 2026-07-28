@@ -1879,6 +1879,29 @@
   .workbench-suggest-query { font-size: 12px; }
 }
 
+/* Story Lens Task 8 (gold-eval defect, batch 4): shared tier chip for L2
+   receipt rows that had zero tier reference at all — CountryBrief Top
+   Publishers, SignalStream footer, ThemeDetail article meta + PA evidence
+   rows, SignalDetailPanel header + semantic-neighbor meta. One class used by
+   every one of those sites so state media can never render unmarked next to
+   an unrelated signal again. 'unknown' is never rendered by any caller
+   (absence over noise) — this is distinct from the richer backend
+   credibility.label chip in ThemeDetail's Top Sources LIST
+   (.source-tier-badge), which already exists and must never be duplicated. */
+.l2-tier-chip {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.l2-tier-chip--state { color: #e23a1a; }
+.l2-tier-chip--wire { color: #2aa7ad; }
+.l2-tier-chip--major { color: #8fa2bd; }
+.l2-tier-chip--local { color: #8fa2bd; }
+
 /* R3c defect 3 — emerald: globe scrubber pill themes (hardcoded dark ground
    under themed neutral text → dark-on-dark in emerald-light). Noir keeps its
    literal via the base rule above. */

@@ -17,6 +17,7 @@ import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from '../lib/icons'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
+import { resolveTierChip } from '../lib/sourceProvenance'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 
 const SUBJECT_BADGE: Record<SubjectType, string> = {
@@ -545,6 +546,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         </a>
                     )}
                     {opts.showSource && <span className="coverage-article-source">{sig.source || 'Unknown'}</span>}
+                    {opts.showSource && sig.source && (() => {
+                        // Gold-eval defect: this chipless article-meta line let state
+                        // media render unmarked. No origin/is_state_media on this shape
+                        // yet, so 'unknown' is suppressed (absence over noise) — distinct
+                        // from the richer backend credibility.label chip in the Top
+                        // Sources LIST below, which this must never duplicate.
+                        const tc = resolveTierChip(sig.source, undefined)
+                        return tc.tier !== 'unknown' ? (
+                            <span className={`l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>{tc.label}</span>
+                        ) : null
+                    })()}
                     <span>{formatTime(sig.timestamp)}</span>
                     {sig.country && <span>{sig.country}</span>}
                     <span style={{ color: getSentimentColor(sig.sentiment) }}>
@@ -941,12 +953,20 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 </div>
                                 {attentionSearchData?.signal_matches && attentionSearchData.signal_matches.length > 0 && (
                                     <div className="public-attention-evidence">
-                                        {attentionSearchData.signal_matches.slice(0, 3).map(signal => (
+                                        {attentionSearchData.signal_matches.slice(0, 3).map(signal => {
+                                            const tc = resolveTierChip(signal.source, undefined)
+                                            return (
                                             <div key={signal.id} className="public-attention-evidence-row">
-                                                <span>{signal.country || 'GLO'} · {signal.source}</span>
+                                                <span>
+                                                    {signal.country || 'GLO'} · {signal.source}
+                                                    {tc.tier !== 'unknown' && (
+                                                        <span className={`l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>{tc.label}</span>
+                                                    )}
+                                                </span>
                                                 <p>{signal.headline ? decodeEntities(signal.headline) : 'Untitled signal'}</p>
                                             </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 )}
                             </div>
