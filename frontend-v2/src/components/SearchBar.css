@@ -189,7 +189,10 @@
 
 .search-item-name {
     flex: 1;
-    min-width: 0;
+    /* Floor, not 0: the name was the row's only shrinkable child, so an
+       unshrinkable tag+meta pair wider than the row collapsed it to 0px.
+       The label is the identity — it keeps ≥120px; the meta truncates. */
+    min-width: 120px;
     font-size: 12px;
     color: #cbd5e0;
     white-space: nowrap;
@@ -200,7 +203,12 @@
 .search-item-meta {
     font-size: 10px;
     color: var(--color-text-muted);
-    flex-shrink: 0;
+    /* Shrinkable + ellipsis: meta is decoration, it yields to the name */
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-variant-numeric: tabular-nums;
 }
 
