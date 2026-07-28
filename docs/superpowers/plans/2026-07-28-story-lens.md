@@ -1200,12 +1200,14 @@ git commit -m "feat(story-lens): Pin story — merge-safe snapshot with frozen n
 - [ ] **Step 1: Auto-enter on thread open** (spec D7: opening a story opens the mode). In `handleThemeSelect` (after the existing open logic), for thread-shaped ids only:
 
 ```tsx
-const isThreadShaped = (id: string) =>
-  id.startsWith('dynamic-topic-') || id.startsWith('emergent-cluster-') || id.includes('--')
-if (STORY_LENS_AUTO && isThreadShaped(themeId)) storyLens.enter(themeId)
+// v1 lens anchors are DYNAMIC topics only — the siblings endpoint returns
+// unsupported_anchor_type for atlas 'slug--cc' and emergent-cluster ids
+// (no dynamic_topics centroid; T2 quality review issue 3, recorded decision).
+const isLensAnchor = (id: string) => id.startsWith('dynamic-topic-')
+if (STORY_LENS_AUTO && isLensAnchor(themeId)) storyLens.enter(themeId)
 ```
 
-(GDELT theme codes — UPPER_SNAKE, no hyphen — never enter the lens. The banner label comes from the endpoint payload; no label needed at enter time.)
+(Atlas and emergent-cluster threads keep today's open behavior — never a lens that is guaranteed empty. Widening the anchor set is a v1.1 item alongside country/person anchors. The banner label comes from the endpoint payload; no label needed at enter time.)
 
 - [ ] **Step 2: Exit wiring.** Wherever the thread detail closes or focus fully clears (ThemeDetail close handler + FocusIndicator `onClear` path in App), call `storyLens.exit()`. Entering a DIFFERENT thread re-enters (enter replaces state wholesale — already handled).
 
