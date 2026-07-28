@@ -22,8 +22,9 @@ from __future__ import annotations
 import html
 import math
 import os
+import re
+import unicodedata
 
-from app.core.search_normalization import normalize_search_text
 from app.services.daily_edition import global_breadth_signal
 from app.services.stream_relevance import classify_stream_lane
 
@@ -114,6 +115,26 @@ def rank_v2_enabled() -> bool:
     }
 
 
+def _fold_headline(text: str) -> str:
+    """Accent-fold + casefold + collapse non-word runs, keeping letters of
+    EVERY script. `normalize_search_text`'s `[^a-z0-9]` class deletes non-Latin
+    letters outright — measured 2026-07-30: 10.6% of resolved signals reduced
+    to a degenerate key ('Атака РФ по АТБ у Чернігові 26 липня' → '26'), so
+    two different ru/uk/ar/fa headlines sharing a number deduped as one story.
+    Search keeps its own Latin-only normalizer (its LIKE patterns run against
+    indexed expressions); this fold exists only for reprint keying."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    accentless = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    words = re.sub(r"[\W_]+", " ", accentless.casefold())
+    return re.sub(r"\s+", " ", words).strip()
+
+
+def _degenerate_key(key: str) -> bool:
+    """A key with no letters (digit/punctuation residue) cannot identify a
+    story — every such key would share one bucket."""
+    return not key or not any(ch.isalpha() for ch in key)
+
+
 def _norm_headline(text: str) -> str:
     """Normalise a headline for reprint detection. The measured live
     syndication signature (2026-07-18, AU Community Media) is the identical
@@ -128,18 +149,31 @@ def _norm_headline(text: str) -> str:
     without this an encoded and a plain copy of one wire story read as two
     stories — inflating the volume term that ranks the front page.
 
-    Then fold to `normalize_search_text` — the SAME normalizer search uses, so
-    "what counts as one headline" has one definition. This also repairs a
-    quieter bug: the old `[^a-z0-9]+` class does not match `á`, so `huracán`
-    became `hurac n` — the accented word shattered into fragments exactly the
-    way the entity encoding shattered it."""
+    Degenerate keys fall back instead of colliding (measured 2026-07-30):
+    a masthead-PREFIXED headline ("BlackSeaNews | <story>") used to collapse
+    to the bare outlet name (df 15), so the strip now folds BOTH the
+    drop-last and drop-first candidates and keeps the token-richer one — the
+    outlet stamp is always shorter than the story it stamps. A key with no
+    letters at all (digit/punctuation residue) falls back to the full
+    casefolded headline — an honest per-headline key beats a shared
+    degenerate bucket."""
     text = html.unescape(text)
+    full = _fold_headline(text)
     parts = text.split("|")
     if len(parts) >= 2:
-        # strip the masthead stamp BEFORE normalizing — the normalizer turns
-        # "|" into whitespace, which would make the split unfindable.
-        text = "|".join(parts[:-1])
-    return normalize_search_text(text)
+        # strip the masthead stamp BEFORE folding — the fold turns "|" into
+        # whitespace, which would make the split unfindable.
+        suffix_kept = _fold_headline("|".join(parts[:-1]))
+        prefix_kept = _fold_headline("|".join(parts[1:]))
+        candidates = [k for k in (suffix_kept, prefix_kept)
+                      if not _degenerate_key(k)]
+        if candidates:
+            # the story side out-tokens the stamp side; tie keeps the
+            # measured suffix-strip (AU Community Media signature).
+            return max(candidates, key=lambda k: len(k.split()))
+    if not _degenerate_key(full):
+        return full
+    return " ".join(text.casefold().split())
 
 
 def headline_diversity(thread: dict) -> float:
