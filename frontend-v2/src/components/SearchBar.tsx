@@ -4,7 +4,13 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { useFocus } from '../contexts/FocusContext'
 import type { RegionFilter } from '../contexts/FocusContext'
 import { Search } from '../lib/icons'
-import { hasVisibleSearchResults } from '../lib/searchResults'
+import {
+    SEARCH_LOOKUP_FAILED,
+    degradedSearchSegments,
+    describeDegradedSegments,
+    hasVisibleSearchResults,
+    searchEmptyVariant,
+} from '../lib/searchResults'
 import { decodeEntities } from '../lib/decodeEntities'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { Flag } from './Flag'
@@ -209,6 +215,11 @@ interface SearchResult {
     public_attention?: PublicAttentionResult[]
     signal_matches?: SignalMatchResult[]
     fuzzy_suggestions?: FuzzySuggestionResult[]
+    /** True when a retrieval lane FAILED (timeout/error) — the backend appends
+     *  degraded_segments only from except blocks, never for "ran and found
+     *  nothing". A degraded response must not render as measured absence. */
+    degraded?: boolean
+    degraded_segments?: string[]
 }
 
 interface SearchBarProps {
@@ -256,6 +267,15 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         setParsedQuery(parsed)
         const searchQ = parsed.topic.length >= 2 ? parsed.topic : q
         setLoading(true)
+        // Never leave the previous query's results rendered under the new
+        // query text: a degraded lane can hold the response for 5-25s, which
+        // is how "Azad Kashmir" kept 12 Iran receipts on screen (gold UI eval
+        // batch 3). The loading state owns that gap — stale results never do.
+        setResults(null)
+        const failedLookup: SearchResult = {
+            themes: [], persons: [], countries: [],
+            degraded: true, degraded_segments: [SEARCH_LOOKUP_FAILED],
+        }
         try {
             const countryParam = parsed.countryCode ? `&country=${parsed.countryCode}` : ''
             const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(searchQ)}&hours=168${countryParam}`)
@@ -283,16 +303,23 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                 // Fallback to basic search if unified endpoint not available yet
                 const fallback = await fetch(`/api/v2/search?q=${encodeURIComponent(searchQ)}&hours=168`)
                 if (seq !== searchSeqRef.current) return
-                setResults(fallback.ok ? await fallback.json() : { themes: [], persons: [], countries: [] })
+                setResults(fallback.ok ? await fallback.json() : failedLookup)
             }
             if (seq !== searchSeqRef.current) return
             setIsOpen(true)
             // Warm the custom query-thread cache so clicking the option is instant.
             fetch(`/api/v2/search/thread?q=${encodeURIComponent(searchQ)}&hours=168${countryParam}`).catch(() => { })
         } catch {
-            // silent
+            // A thrown fetch is a FAILED LOOKUP — render it as one. The old
+            // silent catch left whatever was on screen standing forever.
+            if (seq !== searchSeqRef.current) return
+            setResults(failedLookup)
+            setIsOpen(true)
         } finally {
-            setLoading(false)
+            // Only the still-current search may clear the spinner: a
+            // superseded response's finally must not un-load the newer
+            // in-flight search (that would let an empty state render early).
+            if (seq === searchSeqRef.current) setLoading(false)
         }
     }, [])
 
@@ -417,6 +444,8 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
     }
 
     const hasResults = hasVisibleSearchResults(results)
+    const degradedSegments = degradedSearchSegments(results)
+    const emptyVariant = searchEmptyVariant(results, loading)
     // One query → one obvious primary action; everything else demotes.
     const trimmedQuery = query.trim()
     const { intent, isInvestigative } = classifyQuery({
@@ -582,6 +611,14 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         </div>
                     )}
 
+                    {/* Partial degrade: some lanes answered, others FAILED —
+                        name the failed ones so absence below is never implied. */}
+                    {hasResults && degradedSegments.length > 0 && (
+                        <div className="search-degraded-banner">
+                            ⚠ Couldn't check {describeDegradedSegments(degradedSegments)} — lookup failed, results may be incomplete
+                        </div>
+                    )}
+
                     {/* SECONDARY — the raw matches (threads/countries/people…),
                         kept but visually quieter than the primary action. */}
                     <div className="search-results-secondary">
@@ -702,8 +739,27 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
                     </div>
 
-                    {!hasResults && !loading && (
+                    {/* Empty states, kept honest (gold UI eval batch 3): "No
+                        results" is a MEASURED absence and only a clean response
+                        may claim it. A degraded response is a FAILED lookup —
+                        the same distinction /research/plan renders in words. */}
+                    {emptyVariant === 'measured_absence' && (
                         <div className="search-empty">No results for "{parsedQuery.topic}"</div>
+                    )}
+                    {emptyVariant === 'failed_lookup' && (
+                        <div className="search-empty search-empty--degraded">
+                            <div>
+                                ⚠ Couldn't check {describeDegradedSegments(degradedSegments)}.
+                                This is a failed lookup, not a measured absence.
+                            </div>
+                            <button
+                                type="button"
+                                className="search-degraded-retry"
+                                onClick={() => doSearch(query)}
+                            >
+                                Retry search
+                            </button>
+                        </div>
                     )}
 
                     {/* POWER TOOLS behind a subtle "more" — build-a-thread always,

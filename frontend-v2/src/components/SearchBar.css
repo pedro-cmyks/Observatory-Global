@@ -211,6 +211,38 @@
     font-size: 12px;
 }
 
+/* Degraded lookup honesty (gold UI eval batch 3): a timed-out lane is a
+   FAILED lookup and must never read as "No results". Amber = caution idiom. */
+.search-empty--degraded {
+    color: #f59e0b;
+}
+
+.search-degraded-banner {
+    padding: 8px 12px 6px;
+    font-size: 11px;
+    color: #f59e0b;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.06);
+}
+
+.search-degraded-retry {
+    display: block;
+    margin: 10px auto 0;
+    padding: 4px 14px;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 3px;
+    background: transparent;
+    color: #f59e0b;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.search-degraded-retry:hover {
+    background: rgba(245, 158, 11, 0.12);
+}
+
 /* Compound query context */
 .search-context-banner {
     padding: 8px 12px 6px;
