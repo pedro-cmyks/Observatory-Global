@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -342,6 +343,7 @@ async def query_thread(
     # returns a valid thin thread — mirroring the unified endpoint's per-segment
     # graceful degrade rather than raising QueryCanceledError to the client.
     signal_rows: list = []
+    degraded_reason: str | None = None
     try:
         async with db.pool.acquire() as conn:
             signal_rows = await conn.fetch(f"""
@@ -380,10 +382,19 @@ async def query_thread(
     except Exception as exc:
         logger.warning("query_thread match degraded for q=%r country=%r: %r",
                        q, country_code, exc)
+        # The empty result below is "we could not look", NOT "there is nothing".
+        # Say which, or the caller cannot tell an honest absence from a timeout.
+        degraded_reason = (
+            "match_timeout" if isinstance(exc, asyncio.TimeoutError)
+            else type(exc).__name__
+        )
 
-    result = build_query_thread(signal_rows, q, hours=hours, country=country_code)
+    result = build_query_thread(signal_rows, q, hours=hours, country=country_code,
+                                degraded_reason=degraded_reason)
 
-    if app.state.redis:
+    # NEVER cache a degraded answer: a 120s TTL would freeze one timeout into
+    # two minutes of confident-looking emptiness for every caller.
+    if app.state.redis and not degraded_reason:
         try:
             await app.state.redis.setex(cache_key, 120, json.dumps(result))
         except Exception:
