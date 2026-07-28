@@ -25,6 +25,7 @@ from app.services.research_ranking import rank_plan
 from app.services.research_semantic import (
     embed_atlas_anchors,
     embed_query,
+    fetch_active_centroid_pool_size,
     fetch_atlas_topic_anchors,
     fetch_semantic_signal_matches,
     fetch_topic_centroids,
@@ -218,6 +219,15 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         async with db.pool.acquire() as conn:
             return await fetch_topic_centroids(conn)
 
+    async def _fetch_centroid_pool_size() -> int:
+        """True substrate size for the W2a health guard — see the guard comment
+        in research_anchor_discovery: len(topics) was capped by the fetch, so it
+        could never fall under the floor."""
+        if db.pool is None:
+            return 0
+        async with db.pool.acquire() as conn:
+            return await fetch_active_centroid_pool_size(conn)
+
     async def _fetch_atlas_anchors() -> list[dict] | None:
         if db.pool is None:
             return []
@@ -267,6 +277,7 @@ async def research_plan(body: ResearchPlanRequest) -> dict:
         # embedding is CPU-blocking (model load + encode); keep it off the loop
         embed_query_fn=lambda text: asyncio.to_thread(embed_query, text),
         fetch_centroids_fn=_fetch_centroids,
+        fetch_centroid_pool_size_fn=_fetch_centroid_pool_size,
         fetch_atlas_anchors_fn=_fetch_atlas_anchors,
         fetch_signal_matches_fn=_fetch_signal_matches,
         fetch_movement_fn=_fetch_movement,
