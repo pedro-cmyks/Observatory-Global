@@ -51,3 +51,17 @@ def test_invalid_id_short_circuits_before_db():
 def test_contract_violation_not_mislabeled_as_db_error():
     assert "except ValueError" in ROUTER
     assert "internal_error" in ROUTER
+
+
+def test_unsupported_anchor_type_is_explicit():
+    assert "unsupported_anchor_type" in ROUTER
+
+
+def test_normalize_thread_id_behavior():
+    from app.routers.story import _normalize_thread_id
+    assert _normalize_thread_id("dynamic-topic-5245") == "dynamic-topic-5245"
+    assert _normalize_thread_id("disinformation-influence-operation--us-gb") == "disinformation-influence-operation"
+    assert _normalize_thread_id("x" * 70) is None
+    assert _normalize_thread_id("") is None
+    assert _normalize_thread_id("a b") is None
+    assert _normalize_thread_id("../etc/passwd") is None

@@ -10,6 +10,12 @@ cannot recur here because nothing is written and no closure is taken).
 
 Every sibling carries the measured WHY (whitened cosine + kinship degree,
 plus a shared-country receipt when one exists) — never a silent rank.
+
+Connection discipline mirrors routers/dossier.py's `/walk` (dossier.py:
+1027-1085): the pool connection is held only for each bounded fetch, never
+across the whitening + graph-walk compute (O(n^2) in the active-topic count
+— holding a connection through it needlessly pins a pool slot on Fly, where
+the pool caps at 10).
 """
 from __future__ import annotations
 
@@ -85,7 +91,13 @@ def _normalize_thread_id(raw: str) -> str | None:
     """Validate shape, then strip an optional `--cc` country-scope suffix
     (mirrors dossier.py's `_base_topic_id`): topic_members/dynamic_topics key
     on the bare id. Returns None on a malformed id — the caller must reject
-    it before any Redis/DB work, not merely treat it as "not found"."""
+    it before any Redis/DB work, not merely treat it as "not found".
+
+    This does NOT decide whether the resulting key is a SUPPORTED anchor
+    type (see the handler's `dynamic-topic-` prefix check) — a bare atlas
+    slug normalizes cleanly here and is rejected one step later, on purpose,
+    so the two failure modes (malformed vs unsupported) stay distinguishable
+    reason codes rather than collapsing into one."""
     if not raw or not _TOPIC_ID_RE.match(raw):
         return None
     if raw.startswith("dynamic-topic-"):
@@ -107,11 +119,24 @@ def _empty(reason: str) -> dict:
 async def get_story_siblings(thread_id: str) -> dict:
     """The measured neighborhood of one thread — hermanos (direct edge) and
     primos (walked), each with a receipt. Never merges, never asserts a
-    relation without a measured basis; an honest empty (no DB / no whitening
-    / seed not found) is a first-class response, not an error."""
+    relation without a measured basis; an honest empty (invalid id,
+    unsupported anchor type, no DB, no whitening, seed not found, no kin) is
+    a first-class response, not an error."""
     topic_key = _normalize_thread_id(thread_id)
     if not topic_key:
         return _empty("invalid_thread_id")
+
+    # v1 lens anchors are DYNAMIC TOPICS ONLY. A `thread_id` may also name an
+    # ATLAS topic ('some-slug' bare, or 'some-slug--cc' country-scoped) or an
+    # emergent-cluster snapshot ('emergent-cluster-N', 'cluster-N') — neither
+    # has a `dynamic_topics.centroid_vec`, so neither can EVER resolve here
+    # (mirrors the walk endpoint's scope, dossier.py `_WALK_TOPICS_SQL` +
+    # `_base_topic_id`'s seed-filter: only `dynamic-topic-<id>` bases walk).
+    # This is a STRUCTURAL v1 limitation, not a transient failure — its own
+    # reason code, checked BEFORE any Redis/DB work, rather than folding into
+    # "seed not found" (which reads as "try again later," and never will).
+    if not topic_key.startswith("dynamic-topic-"):
+        return _empty("unsupported_anchor_type")
 
     cache_key = f"story_sib:v1:{topic_key}"
     redis = _redis_client()
@@ -121,70 +146,87 @@ async def get_story_siblings(thread_id: str) -> dict:
             if cached:
                 return json.loads(cached)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("story siblings cache read failed: %s", exc)
+            logger.warning("story siblings cache read failed: %s", exc, exc_info=True)
 
     if db.pool is None:
-        return _empty("database unavailable")
+        return _empty("db_unavailable")
 
     try:
         whitening = load_whitening()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("story siblings whitening unavailable: %s", exc)
+        logger.warning("story siblings whitening unavailable: %s", exc, exc_info=True)
         return _empty("whitening_unavailable")
 
+    # (a) Acquire ONLY for the topic-universe fetch, then release — mirrors
+    # dossier.py's /walk (dossier.py:1027-1085), which never holds a
+    # connection across the O(n^2) whitening/graph-walk compute below.
     try:
         async with db.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 15000")
             rows = await conn.fetch(_TOPICS_SQL)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("story siblings topic fetch failed: %s", exc, exc_info=True)
+        return _empty("db_error")
 
-            keys: list[str] = []
-            labels: list[str] = []
-            cats: list[str | None] = []
-            statuses: list[str | None] = []
-            vecs: list[list[float]] = []
-            for r in rows:
-                v = r["centroid_vec"]
-                if v is None or len(v) != 768:
-                    continue
-                tid = int(r["id"])
-                keys.append(f"dynamic-topic-{tid}")
-                labels.append(r["label"] or f"dynamic-topic-{tid}")
-                cats.append(r["category"])
-                statuses.append(r["label_status"])
-                vecs.append([float(x) for x in v])
+    # (b) Compute OUTSIDE any held connection: row parsing, whitening, the
+    # graph walk. `rank_siblings` raises ValueError loudly on a contract
+    # violation (misaligned/non-unit-norm arrays — Task 1's deliberate
+    # design: a silent [] there would read as "this story stands alone," a
+    # dishonest empty). That is a CALLER programming error, never a database
+    # fault, so it — and any other compute failure (e.g. an OOM building the
+    # similarity matrix) — must never be mislabeled "db_error".
+    try:
+        keys: list[str] = []
+        labels: list[str] = []
+        cats: list[str | None] = []
+        statuses: list[str | None] = []
+        vecs: list[list[float]] = []
+        for r in rows:
+            v = r["centroid_vec"]
+            if v is None or len(v) != 768:
+                continue
+            tid = int(r["id"])
+            keys.append(f"dynamic-topic-{tid}")
+            labels.append(r["label"] or f"dynamic-topic-{tid}")
+            cats.append(r["category"])
+            statuses.append(r["label_status"])
+            vecs.append([float(x) for x in v])
 
-            if topic_key not in keys:
-                return _empty("seed_not_found_or_no_centroid")
+        if topic_key not in keys:
+            return _empty("seed_not_found_or_no_centroid")
 
-            seed = keys.index(topic_key)
-            whitened = apply_whitening(np.asarray(vecs, dtype=np.float32), whitening)
-            siblings = rank_siblings(
-                seed, whitened, keys, labels, cats, WalkParams.from_env(), cap=DEFAULT_CAP,
-            )
-
-            # Country receipts for the anchor + returned siblings only — one
-            # bounded query over a short ANY() list, never the whole graph.
-            want = [topic_key] + [s.topic_key for s in siblings]
-            foot: dict[str, list[tuple[str, int]]] = {}
-            try:
-                crows = await conn.fetch(_COUNTRIES_SQL, want)
-                for cr in crows:
-                    foot.setdefault(cr["topic_id"], []).append(
-                        (cr["country_code"], int(cr["n"]))
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("story siblings country footprint failed: %s", exc)
+        seed = keys.index(topic_key)
+        whitened = apply_whitening(np.asarray(vecs, dtype=np.float32), whitening)
+        siblings = rank_siblings(
+            seed, whitened, keys, labels, cats, WalkParams.from_env(), cap=DEFAULT_CAP,
+        )
     except ValueError as exc:
-        # rank_siblings raises loudly on misaligned/non-unit-norm inputs — a
-        # CALLER programming error (Task 1's deliberate design: a silent []
-        # there would read as "this story stands alone," a dishonest empty).
-        # That is NOT a database fault; mislabeling it "db_error" would hide
-        # a real contract violation behind a transient-looking reason code.
-        logger.error("story siblings contract violation: %s", exc)
+        logger.error("story siblings contract violation: %s", exc, exc_info=True)
         return _empty("internal_error")
     except Exception as exc:  # noqa: BLE001
-        logger.warning("story siblings query failed: %s", str(exc)[:200])
-        return _empty("db_error")
+        logger.error("story siblings compute failed: %s", exc, exc_info=True)
+        return _empty("internal_error")
+
+    # (c) Re-acquire ONLY for the bounded country-receipt fetch. A failure
+    # here degrades gracefully (empty footprints, never a 500) but must be
+    # surfaced honestly, not silently — and a degraded payload must never be
+    # frozen into the cache (the rail this project's CLAUDE.md logs
+    # repeatedly: attention_eclipse.py's degraded branch also never setex's,
+    # attention_eclipse.py:262-265).
+    want = [topic_key] + [s.topic_key for s in siblings]
+    foot: dict[str, list[tuple[str, int]]] = {}
+    country_receipts_degraded = False
+    try:
+        async with db.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
+            crows = await conn.fetch(_COUNTRIES_SQL, want)
+        for cr in crows:
+            foot.setdefault(cr["topic_id"], []).append(
+                (cr["country_code"], int(cr["n"]))
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("story siblings country footprint failed: %s", exc, exc_info=True)
+        country_receipts_degraded = True
 
     def _countries(tk: str) -> list[str]:
         return [cc for cc, _n in sorted(foot.get(tk, []), key=lambda t: -t[1])[:3]]
@@ -215,6 +257,12 @@ async def get_story_siblings(thread_id: str) -> dict:
             }
         )
 
+    notes: list[str] = []
+    if country_receipts_degraded:
+        notes.append("country_receipts_degraded")
+    if not siblings:
+        notes.append("no_measured_kin")
+
     payload = {
         "contract": "story-siblings-v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -225,12 +273,12 @@ async def get_story_siblings(thread_id: str) -> dict:
             "countries": anchor_countries,
         },
         "siblings": sib_payload,
-        "notes": [],
+        "notes": notes,
     }
 
-    if redis is not None:
+    if redis is not None and not country_receipts_degraded:
         try:
-            await redis.setex(cache_key, _CACHE_TTL_S, json.dumps(payload, default=str))
+            await redis.setex(cache_key, _CACHE_TTL_S, json.dumps(payload))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("story siblings cache write failed: %s", exc)
+            logger.warning("story siblings cache write failed: %s", exc, exc_info=True)
     return payload
