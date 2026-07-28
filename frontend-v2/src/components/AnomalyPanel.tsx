@@ -4,6 +4,8 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
+import { useStoryLens } from '../contexts/StoryLensContext'
+import { hasLensContent } from '../lib/storyLens'
 import { resolveCountryName, isKnownCountry } from '../lib/countryNames'
 import { getThemeLabel, resolveThreadLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl, getTrendingSearchesUrl, getForumAttentionUrl } from '../lib/publicAttention'
@@ -36,14 +38,29 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const { filter, setFocus, setMapFlyCountry } = useFocus()
     const { acledConflicts } = useFocusData()
     const relation = useFocusRelation()
+    const storyLens = useStoryLens()
     const { data: eclipseData, tier: eclipseTierNow } = useEclipseMode()
     const activeCountry = filter.country
+    // Story Lens (SL-T7): a user-driven investigative re-scope outranks the
+    // ambient focus-relation, but never an explicit country filter. Gate on
+    // hasLensContent (never state.active alone, same rule NarrativeThreads/
+    // SignalStream already apply) — an honest-empty siblings payload (anchor
+    // found but zero siblings, or a degraded fetch) must not claim a scope.
+    // `?? null` on the anchor chain is redundant-but-explicit: an anchorless
+    // payload already fails hasLensContent, so this never fires on one, but
+    // spelling it out keeps the "anchorless -> no lens country" contract
+    // visible at the call site rather than implicit in a helper elsewhere.
+    const lensOn = storyLens.state.active && hasLensContent(storyLens.data)
+    const lensCountry = !activeCountry && lensOn
+        ? storyLens.data?.anchor?.countries?.[0] ?? null
+        : null
     // #234: when a non-country entity is focused, re-scope this panel's
     // public-attention + conflicts to the focus's dominant country (the shared
-    // focus-relation context). Honest: only when a relation exists.
-    const relationCountry = !activeCountry && relation.relationActive && relation.kind !== 'country'
+    // focus-relation context). Honest: only when a relation exists, and only
+    // when the story lens hasn't already claimed the scope.
+    const relationCountry = !activeCountry && !lensCountry && relation.relationActive && relation.kind !== 'country'
         ? relation.dominantCountry : null
-    const scopeCountry = activeCountry ?? relationCountry
+    const scopeCountry = activeCountry ?? lensCountry ?? relationCountry
     const activeTheme = filter.theme
     const streamLevel = filter.streamLevel
     const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number; top_country?: string | null }[]>([])
@@ -133,6 +150,12 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                 {streamLevel && streamLevel !== 'notable' && streamLevel !== 'all' && !activeTheme && (
                     <span className={`ap-focus-badge ap-focus-stream ap-focus-stream--${streamLevel}`}>
                         STREAM: {streamLevel.toUpperCase()}
+                    </span>
+                )}
+                {lensCountry && (
+                    <span className="ap-focus-badge ap-focus-theme"
+                        data-tip="Scoped to the open story's dominant country">
+                        ◈ story → {lensCountry}
                     </span>
                 )}
                 {relationCountry && (
