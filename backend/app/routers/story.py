@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 
 import numpy as np
@@ -29,6 +30,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _CACHE_TTL_S = 300
+
+# Shape gate: a malformed id must short-circuit BEFORE any Redis/DB work — a
+# thread_id is untrusted path input, never assumed pre-validated by the
+# caller. Allows the `slug--cc` country-scope suffix (hyphens included) so a
+# legitimate scoped id still passes; garbage (1000-char strings, injection
+# attempts, embedded whitespace) is rejected here, cheaply, up front.
+_TOPIC_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 # Mirrors routers/dossier.py `_WALK_TOPICS_SQL` EXACTLY (state/is_umbrella/
 # centroid filters are the walk's serving-universe contract — story-level,
@@ -73,13 +81,16 @@ def _redis_client():
     return getattr(app.state, "redis", None)
 
 
-def _normalize_thread_id(raw: str) -> str:
-    """Strip an optional `--cc` country-scope suffix (mirrors dossier.py's
-    `_base_topic_id`): topic_members/dynamic_topics key on the bare id."""
-    s = (raw or "").strip()
-    if "--" in s:
-        s = s.split("--", 1)[0]
-    return s
+def _normalize_thread_id(raw: str) -> str | None:
+    """Validate shape, then strip an optional `--cc` country-scope suffix
+    (mirrors dossier.py's `_base_topic_id`): topic_members/dynamic_topics key
+    on the bare id. Returns None on a malformed id — the caller must reject
+    it before any Redis/DB work, not merely treat it as "not found"."""
+    if not raw or not _TOPIC_ID_RE.match(raw):
+        return None
+    if raw.startswith("dynamic-topic-"):
+        return raw
+    return raw.split("--")[0]
 
 
 def _empty(reason: str) -> dict:
@@ -163,6 +174,14 @@ async def get_story_siblings(thread_id: str) -> dict:
                     )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("story siblings country footprint failed: %s", exc)
+    except ValueError as exc:
+        # rank_siblings raises loudly on misaligned/non-unit-norm inputs — a
+        # CALLER programming error (Task 1's deliberate design: a silent []
+        # there would read as "this story stands alone," a dishonest empty).
+        # That is NOT a database fault; mislabeling it "db_error" would hide
+        # a real contract violation behind a transient-looking reason code.
+        logger.error("story siblings contract violation: %s", exc)
+        return _empty("internal_error")
     except Exception as exc:  # noqa: BLE001
         logger.warning("story siblings query failed: %s", str(exc)[:200])
         return _empty("db_error")

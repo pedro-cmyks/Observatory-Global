@@ -40,3 +40,14 @@ def test_honest_degrade_never_cached():
 
 def test_statement_timeout_set():
     assert "SET statement_timeout" in ROUTER
+
+
+def test_invalid_id_short_circuits_before_db():
+    # shape validation must run before any Redis/DB work
+    assert "_TOPIC_ID_RE" in ROUTER
+    assert ROUTER.index("invalid_thread_id") < ROUTER.index("db.pool is None")
+
+
+def test_contract_violation_not_mislabeled_as_db_error():
+    assert "except ValueError" in ROUTER
+    assert "internal_error" in ROUTER
