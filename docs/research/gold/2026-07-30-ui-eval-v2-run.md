@@ -544,3 +544,650 @@ the answer is destroyed by the click that leaves it**, and that the flags meant 
 blending fire on the flagged blob and stay silent on the unflagged one.
 
 *Batches 2–4 append below this line.*
+
+═══════════════════════════════ BATCH 2 — GQ-06…GQ-10 ═══════════════════════════════
+
+**Run conditions.** Same browser session, sequential, `http://localhost:3000/app`, viewport
+1512×950, prod data. Corpus at batch-2 start: **164 countries · 133,213 signals**, window
+`FROM 21 JUL 2026`, 24 h (drifted to 131,920 by the last query). Screenshots were unavailable this
+batch (the Browser pane was not compositing), so **every quotation below is taken from the live DOM
+via `get_page_text` / `innerText`, which is the rendered text layer** — the same pixels, read as
+text. Where a chip renders as a glyph with no text, that is stated explicitly and measured
+(bounding box + tooltip), because it is exactly the D5-pixels question.
+
+**Standing N1 note (batch 1) re-verified, not re-discovered.** On all five queries the search input
+was confirmed empty after opening a result (`input.value === ""`), the dropdown was gone, and no
+arrival surface carried a related-results affordance. **5/5 CONFIRMED.**
+
+---
+
+## GQ-06 — US/Iran strike pause: US-Western vs Iranian vs Gulf framing, state outlets marked
+
+**Typed (U1):** `US Iran paused strikes Iranian Gulf framing state media`
+**Auto-scope rendered:** `Filtering to: Iran · results scoped to this country` (dropdown header only).
+
+### NEW FINDING, and it partially CONTRADICTS batch 1: the label-court chip is a 7-px unlabelled dot
+
+Batch 1 recorded GQ-01's threads as "carrying a rendered `Label under review` chip". Measured here in
+the DOM, the search-dropdown court status is **`<span class="label-review-chip label-review-chip--dot">`
+with `innerText === ""` and a bounding box of 7 × 7 px** — a bare dot whose only content is a hover
+tooltip. Five of the six offered threads carried one:
+
+| # | thread (as rendered) | signals · category | court dot tooltip |
+|---|---|---|---|
+| 1 | **Trump Halts Iran Strikes to Pursue Diplomatic Deal** | 490 · Armed conflict escalation · partial match | ⬤ *"This label only partially matches its receipts."* |
+| 2 | US Military Strikes on Iran | 275 · Armed conflict escalation · partial match | — none — |
+| 3 | US Strikes on Iran | 244 · Armed conflict escalation · partial match | ⬤ *"This label **did not match** its receipts."* |
+| 4 | US-Iran Strikes Escalate | 226 · Armed conflict escalation · partial match | ⬤ *"This label **did not match** its receipts."* |
+| 5 | Jordan Intercepts Iranian Missiles | 170 · Armed conflict escalation · partial match | ⬤ *"This label only partially matches its receipts."* |
+| 6 | US Strikes Iran Third Night | 168 · Armed conflict escalation · partial match | ⬤ *"This label **did not match** its receipts."* |
+
+So the court verdict — including three outright FAILED — reaches the analyst as an unlabelled dot.
+The full-text `LABEL UNDER REVIEW` string batch 1 saw does render, but in the **right-rail Narrative
+Threads panel**, not in the search dropdown. Two renderings of the same fact, one legible.
+
+### CONTENT INVENTORY — surface A: search dropdown
+
+**MEDIA SIGNALS ×12**, all `IR`-tagged. 12/12 topically adjacent (pause / mediation / Hormuz), but
+**5 of 12 are one wire copy verbatim** — *"Mediators see progress in efforts to halt Iran war as drone
+attacks rattle region"* at wellandtribune.ca, texarkanagazette.com, reviewonline.com, salemnews.net
+(+ newstodaynet.com as *"…in diplomacy to stop Iran war"*). **No syndication marker.** Languages
+bg / en / it / sq. **No Persian, no Arabic receipt.** The Gulf/Arab strand exists only through
+third parties: middleeasteye.net, themedialine.org, ansa.it, egyptindependent.com.
+
+### CONTENT INVENTORY — surface B: thread detail, rank 1 (490 signals)
+
+Header: *"Trump Halts Iran Strikes to Pursue Diplomatic Deal · **Global · 490 signals** · Last 24h ·
+active since Jun 11 · `HOT WINDOW`"* — while the body reads `1 COUNTRIES · 20 SOURCES` and
+*"33 of 490 signals are geo-attributed"*, `TOP 1 OF 1 COUNTRIES BY VOLUME · Iran 33 sig · 100%`.
+
+**Invisible auto-scope CONFIRMED in the network tab:** `GET /api/v2/theme/dynamic-topic-121?hours=24
+&country_code=IR → 200 OK`, **fired twice**, plus one unscoped call. The focus bar reads
+`THEME | Trump Halts Iran Strikes to Pursue Diplomatic Deal | × | MAP · THREADS · STREAM · UNIVERSE
+RE-SCOPED | ×` — **no country chip, so the IR filter cannot be seen or cleared.** `/theme/{id}/drift`
+fired **6×**, `/compare` and `/lineage` **2×** each. Batch-1 defects 2 and 11 CONFIRMED verbatim.
+
+**Honesty chips AS RENDERED:** `HOT WINDOW` · `NARRATIVE BIOGRAPHY · 13 WEEKS` `CANDIDATE STITCH` ·
+the biography glass-box *"stitched in OpenAI space · θ topic↔era 0.827 · θ era↔era 0.862 · stitch sim
+0.88 · union of 4 measured lineages (lin-88 + lin-1096 + lin-2087 + lin-5809)"* · *"33 of 490 signals
+are geo-attributed — cards cover only those"* · `DISCUSSION · UNVERIFIED` · `⚠ 2d apart — aggregates 2
+snapshot steps, not one` + *"3 ended by substrate churn (topic re-founded/merged), not narrative
+change. 1 genuine narrative change."*
+**Absent: any coherence warning; any label-court status (the rank-1 dot's "only partially matches"
+does not render on the detail panel at all); any state-media marker.**
+
+**Receipts rendered: 30 of the 33 sample. ROR@20 = 20/20 = 1.00. ROR@30 = 30/30 = 1.00.**
+The retrieval is excellent and the pause is answered with dates and attribution — canal26.com
+*"Iran and the United States halt attacks in the Middle East as Donald Trump awaits a diplomatic
+solution"* (Jul 27 15:00), 20minutos.es *"Trump halts attacks on Iran over fear of running out of
+ammunition, according to US media"* (Jul 26 20:00), infobae.com *"Trump assured that he will not allow
+Iran to have a nuclear weapon after the resumption of negotiations"*, plus the US-Congress strand
+(*"House of Representatives voted to end the war between Donald Trump and Iran"* tribuna.com.mx,
+*"El Senado de EE.UU. rechaza la resolución para limitar los poderes de guerra"* cadena3.com).
+
+**And that is where the query dies. The full 30-receipt set is Hispanophone third-party press:**
+canal26.com · laprovincia.es · 20minutos.es · hoy.com.do · confirmado.com.ve · lanueva.com ·
+tn.com.ar · tribuna.com.mx ×2 · lahora.gt · biobiochile.cl · proceso.hn · lopezdoriga.com ·
+abc.com.py · infobae.com ×2 · larepublica.co · itongadol.com ×3 · diariopanorama.com ·
+tiempodesanjuan.com · cadena3.com ×2 · rpp.pe · eldiariony.com · mdzol.com · cnn.com (Spanish
+edition) · unionradio.net · eleconomista.com.mx.
+**Zero Iranian outlets. Zero Gulf/Arab outlets. Zero Western English-language outlets.** Of the three
+framings the question asks to place side by side, **none is represented by its own press.**
+
+`TOP SOURCES` — all 20 rows read `UNCLASSIFIED`.
+`KEY SUBJECTS` — **`PERSON al golfo persico 1`**: the Persian Gulf typed as a person.
+`VOICE MIX · WHO SPEAKS?` — *"unknown 4 · **0%** of attributable voices are Iran's own press · `THIN`
+· 0 of 2 attributable voices are domestic. Loudest outsider: Argentina (1). 2 of 4 voices carry no
+outlet origin — excluded from these ratios, never assumed."* — an n=4 denominator sitting under a
+20-source / 33-receipt panel. Batch-1 defect 12 CONFIRMED.
+
+### CONTENT INVENTORY — surface C: Iran country brief (U4) — **the trust failure**
+
+Reached via `Go to Iran · COUNTRY BRIEF →`; produced the **compound-focus trap** first
+(`COUNTRY Iran` + `THEME Trump Halts Iran Strikes` both live) and needed the theme chip cleared.
+
+- `3,247 signals` · `8 THREADS` · Atlas Topics 12 · Source Mix 10
+- `NARRATIVE THREADS` (8): Iran Threatens Ukraine Over Ship Attack 74 · Iran's Pickaxe Mountain
+  Threat 24 · US Strikes Iran Seventh Night 158 · Iran Oil Sales During War 37 · Multiple Global
+  Events: Quake, Lawsuits, Politics 49 · **Jordan Intercepts Iranian Missiles 17** · Iran Hormuz
+  Strait Tensions 17 · Iran Attacks UAE Tankers 16
+- `PUBLIC ATTENTION people-side proxy` — the *"not a population-normalized opinion poll"* caveat
+  renders ✓; `WIKI` — *"No Wikipedia pageview data for this proxy."* ✓
+- `FORUM UNVERIFIED` ✓ labelled
+- **`TOP PUBLISHERS who's covering this country`: `irna.ir` **495 signals** (#1 by a factor of 14) ·
+  bluesky 36 · `arabic.rt.com` **31** · aljazeera.com 25 · haberler.com 23 — rendered as plain
+  `<span class="source-name">` text with NO ownership badge of any kind.**
+- **`VOICE MIX` IS ABSENT FROM THE IRAN BRIEF ENTIRELY** (`innerText.indexOf('VOICE MIX') === -1`).
+  Colombia, Philippines, DR Congo and Indonesia all render it. **Root cause read from the network +
+  API:** `GET /api/v2/voice-mix?hours=168&country=IR` fired 4× (3 aborted, 1 → 200), and the payload
+  is `{"contract":"voice-mix-v0","degraded":true,"reason":"db_busy","detail":"voice-mix aggregation
+  timed out under database load — retry shortly"}`. **The honest-degradation contract exists in the
+  payload and the UI drops it silently** — no "unavailable" line, no reason, nothing.
+
+**So on the one country where ownership IS the answer, the ownership panel renders nothing, and IRNA
+— Iran's state news agency, supplying 15% of the country's entire 24 h corpus — is presented as the
+top outlet "covering this country" with no marker.**
+
+### State-media audit, whole-DOM, whole-batch
+`document.querySelectorAll('[class*="tier"],[class*="state-media"],[title*="state" i]')` → **6 hits,
+all false positives** (`country-pip US`, `person-pip states maria jose knight`, matrix headers).
+**Zero state-media or STATE-tier elements rendered anywhere.** Observed unmarked in this batch:
+`irna.ir` (495 sig), `arabic.rt.com` (31), `english.pravda.ru`, `tass.com`, `aa.com.tr`,
+`english.news.cn`, and — in the live signal stream at 43 s and 53 s — `IRNA.IR` and `RUSSIAN.RT.COM`
+as bare uppercase outlet names with a `◇` pin and no badge.
+**Structural cause, read from source:** `resolveTierChip` (`lib/sourceProvenance.ts`, backed by
+`lib/sourceTiers.ts` whose `STATE_DOMAINS` / `STATE_WORDS = /\b(rt)\b/` do cover RT) is imported by
+**exactly two components — `Briefing.tsx` (the L1 Brief) and `WorkbenchPanel.tsx`.** The L2 console's
+thread detail uses a different field (`source_family` → `Unclassified`) and the signal stream uses
+none. **The 2026-07-20 P0 fix shipped on L1 and Workbench; the L2 analyst console never got it.**
+
+### N1 — NAV-LOSS ✱
+**Promised:** 6 threads + 12 media signals. **Delivered on arrival:** 0. Search input `""`, dropdown
+gone, right rail contains **0 of 5** siblings (verified by string match).
+**Concretely lost:** *US Military Strikes on Iran* (275) · *US Strikes on Iran* (244, court-FAILED) ·
+*US-Iran Strikes Escalate* (226, court-FAILED) · *Jordan Intercepts Iranian Missiles* (170) ·
+*US Strikes Iran Third Night* (168, court-FAILED) · and all 12 media signals **including the entire
+Oman/Hormuz Gulf-mediation strand**, which is the only Gulf/Arab framing the query ever saw.
+
+### NEW DEFECT — thread SHREDDING, and a 10× count divergence for the same thread
+The same US-Iran story is served as **at least 18 distinct threads across three doors, none of which
+cross-references another**: the query dropdown offers 6; searching `Iran` offers 4 completely
+different ones (*Iran Attack on US Bases* 4,953 · *Trump Threatens Iran* 3,880 · *Iran Negotiations,
+Ukraine Civilian Casualties, Danube Shipwreck* 3,693 · *Trump escalates Iran tensions over Houthi
+attacks* 1,913); the Iran brief lists 8 more. And **`Jordan Intercepts Iranian Missiles` reads
+170 signals in the search dropdown and 17 in the country brief** — the same thread, one order of
+magnitude apart, one click apart. Batch-1 defect 5 in a sharper form. Note also that three of the
+search-`Iran` threads (4,953 / 3,880 / 3,693) each exceed Iran's entire 24 h corpus of 3,247.
+
+### Score **0** · API 0 · **SAME** · not piloted
+The criteria's explicit auto-fail fires: *"FAIL (score 0 regardless of ROR) = presenting IRNA or
+PressTV as 'Iran's press' with no ownership marker."* The Iran brief ranks `irna.ir` first under
+*"who's covering this country"* with no marker, `arabic.rt.com` third likewise, and the Voice Mix that
+would have carried the ownership ratio is **silently omitted over a `degraded: db_busy` payload**.
+Independently, level 2's own requirement — *"three framings present with receipts"* — fails outright:
+all 30 rendered receipts are Hispanophone third-party press.
+**Recorded for fairness: retrieval was the best in the batch (ROR@20 = 1.00, ROR@30 = 1.00, one
+coherent story, real dates and attributions).** This is a pure ownership-and-presentation 0, not a
+retrieval 0 — and it is the same class as GQ-03's 0 in batch 1: the payload knows, the pixels don't.
+
+---
+
+## GQ-07 — Hormuz tanker / naval mine: independent confirmation, or one source?
+
+**Typed (U1):** `tanker exploded naval mine Strait of Hormuz Iranian media`
+**Auto-scope rendered:** `Filtering to: Iran · results scoped to this country`.
+
+### CONTENT INVENTORY — surface A: search dropdown
+
+**LIVE THREADS ×6, five carrying a court dot and four of those reading "did not match":**
+Iran Attacks UAE Tankers 165 (⬤ did not match) · US Blockade Iran Strait 149 · Sanctions and
+diplomatic pressure (⬤ did not match) · US Attacks Iran and Naval Blockade 142 (⬤ did not match) ·
+**Strait of Hormuz De-mining 123** (⬤ did not match) · Iran Hormuz Strait Tensions 102 · Oil and gas
+supply risk (no dot) · US Resumes Iran Naval Blockade 99 (⬤ did not match).
+
+**MEDIA SIGNALS ×12 — 0/12 about the mine claim.** The lane returned the identical Oman-mediation set
+served for GQ-06, plus a bluesky war-crimes post. The raw floor is empty for this question.
+
+### CONTENT INVENTORY — surface B: thread detail, *Strait of Hormuz De-mining* (123 signals)
+
+`Global · 123 signals · Last 24h · active since Jun 30 · HOT WINDOW`, body `1 COUNTRIES · 12 SOURCES`,
+*"14 of 123 signals are geo-attributed"*, `TOP 1 OF 1 COUNTRIES · Iran 14 sig · 100%` — the same
+invisible `country_code=IR`; focus bar again shows `THEME` only.
+
+**All 14 receipts rendered. ROR@14 = 13/14 = 0.93** (the sole outlier is *"Iran: US missile hit the
+island of Qeshm, near the Strait of Hormuz"*, inewsgr.com, Jul 23 — a different event, 3 days earlier).
+
+**The 13 on-topic receipts are one claim, twelve Greek outlets, one origin country, ten hours:**
+
+| headline as rendered | outlet | stamp | attributes the claim? |
+|---|---|---|---|
+| Explosion on oil tanker in the Strait of Hormuz after hitting a naval mine | achaianews.gr | Jul 26 18:00 | no |
+| **Iranian media:** Explosion on tanker after hitting a sea mine in the Strait of Hormuz | ertopen.com | Jul 26 13:30 | **yes** |
+| Explosion on oil tanker in Strait of Hormuz after hitting mine | e-radio.gr | Jul 26 11:30 | no |
+| **Iranian media:** Tanker hit a mine in the Strait of Hormuz | kathimerini.gr | Jul 26 10:45 | **yes** |
+| Tanker exploded after hitting a naval mine in the Strait of Hormuz | huffingtonpost.gr | Jul 26 10:45 | no |
+| Strait of Hormuz: Tanker that hit naval mine exploded | dnews.gr | Jul 26 10:30 | no |
+| Tanker exploded in the Strait of Hormuz – **Iranian media report** mine strike | lifo.gr | Jul 26 09:00 | **yes** |
+| Iran: Oil tanker explodes after hitting mine in Strait of Hormuz | news247.gr | Jul 26 09:00 | no |
+| Iran: Explosion on oil tanker in the Strait of Hormuz after hitting a naval mine | tanea.gr | Jul 26 08:45 | no |
+| **Iranian media:** Explosion on tanker that hit a mine in the Strait of Hormuz | inewsgr.com | Jul 26 08:30 | **yes** |
+| Explosion on tanker in the Strait of Hormuz that hit a naval mine | inewsgr.com | Jul 26 08:30 | no |
+| Iran: Oil tanker exploded in the Strait of Hormuz – Struck a naval mine | topontiki.gr | Jul 26 08:30 | no |
+| Iran: Oil tanker exploded after hitting naval mine in Strait of Hormuz | newsbomb.gr | Jul 26 08:00 | no |
+
+**The answer to the gold question is legible on that list** — 12 outlets, **one** origin country, a
+ten-hour burst, and 4 headlines naming *Iranian media* as the origin — but **Atlas asserts nothing
+about it.** Whole-page string test on the arrival surface: `/corrobor/i` **false**, `/syndicat/i`
+**false**, `/independen/i` **false**. There is **no corroboration verdict, no syndication marker, no
+distinct-origin-country count, no independence gate** anywhere on the surface.
+
+**Honesty chips AS RENDERED:** `NEW` · `HOT WINDOW` · *"14 of 123 signals are geo-attributed"* ·
+`DISCUSSION · UNVERIFIED` · *"Extended channels unavailable for this thread type."* ·
+**`VOICE MIX · WHO SPEAKS` — *"Voice mix unavailable: no typed evidence members recorded for this
+thread in this window (the member projection may lag the engine)"*** — a genuinely honest degraded
+state, and the exact opposite of GQ-06's silent omission on the Iran brief. Same panel, two
+degradation behaviours; the difference is worth fixing in one direction.
+**Absent: coherence warning; label-court status.** The court's *"did not match its receipts"* is
+correct here — the label *De-mining* describes an operation these receipts do not report — and it
+does **not render on the detail panel at all**.
+
+`TOP SOURCES` 12 rows, all `UNCLASSIFIED`, all Greek. `KEY SUBJECTS`: donald trump 3, benjamin
+netanyahu 2 — neither appears in any receipt. `DISCUSSION · UNVERIFIED`: 6 items, **0 on-topic**
+(Corinthia factory explosion, Trump/F-35 Turkey, Colombia–Nicaragua embassies, Greek street markets,
+a Halkidiki makeup post, the Japan earthquake) — the same Greek discussion blob batch 1 saw on GQ-02.
+
+### N1 — NAV-LOSS ✱
+**Promised:** 6 threads. **Delivered:** 0 (search input `""`, 0/5 siblings on arrival).
+**Concretely lost:** *Iran Attacks UAE Tankers* (165) · *US Blockade Iran Strait* (149) ·
+*US Attacks Iran and Naval Blockade* (142) · *Iran Hormuz Strait Tensions* (102) · *US Resumes Iran
+Naval Blockade* (99) — **five sibling Hormuz threads, i.e. precisely the corpus an independence check
+would have to cross-read.** The one question in the set that is *about* triangulation is answered on a
+surface from which triangulation is unreachable.
+
+### Score **1b** · API 0 · **UI-BETTER** · not piloted
+The inverted FAIL does **not** fire: Atlas never returns `established`, and never presents the
+twelve Greek outlets as twelve confirmations — it presents them as twelve receipts and says nothing.
+Level 2 is blocked by the criteria's own conjunct (*"PASS = level ≥2 **AND** a corroboration verdict
+of 'unverified' or 'contested'"*): there is no verdict. 1b because the rendered receipts, read by a
+human, substantively answer the question — one origin country, one ten-hour window, four explicit
+*"Iranian media:"* attributions.
+*Rubric-boundary note, same class as batch 1's on GQ-02: v2 has no rung for "correct on-topic thread,
+informed receipts, and silence exactly where the verdict IS the question." 1b is the closest honest
+rung and is scored as such; the thread's ROR@14 = 0.93 is recorded so the retrieval half is not lost.*
+
+---
+
+## GQ-08 — Indonesia: BI governor's sudden exit and the rupiah
+
+**Typed (U1):** `Indonesia central bank governor sudden exit rupiah`
+**Auto-scope rendered:** `Filtering to: Indonesia · results scoped to this country`.
+
+### CONTENT INVENTORY — surface A: search dropdown
+
+**LIVE THREADS ×2, BOTH carrying the court dot "This label did not match its receipts":**
+*Bank Earnings Growth 2026* — 78 signals · Business & Markets · partial match ·
+*Donny Ermawan Appointed URI Governor* — 17 signals · Politics & Governance · partial match.
+**Neither is the BI governor's exit.**
+
+**MEDIA SIGNALS ×12, all `ID`-tagged, all Indonesian-language — 10/12 on-topic (ROR 0.833)**, and
+they answer **both** strands with figures:
+
+- **"IHSG & Rupiah Anjlok Usai Perry Warjiyo Mundur dari Gubernur BI, PDIP Dorong Pemerintah Gerak
+  Cepat"** — tribunnews.com · chip `Policy Uncertainty` — *stocks and rupiah slump after Perry
+  Warjiyo steps down as BI governor*
+- **"Penyebab Perry Warjiyo Mundur dari Gubernur BI Jadi Sorotan, Benarkah Karena Rupiah Tembus
+  Rp18.000?"** — tribunnews.com — *the reason for his exit under scrutiny: was it the rupiah breaking
+  18,000?* ← the "why did he leave suddenly" half, posed as a question, not asserted
+- **"Sehari Perry Warjiyo Cabut dari Bank Indonesia, Rupiah Anjlok Rp18.083"** — tribunnews.com
+- **"Rupiah Jebol Dekati Rp18.100 per Dolar AS, Tertekan Isu Gubernur BI"** — okezone.com
+- **"Rupiah Hari Ini Merosot ke 18.083 per Dolar AS, Pasar Menanti Putusan The Fed"** — liputan6.com
+- "Rupiah Selasa ditutup Rp18.083 imbas potensi The Fed tahan suku bunga" — antaranews.com
+- **"Menerka Reaksi Pasar jika Thomas Djiwandono Jadi Gubernur BI: Pasar Bisa Menghukum, Rupiah
+  Melemah"** — tribunnews.com · chip `Banking Institutions` — *the succession risk*
+- **"Rupiah Ditutup Melemah, Ibrahim: Pasar Menunggu Penunjukkan Gubernur Bank Indonesia Definitif"**
+  — tribunnews.com
+- **"Warisan Perry Warjiyo Usai Mundur dari Gubernur BI: BI Rate Naik Drastis, QRIS Hingga Rupiah
+  Melemah"** — tribunnews.com — *his legacy*
+- "Bukan Hanya dengan Dolar, Rupiah Habis Dihajar Kuwait dan Dolar Brunei" — tribunnews.com
+
+Off-topic 2/12, both `rupiah`-as-a-currency-amount substring matches (*"Reformasi BGN selamatkan
+ratusan miliar rupiah"*, *"Aset Tanah Senilai Miliaran Rupiah Dikembalikan Kejari"*).
+**Outlet concentration, unmarked: 9 of 12 rows are tribunnews.com.** Distinct outlets = 4
+(tribunnews 9, antaranews 2, liputan6 1, okezone 1), **all Indonesian-origin**. The criteria's
+*"at least one non-Indonesian analysis piece"* is **absent**.
+
+### CONTENT INVENTORY — surface B: *Bank Earnings Growth 2026* (78 signals) — **the unflagged blob**
+
+`Global · 78 signals · active since Jul 17 · HOT WINDOW`, `1 COUNTRIES · 10 SOURCES`,
+*"15 of 78 signals are geo-attributed"*, `TOP 1 OF 1 COUNTRIES · Indonesia 15 sig · 100%`.
+
+**All 15 receipts rendered. 0 of 15 are about bank earnings. 0 of 15 are about the BI governor.**
+
+| cluster | n | share | receipts |
+|---|---|---|---|
+| **Dude Harlino / PT DSI Rp5.25 bn fee restitution** (an actor returning brand-ambassador fees in a sharia-investment fraud case) | **10** | **67%** | cnnindonesia, jawapos ×2, tribunnews ×3, detik, jpnn, sindonews, tempo, republika |
+| Banyuasin notary accused of embezzling a Rp1.5 bn land certificate | 3 | 20% | tribunnews ×2 (near-duplicate headlines), kompas |
+| Labusel police officer, Rp1.9 bn social-aid corruption | 1 | 7% | kompas |
+| Tugure investment results vs H1 target | 1 | 7% | kontan.co.id |
+
+**The label describes 1 of 15 receipts. The glue is the token `Rp<n> Miliar` — rupiah sums in
+unrelated crime stories. ROR against the gold question = 0/15 = 0.00.**
+**Honesty chips AS RENDERED:** `NEW` · `HOT WINDOW` · *"15 of 78 signals are geo-attributed"* ·
+`DISCUSSION · UNVERIFIED` · relationship churn note. **NO coherence warning. NO label-court chip —
+although the dropdown dot said "This label did not match its receipts", i.e. the court caught this
+blob and the detail panel hides the verdict.**
+`VOICE MIX` — *"unknown 4 · **100%** of attributable voices are Indonesia's own press · `THIN` · 1 of
+1 attributable voices are domestic. 3 of 4 voices carry no outlet origin."* A 100% claim computed on
+**n = 1** rendered beneath a 10-outlet / 15-receipt panel.
+`KEY SUBJECTS` — `PERSON susatyo condro 4`; the activity-timeline subject lines are `kejari labusel`
+(a district prosecutor's office) and `susatyo condro`.
+
+### CONTENT INVENTORY — surface C: Indonesia country brief (U4)
+
+`3,360 signals` · **`17 THREADS`** · Source Mix 15, 4% foreign.
+`NARRATIVE THREADS` (8 shown): Madiun Ammunition Depot Explosion 36 · KPK Names West Lombok Regent
+Corruption Suspect 46 · Sampang Child Sexual Abuse 15 · **IHSG Menguat 19** · SDN Srengseng Sawah Bomb
+Threat 18 · **Harga Emas Antam Harian 21** · Indonesian Police and Government Scandals 15 · Febrie
+Adriansyah Case 56. **None is the governor's exit** — and two finance threads exist (the stock index,
+the daily gold price), so the lane is alive and simply did not form this story.
+`VOICE MIX` renders ✓ — **"96% covered by its own press · 7604 of 7933 attributable voices are
+domestic · Loudest outsider: MY (35)"**, ownership-based.
+`TOP PUBLISHERS`: tribunnews.com 211 · kompas.com 53 · antaranews.com 25 · rri.co.id 22 ·
+liputan6.com 19 — genuinely domestic ✓.
+`KEY SUBJECTS` entity noise: **`PERSON idris bireuen serambinews`** and **`PERSON aceh serambinews`**
+(an outlet name fused to a place), **`PERSON ratulangi manado`** (an airport), **`PERSON francis scott
+key`** (the author of the US anthem, ranked a top Indonesian subject).
+`RECENT SIGNALS` — six consecutive antaranews.com rows, none about the governor.
+**Door-to-door contradiction:** searching `Indonesia` offers 6 threads at 901/858/749/400/347/297
+signals — two Spanish-language football threads (*Piala Dunia 2026*, *Marruecos Golea a Canadá*) and
+the Spain/France wildfire thread among them — while the brief lists 8 at 15–56.
+
+### N1 — NAV-LOSS ✱
+**Promised:** 2 threads + 12 media signals, 10 of them the answer. **Delivered:** 0. The country brief's
+`RECENT SIGNALS` is a disjoint set. **All ten receipts carrying the rupiah figures (Rp18,083 /
+Rp18,100), the resignation, the succession risk and the legacy exist only inside the destroyed
+dropdown.**
+
+### Score **1b** · API 0 · pilot 1 · **UI-BETTER vs API; refined vs pilot (1 → 1b)**
+1b is the **pre-registered** answer for this exact shape — the frozen rubric names it: *"1b … the
+GQ-08 case: 11/12 Indonesian receipts covering both strands."* I measure 10/12 rather than 11/12; the
+shape is unchanged. Level ≥2 is capped by G1 (no governor-exit thread at any door) and, more bluntly,
+by there being no on-topic thread at all.
+**Recorded separately and counted in the blob tally: the offered rank-1 thread would score 0 on its
+own** under the level-0 clause *"a confidently-presented wrong thread, an unflagged blob"* — 3
+unrelated stories, a label matching 1/15 receipts, no coherence warning, court verdict suppressed on
+the panel. **The 1b is carried entirely by the raw lane.**
+
+---
+
+## GQ-09 — Nicaragua: Ortega ends elections — is the domestic press covering it?
+
+**Typed (U1):** `Ortega Nicaragua no more elections`
+**Auto-scope rendered: NONE.** No `Filtering to:` line; instead a `COUNTRIES · NI · Nicaragua` segment.
+
+### CONTENT INVENTORY — surface A: search dropdown
+
+**LIVE THREADS: section absent — zero threads offered** (an honest absence, and correct).
+**MEDIA SIGNALS ×12, all `NI`-tagged — 12/12 on-topic, and 4 distinct stories:**
+
+- **7 of 12 are ONE NPR wire copy verbatim** — *"Nicaragua's President Ortega says there will be no
+  more elections, extending his rule"* at **kasu.org · ualrpublicradio.org · kvnf.org · wnmufm.org ·
+  mynspr.org · ksmu.org · wkyufm.org** — seven US public-radio member stations, one wire.
+  **Repeated-headline share = 7/12 = 0.583**, far past G2's 0.35 threshold, **with no syndication
+  marker of any kind.** Their category chips even disagree with each other on the same text
+  (`Sovereignty` ×4, `Leadership` ×1).
+- 2 of 12 are one Conversation piece — *"Daniel Ortega of Nicaragua plans to scrap elections – what
+  that says about today's autocrats"* at theconversation.com and qcostarica.com
+- *"Former Costa Rican presidents intensify condemnation of Daniel Ortega for attempting to abolish
+  elections"* — qcostarica.com
+- *"Au Nicaragua, la « dynastie » Ortega-Murillo annonce la fin des élections"* — a French lemmy post;
+  and *"Nicaragua : Daniel Ortega annonce la fin des élections…"* — africalog.com
+
+**Distinct origin countries in the raw lane: US (one wire × 7), CR, GB/AU, FR. Zero Nicaraguan.**
+Every row is tagged `NI` — the *subject* country — which reads on screen as Nicaraguan coverage.
+
+### CONTENT INVENTORY — surface B: Nicaragua country brief (U4) — **the surface that answers**
+
+- `74 signals` · **`Narrative Threads 0`** · `0 THREADS` · **`Source Mix 10 · 73% foreign`**
+- **`VOICE MIX` — "27% covered by its own press · 121 of 450 attributable voices are domestic.
+  Loudest outsider: BR (42)."** ← **computed by OWNERSHIP, named outsider, rendered on screen.**
+  This is precisely what the criteria demands, and the WAVE-4 FAIL clause does **not** fire:
+  jornada.com.mx, expreso.ec, eltiempo.com and estadao.com.br are Spanish/Portuguese-language and are
+  **not** counted as domestic; the loudest outsider is Brazil.
+- **`TOP PUBLISHERS` (all 10 expanded): `nuevaya.com.ni` 14 · `confidencial.digital` 8 ·
+  jornada.com.mx 3 · tvn-2.com 3 · expreso.ec 2 · qcostarica.com 2 · lenouvelliste.com 1 ·
+  ebc.com.br 1 · estadao.com.br 1 · eltiempo.com 1 — exactly 2 of 10 Nicaraguan-origin, matching the
+  criteria's measured "539 outlets covering Nicaragua, 2 of them Nicaraguan".**
+- **`RECENT SIGNALS`, 4 h ago: `confidencial.digital` — *"El fin de las elecciones: Dictadura prepara
+  reforma «remate» a su Constitución «Chamuca»"*** — **a Nicaraguan-origin outlet, in Spanish, on
+  this exact story.** Also confidencial.digital *"Maurice Ortega Murillo officially appointed as
+  'presidential delegate' for sports"* and tvn-2.com *"Migration expels public security members due to
+  threats and deportations to Nicaragua"*.
+- `PUBLIC ATTENTION` proxy caveat ✓; content is football (`chelsea - ws wanderers`, `athletics - red
+  sox`) and `terremoto`; `WIKI` *"No Wikipedia pageview data for this proxy."* ✓
+- `FORUM UNVERIFIED` ✓ labelled — carries a Folha opinion column (Sylvia Colombo, *"Ortega quer a
+  Nicarágua para si, e ninguém vai fazer nada"*) and, alongside it, an unrelated `#SDCC2026` comics
+  post matched on the surname **Ortega**
+- `KEY SUBJECTS` — rosario murillo 7, `PLACE republica dominicana` 5, `PLACE america latin` 3,
+  **`PERSON daniel ortega 3` and `PERSON Daniel Ortega 3` listed twice under different casing**,
+  `PERSON Brenda Asnicar 2` / `PERSON Juan Darthés 2` (Argentine actors, unrelated)
+
+**Honest caveat the UI cannot make, and I record it rather than let the number stand alone:**
+`confidencial.digital` is a Nicaraguan outlet operating **in exile**. Atlas's ownership metric counts
+it as domestic voice, which is defensible and is also exactly the distinction a Nicaragua answer turns
+on. The metric has no exile flag; a reader takes 27% at face value.
+
+### N1 — NAV-LOSS ✱ (the one case where the arrival surface also *adds*)
+**Promised:** 12 media signals. **Delivered:** 0 of them; `RECENT SIGNALS` is disjoint. But this is
+the single instance in ten queries where the destination is **better** than what was destroyed: the
+dropdown's 12 rows were 9/12 foreign syndication, while the brief surfaced the ownership ratio and a
+Nicaraguan receipt on the story. **Nothing in the product tells the analyst that, and nothing carries
+the dropdown's Costa Rican and Conversation analysis forward.**
+
+### Score **1b** · API 0 · **UI-BETTER** · not piloted
+The criteria's PASS requires *"the thread AND the measured self-voice ratio"*; there is **no thread**
+(`Narrative Threads 0`, stated on screen), so ≥2 is unreachable by construction. But the clause
+*"an answer that returns rich foreign coverage without surfacing the domestic near-zero scores 1 at
+best"* is **cleared**: Atlas surfaces `73% foreign`, `27% covered by its own press · 121 of 450
+attributable voices are domestic · Loudest outsider: BR (42)`, names the 2 Nicaraguan outlets with
+counts, and renders a domestic receipt on the exact story. The WAVE-4 language-vs-ownership FAIL does
+not fire. **This is the strongest 1b in the run and the closest any query has come to answering the
+question it was actually asked** — it fails the ladder only for want of a thread.
+
+---
+
+## GQ-10 — Romania: PSD legal action against the Bolojan government, coalition + PNRR risk
+
+**Typed (U1):** `Romania PSD legal action Bolojan government coalition PNRR funding`
+**Auto-scope rendered:** `Filtering to: Romania · results scoped to this country`.
+
+### CONTENT INVENTORY — surface A: the analyst's own question
+
+**LIVE THREADS: section absent — zero threads offered.**
+**MEDIA SIGNALS ×8 — 0/8 on-topic (ROR = 0.00).** Every row is a `funding` substring match:
+*"Cost-cutting becomes key funding source for AI and digital transformation - Horváth study"*
+(business-review.eu) and its twin at thediplomat.ro · *"Gura Vaii Wind Project … Gets EUR47M BCR
+Funding"* **listed twice, both zfenglish.com** · *"Romania to receive EUR 2.15 bln in NATO funding for
+fuel pipeline"* **listed twice, both romaniapress.com**, once with the units dropped (*"EUR 2.15"*) ·
+*"GapMinder Leads Seed Funding Round In Croatian healthtech Startup"* · and
+**_"Nadia Comăneci Confirms Funding Secured in Barbosu-Chiles Bronze Medal Battle"_ (forbes.com)**.
+Three duplicate pairs in eight rows. Batch-1 defect 9 reproduced on a new token.
+
+### The reformulation ladder — batch-1 defect 4 CONFIRMED, and it resolves honestly this time
+
+| typed | result |
+|---|---|
+| the full analyst question | 0 threads · 8 media signals, **0/8 on topic** |
+| `PSD Bolojan` | **`No results for "PSD Bolojan"` + `Did you mean: ilie bolojan`** — an honest empty with an escape hatch |
+| `ilie bolojan` | 0 threads · **12 media signals, 6/12 answering the gold question directly** |
+
+**NEW DEFECT observed in that transition: for ~4 s after typing `PSD Bolojan`, the dropdown rendered
+the PREVIOUS query's eight `funding` receipts underneath the new query string**, before settling to
+`No results`. An analyst reading at speed sees another question's answers presented as this one's.
+
+### CONTENT INVENTORY — the `ilie bolojan` receipts (12, all `RO`-tagged, all Romanian-language)
+
+**On-topic 6/12, and between them they answer both halves with figures and attribution:**
+
+- **"Bolojan anunță retragerea HG privind strategia biodiversităţii, după plângerea depusă de PSD:
+  «Se joacă cu 1,1 miliarde de euro»"** — **digi24.ro** — *Bolojan withdraws the biodiversity-strategy
+  decision after PSD's formal complaint: "they are playing with **€1.1 billion**"*
+- **"Reacția Guvernului Bolojan, după ce PSD a atacat în justiție mai multe hotărâri: «**Trei jaloane
+  PNRR sunt atacate.** PSD periclitează interesele României»"** — **ziare.com** · chip `Crime` —
+  *the government's reaction after PSD **took several decisions to court**: "**three PNRR milestones
+  are under attack**"* ← the EU/PNRR-exposure half, exactly
+- **"Motreanu acuză PSD că blochează PNRR în timp ce Bolojan încearcă să recupereze întârzierile de
+  ani de zile"** — ziare.com · chip `Victim`
+- **"PSD curtează UDMR după blocajul Bolojan. Kelemen Hunor: «Epoca miracolelor s-a terminat»"** —
+  ziare.com · chip `Poverty` — *PSD courting UDMR after the Bolojan blockage* ← the coalition-risk half
+- **"PSD acuză Guvernul demis Bolojan de încălcarea Constituției"** — caon.ro · chip `Environment` —
+  note *Guvernul **demis*** (the dismissed government): the coalition risk has already resolved
+- "Ilie Bolojan îi răspunde lui Grindeanu în scandalul proiectului pe biodiversitate" — stiripesurse.ro
+
+Adjacent 3/12 (Ciucu on the anti-Bolojan wing inside PNL; Grindeanu blaming the government for the
+largest medical strike in 15 years; the Govor open letter). Off-topic 3/12 — Moldovan PM Vasile
+Tofan's Bucharest visit, ×3 across news.yam.md ×2 and ziuaconstanta.ro.
+**9 distinct outlets, 8 of them Romanian-origin, 12/12 in Romanian.** Category chips are wrong on
+essentially every political row (`Crime`, `Victim`, `Poverty`, `Environment`, `Children`).
+
+### CONTENT INVENTORY — surface B: Romania country brief (U4)
+
+- `1,636 signals` · **`Narrative Threads 2`** · `2 THREADS` · Source Mix 10, 10% foreign
+- `NARRATIVE THREADS`: **EU Air Defense Aid for Moldova 19** · **Romania Expels Russian Diplomat,
+  Moscow Vows Response 18**. Neither is the PSD story, and neither is claimed to be.
+- **The standfirst names the right person and no thread holds him:** *"…led by Democracy… Most-covered
+  figures: **sorin grindeanu** and marea neagra"*, and `KEY SUBJECTS` ranks **`PERSON sorin grindeanu
+  33` first** — the PSD leader is the single most-covered figure in Romania's 24 h window, with
+  1,636 signals in the country and two threads formed, neither about him.
+- `VOICE MIX` ✓ — **"90% covered by its own press · 7325 of 8113 attributable voices are domestic ·
+  Loudest outsider: DE (102)"**
+- `TOP PUBLISHERS`: digi24.ro 115 · mesagerul.ro 73 · business24.ro 70 · stiripesurse.ro 70 ·
+  ziare.com 55 — the Romanian press is densely indexed, which makes this a **clustering** miss, not an
+  ingestion one, exactly as the answer key predicted
+- **`RECENT SIGNALS`, last row: `digi24.ro` — *"Bolojan announces withdrawal of the Government
+  Decision on the biodiversity strategy, after the complaint filed by PSD: 'They are playing with 1.1
+  billion euros'"*** — the answer receipt reaches the country door, auto-translated with `See original`
+- `KEY SUBJECTS` entity noise: **`PERSON marea neagra 17`** (the Black Sea), **`PERSON south-eastern
+  europe 14`** (a region), `PERSON michael philip 11`, and the casing duplicate `sorin grindeanu 33` /
+  `Sorin Grindeanu 11`
+- **Door-to-door contradiction:** searching `Romania` offers 6 threads at **4,442 / 3,693 / 1,056 /
+  300 / 283 / 269** signals — *Multiple Disasters and Events Across Regions* (court **FAILED**),
+  *Iran Negotiations, Ukraine Civilian Casualties, Danube Shipwreck*, *Wildfires Threaten Bordeaux*,
+  *Russian Drone Attacks on Civilians*, *Ranucci Attack Investigation* (Italian), *White House
+  Confirms Zelenskyy-Trump Meeting* — **five of six carrying court dots, none about Romanian
+  politics, and four of six larger than Romania's entire 1,636-signal window.**
+
+### Surface C — "Open the story" (the flagship NL surface): **the most honest surface in the batch**
+
+`POST /api/v2/research/plan → 200 OK` **twice for one click** (the double-fire half of batch-1 defect
+6 CONFIRMED; **the 429 half did NOT reproduce this session**). The panel sat on
+`BUILDING RESEARCH PLAN…` for **~45 s**, then rendered:
+
+> `GAP` — **Thread lane unavailable (TimeoutError); coverage unknown.** · `THREAD` · 0.12
+> `GAP` — **Semantic signal headline unavailable (ann_timeout). This is a failed lookup, not a
+> measured absence.** · `SEMANTIC` · 0.12
+> `▾ ARCHIVE ACTIVITY · TIME TRAVEL` — `MAY 4 – JUL 3 · 61D · 60 ACTIVE DAYS · PEAK MARKED · CLICK A
+> BAR TO SEE THAT DAY`
+> `▾ LOW-CONFIDENCE CANDIDATES — ALL ACCESSIBLE (10)` — every row tagged `WEAK` with its semantic
+> similarity, score and movement: Ukrainian Drone Attacks Hit Russian Oil `SEMANTIC 0.81` 0.25
+> COOLING · Russia Threatens Civil Shipping in Black Sea 0.81/0.24 SURGING · Multiple Disasters
+> 0.81/0.24 · EU Sanctions, Shadow Fleet, and Baltic Security Moves 0.80/0.23 · Russia-Ukraine War:
+> Putin, Budget, Allies, Defense 0.80/0.23 · **Pomerantz LLP Class Actions** 0.81/0.23 · EU 21st
+> Russia Sanctions Package 0.80/0.23 · Demands for Release of Detainees 0.80/0.22 · **Health and
+> Wellness Tips** 0.80/0.21 · **Sonam Raghuvanshi Bail Upheld** 0.81/0.21
+> `12 CANDIDATES EVALUATED · 2 PRIMARY · 10 LOW CONFIDENCE · 12 ACCESSIBLE · PARTIAL LEDGER · LANE
+> DEGRADATION DISCLOSED`
+
+**It distinguishes a failed lookup from a measured absence in so many words, discloses lane
+degradation, labels every candidate WEAK, and reconciles its ledger — and it delivers nothing,
+because both retrieval lanes timed out and 0 of the 10 candidates are Romanian.** The most honest
+surface in Atlas and the least useful, in the same paint.
+
+### N1 — NAV-LOSS ✱
+**Promised** (across three phrasings): 6 threads on `Romania`, 12 receipts on `ilie bolojan`, 6 of
+them the answer. **Delivered on arrival:** 0 — search input `""`, none of the four key Romanian
+receipts present. The country brief independently re-surfaces **one** of them (the digi24 biodiversity
+withdrawal, translated); the PNRR-milestone receipt, the UDMR-courtship receipt and the
+constitutional-violation receipt survive nowhere.
+
+### Score **1b** · API 0 · known answer key 1 · **UI-BETTER vs API; refined vs key (1 → 1b); NO RECALL MOVEMENT**
+Still no thread specific to the PSD legal offensive at any of four doors, and the absence is stated
+honestly at each (`No results for "PSD Bolojan"` + a working suggestion; `Narrative Threads 2` with
+both named; the research plan's two explicit `GAP` lines). The rendered receipts substantively answer
+both halves — **€1.1 bn withdrawn decision, three PNRR milestones under legal attack, PSD courting
+UDMR after the blockage, the government dismissed** — each attributed to a named Romanian outlet.
+That is 1b, not 2, and **1b is the same rung as the key's 1**: the criteria calls movement 1 → ≥2
+"the single cleanest recall-improvement signal in the whole set", and **there is none.**
+**G6 not observed this run:** the salary-law / unions adjacent thread (dt-7888 `failed` globally vs
+dt-4168 `entailed` country-scoped) was **not offered at any door**, so the contradictory-court-verdict
+case could not be re-checked. Recorded as not-reproduced, not as fixed.
+
+---
+
+## ═══ BATCH 2 SUMMARY ═══
+
+| Query | API | Pilot/key | **v2** | Divergence vs API | N1 | Why (one line) |
+|---|---|---|---|---|---|---|
+| **GQ-06** US-Iran framing | 0 | — | **0** | SAME | ✱ | ROR@20 = 1.00, but all 30 receipts are Hispanophone third-party press and **`irna.ir` (495 sig) tops "who's covering this country" unmarked** while Voice Mix is silently dropped on a `degraded: db_busy` payload. |
+| **GQ-07** Hormuz mine | 0 | — | **1b** | UI-BETTER | ✱ | 13/14 receipts = one claim, 12 Greek outlets, **one origin country, ten hours, 4 saying "Iranian media:"** — the answer is visible and Atlas renders no verdict, no syndication marker, no independence count. |
+| **GQ-08** Indonesia BI | 0 | pilot 1 | **1b** | UI-BETTER | ✱ | The rubric's own named 1b: 10/12 raw receipts carry both strands (Rp18,083 / Rp18,100, exit, succession, legacy) — while the rank-1 thread is a **0/15 blob glued on `Rp… Miliar`**. |
+| **GQ-09** Nicaragua | 0 | — | **1b** | UI-BETTER | ✱ | No thread and Atlas says so; **27% self-voice by ownership, 73% foreign, outsider BR (42), 2/10 Nicaraguan publishers named, and confidencial.digital on the exact story.** |
+| **GQ-10** Romania PSD | 0 | key 1 | **1b** | UI-BETTER | ✱ | Still no thread at four doors, honestly stated at each; receipts give €1.1 bn + three PNRR milestones + the UDMR courtship — **reachable only via a `Did you mean` detour.** |
+
+**Metrics (batch 2, all 5 are `should_answer`; no controls in this batch).**
+
+- **Answered rate** (≥2): **0/5 = 0%**
+- **Informed rate** (≥1b): **4/5 = 80%** — GQ-07, GQ-08, GQ-09, GQ-10
+- **Honesty rate** (honest failure ÷ non-answered): **4/5 = 0.80** — GQ-07/08/09/10 honest; GQ-06 misleading
+- **NAV-LOSS count: 5/5**
+- **Unflagged-blob count: 1** — GQ-08 *Bank Earnings Growth 2026* (label matches 1/15 receipts, 3 unrelated stories, court verdict FAILED and suppressed on the panel)
+- **NEW tally — invisible court verdict: 3/5** — GQ-06, GQ-07, GQ-08 each opened a thread the label court had flagged, and **none of the three detail panels rendered the verdict**
+- **Divergence vs API:** UI-BETTER ×4, SAME ×1, UI-WORSE ×0
+- **Divergence vs pilot/key** (2 overlapping): both refined 1 → 1b, neither moved a rung
+
+**RUNNING TOTALS, batches 1–2 (10 queries, all `should_answer`, no controls yet).**
+
+| metric | batch 1 | batch 2 | **running** |
+|---|---|---|---|
+| Answered (≥2) | 1/5 = 20% | 0/5 = 0% | **1/10 = 10%** |
+| Informed (≥1b) | 4/5 = 80% | 4/5 = 80% | **8/10 = 80%** |
+| Honesty (honest ÷ non-answered) | 3/4 = 0.75 | 4/5 = 0.80 | **7/9 = 0.78** |
+| NAV-LOSS | 5/5 | 5/5 | **10/10** |
+| Unflagged blobs | 1 | 1 | **2** |
+| Divergence vs API | B×3 S×2 W×0 | B×4 S×1 W×0 | **UI-BETTER ×7 · SAME ×3 · UI-WORSE ×0** |
+
+Level distribution so far: **2 ×1 · 1 ×1 · 1b ×6 · 0 ×2.**
+
+### Batch-1 findings: CONFIRMED, EXTENDED or CONTRADICTED
+
+| batch-1 finding | batch 2 |
+|---|---|
+| **1. N1 root cause — opening a result clears the search input; no arrival surface has a related-results affordance** | **CONFIRMED 5/5**, `input.value === ""` verified on every query, 0 siblings present on arrival every time. **EXTENDED:** GQ-09 is the first case where the destination is *better* than what it destroyed, and nothing tells the analyst that. |
+| **2. Invisible, unclearable country auto-scope** | **CONFIRMED**, now with the request in hand: `theme/dynamic-topic-121?hours=24&country_code=IR` fired twice while the focus bar showed `THEME` only. It cut GQ-06's thread to `1 COUNTRIES · 33 of 490` and GQ-07's to `1 COUNTRIES · 14 of 123`. GQ-09 is the first query in ten with **no** auto-scope at all. |
+| **3. Coherence does not fire on real blobs** | **CONFIRMED and sharpened.** GQ-08's 3-story blob renders no coherence warning — **and the label court HAD caught it** (`"This label did not match its receipts"`), so the failure is now demonstrably one of *suppression at the detail panel*, not of detection. 3/5 opened threads hid a court verdict. |
+| **4. Search recall collapses as the question gets more complete** | **CONFIRMED.** GQ-10: the full question → 0 threads / 0-of-8 receipts; `PSD Bolojan` → honest `No results`; `ilie bolojan` → 6/12 on target. GQ-06's fuller phrasing likewise returned narrower material than plain `Iran`. |
+| **5. Door-to-door count contradiction** | **CONFIRMED ×3 and EXTENDED to a same-thread divergence:** *Jordan Intercepts Iranian Missiles* reads **170** signals in search and **17** in the Iran brief. Search `Romania` and `Indonesia` both offer threads larger than the country's whole 24 h corpus. |
+| **6. `/research/plan` → 429, double-firing** | **PARTIALLY CONTRADICTED.** The double-fire is confirmed (2 POSTs per click) but **both returned 200 OK — no 429 this session.** The plan did render, after ~45 s, and was the batch's most honest surface. The failure mode has moved from *rate-limited* to *slow and degraded*. |
+| **7. Category chips systematically wrong** | **CONFIRMED**, new specimens: `ziare.com · Crime` on the PNRR-milestone story, `· Victim` on PSD blocking PNRR, `· Poverty` on the UDMR courtship, `caon.ro · Environment` on a constitutional-violation accusation, `mediapool.bg · Poverty` on the Iran war pause, `zfenglish.com · Ethnicity: Croatian`, and one NPR wire text carrying `Sovereignty` at four stations and `Leadership` at a fifth. |
+| **8. No `⚑ state` chip rendered anywhere** | **CONFIRMED and ROOT-CAUSED.** Whole-DOM query returns **0** state/tier elements across the batch. `resolveTierChip` (`lib/sourceProvenance.ts` → `lib/sourceTiers.ts`, whose `STATE_DOMAINS`/`STATE_WORDS = /\b(rt)\b/` *do* cover RT) is imported by **exactly two components: `Briefing.tsx` and `WorkbenchPanel.tsx`.** **The 2026-07-20 P0 fix never reached the L2 console.** Unmarked this batch: `irna.ir` 495, `arabic.rt.com` 31, `english.pravda.ru`, `tass.com`, `aa.com.tr`, and `IRNA.IR` / `RUSSIAN.RT.COM` in the live stream. |
+| **9. Raw-lane matcher is substring-based and language-blind** | **CONFIRMED.** `funding` matched *Nadia Comăneci Confirms **Funding** Secured* (a gymnastics medal), a Croatian healthtech seed round and a Horváth cost-cutting study — 0/8 on-topic; `rupiah` matched Rp-denominated fraud and land-embezzlement amounts. |
+| **10. Entity-layer corruption** | **CONFIRMED**, new specimens: `PERSON al golfo persico` (the Persian Gulf), `PERSON marea neagra` (the Black Sea), `PERSON south-eastern europe`, `PERSON ratulangi manado` (an airport), `PERSON idris bireuen serambinews` and `PERSON aceh serambinews` (outlet fused to place), **`PERSON francis scott key` ranked a top Indonesian subject**, plus casing duplicates `daniel ortega`/`Daniel Ortega` and `sorin grindeanu`/`Sorin Grindeanu`. |
+| **11. Duplicate request fan-out** | **CONFIRMED**, unchanged: `/theme/{id}/drift` **×6**, `/compare` ×2, `/lineage` ×2, `/theme/{id}` ×3 for one open; `/voice-mix` ×4; `/research/plan` ×2. |
+| **12. Voice-mix panels stale / mis-anchored** | **CONFIRMED**, and now with a **new and worse variant**: GQ-06 renders a `0% · n=2` claim under a 20-source panel and GQ-08 a **`100%` computed on n = 1**; and on the Iran brief the panel is **omitted in silence over a `degraded: db_busy` payload**. GQ-07 shows the correct behaviour exists — *"Voice mix unavailable: no typed evidence members recorded…"* — so the same component degrades honestly in one place and invisibly in another. |
+| **1b as a rung** (batch-1 introduced it on GQ-04/05) | **VINDICATED.** 4 of 5 batch-2 queries land there. The informed rate is 8× the answered rate across ten queries. |
+
+### New defects first observed in batch 2
+
+1. **The label-court verdict is a 7 × 7 px unlabelled dot in search, and vanishes entirely on the
+   detail panel.** Measured: `label-review-chip--dot`, `innerText === ""`, tooltip-only. Three
+   threads I opened were court-**FAILED** and **none** said so on arrival. The strongest honesty
+   signal Atlas computes is the one least visible where it matters.
+2. **`resolveTierChip` is not wired into the L2 console at all** — two importers, both outside it.
+   This is a one-line diagnosis for the standing zero-⚑ finding, and it means the state-media P0 is
+   *shipped but unreachable* from the analyst surface.
+3. **Silent degradation of `/voice-mix`.** The payload says `degraded: true · reason: db_busy ·
+   detail: "voice-mix aggregation timed out under database load"`; the UI renders **nothing** — no
+   heading, no reason. The analyst cannot tell "Atlas has no ownership measurement for Iran" from
+   "the query timed out". The honest string exists elsewhere in the same component.
+4. **The search dropdown renders the previous query's results under the new query text** for ~4 s
+   (`PSD Bolojan` displayed the eight `funding` receipts before settling to `No results`).
+5. **Thread shredding, and a same-thread 10× count divergence.** ≥18 distinct US-Iran threads across
+   three doors with zero cross-reference; *Jordan Intercepts Iranian Missiles* = 170 signals in
+   search, 17 in the country brief.
+6. **Wire syndication is never marked in the raw lane.** 7 of 12 GQ-09 receipts are one NPR copy
+   across seven US public-radio stations; 5 of 12 GQ-06 receipts are one wire; GQ-10 showed three
+   verbatim duplicate pairs in eight rows, one of them with the units silently dropped
+   (*"EUR 2.15 bln"* → *"EUR 2.15"*). D3 is not applied anywhere the analyst can see.
+7. **`/research/plan` takes ~45 s and both retrieval lanes time out**, then reports it impeccably.
+   Worth naming as a defect *and* as the template every other surface should copy.
+
+**What batch 2 adds to the batch-1 thesis.** Batch 1 concluded that the surface holding the answer is
+destroyed by the click that leaves it. Batch 2 sharpens the *second* half: **Atlas increasingly
+measures the right thing and then does not render it.** The label court caught GQ-08's blob and the
+panel hid the verdict. The ownership metric is correct on Nicaragua, Indonesia and Romania and is
+dropped in silence on Iran. The state-media classifier exists, is correct about RT, and is not
+imported by the console. The research plan distinguishes a failed lookup from a measured absence in
+so many words — on the one query where both its lanes timed out. Across ten queries the answered rate
+is 10% and the informed rate is 80%; the gap is not a retrieval gap.
+
+*Batches 3–4 append below this line.*
