@@ -8,26 +8,60 @@ the 2026-07-24..27 L1 blackout.
 Harness: `backend/scripts/measure_claude_cli_latency.py` (re-runnable).
 Wiring: `backend/app/services/insight_llm.py` (`claude_cli` leg, default OFF).
 
-## VERDICT (provisional): FAILOVER LEG, NOT PRIMARY — and live measurement is
-## BLOCKED on re-auth (NEEDS PEDRO)
+## VERDICT (CONFIRMED post-auth, 2026-07-28 PM): FAILOVER LEG, NOT PRIMARY
 
-Every headless `claude -p` call on the M1 currently returns:
+Post-`claude auth login` measurement, production command shape
+(`--safe-mode --tools "" --model haiku`, the exact wired-leg invocation),
+50 sequential calls on the M1 at load ~25:
 
-    rc=1, JSON envelope {"is_error": true, "api_error_status": 401,
-    "result": "Failed to authenticate. API Error: 401 OAuth access token has
-               expired. Re-authenticate to continue."}
+| metric | claude CLI (haiku, safe-mode) | DeepSeek (same prompt) |
+|---|---|---|
+| p50 | **15.8s** | **1.49s** |
+| p95 | 21.6s | 1.66s |
+| min / max | 10.7 / 22.5s | 1.38 / 2.13s |
+| throughput | **3.66 calls/min** | ~40 calls/min |
+| errors / cap hits | 0/50 | 0/10 |
 
-`claude auth status` still reports `loggedIn: true` (claude.ai,
-`subscriptionType: "pro"` — note: status says pro, not max) but the refresh
-token is dead, so real latency/throughput/cap-behavior numbers could not be
-collected. **Pedro: run `claude auth login` on the M1, then re-run the harness
-(commands in its header).** The dead-auth state is itself the strongest
-architecture datum: the CLI leg can silently die the same way a prepaid balance
-does — it must never be the only leg, and its 401 shape is classified as
-exhaustion-of-leg in the wiring (measured envelope frozen in
-`tests/test_insight_llm_cli.py::MEASURED_401_ENVELOPE`).
+- 2,000 nightly court/label calls at 3.66/min = **~9.1h sequential** vs
+  DeepSeek's ~50min → the CLI can NEVER carry the court/label volume as
+  primary. As the low-volume insight-lane failover (handful of calls/day,
+  $0 marginal) it is comfortably viable — exactly what got wired.
+- **No cap behavior observed in 50 sequential calls** (~70k tokens); the
+  insight lane will never approach a session cap. The cap-error shape at real
+  volume remains unobserved — the exhaustion classifier keeps its marker-list
+  + status-code net (401/402/403/429) until one is seen in the wild.
+- Wall time splits ≈ 2-4s process spawn + 6-18s API (haiku 4.5 spends output
+  tokens on reasoning: 579-653 out for a 40-token verdict).
+- End-to-end through the wired leg verified live: `ATLAS_CLAUDE_CLI=on
+  ATLAS_INSIGHT_CHAIN=claude_cli` → `generate_insight` returned
+  `provider=claude_cli`, coherent prose, honest usage (215 in / 271 out),
+  12.2s wall.
+- Quality on the court prompt: verdicts correct (`entailed` + sane reason) on
+  every inspected call, all four models.
 
-## What WAS measured
+### Model + flag economics (single-call, post-auth)
+| config | wall | nominal cost/call | note |
+|---|---|---|---|
+| default model (= **opus-5**) | 25.5s | $1.47 | wrong tier — never let the leg default |
+| haiku, full config (hooks/plugins) | 11.6s | $0.208 | ~200k tokens of session context per call |
+| haiku, `--safe-mode --tools ""` | 9-11s | **$0.005** | 847 tokens in — 240× less context |
+| sonnet | 8.5s | $0.88 | |
+| `--bare` | — | — | auth-dead by design (never reads keychain) |
+
+Nominal cost = what the subscription meters against its cap; the safe-mode
+shape makes the leg's cap footprint negligible.
+
+### The auth story (the first run's blocker — architecture datum)
+The 07-28 AM run found every headless call returning
+`401 OAuth access token has expired` while `claude auth status` still claimed
+`loggedIn: true` — dead for ~a month (keychain entry untouched since 06-24;
+the first re-login attempt refreshed Claude DESKTOP, not the CLI). The CLI leg
+can silently die exactly like a prepaid balance — it must never be the only
+leg, and its 401 shape is classified as exhaustion-of-leg in the wiring
+(envelope frozen in `tests/test_insight_llm_cli.py::MEASURED_401_ENVELOPE`).
+`subscriptionType` reads "pro".
+
+## What was measured pre-auth (AM run)
 
 ### DeepSeek baseline (the bar to beat) — same label-court judge prompt
 label + 12 headlines (~380 tokens in / ~40 out), n=10 sequential, measured at
@@ -120,13 +154,11 @@ Load 40 is not an anomaly: the nightly window IS the scoped-snapshot regime
   the total-failure line matches exactly once.
 
 ## NEEDS PEDRO
-1. `claude auth login` on the M1 (interactive; cannot be done headless).
-2. Then: `python3 backend/scripts/measure_claude_cli_latency.py single` and
-   `batch 50 haiku` — fills in real p50/p95, calls/min, and the cap-hit error
-   shape (extend `CLI_EXHAUSTED_MARKERS` in insight_llm.py if the observed cap
-   text differs).
-3. Decide the flip: `ATLAS_CLAUDE_CLI=on` (+ optionally reorder
-   `ATLAS_INSIGHT_CHAIN`) in the M1 runner env. Fly needs nothing (leg is
-   guarded off there by construction).
-4. Note the `subscriptionType: "pro"` reading — if this machine is supposed to
-   ride a Max plan, the CLI may be logged into the wrong account.
+1. ~~`claude auth login`~~ DONE 07-28 PM — auth live, post-auth numbers above.
+2. Decide the flip: `ATLAS_CLAUDE_CLI=on` in the M1 runner env (chain order
+   default `anthropic,deepseek,claude_cli` is correct per measurement — leave
+   it). Fly needs nothing (leg is guarded off there by construction).
+3. `subscriptionType` reads "pro" — if this machine is supposed to ride a Max
+   plan, the CLI may be logged into the wrong account; caps differ.
+4. When a real cap-hit is ever observed, check its text against
+   `CLI_EXHAUSTED_MARKERS` in insight_llm.py and extend if the dialect is new.
