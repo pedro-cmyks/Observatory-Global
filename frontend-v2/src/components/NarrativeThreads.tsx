@@ -555,7 +555,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 //  - a person is focused, some thread mentions them, this one doesn't -> dim (#234)
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
                 const dimByPerson = anyPersonMatch && !threadMatchesPerson(n)
-                const dimByThread = !anyPersonMatch && anyThreadRelation && !threadRelated(n)
+                // A lens-active cross-country primo is exactly the row the
+                // measured walk exists to surface — it must not be asserted
+                // (cyan border + ↔ chip) AND de-emphasized as noise (0.38
+                // opacity) by the #234 country/entity heuristic in the same
+                // row. Lens supersedes this dim, same gate as the chip below.
+                const dimByThread = !anyPersonMatch && anyThreadRelation && !threadRelated(n) && !lensSets
                 const isDimmed = dimByCountry || dimByPerson || dimByThread
                 // Story lens reason chip (measured walk) — takes precedence over
                 // the #234 heuristic chip below; a row never shows both.
@@ -607,7 +612,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     <span className="narrative-cluster-label">
                                         {domainLabel}
                                         {lensReason ? (
-                                            <span className="narrative-sibling-reason" data-tip={`Measured relation: ${lensReason}`}>
+                                            <span
+                                                className="narrative-sibling-reason"
+                                                data-tip={lensReason.includes('⚠ grab-bag')
+                                                    ? `Measured relation: ${lensReason} — flagged as a possible multi-story blob; relation may be inflated`
+                                                    : `Measured relation: ${lensReason}`}
+                                            >
                                                 ↔ {lensReason}
                                             </span>
                                         ) : siblingReason && (
