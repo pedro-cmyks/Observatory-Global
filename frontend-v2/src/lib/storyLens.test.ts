@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildLensSets,
   hasLensContent,
+  lensErrorCopy,
   lensTopicParam,
   threadLensRole,
   type StoryLensData,
@@ -47,5 +48,45 @@ describe('lensTopicParam', () => {
     expect(lensTopicParam(data, 2)).toBe('dynamic-topic-1,dynamic-topic-2')
     expect(lensTopicParam(null)).toBeNull()
     expect(lensTopicParam({ ...data, anchor: null, siblings: [] })).toBeNull()
+  })
+})
+
+describe('lensErrorCopy', () => {
+  // Internal codes must NEVER leak to the screen verbatim.
+  const INTERNAL_CODES = ['db_unavailable', 'db_error', 'whitening_unavailable', 'internal_error']
+
+  it('never lets an internal code reach the user-facing string', () => {
+    for (const code of INTERNAL_CODES) {
+      const copy = lensErrorCopy(code)
+      expect(copy.toLowerCase()).not.toContain(code.toLowerCase())
+      expect(copy.toLowerCase()).not.toContain('db_')
+      expect(copy.toLowerCase()).not.toContain('internal_error')
+      expect(copy.toLowerCase()).not.toContain('whitening_unavailable')
+    }
+  })
+
+  it('a failed lookup never reads as a measured absence', () => {
+    expect(lensErrorCopy('db_unavailable')).toBe('Neighborhood lookup failed — not a measured absence')
+    expect(lensErrorCopy('db_error')).toBe('Neighborhood lookup failed — not a measured absence')
+    expect(lensErrorCopy('whitening_unavailable')).toBe('Measurement space unavailable')
+    expect(lensErrorCopy('internal_error')).toBe('Measurement space unavailable')
+  })
+
+  it('unsupported_anchor_type reads structural, not a failure', () => {
+    const copy = lensErrorCopy('unsupported_anchor_type')
+    expect(copy).toBe('No measured neighborhood for this thread type yet')
+    expect(copy.toLowerCase()).not.toContain('fail')
+    expect(copy.toLowerCase()).not.toContain('error')
+  })
+
+  it('seed_not_found_or_no_centroid and invalid_thread_id map to their own honest copy', () => {
+    expect(lensErrorCopy('seed_not_found_or_no_centroid')).toBe('Story not in the active measured field')
+    expect(lensErrorCopy('invalid_thread_id')).toBe('Invalid story reference')
+  })
+
+  it('an unknown or absent code falls back to the honest default', () => {
+    expect(lensErrorCopy('some_future_code_not_yet_mapped')).toBe('Neighborhood unavailable')
+    expect(lensErrorCopy(null)).toBe('Neighborhood unavailable')
+    expect(lensErrorCopy(undefined)).toBe('Neighborhood unavailable')
   })
 })

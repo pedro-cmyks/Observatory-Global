@@ -106,3 +106,25 @@ export function siblingReasonText(s: StoryLensSibling): string {
   const first = s.reasons[0]
   return first ? `${first.basis} ${first.value}` : s.kinship
 }
+
+// User-facing copy for the siblings endpoint's closed reason-code set.
+// A failed lookup must never read as a measured absence, and internal
+// codes must never reach the screen verbatim.
+export function lensErrorCopy(code: string | null | undefined): string {
+  switch (code) {
+    case 'unsupported_anchor_type':
+      return 'No measured neighborhood for this thread type yet'
+    case 'seed_not_found_or_no_centroid':
+      return 'Story not in the active measured field'
+    case 'invalid_thread_id':
+      return 'Invalid story reference'
+    case 'db_unavailable':
+    case 'db_error':
+      return 'Neighborhood lookup failed — not a measured absence'
+    case 'whitening_unavailable':
+    case 'internal_error':
+      return 'Measurement space unavailable'
+    default:
+      return 'Neighborhood unavailable'
+  }
+}
