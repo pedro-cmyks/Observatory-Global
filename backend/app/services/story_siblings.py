@@ -31,8 +31,11 @@ class Sibling:
     degree: int            # hops from the anchor
     kinship: str           # 'hermano' (direct edge) | 'primo' (walked)
     through_blob: bool
-    folded: tuple = ()     # same-event topic_keys folded under this rep
-    reasons: tuple = ()    # ({'basis': str, 'value': str}, ...)
+    is_blob: bool = False               # this sibling ITSELF is a flagged blob connector
+    via_parent_key: str | None = None   # the node this was reached THROUGH; None when
+    via_parent_label: str | None = None  # the parent IS the seed (nothing to name)
+    folded: tuple[str, ...] = ()        # same-event topic_keys folded under this rep
+    reasons: tuple[dict[str, str], ...] = ()  # ({'basis': str, 'value': str}, ...)
 
 
 def rank_siblings(
@@ -47,13 +50,25 @@ def rank_siblings(
     """Rank the measured neighborhood of one topic.
 
     whitened: unit-norm rows (apply_whitening output) aligned with keys/labels.
+
+    Misaligned arrays or a non-unit-norm seed row are CALLER programming
+    errors, not honest absence — they raise loudly rather than returning []
+    (a silent [] there would read as "this story stands alone," which is
+    exactly the dishonest-empty class this service exists to avoid).
     """
     n = len(keys)
+    if whitened.shape[0] != n or len(labels) != n or len(categories) != n:
+        raise ValueError("aligned arrays required")
     if n < 2 or seed < 0 or seed >= n:
         return []
+    if abs(float(np.linalg.norm(whitened[seed])) - 1.0) > 1e-3:
+        raise ValueError("whitened rows must be unit-norm (apply_whitening output)")
     graph = build_knn_graph(whitened, k=params.k)
     blobs = blob_connector_flags(graph, categories, params)
     reached = max_product_walk([seed], graph, params, blob_flags=blobs)
+    # Rank purely by -acc_weight (not walk_constellation's (degree, -acc_weight)
+    # dedup-priority order): measured to yield equivalent rep sets here, chosen
+    # so the dedup fold order matches the display order 1:1.
     ranked = sorted(
         (idx for idx in reached if idx != seed),
         key=lambda idx: -reached[idx].acc_weight,
@@ -64,8 +79,19 @@ def rank_siblings(
         if len(out) >= cap:
             break
         node = reached[idx]
+        parent_idx = node.via_parent
+        if parent_idx is not None and parent_idx != seed:
+            via_parent_key = keys[parent_idx]
+            via_parent_label = labels[parent_idx]
+        else:
+            via_parent_key = None
+            via_parent_label = None
+        if node.degree > 1 and via_parent_label is not None:
+            receipt_value = f"{node.via_weight:.2f} via {via_parent_label}"
+        else:
+            receipt_value = f"{node.via_weight:.2f}"
         reasons = [
-            {"basis": "whitened_cos", "value": f"{node.via_weight:.2f}"},
+            {"basis": "whitened_cos", "value": receipt_value},
             {"basis": "kinship", "value": f"{node.kinship} · {node.degree}º"},
         ]
         out.append(
@@ -76,6 +102,9 @@ def rank_siblings(
                 degree=int(node.degree),
                 kinship=node.kinship,
                 through_blob=bool(node.through_blob),
+                is_blob=idx in blobs,
+                via_parent_key=via_parent_key,
+                via_parent_label=via_parent_label,
                 folded=tuple(keys[j] for j in fold_map.get(idx, [])),
                 reasons=tuple(reasons),
             )

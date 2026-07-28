@@ -55,3 +55,18 @@ def test_every_sibling_carries_a_receipt():
         assert s.reasons, "ranking without a receipt is forbidden (spec §6)"
         assert s.reasons[0]["basis"] == "whitened_cos"
         assert s.kinship in ("hermano", "primo")
+
+
+def test_honest_empty_guards():
+    m = _matrix()
+    assert rank_siblings(99, m, KEYS, LABELS, CATS) == []
+    assert rank_siblings(0, m[:1], KEYS[:1], LABELS[:1], CATS[:1]) == []
+
+
+def test_misaligned_or_unnormalized_inputs_raise():
+    import pytest
+    m = _matrix()
+    with pytest.raises(ValueError):
+        rank_siblings(0, m, KEYS[:5], LABELS[:5], CATS[:5])
+    with pytest.raises(ValueError):
+        rank_siblings(0, m * 3.0, KEYS, LABELS, CATS)
