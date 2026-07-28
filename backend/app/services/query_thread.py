@@ -48,6 +48,7 @@ def build_query_thread(
     *,
     hours: int,
     country: str | None = None,
+    degraded_reason: str | None = None,
 ) -> dict[str, Any]:
     """Assemble a temporary thread detail payload from matched signal rows.
 
@@ -59,6 +60,14 @@ def build_query_thread(
         The raw user query; preserved as ``label`` and ``query``.
     hours, country:
         Echoed back into the payload for scope display.
+    degraded_reason:
+        Set when the match query did NOT complete (timeout, DB error). An empty
+        result then means "we could not look", which is a different fact from
+        "we looked and there is nothing" — and the caller cannot tell them apart
+        unless we say so. Measured 2026-07-27: the gold-query eval hit this on
+        6 of 20 queries (300 rows at 6h, exactly 0 at 24h, non-monotonic, i.e.
+        a timeout) with no marker in the payload, and the silent empty scored 0
+        on four queries that would otherwise have scored an honest floor.
     """
     query = query.strip()
     packet = build_thread_packet(rows, own_topic=None)
@@ -69,10 +78,17 @@ def build_query_thread(
     coverage = _coverage_tier(sample)
 
     warnings: list[str] = []
+    if degraded_reason:
+        # FIRST, and unconditional: a degraded match is the most important fact
+        # about this payload. Never let a thin/empty result read as a measured
+        # absence when the query never finished.
+        warnings.append("query_thread_match_degraded")
     if coverage == "thin":
         warnings.append("query_thread_thin_coverage")
 
     return {
+        "degraded": bool(degraded_reason),
+        "degraded_reason": degraded_reason,
         "theme": f"query-thread-{_slugify(query)}",
         "label": query,
         "description": None,
