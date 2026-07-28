@@ -17,6 +17,33 @@ regardless of entry point (`-m scripts.*` or `-m backend.scripts.*`).
 """
 from __future__ import annotations
 
+import datetime as _dt
+import os as _os
+import sys as _sys
+
+
+def ledger_alert(tag: str, message: str) -> None:
+    """One dated line to the shared reliability ledger (if configured) + stderr.
+
+    Mirrors the runners' `atlas_alert` line format exactly so python- and
+    shell-emitted alerts interleave in one ledger. The ledger path comes from
+    `ATLAS_RELIABILITY_ALERTS_LOG` (exported by the runners); unset means
+    stderr-only — never a crash. Motivation (2026-07-23..27): the labeler was
+    down for five nights and `emergent_clusters.label` went 100% NULL, which
+    silently disabled fragment merging for the whole week — nothing anywhere
+    said so. An alert the runner cannot see is an alert that does not exist,
+    so the WRITER of the defective artifact ledgers it directly."""
+    line = f"{_dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [{tag}] {message}"
+    print(line, file=_sys.stderr)
+    path = _os.environ.get("ATLAS_RELIABILITY_ALERTS_LOG")
+    if path:
+        try:
+            _os.makedirs(_os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except OSError:
+            pass
+
 # Keep in sync with app.services.thread_intelligence._PLACEHOLDER_LABELS
 # (the serving-side mirror; app/ must not import from scripts/).
 PLACEHOLDER_LABELS = {"", "(no label)", "(label failed)", "(label failed.)", "none", "null"}

@@ -1,5 +1,17 @@
 # Identity layer → whitened space — implementation plan
 
+**STATUS: CLOSED — T1's pre-registered kill rule fired (2026-07-28). T2/T4 are dead.**
+Measurement: `docs/research/recall-229/2026-07-28-whitened-identity-taus.md`. Whitening
+removes the top-1 PC, which is what carries CROSS-LINGUAL alignment in multilingual-e5 —
+so it destroys same-event fragments across languages (RO+AR outlets on the same Berlin
+Pride attack: raw 0.835 → whitened 0.0095) while the false absorptions sit interleaved at
+0.387–0.452. Anchor gap −0.547, merge gap −0.117. The diagnosis's witness pairs reproduce
+exactly; generalizing from them was the error. **The needed signal is same-story evidence
+that SURVIVES TRANSLATION — entity/receipt overlap + the DeepSeek one-story-or-two
+confirmer — not centroid cosine in any linear reprojection.** T3(b) (SNAPSHOT_UNLABELLED
+alert) is independent and proceeds. Kept as the record of what was designed and why it
+died by its own gate.
+
 **Date:** 2026-07-28
 **Diagnosis:** `docs/research/recall-229/2026-07-28-identity-layer-raw-cosine.md` (read it first).
 **One sentence:** the identity gates (`MATCH 0.88 / ANCHOR 0.93 / MERGE 0.90` in

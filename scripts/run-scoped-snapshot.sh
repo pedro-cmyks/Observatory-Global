@@ -112,7 +112,9 @@ fi
 #     use) and the RUN exits non-zero at the end, so launchd records a failure.
 # A run where MORE THAN HALF the guarded steps failed also exits non-zero.
 ATLAS_ALERT_TAG="${ATLAS_ALERT_TAG:-scoped-snapshot}"
-ATLAS_RELIABILITY_ALERTS_LOG="${ATLAS_RELIABILITY_ALERTS_LOG:-$HOME/AtlasLocalWorker/logs/reliability-alerts.log}"
+# EXPORTED, not just a shell var: python writers (SNAPSHOT_UNLABELLED in
+# run_scoped_snapshot / snapshot_emergent_topics) append to the same ledger.
+export ATLAS_RELIABILITY_ALERTS_LOG="${ATLAS_RELIABILITY_ALERTS_LOG:-$HOME/AtlasLocalWorker/logs/reliability-alerts.log}"
 _ATLAS_STEPS_ATTEMPTED=0
 _ATLAS_STEPS_FAILED=0
 _ATLAS_PROVIDER_EXHAUSTED=0

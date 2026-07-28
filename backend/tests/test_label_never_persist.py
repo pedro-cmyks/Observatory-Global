@@ -91,3 +91,44 @@ def test_refusal_prose_never_persists():
     real = "Unable to determine cause of deadly blast, officials say"
     assert not is_placeholder_label(real)
     assert normalize_persisted_label(real) == real
+
+
+def test_ledger_alert_reaches_the_ledger_and_stderr(tmp_path, monkeypatch, capsys):
+    """THE 2026-07-23..27 BLACKOUT: five nights of 100% NULL labels silently
+    disabled fragment merging (labels_compatible(None, None) is False) and
+    nothing anywhere said so. The writer of the defective artifact must ledger
+    it directly, in the exact atlas_alert line format, so python- and
+    shell-emitted alerts interleave in one ledger."""
+    from scripts.label_hygiene import ledger_alert
+
+    ledger = tmp_path / "logs" / "reliability-alerts.log"
+    monkeypatch.setenv("ATLAS_RELIABILITY_ALERTS_LOG", str(ledger))
+    ledger_alert("test-tag", "SNAPSHOT_UNLABELLED 30 clusters labeled, 0 usable")
+
+    line = ledger.read_text(encoding="utf-8").strip()
+    assert "[test-tag] SNAPSHOT_UNLABELLED 30 clusters labeled, 0 usable" in line
+    # dated like atlas_alert: "YYYY-mm-dd HH:MM:SS [tag] msg"
+    assert line[:4].isdigit() and line[10] == " " and line[19] == " "
+    assert "SNAPSHOT_UNLABELLED" in capsys.readouterr().err
+
+
+def test_ledger_alert_without_env_is_stderr_only(monkeypatch, capsys):
+    from scripts.label_hygiene import ledger_alert
+
+    monkeypatch.delenv("ATLAS_RELIABILITY_ALERTS_LOG", raising=False)
+    ledger_alert("t", "no ledger configured")  # must not raise
+    assert "no ledger configured" in capsys.readouterr().err
+
+
+def test_failure_sentinels_count_as_unusable_for_the_unlabelled_alert():
+    """The alert's 'usable' count must use the SAME normalize_persisted_label
+    that decides what persists — a snapshot of pure failure sentinels is an
+    unlabelled snapshot."""
+    from scripts.label_hygiene import normalize_persisted_label
+
+    sentinel_batch = [{"label": "(label failed)"}, {"label": "(no label)"},
+                      {"label": ""}, {"label": None}]
+    usable = sum(1 for dl in sentinel_batch
+                 if normalize_persisted_label(dl.get("label")))
+    assert usable == 0
+    assert normalize_persisted_label("Iran Accuses Ukraine of Caspian Attack")
