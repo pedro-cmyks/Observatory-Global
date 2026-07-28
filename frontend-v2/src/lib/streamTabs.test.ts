@@ -123,6 +123,7 @@ describe('streamRowEclipseClass', () => {
   it('tints scoped tabs and nothing else', () => {
     expect(streamRowEclipseClass('eclipse')).toBe('ecl-row-eclipse')
     expect(streamRowEclipseClass('shadow')).toBe('ecl-row-shadow')
+    expect(streamRowEclipseClass('story')).toBe('sl-row-scoped')
     expect(streamRowEclipseClass('all')).toBe('')
     expect(streamRowEclipseClass('notable')).toBe('')
   })

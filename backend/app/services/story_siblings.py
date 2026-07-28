@@ -20,7 +20,9 @@ from app.services.constellation_walk import (
     max_product_walk,
 )
 
-DEFAULT_CAP = 12
+# 11 siblings + the anchor = 12 topic ids — exactly signals.py _TOPIC_FILTER_MAX;
+# the lens stream scope must never silently drop a rendered sibling.
+DEFAULT_CAP = 11
 
 
 @dataclass(frozen=True)

@@ -42,6 +42,8 @@ export interface StoryLensState {
 export const STORY_LENS_AUTO = true
 
 // Mirrors TOPIC_PARAM_MAX in lib/streamTabs.ts (backend _TOPIC_FILTER_MAX = 12).
+// The backend sibling cap (story_siblings.DEFAULT_CAP) is 11, so anchor +
+// siblings is exactly 12 ids — this cap is a ceiling, never a truncation.
 export const LENS_TOPIC_CAP = 12
 
 export interface LensSets {
