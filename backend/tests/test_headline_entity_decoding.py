@@ -214,6 +214,110 @@ class TestDiacriticFolding:
         assert mod._norm(self.ACCENTED) == mod._norm(self.UNACCENTED)
 
 
+class TestNonLatinScripts:
+    """MEASURED (prod, 2026-07-30, rarity-calibration lane H): 10.6% of
+    resolved signals produce a DEGENERATE dedup key because the fold ends in
+    ``[^a-z0-9]+`` — every non-Latin letter is deleted and a Cyrillic headline
+    reduces to its digit residue: 'Атака РФ по АТБ у Чернігові 26 липня' →
+    '26'. Consequence in shipping code: two different ru/uk/ar/fa headlines
+    sharing a number count as ONE story (deflating headline_diversity and
+    firing the corroboration same_wire gate falsely) for exactly the
+    non-English press the diversity program fights for.
+
+    Secondary defect from the same measurement: the masthead strip drops the
+    LAST '|' segment, so a masthead-PREFIXED headline ('BlackSeaNews | <story>')
+    collapses to the outlet name (blackseanews df 15)."""
+
+    UK_A = "Атака РФ по АТБ у Чернігові 26 липня"
+    UK_B = "У Києві відкрили 26 нових укриттів"
+
+    def test_cyrillic_pair_sharing_only_a_number_does_not_dedup(self):
+        from app.services.thread_ranking import _norm_headline
+
+        a, b = _norm_headline(self.UK_A), _norm_headline(self.UK_B)
+        assert a != b
+        # the letters survive — the key is the story, not the digit residue
+        assert "чернігові" in a or "черніговi" in a
+        assert a != "26" and b != "26"
+
+    def test_identical_cyrillic_syndicated_pair_still_dedups(self):
+        from app.services.thread_ranking import _norm_headline
+
+        assert _norm_headline(f"{self.UK_A} | Katherine Times") == \
+            _norm_headline(f"{self.UK_A} | Blayney Chronicle")
+        # and an exact reprint with no masthead folds to the same key
+        assert _norm_headline(self.UK_A) == _norm_headline(f"{self.UK_A} ")
+
+    def test_masthead_prefix_does_not_collapse_to_outlet_name(self):
+        from app.services.thread_ranking import _norm_headline
+
+        a = _norm_headline(f"BlackSeaNews | {self.UK_A}")
+        b = _norm_headline(f"BlackSeaNews | {self.UK_B}")
+        assert a != b                      # two stories stay two stories
+        assert a != "blackseanews"
+        # while two prefix-stamped copies of ONE story still dedup
+        assert a == _norm_headline(f"Marine Post | {self.UK_A}")
+
+    def test_no_letter_headline_falls_back_to_honest_key_not_digit_bucket(self):
+        from app.services.thread_ranking import _norm_headline
+
+        # genuinely letterless headlines must not share one digit bucket
+        assert _norm_headline("«26»") != _norm_headline("– 26 –")
+        # but identical copies still fold together
+        assert _norm_headline("«26»") == _norm_headline("«26»")
+
+    def test_arabic_headline_keeps_its_letters(self):
+        from app.services.thread_ranking import _norm_headline
+
+        key = _norm_headline("مقتل 26 في غارة جوية")
+        assert any(ch.isalpha() for ch in key)
+        assert key != "26"
+
+    def test_headline_diversity_three_distinct_cyrillic_stories_score_full(self):
+        """Pre-fix all three keys were '26' → headline_ratio 1/3 → clamped to
+        the 0.4 floor: honest multi-story Ukrainian coverage read as one wire
+        reprint, deflating its volume term in rank_threads."""
+        from app.services.thread_ranking import headline_diversity
+
+        samples = [
+            {"source": f"outlet{i}.ua", "headline": h}
+            for i, h in enumerate([
+                self.UK_A, self.UK_B, "Обстріл Харкова: 26 поранених",
+            ])
+        ]
+        assert headline_diversity({"evidence_samples": samples}) == pytest.approx(1.0)
+
+    def test_headline_diversity_identical_cyrillic_reprints_still_floor(self):
+        from app.services.thread_ranking import headline_diversity
+
+        samples = [
+            {"source": f"outlet{i}.ua", "headline": self.UK_A}
+            for i in range(3)
+        ]
+        assert headline_diversity({"evidence_samples": samples}) == pytest.approx(0.4)
+
+    def test_corroboration_gate_distinct_cyrillic_titles_are_independent(self):
+        """wire_sig rides _norm_headline: pre-fix two DIFFERENT Cyrillic
+        titles sharing a digit read as one wire copy — the independence gate
+        rejected real corroboration for non-Latin press."""
+        from app.services import article_read as ar
+
+        a = ar.source_signature("https://a.ua/x", {"outlet": "a.ua", "title": self.UK_A})
+        b = ar.source_signature("https://b.ua/y", {"outlet": "b.ua", "title": self.UK_B})
+        indep, reason = ar.articles_independent(a, b)
+        assert indep is True and reason == "independent"
+
+    def test_corroboration_gate_cyrillic_wire_pair_still_same_wire(self):
+        from app.services import article_read as ar
+
+        a = ar.source_signature(
+            "https://a.ua/x", {"outlet": "a.ua", "title": f"{self.UK_A} | Times A"})
+        b = ar.source_signature(
+            "https://b.ua/y", {"outlet": "b.ua", "title": f"{self.UK_A} | Times B"})
+        indep, reason = ar.articles_independent(a, b)
+        assert indep is False and reason == "same_wire"
+
+
 class TestOtherHeadlineConsumers:
     def test_gap_receipts_dedupe_across_encodings(self):
         from app.services.gap_receipts import pick_extended_receipts
