@@ -46,10 +46,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     // hasLensContent (never state.active alone, same rule NarrativeThreads/
     // SignalStream already apply) — an honest-empty siblings payload (anchor
     // found but zero siblings, or a degraded fetch) must not claim a scope.
-    // `?? null` on the anchor chain is redundant-but-explicit: an anchorless
-    // payload already fails hasLensContent, so this never fires on one, but
-    // spelling it out keeps the "anchorless -> no lens country" contract
-    // visible at the call site rather than implicit in a helper elsewhere.
+    // `countries` can be EMPTY on a valid lens payload (country_receipts_degraded,
+    // story.py:229) — the scope must fall through to relationCountry then.
     const lensOn = storyLens.state.active && hasLensContent(storyLens.data)
     const lensCountry = !activeCountry && lensOn
         ? storyLens.data?.anchor?.countries?.[0] ?? null
@@ -58,6 +56,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     // public-attention + conflicts to the focus's dominant country (the shared
     // focus-relation context). Honest: only when a relation exists, and only
     // when the story lens hasn't already claimed the scope.
+    // `!lensCountry` guard is for badge mutual-exclusion below — the `??`
+    // chain on scopeCountry already handles the actual precedence on its own.
     const relationCountry = !activeCountry && !lensCountry && relation.relationActive && relation.kind !== 'country'
         ? relation.dominantCountry : null
     const scopeCountry = activeCountry ?? lensCountry ?? relationCountry
@@ -154,8 +154,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                 )}
                 {lensCountry && (
                     <span className="ap-focus-badge ap-focus-theme"
-                        data-tip={`Scoped to the open story's dominant country — ${resolveCountryName(lensCountry)}`}>
-                        ◈ story → {lensCountry}
+                        data-tip={`Scoped to the open story's dominant country: ${resolveCountryName(lensCountry)}`}>
+                        ◈ STORY → {lensCountry}
                     </span>
                 )}
                 {relationCountry && (
