@@ -1019,8 +1019,9 @@ git commit -m "feat(story-lens): dock public-attention re-scopes to the story's 
 ### Task 8: Honesty chips on chipless L2 receipt rows
 
 **Files:**
+- Modify: `frontend-v2/src/components/CountryBrief.tsx` (line ~899 — bare `<span class="source-name">`, NO tier reference in the whole file; **eval batch 3 root-caused this as THE hole**: irna.ir / arabic.rt.com / radio.gov.pk render unmarked here)
 - Modify: `frontend-v2/src/components/SignalStream.tsx` (signal-footer, line ~619)
-- Modify: `frontend-v2/src/components/ThemeDetail.tsx` (`renderArticle` meta block 542–556 — ONE helper serves Top Sources expansions AND drill views; PA evidence rows 946–947)
+- Modify: `frontend-v2/src/components/ThemeDetail.tsx` (`renderArticle` meta block 542–556 ONLY — note batch 3 confirmed ThemeDetail's Top Sources ALREADY renders the backend credibility tier including `⚑ state` for aa.com.tr; do not double-chip that list)
 - Modify: `frontend-v2/src/components/SignalDetailPanel.tsx` (header 197–199; semantic-neighbor meta ~371)
 - Modify: matching CSS files
 

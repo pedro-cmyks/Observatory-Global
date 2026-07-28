@@ -1191,3 +1191,661 @@ so many words — on the one query where both its lanes timed out. Across ten qu
 is 10% and the informed rate is 80%; the gap is not a retrieval gap.
 
 *Batches 3–4 append below this line.*
+
+═══════════════════════════════ BATCH 3 — GQ-11…GQ-15 ═══════════════════════════════
+
+**Run conditions.** Same repo/branch, `http://localhost:3000/app`, viewport 1512×950, prod data,
+sequential. Corpus at batch-3 start: **164 countries · 138,421 signals**, window `FROM 21 JUL 2026`,
+24 h (drifted to 163 countries · 136,326 by GQ-15). **Screenshots composited this batch**, so pixel
+claims are backed by both the image and DOM geometry (`getBoundingClientRect`), not innerText alone —
+which is what produced this batch's biggest finding. **GQ-15 is the run's first control.**
+
+**Standing N1 note re-verified, not re-discovered.** `input.value === ""` confirmed after every
+arrival (GQ-11 → Pakistan brief, GQ-12 → thread detail, GQ-13 → Sudan brief, GQ-14 → DR Congo brief,
+GQ-15 → research plan), dropdown gone each time, no related-results affordance on any arrival
+surface. **5/5 CONFIRMED.** (Whole-page regex for a related affordance returns a *false positive* on
+the string *"related by country, not by story"* in CONFLICT EVENTS — that is a provenance caveat, not
+a navigation control. Recorded so the check is not mis-scored later.)
+
+---
+
+## ⚠ BATCH-3 HEADLINE FINDING #1 — the search dropdown renders thread labels at **0 px**
+
+Measured on the very first query and reproduced on **4 of 5**. In the `LIVE THREADS` section every
+`.search-item-name` has **`width: 0`** with `overflow: hidden` and `scrollWidth` 148–197 px. The
+screenshot corroborates exactly: the dropdown shows `THREAD` + *"75 signals · Corruption
+investigation · partial match"* and **no thread name at all**.
+
+Root cause, read off computed style — `.search-item` is `flex-direction: row; flex-wrap: nowrap`,
+width 266 px, with three children:
+
+| child | flex | flex-shrink | rendered width |
+|---|---|---|---|
+| `.search-item-tag` (`THREAD`) | `0 0 auto` | **0** | 51 |
+| `.search-item-name` (**the label**) | `1 1 0%` | **1** | **0** |
+| `.search-item-meta` (`N signals · category · partial match`) | `0 0 auto` | **0** | 230 |
+
+51 + 230 = 281 > 266, and **the label is the only shrinkable child**, so it absorbs the entire
+deficit. The decoration is unshrinkable; the identity is the only thing that can vanish. Because meta
+width scales with category-name length, **longer category names delete the thread label outright**
+(`Elections and Political Campaigns` measures 275 px on its own). `MEDIA SIGNALS` rows are unaffected
+(name renders at 220 px, ellipsised).
+
+**This partially CONTRADICTS how batches 1–2 could report dropdown thread labels at all.** Batch 2
+states explicitly that screenshots were unavailable and every quotation was taken via
+`get_page_text` / `innerText` — which returns text regardless of rendered width. On the D5-pixels
+rule the rubric actually applies, **the search dropdown's thread labels in this run were not on
+screen.** The analyst chooses between rows identified only by a signal count and a category.
+
+## ⚠ BATCH-3 HEADLINE FINDING #2 — a **failed** retrieval lane is rendered as **"No results"**
+
+Read from `backend/app/routers/search.py`: `degraded_segments.append("signal_matches")` (line 680)
+and `…append("live_threads")` (line 609) each fire **only inside an `except Exception` handler**
+around a `conn.fetch(…, timeout=SEARCH_MATCH_TIMEOUT_SECONDS)` where
+`SEARCH_MATCH_TIMEOUT_SECONDS = 5.0`. `degraded: true` therefore means **the query failed or timed
+out** — it is emphatically *not* "the query ran and found nothing."
+
+Every `/api/v2/search/unified` call in batch 3 came back degraded, and the UI never said so once:
+
+| typed | `degraded_segments` | what the pixels said |
+|---|---|---|
+| `Azad Kashmir elections first phase rigging allegations` | `signal_matches` | **`No results for "…"`** |
+| `Azad Kashmir` | `live_threads`, `signal_matches` | **the previous query's 12 Iran receipts, under `COUNTRIES · IR · Iran`** |
+| `Kashmir election rigging` | `signal_matches` | **`No results for "…"`** |
+| `Pakistan` | `live_threads`, `public_attention`, `signal_matches` | empty dropdown, **no notice at all** |
+| `Ukraine struck Iranian ship Caspian Sea response` | `signal_matches` | no MEDIA SIGNALS section, no notice |
+| `Threatens Ukraine Over Ship Attack` (a thread's own label) | `live_threads`, `signal_matches` | empty dropdown, no notice |
+| `war what happened this week` (Sudan) | `signal_matches` | empty dropdown, no notice |
+| `Australian bushfire emergency …` (**control**) | `signal_matches` | empty dropdown, no notice |
+
+Two distinct failures ride on this. **(a) A failed lookup is relabelled a measured absence** —
+literally the distinction `/research/plan` renders correctly in words (*"This is a failed lookup, not
+a measured absence"*) on the same screen-set. **(b) When the degraded payload is empty, the dropdown
+keeps the previous query's results**: typing `Azad Kashmir` left `COUNTRIES · IR · Iran` and twelve
+Iran receipts on screen **permanently** (re-read at 3 s and again at 8 s — unchanged). This is
+batch-2 new-defect 4 (*"stale results for ~4 s before settling"*) **CONFIRMED and severely
+EXTENDED**: it does not settle, because there is no non-degraded payload to settle to.
+
+---
+
+## GQ-11 — Azad Kashmir first-phase elections: the rigging allegations
+
+**Typed (U1):** `Azad Kashmir elections first phase rigging allegations` · **auto-scope: NONE**
+(second query in fifteen with no `Filtering to:` line, after GQ-09).
+
+### CONTENT INVENTORY — surface A: search dropdown
+
+**LIVE THREADS ×4 — 0/4 on topic**, every one a substring match on `rigging` / `first` / `elections`,
+and **all four labels rendered at 0 px** (names below are read from the DOM, not the screen):
+
+| # | label (DOM) | rendered width | signals · category | court dot |
+|---|---|---|---|---|
+| 1 | HP India Fined for Bid **Rigging** | **0 px** | 75 · Corruption investigation | ⬤ *partially matches* |
+| 2 | Greece Receives SAFE **First** Tranche | **0 px** | 44 · Currency and debt stress | — |
+| 3 | Carney Calls By**elections** | **0 px** | 37 · Elections and Political Campaigns | ⬤ *partially matches* |
+| 4 | Tango Aircraft **First** Flight | **0 px** | 24 · Science & Technology | ⬤ **did not match** |
+
+**MEDIA SIGNALS: `No results for "Azad Kashmir elections first phase rigging allegations"`** — which
+the payload shows was a **timed-out lane**, not an absence (headline finding #2).
+
+Reformulations: `Kashmir election rigging` → 4 threads (HP India Bid Rigging 75, Trump Accuses China
+Election Interference 43 **court-failed**, Carney Calls Byelections 37, Arizona Primary Election
+Preview 36 **court-failed**), **0/4 on topic**, labels again 0 px, MEDIA SIGNALS again `No results`
+over a degraded lane. `Azad Kashmir` → **the Iran ghost-receipt case above**. `Pakistan` → three
+lanes degraded, dropdown offers only `Go to Pakistan`.
+
+### CONTENT INVENTORY — surface B: Pakistan country brief (U4) — the surface that carries the story
+
+- `568 signals` · **`Narrative Threads 0`** · `0 THREADS` · Source Mix 10 · Atlas Topics 12 ·
+  `-1.8 SENTIMENT` · `Volume 1.2x normal (z: 0.5)` · Source Diversity 92 / Source Quality 70
+- Standfirst: *"Pakistan shows 568 signals in this 24h window, led by Minister, Public Sector, and
+  Policy: Policy Government… Most-covered figures: **azad jammu** and **muslim league-nawaz**."*
+- `CONFLICT EVENTS` — *"2 events in Pakistan this window · machine-coded, geo approximate"* ✓ caveat
+  renders; one is **`Military force · Kashmir, North-West Frontier, Pakistan`**
+- **`RECENT SIGNALS` (6 rows, the only on-topic material anywhere):**
+  - **independent.co.uk**, *just now* — ***"At least 14 killed as start of crucial election in
+    Pakistan-administered Kashmir marred by violence"*** — chip **`PUBLIC HEALTH`**
+  - **laosnews.net**, *just now* — ***""Attempt to camouflage Pakistan's illegal occupation, hide
+    grave human rights violations": MEA slams "cosmetic" elections in PoJK"*** — chip **`PUBLIC
+    HEALTH`** — the **Indian** framing
+  - bbc.com, 5 h — *"Maryam Nawaz's 'gift of buses' to Kashmiri people and debate on province's
+    resources…"* (adjacent Kashmir politics, auto-translated, `See original`)
+  - off-topic 3/6: prothomalo.com (Kuwait–Pakistan defence), en.dailypakistan.com.pk ×2 (Lahore
+    police, a celebrity rift)
+- `TOP PUBLISHERS`: tribune.com.pk 42 · express.pk 39 · dawn.com 36 · propakistani.pk 28 ·
+  **radio.gov.pk 24** — the Pakistani press is densely indexed, **and `radio.gov.pk`, the state
+  broadcaster on a `.gov.pk` domain, renders with no ownership marker**
+- **`VOICE MIX` IS ABSENT** (`innerText.indexOf('VOICE MIX') === -1`), with no notice. Payload:
+  `GET /api/v2/voice-mix?hours=168&country=PK` → `{"degraded":true,"reason":"db_busy","detail":
+  "voice-mix aggregation timed out under database load — retry shortly"}` — **byte-identical to the
+  Iran payload batch 2 found.** Fired 3× (1 aborted, 2 × 200).
+- `KEY SUBJECTS` entity noise: **`PERSON azad jammu 22`** (a place, and the top-ranked subject),
+  **`PERSON muslim league-nawaz 17`** (a party), **`PERSON allahu akbar 9`** (a phrase), alongside
+  real people (shehbaz sharif 14, randhir jaiswal 13, imran khan 9, ishaq dar 8)
+
+**Verdict on the question:** the *first phase* is answered — it began, it was marred by violence, at
+least 14 dead — and one **delegitimisation** framing is present (India's MEA calling the polls
+"cosmetic"). **The Pakistani "rigging allegations mar polls" framing is absent, and there are zero
+Pakistani-origin outlets among the on-topic receipts** (independent.co.uk GB, bbc.com GB,
+laosnews.net — a content-farm mirror of the same family as GQ-03's nigeriasun/kenyastar cluster,
+carrying Indian agency copy). The criteria's *"≥3 distinct Pakistani- or Indian-origin outlets"*
+fails.
+
+### N1 — NAV-LOSS ✱
+**Promised** across four phrasings: 8 threads (none on topic) + one `No results` + twelve Iran ghost
+receipts. **Delivered on arrival:** search input `""`, dropdown gone. The two receipts that answer the
+question exist **only** in the country brief and are reachable from no search phrasing.
+
+### NEW DEFECT — the right rail asserts a scope it has not applied
+With `COUNTRY Pakistan` focused, the Narrative Threads panel rendered the strip **`Scoped to Pakistan
+✕`** above five threads whose own country chips are `IR`, `IR/US`, `RU/BR/CA/US`, `FR/ES` — *Iran
+Negotiations…* (211), *Iran Attack on US Bases* (600), *Trump tariff policies* (50), *Spain Wildfires*
+(73), *Trump escalates Iran tensions* (165). **Zero Pakistan.** Meanwhile the country brief on the
+same screen reads `Narrative Threads 0`. This is not batch-1 defect 5 (count divergence between two
+doors) — it is a **false scope label over unscoped global content, contradicting the panel beside
+it**. (On GQ-12 the same strip *did* eventually scope correctly to Iran, so the strip lags rather
+than never works — but it never says it is lagging.)
+
+### Score **1a** · API 0 · **UI-BETTER** · not piloted
+Honest floor. No thread at any door and the absence is stated on screen (`Narrative Threads 0` /
+`0 THREADS`), so no bucket is passed off as an answer. Not 1b: only two on-topic receipts render,
+they answer the *first phase* rather than the *rigging allegations*, and the domestic-outlet
+requirement fails outright. Not 0: the arrival surface is honest, its caveats render, and no false
+claim is made about Kashmir.
+*Boundary recorded for the record: the search surface on this query does hit level-0 language twice
+— a degraded lane titled `No results`, and another country's twelve receipts left standing under the
+typed query. Following batch 1's precedent of scoring the arrival surface (GQ-03 scored 0 because the
+**arrival** was the silent-degraded one), the query holds at 1a and both search behaviours are
+carried in the defect list instead.*
+
+---
+
+## GQ-12 — Ukraine struck an Iranian ship in the Caspian: how is Iran responding?
+
+**Typed (U1):** `Ukraine struck Iranian ship Caspian Sea Iran response`
+**Auto-scope rendered:** `Filtering to: Iran · results scoped to this country`.
+
+### The auto-scope MUTILATES the query — batch-1/2 defect 2, extended
+The request actually sent was `q=Ukraine struck Iranian ship Caspian Sea **response**&country=IR` —
+**the token `Iran` is stripped from the query string** and converted into a country filter. Same on
+GQ-13 (`war in Sudan what happened this week` → `q=war what happened this week&country=SD`) and on
+the attempt to search a thread by its own label (`Iran Threatens Ukraine Over Ship Attack` →
+`q=Threatens Ukraine Over Ship Attack&country=IR`). The analyst's words are silently rewritten.
+
+### CONTENT INVENTORY — surface A: search dropdown
+
+**LIVE THREADS ×6 — bucket-reuse, precisely as the criteria predicted, and the wrong sea:**
+
+| # | tag | label | signals | `label_status` |
+|---|---|---|---|---|
+| 1 | `EVENT` | Russia Threatens Civil Shipping in **Black Sea** | **4,007** | **failed** ⬤ |
+| 2 | `EVENT` | Iran Negotiations, Ukraine Civilian Casualties, **Danube** Shipwreck | **3,693** | null |
+| 3 | `THREAD` | Ukraine EU Membership Blocked | 151 | **failed** ⬤ |
+| 4 | `THREAD` | Indian Seafarers Killed in **Odesa** | 126 | entailed |
+| 5 | `THREAD` | Escalation in **Black Sea** | 83 | partial ⬤ |
+| 6 | `EVENT` | Ukrainian Army Leadership Change | 74 | **failed** ⬤ |
+
+All six labels rendered at 0 px. **Caspian appears nowhere.** Three of six are court-FAILED and the
+verdict reaches the analyst as a 7 × 7 px dot carrying `data-tip` (not `title`) — batch-2 new-defect 1
+CONFIRMED, with the attribute name corrected. MEDIA SIGNALS absent (degraded).
+
+Reformulating to `Caspian ship attack` produced a working raw lane and **0/12 on topic** — *pepper-
+spraying drones that ram attackers*, *Kalshi attacks Wisconsin law*, *Azerbaijan court convicts 9
+journalists* (**listed twice**, yoursourceone.com and wsls.com), *three-year-old hospitalised after
+dog attack*, *headbutt attack*, *Berlin Pride*, *cyberattack to prevent cyberattacks*, *US diplomats
+storm out of UN*. **Not one receipt contains the word "Caspian."** The most distinctive token in the
+query was dropped and the match ran on `attack` — batch-1 defect 9 CONFIRMED in its sharpest form.
+
+### UI-MISS: the answer thread is Atlas's own **lead** for Iran, and search never offers it
+The Iran country brief's standfirst reads: ***""Iran Threatens Ukraine Over Ship Attack" leads Iran's
+coverage — 74 signals, within 3,140 total this 24h window."*** It is first in the brief's
+`NARRATIVE THREADS` list. Search never returned it under three phrasings **including its exact
+label** — that attempt came back with `live_threads` degraded and an empty dropdown, so the analyst
+cannot tell "no such thread" from "the lookup failed."
+
+### CONTENT INVENTORY — surface B: thread detail *Iran Threatens Ukraine Over Ship Attack*
+
+Reached via `Go to Iran` → right rail (the country-brief chip click did not open it; the rail did).
+The Iran brief itself sat on `LOADING BRIEF…` for **~25 s**.
+
+Header: *"Iran Threatens Ukraine Over Ship Attack `NEW` · ← Global · 🇮🇷 Iran · **32 signals**"*,
+`HOT WINDOW`, `1 COUNTRIES · 19 SOURCES`, tone **−4.60**.
+
+**The rendered summary answers the question, and carries its own independence caveat:**
+> *"Iran's foreign minister warned that Ukraine's attack on an Iranian vessel in the **Caspian Sea**
+> will not go unanswered."*
+> *"Iranian officials escalated rhetoric, threatening retaliation for a Ukrainian ship attack, as
+> coverage surged across **Turkish and Slovenian media**."*
+> *"Multiple sources (rtvslo.si, memleket.com.tr, haberler.com, etc.) quote Iran's Foreign Minister
+> Arakchi stating the attack 'cannot remain without response.'"*
+> **"No independent confirmation of the attack or its details; all reports rely on Iranian official
+> statements."**
+
+That last sentence is the corroboration statement GQ-07 was scored down for lacking — it exists, on
+this thread, in prose.
+
+**All 19 receipts rendered. ROR@19 = 18/19 = 0.947.** Each carries outlet + timestamp + tone + `IR`
+tag; non-English rows carry `See original`. The single outlier is #19 (odatv.com, Jul 23, *"Irak'tan
+İran'a destek mesajı"* — Iraq's message of support, 3 days earlier).
+
+| receipt (as rendered) | outlet | stamp |
+|---|---|---|
+| Aragchi: Ukrainian attack on Iranian vessel 'cannot remain without response' | rtvslo.si | Jul 27 06:30 |
+| Iran's stern warning to Ukraine: **Caspian Sea** attack will not go unanswered | memleket.com.tr | Jul 27 03:30 |
+| Iranian Foreign Minister **Araghchi**: Ukraine's attack on our ship will not go unanswered | haberler.com | Jul 27 01:30 |
+| Harsh message from Tehran to Kyiv: The attack will not go unanswered! | haber7.com | Jul 27 01:30 |
+| Iran: Ukraine may soon understand that Iran does not leave any action unanswered | trthaber.com | Jul 26 20:15 |
+| Threat from Iran to Ukraine: The attack will not go **unpunished** | turkiyegazetesi.com.tr | Jul 26 13:45 |
+| Iran's Foreign Minister says Ukraine's ship attack 'will not go unanswered' | **aa.com.tr · `STATE` ⚑ state** | Jul 26 11:50 |
+| Iran's harsh response to the attack in the **Caspian Sea**: 'It will not go unanswered' | bursadabugun.com | Jul 26 11:30 |
+| **Iran Parliament Vice Speaker: Ukraine's foolish act will not go unanswered** | anlatilaninotesi.com.tr | Jul 26 10:30 |
+
+(plus ntv.com.tr, yenimesaj.com.tr, haberaktuel.com, dnevnik.hr, dha.com.tr, cnnturk.com, mynet.com,
+cumhuriyet.com.tr, netinternethaber.com)
+
+**Two Iranian voices are separated and attributed** — the Foreign Minister and the Parliament Vice
+Speaker — which is the "how is Iran responding" half.
+
+**Honest limits, recorded:** 17 of 19 outlets are Turkish, 1 Slovenian, 1 Croatian. **Zero Iranian
+and zero Ukrainian outlets** — Iran's response reaches the analyst entirely through Turkish relay.
+The prose names that ("Turkish and Slovenian media"); the Voice Mix does not — it reads *"unknown 5 ·
+**0%** of attributable voices are Iran's own press · `THIN` · 0 of 2 attributable voices are
+domestic. **Loudest outsider: Croatia (1)**"* — an n = 2 denominator under a 19-source panel, naming
+Croatia as loudest outsider when 17/19 are Turkish. Batch-2 defect 12 CONFIRMED.
+
+### ⚠ CONTRADICTION of the standing zero-⚑ finding — `⚑ state` **does** render in the L2 console
+`aa.com.tr` renders `STATE` + **`⚑ state`** in `TOP SOURCES`, class `source-tier-badge
+source-tier-state`. This is the **first state-media chip in fifteen queries**, and it means batch-2's
+new-defect 2 needs splitting into a three-way diagnosis, verified in source:
+
+| surface | mechanism | state marking |
+|---|---|---|
+| `Briefing.tsx`, `BriefNewspaper.tsx`, `WorkbenchPanel.tsx` | `resolveTierChip` (frontend domain list, `sourceTiers.ts`) | ✓ |
+| **`ThemeDetail.tsx` (L2 thread detail)** | **backend `credibility.label`** → `source-tier-badge source-tier-${…}` (lines 1326 / 1557 / 1608) | **✓ — renders `⚑ state` for aa.com.tr** |
+| **`CountryBrief.tsx` TOP PUBLISHERS** | **none** — line 899 is a bare `<span className="source-name">{source.name}</span>`, no tier/state/credibility reference anywhere in the file | **✗** |
+
+So batch 2 is right that `resolveTierChip` never reaches L2 (importers confirmed: Briefing,
+WorkbenchPanel, BriefNewspaper, plus its own lib/test), but **wrong that L2 therefore cannot mark
+state media** — the thread detail has an independent, working, backend-driven path. **The real hole
+is `CountryBrief.tsx`**, which is exactly where GQ-06 scored 0 for `irna.ir` (495 signals) and
+`arabic.rt.com` unmarked, and where `radio.gov.pk` (GQ-11) and `irna.ir` + `arabic.rt.com` (GQ-13)
+went unmarked again today. **The fix is one component, not the whole console.**
+
+### NEW DEFECT — the same thread reads **74** and **32** simultaneously on one screen
+The right rail renders *Iran Threatens Ukraine Over Ship Attack · **74** 24h* while the detail panel
+beside it reads *"← Global · Iran · **32** signals"* and `32 24h · raw SIGNALS`. Batch-2 defect 5
+(*170 vs 17, one click apart*) CONFIRMED and sharpened: **no click is required — both numbers are
+visible at once.**
+
+### N1 — NAV-LOSS ✱
+**Promised:** 6 threads (all mega-buckets) + the `Caspian ship attack` set. **Delivered:** 0. Detail
+sections are only four — thread header · `TOP SOURCES` · `VOICE MIX` · `DEEP HISTORY` — with **no
+sibling / related / "stories inside" section** (`related` string test false). Concretely lost: the
+five other Hormuz/Black-Sea threads and, more importantly, **the Ukrainian side of the event**, which
+appears in no reachable surface.
+
+### Score **2** · API 0 · **UI-BETTER** · not piloted
+The criteria's PASS condition — *"a thread that HOLDS THE CONNECTION between the two theatres"* — is
+met outright: the label names both parties, the summary names the Caspian Sea, and the receipts are
+that event and nothing else. ROR@19 = 0.947 ≥ 0.75 ✓; ≥3 distinct outlets ✓ (19); key claims
+attributed to named officials ✓; **no unflagged cross-story blending** (18/19 one story, and the
+one outlier is visibly dated three days earlier) ✓. **G7 does not fire** — window count 32 (rail 74),
+both ≫ the <10 trigger, so this is not answering with history.
+Held at 2, not 3: no related-threads affordance exists in the detail (NAV-LOSS), the Ukrainian
+counterpart strand is unreachable, and the source concentration is named only in prose while the
+Voice Mix panel misreports it (*Croatia (1)* over 17 Turkish outlets, n = 2).
+**This is the run's second level-2 and its first since GQ-01 — and it is a better 2 than GQ-01's**,
+because the independence caveat renders in words and the receipt set is genuinely one story.
+
+---
+
+## GQ-13 — the war in Sudan: what happened this week
+
+**Typed (U1):** `war in Sudan what happened this week` → sent as `q=war what happened this
+week&country=SD`. **Auto-scope rendered:** `Filtering to: Sudan · results scoped to this country`.
+
+### CONTENT INVENTORY — surface A: search dropdown = **the G5 failure mode, exactly**
+**Zero LIVE THREADS. Zero MEDIA SIGNALS. No `No results` line. No notice.** The dropdown offers only
+`Go to Sudan`, `Open the story`, `Start investigation`. Payload: `live_threads: []` (genuinely empty
+— not in `degraded_segments`), `signal_matches: []` **with `degraded_segments: ["signal_matches"]`**.
+The criteria names this precisely as a FAIL condition: *"a silent empty (G5) indistinguishable from a
+timeout."* On this surface, that is what it is.
+
+*(Payload curiosity worth logging: `countries: [{"code":"SD","name":"SD"}]` — the country **name** is
+unresolved to the code. The frontend prints "Sudan" from its own alias table.)*
+
+### ⚠ NEW DEFECT (level-0 class) — an Iran thread rendered under a **Sudan flag**
+Arriving at Sudan while a thread focus was still live produced a compound focus (`COUNTRY Sudan ×` +
+`THEME Iran Threatens Ukraine Over Ship Attack ×`, **both chips visible and clearable**, which is an
+improvement on GQ-03/GQ-06's invisible scope) — but the panel rendered:
+
+> **Iran Threatens Ukraine Over Ship Attack** `NEW`
+> ← Global · 🇸🇩 **Sudan · 32 signals**
+> `HOT WINDOW` · ⚑ **2 conflict events in Sudan this window** · *related by country, not by story*
+> "This dynamic narrative thread is active in the selected window with **32 signals**."
+> "Coverage tone is mixed (0.00), and the current evidence sample spans **0 recent items**."
+> `32 24h · raw SIGNALS` · `0.00 AVG SENTIMENT` · **`0 COUNTRIES`** · **`0 SOURCES`**
+
+An Iranian thread, carrying a **Sudanese flag**, a **Sudan** signal attribution and a **Sudan**
+conflict-event count, while simultaneously reporting `0 COUNTRIES · 0 SOURCES · 0 recent items` under
+a header still asserting 32 signals. This is batch-1's GQ-03 pattern **plus an active geographic
+misattribution**. (Clearing the theme chip is also mis-wired: clicking the `×` on the THEME chip
+removed the **COUNTRY** chip instead.)
+
+### CONTENT INVENTORY — surface B: Sudan country brief (U4) — an exemplary honest floor
+- `65 signals` · **`Narrative Threads 0`** · `0 THREADS` · **`Source Mix 10 · 95% foreign`** ·
+  `-1.7 SENTIMENT`
+- Standfirst: *"Sudan shows 65 signals in this 24h window, led by Armed Conflict, Water, and
+  Paramilitaries. **Public-attention proxies are quiet or unavailable for this country in the current
+  window.**"*
+- `SEARCH` — **"No Google Trends data for this window."** ✓ · `WIKI` — *"No Wikipedia pageview data
+  for this proxy."* ✓ · `FORUM UNVERIFIED` ✓ labelled
+- `TRUST INDICATORS`: Source Diversity 99 · **Source Quality 40** · **Volume 0.9x normal (z: −0.6)**
+- **`VOICE MIX` RENDERS**: ***"5% covered by its own press · 12 of 248 attributable voices are
+  domestic. Loudest outsider: ZA (35). 12% is foreign media in the local language (soft power, not
+  self-coverage)."*** — ownership-based, with the soft-power bucket held separate ✓
+- `TOP PUBLISHERS`: aljazeera.net 4 · almasryalyoum.com 3 · **dabangasudan.org 3** · aa.com.tr 2 ·
+  haberler.com 2 — small counts, honestly small
+- **`RECENT SIGNALS` — 6/6 on topic, and between them they answer "this week":**
+  - **france24.com**, 9 h — ***"Sudanese army advances and Rapid Support Forces lose control of a
+    main road linking Omdurman and El Obeid"***
+  - **aa.com.tr**, 10 h — ***"Sudan army's advance to the west changes military balances in civil
+    war"***
+  - **arabic.rt.com**, 9 h — *"Sudan.. **Dagalo** calls on his forces to change their military plan"*
+  - **irna.ir**, 2 h — *"**Displacement of 20,000 people in Darfur**, Sudan due to violence and
+    insecurity"*
+  - skynewsarabia.com, 11 h — *"Gold.. the lifeline of the Sudanese army's war"*
+  - aa.com.tr, 6 h — *"Food support from Turkish Red Crescent to those in need in Sudan"*
+- `FORUM UNVERIFIED` adds *"Drone Strikes Are Destroying the Infrastructure of Survival in the Heart
+  of Sudan"*, *"Sudan: Army regains control of crucial highway (military sources) | Africanews"*,
+  *"In El Obeid, Sudanese women face drones by day, rape by night, to reach water"* (+ one off-topic
+  Burkina Faso row)
+- `KEY SUBJECTS`: omar al-bashir 3, **mohamed hamdan dagalo 2**, **abdel fattah al-burhan 2**,
+  badr abdelatty 1 — the correct principals
+- **Ownership gap, unmarked: 2 of the 6 receipts are `irna.ir` (Iranian state) and `arabic.rt.com`
+  (Russian state)**, rendered as plain outlet names — the `CountryBrief.tsx:899` hole from GQ-12's
+  correction, on a war story.
+
+### N1 — NAV-LOSS ✱
+**Promised:** nothing (the dropdown was empty). **Delivered:** the brief. This is the one query in the
+batch where nothing was destroyed because nothing was offered — the loss is that the analyst has no
+way to know the search lane failed rather than found nothing.
+
+### Score **1b** · API 1 · **SAME (refined 1 → 1b)** · not piloted
+Level 2 for this item requires *"a thin thread that CARRIES its thinness"* — there is **no thread at
+all** (`Narrative Threads 0`), so ≥2 is unreachable by construction. The FAIL clauses do **not** fire
+at the arrival surface: nothing confident is assembled, and the brief is emphatically not a silent
+empty — it carries `95% foreign`, `5% covered by its own press`, `Volume 0.9x normal (z: −0.6)`,
+`Source Quality 40`, *"Public-attention proxies are quiet or unavailable"* and *"No Google Trends data
+for this window."* The receipts substantively answer *what happened this week* — **the army advanced
+west, the RSF lost the Omdurman–El Obeid highway, Dagalo ordered a change of plan, 20,000 displaced
+in Darfur, gold financing the war** — each attributed. That is 1b.
+**The G5 clause is not clean, though, and it is recorded rather than waved through: the search door
+*was* a silent empty over a degraded lane.** It does not carry the score because the analyst's
+arrival surface is the brief, and the brief is the most honest thin-country render in the run.
+
+---
+
+## GQ-14 — Congo Ebola coverage in French and Swahili versus English
+
+**Typed (U1):** `Congo Ebola coverage French Swahili versus English`
+**Auto-scope rendered:** `Filtering to: DR Congo · results scoped to this country`.
+
+### CONTENT INVENTORY — surface A: search dropdown
+**LIVE THREADS ×2**, both labels at 0 px: **Ebola Outbreak Congo** 254 · Disease outbreak
+(⬤ *only partially matches*) · **Mundial 2026 Coverage** 117 · Sports (⬤ **did not match**) — the
+football thread matched on the word *coverage*.
+
+**MEDIA SIGNALS ×10 — and this is the finding: 10/10 are in ENGLISH, 9 of 10 from one Chinese state
+outlet, 4 of them exact verbatim duplicates:**
+
+| headline | outlet | chip | note |
+|---|---|---|---|
+| DR Congo's confirmed Ebola cases top **3,200** as outbreak remains in sustained transmission-Xinhua | english.news.cn | `Democracy` | **listed twice** |
+| DR Congo reports nearly **3,000** Ebola cases as PM calls for faster response-Xinhua | english.news.cn | `Authorities` | **listed twice** |
+| Insecurity continues to impact Ebola outbreak response in DR Congo: UN-Xinhua | english.news.cn | `Disease Outbreak` | **listed twice** |
+| DR Congo certifies first-ever lithium export-Xinhua | english.news.cn | `Energy & Mining` | **listed twice**, off-topic |
+| 32 civilians killed in eastern DR Congo attacks -Xinhua | english.news.cn | `Authorities` | off-topic |
+| Rise in Ebola cases in Congo – Shafaqna English | shafaqna.com | `Communicable Disease` | |
+
+A query that explicitly asks about **French and Swahili** returns **zero French and zero Swahili
+receipts**, and `english.news.cn` (Xinhua) carries **no state-media marker** on any of its nine rows.
+
+### CONTENT INVENTORY — surface B: *Ebola Outbreak Congo* detail — **batch 1's GQ-03 reproduced verbatim**
+> Ebola Outbreak Congo `NEW` — **Global · 254 signals** · Last 24h · active since Jun 24 · `HOT WINDOW`
+> "This dynamic narrative thread is active in the selected window with 254 signals."
+> "Coverage tone is mixed (0.00), and the current evidence sample spans **0 recent items**."
+> `254 24h · raw SIGNALS` · `0.00 AVG SENTIMENT` · **`0 COUNTRIES`** · **`0 SOURCES`**
+> `VOICE MIX · WHO SPEAKS?` — unknown 14 — **"0% of attributable voices are France's own press"** ·
+> `THIN` · "0 of 9 attributable voices are domestic. **Loudest outsider: Greece (9).**"
+
+**Byte-for-byte the same panel batch 1 recorded on 2026-07-30** — same topic id, same `unknown 14`,
+same `Greece (9)`, same stale claim about **France's** press on a **DR Congo** thread. Network
+confirms the mechanism unchanged: `GET /api/v2/theme/dynamic-topic-239?hours=24&country_code=CD`
+fired **twice**, plus `lineage` ×2 and `drift` ×2. **This is not a transient — it is a stable,
+reproducible mis-anchored render.** Batch-1 defects 2, 11 and 12 CONFIRMED together.
+
+### CONTENT INVENTORY — surface C: DR Congo country brief (U5, the designated asymmetry surface)
+- `75 signals` · **`Source Mix 15 · 33% foreign`** · **`Narrative Threads 0`** · `0 THREADS`
+- **`VOICE MIX`: "67% covered by its own press · 209 of 310 attributable voices are domestic.
+  Loudest outsider: CN (16)."** ✓ ownership-based, and stable against batch 1's 68% / 210 / 311
+- `TOP PUBLISHERS`: **actualite.cd 29 · mediacongo 6 · radiookapi.net 5** · umn.edu 2 ·
+  mediacongo.net 2 — the Francophone Congolese press dominates the index
+- `RECENT SIGNALS` — 5 of 6 from actualite.cd (French, auto-translated with `See original`), two of
+  them Ebola: ***"Haut-Uele: Isiro university clinics equipped with an Ebola diagnostic
+  laboratory"*** and *"Ebola: Infected in DRC, a second American patient cured of the virus in
+  Germany"*; `FORUM UNVERIFIED` carries the French original *"Ebola : Infecté en RDC, un second malade
+  américain guéri du virus en Allemagne … #fr #france"*
+- `KEY SUBJECTS` entity noise unchanged from batch 1: **`PERSON wikimedia commons`**, **`PERSON july a
+  kindu`**, **`PERSON whatsapp linkedin`**
+
+### The decisive measurement — whole-DOM string test on the arrival surface
+| test | result |
+|---|---|
+| `/swahili/i` anywhere on the page | **false** |
+| `/french/i` anywhere on the page | **false** |
+| any language ratio (`FR n` / `EN n` / `fr:en`) | **false** |
+| `/uncovered\|silent\|no coverage in\|not covered in\|blind to/i` | **false** |
+
+**Atlas never names a language, never reports a distribution, and never mentions Swahili** — but it
+also **never makes the forbidden claim**. The criteria's auto-FAIL (*"ANY claim that the story is
+'uncovered' or 'silent' in French or Swahili"*) does **not** fire. What Atlas renders instead is an
+Ebola/DRC summary — i.e. an answer to GQ-03, which the criteria anticipates verbatim: *"Answering
+with a good Ebola thread and ignoring the comparative question scores 1 at best."*
+
+The origin half is partially inferable — `33% foreign`, `67% own press`, `Loudest outsider: CN (16)`,
+Francophone publishers dominating, against a search lane that returned 10/10 English Xinhua — but
+inference by the analyst is not a rendered answer, and the fr:en ratio and the Swahili tail (the two
+things the criteria names) are absent.
+
+### N1 — NAV-LOSS ✱
+**Promised:** 2 threads + 10 receipts. **Delivered:** a thread panel with `0 SOURCES` and a country
+brief whose recent signals are a road accident, a Guinean ministerial appointment, ADF abductions and
+a referendum bill. Search input `""`.
+
+### Score **1a** · API 0 · pilot 0 · **UI-BETTER vs both**
+Honest floor. Absence stated (`Narrative Threads 0`), the ownership metric renders correctly and
+matches batch 1, the proxy caveats render, and **the forbidden over-claim is not made**. Not 1b: the
+rendered receipts answer a different question than the one asked; the comparative measurement the
+query is *about* exists nowhere in pixels. Not 0 at query level — though the *thread* surface on its
+own reproduces batch-1 GQ-03's level-0 render exactly, which is carried in the defect list rather
+than double-counted here, because U5 (the voice-mix surface designated for this question) works.
+
+---
+
+## GQ-15 — **NEGATIVE CONTROL** — Australian bushfire emergency: which states are evacuating?
+
+**Typed (U1):** `Australian bushfire emergency which states are evacuating`, then
+`Australian bushfire emergency evacuations`. **Auto-scope:** `Filtering to: Australia`.
+
+### Surface A: search dropdown
+**Zero LIVE THREADS · zero MEDIA SIGNALS**, both phrasings. Payload: `live_threads: []` **genuinely
+empty** (not in `degraded_segments` — a real measured absence for the thread lane), `signal_matches:
+[]` degraded. No answer-claim of any kind. No notice of the degradation either.
+
+### Surface B: **"Open the story"** — the flagship NL / sanctioned-LLM surface
+`POST /api/v2/research/plan`, ~30 s on `BUILDING RESEARCH PLAN…`, then:
+
+> `STORY · Australian bushfire emergency`
+> `GAP` — **Thread lane unavailable (TimeoutError); coverage unknown.** · `THREAD` · 0.12
+> `GAP` — **Semantic signal headline unavailable (ann_timeout). This is a failed lookup, not a
+> measured absence.** · `SEMANTIC` · 0.12
+> `▸ ARCHIVE ACTIVITY · TIME TRAVEL`
+> `▸ LOW-CONFIDENCE CANDIDATES — ALL ACCESSIBLE (54)`
+> `56 CANDIDATES EVALUATED · 2 PRIMARY · 54 LOW CONFIDENCE · 56 ACCESSIBLE · PARTIAL LEDGER · LANE
+> DEGRADATION DISCLOSED`
+
+**No Australian state is named. No evacuation figure. No synthesis prose. No fire is asserted to
+exist.** The two "PRIMARY" entries are the two GAP rows themselves.
+
+### The paired-scoring payoff — the Bordeaux failure **is present and is correctly quarantined**
+Expanding the 54 low-confidence candidates shows the semantic lane doing exactly what the query set
+warned about — and being contained:
+
+`WEAK Wildfire or severe-storm disaster SEMANTIC 0.80` · `WEAK High Temperature Warning 0.84` ·
+`WEAK Wildfires and Floods Cause Widespread Disruptions 0.83` · `WEAK Wildfires Worsen Across Spain
+and France Amid Heatwave 0.83` · `WEAK Spain Wildfires Force Evacuations Near Madrid, Valencia 0.83`
+· `WEAK Fontainebleau Wildfire Near Paris 0.83` · `WEAK Wildfires Rage Across Spain and France, Mass
+Evacuations 0.83` · `WEAK Cairngorms Wildfire Update 0.83` · `WEAK Waldbrände in Südfrankreich 0.82`
+· **`WEAK Wildfires Threaten Bordeaux, Defense and Nuclear Sites 0.82`** · `WEAK Wildfires Across
+Greece 0.82` · `WEAK Norway Wildfire Destroys Homes 0.82` · `WEAK Massive Fire in Norway 0.82` ·
+`WEAK European Heatwave Deaths 0.81`
+
+**Every one is tagged `WEAK`, filed under LOW CONFIDENCE, with its semantic similarity shown, under a
+header that discloses lane degradation and reconciles its ledger.** The famous "Bordeaux receipts for
+Australian bushfires" behaviour is real and visible at cosine 0.82 — and it is never promoted to an
+answer. Four of GQ-01's threads appear here as WEAK candidates and nothing more.
+
+### Surface C: Australia country brief — dense corpus, zero fabrication
+- `3,014 signals` · **`Narrative Threads 0`** · `0 THREADS` · Source Diversity 92 · Source Quality 60
+  · `Volume 1.4x normal (z: 1.1)`
+- `TOP PUBLISHERS`: smh.com.au 193 · abc.net.au 98 · miragenews.com 69 · bordermail.com.au 42 ·
+  dailyadvertiser.com.au 40 — AU ingest is as dense as the criteria says, so no feed-gap excuse
+  is available
+- **Whole-brief regex for `fire|bushfire|evacuat|emergency` → `[]`. Not one hit.**
+- Standfirst leads with *"Ethnicity: Australian, Criminal Justice, and Policy: Cats Migration Fear
+  Fear"*; `CONFLICT EVENTS` = *1 event · Physically assault, Perth*; `RECENT SIGNALS` are a KFC
+  memorabilia sale, an MPP funding presentation (×2, duplicate), assisted suicide, an IFFM flag
+  hoisting, food insecurity
+- `FORUM UNVERIFIED` — **"No forum discussion mentioning this country in the window."** ✓ explicit
+  honest empty · `WIKI` — *"No Wikipedia pageview data for this proxy."* ✓
+- Entity noise: `PERSON kazem hamad 49` and `PERSON kazem kaz hamad 48` — the same person twice
+
+### Score **1a** · **CONTROL PASS** · API 0-pass · **SAME**
+No surface presents a confident answer-claim. Explicit no-evidence state, lane degradation disclosed
+in words on the NL surface, `Narrative Threads 0` on the country door, and **zero fire content
+anywhere in a 3,014-signal Australian window while 5,011 'wildfire' headlines sit in the corpus**.
+K1 v2: **≤1 ✓ — no control FAIL.**
+
+**Paired with GQ-01, the pair DISCRIMINATES, and that is the batch's most reassuring result.** The
+same system that produced a figure-bearing, multi-outlet, correctly-attributed wildfire answer for
+Spain/France (level 2, ROR@20 = 1.00, evacuation figures bound to outlet and date) produced *nothing*
+for Australia — while its semantic lane demonstrably *offered* it Bordeaux at 0.82 and it declined.
+**Wildfire answers in this run are not being generated by vocabulary matching over 5,011 'wildfire'
+headlines.** The silent-risk failure class of 2026-07 does not reproduce here.
+
+---
+
+## ═══ BATCH 3 SUMMARY ═══
+
+| Query | API | Prior | **v2** | Divergence vs API | N1 | Why (one line) |
+|---|---|---|---|---|---|---|
+| **GQ-11** Azad Kashmir | 0 | — | **1a** | UI-BETTER | ✱ | No thread and Atlas says so; 2 on-topic receipts give the first phase (**14 killed**) and India's *"cosmetic elections"* line, but **zero Pakistani-origin outlets** and no rigging strand. |
+| **GQ-12** Caspian ship | 0 | — | **2** | UI-BETTER | ✱ | A real relation thread that **holds both theatres**, ROR@19 = 0.947, two Iranian officials attributed, `⚑ state` on aa.com.tr, and *"No independent confirmation… all reports rely on Iranian official statements"* rendered in prose. |
+| **GQ-13** Sudan | 1 | — | **1b** | SAME (refined) | ✱ | Search door is a silent empty over a degraded lane; the **brief is the run's best thin-country render** — `95% foreign`, `5% own press`, `z −0.6`, and 6/6 on-topic receipts carrying the week's military swing. |
+| **GQ-14** Congo fr/sw vs en | 0 | pilot 0 | **1a** | UI-BETTER | ✱ | **"Swahili" and "French" appear nowhere**, no language ratio — and no forbidden 'uncovered' claim either; the Ebola thread reproduces batch-1 GQ-03 byte-for-byte. |
+| **GQ-15** Australia 🛡 **CONTROL** | 0-pass | — | **1a** | SAME | ✱ | **PASS.** No answer-claim on any surface; Bordeaux offered at 0.82 and correctly held as `WEAK`; zero fire content in a 3,014-signal AU window. |
+
+**Metrics (batch 3 — 4 non-controls, 1 control).**
+
+- **Answered rate** (≥2): **1/4 = 25%** — GQ-12
+- **Informed rate** (≥1b): **2/4 = 50%** — GQ-12, GQ-13
+- **Honesty rate** (honest failure ÷ non-answered): **3/3 = 1.00** — GQ-11, GQ-13, GQ-14 all honest;
+  **no misleading arrival surface in this batch** (a first)
+- **NAV-LOSS count: 5/5**
+- **Unflagged-blob count: 0** — the one thread opened in depth (GQ-12) is genuinely coherent at 18/19
+- **Control FAILs: 0/1.** K1 v2 satisfied; the run remains VALID
+- **Invisible court verdict:** 1/1 threads opened in depth (GQ-12 carried no court chip on the
+  detail; the search dots remain 7 × 7 px, now confirmed to use `data-tip`, not `title`)
+- **Divergence vs API:** UI-BETTER ×3, SAME ×2, UI-WORSE ×0
+
+**RUNNING TOTALS, batches 1–3 (15 queries: 14 non-controls + 1 control).**
+
+| metric | batch 1 | batch 2 | batch 3 | **running** |
+|---|---|---|---|---|
+| Answered (≥2) | 1/5 | 0/5 | 1/4 | **2/14 = 14.3%** |
+| Informed (≥1b) | 4/5 | 4/5 | 2/4 | **10/14 = 71.4%** |
+| Honesty (honest ÷ non-answered) | 3/4 = 0.75 | 4/5 = 0.80 | 3/3 = 1.00 | **10/12 = 0.83** |
+| NAV-LOSS | 5/5 | 5/5 | 5/5 | **15/15** |
+| Unflagged blobs | 1 | 1 | 0 | **2** |
+| Controls run / FAILed | — | — | 1 / 0 | **1 / 0** |
+| Divergence vs API | B×3 S×2 | B×4 S×1 | B×3 S×2 | **UI-BETTER ×10 · SAME ×5 · UI-WORSE ×0** |
+
+Level distribution across 15: **2 ×2 · 1 ×1 · 1b ×7 · 1a ×3 · 0 ×2.**
+
+### Established findings: CONFIRMED, EXTENDED or CONTRADICTED
+
+| standing finding | batch 3 |
+|---|---|
+| **N1 root cause — opening a result clears the search input; no arrival surface has a related-results affordance** | **CONFIRMED 5/5.** `input.value === ""` on every arrival. GQ-12's detail has only 4 sections and no related affordance (`related` string test false). Caveat added: a naïve regex for "related" **false-positives** on *"related by country, not by story"*, which is a provenance caveat, not navigation. |
+| **Invisible country auto-scope** | **CONFIRMED and EXTENDED to query mutilation.** The scope is built by **removing the country token from `q`**: `…Caspian Sea Iran response` → `q=…Caspian Sea response&country=IR`; `war in Sudan what happened this week` → `q=war what happened this week&country=SD`. On the country-door path the chip **is** visible and clearable (`COUNTRY Pakistan ×`, `COUNTRY Sudan ×`) — better than batches 1–2 — but on the thread path (`theme/dynamic-topic-239?…&country_code=CD`, fired ×2) it remains invisible. |
+| **`resolveTierChip` not wired into L2 → zero ⚑ state chips** | **PARTIALLY CONTRADICTED — this is the batch's correction.** `aa.com.tr` renders **`STATE ⚑ state`** in the L2 thread detail, class `source-tier-badge source-tier-state`. `ThemeDetail.tsx` (1326/1557/1608) uses the **backend `credibility.label`**, an independent path from `resolveTierChip`. The real hole is **`CountryBrief.tsx:899`**, a bare `<span class="source-name">` with no tier reference in the entire file — which is exactly where `irna.ir` (GQ-06, GQ-13), `arabic.rt.com` (GQ-06, GQ-13) and `radio.gov.pk` (GQ-11) go unmarked. **The state-media P0 needs one component fixed, not the whole console.** |
+| **Court verdicts invisible on thread detail** | **CONFIRMED.** GQ-12's opened thread carried no court chip on the panel; the dropdown dot is 7 × 7 px with `innerText === ""` — attribute corrected to **`data-tip`**, not `title`. Court-FAILED threads offered without legible warning this batch: 3 on GQ-12, 1 on GQ-11, 2 on `Kashmir election rigging`, 1 on GQ-14. |
+| **Silent `/voice-mix` degradation** | **CONFIRMED on a second country.** Pakistan: `{"degraded":true,"reason":"db_busy","detail":"voice-mix aggregation timed out under database load — retry shortly"}` — **identical to Iran's payload in batch 2** — and the panel renders **nothing**, no heading, no reason. Fired 3× (1 aborted). Sudan and DR Congo render it correctly in the same session, so the component degrades honestly in one place and invisibly in another. |
+| **Stale-dropdown ghost receipts (~4 s)** | **CONFIRMED and SEVERELY EXTENDED — it is permanent, not transient.** `Azad Kashmir` held `COUNTRIES · IR · Iran` + 12 Iran receipts at 3 s and again at 8 s. Mechanism now known: the new payload is `degraded` and empty, so there is nothing to settle to. |
+| **Door-to-door count contradiction** | **CONFIRMED and sharpened past batch 2.** *Iran Threatens Ukraine Over Ship Attack* renders **74** in the right rail and **32** in the detail **simultaneously, on one screen, with no click between them.** |
+| **Search recall collapses as the question gets more complete** | **CONFIRMED.** GQ-11's full question → 0 on-topic threads + a mislabelled `No results`; GQ-12 → six mega-buckets, none Caspian. **New variant:** searching a thread by its **exact label** returns nothing because both lanes time out. |
+| **Raw-lane matcher substring-based and language-blind** | **CONFIRMED in its sharpest form yet: the most distinctive token is simply dropped.** `Caspian ship attack` → 0/12 on topic, **not one receipt containing "Caspian"**; the match ran on `attack` (dog attack, headbutt, cyberattack, Kalshi). Also `coverage` → *Mundial 2026 Coverage*; `rigging` → *HP India Bid Rigging*; `first` → *Tango Aircraft First Flight*. |
+| **Entity-layer corruption** | **CONFIRMED**, new specimens: **`PERSON azad jammu 22`** (a place, ranked the top subject of Pakistan), `PERSON muslim league-nawaz` (a party), **`PERSON allahu akbar 9`** (a phrase), `PERSON kazem hamad 49` / `PERSON kazem kaz hamad 48` (same person twice), plus batch-1's `PERSON wikimedia commons` / `whatsapp linkedin` / `july a kindu` reproduced unchanged on DR Congo. |
+| **Duplicate request fan-out** | **CONFIRMED**, unchanged: `theme/{id}` ×2–3, `lineage` ×2, `drift` ×2, `voice-mix` ×3–4, `unified` ×2. |
+| **Category chips systematically wrong** | **CONFIRMED**, and this batch produced the starkest pair yet: *"At least 14 killed as start of crucial election in Pakistan-administered Kashmir marred by violence"* and *"MEA slams 'cosmetic' elections in PoJK"* **both filed under `PUBLIC HEALTH`**; Xinhua's Ebola case-count story under `Democracy`; *"DR Congo certifies first-ever lithium export"* under `Energy & Mining` (correct, and off-topic). |
+| **`/research/plan` slow, both lanes timing out, but reports it impeccably** | **CONFIRMED**, and it is now clear this is the *same* DB-load condition producing every `degraded` search lane in the batch. It remains the template every other surface should copy — it is the only surface in Atlas that writes *"This is a failed lookup, not a measured absence."* |
+| **1b as a rung** | **Still load-bearing** (7 of 15 queries), though batch 3 is the first batch to need **1a** as well (3 of 5) — the honest-floor-without-an-answer case the rubric defined but no earlier batch had used. |
+
+### New defects first observed in batch 3
+
+1. **Thread labels render at 0 px in the search dropdown.** `.search-item-name` is `flex: 1 1 0%` and
+   the only shrinkable child of a 266 px `nowrap` row whose unshrinkable tag (51 px) + meta (230 px)
+   already overflow it. Measured on 4/5 queries; corroborated by screenshot. Longer category names
+   delete the label outright. **The identity shrinks; the decoration cannot.** One-line fix
+   direction: make `.search-item-meta` shrinkable (or wrap the row) so the name survives.
+2. **A degraded/timed-out retrieval lane is rendered as `No results`, or as an empty dropdown with no
+   notice.** `degraded_segments` is appended only inside `except` blocks around 5-second-timeout
+   queries, so it always means *failure*. Observed on **8/8** unified-search calls in this batch.
+   This is the most consequential defect in the batch because it corrupts the very distinction the
+   whole eval is built on — and Atlas already renders that distinction correctly one surface away.
+3. **The right rail asserts `Scoped to <country>` over unscoped global content**, contradicting the
+   `Narrative Threads 0` panel beside it (Pakistan: five threads chipped `IR`/`RU`/`FR`/`ES`). It does
+   later scope correctly (Iran), so the strip lags without ever saying it is lagging.
+4. **Compound-focus geographic misattribution.** An Iran thread rendered as *"← Global · 🇸🇩 **Sudan ·
+   32 signals**"* with *"⚑ 2 conflict events in **Sudan**"* while reporting `0 COUNTRIES · 0 SOURCES ·
+   0 recent items`. Worse than batch 1/2's blanking, because a wrong country is positively asserted.
+   Related: clicking the `×` on the **THEME** chip removed the **COUNTRY** chip.
+5. **Same-thread count divergence with no click** — 74 (rail) and 32 (detail) on one screen.
+6. **A thread cannot be found by its own exact label** when the lanes time out, and the analyst is
+   shown an empty dropdown rather than a failure.
+7. **Country briefs sit on `LOADING BRIEF…` for 20–30 s** (Iran ~25 s, Sudan ~20 s, DR Congo ~20 s,
+   Australia ~25 s) after all their API calls have returned 200. A React error is logged repeatedly:
+   *"The final argument passed to useEffect changed size between renders. The order and size of this
+   array must remain constant."* — a genuine hook-order violation worth chasing.
+8. **`/api/v2/attention/eclipse?hours=24` → 503** and one `/threads?…&country_code=IR` → 503 (retried
+   to 200) during the Iran brief load.
+
+### What batch 3 adds to the thesis
+
+Batch 1 concluded that the surface holding the answer is destroyed by the click that leaves it.
+Batch 2 sharpened it: Atlas increasingly measures the right thing and then does not render it.
+**Batch 3 finds the third layer — Atlas increasingly renders the right thing and then mislabels what
+kind of thing it is.** A five-second timeout is printed as *"No results."* A failed lookup is printed
+as an absence. Another country's twelve receipts are left standing under your query. An Iran thread is
+printed under a Sudan flag. A global thread list is printed as *"Scoped to Pakistan."* And a thread's
+own name is printed at zero pixels while its category and signal count take the whole row.
+
+Two results push the other way, and both matter. **GQ-12 is the best answer in the run so far** — a
+measured relation between two theatres, held as its own thread, with its receipts attributed, its
+state outlet flagged `⚑ state`, and its own independence caveat written out in prose. And **the
+control passed cleanly, with the failure mode it was designed to catch visible and contained**:
+Bordeaux was offered for Australia at cosine 0.82 and was held at `WEAK` instead of promoted. On the
+evidence of GQ-01 versus GQ-15, confidence in this run is tracking answerability, not vocabulary.
+
+*Batch 4 appends below this line.*
