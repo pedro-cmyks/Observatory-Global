@@ -22,6 +22,11 @@ export interface PinSnapshot {
   /** `date` = signal date (ISO day) when the payload carried one — the report
    *  renders "— outlet, Jul 8" (P0.3: dates everywhere). */
   evidence?: Array<{ headline: string; source?: string; url?: string; date?: string }>
+  /** Story Lens Task 9: the measured neighborhood FROZEN at pin time (Pin
+   *  Story button on the lens banner). Deliberately thin — top-8, no
+   *  per-sibling evidence array — because the whole Investigation blob syncs
+   *  as one LWW unit (investigationSync.ts); keep it near O(1KB). */
+  siblings?: Array<{ id: string; label: string; weight: number; reason: string }>
 }
 
 /** A gate tier as it reaches the UI. `verified` cleared the strict quality gate
@@ -328,6 +333,34 @@ export function updatePinSnapshot(
   })
   // Enrichment F1: async-landed evidence (panel pins) also gets fetched.
   if (out) enqueueSnapshotFetch(snapshot)
+  return out
+}
+
+/** Story Lens Task 9: MERGE a partial snapshot into whatever is already there,
+ *  instead of replacing it wholesale like {@link updatePinSnapshot}.
+ *
+ *  The race this exists to kill: `WorkspaceContext.pinItem` fires the pin
+ *  immediately and fetches its panel snapshot asynchronously; the lens
+ *  banner's "Pin story" button writes a sibling-neighborhood freeze right
+ *  after the pin call returns. Either write can land first — a wholesale
+ *  `updatePinSnapshot` would let whichever lands SECOND erase whatever the
+ *  first one wrote. A shallow merge makes write order irrelevant: every
+ *  field the caller doesn't mention survives. `capturedAt` is the one field
+ *  that does NOT just take the latest value — the EARLIEST capture wins, so
+ *  the frozen moment stays the moment the analyst actually pinned, not
+ *  whichever enrichment happened to write last. */
+export function mergePinSnapshot(
+  investigationId: string, anchorId: string, partial: Partial<PinSnapshot>,
+): Investigation | null {
+  const out = mutate(investigationId, inv => {
+    const pin = inv.pins.find(p => p.anchorId === anchorId)
+    if (!pin) return
+    const existing = pin.snapshot
+    const capturedAt = existing?.capturedAt ?? partial.capturedAt ?? new Date().toISOString()
+    pin.snapshot = { ...existing, ...partial, capturedAt }
+  })
+  // Enrichment F1: a merge can introduce fresh evidence urls too.
+  if (out) enqueueSnapshotFetch(partial)
   return out
 }
 

@@ -7,6 +7,12 @@ describe('capturePayloads', () => {
       id: 'theme-dynamic-topic-9', type: 'theme', title: 'Gaza ceasefire', urlParams: '?theme=dynamic-topic-9',
     })
   })
+  it('threadPin with opts.lens appends &lens=story so replay re-enters the lens', () => {
+    expect(threadPin('dynamic-topic-9', 'Gaza ceasefire', { lens: true })).toEqual({
+      id: 'theme-dynamic-topic-9', type: 'theme', title: 'Gaza ceasefire',
+      urlParams: '?theme=dynamic-topic-9&lens=story',
+    })
+  })
   it('personPin encodes names with spaces/diacritics', () => {
     expect(personPin('José Ramírez')).toEqual({
       id: 'person-José Ramírez', type: 'person', title: 'José Ramírez', urlParams: '?person=Jos%C3%A9%20Ram%C3%ADrez',

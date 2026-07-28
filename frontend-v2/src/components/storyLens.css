@@ -33,6 +33,15 @@ body.eclipsed.story-lensed .sl-banner { top: 28px; }
 /* Fit the shared court chip inside the 28px band without touching its
    colors/severity styling (labelReviewChip.css owns those). */
 .sl-banner-court { font-size: 9px; line-height: 1; margin-left: 0; align-self: center; }
+.sl-banner-pin {
+  background: none; border: 1px solid var(--story-cyan-border);
+  color: #cfeff1; cursor: pointer; border-radius: 3px; font: inherit; font-size: 11px;
+  line-height: 1; padding: 1px 6px; white-space: nowrap;
+}
+.sl-banner-pin:hover { border-color: var(--story-cyan); }
+/* Pinned = a measured, already-frozen state, not an actionable prompt
+   anymore — reads in the same cyan the reason chips use. */
+.sl-banner-pin[data-pinned="true"] { color: var(--story-cyan); border-color: var(--story-cyan); }
 .sl-banner-exit {
   margin-left: auto; background: none; border: 1px solid var(--story-cyan-border);
   color: #cfeff1; cursor: pointer; border-radius: 3px; font: inherit; font-size: 12px;

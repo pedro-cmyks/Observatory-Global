@@ -12,13 +12,18 @@ type PinPayload = Omit<PinnedItem, 'notes' | 'timestamp'>
 
 /** A thread/topic node (universe body, neighbor chip, dynamic-topic id) as a
  *  workbench pin. `id` is the raw thread/topic id (e.g. 'dynamic-topic-9' or
- *  an atlas slug--cc) — the same id `?theme=` already expects. */
-export function threadPin(id: string, label: string): PinPayload {
+ *  an atlas slug--cc) — the same id `?theme=` already expects.
+ *
+ *  `opts.lens`: Story Lens Task 9 — the banner's "Pin story" button pins the
+ *  CURRENT lens anchor, so its urlParams should re-enter the lens on replay
+ *  (`&lens=story`), not just reopen a bare thread. Omitted (default) for
+ *  every existing non-lens caller — backward compatible. */
+export function threadPin(id: string, label: string, opts?: { lens?: boolean }): PinPayload {
   return {
     id: `theme-${id}`,
     type: 'theme' as PinnedItemType,
     title: label,
-    urlParams: `?theme=${id}`,
+    urlParams: `?theme=${id}${opts?.lens ? '&lens=story' : ''}`,
   }
 }
 

@@ -29,6 +29,7 @@ import {
   listCitations,
   listInvestigations,
   mergeInvestigations,
+  mergePinSnapshot,
   movePin,
   onWorkbenchChange,
   removeCitation,
@@ -173,6 +174,53 @@ describe('workbench store', () => {
     expect(listInvestigations()).toEqual([])
     setActiveInvestigation('x')
     expect(getActiveInvestigationId()).toBe('x')
+  })
+})
+
+// Story Lens Task 9: the panel-snapshot enrichment fetch (WorkspaceContext)
+// and the lens's sibling-freeze write can land in either order — whichever
+// arrives second must not erase the first. mergePinSnapshot is the
+// race-proof primitive: shallow field merge, earliest capturedAt wins.
+describe('mergePinSnapshot (race-proof snapshot writes)', () => {
+  it('merges fields instead of replacing, and the earliest capturedAt wins', () => {
+    const inv = createInvestigation('Lens test')
+    addPin(inv.id, {
+      anchorId: 'theme-x',
+      anchorType: 'theme',
+      label: 'X',
+      snapshot: { capturedAt: '2026-07-28T00:00:00Z', summary: 'seed' },
+    })
+    mergePinSnapshot(inv.id, 'theme-x', {
+      siblings: [{ id: 'dynamic-topic-2', label: 'Sib', weight: 0.7, reason: 'whitened_cos 0.70' }],
+    })
+    mergePinSnapshot(inv.id, 'theme-x', {
+      summary: 'enriched',
+      evidence: [{ headline: 'h' }],
+    })
+    const pin = getInvestigation(inv.id)!.pins.find(p => p.anchorId === 'theme-x')!
+    expect(pin.snapshot?.summary).toBe('enriched')
+    expect(pin.snapshot?.siblings?.length).toBe(1) // survived the second write
+    expect(pin.snapshot?.capturedAt).toBe('2026-07-28T00:00:00Z') // earliest capture wins
+  })
+
+  it('touches nothing when the anchor has no matching pin (investigation still returned)', () => {
+    const inv = createInvestigation('No pin here')
+    const out = mergePinSnapshot(inv.id, 'missing-anchor', { summary: 'x' })
+    expect(out?.id).toBe(inv.id)
+    expect(getInvestigation(inv.id)!.pins).toHaveLength(0)
+  })
+
+  it('is a no-op (null) when the investigation does not exist', () => {
+    expect(mergePinSnapshot('nope', 'theme-x', { summary: 'x' })).toBeNull()
+  })
+
+  it('creates the snapshot when the pin had none yet (later capture wins as earliest)', () => {
+    const inv = createInvestigation('bare pin')
+    addPin(inv.id, { anchorId: 'theme-y', anchorType: 'theme', label: 'Y' })
+    mergePinSnapshot(inv.id, 'theme-y', { summary: 'first enrichment' })
+    const pin = getInvestigation(inv.id)!.pins.find(p => p.anchorId === 'theme-y')!
+    expect(pin.snapshot?.summary).toBe('first enrichment')
+    expect(pin.snapshot?.capturedAt).toBeTruthy()
   })
 })
 

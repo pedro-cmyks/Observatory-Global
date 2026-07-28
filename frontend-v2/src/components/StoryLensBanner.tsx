@@ -1,8 +1,12 @@
 import { createPortal } from 'react-dom'
 import { useStoryLens } from '../contexts/StoryLensContext'
+import { useWorkspace } from '../contexts/WorkspaceContext'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { decodeEntities } from '../lib/decodeEntities'
 import { resolveThreadTitle } from '../lib/themeLabels'
+import { siblingChipText } from '../lib/storyLens'
+import { threadPin } from '../lib/capturePayloads'
+import { getActiveInvestigationId, mergePinSnapshot } from '../lib/workbench'
 import './storyLens.css'
 
 /** Portaled story-lens banner — same reasoning as EclipseChrome: rendered to
@@ -12,6 +16,7 @@ import './storyLens.css'
  * always wins when both are active. */
 export function StoryLensBanner() {
   const { state, data, error, loading, exit } = useStoryLens()
+  const { pinItem, isPinned } = useWorkspace()
   if (!state.active) return null
   const anchor = data?.anchor ?? null
   // Decode entity-encoded labels BEFORE resolveThreadTitle (which passes a
@@ -22,6 +27,27 @@ export function StoryLensBanner() {
   // flight this reads "Loading thread…"; once settled without a label it
   // falls back to the honest generic, never state.anchorId verbatim.
   const label = resolveThreadTitle(state.anchorId, knownLabel, loading)
+  const pinId = state.anchorId ? `theme-${state.anchorId}` : null
+
+  // Task 9: freeze this measured neighborhood into the analyst's active
+  // investigation. `pinItem` handles the pin + its own async panel-snapshot
+  // enrichment (evidence/summary/labelStatus); the sibling freeze below is a
+  // SEPARATE write to the same pin. Write order between the two no longer
+  // matters — mergePinSnapshot (Task 9) merges fields instead of replacing,
+  // so whichever lands second never erases the other.
+  const onPin = () => {
+    if (!state.anchorId || !anchor) return
+    pinItem(threadPin(state.anchorId, anchor.label, { lens: true }))
+    const invId = getActiveInvestigationId()
+    if (invId) {
+      mergePinSnapshot(invId, `theme-${state.anchorId}`, {
+        siblings: (data?.siblings ?? []).slice(0, 8).map((s) => ({
+          id: s.id, label: s.label, weight: s.weight, reason: siblingChipText(s).text,
+        })),
+      })
+    }
+  }
+
   return createPortal(
     <div className="sl-banner">
       <span className="sl-banner-mark">◈ STORY</span>
@@ -36,6 +62,18 @@ export function StoryLensBanner() {
       ) : null}
       {loading ? <span className="sl-banner-note" role="status">measuring…</span> : null}
       {error ? <span className="sl-banner-note sl-banner-degraded" role="status">⚠ {error}</span> : null}
+      {/* No pinning an unmeasured story: only renders once the anchor resolved. */}
+      {anchor ? (
+        <button
+          type="button"
+          className="sl-banner-pin"
+          data-pinned={pinId ? isPinned(pinId) : false}
+          onClick={onPin}
+          data-tip="Freeze this neighborhood into an investigation"
+        >
+          {pinId && isPinned(pinId) ? '◆ pinned' : '◇ Pin story'}
+        </button>
+      ) : null}
       <button type="button" className="sl-banner-exit" onClick={exit} aria-label="Exit story lens" data-tip="Exit story lens">
         ✕
       </button>

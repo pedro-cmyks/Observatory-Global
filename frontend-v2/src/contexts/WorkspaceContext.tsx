@@ -15,10 +15,10 @@ import {
     createInvestigation,
     getActiveInvestigationId,
     getInvestigation,
+    mergePinSnapshot,
     recordTrail,
     removePin as wbRemovePin,
     updatePinNote,
-    updatePinSnapshot,
     type PinSnapshot,
 } from '../lib/workbench'
 import { extractSnapshotEvidence } from '../lib/pinEvidence'
@@ -180,8 +180,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         wbAddPin(invId, toWorkbenchPin(item))
         bump()
         // Enrich the frozen snapshot asynchronously; the pin never waits.
+        // MERGE, not replace (Story Lens Task 9): the lens banner's "Pin
+        // story" button can write a sibling-neighborhood freeze onto this
+        // same pin around the same time, in either order — a wholesale
+        // replace here would erase that write if this fetch lands second.
         fetchPanelSnapshot(item)
-            .then(snap => { if (snap) { updatePinSnapshot(invId, item.id, snap); bump() } })
+            .then(snap => { if (snap) { mergePinSnapshot(invId, item.id, snap); bump() } })
             .catch(() => { /* minimal snapshot stays */ })
     }, [bump, ensureInvestigation])
 

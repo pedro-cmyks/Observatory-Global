@@ -408,6 +408,18 @@
 .dossier-pin-noev { font-size: 10px; color: var(--color-severity-notable); border: 1px solid rgba(251,191,36,0.45); border-radius: 3px; padding: 1px 6px; text-transform: uppercase; letter-spacing: 0.04em; }
 .dossier-pin-window { font-size: 11px; color: var(--color-text-muted); margin: 2px 0 4px; }
 
+/* Story Lens Task 9: the frozen sibling neighborhood on a pin. */
+.dossier-pin-neighborhood { margin-top: 6px; }
+.dossier-pin-neighborhood-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 2px;
+}
+.dossier-pin-neighborhood-row { font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; }
+.dossier-pin-neighborhood-reason { color: var(--story-cyan, #2aa7ad); }
+
 /* P0.6b web corroboration — per-pin status chips + section chrome */
 .dossier-btn--corroborate { border-color: rgba(96, 165, 250, 0.4); color: var(--color-info); background: rgba(96, 165, 250, 0.08); }
 .dossier-btn--corroborate:hover { background: rgba(96, 165, 250, 0.16); }

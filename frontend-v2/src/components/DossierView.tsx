@@ -751,6 +751,20 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                         })}
                                     </ul>
                                 )}
+                                {/* Story Lens Task 9: the neighborhood as MEASURED at pin
+                                    time (the lens banner's "Pin story" button) — frozen,
+                                    never re-fetched, same discipline as the evidence list
+                                    above. */}
+                                {p.snapshot?.siblings && p.snapshot.siblings.length > 0 && (
+                                    <div className="dossier-pin-neighborhood">
+                                        <div className="dossier-pin-neighborhood-title">MEASURED NEIGHBORHOOD (frozen)</div>
+                                        {p.snapshot.siblings.map((s) => (
+                                            <div key={s.id} className="dossier-pin-neighborhood-row">
+                                                {s.label} <span className="dossier-pin-neighborhood-reason">↔ {s.reason}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 {p.note && <div className="dossier-note">Note: {p.note}</div>}
                                 {(chipsByPin.get(p.anchorId) ?? []).map(chip => (
                                     <VerdictChip
