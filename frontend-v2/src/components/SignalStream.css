@@ -442,3 +442,36 @@
     .signal-stream-container { height: auto; max-height: 72vh; }
     .signal-list { max-height: 60vh; }
 }
+
+/* ── ECLIPSE LENS tabs (spec §6.4, Phase 4) ─────────────────────────────
+   Inside the lens the stream tabs are a TOPIC scope, not a theme filter:
+   ECLIPSE = the story holding the coverage, SHADOW = what it drowns out.
+   Same red/cyan vocabulary the threads panel established, so the two
+   panels read as one lens. Colour is a SECOND encoding here — the tab
+   label already carries the meaning — so nothing depends on hue alone. */
+.stream-filter-bar--eclipse .stream-filter-tab.ecl-tab-eclipse.active {
+    color: var(--eclipse-red, #e23a1a);
+    background: rgba(226, 58, 26, 0.10);
+}
+.stream-filter-bar--eclipse .stream-filter-tab.ecl-tab-shadow.active {
+    color: #39d0d8;
+    background: rgba(42, 167, 173, 0.12);
+}
+.stream-filter-bar--eclipse .stream-filter-tab.ecl-tab-eclipse:hover { color: var(--eclipse-red, #e23a1a); }
+.stream-filter-bar--eclipse .stream-filter-tab.ecl-tab-shadow:hover { color: #39d0d8; }
+
+/* Row tint marks WHICH scope the row belongs to. The hover rule below
+   .signal-row:hover deliberately still wins (the lift is the interaction
+   affordance); at rest the scope colour holds the left edge. */
+.signal-row.ecl-row-eclipse { border-left-color: var(--eclipse-red, #e23a1a); }
+.signal-row.ecl-row-shadow { border-left-color: var(--eclipse-cyan, #2aa7ad); }
+
+/* Honest-empty note under a scoped tab: the stories are real, their member
+   signals just haven't landed in this window yet. */
+.stream-empty-note {
+    display: block;
+    margin-top: 6px;
+    font-size: 10px;
+    line-height: 1.4;
+    opacity: 0.75;
+}

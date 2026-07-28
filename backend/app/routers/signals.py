@@ -30,6 +30,61 @@ def _stem(w: str) -> str:
     return w
 
 
+# ---------------------------------------------------------------------------
+# topic= filter (Eclipse/Shadow signal-stream tabs, eclipse spec §6.4)
+# ---------------------------------------------------------------------------
+# A signal carries no topic linkage in its own row, so scoping the stream to a
+# thread means a semi-join through topic_members. Three constants bound it.
+
+# Cap on how many topic ids one request may name. The Shadow tab passes the
+# eclipse `selected[]` set, which the endpoint itself caps at limit<=30; 12 is
+# comfortably above the display default (8) and keeps the ANY() array small.
+_TOPIC_FILTER_MAX = 12
+
+# Hard ceiling on the member set pulled per request. MEASURED (prod EXPLAIN):
+# the cost of this filter is one PK probe into signals_v2 per member row, at
+# ~0.6-1.7ms each on the shared instance, so an unbounded member set is an
+# unbounded query. A black-hole topic can hold thousands of members; this caps
+# the probe count deterministically (most-recently-assigned members win).
+_TOPIC_MEMBER_POOL = 5000
+
+# Slack on the member window. topic_members.assigned_at tracks the classifier
+# run, not the signal timestamp: MEASURED on prod the lag is p50 +0.43h, and
+# assignment can PRECEDE the signal timestamp by up to -2.45h (ingest/clock
+# ordering). Widening the member window by 6h past the requested `hours` is
+# >2x that measured worst case, so no signal inside the timestamp window can
+# fall out of the member set. Rows on the other tail (an old signal assigned
+# recently) are dropped by the timestamp filter, as they should be.
+_TOPIC_ASSIGNED_SLACK_H = 6
+
+# topic ids are atlas slugs ('gang-control-urban-security') or dynamic ids
+# ('dynamic-topic-8072'). Anything else is rejected rather than passed to the
+# query — the parameter is bound, not interpolated, so this is shape hygiene
+# (and an honesty gate: garbage must not silently widen the stream).
+_TOPIC_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+def parse_topic_filter(raw: str | None, *, max_ids: int = _TOPIC_FILTER_MAX) -> list[str] | None:
+    """Parse a comma-separated topic_id list into validated ids.
+
+    Returns None when no filter was requested (serve the stream unchanged), or
+    a list — possibly EMPTY — when one was. An empty list is meaningful: the
+    caller asked to scope the stream and nothing valid survived, so the honest
+    answer is no signals, never the unfiltered firehose relabelled.
+    """
+    if raw is None:
+        return None
+    out: list[str] = []
+    for part in raw.split(","):
+        tid = part.strip()
+        if not tid or not _TOPIC_ID_RE.match(tid) or tid in out:
+            continue
+        out.append(tid)
+        if len(out) >= max_ids:
+            break
+    return out
+
+
 def _lexical_connections(headline: str, topic_rows: Any, *, limit: int = 3) -> list[dict]:
     """Keyword-overlap connections between a headline and the living thread
     labels/slugs — the fallback when nothing connects semantically."""
@@ -62,6 +117,10 @@ async def get_signals(
     limit: int = Query(50, ge=1, le=500),
     lane: Optional[str] = Query(None, description="Filter to a stream lane: analyst|sports|entertainment|general"),
     source: Optional[str] = Query(None, description="Filter to one publisher (exact source_name — the CountryBrief publisher expand, D8)"),
+    topic: Optional[str] = Query(None, description=(
+        "Comma-separated topic_ids (e.g. 'dynamic-topic-8072,armed-conflict-escalation'). "
+        f"Restricts the stream to those threads' evidence members; max {_TOPIC_FILTER_MAX} ids. "
+        "Feeds the Eclipse/Shadow stream tabs.")),
     sort: str = Query("recent", description="recent | relevance (analyst-grade ranking)"),
     own_voice_mix: bool = Query(True, description="Interleave recent non-English native-voice signals into the global stream so GDELT's English firehose doesn't bury them"),
 ):
@@ -73,6 +132,7 @@ async def get_signals(
     ``sort=relevance`` ranks by relevance score then recency.
     """
     from app.services.stream_relevance import score_stream_signal
+    topic_ids = parse_topic_filter(topic)
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 10000")
         has_nlp_columns = await conn.fetchval("""
@@ -121,7 +181,43 @@ async def get_signals(
             param_count += 1
             conditions.append(f"source_name = ${param_count}")
             params.append(source)
-        
+
+        # Topic scope (Eclipse/Shadow tabs). MEASURED plan choice (prod EXPLAIN
+        # ANALYZE, 2 topics / 24h): driving from topic_members via
+        # idx_topic_members_topic (topic_id, role, engine_version) → bounded
+        # member set → signals_v2_pkey probes touches ~10K buffers / 1.6s warm.
+        # The naive `EXISTS (... member_ref = signals_v2.id::text)` shape makes
+        # the planner drive from the timestamp index instead and probe
+        # topic_members 142K times: 528K buffers / 8s. Same answer, 50x the IO —
+        # so the member set is materialised FIRST, on purpose.
+        #
+        # role/engine_version/quarantined scoping is copied verbatim from
+        # routers/attention_eclipse.py: an unscoped topic_members read spans
+        # both membership regimes (v1-compat ‖ unified-v2) and the quarantined
+        # black-hole rows, which double-counts (the 2026-07-27 class of bug).
+        if topic_ids is not None:
+            if topic_ids:
+                param_count += 1
+                p_topics = param_count
+                param_count += 1
+                p_window = param_count
+                conditions.append(
+                    "id IN (SELECT tm.signal_id FROM topic_members tm "
+                    f"WHERE tm.topic_id = ANY(${p_topics}) "
+                    "AND tm.role = 'evidence' "
+                    "AND tm.engine_version = 'v1-compat' "
+                    "AND tm.quarantined IS NOT TRUE "
+                    f"AND tm.assigned_at > NOW() - (${p_window}::int * INTERVAL '1 hour') "
+                    f"ORDER BY tm.assigned_at DESC LIMIT {_TOPIC_MEMBER_POOL})"
+                )
+                params.append(topic_ids)
+                params.append(hours + _TOPIC_ASSIGNED_SLACK_H)
+            else:
+                # A scope was requested and nothing valid survived parsing.
+                # Honest empty beats serving the global stream under a label
+                # the caller chose ("Eclipse"/"Shadow") — see parse_topic_filter.
+                conditions.append("FALSE")
+
         where_clause = " AND ".join(conditions)
 
         # When ranking or filtering by lane, classification happens in Python
@@ -217,7 +313,10 @@ async def get_signals(
         # ordering bury non-English native voice. On the unfiltered global stream,
         # interleave recent own-voice (non en/xx) signals — ~1 in every 3 slots —
         # so the world's own press is visible, not only English coverage of it.
-        is_global = not (country_code or countries or theme or person or lane)
+        # A topic-scoped stream is not the global stream: interleaving unrelated
+        # own-voice signals into it would break the scope the caller asked for.
+        is_global = not (country_code or countries or theme or person or lane
+                         or topic_ids is not None)
         if own_voice_mix and is_global:
             seen_ids = {s["id"] for s in signals}
             own_rows = await conn.fetch(f"""
@@ -248,7 +347,7 @@ async def get_signals(
 
         signals = signals[:limit]
 
-        return {
+        payload = {
             "count": len(signals),
             "velocity": {
                 "signals_per_minute": velocity,
@@ -257,6 +356,13 @@ async def get_signals(
             },
             "signals": signals
         }
+        # Echo the APPLIED scope so the caller can see what actually ran (an id
+        # it named may have been rejected or truncated at the cap). Additive:
+        # the key is absent entirely when no topic filter was requested, so the
+        # unfiltered contract is byte-identical.
+        if topic_ids is not None:
+            payload["topic_filter"] = topic_ids
+        return payload
 
 @router.get("/api/v3/crisis/signals")
 async def get_crisis_signals(
