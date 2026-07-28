@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.services.research_semantic import (
     ANN_IVFFLAT_PROBES,
+    ANN_QUERY_TIMEOUT_SECONDS,
     THREAD_MEMBER_MIN_SIMILARITY,
     _prepare_ann_search,
     build_semantic_members,
@@ -76,7 +77,10 @@ def test_source_lang_preserved_for_voice_surfacing():
     assert langs[2] == "xx"  # empty normalized to xx
 
 
-def test_ann_search_uses_the_measured_recall_probe_floor():
+def test_ann_search_uses_the_measured_under_load_probe_setting():
+    """probes=20 was tuned for recall on an IDLE box (2026-07-13) and measured
+    >100s under nightly load (2026-07-27/28) against a 6s budget — i.e. no
+    answer at all whenever the DB was busy. 10 returned 2.1-2.9s loaded."""
     class Conn:
         def __init__(self):
             self.statements = []
@@ -87,8 +91,10 @@ def test_ann_search_uses_the_measured_recall_probe_floor():
     conn = Conn()
     asyncio.run(_prepare_ann_search(conn))
 
-    assert ANN_IVFFLAT_PROBES == 20
-    assert conn.statements == ["SET ivfflat.probes = 20"]
+    assert ANN_IVFFLAT_PROBES == 10
+    assert conn.statements == ["SET ivfflat.probes = 10"]
+    # the probe count only means something against a stated budget
+    assert ANN_IVFFLAT_PROBES > 0 and ANN_QUERY_TIMEOUT_SECONDS == 6
 
 
 def test_each_database_ann_lane_prepares_ivfflat_probes():

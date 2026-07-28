@@ -423,3 +423,248 @@ def test_gate_tier_for_two_tier_contract(monkeypatch):
     assert rs.gate_tier_for(False, 0.92, "some-new-topic") == "extended"
     # no assignment at all
     assert rs.gate_tier_for(None, None, None) == "below_gate"
+
+
+# ── Centroid substrate: the whole field, and a guard that can actually fire ──
+# Both defects measured 2026-07-27/28 (docs/research/gold/2026-07-27-semantic-
+# search-feasibility.md).
+
+
+class _RecordingConn:
+    """Minimal asyncpg stand-in that remembers the SQL it was handed."""
+
+    def __init__(self, rows=None, value=None):
+        self.rows = rows or []
+        self.value = value
+        self.queries: list[str] = []
+        self.statements: list[str] = []
+
+    async def fetch(self, query, *args, **kwargs):
+        self.queries.append(query)
+        return self.rows
+
+    async def fetchval(self, query, *args, **kwargs):
+        self.queries.append(query)
+        return self.value
+
+    async def execute(self, statement):
+        self.statements.append(statement)
+
+
+def test_centroid_fetch_does_not_slice_the_field_by_a_batch_stamp():
+    """`last_seen` is a nightly BATCH stamp — measured on prod 2026-07-28,
+    1,144 of 1,165 pool rows share one value (2,714/2,719 on 07-27). Ordering
+    by it and taking 100 served a planner-arbitrary 3.7-8.6% of the field."""
+    from app.services.research_semantic import (
+        CENTROID_POOL_SCAN_CAP,
+        fetch_topic_centroids,
+    )
+
+    conn = _RecordingConn(rows=[
+        {"id": 5, "label": "Water stress", "centroid_vec": [0.1, 0.2],
+         "agg_n_signals": 40},
+    ])
+    out = asyncio.run(fetch_topic_centroids(conn))
+
+    sql = conn.queries[0]
+    # NULLS LAST matters: DESC defaults to NULLS FIRST, which would rank
+    # volume-unknown topics above every real one if the cap ever bound.
+    assert "ORDER BY agg_n_signals DESC NULLS LAST, id DESC" in sql
+    assert "last_seen" not in sql          # the batch stamp never orders again
+    assert "LIMIT 100" not in sql
+    # the cap is a blast-radius bound, set far above every measured pool
+    assert CENTROID_POOL_SCAN_CAP >= 5000
+    assert f"LIMIT {CENTROID_POOL_SCAN_CAP}" in sql
+    assert out[0]["topic_id"] == 5 and out[0]["n_signals"] == 40
+
+
+def test_pool_size_count_shares_the_scoring_query_predicate():
+    """A health number measured over a different population is not a health
+    number. Same WHERE, verbatim, or the guard is measuring something else."""
+    from app.services.research_semantic import (
+        _ACTIVE_CENTROID_WHERE,
+        fetch_active_centroid_pool_size,
+        fetch_topic_centroids,
+    )
+
+    count_conn = _RecordingConn(value=1165)
+    total = asyncio.run(fetch_active_centroid_pool_size(count_conn))
+    assert total == 1165
+
+    rows_conn = _RecordingConn(rows=[])
+    asyncio.run(fetch_topic_centroids(rows_conn))
+
+    assert _ACTIVE_CENTROID_WHERE.strip() in count_conn.queries[0]
+    assert _ACTIVE_CENTROID_WHERE.strip() in rows_conn.queries[0]
+    assert "count(*)" in count_conn.queries[0]
+
+    # no pool at all reads as zero, never as "healthy"
+    assert asyncio.run(fetch_active_centroid_pool_size(_RecordingConn(value=None))) == 0
+
+
+def test_substrate_guard_fires_on_the_true_pool_not_the_returned_slice():
+    """The bug: the guard compared len(topics) while the fetch capped the list,
+    so `100 < 80` was false by construction and a collapsed pool always
+    reported healthy. Here the lane is handed MORE topics than the floor while
+    the real substrate is below it — the guard must still fire."""
+    async def no_threads(**kwargs):
+        return []
+
+    many_topics = [
+        {"topic_id": i, "label": f"topic {i}",
+         "centroid_vec": QUERY_VEC, "n_signals": 10}
+        for i in range(120)          # > the 80 floor, as the old LIMIT allowed
+    ]
+
+    async def centroids():
+        return many_topics
+
+    async def true_pool_size():
+        return 12                    # the substrate that actually exists
+
+    plan = asyncio.run(discover_anchors(
+        parse_research_intent("Iran climate water drought"),
+        hours=24,
+        fetch_threads_fn=no_threads,
+        fetch_attention_fn=None,
+        embed_query_fn=lambda _: QUERY_VEC,
+        fetch_centroids_fn=centroids,
+        fetch_centroid_pool_size_fn=true_pool_size,
+        substrate_min_centroids=80,
+    ))
+
+    thin = [g for g in plan["coverage_gaps"] if g.get("component") == "story_centroid"]
+    assert len(thin) == 1
+    assert thin[0]["centroid_pool_size"] == 12      # the pool, not the slice
+    assert "12 active" in thin[0]["note"]
+    assert "120" not in thin[0]["note"]
+    # and the noisy centroid anchors are actually suppressed
+    assert not any(a.get("match_basis") == "member_centroid" for a in plan["anchors"])
+
+
+def test_substrate_guard_stays_quiet_when_the_true_pool_is_healthy():
+    """Mirror case: a capped/short returned list must NOT be read as a thin
+    substrate now that the count is authoritative."""
+    async def no_threads(**kwargs):
+        return []
+
+    async def centroids():
+        return TOPICS                # only 3 rows returned
+
+    async def true_pool_size():
+        return 1165                  # prod pool, 2026-07-28
+
+    plan = asyncio.run(discover_anchors(
+        parse_research_intent("Iran climate water drought"),
+        hours=24,
+        fetch_threads_fn=no_threads,
+        fetch_attention_fn=None,
+        embed_query_fn=lambda _: QUERY_VEC,
+        fetch_centroids_fn=centroids,
+        fetch_centroid_pool_size_fn=true_pool_size,
+        substrate_min_centroids=80,
+    ))
+
+    assert not any(
+        g.get("component") == "story_centroid" for g in plan["coverage_gaps"]
+    )
+    assert any(a.get("match_basis") == "member_centroid" for a in plan["anchors"])
+
+
+def test_pool_size_lookup_failure_is_itself_visible():
+    async def no_threads(**kwargs):
+        return []
+
+    async def centroids():
+        return TOPICS
+
+    async def broken_pool_size():
+        raise TimeoutError("count timed out")
+
+    plan = asyncio.run(discover_anchors(
+        parse_research_intent("Iran climate water drought"),
+        hours=24,
+        fetch_threads_fn=no_threads,
+        fetch_attention_fn=None,
+        embed_query_fn=lambda _: QUERY_VEC,
+        fetch_centroids_fn=centroids,
+        fetch_centroid_pool_size_fn=broken_pool_size,
+        substrate_min_centroids=80,
+    ))
+
+    assert any(
+        g.get("component") == "story_centroid_pool_size"
+        for g in plan["coverage_gaps"]
+    )
+
+
+# ── Signal lane: a timeout must never look like an empty corpus ─────────────
+
+
+def test_ann_timeout_raises_a_named_degradation_not_an_empty_list():
+    """probes=20 measured >100s under nightly load against a 6s budget. The
+    old path let that surface as `[]`, which reads as 'the corpus holds
+    nothing' — the one thing it does not mean."""
+    from app.services.research_semantic import (
+        SemanticSignalLaneTimeout,
+        fetch_semantic_signal_matches,
+    )
+
+    class TimingOutConn(_RecordingConn):
+        async def fetch(self, query, *args, **kwargs):
+            raise asyncio.TimeoutError()
+
+    conn = TimingOutConn()
+    with pytest.raises(SemanticSignalLaneTimeout) as excinfo:
+        asyncio.run(fetch_semantic_signal_matches(conn, QUERY_VEC, hours=24))
+
+    assert excinfo.value.degraded_reason == "ann_timeout"
+    # still a TimeoutError, so every existing degrade path keeps catching it
+    assert isinstance(excinfo.value, TimeoutError)
+    assert conn.statements == ["SET ivfflat.probes = 10"]
+
+
+def test_timed_out_signal_lane_surfaces_a_degraded_marker_in_the_plan():
+    from app.services.research_semantic import SemanticSignalLaneTimeout
+
+    async def no_threads(**kwargs):
+        return []
+
+    async def centroids():
+        return TOPICS
+
+    async def timed_out_signals(**kwargs):
+        raise SemanticSignalLaneTimeout("signal ANN lane exceeded 6s")
+
+    plan = asyncio.run(discover_anchors(
+        parse_research_intent("Iran climate water drought"),
+        hours=24,
+        fetch_threads_fn=no_threads,
+        fetch_attention_fn=None,
+        embed_query_fn=lambda _: QUERY_VEC,
+        fetch_centroids_fn=centroids,
+        fetch_signal_matches_fn=timed_out_signals,
+    ))
+
+    assert plan["semantic_evidence"] == []
+    gaps = [g for g in plan["coverage_gaps"] if g.get("component") == "signal_headline"]
+    assert len(gaps) == 1
+    assert gaps[0]["degraded_reason"] == "ann_timeout"
+    assert "not a measured absence" in gaps[0]["note"]
+    # the empty is reachable as a gap anchor, not just buried in the payload
+    assert any(
+        a["evidence_label"] == "gap" and "ann_timeout" in a["label"]
+        for a in plan["anchors"]
+    )
+    # sibling bases are untouched by one lane's failure
+    assert any(a.get("match_basis") == "member_centroid" for a in plan["anchors"])
+
+
+def test_unnamed_lane_failures_keep_the_original_gap_wording():
+    """Regression guard: only failures that KNOW why they failed get the
+    stronger wording; everything else still reports the exception class."""
+    from app.services.research_anchor_discovery import _semantic_component_gap
+
+    gap = _semantic_component_gap("signal_headline", ValueError("boom"))
+    assert gap["degraded_reason"] == "ValueError"
+    assert gap["note"] == "Semantic signal headline unavailable (ValueError)."
