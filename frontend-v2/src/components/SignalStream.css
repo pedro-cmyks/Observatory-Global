@@ -466,6 +466,20 @@
 .signal-row.ecl-row-eclipse { border-left-color: var(--eclipse-red, #e23a1a); }
 .signal-row.ecl-row-shadow { border-left-color: var(--eclipse-cyan, #2aa7ad); }
 
+/* ── STORY LENS tabs (Task 6) ────────────────────────────────────────────
+   Same mechanism as the Eclipse tabs above (a topic scope, not a theme
+   filter), but deliberately its own colour token (--story-cyan, shared with
+   NarrativeThreads' .sl-row-* rules) and its own class prefix (sl-tab-*,
+   sl-row-*) so the two lenses never contend over one selector — eclipse is
+   ambient/red, the story lens is a chosen/cyan narrowing. */
+.stream-filter-bar--lens .stream-filter-tab.sl-tab-story.active {
+    color: var(--story-cyan, #2aa7ad);
+    background: rgba(42, 167, 173, 0.12);
+}
+.stream-filter-bar--lens .stream-filter-tab.sl-tab-story:hover { color: var(--story-cyan, #2aa7ad); }
+
+.signal-row.sl-row-scoped { border-left-color: var(--story-cyan, #2aa7ad); }
+
 /* Honest-empty note under a scoped tab: the stories are real, their member
    signals just haven't landed in this window yet. */
 .stream-empty-note {

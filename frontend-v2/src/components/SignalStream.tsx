@@ -10,6 +10,8 @@ import {
     type StreamTab, eclipseTopicParam, resolveStreamTab, streamRowEclipseClass,
     streamTabModel, STREAM_DEFAULT_TAB,
 } from '../lib/streamTabs'
+import { useStoryLens } from '../contexts/StoryLensContext'
+import { hasLensContent, lensTopicParam } from '../lib/storyLens'
 import type { StreamLevel } from '../contexts/FocusContext'
 import { Pin, PinOff } from '../lib/icons'
 import PinReceiptButton from './PinReceiptButton'
@@ -169,18 +171,30 @@ export const SignalStream: React.FC = () => {
        `topicParam` is null, and every path below is byte-identical to before. */
     const { mode: eclipseMode, data: eclipseData } = useEclipseMode()
     const eclipseActive = eclipseMode === 'ambient' && !!eclipseData
-    const tabModel = useMemo(() => streamTabModel(eclipseActive), [eclipseActive])
 
-    // Entering/leaving the lens invalidates the selected tab (a category tab
-    // means nothing in the lens and vice versa) — land on the model's default
-    // rather than render a bar with nothing selected. 'all' survives both ways.
+    /* STORY LENS (Task 6): a deliberate, per-story narrowing — Story|All over
+       the same server-side `topic=` scope, built from the anchor + its
+       siblings. Eclipse is the ambient, un-chosen condition and wins the tab
+       bar when both are active; hasLensContent guards against claiming a scope
+       with no anchor/siblings to back it (an honest-empty payload must not
+       flip the tab bar to a lens with nothing in it). */
+    const storyLens = useStoryLens()
+    const lensActive = storyLens.state.active && hasLensContent(storyLens.data)
+
+    const tabModel = useMemo(() => streamTabModel(eclipseActive, lensActive), [eclipseActive, lensActive])
+
+    // Entering/leaving a lens invalidates the selected tab (a category tab
+    // means nothing in a lens and vice versa) — land on the model's default
+    // rather than render a bar with nothing selected. 'all' survives every flip.
     useEffect(() => {
         setStreamFilter(prev => resolveStreamTab(prev, tabModel))
     }, [tabModel])
 
-    const topicParam = useMemo(
-        () => (eclipseActive ? eclipseTopicParam(streamFilter, eclipseData) : null),
-        [eclipseActive, streamFilter, eclipseData])
+    const topicParam = useMemo(() => {
+        if (eclipseActive) return eclipseTopicParam(streamFilter, eclipseData)
+        if (tabModel.lens && streamFilter === 'story') return lensTopicParam(storyLens.data)
+        return null
+    }, [eclipseActive, tabModel.lens, streamFilter, eclipseData, storyLens.data])
 
     // Fetch allowlist once
     useEffect(() => {
@@ -422,7 +436,7 @@ export const SignalStream: React.FC = () => {
         // Lens tabs are a SERVER-side topic scope, already applied to what we
         // fetched. Re-filtering here by theme keywords would silently drop
         // members of the very stories the lens exists to surface.
-        if (tabModel.eclipse && streamFilter !== 'all') return true
+        if ((tabModel.eclipse || tabModel.lens) && streamFilter !== 'all') return true
         if (streamFilter === 'all') return true
         if (streamFilter === 'person') return sig.persons?.length > 0
         if (streamFilter === 'maritime') return MARITIME_KEYWORDS.test(sig.headline || '') || sig.themes.some(t => t.includes('MARITIME') || t.includes('VESSEL'))
@@ -445,7 +459,7 @@ export const SignalStream: React.FC = () => {
                 isOwnVoiceSignal(sig)
         }
         return true
-    }), [items, streamFilter, tabModel.eclipse])
+    }), [items, streamFilter, tabModel.eclipse, tabModel.lens])
 
     // The noise-headline regex is a heuristic for an UNSCOPED stream. On a
     // topic-scoped tab the scope is the measured selector, so applying the
@@ -453,7 +467,7 @@ export const SignalStream: React.FC = () => {
     const visibleItems = useMemo(
         () => (topicParam ? filteredItems : filteredItems.filter(sig => isGeopoliticallyRelevant(sig))),
         [filteredItems, topicParam])
-    const rowEclipseClass = tabModel.eclipse ? streamRowEclipseClass(streamFilter) : ''
+    const rowEclipseClass = (tabModel.eclipse || tabModel.lens) ? streamRowEclipseClass(streamFilter) : ''
 
     return (
         <>
@@ -476,25 +490,29 @@ export const SignalStream: React.FC = () => {
                         </span>
                     )}
                 </div>
-                <div className={`stream-filter-bar${tabModel.eclipse ? ' stream-filter-bar--eclipse' : ''}`}>
+                <div className={`stream-filter-bar${tabModel.eclipse ? ' stream-filter-bar--eclipse' : ''}${tabModel.lens ? ' stream-filter-bar--lens' : ''}`}>
                     {tabModel.primary.map(f => (
                         <button
                             key={f}
                             className={`stream-filter-tab${streamFilter === f ? ' active' : ''}${
-                                tabModel.eclipse && f !== 'all' ? ` ecl-tab-${f}` : ''}`}
+                                tabModel.eclipse && f !== 'all' ? ` ecl-tab-${f}` : ''}${
+                                tabModel.lens && f !== 'all' ? ` sl-tab-${f}` : ''}`}
                             // Lens tabs are a topic scope, not a stream LEVEL — leave
                             // the shared focus streamLevel alone so exiting the lens
                             // restores the category the reader had chosen.
                             onClick={() => {
                                 setStreamFilter(f)
-                                if (!tabModel.eclipse) setStreamLevel(f as StreamLevel)
+                                if (!tabModel.eclipse && !tabModel.lens) setStreamLevel(f as StreamLevel)
                             }}
                             data-tip={
                                 f === 'eclipse' ? 'Signals inside the eclipsing story — the coverage everyone is already seeing.'
                                 : f === 'shadow' ? 'Signals from the consequential stories the eclipse is drowning out. Ranked by coverage-volume share — a proxy for attention, not audience eyeballs.'
+                                : f === 'story' ? 'Signals from this story and its measured siblings — the walked neighborhood, not the whole stream.'
                                 : f === 'notable' ? 'Analyst-grade ranking: crisis/conflict, security, economy and political signals first. Sports and entertainment are filtered out.'
                                 : f === 'all' ? (tabModel.eclipse
                                     ? 'The whole stream, unscoped — step out of the eclipse lens.'
+                                    : tabModel.lens
+                                    ? 'The whole stream, unscoped — step out of this story’s neighborhood.'
                                     : 'Everything, including sports and entertainment (lane-tagged).')
                                 : undefined}
                         >
@@ -529,11 +547,16 @@ export const SignalStream: React.FC = () => {
                         </div>
                     ) : topicParam ? (
                         // Honest empty for a scoped tab: the stories exist (the
-                        // eclipse endpoint measured them) but none of their
-                        // member signals landed in this window. Say which, and
-                        // never let it read as "nothing is happening".
+                        // eclipse endpoint or the story-siblings walk measured
+                        // them) but none of their member signals landed in this
+                        // window. Say which, and never let it read as "nothing
+                        // is happening".
                         <div className="empty-state">
-                            No signals yet from {streamFilter === 'eclipse' ? 'the eclipsing story' : 'the shadow stories'} in the last 24 h
+                            No signals yet from {
+                                streamFilter === 'eclipse' ? 'the eclipsing story'
+                                : streamFilter === 'story' ? "this story's scope"
+                                : 'the shadow stories'
+                            } in the last 24 h
                             <span className="stream-empty-note">
                                 Stories are measured on classified coverage; membership lags ingest by up to one classifier pass.
                             </span>

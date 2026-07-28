@@ -20,11 +20,17 @@ export const STREAM_SECONDARY_TABS = ['conflict', 'disaster', 'trend', 'person',
  *  hatch out of the scope is the SAME tab that means "everything" normally. */
 export const ECLIPSE_TABS = ['eclipse', 'shadow', 'all'] as const
 
+/** Story Lens tabs. 'all' is shared with both the category set and the eclipse
+ *  set for the same reason — one shared meaning of "everything" across every
+ *  mode. Default is STORY (not ALL): opening a lens is an act of narrowing. */
+export const LENS_TABS = ['story', 'all'] as const
+
 export type StreamCategoryTab =
   | (typeof STREAM_PRIMARY_TABS)[number]
   | (typeof STREAM_SECONDARY_TABS)[number]
 export type StreamEclipseTab = (typeof ECLIPSE_TABS)[number]
-export type StreamTab = StreamCategoryTab | StreamEclipseTab
+export type StreamLensTab = (typeof LENS_TABS)[number]
+export type StreamTab = StreamCategoryTab | StreamEclipseTab | StreamLensTab
 
 export const STREAM_DEFAULT_TAB: StreamCategoryTab = 'notable'
 export const ECLIPSE_DEFAULT_TAB: StreamEclipseTab = 'shadow'
@@ -37,9 +43,13 @@ export const TOPIC_PARAM_MAX = 12
 export interface StreamTabModel {
   /** true = the Eclipse Lens is engaged and the tab bar is the lens's. */
   eclipse: boolean
-  /** First tab group (the only group in lens mode). */
+  /** true = the Story Lens is engaged and the tab bar is Story|All. Eclipse
+   *  and Story Lens are mutually exclusive at the model level — eclipse wins
+   *  when both are active (see `streamTabModel`). */
+  lens?: boolean
+  /** First tab group (the only group in lens/eclipse mode). */
   primary: readonly StreamTab[]
-  /** Second tab group, after the separator. Empty in lens mode. */
+  /** Second tab group, after the separator. Empty in lens/eclipse mode. */
   secondary: readonly StreamTab[]
   /** The tab to land on when this model becomes active. */
   defaultTab: StreamTab
@@ -59,11 +69,24 @@ const ECLIPSE_MODEL: StreamTabModel = {
   defaultTab: ECLIPSE_DEFAULT_TAB,
 }
 
+const LENS_MODEL: StreamTabModel = {
+  eclipse: false,
+  lens: true,
+  primary: LENS_TABS,
+  secondary: [],
+  defaultTab: 'story',
+}
+
 /** Which tab bar the stream renders. `eclipseActive` is the caller's
  *  `mode === 'ambient' && data != null` — the lens must never claim a scope it
- *  has no topic ids for. */
-export function streamTabModel(eclipseActive: boolean): StreamTabModel {
-  return eclipseActive ? ECLIPSE_MODEL : CATEGORY_MODEL
+ *  has no topic ids for. `lensActive` is the caller's Story Lens equivalent
+ *  (`state.active && hasLensContent(data)`). Eclipse wins when both are active
+ *  — it is the ambient, un-chosen condition; the Story Lens is a deliberate
+ *  per-story act that yields to it rather than fighting over the tab bar. */
+export function streamTabModel(eclipseActive: boolean, lensActive = false): StreamTabModel {
+  if (eclipseActive) return ECLIPSE_MODEL
+  if (lensActive) return LENS_MODEL
+  return CATEGORY_MODEL
 }
 
 /** Keep the selected tab valid across a mode flip: a category tab is
@@ -104,10 +127,13 @@ export function eclipseTopicParam(
 }
 
 /** Row tint class for a topic-scoped tab — reuses the `ecl-` vocabulary the
- *  threads panel already established (red = the eclipse, cyan = its shadow). */
+ *  threads panel already established (red = the eclipse, cyan = its shadow),
+ *  and the `sl-` vocabulary the Story Lens established in NarrativeThreads
+ *  (cyan, but its own class so the two lenses never fight over one selector). */
 export function streamRowEclipseClass(tab: StreamTab): string {
   if (tab === 'eclipse') return 'ecl-row-eclipse'
   if (tab === 'shadow') return 'ecl-row-shadow'
+  if (tab === 'story') return 'sl-row-scoped'
   return ''
 }
 

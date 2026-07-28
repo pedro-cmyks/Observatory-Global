@@ -127,3 +127,20 @@ describe('streamRowEclipseClass', () => {
     expect(streamRowEclipseClass('notable')).toBe('')
   })
 })
+
+describe('story lens tab model', () => {
+  it('eclipse wins over lens', () => {
+    const m = streamTabModel(true, true)
+    expect(m.eclipse).toBe(true)
+  })
+  it('lens model serves story|all with story default', () => {
+    const m = streamTabModel(false, true)
+    expect(m.lens).toBe(true)
+    expect([...m.primary]).toEqual(['story', 'all'])
+    expect(m.defaultTab).toBe('story')
+  })
+  it('mode flip falls back to the new default', () => {
+    const lens = streamTabModel(false, true)
+    expect(resolveStreamTab('notable', lens)).toBe('story')
+  })
+})
