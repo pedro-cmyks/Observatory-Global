@@ -303,8 +303,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // before the lens engaged must not hold a stale (pre-lens) row order over
     // the newly lens-ordered list. Release the freeze on every lensOn
     // transition so the section labels/roles (computed against the RENDERED
-    // order) are correct on the primary entry path; N5 still guards ordinary
-    // hover-vs-poll-refresh churn once the lens's own order is settled.
+    // order) are correct on the primary entry path. This release makes the
+    // lens regroup visible; nothing re-arms frozenOrder until the pointer
+    // re-enters the list, so the CURRENT hover session then runs unfrozen —
+    // a poll refresh mid-session in that window can reorder rows under the
+    // cursor. Accepted trade-off: lens entry is a deliberate re-scope, and
+    // the next mouseEnter re-arms N5 as normal.
     useEffect(() => {
         setFrozenOrder(null)
     }, [lensOn])
