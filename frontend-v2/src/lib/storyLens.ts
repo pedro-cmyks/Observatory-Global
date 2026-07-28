@@ -49,6 +49,13 @@ export interface LensSets {
   siblings: Set<string>
 }
 
+// True only when the payload carries something the lens can honestly scope to.
+// Honest empties (anchor null, or zero siblings) must NOT activate lens ordering —
+// downstream consumers gate on this, never on lensSets != null.
+export function hasLensContent(d: StoryLensData | null | undefined): boolean {
+  return Boolean(d?.anchor && d.siblings.length > 0)
+}
+
 /** `folded` ids (near-duplicate blobs absorbed into a sibling) count as that
  *  sibling for role purposes — a thread row for a folded id should still read
  *  as part of the lens, not as an unrelated outsider. */

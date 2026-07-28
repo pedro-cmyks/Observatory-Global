@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildLensSets,
+  hasLensContent,
   lensTopicParam,
-  STORY_LENS_AUTO,
   threadLensRole,
   type StoryLensData,
 } from './storyLens'
@@ -32,9 +32,12 @@ describe('buildLensSets / threadLensRole', () => {
   })
 })
 
-describe('STORY_LENS_AUTO', () => {
-  it('exposes the auto-enter kill switch', () => {
-    expect(STORY_LENS_AUTO).toBe(true)
+describe('hasLensContent', () => {
+  it('true for a populated payload, false for honest empties', () => {
+    expect(hasLensContent(data)).toBe(true)
+    expect(hasLensContent(null)).toBe(false)
+    expect(hasLensContent({ ...data, anchor: null, siblings: [] })).toBe(false)
+    expect(hasLensContent({ ...data, siblings: [] })).toBe(false)
   })
 })
 
