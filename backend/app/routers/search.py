@@ -336,12 +336,50 @@ async def query_thread(
     if country_code:
         params.append(country_code)
 
-    # Degrade, never 500: even with the migration-090 indexes a bare
-    # high-frequency token ('election', 'peru') over the default 168h window
-    # is sort-bound and can exceed SEARCH_SEGMENT_TIMEOUT_SECONDS. On timeout
-    # (or any DB error) fall back to an empty match set — build_query_thread([])
-    # returns a valid thin thread — mirroring the unified endpoint's per-segment
-    # graceful degrade rather than raising QueryCanceledError to the client.
+    # Degrade, never 500: this match query can still exceed
+    # SEARCH_SEGMENT_TIMEOUT_SECONDS. On timeout (or any DB error) fall back to
+    # an empty match set — build_query_thread([]) returns a valid thin thread —
+    # mirroring the unified endpoint's per-segment graceful degrade rather than
+    # raising QueryCanceledError to the client.
+    #
+    # WHY it can be slow, MEASURED on prod 2026-07-28 (168h, 947,468 rows).
+    # An earlier version of this comment called it "sort-bound". That was
+    # WRONG, and the correction matters because it points at a different fix:
+    # it is PLAN-CHOICE-bound. Postgres has two viable plans here —
+    #   WALK   = Index Scan on idx_signals_v2_timestamp newest-first, OR as a
+    #            filter, stop at 300. Cost ~ 300 / match_density.
+    #   BITMAP = BitmapOr over the four trigram indexes, then top-N sort.
+    #            Cost ~ number of matches.
+    # WALK is right for a dense needle, BITMAP for a sparse one, and the
+    # planner chooses from the ESTIMATED density:
+    #   trump  WALK,   ~7,800 rows walked                        341ms  (right)
+    #   gaza   WALK,  259,680 rows walked                     26,722ms  (wrong)
+    #   gaza   BITMAP forced via SET enable_indexscan=off         228ms
+    # The 117x-better plan for 'gaza' existed all along; the planner declined
+    # it because it estimated 15,195 matching rows against a true 1,233. That
+    # overestimate is contributed almost entirely by the themes and source_name
+    # branches (est 8,109 each; true 0 and 11), whose expressions have NO
+    # statistics the planner will read: both trigram indexes are PARTIAL, and
+    # examine_variable() skips a partial index's expression stats (the exact
+    # mechanism migration 092 documented and fixed for persons — which is why
+    # 'trump', whose dominant branch is the one branch that HAS statistics, is
+    # the single fast needle today).
+    #
+    # The fix is therefore statistics, not a query rewrite: migration 093 adds
+    # CREATE STATISTICS on both expressions. Do not "optimise" this query by
+    # splitting the OR into per-branch UNION subqueries — that was built and
+    # MEASURED, and it is a net loss: it rescues the sparse case (gaza 26.7s ->
+    # 0.49s) but regresses the dense one, because the BitmapOr does ONE
+    # deduplicated heap pass over the union while the UNION form pays
+    # overlapping passes per branch (election 4.98s -> 7.70s, weather
+    # 9.05s -> 9.74s, both measured). Statistics fix the sparse case with no
+    # dense-case regression.
+    #
+    # Honest residual: a needle that is a broad GDELT theme token legitimately
+    # matches ~30k signals ('%weather%' -> 29,799 via NATURAL_DISASTER_WEATHER
+    # and friends) scattered across a 1.1 GB table, i.e. ~26k cold heap-block
+    # reads. No plan makes that instant. For that class the 8s cap plus the
+    # honest degraded marker below is the correct behaviour, not a bug.
     signal_rows: list = []
     degraded_reason: str | None = None
     try:
