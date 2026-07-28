@@ -111,6 +111,9 @@ _RULE_SPECS: list[tuple[str, str, object]] = [
     # Thread detail only triggers a paid DeepSeek note when llm= is set;
     # normal opens fall through to the generous global bucket.
     (r"^/api/v2/threads/[^/]+$", "paid", _llm_flag),
+    # Story Lens siblings: whitening + a bounded topic-graph walk per request
+    # (Redis-cached 300s, same profile as the walk/eclipse endpoints above).
+    (r"^/api/v2/story/[^/]+/siblings$", "paid", None),
     (r"^/api/v2/telemetry$", "write", None),
     (r"^/api/v2/research/events$", "write", None),
 ]

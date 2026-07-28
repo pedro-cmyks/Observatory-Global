@@ -169,6 +169,7 @@ from app.routers import (
     dossier, delight, archive_search, investigation, attention_eclipse,
     corroborate, research_articles, edges, focus_timeline, markets,
 )
+from app.routers import story
 
 app.include_router(stats.router)
 app.include_router(archive_search.router)
@@ -205,3 +206,4 @@ app.include_router(corroborate.router)
 app.include_router(delight.router)
 app.include_router(edges.router)
 app.include_router(focus_timeline.router)
+app.include_router(story.router)
