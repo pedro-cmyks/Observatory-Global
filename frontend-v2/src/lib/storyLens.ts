@@ -32,6 +32,11 @@ export interface StoryLensData {
   notes: string[]
 }
 
+export interface StoryLensState {
+  active: boolean
+  anchorId: string | null
+}
+
 // One-line kill switch for the auto-enter behavior (Task 10): flip to false
 // to make opening a thread stop entering the lens, with zero other changes.
 export const STORY_LENS_AUTO = true
