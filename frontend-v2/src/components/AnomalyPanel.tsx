@@ -154,7 +154,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                 )}
                 {lensCountry && (
                     <span className="ap-focus-badge ap-focus-theme"
-                        data-tip="Scoped to the open story's dominant country">
+                        data-tip={`Scoped to the open story's dominant country — ${resolveCountryName(lensCountry)}`}>
                         ◈ story → {lensCountry}
                     </span>
                 )}
