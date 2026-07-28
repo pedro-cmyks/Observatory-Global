@@ -32,6 +32,10 @@ export interface StoryLensData {
   notes: string[]
 }
 
+// One-line kill switch for the auto-enter behavior (Task 10): flip to false
+// to make opening a thread stop entering the lens, with zero other changes.
+export const STORY_LENS_AUTO = true
+
 // Mirrors TOPIC_PARAM_MAX in lib/streamTabs.ts (backend _TOPIC_FILTER_MAX = 12).
 export const LENS_TOPIC_CAP = 12
 

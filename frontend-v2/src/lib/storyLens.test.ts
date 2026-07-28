@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildLensSets,
   lensTopicParam,
+  STORY_LENS_AUTO,
   threadLensRole,
   type StoryLensData,
 } from './storyLens'
@@ -28,6 +29,12 @@ describe('buildLensSets / threadLensRole', () => {
   it('matches through anchor_topics union like the eclipse role does', () => {
     const sets = buildLensSets(data)
     expect(threadLensRole(['dynamic-topic-2'], 'thread-x', sets)).toBe('sibling')
+  })
+})
+
+describe('STORY_LENS_AUTO', () => {
+  it('exposes the auto-enter kill switch', () => {
+    expect(STORY_LENS_AUTO).toBe(true)
   })
 })
 
