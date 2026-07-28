@@ -422,11 +422,15 @@ async def focus_timeline(
         #   maduro  410 rows /    419 heap blocks ->  271ms  (serves live)
         #   trump 26,011 rows / 23,127 heap blocks -> 6.3-8.2s (degrades)
         # — the index scan itself is 12-204ms in BOTH cases; what costs is
-        # fetching tens of thousands of heap pages. Note the window does not
-        # bound that: `timestamp` is a post-fetch Filter on this plan, so a
-        # shorter `hours` does NOT make a ubiquitous name cheaper. A needle
-        # under 3 characters is also weak (no full trigram — '%xi%' plans a
-        # 202K-row bitmap). Both cases degrade honestly, as before.
+        # fetching tens of thousands of heap pages. Since mig 092 (extended
+        # expression statistics — the partial index's own stats are never
+        # consulted by the planner) a genuinely selective window DOES bound
+        # the heap: at 72h the planner BitmapAnds the trgm index with the
+        # timestamp index (trump 6.2s -> ~2.7-6s, cache-regime-dependent;
+        # docs/research/recall-229/2026-07-30-timeline-trgm-stats-followup.md).
+        # At 168h the window is ~the whole hot span, so nothing bounds it. A
+        # needle under 3 characters is also weak (no full trigram — '%xi%'
+        # plans a 202K-row bitmap). Ubiquitous names still degrade honestly.
         rows, ch1_reason = await _try_query(
             _scoped_ch1_sql(granularity, where_clause), where_params, _SCAN_TIMEOUT_MS)
         if rows is not None:
