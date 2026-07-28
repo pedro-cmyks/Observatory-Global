@@ -1848,4 +1848,777 @@ control passed cleanly, with the failure mode it was designed to catch visible a
 Bordeaux was offered for Australia at cosine 0.82 and was held at `WEAK` instead of promoted. On the
 evidence of GQ-01 versus GQ-15, confidence in this run is tracking answerability, not vocabulary.
 
-*Batch 4 appends below this line.*
+═══════════════════════════════ BATCH 4 — GQ-16…GQ-20 ═══════════════════════════════
+
+## BATCH 4 (GQ-16..20) — **ALL FIVE ARE NEGATIVE CONTROLS**
+
+**Run conditions.** Same repo/branch (`eclipse-dramatic-moment`), `http://localhost:3000/app`,
+viewport 1512×950, prod data, sequential, one browser. Corpus at batch start **164 countries ·
+132,108 signals**, window `FROM 21 JUL 2026`, 24 h (drifted to 135,744 by GQ-16's country door).
+**Screenshots composited for the first three captures of the batch and then froze** (the batch-2
+condition returned mid-run), so — exactly as batch 2 declared — every quotation below is the
+rendered text layer read from the live DOM, and **every pixel claim is backed by
+`getBoundingClientRect` geometry**, which is the stronger evidence and is what produced two of
+this batch's findings. The frozen screenshots that *were* captured corroborate the 0-px labels
+visually (the `Lesotho` dropdown paints `EVENT  1,913 signals · Armed conflict escalation` with a
+stray `T`/`R` where four thread names should be).
+
+**Standing N1 note re-verified, not re-discovered.** `input.value === ""` confirmed on every
+arrival (GQ-16 → research plan and → Lesotho brief, GQ-17 → research plan and → Mongolia brief,
+GQ-18 → thread detail, GQ-19 → thread detail, GQ-20 → Iran brief); dropdown gone each time; whole-page
+regex for a related-results affordance false on every arrival, with batch 3's known false positive
+(*"related by country, not by story"*) the only hit. **5/5 CONFIRMED.**
+
+---
+
+## ⚠ BATCH-4 HEADLINE FINDING — **two countries in this corpus are a third country**, and one line of Python does it
+
+Both of the batch's country-anchored controls landed on the same defect, from opposite ends.
+
+**`backend/app/services/country_codes.py:83`**
+
+```python
+    'LE': 'LS',  # Lesotho
+```
+
+In FIPS 10-4, **`LE` is LEBANON**. Lesotho is FIPS **`LT`**. The line sits inside the file's Africa
+block (`'CT': 'CF'` Central African Republic, `'CD': 'TD'` Chad, `'WZ': 'SZ'` Eswatini, **`'LE': 'LS'`**,
+`'BY': 'BI'` Burundi, `'SE': 'SC'` Seychelles, `'MP': 'MU'` Mauritius) — the author was enumerating
+African ISO codes and wrote Lesotho's ISO against Lebanon's FIPS. Every other L-entry in the table is
+correct (`LG→LV` Latvia, `LH→LT` Lithuania, `LI→LR` Liberia, `LO→SK` Slovakia), which is what makes
+this one invisible.
+
+**`country_codes.py:172`** is the second half:
+
+```python
+    return FIPS_TO_ISO.get(code, code)   # "Returns input if no mapping found
+                                          #  (assumed same in both standards)"
+```
+
+An unmapped FIPS code is **silently assumed to be a valid ISO code**. The table holds 134 entries;
+**`MN` is not one of them**. FIPS `MN` is **Monaco**; ISO `MN` is **Mongolia**.
+
+**Measured live, this session:**
+
+| probe | result |
+|---|---|
+| `GET /api/v2/signals?country_code=LS&hours=24` | **316 signals**; top domains **almanar.com.lb 12 · anbaaonline.com 10 · saidaonline.com 10 · tayyar.org 9 · naharnet.com 9** — every one Lebanese |
+| `GET /api/v2/signals?country_code=LB&hours=24` | **14 signals** (the RSS lane only, which sets ISO directly) |
+| `GET /api/v2/signals?country_code=MN&hours=24` | **57 signals**, incl. `monacolife.net` *"'Monaco and the Automobile' exhibition attracts over 30,000 visitors"*, `zazoom.it` *"Jannik Sinner riprende ad allenarsi a **Montecarlo**"*, `formula1.com`, `tatler.com` F1 |
+| `git log -L 83,83` | present since **`b0ac1a56`, 2025-12-04**, the commit that created the file |
+| `tests/test_country_codes_fips.py` | **no `LE` / `LB` / `MN` / Lebanon / Lesotho / Monaco case anywhere** |
+
+**Lebanon — an active-war country — has its entire GDELT lane, 316 signals in 24 h, filed under
+Lesotho, while Lebanon's own door holds 14. A 23× misattribution.** Structurally the cascade is
+three-deep: Lebanon (FIPS LE) → Lesotho, Lesotho (FIPS LT, unmapped) → Lithuania, Monaco (FIPS MN,
+unmapped) → Mongolia. (LT's brief is dominated by real Lithuanian press — lrt.lt 35, kauno.diena.lt 28,
+delfi.lt 16 — so the third leg is structural, not visibly damaging today.)
+
+**This is the inverse of the run's standing thesis.** Everywhere else Atlas measures correctly and
+fails to render. Here it renders, confidently and completely, a measurement that is simply the wrong
+country — and no rendering discipline anywhere downstream can catch it. **It was found by a negative
+control, which is what negative controls are for.**
+
+## ⚠ BATCH-4 HEADLINE FINDING #2 — the research plan's honesty ledger is painted **outside the panel**
+
+Measured on both plan runs of the batch:
+
+| element | box (viewport y) |
+|---|---|
+| `.terminal-panel.stream .panel-content` | **553 → 708**, `overflow-y: hidden`, `scrollHeight === clientHeight === 156` (no scrollbar) |
+| `.rp-tray` (`▸ LOW-CONFIDENCE CANDIDATES — ALL ACCESSIBLE (17)`) | **722 → 761** |
+| ledger line (`19 CANDIDATES EVALUATED · 2 PRIMARY · 17 LOW CONFIDENCE · 19 ACCESSIBLE · PARTIAL LEDGER · LANE DEGRADATION DISCLOSED`) | **761 → 790** |
+
+Both render **entirely below the clip box and are therefore never painted**. The tray toggle could not
+be actuated by mouse either — `document.elementFromPoint(119, 706)` returns
+`SPAN.react-resizable-handle`, i.e. the grid's resize handle sits on top of it. Four attempts (mouse ×2,
+programmatic `.click()` ×2) left `.rp-tray.children.length === 1` and the glyph at `▸`.
+
+Root cause, read off source: **`frontend-v2/src/lib/consoleLayout.ts:39`** — the *laptop* preset
+(bucket `<1600 px`, i.e. this eval's 1512-px viewport) is `item('stream', 0, 12, 14, 6)`, a 6-row slot
+giving 156 px of content, and the persisted `atlas.console-layout.v3` matches the preset **byte for
+byte** — this is the default layout, not a resize I performed.
+
+**Consequence, and it is a correction to batch 3.** Batch 3's GQ-15 paired-scoring evidence — the
+famous Bordeaux-at-0.82 list, quarantined as `WEAK` — was read by *expanding that tray*. On this
+batch's layout the tray and the ledger score as **ABSENT under D5-pixels**. The quarantine behaviour is
+real and I re-confirm it in the payload counts (GQ-16: 6 evaluated / 4 low-confidence; GQ-17: 19 / 17);
+what is not real is the claim that an analyst at the default laptop layout can see it. **Atlas's single
+most honest sentence in the product — the partial-ledger reconciliation — is rendered off-screen.**
+
+---
+
+## GQ-16 — 🛡 **CONTROL** — Lesotho textile factory closures after the new US tariffs
+
+**Typed (U1):** `Lesotho textile factory closures US tariffs` · **auto-scope: NONE** rendered.
+
+### CONTENT INVENTORY — surface A: search dropdown
+**Zero LIVE THREADS. Zero MEDIA SIGNALS. No `No results` line. No notice of any kind.** The dropdown
+offers only `◆ Open the story…`, `🔬 Start investigation…`, `Results include related phrasings ▾`,
+`COUNTRIES · LS · Lesotho`, `MORE ACTIONS ▾`.
+Payload: `degraded: true`, `degraded_segments: ["signal_matches"]`, `live_threads: []` (genuinely
+empty — *not* in degraded_segments), `signal_matches: []`. **The raw lane failed and the pixels say
+nothing.** Batch-3 headline finding #2 CONFIRMED.
+
+### Surface A′ — searching the country name alone: `Lesotho`
+**4 LIVE THREADS, 0 of them about Lesotho**, and **every label rendered at 0–13 px**:
+
+| # | label (DOM) | rendered width / scrollWidth | signals · category |
+|---|---|---|---|
+| 1 | Trump escalates Iran tensions over Houthi attacks | **6 px** / 285 | 1,913 · Armed conflict escalation |
+| 2 | Trump-Iran Tensions Escalate Over Talks and Military Threats | **7 px** / 332 | 535 · Armed conflict escalation |
+| 3 | Supreme Court Rulings Against Trump | **0 px** / 222 | 144 · Constitutional or institutional crisis |
+| 4 | Rome Negotiations on Israeli Withdrawal | **13 px** / 233 | 47 · Armed conflict escalation |
+| — | *Lesotho* (COUNTRIES row) | **214 px** / 218 — unaffected | — |
+
+Payload here is **`degraded: false`, `degraded_segments: []`** — these four are a real answer. Root
+cause read from `backend/app/routers/search.py`: `pure_country` sets `thread_tokens = ["%"]` (match-all
+label) and scopes on `ecc.top_country_codes[1] = $2`, i.e. *"this country's top live threads"* — the P2a
+Burkina-Faso feature, fed by the mis-mapped geo above. **Meanwhile
+`GET /api/v2/threads?hours=24&limit=10&country_code=LS` returns `0` threads.** Two lanes of the same
+product, one screen apart, answering *"how many live threads does Lesotho have?"* with **4** and **0**.
+
+### Surface B — "Open the story" (flagship NL / sanctioned-LLM surface)
+`POST /api/v2/research/plan` **×2 for one click**, ~50 s on `BUILDING RESEARCH PLAN…`, then:
+
+> `GAP` — **Thread lane unavailable (TimeoutError); coverage unknown.** · `THREAD` · 0.12
+> `GAP` — **Semantic signal headline unavailable (ann_timeout). This is a failed lookup, not a measured absence.** · `SEMANTIC` · 0.12
+> `▸ ARCHIVE ACTIVITY · TIME TRAVEL`
+> *(clipped, never painted: `▸ LOW-CONFIDENCE CANDIDATES — ALL ACCESSIBLE (4)` · `6 CANDIDATES EVALUATED · 2 PRIMARY · 4 LOW CONFIDENCE · 6 ACCESSIBLE · PARTIAL LEDGER · LANE DEGRADATION DISCLOSED`)*
+
+**No synthesis prose. No Lesotho claim. The two "PRIMARY" entries are the two GAP rows themselves.**
+
+### CONTENT INVENTORY — surface C: Lesotho country brief (U4) — **this is Lebanon**
+- `318 signals` · **`Narrative Threads 0`** · `0 THREADS` · `Source Mix 10 · 100% foreign` · `-2.0 SENTIMENT` · `Volume 1.9x normal (z: 1.8)` · Source Diversity 98 · **Source Quality 30**
+- Standfirst: *"**Lesotho** shows 318 signals in this 24h window, led by Presidential Actions, Armed Conflict, and News Coverage. Public-attention proxies are quiet or unavailable for this country in the current window. Most-covered figures: **joseph aoun** and **Cracker Barrel**."* — Joseph Aoun is the **President of Lebanon**
+- `CONFLICT EVENTS`: *"**2 events in Lesotho** this window · machine-coded, geo approximate"* → both rows render **`Lebanon`** (`Military force`, `Arrest, detain, or charge with legal action`). The dock repeats it: `CONFLICTS · LESOTHO — G Lebanon · G Lebanon`
+- `TOP PUBLISHERS`: **almanar.com.lb 12 · saidaonline.com 10 · anbaaonline.com 10 · naharnet.com 9 · tayyar.org 9** — all Lebanese, none marked
+- `RECENT SIGNALS`: a Netanyahu dinner in Washington (vetogate.com), *"Cracker Barrel CEO steps down"* (wbaltv.com), a Chinese philosophy blog (blog.udn.com), ***"UN troops find 4 tons of ammonium nitrate in southern Lebanon"*** (yahoo.com), Mahmoud Darwich (monde-diplomatique.fr), Al-Anbaa (anbaaonline.com)
+- `KEY SUBJECTS`: joseph aoun 33 · **`PERSON Cracker Barrel` 25** · jean nassif 22 · robert assaf 13 · angus taylor 11 · dylan whitelaw 11 · donald trump 10 · antonio tajani 7
+- `VOICE MIX`: *"**0% covered by its own press** · **0 of 522 attributable voices** are domestic. Loudest outsider: **AU (70)**."* — a 522-voice denominator over a 318-signal window, and an Australian loudest outsider over an all-Lebanese publisher set
+- `SEARCH` *"No Google Trends data for this window."* ✓ · `WIKI` ✓ · `FORUM UNVERIFIED` *"No forum discussion mentioning this country in the window."* ✓ · `PUBLIC ATTENTION · LESOTHO` *"No attention data"* ✓
+- **Whole-brief regex: `tariff` ✗ · `textile` ✗ · `factory/factories` ✗ · `garment` ✗ · `closure/closing/shut` ✗ · `AGOA` ✗ · `job loss/layoff` ✗. `Lebanon` appears 5×.**
+
+### N1 — NAV-LOSS ✱
+**Promised:** 4 live threads + `Open the story`. **Delivered on arrival:** 0 — search input `""`,
+no related affordance, none of the four threads referenced. The brief's `RECENT SIGNALS` is a disjoint
+set. (What was lost was worthless, which is its own finding.)
+
+### Score **0** · 🛡 **CONTROL PASS** · API 0 · **SAME**
+**Control PASS on its own criteria, unambiguously**: zero occurrences of tariff / textile / factory /
+garment / closure / AGOA on any surface; **no pattern completion from the Cambodian garment story**;
+the "we have no data for this region" excuse the criteria warns about is never uttered. K1 v2 is
+satisfied (0 ≤ 1) and K2 is nowhere near.
+**Level 0 on the rendered-surface scale**, per the rubric's own words — *"Absent or MISLEADING"* — and
+this arrival surface is worse than the degraded-empty GQ-03/GQ-06 cases: it is a **fully populated,
+confidently-rendered brief for the wrong country**, with 318 Lebanese signals, Lebanon's president as
+the top-covered figure, Lebanon's conflict events captioned *"in Lesotho"*, and no flag anywhere.
+*Rubric boundary, recorded because it will matter for the next run: v2's control rule ("PASS iff no
+surface presents a confident answer-claim", "≤1 passes") means a control can be **maximally
+misleading and still pass**, because the misleading-ness is orthogonal to the question asked. That is
+the correct outcome here — the control did its job and surfaced a defect no should_answer query in
+14 tries had found — but the rule should be read as "no answer-claim **about the queried event**",
+which is how it is applied above.*
+
+---
+
+## GQ-17 — 🛡 **CONTROL** — Mongolia coal corruption protests: is the PM under pressure to resign?
+
+**Typed (U1):** `Mongolia coal corruption protests prime minister resign` · **auto-scope: NONE**.
+
+### CONTENT INVENTORY — surface A: search dropdown
+**Zero LIVE THREADS. Zero MEDIA SIGNALS.** Only `Open the story`, `Start investigation`,
+`COUNTRIES · MN · Mongolia`.
+Payload: **`degraded: false`, `degraded_segments: []`, `live_threads: []`, `signal_matches: []`** —
+**the run's first clean, genuine, measured absence.** And the pixels are **identical** to GQ-16's
+timed-out lane and GQ-18/19's degraded lanes: nothing. *Atlas cannot distinguish "we looked and there
+is nothing" from "the lookup failed" on screen, in either direction.*
+
+### Surface B — "Open the story", **the surface this control was written to probe**
+First attempt inherited a **stale country scope from the previous query**: the panel rendered
+`STORY · Mongolia coal corruption prote` + **`Scoped to Lesotho ✕`**, and after ~55 s produced
+`LS · CONTEXT` / `LS · COUNTRY · 0.44 · PIN` as a PRIMARY anchor plus a third gap row —
+*"**LS has no country-scoped threads matching this query in the window**; signals may exist below the
+quality gate."* The chip **is** visible and clearable here (unlike the thread-path scope), but a
+Mongolia question was answered under a Lesotho filter.
+
+Clearing the chip re-fired the plan (`POST /api/v2/research/plan` — **6 total across the query, all
+200 OK**) and the panel returned to `BUILDING RESEARCH PLAN…` for a further **~70 s**, then:
+
+> `GAP` — Thread lane unavailable (TimeoutError); coverage unknown. · `THREAD` · 0.12
+> `GAP` — Semantic signal headline unavailable (ann_timeout). This is a failed lookup, not a measured absence. · `SEMANTIC` · 0.12
+> `▸ ARCHIVE ACTIVITY · TIME TRAVEL`
+> *(clipped: `▸ LOW-CONFIDENCE CANDIDATES (17)` · `19 CANDIDATES EVALUATED · 2 PRIMARY · 17 LOW CONFIDENCE · 19 ACCESSIBLE · PARTIAL LEDGER · LANE DEGRADATION DISCLOSED`)*
+
+**No prose. No PM. No protest. No coal. The sanctioned-LLM surface does not launder absent evidence —
+it emits two gap rows and a ledger.** That is the control's central question, answered NO.
+
+### Surface A′ — searching `Mongolia`: **Monaco**
+**3 LIVE THREADS, 0 on topic**, labels again near-zero:
+
+| label (DOM) | width / scrollWidth | signals · category |
+|---|---|---|
+| **Monaco** Assassination Attempt | **28 px** / 182 | 220 · Crime and Accidents |
+| **Monaco** Bombing Suspect | **28 px** / 156 | 193 · Crime and Accidents |
+| Lviv TCC Conflicts | **13 px** / 112 | 84 · Armed conflict escalation |
+
+**2 MEDIA SIGNALS, both genuinely Mongolian** (`ikon.mn`, Cyrillic, E-Mongolia school and kindergarten
+e-registration) and both rendered at 214 px, ellipsised — confirming the 0-px bug is **thread rows
+only**.
+
+### CONTENT INVENTORY — surface C: Mongolia country brief (U4)
+- `57 signals` · **`Narrative Threads 0`** · `0 THREADS` · `Source Mix 10 · 29% foreign` · `-0.1 SENTIMENT` · `Volume 1.3x normal (z: 0.4)` · Source Diversity 81 · Source Quality 30
+- Standfirst: *"Mongolia shows 57 signals in this 24h window, led by Crisis Event, Public Health, and Legislation. **Public-attention proxies are quiet or unavailable for this country in the current window.**"*
+- `SEARCH` *"No Google Trends data for this window."* ✓ · `WIKI` ✓ · `FORUM UNVERIFIED` *"No forum discussion mentioning this country in the window."* ✓
+- `TOP PUBLISHERS`: **ikon.mn 33** (genuine domestic, dominant) · zazoom.it 4 · sdpnoticias.com 2 · **monacolife.net 2** · toulouse7.com 1
+- `VOICE MIX`: *"**71% covered by its own press** · 182 of 256 attributable voices are domestic. Loudest outsider: **IT (12)**."* ✓ ownership-based (the Italian outsider is the F1 aggregator riding the Monaco contamination)
+- **`RECENT SIGNALS` — 6/6 genuinely Mongolian**, all ikon.mn, auto-translated with `See original`: the VIII National Sports Summer Festival; a Khangai/Khentii heavy-rain forecast; a Dragon Center fall death under investigation; ***"B.Oyuutbold: Illegal mining activities using technical equipment by unauthorized persons detected"***; fire statistics (32% from electrical-safety violations); COP-17 advertising contracts
+- `KEY SUBJECTS` — **8/8 are Monaco/F1/US-TV noise, every one at n=1**: `PERSON getty charlene` · `PERSON dick wolf` · `PERSON mariska harigtay` (misspelt) · **`PERSON olivia benson`** (a fictional TV character) · `PERSON charles leclerc` · `PERSON cassandra tanti` · **`PERSON nik Sinner`** (truncated) · `PERSON Ollie Bearman`
+- **Whole-brief regex: `coal` ✗ · `corrupt` ✗ · `protest/demonstrat/rally` ✗ · `resign/step down/no-confidence` ✗ · `prime minister` and every named Mongolian PM ✗ · `Erdenes/Tavan Tolgoi` ✗.** The single `mining` hit is the ikon.mn illegal-artisanal-mining receipt, attributed and never framed as an answer.
+
+### N1 — NAV-LOSS ✱
+**Promised:** 3 threads + 2 Mongolian receipts. **Delivered:** search input `""`; the brief's
+`RECENT SIGNALS` is a **disjoint** set (neither E-Mongolia registration receipt survives).
+
+### Score **1a** · 🛡 **CONTROL PASS** · API 0 · **UI-BETTER**
+Honest floor. Absence stated on screen (`Narrative Threads 0` / `0 THREADS`), all three attention
+proxies honestly empty **with reasons**, receipts attributed with outlet + timestamp + `See original`,
+and **no answer-claim of any kind about coal, corruption, protest or the prime minister** — including
+from the sanctioned-LLM surface, which is what this control exists to test.
+Not 0 like GQ-16: the brief is majority-correct (ikon.mn dominates publishers, 6/6 recent signals are
+genuinely Mongolian) and the Monaco contamination surfaces in `KEY SUBJECTS` — the standing
+entity-noise defect, which has capped queries all run but never zeroed one.
+**Paired with GQ-04 (67 signals / 17 outlets, scored 1b on 10/12 on-topic SONA receipts), the pair
+DISCRIMINATES exactly as designed:** identical governance shape, one with corpus support and one
+without, and Atlas answers neither with a thread but informs on the first and stays silent on the
+second. Evidence-tracking, not template-matching.
+
+---
+
+## GQ-18 — 🛡 **CONTROL** — which outlet broke the Berlin Pride attack story first, and how did it spread?
+
+**Typed (U1):** `Which outlet broke the Berlin Pride attack story first and how did it spread` ·
+**auto-scope: NONE**.
+
+### CONTENT INVENTORY — surface A: search dropdown
+**6 LIVE THREADS, every one `partial match`, and ALL SIX LABELS AT EXACTLY 0 px** (scrollWidths
+209–315). Read from the DOM:
+
+| # | label | signals · category |
+|---|---|---|
+| 1 | Extreme Wea**the**r Alerts Across Italy | 572 · Heat and public health risk |
+| 2 | Ukraine Wea**the**r Forecast: Storms and Rain July 28 | 454 · Energy grid instability |
+| 3 | Wildfires in **The**ssaloniki; Police chases in Larissa, Kilkis | 364 · Wildfire or severe-storm disaster |
+| 4 | Ukraine Wea**the**r Forecast July 2026 | 342 · Energy grid instability |
+| 5 | **Berlin Pride Attack: Suspect Profile and Manhunt** | 287 · Crime and Accidents |
+| 6 | Severe wea**the**r and earthquake hit Japan and Brazil | 283 · Brazil News & Events |
+
+**The stop-word `the` is a search token.** `search.py` tokenises on `len(t) >= 3` with no stop-list,
+takes the first six tokens (`which, outlet, broke, the, berlin, pride`), fails token-AND, falls back to
+token-ANY marked `partial` — and `%the%` matches **wea·the·r**. Four weather threads outrank the one
+correct thread on a Berlin Pride query. This is the sharpest specimen of the matcher defect in the run.
+
+**MEDIA SIGNALS: `No results for "Which outlet broke…"`** — payload `degraded_segments:
+["signal_matches"]`. Batch-3 headline finding #2, confirmation #2.
+
+### CONTENT INVENTORY — surface B: thread detail (287 signals)
+Header: *"Berlin Pride Attack: Suspect Profile and Manhunt `RESURRECTED` · Global · 287 signals ·
+Last 24h · active since Jun 30 · `HOT WINDOW`"*; *"led by Egypt (33), Germany (17), Greece (11)"*;
+`-8.11 AVG SENTIMENT` · `3 COUNTRIES` · `20 SOURCES`.
+
+**Rendered caveats (the honest ones):** `61 of 287 signals are geo-attributed — cards cover only
+those` · `NARRATIVE BIOGRAPHY · 8 WEEKS` `CANDIDATE STITCH` **0.84** with the glass-box *"stitched in
+OpenAI space · θ topic↔era 0.827 · θ era↔era 0.862 · stitch sim 0.84 · hot = live thread · archive =
+weekly archive clusters"* · `⚠ 2d apart — aggregates 2 snapshot steps, not one` · *"7 ended by
+substrate churn (topic re-founded/merged), not narrative change. 6 genuine narrative change."* ·
+`DEEP HISTORY` → *"**305 archive story-units matched by meaning (approximate · 60 days)** — click a bar
+for that day's receipts"* · `VOICE MIX`: *"0% of attributable voices are Germany's own press · `THIN` ·
+0 of 5 attributable voices are domestic. Loudest outsider: Greece (5). **4 of 9 voices carry no outlet
+origin — excluded from these ratios, never assumed.**"*
+
+**`TOP SOURCES` — 20 rows, all Greek/Cypriot, all `UNCLASSIFIED`, ordered by SIGNAL COUNT
+(9, 3, 3, 3, 2 … 1), not chronologically.** `document.querySelectorAll('.source-tier-badge,
+.source-tier-state').length === 0`.
+
+### The control's decisive checks — whole-DOM string tests on the arrival surface
+| test | result |
+|---|---|
+| `/\bfirst\b/i` | **false** |
+| `/\bbroke\b\|\bbreaking\b/i` | **false** |
+| `/first seen\|broke the story\|originally reported/i` | **false** |
+| `/diffus\|propagat/i` | **false** |
+| `/originat\|source of record\|earliest/i` | **false** |
+| `spread` occurrences | **1** — and it is the standing panel subtitle *"HOW TOPICS SPREAD OVER TIME"* |
+| outlet name inside any tooltip | **false** (Deep-History bar tooltips read *"2026-05-05: 52 signals · 5 clusters"*) |
+
+**No outlet is named as first. No outlet sequence is rendered as spread. No first-seen timestamp is
+offered. The syndicated cluster is never presented as propagation.** Atlas does not answer — and does
+not claim to.
+
+### The blob is still there, three days later
+Expanding `▾ Show all coverage (61)` reproduces batch 2's GQ-02 measurement **unchanged**: the tail is
+the **Isidoros Dogiakos grenade plot** (lykavitos.gr, news.makedonias.gr, achaianews.gr, madata.gr,
+news.gr, bankingnews.gr, thebest.gr) and the **murder of lawyer Stavros Georgiou by a 28-year-old
+Egyptian** (topontiki.gr, iefimerida.gr, e-thessalia.gr, voria.gr ×2), all tagged `EG` — inside a
+thread labelled *Berlin Pride Attack*. **`coherence` warning: absent. Label-court chip on the detail:
+absent** (16 `.label-review-chip` nodes exist on the page, all in the right rail). Same thread, same
+two contaminating clusters, same silence.
+
+### N1 — NAV-LOSS ✱
+**Promised:** 6 threads. **Delivered:** 0 references; search input `""`; no sibling/related section.
+**Concretely lost:** the four other Berlin Pride threads batch 2 enumerated (36 / 19 / 16 / 16), which
+this phrasing never offered either.
+
+### Score **1a** · 🛡 **CONTROL PASS** · API 0 · **UI-BETTER**
+The FAIL clauses do not fire: no first outlet, no spread rendering, no syndicated-cluster-as-diffusion.
+Atlas does not *explicitly* decline — it renders a normal thread that simply does not address the
+question — but nothing about provenance is asserted, and the surface renders its own limits in five
+distinct places (geo-attribution fraction, THIN voice mix with the never-assumed clause, the candidate
+stitch with θ values, the 2-day snapshot warning, and the "approximate · matched by meaning" deep
+history). Not 1b: no receipt speaks to first-publication or spread. The unflagged 3-story blend caps it
+below 2 exactly as batch 2 reasoned for GQ-02, and is carried in the defect ledger rather than dropping
+the score to 0.
+**Paired with GQ-02 (same substrate, scored 1): confidence here is tracking answerability, not volume.**
+The 287-signal thread that produced informed receipts for "what happened" produces no confident
+sentence for "who broke it".
+
+---
+
+## GQ-19 — 🛡 **CONTROL** — did the Hormuz coverage move the oil price, and where does oil go from here?
+
+**Typed (U1):** `Hormuz coverage oil fell 7 percent did coverage move the price outlook` ·
+**auto-scope: NONE**.
+
+### CONTENT INVENTORY — surface A: search dropdown
+**6 LIVE THREADS, all `partial match`, 5 of 6 labels at 0 px:**
+
+| # | label | signals · category |
+|---|---|---|
+| 1 | Ukraine Strikes Russian Oil Infrastructure; Russia Hits East | 382 · Armed conflict escalation |
+| 2 | Ukrainian Drone Attacks Hit Russian Oil; Russia Strikes Odessa | 283 · **Election legitimacy dispute** |
+| 3 | US Tariffs on Russian Oil Buyers | 208 · Sanctions and diplomatic pressure |
+| 4 | **Argentine Football Live Coverage** | 194 · Sports *(matched on `coverage`)* |
+| 5 | Oil and Gold Prices Amid Iran Tensions | 188 · Oil and gas supply risk |
+| 6 | Oil Prices **Surge** on US-Iran Tensions | 183 · Oil and gas supply risk |
+
+**Hormuz appears in no label.** **MEDIA SIGNALS: `No results for …`** over
+`degraded_segments: ["signal_matches"]` — confirmation #3.
+
+### CONTENT INVENTORY — surface B: thread detail *Oil Prices Surge on US-Iran Tensions* (183 signals)
+- `RESURRECTED` · Global · 183 signals · active since Jul 9 · `HOT WINDOW` · Iran 17 (61%) / United States 11 (39%) · `-4.18` tone · `28 of 183 signals are geo-attributed`
+- `NARRATIVE BIOGRAPHY · 12 WEEKS` `CANDIDATE STITCH` with sims **0.75 / 0.91 / 0.85** over a four-node chain — *"UK economy sees surprise growth in…"* **MAY 11** → *"Oil Prices **Drop** Nearly 6% on US-Ir…"* **MAY 25** → *"Oil prices **jump** after US-Iran talk…"* **JUN 1** → *"Oil Prices **Surge** on US-Iran Tensio…"* **JUL 27** — labelled *"union of 2 measured lineages (lin-1203 + lin-3660)"* with the θ glass-box. A price-direction chain rendered as topic lineage, flagged as a **candidate** stitch, never as causation. (A UK-GDP node at 0.75 stitched into an oil lineage is a visible identity-layer artifact, logged.)
+- **28 receipts, all Jul 24, all one wire day**: *"Oil Has Topped $100 As The Iran War Escalates. Now Analysts Say Gas Prices Could Surge Even Higher"* (ibtimes.com) · *"Oil surges to $100 per barrel. And, Trump imposes a new round of tariffs"* (wglt.org) · *"Oil prices climb above $100 a barrel as Middle East conflict intensifies"* (twincities.com) · *"Oil at $100 is pushing up costs from gas pumps to grocery aisles"* (fortune.com) · *"Oil Hits $100 as Iran War Rattles Bond Market"* (ibtimes.co.uk) · *"September rate hike odds surge as oil tops $100 a barrel"* (mpamag.com) · *"Gas prices climb to $4.09 national average"* (wbng.com) · plus nhpr.org, kelo.com, dailypress.com, ibtimes.co.in, dailypakistan.com.pk, blueprint.ng, arynews.tv, thehindubusinessline.com… — **`TOP SOURCES` is 28 outlets at count 1 each, all `UNCLASSIFIED`, no syndication marker.** Every price statement is attributed to a named outlet with a timestamp, which is what the criteria permits.
+
+### CONTENT INVENTORY — surface C: the `MARKETS` dock tab — **the best honesty render in the run**
+> `MARKETS` · **`DESCRIPTIVE · LAST CLOSE`** · `as of Jul 26`
+> `WORLD BASKET` — WTI crude, front-month · ENERGY · **82.11 ▼ −3.26%** · Gold 4,063 ▼ −6.12% · Copper 6.39 ▼ −0.58% · S&P 500 7,413 ▼ −0.25% · US Dollar Index (DXY) 101.51 ▲ +1.89% · CBOE Volatility Index · RISK · 18.67 ▲ +5.60%
+> `IRAN · OWN INSTRUMENTS` · `focus Iran →` — ***"this country's own instruments — not linked to why it surfaced"***
+> Iranian rial (USD/IRR) · FX · 1,374,988 ▼ −0.02%
+> ***"relation analysis — pending validation (#226, re-run ~Oct 2026)"***
+> ***"descriptive context — not investment advice"***
+
+**Atlas renders its own STOP verdict on the pixel surface**, by issue number, with a re-run date, an
+explicit non-linkage disclaimer and a non-advice disclaimer.
+
+### The control's decisive checks
+| test | result |
+|---|---|
+| `/forecast\|outlook\|will (rise\|fall)\|expected to\|projec\|going forward\|from here/i` | **false** |
+| `/pricing in\|priced in\|markets? (are\|is)/i` | **false** |
+| `/predict\|anticipat/i` | **false** |
+| `/lead\|lag\|caused\|drove\|coverage moved\|attributab/i` | fires **only** on *"attributable voices"* in VOICE MIX (both hits inspected in context) |
+| trend arrows (`Accelerating`/`Fading`/`Stable` ×19) | all on right-rail thread rows beside `peak N/h` — **coverage movement, never price** |
+
+**Honest residual, unflagged:** the thread's receipts (Jul 24) all say oil **topped $100** and gas is
+rising, while the MARKETS panel (Jul 26 close) prints **WTI 82.11, ▼ −3.26%**, and the thread's own
+label still says **Surge**. The two are never reconciled on screen. Neither is a forecast or a causal
+claim, and both are dated and attributed — so it caps rather than fails.
+
+### N1 — NAV-LOSS ✱
+**Promised:** 6 threads (5 other oil/energy threads). **Delivered:** 0 references; search input `""`;
+no related section.
+
+### Score **1a** · 🛡 **CONTROL PASS** · API 0 · **UI-BETTER**
+The criteria's PASS description is satisfied **verbatim**: Atlas reports coverage volume and timing
+(signal counts, activity timeline, HOT WINDOW) and what outlets **say** about the price (28 attributed
+receipts), and **declines both the lead/lag direction and any forward price view** — the latter in
+writing, naming #226. This is the most defensible control in the set and Atlas is nowhere near failing
+it. A level-≥2 here would have been a documented regression against the project's own recorded STOP;
+instead the STOP is on screen.
+
+---
+
+## GQ-20 — 🛡 **CONTROL** — what do ordinary Iranians actually think about the ceasefire?
+
+**Typed (U1):** `What do ordinary Iranians actually think about the ceasefire`
+**Auto-scope rendered:** `Filtering to: Iran · results scoped to this country` (dropdown header only) —
+the batch's only auto-scope.
+
+### CONTENT INVENTORY — surface A: search dropdown
+**LIVE THREADS: section absent — zero threads offered.**
+**MEDIA SIGNALS ×12, all `IR`-tagged, all English but one:**
+- **5 of 12 are ONE Hearst wire verbatim** — *"US, Iran pause attacks amid delicate ceasefire talks"* at **wgal.com, wlwt.com, ksbw.com, wmur.com, wtae.com** — with **no syndication marker**, and the *same text* carrying the category chip `American Culture` at three stations and `Ceasefire` at the other two
+- **2 more are one Postmedia copy** — *"Unofficial U.S.-Iran ceasefire holds for third straight day"* (nationalpost.com) / *"…but Tehran denies sides are talking"* (theprovince.com)
+- thehill.com *"Mediators see progress in Iran war ceasefire restoration push"* · investinglive.com (silver/Fed) · el-balad.com · independent.co.uk *"Trump 'to make final decision' on ceasefire after high-stakes meeting with Netanyahu"*
+- **1 bluesky post** — *"we are way beyond #ceasefirenow and two states solution… #gaza #ukraine #iran #nokings #stopwars"* — a Western activist post, `IR`-tagged, listed inline among press receipts with the outlet reading only `bluesky`
+- **Zero Persian-language receipts. Zero Iranian outlets. Zero opinion content.**
+(Media-signal names render at 220 px, ellipsised — the 0-px bug remains thread-rows-only.)
+
+### CONTENT INVENTORY — surface B: Iran country brief (U4/U5)
+Reaching it produced a compound focus (`COUNTRY Iran ×` + `THEME Oil Prices Surge on US-Iran Tensions ×`,
+both chips visible); **clicking the THEME `×` correctly removed the THEME chip** — batch-3 new-defect 4's
+mis-wired clear **did NOT reproduce**. The brief then took ~20 s past its 200s.
+
+- `3,115 signals` · **`Narrative Threads 8`** · `8 THREADS` · `-2.2 SENTIMENT` · Source Diversity 93 · Source Quality 80 · `Volume 0.9x normal (z: -0.2)`
+- Standfirst: *"'Iran Threatens Ukraine Over Ship Attack' leads Iran's coverage — 74 signals, within 3,115 total this 24h window. **Public attention: searches around تصادف رانندگی and تعطیلی ادارات خوزستان چهارشنبه.** Most-covered figures: donald trump and benjamin netanyahu."* — the two Persian trends are *"traffic accident"* and *"closure of Khuzestan offices Wednesday"*, i.e. **routine domestic queries, nothing about the ceasefire**, and the word used is **"searches"**
+- `PUBLIC ATTENTION people-side proxy` — the caveat renders **verbatim and in full**: *"Google searches and Wikipedia pageviews are country/language-edition proxies. They enrich the media picture, but **they are not a population-normalized opinion poll**."* ✓ exactly what the criteria requires
+- `SEARCH` — تصادف رانندگی #1 · تعطیلی ادارات خوزستان چهارشنبه #2 · علیرضا امامی فر #3 · بهاره افشاری #4 (traffic, office closures, two celebrities) · `WIKI` — *"No Wikipedia pageview data for this proxy."* ✓
+- `FORUM UNVERIFIED` — 4 items, lane labelled, **but every one is a foreign activist post in English**: *"Iran Has Figured Out How to Overwhelm U.S. Air Defenses"* (technology@lemmy.ml) · a Kurdish-photojournalist item (kurdistan@lemmy.ml) · *"The American strikes on Iranian schools in Minab and Lamerda… 177 dead… most of whom were children"* (usa@lemmy.ml) · *"US war criminal soldiers… Western media censors."* (bluesky). **Nothing says these are not Iranians** — the lane is labelled unverified, not foreign
+- **`SENTIMENT OVERVIEW ?` — `-2.2` `Negative` `→ Stable`** with *"Sentiment analysis is noisy and should be interpreted cautiously."* — **the tile is labelled `SENTIMENT`, with no "press tone" / "coverage tone" qualifier anywhere on the brief** (`/press tone|coverage tone|media tone/i` → **false**), unlike thread panels which do say *"Coverage tone is negative (…)"*
+- `TOP PUBLISHERS`: **irna.ir 490 signals** (Iranian state, the single largest publisher, ~16% of the window) · bluesky 35 · **arabic.rt.com 29** (Russian state) · aljazeera.com 25 · middleeasteye.net 25 — **`document.querySelectorAll('.source-tier-badge, .source-tier-state').length === 0`**
+- **`VOICE MIX` IS ABSENT** — `innerText.indexOf('VOICE MIX') === -1`, no heading, no reason. Payload: `GET /api/v2/voice-mix?hours=168&country=IR` → `{"contract":"voice-mix-v0","degraded":true,"reason":"db_busy","detail":"voice-mix aggregation timed out under database load — retry shortly"}` — **byte-identical to batch 2's Iran payload and batch 3's Pakistan payload**
+- `KEY SUBJECTS`: donald trump 143 · benjamin netanyahu 117 · andrew kovalenko 23 · abbas araghchi 17 · esmail baghaei 12 · ruhollah khomeini 11 · timothy lynch 11 · hassan nasrallah 10
+- `RECENT SIGNALS` — 6 rows, **0 about Iranian opinion**, all elite/diplomatic (Rushdie trial, Arbaeen maritime route, *"Trump frustrated at Netanyahu over Pickaxe Mountain"*, US troop accounting, *"Iran rejects Oman's Hormuz proposal"*, *"EU condemns Iran 'aggression' against French diplomats"*)
+
+### The control's decisive checks
+| test | result |
+|---|---|
+| `/divided\|supportive\|opposed\|approve\|disapprove\|public opinion\|ordinary Iranians\|Iranians (are\|think\|feel)/i` | **false** |
+| `/poll\|survey/i` | fires **only** inside the disclaimer *"not a population-normalized opinion poll"* |
+| trends presented under an explicit label | ✓ `SEARCH`, and "searches around…" in prose |
+| forum lane labelled | ✓ `FORUM UNVERIFIED` |
+| sentiment presented as public opinion | **no** — but also **not** labelled as press tone |
+
+### N1 — NAV-LOSS ✱
+**Promised:** 12 media signals. **Delivered:** search input `""`; the brief's `RECENT SIGNALS` is a
+**disjoint** 6-row set; none of the 12 receipts survives.
+
+### Score **1a** · 🛡 **CONTROL PASS** · API 0 · **UI-BETTER**
+No sentiment score is presented as public opinion; no "Iranians are divided/supportive/opposed"
+framing exists; the trends are labelled `SEARCH` under the full proxy caveat and are in any case
+routine domestic queries; Wikipedia and forum lanes are honestly labelled. **Opinion is not asserted
+because opinion is not in the instrument, and Atlas does not pretend otherwise.**
+**Three residuals bring it close to the line without crossing it, and all three are on the ledger:**
+(1) the `-2.2 · Negative` tile carries no "press tone" qualifier on the country brief, so *whose*
+sentiment it is, is left to the reader; (2) **`irna.ir` sits at the top of "who's covering this
+country" with 490 signals and no ownership marker** — the exact instrument the criteria says a
+complete answer needs; (3) **`VOICE MIX` — the one panel that would have said "Iranian voice here
+means Iranian STATE voice" — is dropped in silence on a `db_busy` timeout**, on the single country
+where it matters most.
+
+---
+
+## ═══ BATCH 4 SUMMARY — the control table ═══
+
+| Query | expected | **v2 level** | 🛡 control | API | Divergence | N1 | Why (one line) |
+|---|---|---|---|---|---|---|---|
+| **GQ-16** Lesotho tariffs | negative_control | **0** | **PASS** | 0 | SAME | ✱ | No tariff/textile/factory content anywhere and no Cambodia pattern-completion — but the arrival brief is **318 Lebanese signals rendered as Lesotho**, root-caused to `country_codes.py:83`. |
+| **GQ-17** Mongolia coal | negative_control | **1a** | **PASS** | 0 | UI-BETTER | ✱ | Genuine measured absence (`degraded:false`, 0/0); the sanctioned-LLM surface emits **two GAP rows and a ledger, no prose**; `KEY SUBJECTS` is Monaco/F1 noise from the same FIPS defect. |
+| **GQ-18** who broke Berlin Pride | negative_control | **1a** | **PASS** | 0 | UI-BETTER | ✱ | **No outlet named first, no spread rendered, no first-seen offered**; `TOP SOURCES` ordered by volume; the stop-word `the` puts four **weather** threads above the right one. |
+| **GQ-19** Hormuz → oil | negative_control | **1a** | **PASS** | 0 | UI-BETTER | ✱ | **Zero forecast, zero lead/lag, zero "pricing in"** — and MARKETS renders `DESCRIPTIVE · LAST CLOSE`, *"not linked to why it surfaced"*, *"relation analysis — pending validation (#226, re-run ~Oct 2026)"*, *"not investment advice"*. |
+| **GQ-20** Iranian opinion | negative_control | **1a** | **PASS** | 0 | UI-BETTER | ✱ | No opinion claim; proxy caveat verbatim; trends labelled `SEARCH` and routine — but `irna.ir` **490 unmarked** and `VOICE MIX` silently dropped on `db_busy`. |
+
+**Metrics (batch 4 — 0 non-controls, 5 controls).**
+
+- **Answered rate / Informed rate:** n/a — no `should_answer` queries in this batch
+- **Control FAILs: 0/5.** No control ≥2; none at 3. **K1 v2 satisfied · K2 not triggered**
+- **NAV-LOSS count: 5/5**
+- **Unflagged-blob count: 1** — the Berlin Pride thread, **re-observed unchanged** (same two Athens clusters, still no coherence warning, still no court chip)
+- **Divergence vs API: UI-BETTER ×4, SAME ×1, UI-WORSE ×0**
+
+### Established findings: CONFIRMED, EXTENDED, CONTRADICTED or NOT-REPRODUCED
+
+| standing finding | batch 4 |
+|---|---|
+| **N1 root cause** | **CONFIRMED 5/5.** `input.value === ""` on every arrival; the only "related" string on any arrival is the known false positive. |
+| **Degraded lane rendered as `No results` / silent empty** | **CONFIRMED ×3** (GQ-16, GQ-18, GQ-19 all `degraded_segments: ["signal_matches"]`) and **EXTENDED with the counter-case that completes the diagnosis:** GQ-17 returned **`degraded: false` with genuinely empty lanes** and the pixels were **identical**. The failure is symmetric — an honest absence and a 5-second timeout are indistinguishable in both directions. |
+| **0-px thread labels in the search dropdown** | **CONFIRMED on 4 of 5 queries with geometry:** GQ-16 `Lesotho` 6/7/0/13 px vs 285/332/222/233 scrollWidth · GQ-17 28/28/13 px · GQ-18 **0 px ×6** · GQ-19 0 px ×5 of 6. Country rows (214 px) and media-signal rows (220 px) unaffected — **thread identity is the only thing the layout deletes**. |
+| **`CountryBrief.tsx:899` — no state-media marker on the country door** | **CONFIRMED on the worst possible case:** `irna.ir` **490 signals**, the #1 publisher of Iran's brief, unmarked; `arabic.rt.com` 29 unmarked; 0 tier badges in the whole DOM. Batch 3's three-way split (ThemeDetail ✓ backend-driven, CountryBrief ✗) stands. |
+| **Silent `/voice-mix` degradation** | **CONFIRMED on a third observation, byte-identical payload** (`db_busy`, "voice-mix aggregation timed out under database load — retry shortly"), on Iran again. Mongolia, Lesotho and Sudan render it correctly in the same session. |
+| **Court verdict invisible on the detail panel** | **CONFIRMED.** 16 `.label-review-chip` nodes on the page, none in the Berlin Pride detail. |
+| **Coherence never fires on real blobs** | **CONFIRMED and now shown to be PERSISTENT:** the same Berlin Pride thread carries the same Dogiakos-grenade and Georgiou-murder clusters three days after batch 2 measured them, still with no warning and no chip. |
+| **Matcher substring/token-based, language-blind** | **CONFIRMED, sharpest specimen of the run:** the stop-word **`the`** matches **wea·the·r**, putting four weather threads above the Berlin Pride thread. Also `coverage` → *Argentine Football Live Coverage*; `Mongolia` → *Monaco*. |
+| **Door-to-door contradiction** | **CONFIRMED and INVERTED:** search `Lesotho` offers **4** live threads while `/threads?country_code=LS` returns **0** — the first case where search **over**-reports. |
+| **Entity-layer corruption** | **CONFIRMED**, new specimens: **`PERSON Cracker Barrel 25`** (#2 subject of "Lesotho"), `PERSON olivia benson` (a fictional character), `PERSON getty charlene`, `PERSON dick wolf`, `PERSON nik Sinner`; `PERSON alexander ntomprint` unchanged on Berlin Pride. |
+| **Wire syndication never marked** | **CONFIRMED:** 5 identical Hearst copies + 2 Postmedia copies in GQ-20's 12 receipts; GQ-19's thread is **28 outlets at count 1**, one wire day. And the *same wire text* carries **two different category chips** across stations. |
+| **Duplicate `/research/plan` fan-out** | **CONFIRMED:** 2 POSTs per click, 6 total across GQ-17's two attempts, all 200 OK. |
+| **`/research/plan` 429** | **NOT REPRODUCED** (batch-2 status unchanged): all 6 POSTs returned 200. The failure mode remains *slow* (50–70 s), not rate-limited. |
+| **Stale-dropdown ghost receipts** | **NOT REPRODUCED.** Every new query's dropdown replaced the previous one cleanly. |
+| **Compound-focus geographic misattribution + mis-wired chip `×`** | **NOT REPRODUCED.** The Iran compound focus rendered both chips correctly and the THEME `×` removed the THEME chip. Recorded as not-reproduced, **not** as fixed. |
+| **Country briefs 20–30 s on `LOADING BRIEF…` + React hook-order error** | **CONFIRMED, with the exact signature captured:** *"The final argument passed to `useEffect` changed size between renders. Previous: `[, , , false]` Incoming: `[, , , false, ]`"* — **the dependency array grows by one element**, i.e. a conditionally-appended dep. |
+| **503s (`/attention/eclipse`, `/threads?country_code=IR`)** | **NOT REPRODUCED** this batch. |
+
+### New defects first observed in batch 4
+
+1. **`backend/app/services/country_codes.py:83` — `'LE': 'LS'` maps FIPS Lebanon onto ISO Lesotho.** 316 Lebanese signals/24 h served as Lesotho; Lebanon's own door holds 14. Untested since `b0ac1a56` (2025-12-04).
+2. **`country_codes.py:172` — unmapped FIPS codes silently pass through as ISO.** FIPS `MN` (Monaco) → ISO `MN` (Mongolia); FIPS `LT` (Lesotho) → ISO `LT` (Lithuania). The permissive default is the generator, the wrong entry is one instance.
+3. **The research plan's ledger and low-confidence tray render outside the stream panel's `overflow:hidden` box** (`consoleLayout.ts:39`, laptop preset `h = 6` → 156 px, no scroll) and the tray toggle is occluded by the grid's resize handle.
+4. **A country scope from a previous query persists into a new query's research plan** (`Scoped to Lesotho` on a Mongolia question, with `LS · COUNTRY · 0.44` served as a PRIMARY anchor).
+5. **Clearing the scope chip re-fires the plan and returns the panel to `BUILDING RESEARCH PLAN…` for ~70 s.**
+6. **The same wire text carries different category chips at different stations** (`American Culture` ×3 vs `Ceasefire` ×2 on one Hearst copy) — the batch-2 NPR observation, reproduced on a second wire.
+7. **The `SENTIMENT` tile on the country brief carries no "press tone" qualifier**, while thread panels say *"Coverage tone is…"* — the same number, labelled honestly in one place and ambiguously in the other.
+
+### What batch 4 adds to the thesis
+
+Batch 1: *the surface holding the answer is destroyed by the click that leaves it.*
+Batch 2: *Atlas measures the right thing and then does not render it.*
+Batch 3: *Atlas renders the right thing and then mislabels what kind of thing it is.*
+**Batch 4 adds the floor beneath all three: sometimes the measurement itself is a different country,
+and no amount of rendering discipline can catch that.** One line of Python, in the repo since the file
+was created, untested, turns Lebanon into Lesotho and Monaco into Mongolia — and every honest,
+well-captioned, correctly-degraded surface downstream renders it faithfully.
+
+And the controls held. **Five for five, zero FAILs, zero at level 2.** The sanctioned-LLM surface
+emitted gap rows instead of prose on a country with no evidence. The provenance question got no first
+outlet and no diffusion. The markets question got the project's own STOP verdict printed on the panel,
+by issue number. The opinion question got a caveat that says *"not a population-normalized opinion
+poll"* in so many words. **Where Atlas has written a measured refusal into the product, the product
+renders it.** That is the one place the thesis does not hold, and it is the template for everything
+else.
+
+---
+
+# FINAL SYNTHESIS (all 20)
+
+## 1. The four headline metrics
+
+**Scope:** 14 `should_answer`/`stretch` queries (GQ-01…GQ-14) + 6 negative controls (GQ-15…GQ-20).
+
+| metric | value | detail |
+|---|---|---|
+| **Answered rate** (non-controls at ≥2) | **2 / 14 = 14.3 %** | GQ-01 (Iberian/French wildfires, ROR@20 1.00, every evacuation and hectare figure bound to its own outlet and date) · GQ-12 (Caspian ship attack, ROR@19 0.947, both theatres held in one thread, `⚑ state` on aa.com.tr, independence caveat in prose) |
+| **Informed rate** (≥1b) | **10 / 14 = 71.4 %** | the two above + GQ-02 (1, blob-capped, receipts informed) + seven 1b: GQ-04, 05, 07, 08, 09, 10, 13 |
+| **Honesty rate** (honest failure ÷ non-answered) | **10 / 12 = 0.83** | misleading failures: **GQ-03** (254-signal thread rendered `0 COUNTRIES · 0 SOURCES · 0 items` under an invisible `country_code=CD`, with a stale *"France's own press"* claim on a Congo story) and **GQ-06** (`irna.ir` 495 unmarked at the top of Iran's publishers while VOICE MIX was silently dropped) |
+| **NAV-LOSS** | **20 / 20** | every query, every arrival surface, one root cause |
+
+**Supporting tallies.** Unflagged blobs **2 distinct** (Berlin Pride 3-story — *re-confirmed unchanged
+3 days later*; *Bank Earnings Growth 2026* 4-story, court-FAILED and suppressed on the panel).
+Invisible court verdict on an opened thread **4/4 opportunities**. Silent `/voice-mix` degradation
+**3 observations, 2 countries, byte-identical payload**. Level distribution across 20: **2 ×2 · 1 ×1 ·
+1b ×7 · 1a ×7 · 0 ×3.**
+
+## 2. Control arm and run validity
+
+| control | level | ≥2? | verdict |
+|---|---|---|---|
+| GQ-15 Australian bushfires | 1a | no | PASS — zero fire content in a 3,014-signal AU window; Bordeaux offered at cosine 0.82 and held `WEAK` |
+| GQ-16 Lesotho tariffs | **0** | no | PASS — no tariff/textile/factory claim; **but the arrival brief is the wrong country** |
+| GQ-17 Mongolia coal | 1a | no | PASS — genuine measured absence; no prose from the LLM surface |
+| GQ-18 who broke Berlin Pride | 1a | no | PASS — no first outlet, no spread, no first-seen |
+| GQ-19 Hormuz → oil | 1a | no | PASS — no lead/lag, no forecast; the #226 STOP printed on the panel |
+| GQ-20 Iranian opinion | 1a | no | PASS — no opinion claim; proxy caveat verbatim |
+
+**Control FAILs: 0 / 6. No control at 3. K1 v2 (every control ≤1) — SATISFIED. K2 — NOT TRIGGERED.**
+
+> ### ✅ **THE RUN IS VALID.**
+
+**Two paired-scoring results carry real weight.** GQ-01 (level 2, figure-bearing, multi-outlet) against
+GQ-15 (nothing, while the semantic lane demonstrably *offered* Bordeaux at 0.82 and declined):
+**wildfire answers are not being generated by vocabulary matching over 5,011 'wildfire' headlines.**
+GQ-04 (67 signals, 1b, ten on-topic SONA receipts) against GQ-17 (0 signals, 1a, two gap rows):
+**identical governance shape, and confidence tracked the evidence, not the template.** The 2026-07
+silent-risk failure class does not reproduce anywhere in this run.
+
+**One rubric boundary, logged before it can be argued about later.** GQ-16 shows that a control can be
+**maximally misleading and still pass**, because v2's control rule tests only for an answer-claim about
+the queried event and admits any level ≤1 — including 0. That is the right call here (the control did
+its job: it found the run's single worst defect), but the rule should be written next time as *"no
+confident answer-claim about the queried event, AND no confidently misattributed arrival surface"*,
+with the second clause reported separately rather than folded into the level.
+
+## 3. Divergence — UI arm vs API arm, all 20
+
+**Correction to the record first.** Batches 2 and 3 transcribed four API-arm scores incorrectly.
+Re-read from `docs/research/gold/2026-07-28-gold-query-eval.jsonl` (authoritative): **GQ-10 = 1**
+(batch 2 wrote 0), **GQ-11 = 1** and **GQ-12 = 1** (batch 3 wrote 0), **GQ-13 = 0** (batch 3 wrote 1).
+The table below uses the file. Comparison maps UI rungs onto the API integer scale (1a / 1 / 1b → 1).
+
+| # | query | API | **UI v2** | divergence | the one thing that decides it |
+|---|---|---|---|---|---|
+| 01 | Wildfires FR/ES | 2 | **2** | SAME | UI renders the divergent evacuation figures attributed and dated; blob real but **flagged** (⚠ coherence 0.50) |
+| 02 | Berlin Pride attack | 0 | **1** | UI-BETTER | API served *Klopp Appointed Germany Coach*; UI served the right thread (ROR@20 0.85) but blended two Athens crime stories unflagged |
+| 03 | DRC Ebola | 0 | **0** | SAME | UI's thread renders `0 COUNTRIES · 0 SOURCES` under an invisible `country_code=CD` and claims *"France's own press"* |
+| 04 | Marcos SONA | 0 | **1b** | UI-BETTER | API served a Trump-tariff thread; UI says `Narrative Threads 0` and shows 10/12 on-topic SONA receipts |
+| 05 | Colombia embassies | 0 | **1b** | UI-BETTER | 4 receipts give the whole announcement — via Uruguayan/Haitian/Brazilian outlets, **0 Spanish-language, 0 Colombian**, over an 85 %-domestic index |
+| 06 | US-Iran framing | 0 | **0** | SAME | ROR@20 = 1.00 and all 30 receipts Hispanophone; `irna.ir` 495 unmarked; VOICE MIX dropped on `db_busy` |
+| 07 | Hormuz mine | 0 | **1b** | UI-BETTER | 13/14 receipts are one claim from 12 Greek outlets in ten hours, 4 saying *"Iranian media:"* — visible, but no verdict, no syndication marker, no independence count |
+| 08 | Indonesia BI governor | 0 | **1b** | UI-BETTER | 10/12 raw receipts carry both strands; rank-1 thread is a **0/15 blob** glued on `Rp… Miliar`, court-FAILED and suppressed |
+| 09 | Nicaragua elections | 0 | **1b** | UI-BETTER | 27 % self-voice by ownership, 73 % foreign, 2/10 Nicaraguan publishers named, confidencial.digital on the exact story |
+| 10 | Romania PSD | 1 | **1b** | SAME | four doors, no thread, honest at each; €1.1 bn + three PNRR milestones reachable only via a `Did you mean` detour — **no recall movement** |
+| 11 | Azad Kashmir | 1 | **1a** | SAME | 2 on-topic receipts (14 killed; India's *"cosmetic elections"*), **zero Pakistani-origin outlets**, no rigging strand |
+| 12 | Caspian ship | 1 | **2** | UI-BETTER | a real relation thread holding both theatres, ROR@19 0.947, `⚑ state`, and *"No independent confirmation… all reports rely on Iranian official statements"* in prose |
+| 13 | Sudan this week | 0 | **1b** | UI-BETTER | search door is a silent empty over a degraded lane; the **brief is the best thin-country render in the run** (`95 % foreign`, `z −0.6`, 6/6 on-topic) |
+| 14 | Congo fr/sw vs en | 0 | **1a** | UI-BETTER | *"Swahili"* and *"French"* appear **nowhere**, no language ratio — and the forbidden *"uncovered"* claim is never made |
+| 15 | 🛡 Australian bushfires | 0 | **1a** | UI-BETTER | both PASS; UI adds an explicit no-evidence state and quarantines Bordeaux at `WEAK` |
+| 16 | 🛡 Lesotho tariffs | 0 | **0** | SAME | both PASS the control; UI's arrival surface is **Lebanon rendered as Lesotho** |
+| 17 | 🛡 Mongolia coal | 0 | **1a** | UI-BETTER | genuine measured absence; the LLM surface emits gap rows, not prose |
+| 18 | 🛡 Berlin Pride provenance | 0 | **1a** | UI-BETTER | no first outlet, no spread, no first-seen; `TOP SOURCES` by volume |
+| 19 | 🛡 Hormuz → oil | 0 | **1a** | UI-BETTER | no lead/lag, no forecast; **#226 STOP printed on the MARKETS panel** |
+| 20 | 🛡 Iranian opinion | 0 | **1a** | UI-BETTER | no opinion claim; proxy caveat verbatim; but `irna.ir` 490 unmarked and VOICE MIX silent |
+
+**Totals: UI-BETTER ×14 · SAME ×6 · UI-WORSE ×0.**
+
+**What the divergence means, stated carefully.** The UI arm never scored *worse* than the API arm on
+any of the twenty. On thirteen of the fourteen non-controls the two arms differ because **the API arm
+scores the served thread and the UI arm can also score the raw lane** — the receipts the analyst can
+actually read on the dropdown or in a country brief, which no thread contains. That is the entire
+14.3 % → 71.4 % gap: **it is not a retrieval gap, it is an assembly-and-navigation gap.** The API arm
+is measuring what Atlas *concluded*; the UI arm is measuring what Atlas *has*.
+
+## 4. Defect ledger — deduped across all four batches
+
+Severity: **CRIT** = corrupts the analyst's conclusion or the eval's core distinction · **HIGH** =
+destroys real measured value · **MED** = degrades trust or usability.
+
+| # | defect | root cause (file:line where established) | sev | found | status |
+|---|---|---|---|---|---|
+| **D1** | **NAV-LOSS: opening any result clears the search input and no arrival surface carries a related-results affordance.** 20/20. The search dropdown is the only place a query's results exist. | `SearchBar` clears input on select; `ThemeDetail.tsx` / `CountryBrief.tsx` have no sibling / "stories inside" section | CRIT | B1 | confirmed B2/B3/B4 |
+| **D2** | **FIPS→ISO mapping serves whole countries as other countries.** `country_code=LS` → 316 **Lebanese** signals; `LB` → 14. `country_code=MN` → Monaco/F1. | `backend/app/services/country_codes.py:83` (`'LE': 'LS'` — FIPS LE is Lebanon) **and** `:172` (`FIPS_TO_ISO.get(code, code)` passes unmapped FIPS through as ISO). No test in `tests/test_country_codes_fips.py`. Present since `b0ac1a56`, 2025-12-04 | **CRIT** | **B4** | new |
+| **D3** | **A failed/timed-out retrieval lane is rendered as `No results` or as a silent empty.** `degraded_segments` is appended **only inside `except` blocks** around 5 s-timeout queries, so it always means failure. B4 adds the symmetric half: a genuine `degraded:false` empty renders **identically**. | `backend/app/routers/search.py:609` (`live_threads`), `:680` (`signal_matches`); `SEARCH_MATCH_TIMEOUT_SECONDS = 5.0` | CRIT | B3 | confirmed ×3 in B4 |
+| **D4** | **Search-dropdown thread labels render at 0 px.** Measured 0–28 px against 112–332 px of content on 4/5 queries in B4. Country and media-signal rows unaffected. | `.search-item` is `flex-direction: row; flex-wrap: nowrap`, width 266 px; `.search-item-tag` and `.search-item-meta` are `flex: 0 0 auto` (51 + 230 px), `.search-item-name` is `flex: 1 1 0%` — **the identity is the only shrinkable child** | CRIT | B3 | confirmed B4 |
+| **D5** | **Invisible, unclearable country auto-scope on the thread path, built by deleting the country token from the query.** `…Caspian Sea Iran response` → `q=…Caspian Sea response&country=IR`; `theme/dynamic-topic-239?hours=24&country_code=CD` fired ×2 with the focus bar showing only `THEME`. Emptied a 254-signal thread (GQ-03/14); cut GQ-01 from 10 countries/221 receipts to 1/105, **deleting the Spain half of a Spain-and-France question**. | `backend/app/routers/search.py` (`match_country` topic remainder → `country_filter`) + focus bar renders no country chip on the thread path | CRIT | B1 | confirmed B2/B3; **country-door path DOES render a clearable chip** (B3/B4) |
+| **D6** | **No state-media / tier marker on the country brief.** `irna.ir` **490 signals**, #1 publisher of Iran's brief, unmarked (B4); also `arabic.rt.com`, `radio.gov.pk`, `english.news.cn`. 0 tier badges in the DOM. | `frontend-v2/src/components/CountryBrief.tsx:899` — bare `<span className="source-name">{source.name}</span>`, no tier reference anywhere in the file. **The renderer works elsewhere**: `ThemeDetail.tsx:1326/1557/1608` uses backend `credibility.label` and does render `⚑ state` (aa.com.tr, B3) | CRIT | B2 (mis-diagnosed) → B3 (root-caused) | confirmed B4 |
+| **D7** | **Silent `/voice-mix` degradation.** Payload `{"degraded":true,"reason":"db_busy","detail":"voice-mix aggregation timed out under database load — retry shortly"}`; the UI renders **nothing** — no heading, no reason. Iran (B2), Pakistan (B3), Iran again (B4) — byte-identical. Sudan/DRC/Colombia/Mongolia render it correctly, so the honest branch exists. | voice-mix consumer in `CountryBrief.tsx` / `ThemeDetail.tsx` drops the panel on `degraded` instead of rendering the reason | HIGH | B2 | confirmed ×3 |
+| **D8** | **Label-court verdict is a 7 × 7 px unlabelled dot in search (`data-tip`, `innerText === ""`) and absent from the thread detail entirely.** Four threads opened across the run had a court verdict; **none** showed it on arrival. | `.label-review-chip--dot`; `ThemeDetail` renders no court status | HIGH | B2 | confirmed B3/B4 |
+| **D9** | **Coherence never fires on real blobs, and they persist.** GQ-02's Berlin Pride thread blends the Dogiakos grenade plot (8 receipts) and the Georgiou murder (5) — ROR@all 0.567 — with no warning and no chip; **identical three days later (B4)**. GQ-08's *Bank Earnings Growth 2026* matches 1/15 receipts, court verdict FAILED, suppressed on the panel. | over-merge detection exists (`overmerge.py`) and the court **caught** GQ-08; the detail panel suppresses both | HIGH | B1 | confirmed B2/B4 |
+| **D10** | **Matcher is substring/token-based, language-blind, and has no stop-word list.** The token **`the`** matches **wea·the·r** → four weather threads outrank the Berlin Pride thread (B4). `Caspian ship attack` → 0/12 receipts containing "Caspian". `Mongolia` → *Monaco*. `Marcos` → the Gospel of Mark. `fire front` → *fronteras/afronta/confronta*. | `search.py` tokenizer `re.split(...)` with `len(t) >= 3`, then a token-ANY `partial` fallback | HIGH | B1 | confirmed B2/B3/B4 |
+| **D11** | **Door-to-door count contradictions, in both directions.** Search `Philippines` 4 threads → brief `Narrative Threads 0` (B1). *Jordan Intercepts Iranian Missiles* 170 vs 17 (B2). *Iran Threatens Ukraine* **74 (rail) and 32 (detail) on one screen, no click** (B3). **Search `Lesotho` 4 threads while `/threads?country_code=LS` returns 0** (B4). | `search.py` `pure_country` branch (`thread_tokens = ["%"]`, scoped on `ecc.top_country_codes[1]`) queries a different population from `/threads` | HIGH | B1 | confirmed B2/B3/B4 |
+| **D12** | **Wire syndication never marked; D3-independence not applied anywhere visible.** 8 AFP copies in GQ-01's first 28 receipts · 6 Xinhua of 12 (GQ-03) · 5 of 12 (GQ-06) · 7 NPR stations of 12 (GQ-09) · **28 outlets at count 1** (GQ-19) · 5 Hearst + 2 Postmedia of 12 (GQ-20). | no syndication collapse in any receipt renderer | HIGH | B1 | confirmed B2/B3/B4 |
+| **D13** | **The research plan's honesty ledger and low-confidence tray render outside the panel's clip box and are never painted.** `.panel-content` 553→708 px, `overflow-y: hidden`, no scroll; `.rp-tray` 722→761, ledger 761→790. Toggle occluded by `react-resizable-handle`. | `frontend-v2/src/lib/consoleLayout.ts:39` — laptop preset `item('stream', 0, 12, 14, 6)` = 156 px content at viewports <1600 px | HIGH | **B4** | new — **qualifies B3's GQ-15 tray evidence** |
+| **D14** | **A country scope from a previous query persists into a new query's research plan**, contributing a PRIMARY anchor (`LS · COUNTRY · 0.44` on a Mongolia question). Chip is visible and clearable; the computation is still wrong. | research-plan panel reuses the live focus country | HIGH | **B4** | new |
+| **D15** | **Category chips systematically wrong**, including **the same wire text under two different categories** (`American Culture` ×3 / `Ceasefire` ×2 on one Hearst copy; NPR the same in B2). *"14 killed … election … marred by violence"* under `PUBLIC HEALTH`; *"Ukrainian Drone Attacks Hit Russian Oil"* under `ELECTION LEGITIMACY DISPUTE`; a Lesotho embassy story under `Water`. | category typing (`compute_category_typing`) applied per-signal, not per-story | MED | B1 | confirmed B2/B3/B4 |
+| **D16** | **Entity layer types places, parties, phrases, brands, outlets and fictional characters as `PERSON`.** `PERSON Cracker Barrel` (#2 subject of "Lesotho"), `PERSON olivia benson`, `PERSON azad jammu`, `PERSON allahu akbar`, `PERSON marea neagra`, `PERSON wikimedia commons`, `PERSON alexander ntomprint` (Dobrindt round-tripped through Greek), plus casing duplicates. | `subjects.classify_subject` / NER gate | MED | B1 | confirmed B2/B3/B4 |
+| **D17** | **Duplicate request fan-out.** `/theme/{id}` ×2–3, `/drift` ×5–6, `/lineage` ×2, `/compare` ×2, `/voice-mix` ×3–4, `/research/plan` ×2 per click (6 across one query in B4). | effect double-fire in `ThemeDetail` / plan panel | MED | B1 | confirmed B2/B3/B4 |
+| **D18** | **Country briefs sit 20–30 s on `LOADING BRIEF…` after their calls return 200; the research plan takes 50–70 s.** A React hook-order violation logs repeatedly: *"The final argument passed to `useEffect` changed size between renders. Previous: `[, , , false]` Incoming: `[, , , false, ]`"* — **the deps array grows by one element**. | a conditionally-appended `useEffect` dependency (array shape captured B4; exact site not yet located) | MED | B3 | confirmed B4 with signature |
+| **D19** | **The `SENTIMENT` tile on the country brief carries no "press tone" qualifier**, while thread panels say *"Coverage tone is…"*. Same number, honest in one place, ambiguous in the other — on the surface a *"what do people think"* query lands on. | `CountryBrief.tsx` sentiment overview label | MED | **B4** | new |
+| **D20** | **The right rail asserts `Scoped to <country>` over unscoped global content**, contradicting the `Narrative Threads 0` panel beside it (Pakistan: five threads chipped `IR`/`RU`/`FR`/`ES`). | right-rail scope strip lags the fetch and never says so | HIGH | B3 | not re-tested B4 |
+| **D21** | **Compound-focus geographic misattribution** — an Iran thread rendered *"← Global · 🇸🇩 **Sudan** · 32 signals"* with *"⚑ 2 conflict events in **Sudan**"* while reporting `0 COUNTRIES · 0 SOURCES`; THEME `×` removed the COUNTRY chip. | compound-focus reducer | HIGH | B3 | **NOT REPRODUCED B4** (both chips correct, `×` correct) — not fixed, not reproduced |
+| **D22** | **Stale-dropdown ghost receipts** (~4 s in B2, **permanent** in B3 — `Azad Kashmir` left twelve Iran receipts standing under the typed query because the new payload was degraded and empty). | dropdown keeps the last non-empty payload | HIGH | B2 | **NOT REPRODUCED B4** |
+| **D23** | **`/research/plan` → 429 on first use of a session** (B1); **`/attention/eclipse` → 503** and one `/threads?…&country_code=IR` → 503 (B3). | rate-limit `paid` bucket / DB load | MED | B1/B3 | **NOT REPRODUCED B4** (all 6 plan POSTs 200) |
+
+**Three defects are one-line or one-file fixes with outsized returns:** D2 (`country_codes.py:83` plus a
+test), D6 (`CountryBrief.tsx:899`), D4 (make `.search-item-meta` shrinkable). D13 is a two-number change
+in `consoleLayout.ts`. D3 is the single highest-leverage change in the ledger, because it is the defect
+that corrupts the distinction the whole eval is built on — **and Atlas already writes the correct
+sentence one surface away**: *"This is a failed lookup, not a measured absence."*
+
+## 5. The thesis test — does *"Atlas measures the right thing and then does not render it"* survive all 20?
+
+**It survives, and it needs one amendment and one exception.**
+
+**It survives.** Across twenty queries the dominant failure is not that Atlas lacks the material. The
+informed rate is **five times** the answered rate (71.4 % vs 14.3 %), and on nine of the twelve
+non-answered queries the receipts on screen carried outlet, timestamp, language and — where it
+mattered — the divergent figures, the state marker, the ownership ratio or the independence caveat,
+somewhere in the product. The failures cluster at the seam between measuring and painting.
+
+**The three strongest witnesses:**
+
+1. **GQ-20 · `irna.ir`, 490 signals, unmarked, on the query that is explicitly about whose voice this
+   is.** Every component of the answer already exists and is correct: `sourceTiers.ts` knows RT;
+   `resolveTierChip` ships; `ThemeDetail.tsx:1326/1557/1608` proves the L2 render path works (it painted
+   `⚑ state` on `aa.com.tr` in batch 3); the backend supplies `credibility.label`. And
+   `CountryBrief.tsx:899` is a bare `<span className="source-name">`. Alongside it, `VOICE MIX` — the
+   panel that would have said *"Iranian voice here means Iranian state voice"* — is dropped in silence
+   over a payload that says, in words, exactly why it failed. **The measurement, the renderer and the
+   honest degradation text all exist; nothing connects them at the surface the analyst lands on.**
+
+2. **GQ-16 / 17 / 18 / 19 · a five-second timeout printed as `No results`.**
+   `search.py:609` and `:680` append `degraded_segments` **only inside `except` handlers**, so Atlas
+   knows with certainty that the lane failed — and prints an absence. GQ-17 completes the proof from the
+   other side: a genuine `degraded:false` empty renders **pixel-identical**. The distinction between
+   "we looked and found nothing" and "the lookup broke" is measured, is available, is the distinction
+   this entire evaluation exists to protect — and one surface away, on the same screen-set,
+   `/research/plan` prints it perfectly: ***"Semantic signal headline unavailable (ann_timeout). This
+   is a failed lookup, not a measured absence."***
+
+3. **GQ-18 · the thread's own name at 0 px while its category takes 230 px; and the plan's ledger
+   painted below the panel.** Two independent layout rules, same outcome. In the dropdown,
+   `.search-item-name` is the only `flex-shrink: 1` child of an overflowing `nowrap` row, so **the
+   decoration is unshrinkable and the identity is what disappears** — six labels at exactly 0 px on this
+   query. In the stream panel, `consoleLayout.ts:39` allocates six rows, `overflow` is `hidden`, and
+   `19 CANDIDATES EVALUATED · 2 PRIMARY · 17 LOW CONFIDENCE · 19 ACCESSIBLE · PARTIAL LEDGER · LANE
+   DEGRADATION DISCLOSED` renders at y 761–790 inside a box that ends at 708. **Atlas's most honest
+   sentence in the entire product is computed, reconciled, and then given zero pixels.**
+
+**The amendment (batch 4).** There is a floor beneath the thesis: **sometimes the measurement itself is
+a different country.** `country_codes.py:83` maps FIPS Lebanon onto ISO Lesotho, and `:172` lets
+unmapped FIPS codes through as ISO, so Monaco becomes Mongolia. 316 Lebanese signals per day are served
+as Lesotho's; Lebanon's own door holds 14. Every downstream surface — the standfirst, the conflict
+events, the publishers, the voice mix, the key subjects, the dock — renders it faithfully and
+confidently. **No rendering discipline can catch this, and better rendering makes it worse**, because
+it puts more of the wrong country on screen per paint. Found by a negative control, on a line that has
+been in the repo since the file was created and has never had a test.
+
+**The exception, and it is the template.** Where the project has written a *measured refusal* into the
+product, the product renders it. GQ-19's MARKETS panel prints `DESCRIPTIVE · LAST CLOSE`, *"this
+country's own instruments — not linked to why it surfaced"*, ***"relation analysis — pending validation
+(#226, re-run ~Oct 2026)"*** and *"descriptive context — not investment advice"* — the L4 event study's
+STOP verdict, on the pixel surface, by issue number, with a re-run date. GQ-20's public-attention panel
+prints *"they are not a population-normalized opinion poll"*. GQ-13's Sudan brief prints `95% foreign`,
+`5% covered by its own press`, `Volume 0.9x normal (z: −0.6)` and *"No Google Trends data for this
+window."* GQ-12's thread prints *"No independent confirmation of the attack or its details; all reports
+rely on Iranian official statements."* **In every one of those cases the honest sentence was written by
+a human who had just finished measuring something and decided it had to be visible.** That is precisely
+the discipline missing at `CountryBrief.tsx:899`, at `search.py:609`, and in the flex rule that eats
+thread labels. **The thesis is not a statement about Atlas's character — it is a statement about which
+measurements got a sentence and which got a payload field.**
+
+## 6. What the Story Lens would — and would NOT — have fixed
+
+Spec: `docs/superpowers/specs/2026-07-28-story-lens-design.md` (design approved; §13 makes NAV-LOSS the
+shipping gate). Assessed against the twenty as run.
+
+### Would fix
+
+| defect | mechanism | queries it changes |
+|---|---|---|
+| **D1 NAV-LOSS (20/20)** | §6 sibling-finder (`GET /api/v2/story/{id}/siblings`, candidate union, top-K + floor, **receipts mandatory**) + §7 Threads panel with the anchor pinned and siblings carrying reason-chips | **all 20**, and concretely: GQ-01's 5 sibling wildfire threads (1,528 / 1,056 / 880 / 857 / 749), GQ-02 & GQ-18's 4 other Berlin Pride threads (36 / 19 / 16 / 16), GQ-06's ≥18 shredded US-Iran threads, GQ-12's Hormuz/Black-Sea set, GQ-19's 5 other oil threads |
+| **D8 court verdict invisible** | §8 "label-court status on the banner **and on every sibling row**" | GQ-06, 07, 08, 11, 12, 14, 18 — every thread opened over a court verdict |
+| **D6 state-media on the country door** | §8 names it explicitly — but the spec inherits **batch 2's superseded diagnosis** (*"imported only by Briefing.tsx and WorkbenchPanel.tsx"*). Batch 3 corrected it: `ThemeDetail` already renders `⚑ state`; **the hole is `CountryBrief.tsx:899`**. §4 makes CountryBrief the protagonist panel of the country lens, so the fix lands **if the spec is amended to name the right file** | GQ-06, 11, 13, 20 |
+| **D7 silent voice-mix degradation** | §5 "a failed lane renders an honest empty **WITH ITS REASON**" + §7 banner counts degraded lanes | GQ-06, 11, 20 |
+| **D12 syndication unmarked** | §8 "syndication collapsed with count, not repeated rows" | GQ-01, 03, 06, 09, 19, 20 |
+| **D9 unflagged blobs** | §8 coherence/junk tier on the banner, where it cannot be unseen | GQ-02, 08, 18 |
+| **D17 request fan-out** | §5 lazy per-tab fetch + `fetchWarmCache`, which the spec explicitly ties to "the `/drift`-class fan-out the eval flagged" | all |
+
+### Would NOT fix
+
+| defect | why the lens does not reach it | queries left unchanged |
+|---|---|---|
+| **D2 FIPS `LE`→`LS`, `MN` pass-through** | Ingest-layer mapping. The lens is **read-only over the same substrate** (§11). A Lesotho lens would assemble Lebanon's measured neighborhood — siblings, receipts, reason-chips and all — **more confidently than today**. This is the one defect the lens actively worsens | **GQ-16, GQ-17** |
+| **D3 degraded lane as `No results`** | §5 covers per-lane degradation **inside** the lens; the analyst enters *from* the search dropdown, which is upstream | GQ-11, 13, 15, 16, 18, 19 |
+| **D10 the matcher** (`the`→weather, `Mongolia`→Monaco, `Caspian` dropped, `Marcos`→Gospel of Mark) | Retrieval, untouched. If search never offers the right anchor, there is no lens to open — GQ-12's answer thread was Atlas's own **lead for Iran** and search never returned it under three phrasings including its exact label | GQ-02, 11, 12, 18, 19 |
+| **D4 0-px thread labels** | A `SearchBar` flex rule on the surface **before** the lens. The analyst still chooses a lens anchor from rows identified only by a signal count and a category name | GQ-11, 12, 14, 16, 17, 18, 19 |
+| **D13 clipped plan ledger** | A `consoleLayout.ts` slot-height rule. §7 makes the lens a **console mode**, so it inherits the same grid unless the mode sets its own heights — **worth adding to §5 before build** | GQ-10, 15, 16, 17 |
+| **D5 query mutilation** / **D14 carried scope** | Search- and plan-layer, upstream of the anchor | GQ-03, 06, 12, 13, 17 |
+| **D16 entity typing** | §4's person anchor **inherits** it: a `PERSON Cracker Barrel` lens over Lesotho is reachable by design | GQ-02, 11, 16, 17 |
+| **D18/D19** load times, sentiment labelling | Not in scope | — |
+
+### The honest expectation for the post-lens re-run
+
+§12 says it plainly: the lens "**visibilizes shredding**" rather than fixing the identity layer. On this
+run's evidence that means the lens should be expected to move the **informed rate and NAV-LOSS**, and
+**not** the answered rate. GQ-01's five wildfire fragments, GQ-02's five Berlin Pride fragments and
+GQ-06's eighteen US-Iran threads would become *legible as one event* without becoming *one thread* —
+level 2 requires "a specific on-topic thread whose rendered content answers the question", and a ranked
+sibling list is not that. **Pre-register this**, so the re-run is not scored as a miss:
+
+- **Primary gate (§13): NAV-LOSS falls from 20/20.** Concrete pre-registered cases, with today's numbers,
+  so the delta is unarguable — GQ-02/18 (5 threads: 287 / 36 / 19 / 16 / 16) · GQ-01 (9 threads: 1,528 /
+  1,056 / 880 / 857 / 749 / 92 / 64 / 64 / 51) · GQ-19 (6 threads: 382 / 283 / 208 / 194 / 188 / 183) ·
+  GQ-12 (the answer thread, 74 rail / 32 detail, offered by **no** search phrasing including its exact
+  label) · GQ-06 (≥18 US-Iran threads across three doors).
+- **Secondary: informed rate 71.4 % → higher; honesty rate 0.83 → higher** (D6/D7/D8/D9 all land on the
+  banner).
+- **Expected flat: answered rate 14.3 %.** Moving it needs the identity layer, not the renderer.
+- **Guard, and it is not optional: fix D2 before the lens ships.** A lens over a mis-mapped country is a
+  confidently-assembled, receipt-bearing neighborhood of the wrong nation. It is a one-line change plus a
+  test, and it is the cheapest item in this entire document.
+- **Control arm must be re-run with the lens.** Six controls, same rubric, same K1 v2 / K2 gates. The
+  lens increases assembled surface area per query, which is exactly the condition under which a control
+  starts to look like an answer.
+
+---
+
+*End of the full-20 UI gold eval. Run VALID under K1 v2 · 0 control FAILs · answered 14.3 % ·
+informed 71.4 % · honesty 0.83 · NAV-LOSS 20/20.*
