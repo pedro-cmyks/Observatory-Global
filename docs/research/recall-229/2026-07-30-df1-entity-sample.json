@@ -1,0 +1,2431 @@
+{
+  "meta": {
+    "generated_at": "2026-07-28T14:08:04+00:00",
+    "script": "backend/scripts/calibrate_evidence_rarity.py",
+    "measurement": "M3",
+    "days": 7,
+    "days_list": [
+      "2026-07-28",
+      "2026-07-27",
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22"
+    ],
+    "seed": 42,
+    "primary_day": "2026-07-28",
+    "primary_clusters": 2032,
+    "primary_resolvability": 0.9755,
+    "read_only": true
+  },
+  "sample": [
+    {
+      "name": "a council to ministers",
+      "raw_variants": [
+        "a council to ministers"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "El Consejo de Ministros aprueba contratos de Defensa por casi 196 millones para modernizar capacidades y reforzar el sostenimiento",
+      "example_lang": "xx",
+      "example_source": "infodefensa.com"
+    },
+    {
+      "name": "a jay hatfield",
+      "raw_variants": [
+        "a jay hatfield"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "النفط يتجاوز 95 دولارًا مع تمسك واشنطن بإبقاء هرمز مفتوحًا رغم الهجمات الإيرانية",
+      "example_lang": "xx",
+      "example_source": "dostor.org"
+    },
+    {
+      "name": "a sonam raghuvanshi",
+      "raw_variants": [
+        "a sonam raghuvanshi"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "सोनम रघुवंशी को बड़ा झटका, सुप्रीम कोर्ट से जमानत रद; तीन हफ्ते में सरेंडर का आदेश - sc sets aside bail granted to sonam raghuvanshi grants 3 weeks to surrender",
+      "example_lang": "xx",
+      "example_source": "jagran.com"
+    },
+    {
+      "name": "ahilyanagar",
+      "raw_variants": [
+        "Ahilyanagar"
+      ],
+      "provenance": {
+        "nlp:GPE": 3
+      },
+      "example_headline": "19-year-old allegedly ends life over low NEET retest marks in Ahilyanagar | Nashik News",
+      "example_lang": "en",
+      "example_source": "indiatimes.com"
+    },
+    {
+      "name": "aitor alcalde colomer getty",
+      "raw_variants": [
+        "aitor alcalde colomer getty"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Barcelona set Frenkie de Jong knee surgery deadline",
+      "example_lang": "en",
+      "example_source": "barcablaugranes.com"
+    },
+    {
+      "name": "al powerball",
+      "raw_variants": [
+        "al powerball"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Números ganadores del Powerball del sábado 25 de julio de 2026: los resultados del último sorteo",
+      "example_lang": "xx",
+      "example_source": "elpais.com.uy"
+    },
+    {
+      "name": "aldi co",
+      "raw_variants": [
+        "Aldi & Co.",
+        "Aldi & Co"
+      ],
+      "provenance": {
+        "nlp:ORG": 2
+      },
+      "example_headline": "Beeren-Rückruf bei Lidl, Aldi & Co.: Noroviren können in Produkt sein",
+      "example_lang": "xx",
+      "example_source": "infranken.de"
+    },
+    {
+      "name": "alejandro smith",
+      "raw_variants": [
+        "alejandro smith"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "España ganó el Mundial en Cataluña: del ridículo de la CUP a la pulsera de Dalmau y el muro de Ferran",
+      "example_lang": "xx",
+      "example_source": "elconfidencial.com"
+    },
+    {
+      "name": "american israel public affairs committee",
+      "raw_variants": [
+        "american israel public affairs committee"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "AP News Summary at 8:02 a.m. EDT",
+      "example_lang": "en",
+      "example_source": "yumasun.com"
+    },
+    {
+      "name": "anas sarwar arbroath",
+      "raw_variants": [
+        "anas sarwar arbroath"
+      ],
+      "provenance": {
+        "gdelt_persons": 8
+      },
+      "example_headline": "Monica Lennon 'not going to rule out' Scottish Labour leadership bid | The Wiltshire Gazette and Herald",
+      "example_lang": "en",
+      "example_source": "gazetteandherald.co.uk"
+    },
+    {
+      "name": "andre romani",
+      "raw_variants": [
+        "andre romani"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Lula leads Flavio Bolsonaro in Brazil election poll",
+      "example_lang": "en",
+      "example_source": "whbl.com"
+    },
+    {
+      "name": "apollo gallery",
+      "raw_variants": [
+        "Apollo Gallery"
+      ],
+      "provenance": {
+        "nlp:ORG": 5
+      },
+      "example_headline": "Louvre reopens Apollo Gallery after a brazen heist, but no jewels on display",
+      "example_lang": "en",
+      "example_source": "abcnews.com"
+    },
+    {
+      "name": "arun govil",
+      "raw_variants": [
+        "arun govil"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Sony Pictures to Distribute Namit Malhotra's 'Ramayana' Globally Outside India",
+      "example_lang": "en",
+      "example_source": "rozanaspokesman.com"
+    },
+    {
+      "name": "assemblee",
+      "raw_variants": [
+        "Assemblée"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "France : l'Assemblée adopte la loi d'urgence agricole après des débats houleux",
+      "example_lang": "fr",
+      "example_source": "france24.com"
+    },
+    {
+      "name": "atp",
+      "raw_variants": [
+        "ATP"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "LIVE Darderi-Martinez 6-0 5-0 ATP Estoril 2026 in DIRETTA | lo spagnolo serve per evitare il doppio 'bagel'",
+      "example_lang": "xx",
+      "example_source": "zazoom.it"
+    },
+    {
+      "name": "autonomous search team investigating",
+      "raw_variants": [
+        "autonomous search team investigating"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "CIA Obtained Secret Information About Wuhan Lab, Fauci Diary Shows",
+      "example_lang": "en",
+      "example_source": "theepochtimes.com"
+    },
+    {
+      "name": "bank sabadell",
+      "raw_variants": [
+        "bank sabadell"
+      ],
+      "provenance": {
+        "gdelt_orgs": 5
+      },
+      "example_headline": "Jainaga lanza una opa de 244 millones por el 100% de Azkoyen",
+      "example_lang": "xx",
+      "example_source": "expansion.com"
+    },
+    {
+      "name": "barbara ann woolley",
+      "raw_variants": [
+        "barbara ann woolley",
+        "Barbara Ann Woolley"
+      ],
+      "provenance": {
+        "gdelt_persons": 1,
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Obituary: Barbara Ann Woolley, May 24, 1941 — July 18, 2026",
+      "example_lang": "en",
+      "example_source": "hooversun.com"
+    },
+    {
+      "name": "benjamin blackwell",
+      "raw_variants": [
+        "benjamin blackwell"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Betye Saar, Who Turned Black Stereotypes Into Symbols of Resistance, Dies at 99",
+      "example_lang": "en",
+      "example_source": "artnet.com"
+    },
+    {
+      "name": "biarritz perpignan",
+      "raw_variants": [
+        "biarritz perpignan"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Top 14/Pro D2 : la rentrée se précise, délocalisations au menu... Découvrez le programme des matchs amicaux de l'été pour les clubs professionnels",
+      "example_lang": "xx",
+      "example_source": "ladepeche.fr"
+    },
+    {
+      "name": "billy stockwell",
+      "raw_variants": [
+        "billy stockwell"
+      ],
+      "provenance": {
+        "gdelt_persons": 3
+      },
+      "example_headline": "Russian warship conducts live-fire exercise off UK as new PM Burnham reaffirms support for Kyiv",
+      "example_lang": "en",
+      "example_source": "kesq.com"
+    },
+    {
+      "name": "birthday july positive new church",
+      "raw_variants": [
+        "birthday july positive new church"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "25 липня 2026 року — яке сьогодні свято, День ангела і що не можна робити",
+      "example_lang": "xx",
+      "example_source": "uapress.info"
+    },
+    {
+      "name": "body budget council representation folk on senayan",
+      "raw_variants": [
+        "body budget council representation folk on senayan"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Purbaya Laporkan Defisit APBN per Juni Rp 196,5 Triliun",
+      "example_lang": "xx",
+      "example_source": "tempo.co"
+    },
+    {
+      "name": "brady lidster",
+      "raw_variants": [
+        "brady lidster"
+      ],
+      "provenance": {
+        "gdelt_persons": 5
+      },
+      "example_headline": "Kelly, Polk combine for 2 TDs as Argos dump B.C. Lions 26-12 | Tofino/Ucluelet Westerly News",
+      "example_lang": "en",
+      "example_source": "westerlynews.ca"
+    },
+    {
+      "name": "brandenburger a show program",
+      "raw_variants": [
+        "brandenburger a show program"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Hunderttausende feiern CSD in Berlin: „Haltung ist hot\" bei Großkundgebung",
+      "example_lang": "xx",
+      "example_source": "rtl.de"
+    },
+    {
+      "name": "brant boyer",
+      "raw_variants": [
+        "brant boyer"
+      ],
+      "provenance": {
+        "gdelt_persons": 3
+      },
+      "example_headline": "49ers coach Kyle Shanahan hurt in a car crash",
+      "example_lang": "en",
+      "example_source": "ksbw.com"
+    },
+    {
+      "name": "brother team",
+      "raw_variants": [
+        "brother team"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "26 Temmuz 2026 Pazar TV yayın akışı ile dizi ve televizyon programları listesi merak ediliyor. Hafta sonunu televizyon karşısında geçirmek isteyenler Kanal D, Show TV, Star TV, TRT 1, TV8 ve NOW TV'nin güncel yayın akışlarını araştırıyor. 21 Haziran gününün dizileri, filmleri ve yarışma programları açıklandı. Hangi yapım hangi kanalda hangi saatte ekrana gelecek belli oldu. Bugün TRT 1'de Başakşehir-Inter Turku maçı, Kanal D'de Daha 17 yeni bölüm, Show TV'de Atla Gel Şaban, Star TV'de Salak Milyoner, ATV'de Kim Milyoner Olmak İster?, NOW'de Dokunmayın Şabanıma, TV8'de MasterChef Türkiye yarışması yer alacak. İşte, Kanal D, Star TV, Show TV, TRT 1, TV8 ve NOW TV'nin 21 Haziran 2026 Pazar (bugün) yayın akışı detayda karşınızda...",
+      "example_lang": "xx",
+      "example_source": "gunes.com"
+    },
+    {
+      "name": "bundesverfassungsgericht",
+      "raw_variants": [
+        "Bundesverfassungsgericht"
+      ],
+      "provenance": {
+        "nlp:ORG": 3
+      },
+      "example_headline": "Oberstes Gericht: Bundesverfassungsgericht: Kein «Tempolimit» für Gesetzgebung",
+      "example_lang": "de",
+      "example_source": "zeit.de"
+    },
+    {
+      "name": "butler eagle",
+      "raw_variants": [
+        "Butler Eagle"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "'The Odyssey' earns $87M in its second weekend, Christopher Nolan's best second weekend yet – Butler Eagle",
+      "example_lang": "en",
+      "example_source": "butlereagle.com"
+    },
+    {
+      "name": "buz",
+      "raw_variants": [
+        "Buz"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "Ce tip de dronă ar fi fost doborâtă în Buzău de un F-16 românesc. Detaliul raportat de piloți după ce au deschis focul",
+      "example_lang": "xx",
+      "example_source": "stirileprotv.ro"
+    },
+    {
+      "name": "c ukrainian prosecutor office",
+      "raw_variants": [
+        "c ukrainian prosecutor office"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Армия России ударила по выставке с представителями ВПК Украины",
+      "example_lang": "xx",
+      "example_source": "pnp.ru"
+    },
+    {
+      "name": "catherine pegard",
+      "raw_variants": [
+        "catherine pegard"
+      ],
+      "provenance": {
+        "gdelt_persons": 6
+      },
+      "example_headline": "Louvre heist gallery to reopen without jewels",
+      "example_lang": "en",
+      "example_source": "omanobserver.om"
+    },
+    {
+      "name": "charlotte aitchison",
+      "raw_variants": [
+        "charlotte aitchison"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Charli XCX Rock Music review",
+      "example_lang": "en",
+      "example_source": "brisbanetimes.com.au"
+    },
+    {
+      "name": "chennamma star of mysore",
+      "raw_variants": [
+        "Chennamma - Star of Mysore"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "State honours for Chennamma - Star of Mysore",
+      "example_lang": "en",
+      "example_source": "starofmysore.com"
+    },
+    {
+      "name": "chernihiv dmitry",
+      "raw_variants": [
+        "chernihiv dmitry"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Атака РФ по АТБ у Чернігові 26 липня - у місті оголосили день жалоби за загиблими",
+      "example_lang": "xx",
+      "example_source": "obozrevatel.com"
+    },
+    {
+      "name": "chris glover",
+      "raw_variants": [
+        "chris glover"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Billy Bishop jet opponents turn planned protest into celebration after Ottawa rejects expansion",
+      "example_lang": "en",
+      "example_source": "theglobeandmail.com"
+    },
+    {
+      "name": "club rome italian",
+      "raw_variants": [
+        "club rome italian"
+      ],
+      "provenance": {
+        "gdelt_orgs": 2
+      },
+      "example_headline": "الهلال يزاحم روما لضم سومرفيل",
+      "example_lang": "xx",
+      "example_source": "slaati.com"
+    },
+    {
+      "name": "cole wilcox",
+      "raw_variants": [
+        "cole wilcox"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Nathan Eovaldi leads Rangers to another win over Mariners",
+      "example_lang": "en",
+      "example_source": "640wxsm.com"
+    },
+    {
+      "name": "commander group",
+      "raw_variants": [
+        "commander group"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Що відомо про Драпатого, який стане новим головкомом ЗСУ",
+      "example_lang": "xx",
+      "example_source": "dw.com"
+    },
+    {
+      "name": "commission of right of traffic",
+      "raw_variants": [
+        "commission of right of traffic"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "SP tem 2.300 ciclomotores guinchados em seis meses - 22/07/2026 - Cotidiano",
+      "example_lang": "xx",
+      "example_source": "uol.com.br"
+    },
+    {
+      "name": "commission to homeland security",
+      "raw_variants": [
+        "commission to homeland security"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Irán advierte a Ucrania de 'consecuencias' tras el ataque mortal contra un buque en el mar Caspio: ¿pero qué ha pasado?",
+      "example_lang": "xx",
+      "example_source": "huffingtonpost.es"
+    },
+    {
+      "name": "committee security national",
+      "raw_variants": [
+        "committee security national"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "إيران تحذر أوكرانيا من الرد بعد الهجوم على سفينة في بحر قزوين",
+      "example_lang": "xx",
+      "example_source": "mustaqila.com"
+    },
+    {
+      "name": "community banking",
+      "raw_variants": [
+        "community banking"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Top Financial Stocks To Keep An Eye On – July 26th",
+      "example_lang": "en",
+      "example_source": "tickerreport.com"
+    },
+    {
+      "name": "community to castilla y leon",
+      "raw_variants": [
+        "community to castilla y leon"
+      ],
+      "provenance": {
+        "gdelt_orgs": 2
+      },
+      "example_headline": "Se ordena el levantamiento de confinamientos por el incendio de La Mierla y la totalidad de los afectados pueden regresar a sus hogares",
+      "example_lang": "xx",
+      "example_source": "lacerca.com"
+    },
+    {
+      "name": "coroner",
+      "raw_variants": [
+        "Coroner"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Coroner IDs driver killed in East End crash",
+      "example_lang": "en",
+      "example_source": "fox19.com"
+    },
+    {
+      "name": "cracker barrel",
+      "raw_variants": [
+        "cracker barrel"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Article 3Bcca07A 2217 5E40 B821 6Eaf4Bc38560",
+      "example_lang": "en",
+      "example_source": "vintonjacksoncourier.com"
+    },
+    {
+      "name": "daytona beach",
+      "raw_variants": [
+        "Daytona Beach"
+      ],
+      "provenance": {
+        "nlp:FAC": 1,
+        "nlp:GPE": 1
+      },
+      "example_headline": "Man hospitalized after presumed shark bite in Daytona Beach Shores",
+      "example_lang": "en",
+      "example_source": "fox35orlando.com"
+    },
+    {
+      "name": "department heads for",
+      "raw_variants": [
+        "department heads for"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Kabinettsumbildung: Warken geht ins Kanzleramt, Linnemann übernimmt Gesundheitsressort – News – Deutsches Ärzteblatt",
+      "example_lang": "xx",
+      "example_source": "aerzteblatt.de"
+    },
+    {
+      "name": "department jakarta",
+      "raw_variants": [
+        "department jakarta"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Kebakaran Rumah di Kayu Putih Jaktim, 2 Orang Tewas",
+      "example_lang": "xx",
+      "example_source": "sindonews.com"
+    },
+    {
+      "name": "district society for recreation",
+      "raw_variants": [
+        "district society for recreation"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Today's Happenings: July 25, 2026 | South Peace News",
+      "example_lang": "en",
+      "example_source": "southpeacenews.com"
+    },
+    {
+      "name": "dmitry evstafyev",
+      "raw_variants": [
+        "dmitry evstafyev"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Токаев предложил Путину «заморозить конфликт» на Украине, «поставить на заморозку всё это дело»",
+      "example_lang": "xx",
+      "example_source": "zavtra.ru"
+    },
+    {
+      "name": "dominion veterans alliance",
+      "raw_variants": [
+        "dominion veterans alliance"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Essex Legion celebrates 95th anniversary, centennial milestone of the Royal Canadian Legion",
+      "example_lang": "en",
+      "example_source": "niagarafallsreview.ca"
+    },
+    {
+      "name": "download improvement marks memo",
+      "raw_variants": [
+        "Download Improvement Marks Memo"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Kerala SAY +2 Result 2026 LIVE: Class 12 HSE Marks Memo Releasing Today; Download Improvement Marks Memo at results.kite.kerala.gov.in",
+      "example_lang": "en",
+      "example_source": "jagranjosh.com"
+    },
+    {
+      "name": "e1 mara de representantes",
+      "raw_variants": [
+        "E1;mara de Representantes"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Cámara de Representantes votó para terminar con la guerra entre Donald Trump e Irán",
+      "example_lang": "xx",
+      "example_source": "tribuna.com.mx"
+    },
+    {
+      "name": "earnings history for gibson energy",
+      "raw_variants": [
+        "earnings history for gibson energy"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Gibson Energy (GBNXF) Expected to Release Earnings on Monday",
+      "example_lang": "en",
+      "example_source": "dailypolitical.com"
+    },
+    {
+      "name": "east bay times",
+      "raw_variants": [
+        "East Bay Times"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "A forced-labor crackdown or an end-run around Congress? Dissecting Trump's new tariffs – East Bay Times",
+      "example_lang": "en",
+      "example_source": "eastbaytimes.com"
+    },
+    {
+      "name": "economic cooperation organization",
+      "raw_variants": [
+        "economic cooperation organization"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "В Україні розглядають антикорупційну стратегію на 2026–2030 роки",
+      "example_lang": "xx",
+      "example_source": "epravda.com.ua"
+    },
+    {
+      "name": "eilish mccolgan",
+      "raw_variants": [
+        "Eilish McColgan"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Eilish McColgan withdraws from Glasgow Games with injury",
+      "example_lang": "en",
+      "example_source": "hillingdontimes.co.uk"
+    },
+    {
+      "name": "embassy ukraine y poland",
+      "raw_variants": [
+        "embassy ukraine y poland"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Україна вимагає термінового засідання Радбезу ООН через блокаду чорноморських коридорів Росією",
+      "example_lang": "xx",
+      "example_source": "facenews.ua"
+    },
+    {
+      "name": "emissaries union european",
+      "raw_variants": [
+        "emissaries union european"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "UE a convenit asupra celui de-al 21-lea pachet de sancțiuni împotriva Rusiei",
+      "example_lang": "xx",
+      "example_source": "romaniatv.net"
+    },
+    {
+      "name": "entrance candidates coach national team",
+      "raw_variants": [
+        "entrance candidates coach national team"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Pep Guardiola Masuk Kandidat Pelatih Timnas Italia, FIGC Siap Langgar Aturan Batas Gaji",
+      "example_lang": "xx",
+      "example_source": "jawapos.com"
+    },
+    {
+      "name": "environment office local government",
+      "raw_variants": [
+        "environment office local government"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Jadwal Pemadaman Listrik di Kalsel, Sabtu 25 Juli 2026, Barabai HST Mati Lampu Hingga Jam 7 Malam",
+      "example_lang": "xx",
+      "example_source": "tribunnews.com"
+    },
+    {
+      "name": "familia",
+      "raw_variants": [
+        "Família"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Beneficiários com NIS de final 6 recebem Bolsa Família de julho",
+      "example_lang": "xx",
+      "example_source": "oestadoacre.com"
+    },
+    {
+      "name": "family recalled spokesman authority troy",
+      "raw_variants": [
+        "family recalled spokesman authority troy"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Olah TKP Meninggalnya Jubir Otorita IKN Troy Pantouw, Polisi Ungkap Riwayat Hipertensi",
+      "example_lang": "xx",
+      "example_source": "kompas.com"
+    },
+    {
+      "name": "fatti a mano",
+      "raw_variants": [
+        "Fatti a Mano"
+      ],
+      "provenance": {
+        "nlp:ORG": 2
+      },
+      "example_headline": "Anvisa proíbe azeite San Oliveto e doces da Fatti a Mano",
+      "example_lang": "xx",
+      "example_source": "jornaldebrasilia.com.br"
+    },
+    {
+      "name": "file office",
+      "raw_variants": [
+        "file office"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Gülistan Doku Soruşturmasında 18 Gözaltı",
+      "example_lang": "xx",
+      "example_source": "haberts.com"
+    },
+    {
+      "name": "french department",
+      "raw_variants": [
+        "french department"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Southwestern France wildfire forces evacuation of over 110,000 people",
+      "example_lang": "en",
+      "example_source": "bignewsnetwork.com"
+    },
+    {
+      "name": "fritz lang",
+      "raw_variants": [
+        "fritz lang"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Christopher Nolan on Satyajit Ray's Pather Panchali: 'It just blew my mind'",
+      "example_lang": "en",
+      "example_source": "tribuneindia.com"
+    },
+    {
+      "name": "fund on",
+      "raw_variants": [
+        "fund on"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Updated IMF EFF program for Ukraine adds 7 structural benchmarks, inlc 6 fiscal",
+      "example_lang": "en",
+      "example_source": "interfax.com.ua"
+    },
+    {
+      "name": "funeral service at south bristol crematorium",
+      "raw_variants": [
+        "funeral service at south bristol crematorium"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Treasured mum, nana and great nana among this week's Bristol funeral notices",
+      "example_lang": "en",
+      "example_source": "bristolpost.co.uk"
+    },
+    {
+      "name": "gallery of museum of louvre",
+      "raw_variants": [
+        "gallery of museum of louvre"
+      ],
+      "provenance": {
+        "gdelt_orgs": 2
+      },
+      "example_headline": "Λούβρο: Επαναλειτουργεί η αίθουσα που έγινε στόχος ληστείας 88 εκατ. ευρώ",
+      "example_lang": "xx",
+      "example_source": "thebest.gr"
+    },
+    {
+      "name": "gallo",
+      "raw_variants": [
+        "Gallo"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "LIVE Scherma Mondiali 2026 in DIRETTA | poker azzurro ai sedicesimi nel fioretto! Disastro sciabola resiste solo Gallo",
+      "example_lang": "xx",
+      "example_source": "zazoom.it"
+    },
+    {
+      "name": "garden department",
+      "raw_variants": [
+        "garden department"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Gujarat CM reviews waterlogged areas overseeing rescue ops following monsoon rains",
+      "example_lang": "en",
+      "example_source": "aninews.in"
+    },
+    {
+      "name": "gen oleksandr syrskyi",
+      "raw_variants": [
+        "gen oleksandr syrskyi"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Ukraine's Zelenskiy fires his military chief after protests and names a replacement",
+      "example_lang": "en",
+      "example_source": "asiaone.com"
+    },
+    {
+      "name": "ghaith manaf",
+      "raw_variants": [
+        "ghaith manaf"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "هجمات روسية تضرب مدنا أوكرانية ومسيّرة تستهدف مركزا تجاريا في سومي",
+      "example_lang": "xx",
+      "example_source": "elwatannews.com"
+    },
+    {
+      "name": "gleb nikitin",
+      "raw_variants": [
+        "gleb nikitin"
+      ],
+      "provenance": {
+        "gdelt_persons": 2
+      },
+      "example_headline": "Дом-музей Валерия Чкалова открылся в Чкаловске после масштабной реконструкции",
+      "example_lang": "xx",
+      "example_source": "niann.ru"
+    },
+    {
+      "name": "glencore",
+      "raw_variants": [
+        "glencore"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "FTSE 100 Live: Stocks advance as oil price retreats, oil falls below $90",
+      "example_lang": "en",
+      "example_source": "proactiveinvestors.co.uk"
+    },
+    {
+      "name": "global business solutions",
+      "raw_variants": [
+        "global business solutions"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Pomerantz LLP Commences Class Action Litigation Against Intuit Inc. ...",
+      "example_lang": "en",
+      "example_source": "pr-inside.com"
+    },
+    {
+      "name": "guangzhou",
+      "raw_variants": [
+        "Guangzhou"
+      ],
+      "provenance": {
+        "nlp:LOC": 4
+      },
+      "example_headline": "Prediksi Syair Guangzhou Hari Ini Jumat 24 Juli 2026",
+      "example_lang": "xx",
+      "example_source": "rasmeinews.com"
+    },
+    {
+      "name": "h municipal police",
+      "raw_variants": [
+        "h municipal police"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Καιρός: «Κόκκινος» συναγερμός για φωτιές την Τετάρτη – Ο καύσωνας βάζει στο «μάτι» και την Αττική",
+      "example_lang": "xx",
+      "example_source": "inewsgr.com"
+    },
+    {
+      "name": "h national us",
+      "raw_variants": [
+        "h national us"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Πόλο: Στην κορυφή του κόσμου η Ελλάδα – Νίκησε στον τελικό του World Cup",
+      "example_lang": "xx",
+      "example_source": "protagon.gr"
+    },
+    {
+      "name": "hasriati",
+      "raw_variants": [
+        "Hasriati"
+      ],
+      "provenance": {
+        "nlp:PERSON": 2
+      },
+      "example_headline": "2 Jenazah Korban KLM Nurul Salsa Teridentifikasi bernama Hasriati dan Bau Intang",
+      "example_lang": "xx",
+      "example_source": "tribunnews.com"
+    },
+    {
+      "name": "hotel chamber greece",
+      "raw_variants": [
+        "hotel chamber greece"
+      ],
+      "provenance": {
+        "gdelt_orgs": 4
+      },
+      "example_headline": "Ερώτηση 15 βουλευτών της ΝΔ για τις πρακτικές των ηλεκτρονικών πλατφορμών κρατήσεων στον τουρισμό – Τι αναφέρει το κείμενο",
+      "example_lang": "xx",
+      "example_source": "inewsgr.com"
+    },
+    {
+      "name": "house armed services committee",
+      "raw_variants": [
+        "house armed services committee"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "House Passes $1.15 Trillion Defense Bill In Narrow Vote Amid Iran War Divisions",
+      "example_lang": "en",
+      "example_source": "hngn.com"
+    },
+    {
+      "name": "imam muhammad ibn",
+      "raw_variants": [
+        "imam muhammad ibn"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "جموع المصلين يشيعون عبدالعزيز الحربي بعد وفاته غرقًا بتركيا.. فيديو",
+      "example_lang": "xx",
+      "example_source": "slaati.com"
+    },
+    {
+      "name": "ipswich",
+      "raw_variants": [
+        "Ipswich"
+      ],
+      "provenance": {
+        "nlp:GPE": 1
+      },
+      "example_headline": "Ipswich marina building plans recommended for refusal",
+      "example_lang": "en",
+      "example_source": "ipswichstar.co.uk"
+    },
+    {
+      "name": "islington",
+      "raw_variants": [
+        "Islington"
+      ],
+      "provenance": {
+        "nlp:ORG": 2
+      },
+      "example_headline": "Islington father-of-two who filmed women through windows in the early hours pleads guilty to 19 voyeurism offences",
+      "example_lang": "en",
+      "example_source": "aol.co.uk"
+    },
+    {
+      "name": "isobel charlsey",
+      "raw_variants": [
+        "isobel charlsey"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Woman who 'touched the lives of many' remembered in this week's death and funeral notices for Surrey",
+      "example_lang": "en",
+      "example_source": "getsurrey.co.uk"
+    },
+    {
+      "name": "it is party",
+      "raw_variants": [
+        "it is party"
+      ],
+      "provenance": {
+        "gdelt_orgs": 3
+      },
+      "example_headline": "DIRECT. Tour de France 2026 - 16e étape : qui va remporter l'unique contre-la-montre individuel de cette édition ? Suivez en direct l'étape entre Évian-les-Bains et Thonon-les-Bains",
+      "example_lang": "xx",
+      "example_source": "ladepeche.fr"
+    },
+    {
+      "name": "jana nayagana",
+      "raw_variants": [
+        "Jana Nayagana"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Jana Nayagana box office collection day 3: Vijay's final Tamil movie all set to enter Rs 100 crore club in India",
+      "example_lang": "en",
+      "example_source": "indiatimes.com"
+    },
+    {
+      "name": "jeanne lajoie catholic elementary school in pembroke",
+      "raw_variants": [
+        "jeanne-lajoie catholic elementary school in pembroke"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Pembroke Grade 6 student earns breakfast program provincial honour | Brockville Recorder & Times",
+      "example_lang": "en",
+      "example_source": "recorder.ca"
+    },
+    {
+      "name": "jers",
+      "raw_variants": [
+        "Jers"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "Al menos tres muertos y una decena de heridos en Ucrania tras nuevos ataques de Rusia sobre Zaporiyia y Jersón",
+      "example_lang": "xx",
+      "example_source": "20minutos.es"
+    },
+    {
+      "name": "jessica gail",
+      "raw_variants": [
+        "jessica gail"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Модель Джессіка Гейл показала фото у купальнику з відпустки на острові — Шоу-бізнес",
+      "example_lang": "xx",
+      "example_source": "tsn.ua"
+    },
+    {
+      "name": "jo daviess",
+      "raw_variants": [
+        "jo daviess"
+      ],
+      "provenance": {
+        "gdelt_persons": 2
+      },
+      "example_headline": "Dense Fog Advisory – Galena, IL, USA",
+      "example_lang": "en",
+      "example_source": "x1071.com"
+    },
+    {
+      "name": "john turturro",
+      "raw_variants": [
+        "john turturro"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Antes de Nolan, los Coen adaptaron 'La Odisea' en una de sus mejores películas: una obra maestra de visión obligatoria",
+      "example_lang": "xx",
+      "example_source": "20minutos.es"
+    },
+    {
+      "name": "josh allen",
+      "raw_variants": [
+        "josh allen"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "NFL teams under the most pressure to win big in 2026",
+      "example_lang": "en",
+      "example_source": "yardbarker.com"
+    },
+    {
+      "name": "july kremlin",
+      "raw_variants": [
+        "july kremlin"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Τραγωδία στη Ρωσία: Πέντε Βόσνιοι ορειβάτες έχασαν τη ζωή τους στο όρος Ελμπρούς",
+      "example_lang": "xx",
+      "example_source": "lykavitos.gr"
+    },
+    {
+      "name": "june i july",
+      "raw_variants": [
+        "june i july"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Банк России снизил ключевую ставку до 14% годовых",
+      "example_lang": "xx",
+      "example_source": "i38.ru"
+    },
+    {
+      "name": "jurgen club",
+      "raw_variants": [
+        "jurgen club"
+      ],
+      "provenance": {
+        "gdelt_orgs": 13
+      },
+      "example_headline": "كلوب: عقدي مع ريد بول يسمح لي بتدريب ألمانيا – عكس السير",
+      "example_lang": "xx",
+      "example_source": "aksalser.com"
+    },
+    {
+      "name": "jurgen nagelsmann",
+      "raw_variants": [
+        "jurgen nagelsmann"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Jurgen Klopp now confirmed as new manager of Germany",
+      "example_lang": "en",
+      "example_source": "themag.co.uk"
+    },
+    {
+      "name": "justice shabana mahmoud",
+      "raw_variants": [
+        "justice shabana mahmoud"
+      ],
+      "provenance": {
+        "gdelt_persons": 2
+      },
+      "example_headline": "فضحها ميكروفون مفتوح.. مزحة بين وزيرين تتحول إلى أزمة في بريطانيا",
+      "example_lang": "xx",
+      "example_source": "aljazeera.net"
+    },
+    {
+      "name": "kansas farmers union",
+      "raw_variants": [
+        "kansas farmers union"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Headlines for Monday, July 27, 2026",
+      "example_lang": "en",
+      "example_source": "kansaspublicradio.org"
+    },
+    {
+      "name": "kidney transplant in health",
+      "raw_variants": [
+        "kidney transplant in health"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Fachgesellschaft setzt sich für bundesweites Register zur Nierengesundheit ein – News – Deutsches Ärzteblatt",
+      "example_lang": "xx",
+      "example_source": "aerzteblatt.de"
+    },
+    {
+      "name": "kocaeli izmit",
+      "raw_variants": [
+        "kocaeli izmit"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Demet Özdemir kimdir? Demet Özdemir kaç yaşında, nereli?",
+      "example_lang": "xx",
+      "example_source": "haberler.com"
+    },
+    {
+      "name": "kpatcha",
+      "raw_variants": [
+        "Kpatcha"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Athlétisme : Kpatcha championne de France au bout du suspense, Robert-Michon battue à Albi",
+      "example_lang": "xx",
+      "example_source": "lecourrier.vn"
+    },
+    {
+      "name": "letter of navy",
+      "raw_variants": [
+        "letter of navy"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Justiça manda Marinha indenizar família de João Cândido em R$ 300 mil",
+      "example_lang": "xx",
+      "example_source": "brasil247.com"
+    },
+    {
+      "name": "lindsay clancy goes",
+      "raw_variants": [
+        "Lindsay Clancy Goes"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Lindsay Clancy Goes On Trial, Saying Postpartum Psychosis Drove Her To Kill Her 3 Children – 710am KURV",
+      "example_lang": "en",
+      "example_source": "kurv.com"
+    },
+    {
+      "name": "ling",
+      "raw_variants": [
+        "ling"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "LIVE Tour de France 2026 tappa di oggi in DIRETTA | partito Tarling cresce l'attesa per Ganna",
+      "example_lang": "xx",
+      "example_source": "zazoom.it"
+    },
+    {
+      "name": "liontrust asset management plc",
+      "raw_variants": [
+        "liontrust asset management plc"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Liontrust Asset Management's (LIO) \"Buy\" Rating Reiterated at Berenberg Bank",
+      "example_lang": "en",
+      "example_source": "dailypolitical.com"
+    },
+    {
+      "name": "loud police is it",
+      "raw_variants": [
+        "loud police is it"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Polizeieinsatz - Ein Toter und mehrere Verletzte bei CSD in Berlin - Fahrzeug soll in Menschenmenge gefahren sein",
+      "example_lang": "xx",
+      "example_source": "deutschlandfunk.de"
+    },
+    {
+      "name": "madhya pradesh police",
+      "raw_variants": [
+        "madhya pradesh police"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "The Hindu Morning Digest: July 25, 2026",
+      "example_lang": "en",
+      "example_source": "thehindu.com"
+    },
+    {
+      "name": "marley jarvis",
+      "raw_variants": [
+        "marley jarvis"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Gorleston hairdresser is shortlisted for 2026 Salon Awards",
+      "example_lang": "en",
+      "example_source": "edp24.co.uk"
+    },
+    {
+      "name": "matilde baldi",
+      "raw_variants": [
+        "Matilde Baldi"
+      ],
+      "provenance": {
+        "nlp:PERSON": 7
+      },
+      "example_headline": "Matilde Baldi uccisa sull'A33, otto anni a Franco Vacchina e Davide Bertello assolto",
+      "example_lang": "xx",
+      "example_source": "zazoom.it"
+    },
+    {
+      "name": "matt jeneroux",
+      "raw_variants": [
+        "matt jeneroux"
+      ],
+      "provenance": {
+        "gdelt_persons": 16
+      },
+      "example_headline": "Carney calls 3 byelections, including 1 in B.C. | Campbell River Mirror",
+      "example_lang": "en",
+      "example_source": "campbellrivermirror.com"
+    },
+    {
+      "name": "meenakshi sharma a high court",
+      "raw_variants": [
+        "meenakshi sharma a high court"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "जालौन इंस्पेक्टर हत्याकांड: आरोपी महिला सिपाही मीनाक्षी शर्मा को हाईकोर्ट से राहत, 7 माह बाद जेल से हो सकती है रिहाई",
+      "example_lang": "xx",
+      "example_source": "indiatimes.com"
+    },
+    {
+      "name": "meghalaya honeymoon",
+      "raw_variants": [
+        "Meghalaya Honeymoon"
+      ],
+      "provenance": {
+        "nlp:FAC": 1
+      },
+      "example_headline": "Meghalaya Honeymoon murder: SC suggests Sonam Raghuvanshi surrender until plea against bail is decided",
+      "example_lang": "en",
+      "example_source": "aninews.in"
+    },
+    {
+      "name": "menasha public library",
+      "raw_variants": [
+        "menasha public library"
+      ],
+      "provenance": {
+        "gdelt_orgs": 2
+      },
+      "example_headline": "Major damage reported in Menasha following severe storms",
+      "example_lang": "en",
+      "example_source": "943jackfm.com"
+    },
+    {
+      "name": "michal martin",
+      "raw_variants": [
+        "michal martin"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Прем'єр Ірландії Міхал Мартін прибув до Києва",
+      "example_lang": "xx",
+      "example_source": "podrobnosti.ua"
+    },
+    {
+      "name": "narendra modi for the national education",
+      "raw_variants": [
+        "narendra modi for the national education"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "UP CM Yogi inaugurates, lays foundation stones for 125 development projects worth over ₹489 crore in Fatehpur",
+      "example_lang": "en",
+      "example_source": "aninews.in"
+    },
+    {
+      "name": "national leganes",
+      "raw_variants": [
+        "national leganes"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Partidos amistosos de hoy, miércoles 22 de julio: horario y dónde ver en TV y online",
+      "example_lang": "xx",
+      "example_source": "marca.com"
+    },
+    {
+      "name": "national portuguese",
+      "raw_variants": [
+        "national portuguese"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Tancredi Palmeri risponde a Rafael Leao | Non solo venne rifiutato dall'Inter ma Conte arrivò a minacciare le dimissione",
+      "example_lang": "xx",
+      "example_source": "zazoom.it"
+    },
+    {
+      "name": "nawab shah",
+      "raw_variants": [
+        "nawab shah"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "OG 2: Pawan Kalyan starrer sequel's animated promo to unveil on September 2? Here's what we know",
+      "example_lang": "en",
+      "example_source": "pinkvilla.com"
+    },
+    {
+      "name": "network club neurosurgeon",
+      "raw_variants": [
+        "network club neurosurgeon"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Homem é preso após invadir casa da ex-companheira no Piauí",
+      "example_lang": "xx",
+      "example_source": "globo.com"
+    },
+    {
+      "name": "news center gold market",
+      "raw_variants": [
+        "news center gold market"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Altın sert düştü! Altın ne kadar oldu? 23 Temmuz 2026 Perşembe gram altın, çeyrek altın kaç lira? Son dakika altın fiyatları, canlı takip",
+      "example_lang": "xx",
+      "example_source": "gunes.com"
+    },
+    {
+      "name": "office representative",
+      "raw_variants": [
+        "office representative"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Jadwal Pemadaman Listrik di Kalsel, Minggu 26 Juli 2026, Rumah Dinas Wabup Tabalong Juga Mati Lampu",
+      "example_lang": "xx",
+      "example_source": "tribunnews.com"
+    },
+    {
+      "name": "office wt",
+      "raw_variants": [
+        "office wt"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Вес Стрітінг очолив Міноборони Британії і заявив про непохитну підтримку України",
+      "example_lang": "xx",
+      "example_source": "5.ua"
+    },
+    {
+      "name": "oman iran to international free",
+      "raw_variants": [
+        "oman iran to international free"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "트럼프 \"이란과 진지한 대화\"…공습·보복 멈추고 사흘째 소강[1일1트]",
+      "example_lang": "xx",
+      "example_source": "heraldcorp.com"
+    },
+    {
+      "name": "or article development",
+      "raw_variants": [
+        "or article development"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Alasan Dude Harlino Balikin Honor PT DSI Rp5,25 M ke Bareskrim",
+      "example_lang": "xx",
+      "example_source": "cnnindonesia.com"
+    },
+    {
+      "name": "orange county fair",
+      "raw_variants": [
+        "Orange County Fair"
+      ],
+      "provenance": {
+        "nlp:FAC": 2
+      },
+      "example_headline": "Circus performer hurt after arrow strike at Orange County Fair",
+      "example_lang": "en",
+      "example_source": "cbs6albany.com"
+    },
+    {
+      "name": "oruc reis",
+      "raw_variants": [
+        "Oruc Reis"
+      ],
+      "provenance": {
+        "nlp:PERSON": 5
+      },
+      "example_headline": "Η Άγκυρα εξέδωσε NAVTEX για την κατασκευή αγωγού με τα κατεχόμενα – Στέλνει το Oruc Reis για έρευνες",
+      "example_lang": "xx",
+      "example_source": "inewsgr.com"
+    },
+    {
+      "name": "osler hampson",
+      "raw_variants": [
+        "osler hampson"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Trump's tariff threat could impact Canadian economy but may be negotiation tactic",
+      "example_lang": "en",
+      "example_source": "abcnews.com"
+    },
+    {
+      "name": "pangkep",
+      "raw_variants": [
+        "Pangkep"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "2 Jenazah Diduga Korban KLM Nurul Salsa yang Ditemukan di Pangkep Diidentifikasi di RS Bhayangkara",
+      "example_lang": "xx",
+      "example_source": "tribunnews.com"
+    },
+    {
+      "name": "panteleimon panteleimon",
+      "raw_variants": [
+        "panteleimon panteleimon"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "27 липня: Яке сьогодні свято, все про цей день",
+      "example_lang": "xx",
+      "example_source": "interfax.com.ua"
+    },
+    {
+      "name": "patricia ross",
+      "raw_variants": [
+        "patricia ross"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "'It was difficult': Residents of Clinton, B.C. recount evacuating wildfires",
+      "example_lang": "en",
+      "example_source": "globalnews.ca"
+    },
+    {
+      "name": "paul hindemith",
+      "raw_variants": [
+        "paul hindemith"
+      ],
+      "provenance": {
+        "gdelt_persons": 2
+      },
+      "example_headline": "15 Best Clarinet Players of All Time - Singersroom.com",
+      "example_lang": "en",
+      "example_source": "singersroom.com"
+    },
+    {
+      "name": "penistone hill",
+      "raw_variants": [
+        "Penistone Hill"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "Man fined £1,000 after fly-tipping at Penistone Hill",
+      "example_lang": "en",
+      "example_source": "keighleynews.co.uk"
+    },
+    {
+      "name": "pharmaceuticals inc",
+      "raw_variants": [
+        "pharmaceuticals inc"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Elite Pharmaceuticals (OTCMKTS:ELTP) Share Price Passes Below 200 Day Moving Average   – Here's Why",
+      "example_lang": "en",
+      "example_source": "themarketsdaily.com"
+    },
+    {
+      "name": "phenomenal",
+      "raw_variants": [
+        "Phenomenal"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "'Phenomenal' Birmingham BBC drama Peaky Blinders fans can't stop watching",
+      "example_lang": "en",
+      "example_source": "birminghammail.co.uk"
+    },
+    {
+      "name": "police address of paris",
+      "raw_variants": [
+        "police address of paris"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Επίθεση με μαχαίρι στο Παρίσι: Τρεις σοβαρά τραυματίες - «Ο Αλλάχ με έστειλε να σκοτώνω γυναίκες», φώναζε ο δράστης",
+      "example_lang": "xx",
+      "example_source": "newpost.gr"
+    },
+    {
+      "name": "pope paul",
+      "raw_variants": [
+        "pope paul"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "KOMENTÁŘ: Trump už zřejmě s Íránem nic nezmůže. V čem selhal? | Názory",
+      "example_lang": "xx",
+      "example_source": "lidovky.cz"
+    },
+    {
+      "name": "program in hand right",
+      "raw_variants": [
+        "program in hand right"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Carreatas de São Cristóvão acontecem neste fim de semana em Juiz de Fora; confira programação",
+      "example_lang": "xx",
+      "example_source": "tribunademinas.com.br"
+    },
+    {
+      "name": "prosecution national were",
+      "raw_variants": [
+        "prosecution national were"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Zamach w Berlinie. Nie żyje Polka. Nowe informacje z polskiej prokuratury",
+      "example_lang": "xx",
+      "example_source": "wiadomosci.radiozet.pl"
+    },
+    {
+      "name": "putin ukraine",
+      "raw_variants": [
+        "Putin Ukraine"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Kazakh leader tells Putin Ukraine war should end",
+      "example_lang": "en",
+      "example_source": "bssnews.net"
+    },
+    {
+      "name": "queen al",
+      "raw_variants": [
+        "queen al"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "El incendio de Ávila es el mayor de la historia de España y la situación es aún \"compleja\"",
+      "example_lang": "xx",
+      "example_source": "heraldo.es"
+    },
+    {
+      "name": "rambus",
+      "raw_variants": [
+        "rambus",
+        "Rambus"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1,
+        "nlp:ORG": 1
+      },
+      "example_headline": "Rambus (RMBS) Expected to Post Earnings on Monday",
+      "example_lang": "en",
+      "example_source": "themarketsdaily.com"
+    },
+    {
+      "name": "ramvir singh",
+      "raw_variants": [
+        "ramvir singh"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "CID searches former JPSC chairman L Khiyangte's residence over alleged exam irregularities | Ranchi News",
+      "example_lang": "en",
+      "example_source": "indiatimes.com"
+    },
+    {
+      "name": "regensburg",
+      "raw_variants": [
+        "Regensburg"
+      ],
+      "provenance": {
+        "nlp:LOC": 7
+      },
+      "example_headline": "In Bankfiliale: Geiselnahme in Regensburg: Was wir wissen und was nicht",
+      "example_lang": "de",
+      "example_source": "zeit.de"
+    },
+    {
+      "name": "regulation police number year",
+      "raw_variants": [
+        "regulation police number year"
+      ],
+      "provenance": {
+        "gdelt_orgs": 4
+      },
+      "example_headline": "Tiga Anggota Polda Jabar yang Cekcok dengan Satpam di Bundaran HI Bakal Dipatsus-Sidang Etik",
+      "example_lang": "xx",
+      "example_source": "viva.co.id"
+    },
+    {
+      "name": "revolta",
+      "raw_variants": [
+        "Revolta"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Marinha é condenada a indenizar em R$ 300 mil família de líder da Revolta da Chibata",
+      "example_lang": "xx",
+      "example_source": "abril.com.br"
+    },
+    {
+      "name": "rey aurelio",
+      "raw_variants": [
+        "rey aurelio"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "La Primitiva de HOY 25 de julio: resultados | La Primitiva del sábado entrega tres premios de 73.797,31 euros en tres provincias",
+      "example_lang": "xx",
+      "example_source": "lasprovincias.es"
+    },
+    {
+      "name": "roman perrocheau",
+      "raw_variants": [
+        "roman perrocheau"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Incendies en Europe : des dizaines de milliers d'évacués en France et dans la région de Madrid",
+      "example_lang": "xx",
+      "example_source": "martinique.franceantilles.fr"
+    },
+    {
+      "name": "russian aerospace",
+      "raw_variants": [
+        "russian aerospace"
+      ],
+      "provenance": {
+        "gdelt_orgs": 3
+      },
+      "example_headline": "Russian Su-57 fifth-generation fighter jet crashes near Moscow as pilot ejects",
+      "example_lang": "en",
+      "example_source": "bankingnews.gr"
+    },
+    {
+      "name": "ruth zita sattar",
+      "raw_variants": [
+        "ruth zita sattar"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Greg Davies sets special for The Cleaner",
+      "example_lang": "en",
+      "example_source": "tvtonight.com.au"
+    },
+    {
+      "name": "s flags parliament building",
+      "raw_variants": [
+        "s flags parliament building"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Anschlag auf CSD: Klöckner „zutiefst erschüttert\", Merz verurteilt „abscheuliche Tat\"",
+      "example_lang": "xx",
+      "example_source": "ovb-online.de"
+    },
+    {
+      "name": "san juan islands",
+      "raw_variants": [
+        "San Juan Islands"
+      ],
+      "provenance": {
+        "nlp:GPE": 2
+      },
+      "example_headline": "Plane crashes off Washington's San Juan Islands",
+      "example_lang": "en",
+      "example_source": "cp24.com"
+    },
+    {
+      "name": "sandy ryan",
+      "raw_variants": [
+        "sandy ryan"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "CWG: India seal first medal as Lovlina move into 75kg SF - News Today",
+      "example_lang": "en",
+      "example_source": "newstodaynet.com"
+    },
+    {
+      "name": "sarnath",
+      "raw_variants": [
+        "Sarnath"
+      ],
+      "provenance": {
+        "nlp:LOC": 2,
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Sarnath Included in UNESCO World Heritage List, Delhi News in Hindi",
+      "example_lang": "xx",
+      "example_source": "khaskhabar.com"
+    },
+    {
+      "name": "sashidhar jagdishan",
+      "raw_variants": [
+        "sashidhar jagdishan"
+      ],
+      "provenance": {
+        "gdelt_persons": 7
+      },
+      "example_headline": "HDFC Bank CEO, CFO fined Rs 1 lakh each in MSRDC case",
+      "example_lang": "en",
+      "example_source": "moneycontrol.com"
+    },
+    {
+      "name": "satyajit ray pather panchali",
+      "raw_variants": [
+        "Satyajit Ray Pather Panchali"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Christopher Nolan Praises Satyajit Ray Pather Panchali | 'എന്റെ മനസ്സിനെ പിടിച്ചുലച്ചു'; സത്യജിത് റായിയേയും പഥേർ പാഞ്ചാലിയേയും പുകഴ്ത്തി ക്രിസ്റ്റഫർ നോളൻ",
+      "example_lang": "xx",
+      "example_source": "mathrubhumi.com"
+    },
+    {
+      "name": "sba communications corporation",
+      "raw_variants": [
+        "SBA Communications Corporation"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Walleye Capital LLC Takes $18 Million Position in SBA Communications Corporation $SBAC",
+      "example_lang": "en",
+      "example_source": "dailypolitical.com"
+    },
+    {
+      "name": "school gemological spanish",
+      "raw_variants": [
+        "school gemological spanish"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Zapatero dice que \"no habló con nadie del Gobierno ni del SEPI\" sobre el rescate de Plus Ultra y asegura que las joyas son una \"cortesía personal\"",
+      "example_lang": "xx",
+      "example_source": "mundodeportivo.com"
+    },
+    {
+      "name": "sebastien berge",
+      "raw_variants": [
+        "sebastien berge"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Wildfires threaten wineries as blaze nears Bordeaux",
+      "example_lang": "en",
+      "example_source": "thedrinksbusiness.com"
+    },
+    {
+      "name": "sedgley",
+      "raw_variants": [
+        "Sedgley"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Dudley Police appeal after Sedgley teenager assault",
+      "example_lang": "en",
+      "example_source": "halesowennews.co.uk"
+    },
+    {
+      "name": "sergiy kyslytsya",
+      "raw_variants": [
+        "sergiy kyslytsya"
+      ],
+      "provenance": {
+        "gdelt_persons": 6
+      },
+      "example_headline": "Loomer meets with Zelenskyy in Ukraine after major reversal on the war",
+      "example_lang": "en",
+      "example_source": "wokv.com"
+    },
+    {
+      "name": "shaun moore",
+      "raw_variants": [
+        "shaun moore"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "HMRC 'tax rise by stealth' warning with millions affected",
+      "example_lang": "en",
+      "example_source": "birminghammail.co.uk"
+    },
+    {
+      "name": "society encouraged for fixed quiet",
+      "raw_variants": [
+        "society encouraged for fixed quiet"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "BMKG Pastikan Gempa M5,6 di Gayo Lues Tak Berpotensi Tsunami, Masyarakat Diimbau untuk Tetap Tenang",
+      "example_lang": "xx",
+      "example_source": "koran-jakarta.com"
+    },
+    {
+      "name": "spokeswoman medical center",
+      "raw_variants": [
+        "spokeswoman medical center"
+      ],
+      "provenance": {
+        "gdelt_orgs": 4
+      },
+      "example_headline": "Un tiroteo durante un festival gastronómico en Seattle dejó al menos dos muertos, cinco heridos y un sospechoso detenido",
+      "example_lang": "xx",
+      "example_source": "infobae.com"
+    },
+    {
+      "name": "start a social networks",
+      "raw_variants": [
+        "start a social networks"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Новости СВО: «Ну, сейчас начнется - \"группа сорвалась со скалы в Швейцарии\", \"друзья подавились пивом с сосисками в Баварии\"». Армия России разнесла полигон под Киевом с выставкой дронов и гостями - БлокнотРУ - Когда закончится СВО? Новости СВО. Новости СВО на сегодня. СВО. Когда закончится СВО последние новости. Новости СВО на сегодня свежие читать бесплатно. СВО последние новости. Новости СВО сегодня. Последние новости СВО. Новости СВО на сегодня свежие. Когда закончится СВО на Украине? СВО новости. Новости СВО сегодня. СВО последние новости на сегодня. Последние новости СВО на сегодня. Новости СВО сегодня последние. Новости СВО последние. Новости СВО на Украине.",
+      "example_lang": "xx",
+      "example_source": "bloknot.ru"
+    },
+    {
+      "name": "statelor unite",
+      "raw_variants": [
+        "Statelor Unite"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "Trump avertizează China şi Rusia să nu se amestece în războiul Statelor Unite cu Iranul: „Dacă ar face acest lucru, ar fi foarte rău pentru ele\"",
+      "example_lang": "xx",
+      "example_source": "atitudinea.ro"
+    },
+    {
+      "name": "states tucker carlson",
+      "raw_variants": [
+        "states tucker carlson"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Карлсон заявил, что американцев арестовывают по возвращении из России",
+      "example_lang": "xx",
+      "example_source": "vm.ru"
+    },
+    {
+      "name": "stepan bandera",
+      "raw_variants": [
+        "stepan bandera"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "У Франківську планують розширити проблемний тротуар на вулиці Бандери - Новини Івано-Франківська",
+      "example_lang": "xx",
+      "example_source": "pravda.if.ua"
+    },
+    {
+      "name": "stephen watson",
+      "raw_variants": [
+        "stephen watson"
+      ],
+      "provenance": {
+        "gdelt_persons": 4
+      },
+      "example_headline": "Oxfordshire terror plot: 'Committed jihadist' jailed for life",
+      "example_lang": "en",
+      "example_source": "oxfordmail.co.uk"
+    },
+    {
+      "name": "su",
+      "raw_variants": [
+        "Su"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "Trump'tan İran'a yeni tehdit! 'Suudi Arabistan'a saldırı olursa çok ağır vururuz'",
+      "example_lang": "xx",
+      "example_source": "milliyet.com.tr"
+    },
+    {
+      "name": "talks fail",
+      "raw_variants": [
+        "Talks Fail"
+      ],
+      "provenance": {
+        "nlp:EVENT": 2
+      },
+      "example_headline": "Trump Warns of Military Action If Iran Talks Fail",
+      "example_lang": "en",
+      "example_source": "newkerala.com"
+    },
+    {
+      "name": "tbmm genel kurulu",
+      "raw_variants": [
+        "TBMM Genel Kurulu"
+      ],
+      "provenance": {
+        "nlp:ORG": 3
+      },
+      "example_headline": "En düşük emekli aylığının artırılmasına yönelik düzenlemeyi de içeren kanun teklifi, TBMM Genel Kurulunda",
+      "example_lang": "tr",
+      "example_source": "aa.com.tr"
+    },
+    {
+      "name": "team dallas detroit",
+      "raw_variants": [
+        "team dallas detroit"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Grading every player at the 2026 WNBA All-Star Game",
+      "example_lang": "en",
+      "example_source": "abc7.com"
+    },
+    {
+      "name": "telemundo area de la bahia",
+      "raw_variants": [
+        "Telemundo Area de la Bahía"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Tiroteo en Seattle Center deja 3 muertos y 4 heridos – Telemundo Area de la Bahía 48",
+      "example_lang": "xx",
+      "example_source": "telemundoareadelabahia.com"
+    },
+    {
+      "name": "toby doeden",
+      "raw_variants": [
+        "toby doeden"
+      ],
+      "provenance": {
+        "gdelt_persons": 5
+      },
+      "example_headline": "7 things to know ahead of the South Dakota gubernatorial runoff",
+      "example_lang": "en",
+      "example_source": "siouxcityjournal.com"
+    },
+    {
+      "name": "tonna rue rawlins",
+      "raw_variants": [
+        "tonna rue rawlins"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Article 61D0F72B Cbf5 4E2D B444 9B393E54E3C6",
+      "example_lang": "en",
+      "example_source": "cachevalleydaily.com"
+    },
+    {
+      "name": "tourism a police national",
+      "raw_variants": [
+        "tourism a police national"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "MANIFESTACIÓN TURISMO | La Policía Nacional convierte en violenta una protesta pacífica contra la saturación turística en Mallorca",
+      "example_lang": "xx",
+      "example_source": "diariodemallorca.es"
+    },
+    {
+      "name": "trafford centre in manchester",
+      "raw_variants": [
+        "trafford centre in manchester"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "WEIRD STUFF: Monkey found abandoned in laundry bag",
+      "example_lang": "en",
+      "example_source": "jamaica-star.com"
+    },
+    {
+      "name": "trial panel response crimes arson chania",
+      "raw_variants": [
+        "trial panel response crimes arson chania"
+      ],
+      "provenance": {
+        "gdelt_orgs": 3
+      },
+      "example_headline": "Χανιά: Έκρηξη με έναν σοβαρά τραυματία σε εργοστάσιο",
+      "example_lang": "xx",
+      "example_source": "skai.gr"
+    },
+    {
+      "name": "ua",
+      "raw_variants": [
+        "ua"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Михайло Драпатий очолив ЗСУ: з якими викликами зіткнеться новий головнокомандувач — Тексти.org.ua",
+      "example_lang": "xx",
+      "example_source": "texty.org.ua"
+    },
+    {
+      "name": "udaipur pangi road in himachal pradesh",
+      "raw_variants": [
+        "Udaipur-Pangi Road in Himachal Pradesh"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "13 Killed as Boulders Crush SUV on Udaipur-Pangi Road in Himachal Pradesh",
+      "example_lang": "en",
+      "example_source": "dailypioneer.com"
+    },
+    {
+      "name": "united kingdom civil aviation authority",
+      "raw_variants": [
+        "united kingdom civil aviation authority"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Travel warning issued for Brits over common items that could be 'safety risk' on flights",
+      "example_lang": "en",
+      "example_source": "liverpoolecho.co.uk"
+    },
+    {
+      "name": "university of montana",
+      "raw_variants": [
+        "university of montana"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Article 519Ca869 Bd8F 49D8 Ac47 E7Cd7D116560",
+      "example_lang": "en",
+      "example_source": "thesylvaherald.com"
+    },
+    {
+      "name": "university of worcester",
+      "raw_variants": [
+        "university of worcester"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Nominations open for Dudley Borough Community Awards 2026",
+      "example_lang": "en",
+      "example_source": "halesowennews.co.uk"
+    },
+    {
+      "name": "ustaad bhagat singh",
+      "raw_variants": [
+        "ustaad bhagat singh"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "OG 2: Pawan Kalyan starrer sequel's animated promo to unveil on September 2? Here's what we know",
+      "example_lang": "en",
+      "example_source": "pinkvilla.com"
+    },
+    {
+      "name": "vale do mucuri",
+      "raw_variants": [
+        "Vale do Mucuri"
+      ],
+      "provenance": {
+        "nlp:LOC": 1
+      },
+      "example_headline": "Homem é condenado a 98 anos de prisão por crimes sexuais contra filhos e vizinha no Vale do Mucuri",
+      "example_lang": "pt",
+      "example_source": "g1.globo.com"
+    },
+    {
+      "name": "venkat narayana",
+      "raw_variants": [
+        "venkat narayana"
+      ],
+      "provenance": {
+        "gdelt_persons": 2
+      },
+      "example_headline": "Jana Nayagan Release: Vijay's Final Film Sparks Tamil Nadu Celebrations",
+      "example_lang": "en",
+      "example_source": "dailypioneer.com"
+    },
+    {
+      "name": "viohalko a betula",
+      "raw_variants": [
+        "viohalko a betula"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Χρηματιστήριο: Τραπεζική αντεπίθεση και επιστροφή στο οχυρό των 2.500 μονάδων",
+      "example_lang": "xx",
+      "example_source": "sofokleous10.gr"
+    },
+    {
+      "name": "vnl feminina",
+      "raw_variants": [
+        "VNL Feminina"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Jogos de hoje da VNL Feminina (23/07): onde assistir, horários e resultados das quartas de final",
+      "example_lang": "xx",
+      "example_source": "uol.com.br"
+    },
+    {
+      "name": "war house of congress",
+      "raw_variants": [
+        "war house of congress"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "محلل أمريكي: إيران في وضع أفضل من واشنطن لخوض صراع طويل الأمد",
+      "example_lang": "xx",
+      "example_source": "dostor.org"
+    },
+    {
+      "name": "warning days child national",
+      "raw_variants": [
+        "warning days child national"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Logo Hari Anak Nasional 2026 dan Filosofinya, Serta Link Download Desain Maskot HAN ke-42",
+      "example_lang": "xx",
+      "example_source": "tribunnews.com"
+    },
+    {
+      "name": "washington wizards",
+      "raw_variants": [
+        "washington wizards"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "Trump Calls LeBron James a Possible 'Racist' While Praising Michael Jordan as the Real GOAT in Oval Office",
+      "example_lang": "en",
+      "example_source": "ibtimes.com.au"
+    },
+    {
+      "name": "widdecombe devon",
+      "raw_variants": [
+        "widdecombe devon"
+      ],
+      "provenance": {
+        "gdelt_persons": 1
+      },
+      "example_headline": "Trial date set for man charged with murdering Ann Widdecombe",
+      "example_lang": "en",
+      "example_source": "plymouthherald.co.uk"
+    },
+    {
+      "name": "wiky",
+      "raw_variants": [
+        "WIKY"
+      ],
+      "provenance": {
+        "nlp:ORG": 1
+      },
+      "example_headline": "Analysis-Why El Niño's promise of a quieter hurricane season may not guarantee good news for insurers | 104.1 WIKY",
+      "example_lang": "en",
+      "example_source": "wiky.com"
+    },
+    {
+      "name": "world cup reactions",
+      "raw_variants": [
+        "World Cup: Reactions"
+      ],
+      "provenance": {
+        "nlp:EVENT": 1
+      },
+      "example_headline": "World Cup: Reactions as FIFA president Gianni Infantino told to resign after Spain won",
+      "example_lang": "en",
+      "example_source": "dailypost.ng"
+    },
+    {
+      "name": "xa3 24",
+      "raw_variants": [
+        "xA3;24"
+      ],
+      "provenance": {
+        "nlp:PERSON": 1
+      },
+      "example_headline": "Stacey Solomon's £24 summer dress shoppers say 'looks ten times the price'",
+      "example_lang": "en",
+      "example_source": "cambridge-news.co.uk"
+    },
+    {
+      "name": "y school",
+      "raw_variants": [
+        "y school"
+      ],
+      "provenance": {
+        "gdelt_orgs": 1
+      },
+      "example_headline": "12 результатів по 200 балів на НМТ-2026: рекорд Європейського колегіуму",
+      "example_lang": "xx",
+      "example_source": "ukrainianwall.com"
+    }
+  ]
+}

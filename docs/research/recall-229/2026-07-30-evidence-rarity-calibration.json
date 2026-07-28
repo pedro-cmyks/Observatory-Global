@@ -1,0 +1,6870 @@
+{
+  "meta": {
+    "generated_at": "2026-07-28T14:59:02+00:00",
+    "script": "backend/scripts/calibrate_evidence_rarity.py",
+    "measurement": "M3",
+    "days": 8,
+    "days_list": [
+      "2026-07-28",
+      "2026-07-27",
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21"
+    ],
+    "seed": 42,
+    "primary_day": "2026-07-28",
+    "primary_clusters": 2032,
+    "primary_resolvability": 0.9755,
+    "read_only": true
+  },
+  "snapshots": {
+    "2026-07-28": {
+      "clusters": 2032,
+      "sample_refs": 24192,
+      "resolved": 23599,
+      "resolvability": 0.9755,
+      "label_null_share": 0.0
+    },
+    "2026-07-27": {
+      "clusters": 3475,
+      "sample_refs": 42159,
+      "resolved": 34784,
+      "resolvability": 0.8251,
+      "label_null_share": 1.0
+    },
+    "2026-07-26": {
+      "clusters": 3593,
+      "sample_refs": 43704,
+      "resolved": 30516,
+      "resolvability": 0.6982,
+      "label_null_share": 1.0
+    },
+    "2026-07-25": {
+      "clusters": 3854,
+      "sample_refs": 46765,
+      "resolved": 27131,
+      "resolvability": 0.5802,
+      "label_null_share": 1.0
+    },
+    "2026-07-24": {
+      "clusters": 2395,
+      "sample_refs": 29086,
+      "resolved": 13567,
+      "resolvability": 0.4664,
+      "label_null_share": 1.0
+    },
+    "2026-07-23": {
+      "clusters": 2190,
+      "sample_refs": 26455,
+      "resolved": 8199,
+      "resolvability": 0.3099,
+      "label_null_share": 1.0
+    },
+    "2026-07-22": {
+      "clusters": 2517,
+      "sample_refs": 30124,
+      "resolved": 4943,
+      "resolvability": 0.1641,
+      "label_null_share": 0.0
+    },
+    "2026-07-21": {
+      "clusters": 2369,
+      "sample_refs": 28520,
+      "resolved": 0,
+      "resolvability": 0.0,
+      "label_null_share": 0.0
+    }
+  },
+  "df_profiles": {
+    "2026-07-28": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 30957,
+        "df_max": 383,
+        "df_mean": 1.5313,
+        "share_df1": 0.8379,
+        "share_df_le2": 0.926,
+        "buckets": {
+          "1": 25938,
+          "2": 2729,
+          "3": 899,
+          "4-5": 672,
+          "6-10": 456,
+          "11-20": 162,
+          "21-50": 77,
+          "51-100": 17,
+          "101+": 7
+        },
+        "clusters_total": 2032,
+        "clusters_with_item": 2014,
+        "cluster_coverage": 0.9911,
+        "items_per_cluster_mean": 23.328,
+        "items_per_cluster_p50": 19,
+        "df_p50": 1.0,
+        "df_p90": 2.0,
+        "df_p95": 3.0,
+        "df_p99": 9.0,
+        "top_items": [
+          {
+            "item": "united states",
+            "df": 383
+          },
+          {
+            "item": "reuters",
+            "df": 225
+          },
+          {
+            "item": "donald trump",
+            "df": 192
+          },
+          {
+            "item": "white house",
+            "df": 109
+          },
+          {
+            "item": "trump",
+            "df": 103
+          },
+          {
+            "item": "young",
+            "df": 101
+          },
+          {
+            "item": "european union",
+            "df": 101
+          },
+          {
+            "item": "x2013",
+            "df": 100
+          },
+          {
+            "item": "vladimir putin",
+            "df": 96
+          },
+          {
+            "item": "instagram",
+            "df": 91
+          },
+          {
+            "item": "iran",
+            "df": 87
+          },
+          {
+            "item": "facebook",
+            "df": 85
+          }
+        ]
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 3338,
+        "df_max": 168,
+        "df_mean": 5.1468,
+        "share_df1": 0.3913,
+        "share_df_le2": 0.5668,
+        "buckets": {
+          "1": 1306,
+          "2": 586,
+          "3": 356,
+          "4-5": 388,
+          "6-10": 347,
+          "11-20": 206,
+          "21-50": 119,
+          "51-100": 27,
+          "101+": 3
+        },
+        "clusters_total": 2032,
+        "clusters_with_item": 2031,
+        "cluster_coverage": 0.9995,
+        "items_per_cluster_mean": 8.455,
+        "items_per_cluster_p50": 8,
+        "df_p50": 2.0,
+        "df_p90": 11.0,
+        "df_p95": 20.0,
+        "df_p99": 49.63,
+        "top_items": [
+          {
+            "item": "inewsgr.com",
+            "df": 168
+          },
+          {
+            "item": "rt.com",
+            "df": 163
+          },
+          {
+            "item": "indiatimes.com",
+            "df": 158
+          },
+          {
+            "item": "thehindu.com",
+            "df": 97
+          },
+          {
+            "item": "zazoom.it",
+            "df": 97
+          },
+          {
+            "item": "aol.co.uk",
+            "df": 88
+          },
+          {
+            "item": "tribunnews.com",
+            "df": 86
+          },
+          {
+            "item": "hindustantimes.com",
+            "df": 84
+          },
+          {
+            "item": "mail.ru",
+            "df": 82
+          },
+          {
+            "item": "kommersant.ru",
+            "df": 77
+          },
+          {
+            "item": "topontiki.gr",
+            "df": 77
+          },
+          {
+            "item": "moneycontrol.com",
+            "df": 72
+          }
+        ]
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 23582,
+        "df_max": 2,
+        "df_mean": 1.0002,
+        "share_df1": 0.9998,
+        "share_df_le2": 1.0,
+        "buckets": {
+          "1": 23577,
+          "2": 5,
+          "3": 0,
+          "4-5": 0,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2032,
+        "clusters_with_item": 2031,
+        "cluster_coverage": 0.9995,
+        "items_per_cluster_mean": 11.608,
+        "items_per_cluster_p50": 10,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "spiegel.de/politik/ukrainekrieg-eu-verhaengt-neue-sanktionen-gegen-russland-a-b6cd978e-fdae-45b4-a1b3-2510f12eb095",
+            "df": 2
+          },
+          {
+            "item": "russian.rt.com/ussr/news/1661416-ugolovnoe-delo-terakt",
+            "df": 2
+          },
+          {
+            "item": "russian.rt.com/ussr/news/1660403-vs-rossiya-unichtozhili-gruppa",
+            "df": 2
+          },
+          {
+            "item": "russian.rt.com/ussr/article/1661814-vs-rossiya-dnr-shevchenko",
+            "df": 2
+          },
+          {
+            "item": "punchng.com/londons-gatwick-airport-suffers-water-outage",
+            "df": 2
+          },
+          {
+            "item": "elevenwarriors.com/the-big-ten/2026/07/163119/warde-manuel-will-be-paid-7-million-buyout-after-stepping-down-as-michigan-s-athletic-director",
+            "df": 1
+          },
+          {
+            "item": "thegamenashville.com/2026/07/27/manuel-gets-7-14m-other-perks-in-u-m-buyout",
+            "df": 1
+          },
+          {
+            "item": "wxyz.com/news/michigan-set-to-pay-warde-manuel-7-1-million-as-part-of-separation-agreement",
+            "df": 1
+          },
+          {
+            "item": "thescore1260.com/2026/07/27/report-michigan-ad-warde-manuels-buyout-tops-7m",
+            "df": 1
+          },
+          {
+            "item": "whmi.com/news/article/ap-michigan-ad-warde-manuel-to-receive-7m-lump-sum-in-separation-deal",
+            "df": 1
+          },
+          {
+            "item": "winnipegfreepress.com/uncategorized/2026/07/27/michigan-athletic-director-warde-manuel-will-receive-a-7-million-lump-sum-in-his-separation-deal",
+            "df": 1
+          },
+          {
+            "item": "yoursourceone.com/news/national_news/michigan-athletic-director-warde-manuel-will-receive-a-7-million-lump-sum-in-his-separation/article_188ae6e7-81a6-53ec-844a-f9686e782e62.html",
+            "df": 1
+          }
+        ]
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 16235,
+        "df_max": 23,
+        "df_mean": 1.0439,
+        "share_df1": 0.9868,
+        "share_df_le2": 0.994,
+        "buckets": {
+          "1": 16020,
+          "2": 118,
+          "3": 35,
+          "4-5": 18,
+          "6-10": 24,
+          "11-20": 18,
+          "21-50": 2,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2032,
+        "clusters_with_item": 1863,
+        "cluster_coverage": 0.9168,
+        "items_per_cluster_mean": 8.34,
+        "items_per_cluster_p50": 8,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 2.0,
+        "top_items": [
+          {
+            "item": "2026",
+            "df": 23
+          },
+          {
+            "item": "23",
+            "df": 21
+          },
+          {
+            "item": "5",
+            "df": 20
+          },
+          {
+            "item": "100",
+            "df": 20
+          },
+          {
+            "item": "27",
+            "df": 19
+          },
+          {
+            "item": "22",
+            "df": 19
+          },
+          {
+            "item": "24",
+            "df": 19
+          },
+          {
+            "item": "21",
+            "df": 18
+          },
+          {
+            "item": "blackseanews",
+            "df": 15
+          },
+          {
+            "item": "3",
+            "df": 15
+          },
+          {
+            "item": "10",
+            "df": 15
+          },
+          {
+            "item": "patrisnews",
+            "df": 15
+          }
+        ]
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 15601,
+        "df_max": 15,
+        "df_mean": 1.0069,
+        "share_df1": 0.9964,
+        "share_df_le2": 0.9992,
+        "buckets": {
+          "1": 15545,
+          "2": 44,
+          "3": 6,
+          "4-5": 1,
+          "6-10": 3,
+          "11-20": 2,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2032,
+        "clusters_with_item": 1592,
+        "cluster_coverage": 0.7835,
+        "items_per_cluster_mean": 7.731,
+        "items_per_cluster_p50": 8,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "blackseanews",
+            "df": 15
+          },
+          {
+            "item": "patrisnews",
+            "df": 15
+          },
+          {
+            "item": "wildberries",
+            "df": 9
+          },
+          {
+            "item": "dsnews ua",
+            "df": 9
+          },
+          {
+            "item": "the press project",
+            "df": 6
+          },
+          {
+            "item": "bloomberg",
+            "df": 4
+          },
+          {
+            "item": "politico",
+            "df": 3
+          },
+          {
+            "item": "caucasian knot",
+            "df": 3
+          },
+          {
+            "item": "violencia machista",
+            "df": 3
+          },
+          {
+            "item": "son dakika",
+            "df": 3
+          },
+          {
+            "item": "finance ua",
+            "df": 3
+          },
+          {
+            "item": "21 pride",
+            "df": 3
+          }
+        ]
+      }
+    },
+    "2026-07-27": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 47054,
+        "df_max": 600,
+        "df_mean": 1.5621,
+        "share_df1": 0.8346,
+        "share_df_le2": 0.9234,
+        "buckets": {
+          "1": 39271,
+          "2": 4181,
+          "3": 1415,
+          "4-5": 1011,
+          "6-10": 712,
+          "11-20": 324,
+          "21-50": 105,
+          "51-100": 18,
+          "101+": 17
+        },
+        "clusters_total": 3475,
+        "clusters_with_item": 3340,
+        "cluster_coverage": 0.9612,
+        "items_per_cluster_mean": 21.153,
+        "items_per_cluster_p50": 17,
+        "df_p50": 1.0,
+        "df_p90": 2.0,
+        "df_p95": 3.0,
+        "df_p99": 10.0,
+        "top_items": [
+          {
+            "item": "united states",
+            "df": 600
+          },
+          {
+            "item": "donald trump",
+            "df": 296
+          },
+          {
+            "item": "reuters",
+            "df": 289
+          },
+          {
+            "item": "x2013",
+            "df": 191
+          },
+          {
+            "item": "trump",
+            "df": 172
+          },
+          {
+            "item": "young",
+            "df": 156
+          },
+          {
+            "item": "white house",
+            "df": 150
+          },
+          {
+            "item": "facebook",
+            "df": 125
+          },
+          {
+            "item": "associated press",
+            "df": 124
+          },
+          {
+            "item": "instagram",
+            "df": 119
+          },
+          {
+            "item": "european union",
+            "df": 117
+          },
+          {
+            "item": "union european",
+            "df": 116
+          }
+        ]
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 4189,
+        "df_max": 191,
+        "df_mean": 5.8914,
+        "share_df1": 0.3619,
+        "share_df_le2": 0.5242,
+        "buckets": {
+          "1": 1516,
+          "2": 680,
+          "3": 423,
+          "4-5": 470,
+          "6-10": 509,
+          "11-20": 341,
+          "21-50": 203,
+          "51-100": 43,
+          "101+": 4
+        },
+        "clusters_total": 3475,
+        "clusters_with_item": 3386,
+        "cluster_coverage": 0.9744,
+        "items_per_cluster_mean": 7.102,
+        "items_per_cluster_p50": 7,
+        "df_p50": 2.0,
+        "df_p90": 14.0,
+        "df_p95": 22.0,
+        "df_p99": 54.0,
+        "top_items": [
+          {
+            "item": "inewsgr.com",
+            "df": 191
+          },
+          {
+            "item": "rt.com",
+            "df": 190
+          },
+          {
+            "item": "indiatimes.com",
+            "df": 162
+          },
+          {
+            "item": "zazoom.it",
+            "df": 122
+          },
+          {
+            "item": "thehindu.com",
+            "df": 94
+          },
+          {
+            "item": "tribunnews.com",
+            "df": 93
+          },
+          {
+            "item": "dostor.org",
+            "df": 88
+          },
+          {
+            "item": "mail.ru",
+            "df": 86
+          },
+          {
+            "item": "aol.co.uk",
+            "df": 85
+          },
+          {
+            "item": "yahoo.com",
+            "df": 78
+          },
+          {
+            "item": "hindustantimes.com",
+            "df": 78
+          },
+          {
+            "item": "iefimerida.gr",
+            "df": 78
+          }
+        ]
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 34717,
+        "df_max": 2,
+        "df_mean": 1.0001,
+        "share_df1": 0.9999,
+        "share_df_le2": 1.0,
+        "buckets": {
+          "1": 34712,
+          "2": 5,
+          "3": 0,
+          "4-5": 0,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3475,
+        "clusters_with_item": 3386,
+        "cluster_coverage": 0.9744,
+        "items_per_cluster_mean": 9.992,
+        "items_per_cluster_p50": 9,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "russian.rt.com/ussr/news/1661416-ugolovnoe-delo-terakt",
+            "df": 2
+          },
+          {
+            "item": "ilmessaggero.it/persone/enzo_iacchetti_schillaci_scuse_cosa_ha_detto-9668206.html",
+            "df": 2
+          },
+          {
+            "item": "scmp.com/news/world/africa/article/3361493/congos-ebola-outbreak-kills-nearly-1000-people-warning-worse-come",
+            "df": 2
+          },
+          {
+            "item": "africanews.com/2026/07/22/who-says-ebola-death-toll-in-drc-and-uganda-has-surpassed-1000",
+            "df": 2
+          },
+          {
+            "item": "punchng.com/ndlea-arrests-lagos-businessman-over-3-3kg-cocaine-bound-for-uk",
+            "df": 2
+          },
+          {
+            "item": "redlandsdailyfacts.com/2026/07/26/dodgers-bullpen-surrenders-two-three-run-home-runs-in-loss-to-mets",
+            "df": 1
+          },
+          {
+            "item": "sgvtribune.com/2026/07/26/dodgers-bullpen-surrenders-two-three-run-home-runs-in-loss-to-mets",
+            "df": 1
+          },
+          {
+            "item": "pasadenastarnews.com/2026/07/26/dodgers-bullpen-surrenders-two-three-run-home-runs-in-loss-to-mets",
+            "df": 1
+          },
+          {
+            "item": "dailybreeze.com/2026/07/26/dodgers-bullpen-surrenders-two-three-run-home-runs-in-loss-to-mets",
+            "df": 1
+          },
+          {
+            "item": "dailynews.com/2026/07/26/dodgers-bullpen-surrenders-two-three-run-home-runs-in-loss-to-mets",
+            "df": 1
+          },
+          {
+            "item": "whittierdailynews.com/2026/07/26/dodgers-bullpen-surrenders-two-three-run-home-runs-in-loss-to-mets",
+            "df": 1
+          },
+          {
+            "item": "sbsun.com/2026/07/26/dodgers-bullpen-surrenders-two-three-run-home-runs-in-loss-to-mets",
+            "df": 1
+          }
+        ]
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 24996,
+        "df_max": 34,
+        "df_mean": 1.0435,
+        "share_df1": 0.9885,
+        "share_df_le2": 0.9948,
+        "buckets": {
+          "1": 24709,
+          "2": 156,
+          "3": 40,
+          "4-5": 31,
+          "6-10": 20,
+          "11-20": 32,
+          "21-50": 8,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3475,
+        "clusters_with_item": 3124,
+        "cluster_coverage": 0.899,
+        "items_per_cluster_mean": 7.506,
+        "items_per_cluster_p50": 8,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 2.0,
+        "top_items": [
+          {
+            "item": "10",
+            "df": 34
+          },
+          {
+            "item": "2026",
+            "df": 34
+          },
+          {
+            "item": "4",
+            "df": 30
+          },
+          {
+            "item": "3",
+            "df": 29
+          },
+          {
+            "item": "24",
+            "df": 25
+          },
+          {
+            "item": "23",
+            "df": 24
+          },
+          {
+            "item": "5",
+            "df": 23
+          },
+          {
+            "item": "100",
+            "df": 21
+          },
+          {
+            "item": "21",
+            "df": 20
+          },
+          {
+            "item": "6",
+            "df": 19
+          },
+          {
+            "item": "11",
+            "df": 19
+          },
+          {
+            "item": "13",
+            "df": 18
+          }
+        ]
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 24090,
+        "df_max": 16,
+        "df_mean": 1.0065,
+        "share_df1": 0.9964,
+        "share_df_le2": 0.9993,
+        "buckets": {
+          "1": 24004,
+          "2": 70,
+          "3": 6,
+          "4-5": 3,
+          "6-10": 4,
+          "11-20": 3,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3475,
+        "clusters_with_item": 2685,
+        "cluster_coverage": 0.7727,
+        "items_per_cluster_mean": 6.977,
+        "items_per_cluster_p50": 7,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "blackseanews",
+            "df": 16
+          },
+          {
+            "item": "patrisnews",
+            "df": 13
+          },
+          {
+            "item": "realitatea net",
+            "df": 12
+          },
+          {
+            "item": "wildberries",
+            "df": 9
+          },
+          {
+            "item": "the press project",
+            "df": 8
+          },
+          {
+            "item": "dsnews ua",
+            "df": 7
+          },
+          {
+            "item": "bloomberg",
+            "df": 6
+          },
+          {
+            "item": "politico",
+            "df": 5
+          },
+          {
+            "item": "son dakika",
+            "df": 4
+          },
+          {
+            "item": "world cup",
+            "df": 4
+          },
+          {
+            "item": "brent 92",
+            "df": 3
+          },
+          {
+            "item": "brent 100",
+            "df": 3
+          }
+        ]
+      }
+    },
+    "2026-07-26": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 43257,
+        "df_max": 561,
+        "df_mean": 1.5235,
+        "share_df1": 0.8452,
+        "share_df_le2": 0.9284,
+        "buckets": {
+          "1": 36559,
+          "2": 3602,
+          "3": 1179,
+          "4-5": 911,
+          "6-10": 610,
+          "11-20": 275,
+          "21-50": 92,
+          "51-100": 16,
+          "101+": 13
+        },
+        "clusters_total": 3593,
+        "clusters_with_item": 3280,
+        "cluster_coverage": 0.9129,
+        "items_per_cluster_mean": 18.342,
+        "items_per_cluster_p50": 14,
+        "df_p50": 1.0,
+        "df_p90": 2.0,
+        "df_p95": 3.0,
+        "df_p99": 10.0,
+        "top_items": [
+          {
+            "item": "united states",
+            "df": 561
+          },
+          {
+            "item": "donald trump",
+            "df": 278
+          },
+          {
+            "item": "reuters",
+            "df": 273
+          },
+          {
+            "item": "x2013",
+            "df": 168
+          },
+          {
+            "item": "trump",
+            "df": 148
+          },
+          {
+            "item": "young",
+            "df": 136
+          },
+          {
+            "item": "white house",
+            "df": 129
+          },
+          {
+            "item": "facebook",
+            "df": 119
+          },
+          {
+            "item": "european union",
+            "df": 108
+          },
+          {
+            "item": "us",
+            "df": 107
+          },
+          {
+            "item": "associated press",
+            "df": 104
+          },
+          {
+            "item": "union european",
+            "df": 104
+          }
+        ]
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 4112,
+        "df_max": 170,
+        "df_mean": 5.3988,
+        "share_df1": 0.3804,
+        "share_df_le2": 0.5452,
+        "buckets": {
+          "1": 1564,
+          "2": 678,
+          "3": 413,
+          "4-5": 470,
+          "6-10": 461,
+          "11-20": 319,
+          "21-50": 169,
+          "51-100": 34,
+          "101+": 4
+        },
+        "clusters_total": 3593,
+        "clusters_with_item": 3337,
+        "cluster_coverage": 0.9288,
+        "items_per_cluster_mean": 6.179,
+        "items_per_cluster_p50": 6,
+        "df_p50": 2.0,
+        "df_p90": 13.0,
+        "df_p95": 21.0,
+        "df_p99": 46.89,
+        "top_items": [
+          {
+            "item": "inewsgr.com",
+            "df": 170
+          },
+          {
+            "item": "rt.com",
+            "df": 166
+          },
+          {
+            "item": "indiatimes.com",
+            "df": 146
+          },
+          {
+            "item": "zazoom.it",
+            "df": 102
+          },
+          {
+            "item": "tribunnews.com",
+            "df": 87
+          },
+          {
+            "item": "thehindu.com",
+            "df": 81
+          },
+          {
+            "item": "yahoo.com",
+            "df": 79
+          },
+          {
+            "item": "aol.co.uk",
+            "df": 78
+          },
+          {
+            "item": "euronews.com",
+            "df": 74
+          },
+          {
+            "item": "skai.gr",
+            "df": 73
+          },
+          {
+            "item": "mail.ru",
+            "df": 73
+          },
+          {
+            "item": "iefimerida.gr",
+            "df": 70
+          }
+        ]
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 30457,
+        "df_max": 2,
+        "df_mean": 1.0002,
+        "share_df1": 0.9998,
+        "share_df_le2": 1.0,
+        "buckets": {
+          "1": 30450,
+          "2": 7,
+          "3": 0,
+          "4-5": 0,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3593,
+        "clusters_with_item": 3337,
+        "cluster_coverage": 0.9288,
+        "items_per_cluster_mean": 8.479,
+        "items_per_cluster_p50": 8,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "punchng.com/subsidised-imports-threaten-nigerias-agricultural-growth-fg",
+            "df": 2
+          },
+          {
+            "item": "scmp.com/news/world/europe/article/3361637/1-dead-4-injured-czech-army-helicopter-crash",
+            "df": 2
+          },
+          {
+            "item": "russian.rt.com/ussr/news/1660403-vs-rossiya-unichtozhili-gruppa",
+            "df": 2
+          },
+          {
+            "item": "russian.rt.com/ussr/news/1661416-ugolovnoe-delo-terakt",
+            "df": 2
+          },
+          {
+            "item": "ilmessaggero.it/persone/enzo_iacchetti_schillaci_scuse_cosa_ha_detto-9668206.html",
+            "df": 2
+          },
+          {
+            "item": "africanews.com/2026/07/22/who-says-ebola-death-toll-in-drc-and-uganda-has-surpassed-1000",
+            "df": 2
+          },
+          {
+            "item": "scmp.com/news/world/africa/article/3361493/congos-ebola-outbreak-kills-nearly-1000-people-warning-worse-come",
+            "df": 2
+          },
+          {
+            "item": "athensvoice.gr/epikairotita/ellada/976696/thessaloniki-25hronos-prospoiithike-ton-upallilo-tou-deddie-kai-eklepse-lires-kai-kosmimata-apo-43hroni",
+            "df": 1
+          },
+          {
+            "item": "taxydromos.gr/ellada/1345779/thessaloniki-prospoiithike-ton-ypallilo-toy-deddie-kai-pire-sakoyla-me-chrimata-lires-kai-kosmimata-apo-43chroni",
+            "df": 1
+          },
+          {
+            "item": "empisteutiko.gr/thyma-apatis-40chroni-stis-serres-arpaxan-chrimata-kai-kosmimata-axias-26-000-eyro",
+            "df": 1
+          },
+          {
+            "item": "topontiki.gr/2026/07/21/serres-nea-apati-me-thima-40chroni-tis-piran-22-000-evro-ke-kosmimata",
+            "df": 1
+          },
+          {
+            "item": "iefimerida.gr/ellada/apati-deddie-43hroni-hrimata-lires-kai-kosmimata",
+            "df": 1
+          }
+        ]
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 21889,
+        "df_max": 31,
+        "df_mean": 1.0418,
+        "share_df1": 0.9888,
+        "share_df_le2": 0.9949,
+        "buckets": {
+          "1": 21643,
+          "2": 134,
+          "3": 35,
+          "4-5": 24,
+          "6-10": 27,
+          "11-20": 18,
+          "21-50": 8,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3593,
+        "clusters_with_item": 3044,
+        "cluster_coverage": 0.8472,
+        "items_per_cluster_mean": 6.347,
+        "items_per_cluster_p50": 6,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 2.0,
+        "top_items": [
+          {
+            "item": "2026",
+            "df": 31
+          },
+          {
+            "item": "4",
+            "df": 29
+          },
+          {
+            "item": "10",
+            "df": 27
+          },
+          {
+            "item": "3",
+            "df": 24
+          },
+          {
+            "item": "5",
+            "df": 23
+          },
+          {
+            "item": "23",
+            "df": 23
+          },
+          {
+            "item": "6",
+            "df": 22
+          },
+          {
+            "item": "24",
+            "df": 21
+          },
+          {
+            "item": "22",
+            "df": 20
+          },
+          {
+            "item": "21",
+            "df": 20
+          },
+          {
+            "item": "2",
+            "df": 19
+          },
+          {
+            "item": "100",
+            "df": 19
+          }
+        ]
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 21080,
+        "df_max": 16,
+        "df_mean": 1.0064,
+        "share_df1": 0.9967,
+        "share_df_le2": 0.9993,
+        "buckets": {
+          "1": 21011,
+          "2": 55,
+          "3": 3,
+          "4-5": 4,
+          "6-10": 5,
+          "11-20": 2,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3593,
+        "clusters_with_item": 2623,
+        "cluster_coverage": 0.73,
+        "items_per_cluster_mean": 5.905,
+        "items_per_cluster_p50": 6,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "blackseanews",
+            "df": 16
+          },
+          {
+            "item": "realitatea net",
+            "df": 14
+          },
+          {
+            "item": "wildberries",
+            "df": 9
+          },
+          {
+            "item": "dsnews ua",
+            "df": 9
+          },
+          {
+            "item": "patrisnews",
+            "df": 7
+          },
+          {
+            "item": "the press project",
+            "df": 7
+          },
+          {
+            "item": "bloomberg",
+            "df": 6
+          },
+          {
+            "item": "politico",
+            "df": 5
+          },
+          {
+            "item": "gazeta kg",
+            "df": 4
+          },
+          {
+            "item": "caucasian knot",
+            "df": 4
+          },
+          {
+            "item": "son dakika",
+            "df": 4
+          },
+          {
+            "item": "61 ryanair",
+            "df": 3
+          }
+        ]
+      }
+    },
+    "2026-07-25": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 39659,
+        "df_max": 571,
+        "df_mean": 1.538,
+        "share_df1": 0.8432,
+        "share_df_le2": 0.9254,
+        "buckets": {
+          "1": 33440,
+          "2": 3261,
+          "3": 1141,
+          "4-5": 850,
+          "6-10": 572,
+          "11-20": 284,
+          "21-50": 86,
+          "51-100": 14,
+          "101+": 11
+        },
+        "clusters_total": 3854,
+        "clusters_with_item": 3313,
+        "cluster_coverage": 0.8596,
+        "items_per_cluster_mean": 15.826,
+        "items_per_cluster_p50": 12,
+        "df_p50": 1.0,
+        "df_p90": 2.0,
+        "df_p95": 3.0,
+        "df_p99": 10.0,
+        "top_items": [
+          {
+            "item": "united states",
+            "df": 571
+          },
+          {
+            "item": "donald trump",
+            "df": 295
+          },
+          {
+            "item": "reuters",
+            "df": 255
+          },
+          {
+            "item": "x2013",
+            "df": 178
+          },
+          {
+            "item": "trump",
+            "df": 148
+          },
+          {
+            "item": "white house",
+            "df": 148
+          },
+          {
+            "item": "associated press",
+            "df": 129
+          },
+          {
+            "item": "young",
+            "df": 121
+          },
+          {
+            "item": "us",
+            "df": 117
+          },
+          {
+            "item": "facebook",
+            "df": 111
+          },
+          {
+            "item": "iran",
+            "df": 106
+          },
+          {
+            "item": "european union",
+            "df": 97
+          }
+        ]
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 4062,
+        "df_max": 168,
+        "df_mean": 5.0357,
+        "share_df1": 0.386,
+        "share_df_le2": 0.5534,
+        "buckets": {
+          "1": 1568,
+          "2": 680,
+          "3": 424,
+          "4-5": 461,
+          "6-10": 467,
+          "11-20": 277,
+          "21-50": 158,
+          "51-100": 24,
+          "101+": 3
+        },
+        "clusters_total": 3854,
+        "clusters_with_item": 3384,
+        "cluster_coverage": 0.878,
+        "items_per_cluster_mean": 5.307,
+        "items_per_cluster_p50": 4,
+        "df_p50": 2.0,
+        "df_p90": 12.0,
+        "df_p95": 19.0,
+        "df_p99": 45.0,
+        "top_items": [
+          {
+            "item": "inewsgr.com",
+            "df": 168
+          },
+          {
+            "item": "rt.com",
+            "df": 130
+          },
+          {
+            "item": "indiatimes.com",
+            "df": 123
+          },
+          {
+            "item": "zazoom.it",
+            "df": 96
+          },
+          {
+            "item": "tribunnews.com",
+            "df": 81
+          },
+          {
+            "item": "yahoo.com",
+            "df": 78
+          },
+          {
+            "item": "iefimerida.gr",
+            "df": 72
+          },
+          {
+            "item": "euronews.com",
+            "df": 69
+          },
+          {
+            "item": "aol.co.uk",
+            "df": 67
+          },
+          {
+            "item": "dw.com",
+            "df": 65
+          },
+          {
+            "item": "newsbomb.gr",
+            "df": 64
+          },
+          {
+            "item": "dostor.org",
+            "df": 63
+          }
+        ]
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 27082,
+        "df_max": 2,
+        "df_mean": 1.0001,
+        "share_df1": 0.9999,
+        "share_df_le2": 1.0,
+        "buckets": {
+          "1": 27078,
+          "2": 4,
+          "3": 0,
+          "4-5": 0,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3854,
+        "clusters_with_item": 3384,
+        "cluster_coverage": 0.878,
+        "items_per_cluster_mean": 7.028,
+        "items_per_cluster_p50": 7,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "spiegel.de/panorama/frankreich-waldbrand-rast-auf-cotignac-und-andere-orte-zu-hunderte-menschen-fliehen-aus-ihren-haeusern-a-79979421-9241-449b-b2a0-1b99110d4967",
+            "df": 2
+          },
+          {
+            "item": "ilmessaggero.it/persone/enzo_iacchetti_schillaci_scuse_cosa_ha_detto-9668206.html",
+            "df": 2
+          },
+          {
+            "item": "scmp.com/news/world/africa/article/3361493/congos-ebola-outbreak-kills-nearly-1000-people-warning-worse-come",
+            "df": 2
+          },
+          {
+            "item": "africanews.com/2026/07/22/who-says-ebola-death-toll-in-drc-and-uganda-has-surpassed-1000",
+            "df": 2
+          },
+          {
+            "item": "toscanamedianews.it/italpress/minori-meloni-principio-del-ddl-e-che-chi-sbaglia-paga-anche-a-15-o-16-anni",
+            "df": 1
+          },
+          {
+            "item": "spotandweb.it/news/911437/via-libera-governo-a-norma-su-imputabilita-minori-meloni-chi-sbaglia-paga-anche-se-ha-15-anni.html",
+            "df": 1
+          },
+          {
+            "item": "viveresanbenedetto.it/altrigiornali/14/130842-2026",
+            "df": 1
+          },
+          {
+            "item": "ilfattonisseno.it/2026/07/via-libera-governo-a-norma-su-imputabilita-minori-meloni-chi-sbaglia-paga-anche-se-ha-15-anni",
+            "df": 1
+          },
+          {
+            "item": "dialessandria.it/featured/meloni-chi-delinque-deve-pagare-anche-se-ha-15-o-16-anni/291271.html",
+            "df": 1
+          },
+          {
+            "item": "valledaostaglocal.it/2026/07/23/leggi-notizia/argomenti/top-news-1/articolo/minori-meloni-principio-del-ddl-e-che-chi-sbaglia-paga-anche-a-15-o-16-anni.html",
+            "df": 1
+          },
+          {
+            "item": "dialessandria.it/top-news/minori-meloni-principio-del-ddl-e-che-chi-sbaglia-paga-anche-a-15-o-16-anni/291277.html",
+            "df": 1
+          },
+          {
+            "item": "newsbiella.it/2026/07/23/leggi-notizia/argomenti/top-news-1/articolo/minori-meloni-principio-del-ddl-e-che-chi-sbaglia-paga-anche-a-15-o-16-anni.html",
+            "df": 1
+          }
+        ]
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 19768,
+        "df_max": 32,
+        "df_mean": 1.041,
+        "share_df1": 0.9878,
+        "share_df_le2": 0.9951,
+        "buckets": {
+          "1": 19527,
+          "2": 144,
+          "3": 30,
+          "4-5": 21,
+          "6-10": 24,
+          "11-20": 13,
+          "21-50": 9,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3854,
+        "clusters_with_item": 3103,
+        "cluster_coverage": 0.8051,
+        "items_per_cluster_mean": 5.34,
+        "items_per_cluster_p50": 4,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 2.0,
+        "top_items": [
+          {
+            "item": "2026",
+            "df": 32
+          },
+          {
+            "item": "10",
+            "df": 32
+          },
+          {
+            "item": "4",
+            "df": 23
+          },
+          {
+            "item": "24",
+            "df": 22
+          },
+          {
+            "item": "100",
+            "df": 22
+          },
+          {
+            "item": "23",
+            "df": 22
+          },
+          {
+            "item": "5",
+            "df": 22
+          },
+          {
+            "item": "21",
+            "df": 21
+          },
+          {
+            "item": "3",
+            "df": 21
+          },
+          {
+            "item": "22",
+            "df": 20
+          },
+          {
+            "item": "13",
+            "df": 17
+          },
+          {
+            "item": "2",
+            "df": 16
+          }
+        ]
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 19029,
+        "df_max": 15,
+        "df_mean": 1.007,
+        "share_df1": 0.996,
+        "share_df_le2": 0.9993,
+        "buckets": {
+          "1": 18953,
+          "2": 62,
+          "3": 3,
+          "4-5": 5,
+          "6-10": 4,
+          "11-20": 2,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 3854,
+        "clusters_with_item": 2706,
+        "cluster_coverage": 0.7021,
+        "items_per_cluster_mean": 4.972,
+        "items_per_cluster_p50": 4,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "blackseanews",
+            "df": 15
+          },
+          {
+            "item": "realitatea net",
+            "df": 12
+          },
+          {
+            "item": "wildberries",
+            "df": 8
+          },
+          {
+            "item": "dsnews ua",
+            "df": 7
+          },
+          {
+            "item": "the press project",
+            "df": 7
+          },
+          {
+            "item": "patrisnews",
+            "df": 7
+          },
+          {
+            "item": "bloomberg",
+            "df": 5
+          },
+          {
+            "item": "son dakika",
+            "df": 4
+          },
+          {
+            "item": "politico",
+            "df": 4
+          },
+          {
+            "item": "fakti bg",
+            "df": 4
+          },
+          {
+            "item": "brent 100",
+            "df": 4
+          },
+          {
+            "item": "61 ryanair",
+            "df": 3
+          }
+        ]
+      }
+    },
+    "2026-07-24": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 24322,
+        "df_max": 362,
+        "df_mean": 1.4428,
+        "share_df1": 0.8612,
+        "share_df_le2": 0.9375,
+        "buckets": {
+          "1": 20945,
+          "2": 1857,
+          "3": 605,
+          "4-5": 437,
+          "6-10": 302,
+          "11-20": 119,
+          "21-50": 46,
+          "51-100": 7,
+          "101+": 4
+        },
+        "clusters_total": 2395,
+        "clusters_with_item": 1973,
+        "cluster_coverage": 0.8238,
+        "items_per_cluster_mean": 14.652,
+        "items_per_cluster_p50": 10,
+        "df_p50": 1.0,
+        "df_p90": 2.0,
+        "df_p95": 3.0,
+        "df_p99": 9.0,
+        "top_items": [
+          {
+            "item": "united states",
+            "df": 362
+          },
+          {
+            "item": "donald trump",
+            "df": 203
+          },
+          {
+            "item": "reuters",
+            "df": 146
+          },
+          {
+            "item": "x2013",
+            "df": 114
+          },
+          {
+            "item": "white house",
+            "df": 100
+          },
+          {
+            "item": "trump",
+            "df": 90
+          },
+          {
+            "item": "us",
+            "df": 88
+          },
+          {
+            "item": "iran",
+            "df": 85
+          },
+          {
+            "item": "associated press",
+            "df": 84
+          },
+          {
+            "item": "facebook",
+            "df": 60
+          },
+          {
+            "item": "supreme court",
+            "df": 56
+          },
+          {
+            "item": "marco rubio",
+            "df": 50
+          }
+        ]
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 3079,
+        "df_max": 107,
+        "df_mean": 3.4044,
+        "share_df1": 0.4839,
+        "share_df_le2": 0.6587,
+        "buckets": {
+          "1": 1490,
+          "2": 538,
+          "3": 289,
+          "4-5": 307,
+          "6-10": 265,
+          "11-20": 138,
+          "21-50": 46,
+          "51-100": 5,
+          "101+": 1
+        },
+        "clusters_total": 2395,
+        "clusters_with_item": 2015,
+        "cluster_coverage": 0.8413,
+        "items_per_cluster_mean": 4.377,
+        "items_per_cluster_p50": 3,
+        "df_p50": 2.0,
+        "df_p90": 8.0,
+        "df_p95": 12.0,
+        "df_p99": 26.0,
+        "top_items": [
+          {
+            "item": "rt.com",
+            "df": 107
+          },
+          {
+            "item": "indiatimes.com",
+            "df": 85
+          },
+          {
+            "item": "inewsgr.com",
+            "df": 64
+          },
+          {
+            "item": "yahoo.com",
+            "df": 57
+          },
+          {
+            "item": "thehindu.com",
+            "df": 56
+          },
+          {
+            "item": "allafrica.com",
+            "df": 55
+          },
+          {
+            "item": "aol.co.uk",
+            "df": 45
+          },
+          {
+            "item": "vesti.ru",
+            "df": 43
+          },
+          {
+            "item": "dostor.org",
+            "df": 42
+          },
+          {
+            "item": "ria.ru",
+            "df": 42
+          },
+          {
+            "item": "euronews.com",
+            "df": 41
+          },
+          {
+            "item": "punchng.com",
+            "df": 41
+          }
+        ]
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 13535,
+        "df_max": 2,
+        "df_mean": 1.0001,
+        "share_df1": 0.9999,
+        "share_df_le2": 1.0,
+        "buckets": {
+          "1": 13533,
+          "2": 2,
+          "3": 0,
+          "4-5": 0,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2395,
+        "clusters_with_item": 2015,
+        "cluster_coverage": 0.8413,
+        "items_per_cluster_mean": 5.652,
+        "items_per_cluster_p50": 5,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "scmp.com/news/world/africa/article/3361493/congos-ebola-outbreak-kills-nearly-1000-people-warning-worse-come",
+            "df": 2
+          },
+          {
+            "item": "africanews.com/2026/07/22/who-says-ebola-death-toll-in-drc-and-uganda-has-surpassed-1000",
+            "df": 2
+          },
+          {
+            "item": "metro.co.uk/2026/07/23/supermarkets-urgently-recall-milk-contains-veterinary-medicines-29207087",
+            "df": 1
+          },
+          {
+            "item": "birminghammail.co.uk/whats-on/shopping/popular-tesco-asda-morrisons-milk-34336784",
+            "df": 1
+          },
+          {
+            "item": "aol.co.uk/articles/milk-product-sold-morrisons-asda-062500000.html",
+            "df": 1
+          },
+          {
+            "item": "dailyrecord.co.uk/news/scottish-news/scottish-farm-issues-urgent-recall-37466408",
+            "df": 1
+          },
+          {
+            "item": "express.co.uk/news/uk/2231665/waitrose-food-recall-chocolate-chip-brioche-rolls",
+            "df": 1
+          },
+          {
+            "item": "independent.co.uk/news/uk/home-news/milk-recall-grahams-family-dairy-veterinary-medicines-uk-supermarkets-b3020065.html",
+            "df": 1
+          },
+          {
+            "item": "getsurrey.co.uk/whats-on/food-drink-news/grahams-milk-urgent-supermarket-recall-34336868",
+            "df": 1
+          },
+          {
+            "item": "lbc.co.uk/article/supermarkets-issue-warning-over-milk-antibiotics-5Hjdf5z_2",
+            "df": 1
+          },
+          {
+            "item": "express.co.uk/news/uk/2232069/product-recall-milk-morrisons-asda-tesco",
+            "df": 1
+          },
+          {
+            "item": "cambrian-news.co.uk/news/courts/dol-y-bont-man-given-suspended-jail-sentence-for-assault-930223",
+            "df": 1
+          }
+        ]
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 10291,
+        "df_max": 16,
+        "df_mean": 1.0333,
+        "share_df1": 0.9875,
+        "share_df_le2": 0.9943,
+        "buckets": {
+          "1": 10162,
+          "2": 70,
+          "3": 21,
+          "4-5": 17,
+          "6-10": 14,
+          "11-20": 7,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2395,
+        "clusters_with_item": 1809,
+        "cluster_coverage": 0.7553,
+        "items_per_cluster_mean": 4.44,
+        "items_per_cluster_p50": 3,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 2.0,
+        "top_items": [
+          {
+            "item": "10",
+            "df": 16
+          },
+          {
+            "item": "21",
+            "df": 14
+          },
+          {
+            "item": "3",
+            "df": 13
+          },
+          {
+            "item": "blackseanews",
+            "df": 12
+          },
+          {
+            "item": "2026",
+            "df": 12
+          },
+          {
+            "item": "100",
+            "df": 11
+          },
+          {
+            "item": "13",
+            "df": 11
+          },
+          {
+            "item": "22",
+            "df": 10
+          },
+          {
+            "item": "4",
+            "df": 10
+          },
+          {
+            "item": "23",
+            "df": 10
+          },
+          {
+            "item": "5",
+            "df": 9
+          },
+          {
+            "item": "9",
+            "df": 8
+          }
+        ]
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 9923,
+        "df_max": 12,
+        "df_mean": 1.0084,
+        "share_df1": 0.9948,
+        "share_df_le2": 0.9989,
+        "buckets": {
+          "1": 9871,
+          "2": 41,
+          "3": 6,
+          "4-5": 2,
+          "6-10": 2,
+          "11-20": 1,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2395,
+        "clusters_with_item": 1603,
+        "cluster_coverage": 0.6693,
+        "items_per_cluster_mean": 4.178,
+        "items_per_cluster_p50": 3,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "blackseanews",
+            "df": 12
+          },
+          {
+            "item": "realitatea net",
+            "df": 8
+          },
+          {
+            "item": "wildberries",
+            "df": 7
+          },
+          {
+            "item": "bloomberg",
+            "df": 4
+          },
+          {
+            "item": "politico",
+            "df": 4
+          },
+          {
+            "item": "brent 92",
+            "df": 3
+          },
+          {
+            "item": "dsnews ua",
+            "df": 3
+          },
+          {
+            "item": "brent 100",
+            "df": 3
+          },
+          {
+            "item": "caso plus ultra",
+            "df": 3
+          },
+          {
+            "item": "brent 95",
+            "df": 3
+          },
+          {
+            "item": "sponichi annex",
+            "df": 3
+          },
+          {
+            "item": "russian firing exercise off uk coast irresponsible says streeting",
+            "df": 2
+          }
+        ]
+      }
+    },
+    "2026-07-23": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 13998,
+        "df_max": 171,
+        "df_mean": 1.3878,
+        "share_df1": 0.857,
+        "share_df_le2": 0.937,
+        "buckets": {
+          "1": 11996,
+          "2": 1120,
+          "3": 389,
+          "4-5": 255,
+          "6-10": 160,
+          "11-20": 55,
+          "21-50": 17,
+          "51-100": 5,
+          "101+": 1
+        },
+        "clusters_total": 2190,
+        "clusters_with_item": 1383,
+        "cluster_coverage": 0.6315,
+        "items_per_cluster_mean": 8.871,
+        "items_per_cluster_p50": 4,
+        "df_p50": 1.0,
+        "df_p90": 2.0,
+        "df_p95": 3.0,
+        "df_p99": 7.0,
+        "top_items": [
+          {
+            "item": "united states",
+            "df": 171
+          },
+          {
+            "item": "donald trump",
+            "df": 84
+          },
+          {
+            "item": "x2013",
+            "df": 73
+          },
+          {
+            "item": "reuters",
+            "df": 67
+          },
+          {
+            "item": "white house",
+            "df": 54
+          },
+          {
+            "item": "associated press",
+            "df": 51
+          },
+          {
+            "item": "facebook",
+            "df": 42
+          },
+          {
+            "item": "trump",
+            "df": 42
+          },
+          {
+            "item": "supreme court",
+            "df": 38
+          },
+          {
+            "item": "vladimir putin",
+            "df": 35
+          },
+          {
+            "item": "young",
+            "df": 33
+          },
+          {
+            "item": "instagram",
+            "df": 32
+          }
+        ]
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 2196,
+        "df_max": 71,
+        "df_mean": 3.0173,
+        "share_df1": 0.5214,
+        "share_df_le2": 0.6926,
+        "buckets": {
+          "1": 1145,
+          "2": 376,
+          "3": 218,
+          "4-5": 187,
+          "6-10": 162,
+          "11-20": 81,
+          "21-50": 23,
+          "51-100": 4,
+          "101+": 0
+        },
+        "clusters_total": 2190,
+        "clusters_with_item": 1449,
+        "cluster_coverage": 0.6616,
+        "items_per_cluster_mean": 3.026,
+        "items_per_cluster_p50": 1,
+        "df_p50": 1.0,
+        "df_p90": 7.0,
+        "df_p95": 10.0,
+        "df_p99": 21.05,
+        "top_items": [
+          {
+            "item": "inewsgr.com",
+            "df": 71
+          },
+          {
+            "item": "tribunnews.com",
+            "df": 63
+          },
+          {
+            "item": "rt.com",
+            "df": 60
+          },
+          {
+            "item": "zazoom.it",
+            "df": 51
+          },
+          {
+            "item": "indiatimes.com",
+            "df": 49
+          },
+          {
+            "item": "thehindu.com",
+            "df": 34
+          },
+          {
+            "item": "kommersant.ru",
+            "df": 34
+          },
+          {
+            "item": "kompas.com",
+            "df": 33
+          },
+          {
+            "item": "yahoo.com",
+            "df": 33
+          },
+          {
+            "item": "globo.com",
+            "df": 32
+          },
+          {
+            "item": "antaranews.com",
+            "df": 30
+          },
+          {
+            "item": "mail.ru",
+            "df": 27
+          }
+        ]
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 8197,
+        "df_max": 1,
+        "df_mean": 1.0,
+        "share_df1": 1.0,
+        "share_df_le2": 1.0,
+        "buckets": {
+          "1": 8197,
+          "2": 0,
+          "3": 0,
+          "4-5": 0,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2190,
+        "clusters_with_item": 1449,
+        "cluster_coverage": 0.6616,
+        "items_per_cluster_mean": 3.743,
+        "items_per_cluster_p50": 2,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "kp.ua/ua/politics/a733483-holovna-bloher-maga-ta-vukho-trampa-khto-taka-lora-lumer-i-navishcho-vona-prijikhala-v-ukrajinu",
+            "df": 1
+          },
+          {
+            "item": "dsnews.ua/ukr/politics/uvidit-vse-svoim-glazami-u-zelenskogo-rady-vizitu-maga-aktivistki-lory-lumer-v-ukrainu-21072026-463869",
+            "df": 1
+          },
+          {
+            "item": "unn.ua/news/zavzhdy-krashche-pryikhaty-osobysto-sybiha-pryvitav-v-ukraini-amerykansku-zhurnalistku-loru-lumer",
+            "df": 1
+          },
+          {
+            "item": "obozrevatel.com/ukr/politics-news/na-maga-amerikantsiv-chekatime-dijsno-horoshij-kontent-odna-z-najvplivovishih-blogerok-priihala-v-ukrainu.htm",
+            "df": 1
+          },
+          {
+            "item": "obozrevatel.com/ukr/shou-oboz/tinova-favoritka-trampa-yaku-boyatsya-jogo-poplichniki-hto-naspravdi-taka-lora-lumer-yaka-neochikuvano-zavitala-do-ukraini-ta-chomu-tse-vazhlivo.htm",
+            "df": 1
+          },
+          {
+            "item": "obozrevatel.com/politics-news/maga-amerikantsev-zhdet-dejstvitelno-horoshij-kontent-odna-iz-samyih-vliyatelnyih-blogerov-priehala-v-ukrainu.htm",
+            "df": 1
+          },
+          {
+            "item": "rbc.ua/rus/news/zelenskogo-vidreaguvali-priyizd-lori-lumer-1784638841.html",
+            "df": 1
+          },
+          {
+            "item": "daily.com.ua/partners-news/nemaie-kraschogo-sposobu-sformuvaty-poinformovanu-tochku-zoru-v-op-prokomentuvaly-vizyt-do-ukrainy-blogerky-lory-lumer",
+            "df": 1
+          },
+          {
+            "item": "news.liga.net/ua/war/news/maga-bloherka-pislia-poizdky-do-ukrainy-zaklykala-konhres-ssha-provesty-slukhannia-shchodo-propahandy-rf",
+            "df": 1
+          },
+          {
+            "item": "svoboda.fm/politics/society/296187.html",
+            "df": 1
+          },
+          {
+            "item": "obozrevatel.com/shou-oboz/tenevaya-favoritka-trampa-kotoruyu-boyatsya-ego-soratniki-kto-na-samom-dele-takaya-lora-lumer-neozhidanno-posetivshaya-ukrainu-i-pochemu-eto-vazhno.htm",
+            "df": 1
+          },
+          {
+            "item": "dialog.ua/ukraine/vliyatelnaya-maga-bloger-lora-lumer-priekhala-v-kiev-i-pokazala.html",
+            "df": 1
+          }
+        ]
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 5734,
+        "df_max": 11,
+        "df_mean": 1.031,
+        "share_df1": 0.9888,
+        "share_df_le2": 0.9944,
+        "buckets": {
+          "1": 5670,
+          "2": 32,
+          "3": 7,
+          "4-5": 13,
+          "6-10": 10,
+          "11-20": 2,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2190,
+        "clusters_with_item": 1299,
+        "cluster_coverage": 0.5932,
+        "items_per_cluster_mean": 2.7,
+        "items_per_cluster_p50": 1,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 2.0,
+        "top_items": [
+          {
+            "item": "22",
+            "df": 11
+          },
+          {
+            "item": "21",
+            "df": 11
+          },
+          {
+            "item": "blackseanews",
+            "df": 10
+          },
+          {
+            "item": "5",
+            "df": 10
+          },
+          {
+            "item": "2026",
+            "df": 8
+          },
+          {
+            "item": "10",
+            "df": 8
+          },
+          {
+            "item": "wildberries",
+            "df": 8
+          },
+          {
+            "item": "23",
+            "df": 7
+          },
+          {
+            "item": "22 2026",
+            "df": 6
+          },
+          {
+            "item": "2",
+            "df": 6
+          },
+          {
+            "item": "1",
+            "df": 6
+          },
+          {
+            "item": "4",
+            "df": 6
+          }
+        ]
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 5479,
+        "df_max": 10,
+        "df_mean": 1.0064,
+        "share_df1": 0.9974,
+        "share_df_le2": 0.9991,
+        "buckets": {
+          "1": 5465,
+          "2": 9,
+          "3": 0,
+          "4-5": 3,
+          "6-10": 2,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2190,
+        "clusters_with_item": 1135,
+        "cluster_coverage": 0.5183,
+        "items_per_cluster_mean": 2.518,
+        "items_per_cluster_p50": 1,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "blackseanews",
+            "df": 10
+          },
+          {
+            "item": "wildberries",
+            "df": 8
+          },
+          {
+            "item": "the press project",
+            "df": 5
+          },
+          {
+            "item": "patrisnews",
+            "df": 4
+          },
+          {
+            "item": "politico",
+            "df": 4
+          },
+          {
+            "item": "mcdonald s",
+            "df": 2
+          },
+          {
+            "item": "dsnews ua",
+            "df": 2
+          },
+          {
+            "item": "el gobierno de trump avanza que impondra nuevos aranceles esperamos novedades pronto",
+            "df": 2
+          },
+          {
+            "item": "m11 severe delays as lanes closed after two crashes",
+            "df": 2
+          },
+          {
+            "item": "russian firing exercise off uk coast irresponsible says streeting",
+            "df": 2
+          },
+          {
+            "item": "ilaria salis condannata per aver licenziato senza giusta causa due collaboratori",
+            "df": 2
+          },
+          {
+            "item": "elysia roberts campaign for welfare checks after 2 family deaths",
+            "df": 2
+          }
+        ]
+      }
+    },
+    "2026-07-22": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 10346,
+        "df_max": 186,
+        "df_mean": 1.3512,
+        "share_df1": 0.8754,
+        "share_df_le2": 0.9474,
+        "buckets": {
+          "1": 9057,
+          "2": 745,
+          "3": 223,
+          "4-5": 159,
+          "6-10": 113,
+          "11-20": 32,
+          "21-50": 13,
+          "51-100": 3,
+          "101+": 1
+        },
+        "clusters_total": 2517,
+        "clusters_with_item": 1333,
+        "cluster_coverage": 0.5296,
+        "items_per_cluster_mean": 5.554,
+        "items_per_cluster_p50": 1,
+        "df_p50": 1.0,
+        "df_p90": 2.0,
+        "df_p95": 3.0,
+        "df_p99": 7.0,
+        "top_items": [
+          {
+            "item": "united states",
+            "df": 186
+          },
+          {
+            "item": "donald trump",
+            "df": 93
+          },
+          {
+            "item": "reuters",
+            "df": 70
+          },
+          {
+            "item": "x2013",
+            "df": 55
+          },
+          {
+            "item": "iran",
+            "df": 40
+          },
+          {
+            "item": "associated press",
+            "df": 40
+          },
+          {
+            "item": "us",
+            "df": 40
+          },
+          {
+            "item": "white house",
+            "df": 39
+          },
+          {
+            "item": "trump",
+            "df": 38
+          },
+          {
+            "item": "facebook",
+            "df": 26
+          },
+          {
+            "item": "young",
+            "df": 26
+          },
+          {
+            "item": "marco rubio",
+            "df": 24
+          }
+        ]
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 1884,
+        "df_max": 45,
+        "df_mean": 2.2691,
+        "share_df1": 0.5892,
+        "share_df_le2": 0.7787,
+        "buckets": {
+          "1": 1110,
+          "2": 357,
+          "3": 139,
+          "4-5": 139,
+          "6-10": 100,
+          "11-20": 32,
+          "21-50": 7,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2517,
+        "clusters_with_item": 1424,
+        "cluster_coverage": 0.5658,
+        "items_per_cluster_mean": 1.698,
+        "items_per_cluster_p50": 1,
+        "df_p50": 1.0,
+        "df_p90": 5.0,
+        "df_p95": 7.0,
+        "df_p99": 13.0,
+        "top_items": [
+          {
+            "item": "rt.com",
+            "df": 45
+          },
+          {
+            "item": "zazoom.it",
+            "df": 41
+          },
+          {
+            "item": "indiatimes.com",
+            "df": 36
+          },
+          {
+            "item": "dostor.org",
+            "df": 35
+          },
+          {
+            "item": "inewsgr.com",
+            "df": 31
+          },
+          {
+            "item": "allafrica.com",
+            "df": 24
+          },
+          {
+            "item": "ria.ru",
+            "df": 23
+          },
+          {
+            "item": "dw.com",
+            "df": 20
+          },
+          {
+            "item": "thehindu.com",
+            "df": 20
+          },
+          {
+            "item": "yahoo.com",
+            "df": 19
+          },
+          {
+            "item": "hindustantimes.com",
+            "df": 19
+          },
+          {
+            "item": "shorouknews.com",
+            "df": 19
+          }
+        ]
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 4932,
+        "df_max": 1,
+        "df_mean": 1.0,
+        "share_df1": 1.0,
+        "share_df_le2": 1.0,
+        "buckets": {
+          "1": 4932,
+          "2": 0,
+          "3": 0,
+          "4-5": 0,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2517,
+        "clusters_with_item": 1424,
+        "cluster_coverage": 0.5658,
+        "items_per_cluster_mean": 1.959,
+        "items_per_cluster_p50": 1,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "jabar.jpnn.com/kriminal/32260/19-terdakwa-kasus-perdagangan-bayi-ke-singapura-divonis-bersalah-otak-sindikat-dihukum-7-tahun",
+            "df": 1
+          },
+          {
+            "item": "bandung.kompas.com/read/2026/07/22/072000778/vonis-kasus-perdagangan-bayi-ke-singapura-otak-sindikat-dihukum-7-tahun",
+            "df": 1
+          },
+          {
+            "item": "24-ore.com/category/kosova/page/595",
+            "df": 1
+          },
+          {
+            "item": "24-ore.com/category/kosova/page/596",
+            "df": 1
+          },
+          {
+            "item": "srilankamirror.com/news/court-re-issues-arrest-warrant-against-basil-rajapaksa",
+            "df": 1
+          },
+          {
+            "item": "m24.ru/news/22072026/922283",
+            "df": 1
+          },
+          {
+            "item": "kommersant.ru/doc/8831733",
+            "df": 1
+          },
+          {
+            "item": "news.mail.ru/society/71716269",
+            "df": 1
+          },
+          {
+            "item": "profile.ru/news/society/logisticheskij-kompleks-wildberries-v-krasnodare-evakuirovali-1883400",
+            "df": 1
+          },
+          {
+            "item": "mk.ru/incident/2026/07/22/krasnodarskiy-logisticheskiy-centr-wildberries-srochno-evakuirovan.html",
+            "df": 1
+          },
+          {
+            "item": "vesti.ru/ns/wildberries-ehvakuirovala-sotrudnikov-kompleksa-v-krasnodare",
+            "df": 1
+          },
+          {
+            "item": "vm.ru/news/1344273-logisticheskij-centr-wildberries-v-krasnodare-evakuirovan",
+            "df": 1
+          }
+        ]
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 3723,
+        "df_max": 14,
+        "df_mean": 1.0295,
+        "share_df1": 0.9852,
+        "share_df_le2": 0.9946,
+        "buckets": {
+          "1": 3668,
+          "2": 35,
+          "3": 8,
+          "4-5": 8,
+          "6-10": 3,
+          "11-20": 1,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2517,
+        "clusters_with_item": 1223,
+        "cluster_coverage": 0.4859,
+        "items_per_cluster_mean": 1.523,
+        "items_per_cluster_p50": 0,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 2.0,
+        "top_items": [
+          {
+            "item": "2026",
+            "df": 14
+          },
+          {
+            "item": "21",
+            "df": 9
+          },
+          {
+            "item": "3",
+            "df": 7
+          },
+          {
+            "item": "21 2026",
+            "df": 6
+          },
+          {
+            "item": "100",
+            "df": 5
+          },
+          {
+            "item": "4",
+            "df": 5
+          },
+          {
+            "item": "7",
+            "df": 5
+          },
+          {
+            "item": "13",
+            "df": 4
+          },
+          {
+            "item": "2",
+            "df": 4
+          },
+          {
+            "item": "blackseanews",
+            "df": 4
+          },
+          {
+            "item": "11",
+            "df": 4
+          },
+          {
+            "item": "22",
+            "df": 4
+          }
+        ]
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 3585,
+        "df_max": 4,
+        "df_mean": 1.0086,
+        "share_df1": 0.9927,
+        "share_df_le2": 0.9989,
+        "buckets": {
+          "1": 3559,
+          "2": 22,
+          "3": 3,
+          "4-5": 1,
+          "6-10": 0,
+          "11-20": 0,
+          "21-50": 0,
+          "51-100": 0,
+          "101+": 0
+        },
+        "clusters_total": 2517,
+        "clusters_with_item": 1101,
+        "cluster_coverage": 0.4374,
+        "items_per_cluster_mean": 1.437,
+        "items_per_cluster_p50": 0,
+        "df_p50": 1.0,
+        "df_p90": 1.0,
+        "df_p95": 1.0,
+        "df_p99": 1.0,
+        "top_items": [
+          {
+            "item": "blackseanews",
+            "df": 4
+          },
+          {
+            "item": "brent 92",
+            "df": 3
+          },
+          {
+            "item": "dsnews ua",
+            "df": 3
+          },
+          {
+            "item": "gazeta kg",
+            "df": 3
+          },
+          {
+            "item": "wildberries",
+            "df": 2
+          },
+          {
+            "item": "hegseth estimates cost of iran war at 37 5 billion",
+            "df": 2
+          },
+          {
+            "item": "hegseth says iran war has cost 37 5 billion so far",
+            "df": 2
+          },
+          {
+            "item": "m11 severe delays as lanes closed after two crashes",
+            "df": 2
+          },
+          {
+            "item": "goldman sachs brent 120",
+            "df": 2
+          },
+          {
+            "item": "e ancora ricoverato fedez in ospedale le sue condizioni",
+            "df": 2
+          },
+          {
+            "item": "61 ryanair",
+            "df": 2
+          },
+          {
+            "item": "ap news summary at 1 46 p m edt",
+            "df": 2
+          }
+        ]
+      }
+    },
+    "2026-07-21": {
+      "entity": {
+        "lane": "entity",
+        "distinct": 0,
+        "clusters_with_item": 0
+      },
+      "domain": {
+        "lane": "domain",
+        "distinct": 0,
+        "clusters_with_item": 0
+      },
+      "url": {
+        "lane": "url",
+        "distinct": 0,
+        "clusters_with_item": 0
+      },
+      "headline": {
+        "lane": "headline",
+        "distinct": 0,
+        "clusters_with_item": 0
+      },
+      "headline_clean": {
+        "lane": "headline_clean",
+        "distinct": 0,
+        "clusters_with_item": 0
+      }
+    }
+  },
+  "df_max_sensitivity": {
+    "entity": {
+      "observed_df_max": 383,
+      "candidates": [
+        50,
+        100,
+        200,
+        383,
+        500,
+        1000,
+        2000
+      ],
+      "rows": [
+        {
+          "df": 1,
+          "50": 1.0,
+          "100": 1.0,
+          "200": 1.0,
+          "383": 1.0,
+          "500": 1.0,
+          "1000": 1.0,
+          "2000": 1.0,
+          "spread": 0.0
+        },
+        {
+          "df": 2,
+          "50": 0.4898,
+          "100": 0.4949,
+          "200": 0.4975,
+          "383": 0.4987,
+          "500": 0.499,
+          "1000": 0.4995,
+          "2000": 0.4997,
+          "spread": 0.0099
+        },
+        {
+          "df": 3,
+          "50": 0.3197,
+          "100": 0.3266,
+          "200": 0.33,
+          "383": 0.3316,
+          "500": 0.332,
+          "1000": 0.3327,
+          "2000": 0.333,
+          "spread": 0.0133
+        },
+        {
+          "df": 5,
+          "50": 0.1837,
+          "100": 0.1919,
+          "200": 0.196,
+          "383": 0.1979,
+          "500": 0.1984,
+          "1000": 0.1992,
+          "2000": 0.1996,
+          "spread": 0.0159
+        },
+        {
+          "df": 10,
+          "50": 0.0816,
+          "100": 0.0909,
+          "200": 0.0955,
+          "383": 0.0976,
+          "500": 0.0982,
+          "1000": 0.0991,
+          "2000": 0.0995,
+          "spread": 0.0179
+        },
+        {
+          "df": 25,
+          "50": 0.0204,
+          "100": 0.0303,
+          "200": 0.0352,
+          "383": 0.0375,
+          "500": 0.0381,
+          "1000": 0.039,
+          "2000": 0.0395,
+          "spread": 0.0191
+        },
+        {
+          "df": 100,
+          "50": -0.0102,
+          "100": 0.0,
+          "200": 0.005,
+          "383": 0.0074,
+          "500": 0.008,
+          "1000": 0.009,
+          "2000": 0.0095,
+          "spread": 0.0197
+        }
+      ]
+    },
+    "domain": {
+      "observed_df_max": 168,
+      "candidates": [
+        50,
+        100,
+        168,
+        200,
+        383,
+        500,
+        1000,
+        2000
+      ],
+      "rows": [
+        {
+          "df": 1,
+          "50": 1.0,
+          "100": 1.0,
+          "168": 1.0,
+          "200": 1.0,
+          "383": 1.0,
+          "500": 1.0,
+          "1000": 1.0,
+          "2000": 1.0,
+          "spread": 0.0
+        },
+        {
+          "df": 2,
+          "50": 0.4898,
+          "100": 0.4949,
+          "168": 0.497,
+          "200": 0.4975,
+          "383": 0.4987,
+          "500": 0.499,
+          "1000": 0.4995,
+          "2000": 0.4997,
+          "spread": 0.0099
+        },
+        {
+          "df": 3,
+          "50": 0.3197,
+          "100": 0.3266,
+          "168": 0.3293,
+          "200": 0.33,
+          "383": 0.3316,
+          "500": 0.332,
+          "1000": 0.3327,
+          "2000": 0.333,
+          "spread": 0.0133
+        },
+        {
+          "df": 5,
+          "50": 0.1837,
+          "100": 0.1919,
+          "168": 0.1952,
+          "200": 0.196,
+          "383": 0.1979,
+          "500": 0.1984,
+          "1000": 0.1992,
+          "2000": 0.1996,
+          "spread": 0.0159
+        },
+        {
+          "df": 10,
+          "50": 0.0816,
+          "100": 0.0909,
+          "168": 0.0946,
+          "200": 0.0955,
+          "383": 0.0976,
+          "500": 0.0982,
+          "1000": 0.0991,
+          "2000": 0.0995,
+          "spread": 0.0179
+        },
+        {
+          "df": 25,
+          "50": 0.0204,
+          "100": 0.0303,
+          "168": 0.0343,
+          "200": 0.0352,
+          "383": 0.0375,
+          "500": 0.0381,
+          "1000": 0.039,
+          "2000": 0.0395,
+          "spread": 0.0191
+        },
+        {
+          "df": 100,
+          "50": -0.0102,
+          "100": 0.0,
+          "168": 0.0041,
+          "200": 0.005,
+          "383": 0.0074,
+          "500": 0.008,
+          "1000": 0.009,
+          "2000": 0.0095,
+          "spread": 0.0197
+        }
+      ]
+    },
+    "url": {
+      "observed_df_max": 2,
+      "candidates": [
+        2,
+        50,
+        100,
+        200,
+        383,
+        500,
+        1000,
+        2000
+      ],
+      "rows": [
+        {
+          "df": 1,
+          "2": 1.0,
+          "50": 1.0,
+          "100": 1.0,
+          "200": 1.0,
+          "383": 1.0,
+          "500": 1.0,
+          "1000": 1.0,
+          "2000": 1.0,
+          "spread": 0.0
+        },
+        {
+          "df": 2,
+          "2": 0.0,
+          "50": 0.4898,
+          "100": 0.4949,
+          "200": 0.4975,
+          "383": 0.4987,
+          "500": 0.499,
+          "1000": 0.4995,
+          "2000": 0.4997,
+          "spread": 0.4997
+        },
+        {
+          "df": 3,
+          "2": -0.3333,
+          "50": 0.3197,
+          "100": 0.3266,
+          "200": 0.33,
+          "383": 0.3316,
+          "500": 0.332,
+          "1000": 0.3327,
+          "2000": 0.333,
+          "spread": 0.6663
+        },
+        {
+          "df": 5,
+          "2": -0.6,
+          "50": 0.1837,
+          "100": 0.1919,
+          "200": 0.196,
+          "383": 0.1979,
+          "500": 0.1984,
+          "1000": 0.1992,
+          "2000": 0.1996,
+          "spread": 0.7996
+        },
+        {
+          "df": 10,
+          "2": -0.8,
+          "50": 0.0816,
+          "100": 0.0909,
+          "200": 0.0955,
+          "383": 0.0976,
+          "500": 0.0982,
+          "1000": 0.0991,
+          "2000": 0.0995,
+          "spread": 0.8995
+        },
+        {
+          "df": 25,
+          "2": -0.92,
+          "50": 0.0204,
+          "100": 0.0303,
+          "200": 0.0352,
+          "383": 0.0375,
+          "500": 0.0381,
+          "1000": 0.039,
+          "2000": 0.0395,
+          "spread": 0.9595
+        },
+        {
+          "df": 100,
+          "2": -0.98,
+          "50": -0.0102,
+          "100": 0.0,
+          "200": 0.005,
+          "383": 0.0074,
+          "500": 0.008,
+          "1000": 0.009,
+          "2000": 0.0095,
+          "spread": 0.9895
+        }
+      ]
+    },
+    "headline": {
+      "observed_df_max": 23,
+      "candidates": [
+        23,
+        50,
+        100,
+        200,
+        383,
+        500,
+        1000,
+        2000
+      ],
+      "rows": [
+        {
+          "df": 1,
+          "23": 1.0,
+          "50": 1.0,
+          "100": 1.0,
+          "200": 1.0,
+          "383": 1.0,
+          "500": 1.0,
+          "1000": 1.0,
+          "2000": 1.0,
+          "spread": 0.0
+        },
+        {
+          "df": 2,
+          "23": 0.4773,
+          "50": 0.4898,
+          "100": 0.4949,
+          "200": 0.4975,
+          "383": 0.4987,
+          "500": 0.499,
+          "1000": 0.4995,
+          "2000": 0.4997,
+          "spread": 0.0224
+        },
+        {
+          "df": 3,
+          "23": 0.303,
+          "50": 0.3197,
+          "100": 0.3266,
+          "200": 0.33,
+          "383": 0.3316,
+          "500": 0.332,
+          "1000": 0.3327,
+          "2000": 0.333,
+          "spread": 0.03
+        },
+        {
+          "df": 5,
+          "23": 0.1636,
+          "50": 0.1837,
+          "100": 0.1919,
+          "200": 0.196,
+          "383": 0.1979,
+          "500": 0.1984,
+          "1000": 0.1992,
+          "2000": 0.1996,
+          "spread": 0.036
+        },
+        {
+          "df": 10,
+          "23": 0.0591,
+          "50": 0.0816,
+          "100": 0.0909,
+          "200": 0.0955,
+          "383": 0.0976,
+          "500": 0.0982,
+          "1000": 0.0991,
+          "2000": 0.0995,
+          "spread": 0.0404
+        },
+        {
+          "df": 25,
+          "23": -0.0036,
+          "50": 0.0204,
+          "100": 0.0303,
+          "200": 0.0352,
+          "383": 0.0375,
+          "500": 0.0381,
+          "1000": 0.039,
+          "2000": 0.0395,
+          "spread": 0.0431
+        },
+        {
+          "df": 100,
+          "23": -0.035,
+          "50": -0.0102,
+          "100": 0.0,
+          "200": 0.005,
+          "383": 0.0074,
+          "500": 0.008,
+          "1000": 0.009,
+          "2000": 0.0095,
+          "spread": 0.0445
+        }
+      ]
+    },
+    "headline_clean": {
+      "observed_df_max": 15,
+      "candidates": [
+        15,
+        50,
+        100,
+        200,
+        383,
+        500,
+        1000,
+        2000
+      ],
+      "rows": [
+        {
+          "df": 1,
+          "15": 1.0,
+          "50": 1.0,
+          "100": 1.0,
+          "200": 1.0,
+          "383": 1.0,
+          "500": 1.0,
+          "1000": 1.0,
+          "2000": 1.0,
+          "spread": 0.0
+        },
+        {
+          "df": 2,
+          "15": 0.4643,
+          "50": 0.4898,
+          "100": 0.4949,
+          "200": 0.4975,
+          "383": 0.4987,
+          "500": 0.499,
+          "1000": 0.4995,
+          "2000": 0.4997,
+          "spread": 0.0354
+        },
+        {
+          "df": 3,
+          "15": 0.2857,
+          "50": 0.3197,
+          "100": 0.3266,
+          "200": 0.33,
+          "383": 0.3316,
+          "500": 0.332,
+          "1000": 0.3327,
+          "2000": 0.333,
+          "spread": 0.0473
+        },
+        {
+          "df": 5,
+          "15": 0.1429,
+          "50": 0.1837,
+          "100": 0.1919,
+          "200": 0.196,
+          "383": 0.1979,
+          "500": 0.1984,
+          "1000": 0.1992,
+          "2000": 0.1996,
+          "spread": 0.0567
+        },
+        {
+          "df": 10,
+          "15": 0.0357,
+          "50": 0.0816,
+          "100": 0.0909,
+          "200": 0.0955,
+          "383": 0.0976,
+          "500": 0.0982,
+          "1000": 0.0991,
+          "2000": 0.0995,
+          "spread": 0.0638
+        },
+        {
+          "df": 25,
+          "15": -0.0286,
+          "50": 0.0204,
+          "100": 0.0303,
+          "200": 0.0352,
+          "383": 0.0375,
+          "500": 0.0381,
+          "1000": 0.039,
+          "2000": 0.0395,
+          "spread": 0.0681
+        },
+        {
+          "df": 100,
+          "15": -0.0607,
+          "50": -0.0102,
+          "100": 0.0,
+          "200": 0.005,
+          "383": 0.0074,
+          "500": 0.008,
+          "1000": 0.009,
+          "2000": 0.0095,
+          "spread": 0.0702
+        }
+      ]
+    }
+  },
+  "df_max_proposals": {
+    "entity": {
+      "proposed": 600,
+      "degenerate": false,
+      "basis": "fixed constant ≥ observed max, rounded to 50 — stability of a frozen denominator over nightly exactness",
+      "observed_df_max_primary": 383,
+      "observed_df_max_range": [
+        171,
+        600
+      ],
+      "norm_rarity_df2": 0.4992,
+      "delta_vs_observed_df2": 0.0005,
+      "note": "observed max swings 171–600 across the profiled nights (3.51×) while p99 tonight is only 9.0 — the max is set by a handful of ubiquitous items and is exactly the kind of quantity that must not drift under a FROZEN fingerprint. Fixing it costs |Δ|=0.0005 on a df=2 item, i.e. nothing."
+    },
+    "domain": {
+      "proposed": 200,
+      "degenerate": false,
+      "basis": "fixed constant ≥ observed max, rounded to 50 — stability of a frozen denominator over nightly exactness",
+      "observed_df_max_primary": 168,
+      "observed_df_max_range": [
+        45,
+        191
+      ],
+      "norm_rarity_df2": 0.4975,
+      "delta_vs_observed_df2": 0.0005,
+      "note": "observed max swings 45–191 across the profiled nights (4.24×) while p99 tonight is only 49.63 — the max is set by a handful of ubiquitous items and is exactly the kind of quantity that must not drift under a FROZEN fingerprint. Fixing it costs |Δ|=0.0005 on a df=2 item, i.e. nothing."
+    },
+    "url": {
+      "proposed": 0,
+      "degenerate": true,
+      "basis": "DEGENERATE — observed df_max ≤ 2, there is no rarity gradient to normalise; treat a shared item in this lane as BINARY evidence (weight 1.0) and do not store a df_max for it",
+      "observed_df_max_primary": 2,
+      "observed_df_max_range": [
+        1,
+        2
+      ],
+      "norm_rarity_df2": null,
+      "delta_vs_observed_df2": null,
+      "note": "observed max is 2 across every profiled night: essentially every item in this lane is unique, so rarity weighting adds nothing. Any df_max would be arbitrary — the sensitivity table's 0.4898 'move' on df=2 is an artifact of that arbitrariness, not a calibration."
+    },
+    "headline": {
+      "proposed": 50,
+      "degenerate": false,
+      "basis": "fixed constant ≥ observed max, rounded to 50 — stability of a frozen denominator over nightly exactness",
+      "observed_df_max_primary": 23,
+      "observed_df_max_range": [
+        11,
+        34
+      ],
+      "norm_rarity_df2": 0.4898,
+      "delta_vs_observed_df2": 0.0125,
+      "note": "observed max swings 11–34 across the profiled nights (3.09×) while p99 tonight is only 2.0 — the max is set by a handful of ubiquitous items and is exactly the kind of quantity that must not drift under a FROZEN fingerprint. Fixing it costs |Δ|=0.0125 on a df=2 item, i.e. nothing."
+    },
+    "headline_clean": {
+      "proposed": 50,
+      "degenerate": false,
+      "basis": "fixed constant ≥ observed max, rounded to 50 — stability of a frozen denominator over nightly exactness",
+      "observed_df_max_primary": 15,
+      "observed_df_max_range": [
+        4,
+        16
+      ],
+      "norm_rarity_df2": 0.4898,
+      "delta_vs_observed_df2": 0.0255,
+      "note": "observed max swings 4–16 across the profiled nights (4.00×) while p99 tonight is only 1.0 — the max is set by a handful of ubiquitous items and is exactly the kind of quantity that must not drift under a FROZEN fingerprint. Fixing it costs |Δ|=0.0255 on a df=2 item, i.e. nothing."
+    }
+  },
+  "families": {
+    "caspian": {
+      "clusters": 9,
+      "pairs": 36,
+      "cluster_ids": [
+        36131,
+        36240,
+        36492,
+        36133,
+        36147,
+        36174,
+        36177,
+        36178,
+        36244
+      ]
+    },
+    "berlin-pride": {
+      "clusters": 22,
+      "pairs": 231,
+      "cluster_ids": [
+        35781,
+        35783,
+        35791,
+        35793,
+        35795,
+        35798,
+        35821,
+        35822,
+        35823,
+        35827,
+        35833,
+        35835,
+        35840,
+        35845,
+        35852,
+        35858,
+        35860,
+        35862,
+        35871,
+        35872,
+        35873,
+        35874
+      ]
+    }
+  },
+  "false_pairs_n": 500,
+  "lane_discrimination": {
+    "entity": {
+      "true_pairs": 267,
+      "false_pairs": 500,
+      "true_fire_rate": 0.4569,
+      "false_fire_rate": 0.04,
+      "lift": 11.423,
+      "true_score_p50": 0.0,
+      "false_score_p95": 0.0,
+      "auc": 0.7147,
+      "true_score": {
+        "n": 267,
+        "mean": 0.0596,
+        "min": 0.0,
+        "max": 0.4987,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.041,
+        "p95": 0.3316,
+        "p99": 0.4987
+      },
+      "false_score": {
+        "n": 500,
+        "mean": 0.0006,
+        "min": 0.0,
+        "max": 0.0642,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.0116
+      }
+    },
+    "domain": {
+      "true_pairs": 267,
+      "false_pairs": 500,
+      "true_fire_rate": 0.0599,
+      "false_fire_rate": 0.032,
+      "lift": 1.873,
+      "true_score_p50": 0.0,
+      "false_score_p95": 0.0,
+      "auc": 0.5141,
+      "true_score": {
+        "n": 267,
+        "mean": 0.0021,
+        "min": 0.0,
+        "max": 0.1617,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.011,
+        "p99": 0.044
+      },
+      "false_score": {
+        "n": 500,
+        "mean": 0.0017,
+        "min": 0.0,
+        "max": 0.497,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.0379
+      }
+    },
+    "url": {
+      "true_pairs": 267,
+      "false_pairs": 500,
+      "true_fire_rate": 0.0,
+      "false_fire_rate": 0.0,
+      "lift": null,
+      "true_score_p50": 0.0,
+      "false_score_p95": 0.0,
+      "auc": 0.5,
+      "true_score": {
+        "n": 267,
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "false_score": {
+        "n": 500,
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      }
+    },
+    "headline": {
+      "true_pairs": 267,
+      "false_pairs": 500,
+      "true_fire_rate": 0.0375,
+      "false_fire_rate": 0.004,
+      "lift": 9.363,
+      "true_score_p50": 0.0,
+      "false_score_p95": 0.0,
+      "auc": 0.5168,
+      "true_score": {
+        "n": 267,
+        "mean": 0.011,
+        "min": 0.0,
+        "max": 0.4773,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.303
+      },
+      "false_score": {
+        "n": 500,
+        "mean": 0.0006,
+        "min": 0.0,
+        "max": 0.303,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      }
+    },
+    "headline_clean": {
+      "true_pairs": 267,
+      "false_pairs": 500,
+      "true_fire_rate": 0.0187,
+      "false_fire_rate": 0.0,
+      "lift": null,
+      "true_score_p50": 0.0,
+      "false_score_p95": 0.0,
+      "auc": 0.5094,
+      "true_score": {
+        "n": 267,
+        "mean": 0.0067,
+        "min": 0.0,
+        "max": 0.4643,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.2857
+      },
+      "false_score": {
+        "n": 500,
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "p1": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      }
+    }
+  },
+  "domain_gate_sweep": [
+    {
+      "df_gate": 1,
+      "true_fire_rate": 0.0,
+      "false_fire_rate": 0.0,
+      "lift": null,
+      "true_n": 0,
+      "false_n": 0
+    },
+    {
+      "df_gate": 2,
+      "true_fire_rate": 0.0,
+      "false_fire_rate": 0.002,
+      "lift": 0.0,
+      "true_n": 0,
+      "false_n": 1
+    },
+    {
+      "df_gate": 3,
+      "true_fire_rate": 0.0,
+      "false_fire_rate": 0.002,
+      "lift": 0.0,
+      "true_n": 0,
+      "false_n": 1
+    },
+    {
+      "df_gate": 5,
+      "true_fire_rate": 0.0,
+      "false_fire_rate": 0.002,
+      "lift": 0.0,
+      "true_n": 0,
+      "false_n": 1
+    },
+    {
+      "df_gate": 10,
+      "true_fire_rate": 0.0037,
+      "false_fire_rate": 0.002,
+      "lift": 1.873,
+      "true_n": 1,
+      "false_n": 1
+    },
+    {
+      "df_gate": 20,
+      "true_fire_rate": 0.0112,
+      "false_fire_rate": 0.01,
+      "lift": 1.124,
+      "true_n": 3,
+      "false_n": 5
+    },
+    {
+      "df_gate": 50,
+      "true_fire_rate": 0.0487,
+      "false_fire_rate": 0.016,
+      "lift": 3.043,
+      "true_n": 13,
+      "false_n": 8
+    },
+    {
+      "df_gate": "any",
+      "true_fire_rate": 0.0599,
+      "false_fire_rate": 0.032,
+      "lift": 1.873,
+      "true_n": 16,
+      "false_n": 16
+    }
+  ],
+  "structural": {
+    "primary_day": "2026-07-28",
+    "prior_day": "2026-07-27",
+    "sample_refs": 24192,
+    "distinct_refs": 24192,
+    "sample_refs_are_disjoint": true,
+    "duplicate_source_urls": 0,
+    "rows_with_url": 1001964,
+    "snapshot_window_h": [
+      168
+    ],
+    "xday_shared_signals": 15159,
+    "xday_share": 0.6266
+  },
+  "cross_day": {
+    "_meta": {
+      "new_day": "2026-07-28",
+      "old_day": "2026-07-22",
+      "true_pairs": 166,
+      "false_pairs": 500,
+      "old_day_resolvability": 0.1641,
+      "days_skipped_label_void": [
+        "2026-07-27",
+        "2026-07-26",
+        "2026-07-25",
+        "2026-07-24",
+        "2026-07-23"
+      ],
+      "day_gap": 6
+    },
+    "entity": {
+      "true_fire_rate": 0.7711,
+      "false_fire_rate": 0.024,
+      "lift": 32.129,
+      "auc": 0.8808
+    },
+    "domain": {
+      "true_fire_rate": 0.6145,
+      "false_fire_rate": 0.012,
+      "lift": 51.205,
+      "auc": 0.802
+    },
+    "url": {
+      "true_fire_rate": 0.512,
+      "false_fire_rate": 0.0,
+      "lift": null,
+      "auc": 0.756
+    },
+    "headline": {
+      "true_fire_rate": 0.4458,
+      "false_fire_rate": 0.0,
+      "lift": null,
+      "auc": 0.7229
+    },
+    "headline_clean": {
+      "true_fire_rate": 0.4036,
+      "false_fire_rate": 0.0,
+      "lift": null,
+      "auc": 0.7018
+    }
+  },
+  "seed_weights": {
+    "rule": "w_lane = precision(true_fire, false_fire), normalised to max=1.0",
+    "precision_by_measured_lane": {
+      "entity": 0.9195,
+      "domain": 0.6518,
+      "url": 0.0,
+      "headline": 0.9036,
+      "headline_clean": 1.0
+    },
+    "precision": {
+      "w_E": 0.9195,
+      "w_U": 0.6518,
+      "w_H": 1.0
+    },
+    "seed_weights": {
+      "w_E": 0.92,
+      "w_U": 0.652,
+      "w_H": 1.0
+    },
+    "lane_mapping": {
+      "w_E": "entity",
+      "w_U": "max(url, domain) — the locator lane",
+      "w_H": "headline_clean (post-§4d hygiene)"
+    },
+    "caveats": [
+      "`url` fires on only 0.0% of TRUE pairs — whatever its precision, it contributes almost no recall, so its weight decides very little.",
+      "`headline` fires on only 3.8% of TRUE pairs — whatever its precision, it contributes almost no recall, so its weight decides very little.",
+      "`headline_clean` fired on 0 of 500 false pairs, so its precision of 1.0000 is an UPPER BOUND, not a measurement — the rule of three puts the true false-rate anywhere below 0.60%. Its weight is the least trustworthy number in this table.",
+      "`headline_clean` fires on only 1.9% of TRUE pairs — whatever its precision, it contributes almost no recall, so its weight decides very little."
+    ],
+    "status": "SEED — the M1/M2 grid sets the operating point; these feed it"
+  },
+  "lane_h_language_coverage": [
+    {
+      "lang": "xx",
+      "n_signals": 14620,
+      "empty_headline_keys": 3595,
+      "residue_headline_keys": 2314,
+      "empty_share": 0.2459,
+      "unusable_share": 0.4042
+    },
+    {
+      "lang": "en",
+      "n_signals": 7488,
+      "empty_headline_keys": 27,
+      "residue_headline_keys": 32,
+      "empty_share": 0.0036,
+      "unusable_share": 0.0079
+    },
+    {
+      "lang": "ru",
+      "n_signals": 319,
+      "empty_headline_keys": 224,
+      "residue_headline_keys": 67,
+      "empty_share": 0.7022,
+      "unusable_share": 0.9122
+    },
+    {
+      "lang": "pt",
+      "n_signals": 253,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    },
+    {
+      "lang": "ar",
+      "n_signals": 191,
+      "empty_headline_keys": 152,
+      "residue_headline_keys": 39,
+      "empty_share": 0.7958,
+      "unusable_share": 1.0
+    },
+    {
+      "lang": "es",
+      "n_signals": 142,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    },
+    {
+      "lang": "tr",
+      "n_signals": 136,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    },
+    {
+      "lang": "id",
+      "n_signals": 118,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    },
+    {
+      "lang": "de",
+      "n_signals": 83,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    },
+    {
+      "lang": "uk",
+      "n_signals": 81,
+      "empty_headline_keys": 40,
+      "residue_headline_keys": 37,
+      "empty_share": 0.4938,
+      "unusable_share": 0.9506
+    },
+    {
+      "lang": "fr",
+      "n_signals": 64,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    },
+    {
+      "lang": "it",
+      "n_signals": 52,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    },
+    {
+      "lang": "fa",
+      "n_signals": 18,
+      "empty_headline_keys": 18,
+      "residue_headline_keys": 0,
+      "empty_share": 1.0,
+      "unusable_share": 1.0
+    },
+    {
+      "lang": "ro",
+      "n_signals": 17,
+      "empty_headline_keys": 0,
+      "residue_headline_keys": 0,
+      "empty_share": 0.0,
+      "unusable_share": 0.0
+    }
+  ],
+  "lane_h_hygiene": {
+    "min_chars": 8,
+    "resolved": 23599,
+    "empty": 4060,
+    "residue": 2497,
+    "empty_share": 0.172,
+    "residue_share": 0.1058,
+    "outlet_residue": 97,
+    "outlet_residue_share": 0.0041,
+    "top_raw_keys": [
+      {
+        "item": "2026",
+        "df": 23
+      },
+      {
+        "item": "23",
+        "df": 21
+      },
+      {
+        "item": "5",
+        "df": 20
+      },
+      {
+        "item": "100",
+        "df": 20
+      },
+      {
+        "item": "27",
+        "df": 19
+      },
+      {
+        "item": "22",
+        "df": 19
+      },
+      {
+        "item": "24",
+        "df": 19
+      },
+      {
+        "item": "21",
+        "df": 18
+      }
+    ],
+    "top_clean_keys": [
+      {
+        "item": "blackseanews",
+        "df": 15
+      },
+      {
+        "item": "patrisnews",
+        "df": 15
+      },
+      {
+        "item": "wildberries",
+        "df": 9
+      },
+      {
+        "item": "dsnews ua",
+        "df": 9
+      },
+      {
+        "item": "the press project",
+        "df": 6
+      },
+      {
+        "item": "bloomberg",
+        "df": 4
+      },
+      {
+        "item": "politico",
+        "df": 3
+      },
+      {
+        "item": "caucasian knot",
+        "df": 3
+      }
+    ]
+  },
+  "noise_floor": {
+    "rater": "model-labeled, single rater (see artifact header)",
+    "n_sampled": 200,
+    "n_labeled": 200,
+    "counts": {
+      "GARBAGE": 106,
+      "REAL": 88,
+      "REAL_WEAK": 6
+    },
+    "garbage_rate": 0.53,
+    "unusable_rate": 0.56,
+    "by_provenance": {
+      "gdelt_any": {
+        "n": 146,
+        "garbage": 82,
+        "real": 61,
+        "real_weak": 3,
+        "garbage_rate": 0.5616,
+        "unusable_rate": 0.5822
+      },
+      "nlp_only": {
+        "n": 54,
+        "garbage": 24,
+        "real": 27,
+        "real_weak": 3,
+        "garbage_rate": 0.4444,
+        "unusable_rate": 0.5
+      }
+    },
+    "by_source_array": {
+      "gdelt_organizations": {
+        "n": 83,
+        "garbage": 67,
+        "real": 16,
+        "real_weak": 0,
+        "garbage_rate": 0.8072,
+        "unusable_rate": 0.8072
+      },
+      "gdelt_persons": {
+        "n": 63,
+        "garbage": 15,
+        "real": 45,
+        "real_weak": 3,
+        "garbage_rate": 0.2381,
+        "unusable_rate": 0.2857
+      },
+      "nlp_persons": {
+        "n": 56,
+        "garbage": 24,
+        "real": 29,
+        "real_weak": 3,
+        "garbage_rate": 0.4286,
+        "unusable_rate": 0.4821
+      }
+    },
+    "items": [
+      {
+        "name": "a council to ministers",
+        "raw_variants": [
+          "a council to ministers"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "El Consejo de Ministros aprueba contratos de Defensa por casi 196 millones para modernizar capacidades y reforzar el sostenimiento",
+        "example_lang": "xx",
+        "example_source": "infodefensa.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "a jay hatfield",
+        "raw_variants": [
+          "a jay hatfield"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "النفط يتجاوز 95 دولارًا مع تمسك واشنطن بإبقاء هرمز مفتوحًا رغم الهجمات الإيرانية",
+        "example_lang": "xx",
+        "example_source": "dostor.org",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "a sonam raghuvanshi",
+        "raw_variants": [
+          "a sonam raghuvanshi"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "सोनम रघुवंशी को बड़ा झटका, सुप्रीम कोर्ट से जमानत रद; तीन हफ्ते में सरेंडर का आदेश - sc sets aside bail granted to sonam raghuvanshi grants 3 weeks to surrender",
+        "example_lang": "xx",
+        "example_source": "jagran.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "ahilyanagar",
+        "raw_variants": [
+          "Ahilyanagar"
+        ],
+        "provenance": {
+          "nlp:GPE": 3
+        },
+        "example_headline": "19-year-old allegedly ends life over low NEET retest marks in Ahilyanagar | Nashik News",
+        "example_lang": "en",
+        "example_source": "indiatimes.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "aitor alcalde colomer getty",
+        "raw_variants": [
+          "aitor alcalde colomer getty"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Barcelona set Frenkie de Jong knee surgery deadline",
+        "example_lang": "en",
+        "example_source": "barcablaugranes.com",
+        "verdict": "REAL_WEAK",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "al powerball",
+        "raw_variants": [
+          "al powerball"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Números ganadores del Powerball del sábado 25 de julio de 2026: los resultados del último sorteo",
+        "example_lang": "xx",
+        "example_source": "elpais.com.uy",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "aldi co",
+        "raw_variants": [
+          "Aldi & Co.",
+          "Aldi & Co"
+        ],
+        "provenance": {
+          "nlp:ORG": 2
+        },
+        "example_headline": "Beeren-Rückruf bei Lidl, Aldi & Co.: Noroviren können in Produkt sein",
+        "example_lang": "xx",
+        "example_source": "infranken.de",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "alejandro smith",
+        "raw_variants": [
+          "alejandro smith"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "España ganó el Mundial en Cataluña: del ridículo de la CUP a la pulsera de Dalmau y el muro de Ferran",
+        "example_lang": "xx",
+        "example_source": "elconfidencial.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "american israel public affairs committee",
+        "raw_variants": [
+          "american israel public affairs committee"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "AP News Summary at 8:02 a.m. EDT",
+        "example_lang": "en",
+        "example_source": "yumasun.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "anas sarwar arbroath",
+        "raw_variants": [
+          "anas sarwar arbroath"
+        ],
+        "provenance": {
+          "gdelt_persons": 8
+        },
+        "example_headline": "Monica Lennon 'not going to rule out' Scottish Labour leadership bid | The Wiltshire Gazette and Herald",
+        "example_lang": "en",
+        "example_source": "gazetteandherald.co.uk",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "andre romani",
+        "raw_variants": [
+          "andre romani"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Lula leads Flavio Bolsonaro in Brazil election poll",
+        "example_lang": "en",
+        "example_source": "whbl.com",
+        "verdict": "REAL_WEAK",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "apollo gallery",
+        "raw_variants": [
+          "Apollo Gallery"
+        ],
+        "provenance": {
+          "nlp:ORG": 5
+        },
+        "example_headline": "Louvre reopens Apollo Gallery after a brazen heist, but no jewels on display",
+        "example_lang": "en",
+        "example_source": "abcnews.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "arun govil",
+        "raw_variants": [
+          "arun govil"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Sony Pictures to Distribute Namit Malhotra's 'Ramayana' Globally Outside India",
+        "example_lang": "en",
+        "example_source": "rozanaspokesman.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "assemblee",
+        "raw_variants": [
+          "Assemblée"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "France : l'Assemblée adopte la loi d'urgence agricole après des débats houleux",
+        "example_lang": "fr",
+        "example_source": "france24.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "atp",
+        "raw_variants": [
+          "ATP"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "LIVE Darderi-Martinez 6-0 5-0 ATP Estoril 2026 in DIRETTA | lo spagnolo serve per evitare il doppio 'bagel'",
+        "example_lang": "xx",
+        "example_source": "zazoom.it",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "autonomous search team investigating",
+        "raw_variants": [
+          "autonomous search team investigating"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "CIA Obtained Secret Information About Wuhan Lab, Fauci Diary Shows",
+        "example_lang": "en",
+        "example_source": "theepochtimes.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "bank sabadell",
+        "raw_variants": [
+          "bank sabadell"
+        ],
+        "provenance": {
+          "gdelt_orgs": 5
+        },
+        "example_headline": "Jainaga lanza una opa de 244 millones por el 100% de Azkoyen",
+        "example_lang": "xx",
+        "example_source": "expansion.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "barbara ann woolley",
+        "raw_variants": [
+          "barbara ann woolley",
+          "Barbara Ann Woolley"
+        ],
+        "provenance": {
+          "gdelt_persons": 1,
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Obituary: Barbara Ann Woolley, May 24, 1941 — July 18, 2026",
+        "example_lang": "en",
+        "example_source": "hooversun.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "benjamin blackwell",
+        "raw_variants": [
+          "benjamin blackwell"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Betye Saar, Who Turned Black Stereotypes Into Symbols of Resistance, Dies at 99",
+        "example_lang": "en",
+        "example_source": "artnet.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "biarritz perpignan",
+        "raw_variants": [
+          "biarritz perpignan"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Top 14/Pro D2 : la rentrée se précise, délocalisations au menu... Découvrez le programme des matchs amicaux de l'été pour les clubs professionnels",
+        "example_lang": "xx",
+        "example_source": "ladepeche.fr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "billy stockwell",
+        "raw_variants": [
+          "billy stockwell"
+        ],
+        "provenance": {
+          "gdelt_persons": 3
+        },
+        "example_headline": "Russian warship conducts live-fire exercise off UK as new PM Burnham reaffirms support for Kyiv",
+        "example_lang": "en",
+        "example_source": "kesq.com",
+        "verdict": "REAL_WEAK",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "birthday july positive new church",
+        "raw_variants": [
+          "birthday july positive new church"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "25 липня 2026 року — яке сьогодні свято, День ангела і що не можна робити",
+        "example_lang": "xx",
+        "example_source": "uapress.info",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "body budget council representation folk on senayan",
+        "raw_variants": [
+          "body budget council representation folk on senayan"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Purbaya Laporkan Defisit APBN per Juni Rp 196,5 Triliun",
+        "example_lang": "xx",
+        "example_source": "tempo.co",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "brady lidster",
+        "raw_variants": [
+          "brady lidster"
+        ],
+        "provenance": {
+          "gdelt_persons": 5
+        },
+        "example_headline": "Kelly, Polk combine for 2 TDs as Argos dump B.C. Lions 26-12 | Tofino/Ucluelet Westerly News",
+        "example_lang": "en",
+        "example_source": "westerlynews.ca",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "brandenburger a show program",
+        "raw_variants": [
+          "brandenburger a show program"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Hunderttausende feiern CSD in Berlin: „Haltung ist hot\" bei Großkundgebung",
+        "example_lang": "xx",
+        "example_source": "rtl.de",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "brant boyer",
+        "raw_variants": [
+          "brant boyer"
+        ],
+        "provenance": {
+          "gdelt_persons": 3
+        },
+        "example_headline": "49ers coach Kyle Shanahan hurt in a car crash",
+        "example_lang": "en",
+        "example_source": "ksbw.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "brother team",
+        "raw_variants": [
+          "brother team"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "26 Temmuz 2026 Pazar TV yayın akışı ile dizi ve televizyon programları listesi merak ediliyor. Hafta sonunu televizyon karşısında geçirmek isteyenler Kanal D, Show TV, Star TV, TRT 1, TV8 ve NOW TV'nin güncel yayın akışlarını araştırıyor. 21 Haziran gününün dizileri, filmleri ve yarışma programları açıklandı. Hangi yapım hangi kanalda hangi saatte ekrana gelecek belli oldu. Bugün TRT 1'de Başakşehir-Inter Turku maçı, Kanal D'de Daha 17 yeni bölüm, Show TV'de Atla Gel Şaban, Star TV'de Salak Milyoner, ATV'de Kim Milyoner Olmak İster?, NOW'de Dokunmayın Şabanıma, TV8'de MasterChef Türkiye yarışması yer alacak. İşte, Kanal D, Star TV, Show TV, TRT 1, TV8 ve NOW TV'nin 21 Haziran 2026 Pazar (bugün) yayın akışı detayda karşınızda...",
+        "example_lang": "xx",
+        "example_source": "gunes.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "bundesverfassungsgericht",
+        "raw_variants": [
+          "Bundesverfassungsgericht"
+        ],
+        "provenance": {
+          "nlp:ORG": 3
+        },
+        "example_headline": "Oberstes Gericht: Bundesverfassungsgericht: Kein «Tempolimit» für Gesetzgebung",
+        "example_lang": "de",
+        "example_source": "zeit.de",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "butler eagle",
+        "raw_variants": [
+          "Butler Eagle"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "'The Odyssey' earns $87M in its second weekend, Christopher Nolan's best second weekend yet – Butler Eagle",
+        "example_lang": "en",
+        "example_source": "butlereagle.com",
+        "verdict": "REAL_WEAK",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "buz",
+        "raw_variants": [
+          "Buz"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "Ce tip de dronă ar fi fost doborâtă în Buzău de un F-16 românesc. Detaliul raportat de piloți după ce au deschis focul",
+        "example_lang": "xx",
+        "example_source": "stirileprotv.ro",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "c ukrainian prosecutor office",
+        "raw_variants": [
+          "c ukrainian prosecutor office"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Армия России ударила по выставке с представителями ВПК Украины",
+        "example_lang": "xx",
+        "example_source": "pnp.ru",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "catherine pegard",
+        "raw_variants": [
+          "catherine pegard"
+        ],
+        "provenance": {
+          "gdelt_persons": 6
+        },
+        "example_headline": "Louvre heist gallery to reopen without jewels",
+        "example_lang": "en",
+        "example_source": "omanobserver.om",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "charlotte aitchison",
+        "raw_variants": [
+          "charlotte aitchison"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Charli XCX Rock Music review",
+        "example_lang": "en",
+        "example_source": "brisbanetimes.com.au",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "chennamma star of mysore",
+        "raw_variants": [
+          "Chennamma - Star of Mysore"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "State honours for Chennamma - Star of Mysore",
+        "example_lang": "en",
+        "example_source": "starofmysore.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "chernihiv dmitry",
+        "raw_variants": [
+          "chernihiv dmitry"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Атака РФ по АТБ у Чернігові 26 липня - у місті оголосили день жалоби за загиблими",
+        "example_lang": "xx",
+        "example_source": "obozrevatel.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "chris glover",
+        "raw_variants": [
+          "chris glover"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Billy Bishop jet opponents turn planned protest into celebration after Ottawa rejects expansion",
+        "example_lang": "en",
+        "example_source": "theglobeandmail.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "club rome italian",
+        "raw_variants": [
+          "club rome italian"
+        ],
+        "provenance": {
+          "gdelt_orgs": 2
+        },
+        "example_headline": "الهلال يزاحم روما لضم سومرفيل",
+        "example_lang": "xx",
+        "example_source": "slaati.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "cole wilcox",
+        "raw_variants": [
+          "cole wilcox"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Nathan Eovaldi leads Rangers to another win over Mariners",
+        "example_lang": "en",
+        "example_source": "640wxsm.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "commander group",
+        "raw_variants": [
+          "commander group"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Що відомо про Драпатого, який стане новим головкомом ЗСУ",
+        "example_lang": "xx",
+        "example_source": "dw.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "commission of right of traffic",
+        "raw_variants": [
+          "commission of right of traffic"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "SP tem 2.300 ciclomotores guinchados em seis meses - 22/07/2026 - Cotidiano",
+        "example_lang": "xx",
+        "example_source": "uol.com.br",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "commission to homeland security",
+        "raw_variants": [
+          "commission to homeland security"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Irán advierte a Ucrania de 'consecuencias' tras el ataque mortal contra un buque en el mar Caspio: ¿pero qué ha pasado?",
+        "example_lang": "xx",
+        "example_source": "huffingtonpost.es",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "committee security national",
+        "raw_variants": [
+          "committee security national"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "إيران تحذر أوكرانيا من الرد بعد الهجوم على سفينة في بحر قزوين",
+        "example_lang": "xx",
+        "example_source": "mustaqila.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "community banking",
+        "raw_variants": [
+          "community banking"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Top Financial Stocks To Keep An Eye On – July 26th",
+        "example_lang": "en",
+        "example_source": "tickerreport.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "community to castilla y leon",
+        "raw_variants": [
+          "community to castilla y leon"
+        ],
+        "provenance": {
+          "gdelt_orgs": 2
+        },
+        "example_headline": "Se ordena el levantamiento de confinamientos por el incendio de La Mierla y la totalidad de los afectados pueden regresar a sus hogares",
+        "example_lang": "xx",
+        "example_source": "lacerca.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "coroner",
+        "raw_variants": [
+          "Coroner"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Coroner IDs driver killed in East End crash",
+        "example_lang": "en",
+        "example_source": "fox19.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "cracker barrel",
+        "raw_variants": [
+          "cracker barrel"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Article 3Bcca07A 2217 5E40 B821 6Eaf4Bc38560",
+        "example_lang": "en",
+        "example_source": "vintonjacksoncourier.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "daytona beach",
+        "raw_variants": [
+          "Daytona Beach"
+        ],
+        "provenance": {
+          "nlp:FAC": 1,
+          "nlp:GPE": 1
+        },
+        "example_headline": "Man hospitalized after presumed shark bite in Daytona Beach Shores",
+        "example_lang": "en",
+        "example_source": "fox35orlando.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "department heads for",
+        "raw_variants": [
+          "department heads for"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Kabinettsumbildung: Warken geht ins Kanzleramt, Linnemann übernimmt Gesundheitsressort – News – Deutsches Ärzteblatt",
+        "example_lang": "xx",
+        "example_source": "aerzteblatt.de",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "department jakarta",
+        "raw_variants": [
+          "department jakarta"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Kebakaran Rumah di Kayu Putih Jaktim, 2 Orang Tewas",
+        "example_lang": "xx",
+        "example_source": "sindonews.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "district society for recreation",
+        "raw_variants": [
+          "district society for recreation"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Today's Happenings: July 25, 2026 | South Peace News",
+        "example_lang": "en",
+        "example_source": "southpeacenews.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "dmitry evstafyev",
+        "raw_variants": [
+          "dmitry evstafyev"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Токаев предложил Путину «заморозить конфликт» на Украине, «поставить на заморозку всё это дело»",
+        "example_lang": "xx",
+        "example_source": "zavtra.ru",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "dominion veterans alliance",
+        "raw_variants": [
+          "dominion veterans alliance"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Essex Legion celebrates 95th anniversary, centennial milestone of the Royal Canadian Legion",
+        "example_lang": "en",
+        "example_source": "niagarafallsreview.ca",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "download improvement marks memo",
+        "raw_variants": [
+          "Download Improvement Marks Memo"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Kerala SAY +2 Result 2026 LIVE: Class 12 HSE Marks Memo Releasing Today; Download Improvement Marks Memo at results.kite.kerala.gov.in",
+        "example_lang": "en",
+        "example_source": "jagranjosh.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "e1 mara de representantes",
+        "raw_variants": [
+          "E1;mara de Representantes"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Cámara de Representantes votó para terminar con la guerra entre Donald Trump e Irán",
+        "example_lang": "xx",
+        "example_source": "tribuna.com.mx",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "earnings history for gibson energy",
+        "raw_variants": [
+          "earnings history for gibson energy"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Gibson Energy (GBNXF) Expected to Release Earnings on Monday",
+        "example_lang": "en",
+        "example_source": "dailypolitical.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "east bay times",
+        "raw_variants": [
+          "East Bay Times"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "A forced-labor crackdown or an end-run around Congress? Dissecting Trump's new tariffs – East Bay Times",
+        "example_lang": "en",
+        "example_source": "eastbaytimes.com",
+        "verdict": "REAL_WEAK",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "economic cooperation organization",
+        "raw_variants": [
+          "economic cooperation organization"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "В Україні розглядають антикорупційну стратегію на 2026–2030 роки",
+        "example_lang": "xx",
+        "example_source": "epravda.com.ua",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "eilish mccolgan",
+        "raw_variants": [
+          "Eilish McColgan"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Eilish McColgan withdraws from Glasgow Games with injury",
+        "example_lang": "en",
+        "example_source": "hillingdontimes.co.uk",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "embassy ukraine y poland",
+        "raw_variants": [
+          "embassy ukraine y poland"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Україна вимагає термінового засідання Радбезу ООН через блокаду чорноморських коридорів Росією",
+        "example_lang": "xx",
+        "example_source": "facenews.ua",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "emissaries union european",
+        "raw_variants": [
+          "emissaries union european"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "UE a convenit asupra celui de-al 21-lea pachet de sancțiuni împotriva Rusiei",
+        "example_lang": "xx",
+        "example_source": "romaniatv.net",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "entrance candidates coach national team",
+        "raw_variants": [
+          "entrance candidates coach national team"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Pep Guardiola Masuk Kandidat Pelatih Timnas Italia, FIGC Siap Langgar Aturan Batas Gaji",
+        "example_lang": "xx",
+        "example_source": "jawapos.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "environment office local government",
+        "raw_variants": [
+          "environment office local government"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Jadwal Pemadaman Listrik di Kalsel, Sabtu 25 Juli 2026, Barabai HST Mati Lampu Hingga Jam 7 Malam",
+        "example_lang": "xx",
+        "example_source": "tribunnews.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "familia",
+        "raw_variants": [
+          "Família"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Beneficiários com NIS de final 6 recebem Bolsa Família de julho",
+        "example_lang": "xx",
+        "example_source": "oestadoacre.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "family recalled spokesman authority troy",
+        "raw_variants": [
+          "family recalled spokesman authority troy"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Olah TKP Meninggalnya Jubir Otorita IKN Troy Pantouw, Polisi Ungkap Riwayat Hipertensi",
+        "example_lang": "xx",
+        "example_source": "kompas.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "fatti a mano",
+        "raw_variants": [
+          "Fatti a Mano"
+        ],
+        "provenance": {
+          "nlp:ORG": 2
+        },
+        "example_headline": "Anvisa proíbe azeite San Oliveto e doces da Fatti a Mano",
+        "example_lang": "xx",
+        "example_source": "jornaldebrasilia.com.br",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "file office",
+        "raw_variants": [
+          "file office"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Gülistan Doku Soruşturmasında 18 Gözaltı",
+        "example_lang": "xx",
+        "example_source": "haberts.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "french department",
+        "raw_variants": [
+          "french department"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Southwestern France wildfire forces evacuation of over 110,000 people",
+        "example_lang": "en",
+        "example_source": "bignewsnetwork.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "fritz lang",
+        "raw_variants": [
+          "fritz lang"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Christopher Nolan on Satyajit Ray's Pather Panchali: 'It just blew my mind'",
+        "example_lang": "en",
+        "example_source": "tribuneindia.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "fund on",
+        "raw_variants": [
+          "fund on"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Updated IMF EFF program for Ukraine adds 7 structural benchmarks, inlc 6 fiscal",
+        "example_lang": "en",
+        "example_source": "interfax.com.ua",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "funeral service at south bristol crematorium",
+        "raw_variants": [
+          "funeral service at south bristol crematorium"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Treasured mum, nana and great nana among this week's Bristol funeral notices",
+        "example_lang": "en",
+        "example_source": "bristolpost.co.uk",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "gallery of museum of louvre",
+        "raw_variants": [
+          "gallery of museum of louvre"
+        ],
+        "provenance": {
+          "gdelt_orgs": 2
+        },
+        "example_headline": "Λούβρο: Επαναλειτουργεί η αίθουσα που έγινε στόχος ληστείας 88 εκατ. ευρώ",
+        "example_lang": "xx",
+        "example_source": "thebest.gr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "gallo",
+        "raw_variants": [
+          "Gallo"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "LIVE Scherma Mondiali 2026 in DIRETTA | poker azzurro ai sedicesimi nel fioretto! Disastro sciabola resiste solo Gallo",
+        "example_lang": "xx",
+        "example_source": "zazoom.it",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "garden department",
+        "raw_variants": [
+          "garden department"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Gujarat CM reviews waterlogged areas overseeing rescue ops following monsoon rains",
+        "example_lang": "en",
+        "example_source": "aninews.in",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "gen oleksandr syrskyi",
+        "raw_variants": [
+          "gen oleksandr syrskyi"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Ukraine's Zelenskiy fires his military chief after protests and names a replacement",
+        "example_lang": "en",
+        "example_source": "asiaone.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "ghaith manaf",
+        "raw_variants": [
+          "ghaith manaf"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "هجمات روسية تضرب مدنا أوكرانية ومسيّرة تستهدف مركزا تجاريا في سومي",
+        "example_lang": "xx",
+        "example_source": "elwatannews.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "gleb nikitin",
+        "raw_variants": [
+          "gleb nikitin"
+        ],
+        "provenance": {
+          "gdelt_persons": 2
+        },
+        "example_headline": "Дом-музей Валерия Чкалова открылся в Чкаловске после масштабной реконструкции",
+        "example_lang": "xx",
+        "example_source": "niann.ru",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "glencore",
+        "raw_variants": [
+          "glencore"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "FTSE 100 Live: Stocks advance as oil price retreats, oil falls below $90",
+        "example_lang": "en",
+        "example_source": "proactiveinvestors.co.uk",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "global business solutions",
+        "raw_variants": [
+          "global business solutions"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Pomerantz LLP Commences Class Action Litigation Against Intuit Inc. ...",
+        "example_lang": "en",
+        "example_source": "pr-inside.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "guangzhou",
+        "raw_variants": [
+          "Guangzhou"
+        ],
+        "provenance": {
+          "nlp:LOC": 4
+        },
+        "example_headline": "Prediksi Syair Guangzhou Hari Ini Jumat 24 Juli 2026",
+        "example_lang": "xx",
+        "example_source": "rasmeinews.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "h municipal police",
+        "raw_variants": [
+          "h municipal police"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Καιρός: «Κόκκινος» συναγερμός για φωτιές την Τετάρτη – Ο καύσωνας βάζει στο «μάτι» και την Αττική",
+        "example_lang": "xx",
+        "example_source": "inewsgr.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "h national us",
+        "raw_variants": [
+          "h national us"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Πόλο: Στην κορυφή του κόσμου η Ελλάδα – Νίκησε στον τελικό του World Cup",
+        "example_lang": "xx",
+        "example_source": "protagon.gr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "hasriati",
+        "raw_variants": [
+          "Hasriati"
+        ],
+        "provenance": {
+          "nlp:PERSON": 2
+        },
+        "example_headline": "2 Jenazah Korban KLM Nurul Salsa Teridentifikasi bernama Hasriati dan Bau Intang",
+        "example_lang": "xx",
+        "example_source": "tribunnews.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "hotel chamber greece",
+        "raw_variants": [
+          "hotel chamber greece"
+        ],
+        "provenance": {
+          "gdelt_orgs": 4
+        },
+        "example_headline": "Ερώτηση 15 βουλευτών της ΝΔ για τις πρακτικές των ηλεκτρονικών πλατφορμών κρατήσεων στον τουρισμό – Τι αναφέρει το κείμενο",
+        "example_lang": "xx",
+        "example_source": "inewsgr.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "house armed services committee",
+        "raw_variants": [
+          "house armed services committee"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "House Passes $1.15 Trillion Defense Bill In Narrow Vote Amid Iran War Divisions",
+        "example_lang": "en",
+        "example_source": "hngn.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "imam muhammad ibn",
+        "raw_variants": [
+          "imam muhammad ibn"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "جموع المصلين يشيعون عبدالعزيز الحربي بعد وفاته غرقًا بتركيا.. فيديو",
+        "example_lang": "xx",
+        "example_source": "slaati.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "ipswich",
+        "raw_variants": [
+          "Ipswich"
+        ],
+        "provenance": {
+          "nlp:GPE": 1
+        },
+        "example_headline": "Ipswich marina building plans recommended for refusal",
+        "example_lang": "en",
+        "example_source": "ipswichstar.co.uk",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "islington",
+        "raw_variants": [
+          "Islington"
+        ],
+        "provenance": {
+          "nlp:ORG": 2
+        },
+        "example_headline": "Islington father-of-two who filmed women through windows in the early hours pleads guilty to 19 voyeurism offences",
+        "example_lang": "en",
+        "example_source": "aol.co.uk",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "isobel charlsey",
+        "raw_variants": [
+          "isobel charlsey"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Woman who 'touched the lives of many' remembered in this week's death and funeral notices for Surrey",
+        "example_lang": "en",
+        "example_source": "getsurrey.co.uk",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "it is party",
+        "raw_variants": [
+          "it is party"
+        ],
+        "provenance": {
+          "gdelt_orgs": 3
+        },
+        "example_headline": "DIRECT. Tour de France 2026 - 16e étape : qui va remporter l'unique contre-la-montre individuel de cette édition ? Suivez en direct l'étape entre Évian-les-Bains et Thonon-les-Bains",
+        "example_lang": "xx",
+        "example_source": "ladepeche.fr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "jana nayagana",
+        "raw_variants": [
+          "Jana Nayagana"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Jana Nayagana box office collection day 3: Vijay's final Tamil movie all set to enter Rs 100 crore club in India",
+        "example_lang": "en",
+        "example_source": "indiatimes.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "jeanne lajoie catholic elementary school in pembroke",
+        "raw_variants": [
+          "jeanne-lajoie catholic elementary school in pembroke"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Pembroke Grade 6 student earns breakfast program provincial honour | Brockville Recorder & Times",
+        "example_lang": "en",
+        "example_source": "recorder.ca",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "jers",
+        "raw_variants": [
+          "Jers"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "Al menos tres muertos y una decena de heridos en Ucrania tras nuevos ataques de Rusia sobre Zaporiyia y Jersón",
+        "example_lang": "xx",
+        "example_source": "20minutos.es",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "jessica gail",
+        "raw_variants": [
+          "jessica gail"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Модель Джессіка Гейл показала фото у купальнику з відпустки на острові — Шоу-бізнес",
+        "example_lang": "xx",
+        "example_source": "tsn.ua",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "jo daviess",
+        "raw_variants": [
+          "jo daviess"
+        ],
+        "provenance": {
+          "gdelt_persons": 2
+        },
+        "example_headline": "Dense Fog Advisory – Galena, IL, USA",
+        "example_lang": "en",
+        "example_source": "x1071.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "john turturro",
+        "raw_variants": [
+          "john turturro"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Antes de Nolan, los Coen adaptaron 'La Odisea' en una de sus mejores películas: una obra maestra de visión obligatoria",
+        "example_lang": "xx",
+        "example_source": "20minutos.es",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "josh allen",
+        "raw_variants": [
+          "josh allen"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "NFL teams under the most pressure to win big in 2026",
+        "example_lang": "en",
+        "example_source": "yardbarker.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "july kremlin",
+        "raw_variants": [
+          "july kremlin"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Τραγωδία στη Ρωσία: Πέντε Βόσνιοι ορειβάτες έχασαν τη ζωή τους στο όρος Ελμπρούς",
+        "example_lang": "xx",
+        "example_source": "lykavitos.gr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "june i july",
+        "raw_variants": [
+          "june i july"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Банк России снизил ключевую ставку до 14% годовых",
+        "example_lang": "xx",
+        "example_source": "i38.ru",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "jurgen club",
+        "raw_variants": [
+          "jurgen club"
+        ],
+        "provenance": {
+          "gdelt_orgs": 13
+        },
+        "example_headline": "كلوب: عقدي مع ريد بول يسمح لي بتدريب ألمانيا – عكس السير",
+        "example_lang": "xx",
+        "example_source": "aksalser.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "jurgen nagelsmann",
+        "raw_variants": [
+          "jurgen nagelsmann"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Jurgen Klopp now confirmed as new manager of Germany",
+        "example_lang": "en",
+        "example_source": "themag.co.uk",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "justice shabana mahmoud",
+        "raw_variants": [
+          "justice shabana mahmoud"
+        ],
+        "provenance": {
+          "gdelt_persons": 2
+        },
+        "example_headline": "فضحها ميكروفون مفتوح.. مزحة بين وزيرين تتحول إلى أزمة في بريطانيا",
+        "example_lang": "xx",
+        "example_source": "aljazeera.net",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "kansas farmers union",
+        "raw_variants": [
+          "kansas farmers union"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Headlines for Monday, July 27, 2026",
+        "example_lang": "en",
+        "example_source": "kansaspublicradio.org",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "kidney transplant in health",
+        "raw_variants": [
+          "kidney transplant in health"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Fachgesellschaft setzt sich für bundesweites Register zur Nierengesundheit ein – News – Deutsches Ärzteblatt",
+        "example_lang": "xx",
+        "example_source": "aerzteblatt.de",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "kocaeli izmit",
+        "raw_variants": [
+          "kocaeli izmit"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Demet Özdemir kimdir? Demet Özdemir kaç yaşında, nereli?",
+        "example_lang": "xx",
+        "example_source": "haberler.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "kpatcha",
+        "raw_variants": [
+          "Kpatcha"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Athlétisme : Kpatcha championne de France au bout du suspense, Robert-Michon battue à Albi",
+        "example_lang": "xx",
+        "example_source": "lecourrier.vn",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "letter of navy",
+        "raw_variants": [
+          "letter of navy"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Justiça manda Marinha indenizar família de João Cândido em R$ 300 mil",
+        "example_lang": "xx",
+        "example_source": "brasil247.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "lindsay clancy goes",
+        "raw_variants": [
+          "Lindsay Clancy Goes"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Lindsay Clancy Goes On Trial, Saying Postpartum Psychosis Drove Her To Kill Her 3 Children – 710am KURV",
+        "example_lang": "en",
+        "example_source": "kurv.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "ling",
+        "raw_variants": [
+          "ling"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "LIVE Tour de France 2026 tappa di oggi in DIRETTA | partito Tarling cresce l'attesa per Ganna",
+        "example_lang": "xx",
+        "example_source": "zazoom.it",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "liontrust asset management plc",
+        "raw_variants": [
+          "liontrust asset management plc"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Liontrust Asset Management's (LIO) \"Buy\" Rating Reiterated at Berenberg Bank",
+        "example_lang": "en",
+        "example_source": "dailypolitical.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "loud police is it",
+        "raw_variants": [
+          "loud police is it"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Polizeieinsatz - Ein Toter und mehrere Verletzte bei CSD in Berlin - Fahrzeug soll in Menschenmenge gefahren sein",
+        "example_lang": "xx",
+        "example_source": "deutschlandfunk.de",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "madhya pradesh police",
+        "raw_variants": [
+          "madhya pradesh police"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "The Hindu Morning Digest: July 25, 2026",
+        "example_lang": "en",
+        "example_source": "thehindu.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "marley jarvis",
+        "raw_variants": [
+          "marley jarvis"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Gorleston hairdresser is shortlisted for 2026 Salon Awards",
+        "example_lang": "en",
+        "example_source": "edp24.co.uk",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "matilde baldi",
+        "raw_variants": [
+          "Matilde Baldi"
+        ],
+        "provenance": {
+          "nlp:PERSON": 7
+        },
+        "example_headline": "Matilde Baldi uccisa sull'A33, otto anni a Franco Vacchina e Davide Bertello assolto",
+        "example_lang": "xx",
+        "example_source": "zazoom.it",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "matt jeneroux",
+        "raw_variants": [
+          "matt jeneroux"
+        ],
+        "provenance": {
+          "gdelt_persons": 16
+        },
+        "example_headline": "Carney calls 3 byelections, including 1 in B.C. | Campbell River Mirror",
+        "example_lang": "en",
+        "example_source": "campbellrivermirror.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "meenakshi sharma a high court",
+        "raw_variants": [
+          "meenakshi sharma a high court"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "जालौन इंस्पेक्टर हत्याकांड: आरोपी महिला सिपाही मीनाक्षी शर्मा को हाईकोर्ट से राहत, 7 माह बाद जेल से हो सकती है रिहाई",
+        "example_lang": "xx",
+        "example_source": "indiatimes.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "meghalaya honeymoon",
+        "raw_variants": [
+          "Meghalaya Honeymoon"
+        ],
+        "provenance": {
+          "nlp:FAC": 1
+        },
+        "example_headline": "Meghalaya Honeymoon murder: SC suggests Sonam Raghuvanshi surrender until plea against bail is decided",
+        "example_lang": "en",
+        "example_source": "aninews.in",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "menasha public library",
+        "raw_variants": [
+          "menasha public library"
+        ],
+        "provenance": {
+          "gdelt_orgs": 2
+        },
+        "example_headline": "Major damage reported in Menasha following severe storms",
+        "example_lang": "en",
+        "example_source": "943jackfm.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "michal martin",
+        "raw_variants": [
+          "michal martin"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Прем'єр Ірландії Міхал Мартін прибув до Києва",
+        "example_lang": "xx",
+        "example_source": "podrobnosti.ua",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "narendra modi for the national education",
+        "raw_variants": [
+          "narendra modi for the national education"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "UP CM Yogi inaugurates, lays foundation stones for 125 development projects worth over ₹489 crore in Fatehpur",
+        "example_lang": "en",
+        "example_source": "aninews.in",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "national leganes",
+        "raw_variants": [
+          "national leganes"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Partidos amistosos de hoy, miércoles 22 de julio: horario y dónde ver en TV y online",
+        "example_lang": "xx",
+        "example_source": "marca.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "national portuguese",
+        "raw_variants": [
+          "national portuguese"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Tancredi Palmeri risponde a Rafael Leao | Non solo venne rifiutato dall'Inter ma Conte arrivò a minacciare le dimissione",
+        "example_lang": "xx",
+        "example_source": "zazoom.it",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "nawab shah",
+        "raw_variants": [
+          "nawab shah"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "OG 2: Pawan Kalyan starrer sequel's animated promo to unveil on September 2? Here's what we know",
+        "example_lang": "en",
+        "example_source": "pinkvilla.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "network club neurosurgeon",
+        "raw_variants": [
+          "network club neurosurgeon"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Homem é preso após invadir casa da ex-companheira no Piauí",
+        "example_lang": "xx",
+        "example_source": "globo.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "news center gold market",
+        "raw_variants": [
+          "news center gold market"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Altın sert düştü! Altın ne kadar oldu? 23 Temmuz 2026 Perşembe gram altın, çeyrek altın kaç lira? Son dakika altın fiyatları, canlı takip",
+        "example_lang": "xx",
+        "example_source": "gunes.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "office representative",
+        "raw_variants": [
+          "office representative"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Jadwal Pemadaman Listrik di Kalsel, Minggu 26 Juli 2026, Rumah Dinas Wabup Tabalong Juga Mati Lampu",
+        "example_lang": "xx",
+        "example_source": "tribunnews.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "office wt",
+        "raw_variants": [
+          "office wt"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Вес Стрітінг очолив Міноборони Британії і заявив про непохитну підтримку України",
+        "example_lang": "xx",
+        "example_source": "5.ua",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "oman iran to international free",
+        "raw_variants": [
+          "oman iran to international free"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "트럼프 \"이란과 진지한 대화\"…공습·보복 멈추고 사흘째 소강[1일1트]",
+        "example_lang": "xx",
+        "example_source": "heraldcorp.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "or article development",
+        "raw_variants": [
+          "or article development"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Alasan Dude Harlino Balikin Honor PT DSI Rp5,25 M ke Bareskrim",
+        "example_lang": "xx",
+        "example_source": "cnnindonesia.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "orange county fair",
+        "raw_variants": [
+          "Orange County Fair"
+        ],
+        "provenance": {
+          "nlp:FAC": 2
+        },
+        "example_headline": "Circus performer hurt after arrow strike at Orange County Fair",
+        "example_lang": "en",
+        "example_source": "cbs6albany.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "oruc reis",
+        "raw_variants": [
+          "Oruc Reis"
+        ],
+        "provenance": {
+          "nlp:PERSON": 5
+        },
+        "example_headline": "Η Άγκυρα εξέδωσε NAVTEX για την κατασκευή αγωγού με τα κατεχόμενα – Στέλνει το Oruc Reis για έρευνες",
+        "example_lang": "xx",
+        "example_source": "inewsgr.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "osler hampson",
+        "raw_variants": [
+          "osler hampson"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Trump's tariff threat could impact Canadian economy but may be negotiation tactic",
+        "example_lang": "en",
+        "example_source": "abcnews.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "pangkep",
+        "raw_variants": [
+          "Pangkep"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "2 Jenazah Diduga Korban KLM Nurul Salsa yang Ditemukan di Pangkep Diidentifikasi di RS Bhayangkara",
+        "example_lang": "xx",
+        "example_source": "tribunnews.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "panteleimon panteleimon",
+        "raw_variants": [
+          "panteleimon panteleimon"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "27 липня: Яке сьогодні свято, все про цей день",
+        "example_lang": "xx",
+        "example_source": "interfax.com.ua",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "patricia ross",
+        "raw_variants": [
+          "patricia ross"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "'It was difficult': Residents of Clinton, B.C. recount evacuating wildfires",
+        "example_lang": "en",
+        "example_source": "globalnews.ca",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "paul hindemith",
+        "raw_variants": [
+          "paul hindemith"
+        ],
+        "provenance": {
+          "gdelt_persons": 2
+        },
+        "example_headline": "15 Best Clarinet Players of All Time - Singersroom.com",
+        "example_lang": "en",
+        "example_source": "singersroom.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "penistone hill",
+        "raw_variants": [
+          "Penistone Hill"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "Man fined £1,000 after fly-tipping at Penistone Hill",
+        "example_lang": "en",
+        "example_source": "keighleynews.co.uk",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "pharmaceuticals inc",
+        "raw_variants": [
+          "pharmaceuticals inc"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Elite Pharmaceuticals (OTCMKTS:ELTP) Share Price Passes Below 200 Day Moving Average   – Here's Why",
+        "example_lang": "en",
+        "example_source": "themarketsdaily.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "phenomenal",
+        "raw_variants": [
+          "Phenomenal"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "'Phenomenal' Birmingham BBC drama Peaky Blinders fans can't stop watching",
+        "example_lang": "en",
+        "example_source": "birminghammail.co.uk",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "police address of paris",
+        "raw_variants": [
+          "police address of paris"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Επίθεση με μαχαίρι στο Παρίσι: Τρεις σοβαρά τραυματίες - «Ο Αλλάχ με έστειλε να σκοτώνω γυναίκες», φώναζε ο δράστης",
+        "example_lang": "xx",
+        "example_source": "newpost.gr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "pope paul",
+        "raw_variants": [
+          "pope paul"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "KOMENTÁŘ: Trump už zřejmě s Íránem nic nezmůže. V čem selhal? | Názory",
+        "example_lang": "xx",
+        "example_source": "lidovky.cz",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "program in hand right",
+        "raw_variants": [
+          "program in hand right"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Carreatas de São Cristóvão acontecem neste fim de semana em Juiz de Fora; confira programação",
+        "example_lang": "xx",
+        "example_source": "tribunademinas.com.br",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "prosecution national were",
+        "raw_variants": [
+          "prosecution national were"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Zamach w Berlinie. Nie żyje Polka. Nowe informacje z polskiej prokuratury",
+        "example_lang": "xx",
+        "example_source": "wiadomosci.radiozet.pl",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "putin ukraine",
+        "raw_variants": [
+          "Putin Ukraine"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Kazakh leader tells Putin Ukraine war should end",
+        "example_lang": "en",
+        "example_source": "bssnews.net",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "queen al",
+        "raw_variants": [
+          "queen al"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "El incendio de Ávila es el mayor de la historia de España y la situación es aún \"compleja\"",
+        "example_lang": "xx",
+        "example_source": "heraldo.es",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "rambus",
+        "raw_variants": [
+          "rambus",
+          "Rambus"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1,
+          "nlp:ORG": 1
+        },
+        "example_headline": "Rambus (RMBS) Expected to Post Earnings on Monday",
+        "example_lang": "en",
+        "example_source": "themarketsdaily.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "ramvir singh",
+        "raw_variants": [
+          "ramvir singh"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "CID searches former JPSC chairman L Khiyangte's residence over alleged exam irregularities | Ranchi News",
+        "example_lang": "en",
+        "example_source": "indiatimes.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "regensburg",
+        "raw_variants": [
+          "Regensburg"
+        ],
+        "provenance": {
+          "nlp:LOC": 7
+        },
+        "example_headline": "In Bankfiliale: Geiselnahme in Regensburg: Was wir wissen und was nicht",
+        "example_lang": "de",
+        "example_source": "zeit.de",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "regulation police number year",
+        "raw_variants": [
+          "regulation police number year"
+        ],
+        "provenance": {
+          "gdelt_orgs": 4
+        },
+        "example_headline": "Tiga Anggota Polda Jabar yang Cekcok dengan Satpam di Bundaran HI Bakal Dipatsus-Sidang Etik",
+        "example_lang": "xx",
+        "example_source": "viva.co.id",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "revolta",
+        "raw_variants": [
+          "Revolta"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Marinha é condenada a indenizar em R$ 300 mil família de líder da Revolta da Chibata",
+        "example_lang": "xx",
+        "example_source": "abril.com.br",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "rey aurelio",
+        "raw_variants": [
+          "rey aurelio"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "La Primitiva de HOY 25 de julio: resultados | La Primitiva del sábado entrega tres premios de 73.797,31 euros en tres provincias",
+        "example_lang": "xx",
+        "example_source": "lasprovincias.es",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "roman perrocheau",
+        "raw_variants": [
+          "roman perrocheau"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Incendies en Europe : des dizaines de milliers d'évacués en France et dans la région de Madrid",
+        "example_lang": "xx",
+        "example_source": "martinique.franceantilles.fr",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "russian aerospace",
+        "raw_variants": [
+          "russian aerospace"
+        ],
+        "provenance": {
+          "gdelt_orgs": 3
+        },
+        "example_headline": "Russian Su-57 fifth-generation fighter jet crashes near Moscow as pilot ejects",
+        "example_lang": "en",
+        "example_source": "bankingnews.gr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "ruth zita sattar",
+        "raw_variants": [
+          "ruth zita sattar"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Greg Davies sets special for The Cleaner",
+        "example_lang": "en",
+        "example_source": "tvtonight.com.au",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "s flags parliament building",
+        "raw_variants": [
+          "s flags parliament building"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Anschlag auf CSD: Klöckner „zutiefst erschüttert\", Merz verurteilt „abscheuliche Tat\"",
+        "example_lang": "xx",
+        "example_source": "ovb-online.de",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "san juan islands",
+        "raw_variants": [
+          "San Juan Islands"
+        ],
+        "provenance": {
+          "nlp:GPE": 2
+        },
+        "example_headline": "Plane crashes off Washington's San Juan Islands",
+        "example_lang": "en",
+        "example_source": "cp24.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "sandy ryan",
+        "raw_variants": [
+          "sandy ryan"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "CWG: India seal first medal as Lovlina move into 75kg SF - News Today",
+        "example_lang": "en",
+        "example_source": "newstodaynet.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "sarnath",
+        "raw_variants": [
+          "Sarnath"
+        ],
+        "provenance": {
+          "nlp:LOC": 2,
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Sarnath Included in UNESCO World Heritage List, Delhi News in Hindi",
+        "example_lang": "xx",
+        "example_source": "khaskhabar.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "sashidhar jagdishan",
+        "raw_variants": [
+          "sashidhar jagdishan"
+        ],
+        "provenance": {
+          "gdelt_persons": 7
+        },
+        "example_headline": "HDFC Bank CEO, CFO fined Rs 1 lakh each in MSRDC case",
+        "example_lang": "en",
+        "example_source": "moneycontrol.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "satyajit ray pather panchali",
+        "raw_variants": [
+          "Satyajit Ray Pather Panchali"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Christopher Nolan Praises Satyajit Ray Pather Panchali | 'എന്റെ മനസ്സിനെ പിടിച്ചുലച്ചു'; സത്യജിത് റായിയേയും പഥേർ പാഞ്ചാലിയേയും പുകഴ്ത്തി ക്രിസ്റ്റഫർ നോളൻ",
+        "example_lang": "xx",
+        "example_source": "mathrubhumi.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "sba communications corporation",
+        "raw_variants": [
+          "SBA Communications Corporation"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Walleye Capital LLC Takes $18 Million Position in SBA Communications Corporation $SBAC",
+        "example_lang": "en",
+        "example_source": "dailypolitical.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "school gemological spanish",
+        "raw_variants": [
+          "school gemological spanish"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Zapatero dice que \"no habló con nadie del Gobierno ni del SEPI\" sobre el rescate de Plus Ultra y asegura que las joyas son una \"cortesía personal\"",
+        "example_lang": "xx",
+        "example_source": "mundodeportivo.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "sebastien berge",
+        "raw_variants": [
+          "sebastien berge"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Wildfires threaten wineries as blaze nears Bordeaux",
+        "example_lang": "en",
+        "example_source": "thedrinksbusiness.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "sedgley",
+        "raw_variants": [
+          "Sedgley"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Dudley Police appeal after Sedgley teenager assault",
+        "example_lang": "en",
+        "example_source": "halesowennews.co.uk",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "sergiy kyslytsya",
+        "raw_variants": [
+          "sergiy kyslytsya"
+        ],
+        "provenance": {
+          "gdelt_persons": 6
+        },
+        "example_headline": "Loomer meets with Zelenskyy in Ukraine after major reversal on the war",
+        "example_lang": "en",
+        "example_source": "wokv.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "shaun moore",
+        "raw_variants": [
+          "shaun moore"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "HMRC 'tax rise by stealth' warning with millions affected",
+        "example_lang": "en",
+        "example_source": "birminghammail.co.uk",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "society encouraged for fixed quiet",
+        "raw_variants": [
+          "society encouraged for fixed quiet"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "BMKG Pastikan Gempa M5,6 di Gayo Lues Tak Berpotensi Tsunami, Masyarakat Diimbau untuk Tetap Tenang",
+        "example_lang": "xx",
+        "example_source": "koran-jakarta.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "spokeswoman medical center",
+        "raw_variants": [
+          "spokeswoman medical center"
+        ],
+        "provenance": {
+          "gdelt_orgs": 4
+        },
+        "example_headline": "Un tiroteo durante un festival gastronómico en Seattle dejó al menos dos muertos, cinco heridos y un sospechoso detenido",
+        "example_lang": "xx",
+        "example_source": "infobae.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "start a social networks",
+        "raw_variants": [
+          "start a social networks"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Новости СВО: «Ну, сейчас начнется - \"группа сорвалась со скалы в Швейцарии\", \"друзья подавились пивом с сосисками в Баварии\"». Армия России разнесла полигон под Киевом с выставкой дронов и гостями - БлокнотРУ - Когда закончится СВО? Новости СВО. Новости СВО на сегодня. СВО. Когда закончится СВО последние новости. Новости СВО на сегодня свежие читать бесплатно. СВО последние новости. Новости СВО сегодня. Последние новости СВО. Новости СВО на сегодня свежие. Когда закончится СВО на Украине? СВО новости. Новости СВО сегодня. СВО последние новости на сегодня. Последние новости СВО на сегодня. Новости СВО сегодня последние. Новости СВО последние. Новости СВО на Украине.",
+        "example_lang": "xx",
+        "example_source": "bloknot.ru",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "statelor unite",
+        "raw_variants": [
+          "Statelor Unite"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "Trump avertizează China şi Rusia să nu se amestece în războiul Statelor Unite cu Iranul: „Dacă ar face acest lucru, ar fi foarte rău pentru ele\"",
+        "example_lang": "xx",
+        "example_source": "atitudinea.ro",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "states tucker carlson",
+        "raw_variants": [
+          "states tucker carlson"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Карлсон заявил, что американцев арестовывают по возвращении из России",
+        "example_lang": "xx",
+        "example_source": "vm.ru",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "stepan bandera",
+        "raw_variants": [
+          "stepan bandera"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "У Франківську планують розширити проблемний тротуар на вулиці Бандери - Новини Івано-Франківська",
+        "example_lang": "xx",
+        "example_source": "pravda.if.ua",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "stephen watson",
+        "raw_variants": [
+          "stephen watson"
+        ],
+        "provenance": {
+          "gdelt_persons": 4
+        },
+        "example_headline": "Oxfordshire terror plot: 'Committed jihadist' jailed for life",
+        "example_lang": "en",
+        "example_source": "oxfordmail.co.uk",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "su",
+        "raw_variants": [
+          "Su"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "Trump'tan İran'a yeni tehdit! 'Suudi Arabistan'a saldırı olursa çok ağır vururuz'",
+        "example_lang": "xx",
+        "example_source": "milliyet.com.tr",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "talks fail",
+        "raw_variants": [
+          "Talks Fail"
+        ],
+        "provenance": {
+          "nlp:EVENT": 2
+        },
+        "example_headline": "Trump Warns of Military Action If Iran Talks Fail",
+        "example_lang": "en",
+        "example_source": "newkerala.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "tbmm genel kurulu",
+        "raw_variants": [
+          "TBMM Genel Kurulu"
+        ],
+        "provenance": {
+          "nlp:ORG": 3
+        },
+        "example_headline": "En düşük emekli aylığının artırılmasına yönelik düzenlemeyi de içeren kanun teklifi, TBMM Genel Kurulunda",
+        "example_lang": "tr",
+        "example_source": "aa.com.tr",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "team dallas detroit",
+        "raw_variants": [
+          "team dallas detroit"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Grading every player at the 2026 WNBA All-Star Game",
+        "example_lang": "en",
+        "example_source": "abc7.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "telemundo area de la bahia",
+        "raw_variants": [
+          "Telemundo Area de la Bahía"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Tiroteo en Seattle Center deja 3 muertos y 4 heridos – Telemundo Area de la Bahía 48",
+        "example_lang": "xx",
+        "example_source": "telemundoareadelabahia.com",
+        "verdict": "REAL_WEAK",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "toby doeden",
+        "raw_variants": [
+          "toby doeden"
+        ],
+        "provenance": {
+          "gdelt_persons": 5
+        },
+        "example_headline": "7 things to know ahead of the South Dakota gubernatorial runoff",
+        "example_lang": "en",
+        "example_source": "siouxcityjournal.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "tonna rue rawlins",
+        "raw_variants": [
+          "tonna rue rawlins"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Article 61D0F72B Cbf5 4E2D B444 9B393E54E3C6",
+        "example_lang": "en",
+        "example_source": "cachevalleydaily.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "tourism a police national",
+        "raw_variants": [
+          "tourism a police national"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "MANIFESTACIÓN TURISMO | La Policía Nacional convierte en violenta una protesta pacífica contra la saturación turística en Mallorca",
+        "example_lang": "xx",
+        "example_source": "diariodemallorca.es",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "trafford centre in manchester",
+        "raw_variants": [
+          "trafford centre in manchester"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "WEIRD STUFF: Monkey found abandoned in laundry bag",
+        "example_lang": "en",
+        "example_source": "jamaica-star.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "trial panel response crimes arson chania",
+        "raw_variants": [
+          "trial panel response crimes arson chania"
+        ],
+        "provenance": {
+          "gdelt_orgs": 3
+        },
+        "example_headline": "Χανιά: Έκρηξη με έναν σοβαρά τραυματία σε εργοστάσιο",
+        "example_lang": "xx",
+        "example_source": "skai.gr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "ua",
+        "raw_variants": [
+          "ua"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Михайло Драпатий очолив ЗСУ: з якими викликами зіткнеться новий головнокомандувач — Тексти.org.ua",
+        "example_lang": "xx",
+        "example_source": "texty.org.ua",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "udaipur pangi road in himachal pradesh",
+        "raw_variants": [
+          "Udaipur-Pangi Road in Himachal Pradesh"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "13 Killed as Boulders Crush SUV on Udaipur-Pangi Road in Himachal Pradesh",
+        "example_lang": "en",
+        "example_source": "dailypioneer.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "united kingdom civil aviation authority",
+        "raw_variants": [
+          "united kingdom civil aviation authority"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Travel warning issued for Brits over common items that could be 'safety risk' on flights",
+        "example_lang": "en",
+        "example_source": "liverpoolecho.co.uk",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "university of montana",
+        "raw_variants": [
+          "university of montana"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Article 519Ca869 Bd8F 49D8 Ac47 E7Cd7D116560",
+        "example_lang": "en",
+        "example_source": "thesylvaherald.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "university of worcester",
+        "raw_variants": [
+          "university of worcester"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Nominations open for Dudley Borough Community Awards 2026",
+        "example_lang": "en",
+        "example_source": "halesowennews.co.uk",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "ustaad bhagat singh",
+        "raw_variants": [
+          "ustaad bhagat singh"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "OG 2: Pawan Kalyan starrer sequel's animated promo to unveil on September 2? Here's what we know",
+        "example_lang": "en",
+        "example_source": "pinkvilla.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "vale do mucuri",
+        "raw_variants": [
+          "Vale do Mucuri"
+        ],
+        "provenance": {
+          "nlp:LOC": 1
+        },
+        "example_headline": "Homem é condenado a 98 anos de prisão por crimes sexuais contra filhos e vizinha no Vale do Mucuri",
+        "example_lang": "pt",
+        "example_source": "g1.globo.com",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "venkat narayana",
+        "raw_variants": [
+          "venkat narayana"
+        ],
+        "provenance": {
+          "gdelt_persons": 2
+        },
+        "example_headline": "Jana Nayagan Release: Vijay's Final Film Sparks Tamil Nadu Celebrations",
+        "example_lang": "en",
+        "example_source": "dailypioneer.com",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "viohalko a betula",
+        "raw_variants": [
+          "viohalko a betula"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Χρηματιστήριο: Τραπεζική αντεπίθεση και επιστροφή στο οχυρό των 2.500 μονάδων",
+        "example_lang": "xx",
+        "example_source": "sofokleous10.gr",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "vnl feminina",
+        "raw_variants": [
+          "VNL Feminina"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Jogos de hoje da VNL Feminina (23/07): onde assistir, horários e resultados das quartas de final",
+        "example_lang": "xx",
+        "example_source": "uol.com.br",
+        "verdict": "REAL",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "war house of congress",
+        "raw_variants": [
+          "war house of congress"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "محلل أمريكي: إيران في وضع أفضل من واشنطن لخوض صراع طويل الأمد",
+        "example_lang": "xx",
+        "example_source": "dostor.org",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "warning days child national",
+        "raw_variants": [
+          "warning days child national"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Logo Hari Anak Nasional 2026 dan Filosofinya, Serta Link Download Desain Maskot HAN ke-42",
+        "example_lang": "xx",
+        "example_source": "tribunnews.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "washington wizards",
+        "raw_variants": [
+          "washington wizards"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "Trump Calls LeBron James a Possible 'Racist' While Praising Michael Jordan as the Real GOAT in Oval Office",
+        "example_lang": "en",
+        "example_source": "ibtimes.com.au",
+        "verdict": "REAL",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "widdecombe devon",
+        "raw_variants": [
+          "widdecombe devon"
+        ],
+        "provenance": {
+          "gdelt_persons": 1
+        },
+        "example_headline": "Trial date set for man charged with murdering Ann Widdecombe",
+        "example_lang": "en",
+        "example_source": "plymouthherald.co.uk",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      },
+      {
+        "name": "wiky",
+        "raw_variants": [
+          "WIKY"
+        ],
+        "provenance": {
+          "nlp:ORG": 1
+        },
+        "example_headline": "Analysis-Why El Niño's promise of a quieter hurricane season may not guarantee good news for insurers | 104.1 WIKY",
+        "example_lang": "en",
+        "example_source": "wiky.com",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "world cup reactions",
+        "raw_variants": [
+          "World Cup: Reactions"
+        ],
+        "provenance": {
+          "nlp:EVENT": 1
+        },
+        "example_headline": "World Cup: Reactions as FIFA president Gianni Infantino told to resign after Spain won",
+        "example_lang": "en",
+        "example_source": "dailypost.ng",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "xa3 24",
+        "raw_variants": [
+          "xA3;24"
+        ],
+        "provenance": {
+          "nlp:PERSON": 1
+        },
+        "example_headline": "Stacey Solomon's £24 summer dress shoppers say 'looks ten times the price'",
+        "example_lang": "en",
+        "example_source": "cambridge-news.co.uk",
+        "verdict": "GARBAGE",
+        "stratum": "nlp_only"
+      },
+      {
+        "name": "y school",
+        "raw_variants": [
+          "y school"
+        ],
+        "provenance": {
+          "gdelt_orgs": 1
+        },
+        "example_headline": "12 результатів по 200 балів на НМТ-2026: рекорд Європейського колегіуму",
+        "example_lang": "xx",
+        "example_source": "ukrainianwall.com",
+        "verdict": "GARBAGE",
+        "stratum": "gdelt_any"
+      }
+    ]
+  },
+  "residuals": [
+    "**Cross-day df is measured through a decaying window.** Resolvability by day: `2026-07-28` 97.5% · `2026-07-27` 82.5% · `2026-07-26` 69.8% · `2026-07-25` 58.0% · `2026-07-24` 46.6% · `2026-07-23` 31.0% · `2026-07-22` 16.4% · `2026-07-21` 0.0%. df on the low-resolvability days is biased LOW; only the primary day's numbers are proposal-grade.",
+    "**Lane H is Latin-only by construction, and fails UNSAFELY rather than emptily** (§4d). Languages whose headline keys are >80% unusable on the primary snapshot: `ru` (91% of 319), `ar` (100% of 191), `uk` (95% of 81), `fa` (100% of 18). Lane H therefore **cannot** cover the ru/uk entity hole — and spec §3.4 reads as though it might. With lane U also silent at DP-1 (§4c), **Stage 2 has no script-blind lane at all**: for a Cyrillic-only fragment pair, the evidence gate reduces to lane E, whose ru coverage is 10.0% (§2.2). That combination should be stated in the plan before go/no-go 0, not discovered at go/no-go 2.",
+    "**The noise-floor labels are model-produced and single-rater.** They are a first pass, published item-by-item in the `.json` precisely so the number can be contested rather than inherited.",
+    "**df's document unit is the cluster, and clusters are sampled.** `sample_signal_ids` is capped at 24 (spec §2.5: 4.1% of clusters truncated), so every df here is a df over a near-complete, not complete, membership view.",
+    "**The FALSE construction is mechanical, not adjudicated.** It is imported verbatim from the whitened-taus harness so M1/M2/M3 share one definition; it inherits that harness's known bias (cross-script pairs are refused, so the false set skews same-script).",
+    "**The witness families are single-country** (Berlin Pride all DE, Caspian 8/9 IR) — a true set that is easy for every lane on geography. The cross-country/cross-script reconvergence case is NOT represented here and is M1's job to supply.",
+    "**The cross-day probe's TRUE set is label-defined** (SequenceMatcher ≥ 0.80 + shared country across the day boundary) and its old side is measured at 16.4% resolvability, so its absolute rates are a floor, not an estimate. It is here to establish that the DP-2 geometry EXISTS, not to set DP-2's threshold — that is M5, and M5 is gated on ≥14 nights of fingerprints.",
+    "**`w_E/w_U/w_H` are seeds, not an operating point.** They are fitted on one night and two single-country families. The M1/M2 grid is the authority; if it lands elsewhere, it is right and this table is the prior it moved.",
+    "**`snapshot_window_h = [168]` makes the cross-day lanes partly tautological.** Each snapshot re-clusters a seven-day window, so 62.7% of tonight's sampled signals were also sampled last night. A cross-day 'same story' pair therefore shares ARTICLES, not just a story — which is what DP-2 wants, but it means the cross-day URL/domain numbers must never be quoted as evidence that locators survive translation.",
+    "**The 07-23→07-27 label blackout removed five of the eight profiled nights from every label-based construction** (100% NULL `emergent_clusters.label`). It does not affect the df distributions (those need no labels), but it is why the cross-day probe reaches back 6 days. M1/M2 inherit this: their witness families and FALSE sets can only be built on labelled nights, and there are currently three in the window."
+  ],
+  "noise_recommendation": "garbage rate **53.0% > 30%** → **df=1 entities must NOT be admissible as the sole evidence for a merge.** By source array: `gdelt_organizations` 81% (n=83); `nlp_persons` 43% (n=56); `gdelt_persons` 24% (n=63). The noise is NOT uniform — `gdelt_organizations` is the worst array and `gdelt_persons` the cleanest — so the cheapest honest cut is per-array admissibility at df=1, with the excluded count published (`entities_excluded_noise_floor`) rather than silently dropped. Note this INVERTS the spec's §2.5 assumption if the worst array is a GDELT one.",
+  "url_verdict": "**the exact-URL half is structurally silent on same-snapshot pairs — this is a consequence of the schema, not a low rate that better thresholds could lift.** `sample_signal_ids` PARTITION the snapshot (24,192 refs, 24,192 distinct → no signal is in two clusters), and `signals_v2` holds 0 duplicate `source_url` values across 1,001,964 rows. Two clusters of one snapshot can therefore only share a URL when the normalizer collapses two distinct rows — measured at **5 keys out of 23,582**. Fire rates: 0.0% true / 0.0% false. **Consequence for the build order: lane U contributes NOTHING to Stage 2 (DP-1, same-snapshot merge) — the first thing being built.** Cross-day is a different object entirely, and the reason is `snapshot_window_h = [168]`: each snapshot re-clusters a SEVEN-DAY window, so 15,159 signals (62.7% of tonight's refs) are also in last night's, and the cross-day probe reads 51.2% true / 0.0% false. **Read that number with its mechanism**: a cross-day same-story pair is largely the same ARTICLES re-clustered, so lane U is measuring membership continuity, not a translation-surviving same-story signal. That is still exactly what DP-2 needs — but it is not evidence for the spec's §3.4 claim that lane U rescues cross-script matching. **Keep lane U, scope it to DP-2, and do not let its Stage-2 zero be read as 'lane U fails'.**",
+  "headline_verdict": "**the hygiene rule is mandatory, and it is cheap.** Dropping alpha-free / short keys removes 10.6% of resolved signals from lane H and costs 1.9pp of the true fire rate (3.8% → 1.9%) while removing 0.4pp of the false fire rate (0.4% → 0.0%). `build_evidence_fingerprints.py` (T-B2) must apply `headline_key_usable` BEFORE writing `headline_keys`, and publish the dropped count — a residue key is not a headline, and a frozen fingerprint cannot be cleaned later. Note this is a defect in lane H's INPUT, not in `_norm_headline`, which is correct for its own job (syndication detection over an English-dominant front page); the design's mistake is reusing it unfiltered as an identity signal over a 31-language corpus.",
+  "domain_verdict": "**at DP-1 the domain half is nearly worthless and dangerous ungated.** It fires on only 6.0% of true pairs against 3.2% of false — a lift of 1.873, i.e. syndication infrastructure. A df≤50 ceiling improves the lift to 3.043 but on 13 true pairs out of 267, which is too few to calibrate on and buys ~5% recall. **Recommendation: drop the domain half from the DP-1 gate**; if it is kept at all, it is kept ONLY with the df≤50 ceiling and only as a borderline-band corroborator, never as a merge trigger. **The answer flips by decision point.** The same domain lane measured across the day boundary reads 61.5% true / 1.2% false (AUC 0.8020) — strong, for the §4c reason (a 168-hour clustering window means cross-day same-story pairs largely re-use the same articles, hence the same domains). So 'does the domain half discriminate' has no single answer: **NO at DP-1, YES at DP-2.** The spec asks the question once; it needs asking twice."
+}
