@@ -43,11 +43,14 @@ export const StoryLensProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [state.active])
 
   const enter = useCallback((threadId: string) => {
-    // Idempotent: re-entering the SAME anchor while its data is already
-    // loaded is a no-op — no redundant fetch, no flash of the loading state.
-    // Entering a DIFFERENT anchor (or retrying one whose fetch failed, so
-    // dataRef.current is still null) always proceeds.
-    if (stateRef.current.anchorId === threadId && dataRef.current) return
+    // Idempotent, but only for a genuinely resolved payload: no-op only when
+    // this anchor already has an ANCHORED payload (dataRef.current?.anchor
+    // truthy) — no redundant fetch, no flash of the loading state. Anchorless
+    // payloads (degraded — db_error/db_unavailable/etc — or an honest
+    // no-anchor empty) always refetch on re-enter, since the router answers
+    // those with HTTP 200 via _empty(), so dataRef.current itself is truthy
+    // even though there is nothing to show yet and a retry may now succeed.
+    if (stateRef.current.anchorId === threadId && dataRef.current?.anchor) return
     setState({ active: true, anchorId: threadId })
     setData(null)
     setError(null)
