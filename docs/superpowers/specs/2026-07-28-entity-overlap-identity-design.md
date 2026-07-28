@@ -1,5 +1,15 @@
 # Identity by shared measured evidence — replacing centroid-and-label with an evidence overlap gate
 
+**STATUS: CLOSED — Stage-0 gate fired NO-GO, K3 = REFUTED on all three lanes (2026-07-29).**
+Measurement: `docs/research/recall-229/2026-07-29-witness-reconvergence.md`. The binding
+constraint is GRAPH DENSITY, not pairwise precision: merge_duplicates runs to a fixpoint, so the
+seed point's 1.4% false-pair rate = 58,106 edges = a 96.2% connected component (K2 bar: 2%).
+The separation probe shows the recall cut and the safety cut never cross at any tau.
+REHABILITATED BY THE SAME RUN: today's cos>=0.90 AND label>=0.80 satisfies K2 (1.13%), admits
+0/1200 false pairs, and halves witness fragmentation (Caspian 9->4, Berlin Pride 22->4) — its
+catastrophic failure mode was the five-day label blackout, which is already fixed
+(SNAPSHOT_UNLABELLED, 22f102f5). Kept as the record of what was designed and how it died.
+
 **Date:** 2026-07-28 · **Status:** DESIGN, nothing built · **Branch:** `eclipse-dramatic-moment`
 **Predecessors (read first):**
 - `docs/research/recall-229/2026-07-28-identity-layer-raw-cosine.md` — the diagnosis (shredding + absorption, one mechanism)
