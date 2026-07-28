@@ -596,11 +596,41 @@
 }
 
 
+/* ---- STORY LENS (user-entered, per-thread) ---------------------------------
+   Calm cyan scoping — same idiom as the eclipse lens below (pinned rows +
+   section labels), but never a takeover. Placed ABOVE the eclipse block so
+   stylesheet cascade order agrees with the structural precedence (eclipse
+   wins outright, story-lens is second) — belt-and-suspenders only: the two
+   are already mutually exclusive by construction (lensRole is only ever
+   computed when eclipseSets is absent, so a row never carries both an
+   ecl-row-* and an sl-row-* class), so no !important war between them can
+   actually occur. border-left-color needs !important for a different fight:
+   the row's inline style={{ borderLeftColor: threadAccent }} (category-family
+   color) would otherwise win over any plain stylesheet rule regardless of
+   selector specificity. border-left-WIDTH is left alone (no override) so a
+   lens row never reads thinner than an ordinary row's 3px. */
+.narrative-row.sl-row-anchor { border-left-color: var(--story-cyan, #2aa7ad) !important; }
+.narrative-row.sl-row-sibling { border-left-color: rgba(42, 167, 173, 0.4) !important; }
+
+.sl-section-label {
+    flex: 0 0 auto;
+    color: var(--story-cyan, #2aa7ad);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 6px 8px 2px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 /* ---- ECLIPSE LENS (ambient mode only) --------------------------------------
    The panel goes shadow-first: the eclipsing story pins to the top in
    eclipse-red, the stories it drowns out follow in shadow-cyan, each carrying
    its own share of coverage next to the eclipse's. Nothing here renders outside
-   lens mode — the classes are only emitted when the lens is engaged. */
+   lens mode — the classes are only emitted when the lens is engaged. Placed
+   BELOW the story-lens block above so cascade order agrees with the
+   structural precedence (eclipse wins outright) — belt-and-suspenders only,
+   see the note above; the two row-role sets can't co-occur on one element. */
 /* Same two colours the lens uses everywhere else (lib/eclipseSets.ts). */
 .narrative-row.ecl-row-eclipse { border-left-color: var(--eclipse-red, #e23a1a) !important; }
 .narrative-row.ecl-row-shadow { border-left-color: var(--eclipse-cyan, #2aa7ad) !important; }
@@ -626,27 +656,4 @@
     letter-spacing: 0.04em;
     white-space: nowrap;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-}
-
-/* ---- STORY LENS (user-entered, per-thread) ---------------------------------
-   Calm cyan scoping — same idiom as the eclipse lens above (pinned rows +
-   section labels), but never a takeover: no !important war with the eclipse
-   colors since the two are mutually exclusive by construction (lensRole is
-   only ever computed when eclipseSets is absent). border-left-color needs
-   !important here for the same reason the eclipse rows do: the row's inline
-   style={{ borderLeftColor: threadAccent }} (category-family color) would
-   otherwise win over any plain stylesheet rule regardless of selector
-   specificity. */
-.narrative-row.sl-row-anchor { border-left-width: 2px; border-left-color: var(--story-cyan, #2aa7ad) !important; }
-.narrative-row.sl-row-sibling { border-left-width: 2px; border-left-color: rgba(42, 167, 173, 0.4) !important; }
-
-.sl-section-label {
-    flex: 0 0 auto;
-    color: var(--story-cyan, #2aa7ad);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    padding: 6px 8px 2px;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-weight: 700;
-    text-transform: uppercase;
 }

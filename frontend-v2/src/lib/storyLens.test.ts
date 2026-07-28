@@ -4,6 +4,7 @@ import {
   hasLensContent,
   lensErrorCopy,
   lensTopicParam,
+  siblingChipText,
   threadLensRole,
   type StoryLensData,
 } from './storyLens'
@@ -30,6 +31,21 @@ describe('buildLensSets / threadLensRole', () => {
   it('matches through anchor_topics union like the eclipse role does', () => {
     const sets = buildLensSets(data)
     expect(threadLensRole(['dynamic-topic-2'], 'thread-x', sets)).toBe('sibling')
+  })
+})
+
+describe('siblingChipText', () => {
+  it('flags a blob sibling structurally — isBlob true, text carries the marker', () => {
+    const blobSibling = data.siblings[1] // is_blob: true
+    const chip = siblingChipText(blobSibling)
+    expect(chip.isBlob).toBe(true)
+    expect(chip.text).toContain('⚠ grab-bag')
+  })
+  it('a non-blob sibling never carries the marker', () => {
+    const plainSibling = data.siblings[0] // is_blob: false
+    const chip = siblingChipText(plainSibling)
+    expect(chip.isBlob).toBe(false)
+    expect(chip.text).not.toContain('⚠ grab-bag')
   })
 })
 

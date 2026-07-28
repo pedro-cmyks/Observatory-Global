@@ -107,6 +107,15 @@ export function siblingReasonText(s: StoryLensSibling): string {
   return first ? `${first.basis} ${first.value}` : s.kinship
 }
 
+export interface SiblingChipText { text: string; isBlob: boolean }
+
+// Chip text + structured blob flag — consumers branch tooltips on isBlob,
+// never by re-parsing the rendered string.
+export function siblingChipText(s: StoryLensSibling): SiblingChipText {
+  const base = siblingReasonText(s)
+  return { text: s.is_blob ? `${base} · ⚠ grab-bag` : base, isBlob: s.is_blob }
+}
+
 // User-facing copy for the siblings endpoint's closed reason-code set.
 // A failed lookup must never read as a measured absence, and internal
 // codes must never reach the screen verbatim.

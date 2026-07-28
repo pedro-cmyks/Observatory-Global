@@ -17,7 +17,7 @@ import { personPin } from '../lib/capturePayloads'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import { useStoryLens } from '../contexts/StoryLensContext'
-import { buildLensSets, threadLensRole, hasLensContent, siblingReasonText } from '../lib/storyLens'
+import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText } from '../lib/storyLens'
 import './NarrativeThreads.css'
 
 interface TimelinePoint {
@@ -230,15 +230,17 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const lensSets = useMemo(
         () => (lensOn ? buildLensSets(storyLens.data) : null),
         [lensOn, storyLens.data])
-    // Reason text per lens sibling id (+ folded near-dup ids it absorbed),
-    // for the ↔ chip — mirrors relationReason below but sourced from the
-    // measured walk instead of the client-side entity/country heuristic.
+    // Reason chip text + structured blob flag per lens sibling id (+ folded
+    // near-dup ids it absorbed) — mirrors relationReason below but sourced
+    // from the measured walk instead of the client-side entity/country
+    // heuristic. isBlob rides as a real field so the tooltip branches on it
+    // directly, never by re-parsing the rendered chip string.
     const lensReasonById = useMemo(() => {
-        const m = new Map<string, string>()
+        const m = new Map<string, SiblingChipText>()
         for (const s of storyLens.data?.siblings ?? []) {
-            const txt = siblingReasonText(s) + (s.is_blob ? ' · ⚠ grab-bag' : '')
-            m.set(s.id, txt)
-            for (const f of s.folded ?? []) m.set(f, txt)
+            const chip = siblingChipText(s)
+            m.set(s.id, chip)
+            for (const f of s.folded ?? []) m.set(f, chip)
         }
         return m
     }, [storyLens.data])
@@ -295,6 +297,17 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const liveOrderIdsRef = useRef<string[]>([])
     const freezeRowOrder = useCallback(() => setFrozenOrder(liveOrderIdsRef.current.slice()), [])
     const releaseRowOrder = useCallback(() => setFrozenOrder(null), [])
+
+    // Story lens review finding 3: entering/exiting the lens is a DELIBERATE
+    // re-scope the reader asked for, not a hover hazard — an N5 freeze taken
+    // before the lens engaged must not hold a stale (pre-lens) row order over
+    // the newly lens-ordered list. Release the freeze on every lensOn
+    // transition so the section labels/roles (computed against the RENDERED
+    // order) are correct on the primary entry path; N5 still guards ordinary
+    // hover-vs-poll-refresh churn once the lens's own order is settled.
+    useEffect(() => {
+        setFrozenOrder(null)
+    }, [lensOn])
 
     // #234: when a person is focused, fetch the PRECISE set of threads that
     // mention them (backend ?person=, full persons array) for the highlight —
@@ -411,13 +424,17 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // between hover and click (the mis-open bug that survived R2+R3). Content
     // still updates live — only the order freezes. Touch devices have no hover,
     // so freezeOnList stays null there and the live order applies as before.
+    // A lens on/off transition releases this freeze on its own (the effect
+    // above), so frozenOrder here is never a STALE pre-lens order on the
+    // primary entry path — only ordinary same-lens-state churn stays frozen.
     const orderedNarratives = freezeThreadOrder(liveOrdered, frozenOrder)
     liveOrderIdsRef.current = liveOrdered.map(n => n.thread_id)
 
     // Per-row lens role, resolved against the RENDERED order so the section
     // labels land on the first row of each group. indexOf (not "differs from the
-    // previous row") keeps at most ONE label per role even if the hover-freeze
-    // interleaves the groups.
+    // previous row") keeps at most ONE label per role even if a hover-freeze
+    // still in effect (e.g. from before an ambient eclipse tier flip, which is
+    // not freeze-released the way a lens transition is) interleaves the groups.
     const rowRoles = eclipseSets
         ? orderedNarratives.map(n => threadEclipseRole(n.anchor_topics, n.thread_id, eclipseSets))
         : null
@@ -442,10 +459,10 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     }
     // Lens reason lookup for a row: matches on thread_id first, then any
     // anchor_topics entry — a row can be a lens sibling via either.
-    const lensReasonFor = (n: Narrative): string | null => {
+    const lensReasonFor = (n: Narrative): SiblingChipText | null => {
         for (const id of [n.thread_id, ...(n.anchor_topics ?? [])]) {
-            const txt = lensReasonById.get(id)
-            if (txt) return txt
+            const chip = lensReasonById.get(id)
+            if (chip) return chip
         }
         return null
     }
@@ -555,18 +572,30 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 //  - a person is focused, some thread mentions them, this one doesn't -> dim (#234)
                 const dimByCountry = !!filter.country && !n.top_countries.includes(filter.country)
                 const dimByPerson = anyPersonMatch && !threadMatchesPerson(n)
-                // A lens-active cross-country primo is exactly the row the
-                // measured walk exists to surface — it must not be asserted
-                // (cyan border + ↔ chip) AND de-emphasized as noise (0.38
-                // opacity) by the #234 country/entity heuristic in the same
-                // row. Lens supersedes this dim, same gate as the chip below.
+                // The #234 relation arm (sort/chip/dim) is dormant while lens
+                // ordering is active — belt-and-suspenders alongside the
+                // per-row override below, so this arm never even computes a
+                // "should dim" verdict for a lens-organized panel.
                 const dimByThread = !anyPersonMatch && anyThreadRelation && !threadRelated(n) && !lensSets
-                const isDimmed = dimByCountry || dimByPerson || dimByThread
-                // Story lens reason chip (measured walk) — takes precedence over
-                // the #234 heuristic chip below; a row never shows both.
+                // Lens rows are NEVER dimmed — a cross-country primo is
+                // exactly the row the measured walk exists to surface, and it
+                // must not be asserted (cyan border + ↔ chip) AND
+                // de-emphasized as noise in the same row by the #234
+                // country/entity heuristic. Non-lens rows keep their dims
+                // unaffected, so country/person focus still works on the rest
+                // of the list. NOT the same gate as dimByThread's `!lensSets`
+                // above (that only silences the #234 arm's OWN verdict) —
+                // this is the per-row rule that wins regardless of source.
+                const isDimmed = lensRole != null ? false : (dimByCountry || dimByPerson || dimByThread)
+                // Story lens reason chip (measured walk) — takes precedence
+                // over the #234 heuristic chip below; a row never shows both.
                 const lensReason = lensRole === 'sibling' ? lensReasonFor(n) : null
-                // #234 legibility: show the relation reason on surfaced siblings.
-                const siblingReason = (!lensReason && anyThreadRelation && !anyPersonMatch && !filter.country
+                // #234 legibility: show the relation reason on surfaced
+                // siblings. Dormant while lens ordering is active (!lensSets)
+                // so a client-side heuristic chip can never render visually
+                // identical to a measured lens chip on the same panel;
+                // !lensReason stays as a per-row belt-and-suspenders.
+                const siblingReason = (!lensReason && !lensSets && anyThreadRelation && !anyPersonMatch && !filter.country
                     && !isFocused && !isDimmed) ? relationReason(n) : null
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
@@ -614,11 +643,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                         {lensReason ? (
                                             <span
                                                 className="narrative-sibling-reason"
-                                                data-tip={lensReason.includes('⚠ grab-bag')
-                                                    ? `Measured relation: ${lensReason} — flagged as a possible multi-story blob; relation may be inflated`
-                                                    : `Measured relation: ${lensReason}`}
+                                                data-tip={lensReason.isBlob
+                                                    ? `Measured relation: ${lensReason.text} — flagged as a possible multi-story blob; relation may be inflated`
+                                                    : `Measured relation: ${lensReason.text}`}
                                             >
-                                                ↔ {lensReason}
+                                                ↔ {lensReason.text}
                                             </span>
                                         ) : siblingReason && (
                                             <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
