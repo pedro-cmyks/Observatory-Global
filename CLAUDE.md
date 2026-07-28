@@ -1,5 +1,74 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-28..30 (THE MEASUREMENT ARC — PRIMARY METRIC FIRST COMPUTED, FOUR
+PRE-REGISTERED REFUTATIONS, THE DISEASE NAMED. Read FIRST for engine strategy.)**
+**PRIMARY METRIC EXISTS AND IS MEASURED:** gold analyst query set built anti-circularly
+(20 queries from RAW signals_v2 headlines, 6 negative controls that PASS on honest
+absence; `docs/research/gold/gold-query-set-v1.json` + rubric). Harness
+`run_gold_query_eval.py`. **Answer rate 14% (07-27) → 7% (07-28 rerun with labels
+restored) = steady-state band 7–14%, n=14, ±7pp/query.** The label-blackout-confounder
+hypothesis was REFUTED by the rerun; labels bought HONESTY (floors 0→1), not answers.
+**THE LOUDEST FINDING — INSTABILITY:** GQ-02 (Berlin Pride) had a 26-receipt on-topic
+thread on 07-27; on 07-28 the served thread was a Klopp appointment while the story was
+still in-corpus. An answer that exists on day N vanishes on day N+1 → **day-over-day
+answer persistence is now a first-class metric; post-fix gold runs span ≥2 consecutive
+days.** Also shipped from the eval's findings: **G5** (`8d35c209`, query_thread marks a
+degraded match — `degraded`/`degraded_reason`, never cached), the analyst's verbatim
+question retrieves 0/20 (substring matcher), silent-empty on 6/20 reproduced.
+**FOUR PRE-REGISTERED REFUTATIONS in ~48h — each killed by its own gate, each leaving
+an instrument or a live bug (`docs/research/recall-229/` has every artifact + JSON):**
+1. **Whitening at the identity layer** (`2026-07-28-whitened-identity-taus.md`): anchor
+   gap −0.547. Removing top-1 PC removes CROSS-LINGUAL alignment in multilingual-e5
+   (RO+AR same-event pair: raw 0.835 → whitened 0.0095). Separates pairs the engine
+   never confused, destroys same-event fragments across languages.
+2. **Evidence-overlap merge gate** (`2026-07-29-witness-reconvergence.md`): NO-GO at
+   Stage 0. merge_duplicates runs to a FIXPOINT ⇒ 1.4% pairwise false = 58,106 edges =
+   a 96.2% connected component (K2 bar 2%, missed 48×). **Graph DENSITY binds, not
+   pairwise precision** — the spec pre-measured 406 pairs, never built the graph.
+   REHABILITATED by the same run: the SHIPPING rule (cos≥0.90 AND label≥0.80) is
+   K2-safe (1.13%), 0/1200 false, halves witness fragmentation (Caspian 9→4, Berlin
+   Pride 22→4) — its catastrophe was the LABEL BLACKOUT, already fixed
+   (SNAPSHOT_UNLABELLED, `22f102f5`, ledger via exported ATLAS_RELIABILITY_ALERTS_LOG).
+3. **DeepSeek judge as merge confirmer**: borderline band = 2.4×–1117× the
+   150-call/night cap. Dead at volume.
+4. **`used_t` removal** (`2026-07-30-used-t-simulation.md`): NO-GO — 2,247 false
+   absorptions (Valencia Building Collapse ate 41 clusters/12 countries in one night);
+   the 0.93 anchor guard is ~strictly a sub-condition of MATCH 0.88 (can't brake); the
+   over-merge detector GOES BLIND at 10+ absorbed (gap_ratio 0.818 < TAU_SEP_LOW ⇒
+   auto-KEEP) — use the COUNTRY-SPAN signature as control, not demote counts.
+   **THE DECISIVE FINDING: 43/54 Berlin-Pride fragments lack the consolidation target
+   in their TOP-12 nearest topics. Same-event fragments DON'T SHARE AN ARGMAX — each
+   picks a different stale identity. used_t was never binding; argmax dispersion is.
+   New instrument: top-12 agreement/family (today 11/54).**
+**IN FLIGHT at write time:** cluster-level consolidation pre-projection measured with
+the SHIPPING rule (the one surviving K2-safe rule, applied where labels are freshest;
+sidesteps argmax dispersion: one super-cluster = one pick) — 5th pre-registered gate.
+**LIVE BUGS FOUND BY THE MEASUREMENTS (fixed or chipped):** `fetch_topic_centroids`
+served an arbitrary 3.7% of the field (batch-stamp ORDER BY + guard testing len() AFTER
+LIMIT — could never fire; fixed `d916b8b4`, full-pool + true-count guard); ivfflat
+probes=20 vs 6s budget = silent [] under load (fixed, probes=10 + named
+`ann_timeout` degradation; thread-member lane too via chip); **`_norm_headline` deleted
+non-Latin chars → Cyrillic headline reduced to its DIGITS ('…26 липня'→'26'), 10.6% of
+signals, live syndication dedup poisoned for ru/uk/ar/fa — fixed via chip `924174b2`**;
+**44 clusters of the 07-28 snapshot have NO membership row incl. the LARGEST Caspian
+fragment (70 signals, never served) — projection runs before the scoped lane finishes
+writing; chip in flight**; used_t invariant already violated 633× in prod
+(robot_apply_outputs.py suspected); rarity calibration: df=1 entities are 53% garbage
+(GDELT organizations[] 80.7%! — cut per-array), lane-U URLs structurally silent
+same-snapshot (0 dup source_url in 997k rows), NO script-blind lane exists where
+Stage 2 needed it. **ISSUES 21→15** (closed with live verification: #255 #220 #241
+#263 #264 #265; 12 evidence comments; RLS-disabled finding on 6 tables → chip).
+**SEMANTIC-INTO-SEARCH: measured NO** (`2026-07-27-semantic-search-feasibility.md`) —
+5/12 failures were clustering (no thread exists), 3 synthesis (ROR already 1.00), only
+2 retrieval; semantic buys honesty 0.17→~0.50 as an UNVERIFIED floor (tau 0.44 whitened,
+geo filter mandatory — an Australia question returns Bordeaux receipts), never answers.
+**METHOD (the durable lesson, now 5-for-5):** pre-register gate + kill rule BEFORE the
+run; measure the FALSE side in the same pass as recall; a stats-view zero is not proof;
+graph density ≠ pairwise precision; detectors go blind exactly where damage concentrates
+— pick controls that stay sighted. **NEEDS PEDRO:** his 5 hand-written gold queries + 5
+external-agenda ones (the set cannot see the ingestion gap #235 without them); Anthropic
+still 400 (single-provider risk remains).**
+
 **2026-07-27 (ECLIPSE SHIPPED + L1 BLACKOUT FOUND & FIXED + RELIABILITY SWEEP.
 `cfafae9f`→`ab4e4461`, 3 Fly deploys, mig 091 applied, 21→18 issues.
 READ FIRST — a 4-day production outage hid behind green health signals.)**
