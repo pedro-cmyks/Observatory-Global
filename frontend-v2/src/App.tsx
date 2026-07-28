@@ -33,6 +33,7 @@ import { PersonCompare } from './components/PersonCompare'
 import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
+import { StoryLensBanner } from './components/StoryLensBanner'
 import { FocusIndicator } from './components/FocusIndicator'
 import { FrameStrip } from './components/FrameStrip'
 import { FrameSheet } from './components/FrameSheet'
@@ -2574,6 +2575,7 @@ function App() {
       <FocusDataProvider>
         <CrisisProvider>
           <WorkspaceProvider>
+            <StoryLensBanner />
             <AppContent />
           </WorkspaceProvider>
         </CrisisProvider>

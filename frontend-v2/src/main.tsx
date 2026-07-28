@@ -68,6 +68,8 @@ import { EclipseProvider } from './contexts/EclipseModeContext'
 import { EclipseTakeover } from './components/EclipseTakeover'
 import { EclipseChrome } from './components/EclipseChrome'
 import './components/eclipse.css'
+import { StoryLensProvider } from './contexts/StoryLensContext'
+import './components/storyLens.css'
 import App from './App.tsx'
 import { Landing } from './pages/Landing.tsx'
 import { Docs } from './pages/Docs.tsx'
@@ -105,22 +107,24 @@ createRoot(document.getElementById('root')!).render(
               route switch never tears down the auth session. */}
           <AuthProvider>
             <EclipseProvider>
-              <WarmCacheRouteReset />
-              {/* App+Brief live OUTSIDE <Routes> so route switches hide, never
-                  unmount them (#239 slice 2). Their Route entries render null —
-                  they only claim the paths so '*' doesn't send them to Landing. */}
-              <AppBriefKeepAlive />
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/app" element={null} />
-                <Route path="/brief" element={null} />
-                <Route path="/docs" element={<Docs />} />
-                <Route path="/docs/*" element={<Docs />} />
-                <Route path="*" element={<Landing />} />
-              </Routes>
-              <InstallPrompt />
-              <EclipseTakeover />
-              <EclipseChrome />
+              <StoryLensProvider>
+                <WarmCacheRouteReset />
+                {/* App+Brief live OUTSIDE <Routes> so route switches hide, never
+                    unmount them (#239 slice 2). Their Route entries render null —
+                    they only claim the paths so '*' doesn't send them to Landing. */}
+                <AppBriefKeepAlive />
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/app" element={null} />
+                  <Route path="/brief" element={null} />
+                  <Route path="/docs" element={<Docs />} />
+                  <Route path="/docs/*" element={<Docs />} />
+                  <Route path="*" element={<Landing />} />
+                </Routes>
+                <InstallPrompt />
+                <EclipseTakeover />
+                <EclipseChrome />
+              </StoryLensProvider>
             </EclipseProvider>
           </AuthProvider>
         </BrowserRouter>

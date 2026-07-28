@@ -1,0 +1,30 @@
+/* Calm scoping — cyan, NOT eclipse red. DARKEN never grayscale would be the
+   eclipse move; the lens doesn't darken the world at all, it just pins a
+   thin banner (the eclipse lesson was about #root filters eating encoding —
+   irrelevant here since this surface adds no filter). */
+:root { --story-cyan: #2aa7ad; }
+
+body.story-lensed { padding-top: 28px; }
+/* If the eclipse ribbon is also up, stack below it (eclipse.css sets its own
+   body.eclipsed padding-top: 28px; the combined selector below wins on
+   specificity+source order for the double-active case). */
+body.eclipsed.story-lensed { padding-top: 56px; }
+body.eclipsed.story-lensed .sl-banner { top: 28px; }
+
+.sl-banner {
+  position: fixed; top: 0; left: 0; right: 0; height: 28px;
+  /* Below the eclipse ribbon's 100001 (eclipse.css) — the dramatic takeover
+     always wins when both are active. */
+  z-index: 100000; display: flex; align-items: center; gap: 10px;
+  padding: 0 12px; font-size: 11px; letter-spacing: 0.06em;
+  background: linear-gradient(90deg, #0e2e33, #0a1a20);
+  color: #cfeff1; border-bottom: 1px solid var(--story-cyan);
+  box-sizing: border-box;
+}
+.sl-banner-mark { color: var(--story-cyan); font-weight: 700; }
+.sl-banner-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 38vw; }
+.sl-banner-counts { color: #8fc7cb; }
+.sl-banner-note { color: #8fa2bd; }
+.sl-banner-degraded { color: #e2a23a; }
+.sl-banner-exit { margin-left: auto; background: none; border: 1px solid #2aa7ad55; color: #cfeff1; cursor: pointer; border-radius: 3px; line-height: 1; padding: 1px 6px; }
+.sl-banner-exit:hover { border-color: var(--story-cyan); }
