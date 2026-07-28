@@ -111,15 +111,25 @@ def _lexical_match(
 
 
 def _semantic_component_gap(component: str, exc: Exception) -> dict[str, Any]:
-    """Expose a failed semantic substrate without erasing healthy siblings."""
+    """Expose a failed semantic substrate without erasing healthy siblings.
+
+    Lane failures that know WHY they failed carry `degraded_reason` (e.g.
+    SemanticSignalLaneTimeout -> "ann_timeout"), mirroring the search G5
+    contract; anything else falls back to the exception class name, which is
+    what this note always said. The named ones also spell out that the empty
+    result is a failed lookup, because that is exactly the distinction a
+    reader cannot otherwise make.
+    """
+    reason = getattr(exc, "degraded_reason", None) or exc.__class__.__name__
+    note = f"Semantic {component.replace('_', ' ')} unavailable ({reason})."
+    if getattr(exc, "degraded_reason", None):
+        note += " This is a failed lookup, not a measured absence."
     return {
         "gap_type": "lane_degraded",
         "lane": "semantic",
         "component": component,
-        "note": (
-            f"Semantic {component.replace('_', ' ')} unavailable "
-            f"({exc.__class__.__name__})."
-        ),
+        "degraded_reason": reason,
+        "note": note,
     }
 
 
@@ -177,6 +187,7 @@ async def discover_anchors(
     fetch_atlas_anchors_fn: Callable[..., Awaitable[list[dict[str, Any]] | None]] | None = None,
     fetch_signal_matches_fn: Callable[..., Awaitable[list[dict[str, Any]]]] | None = None,
     fetch_movement_fn: Callable[[list[str]], Awaitable[dict[str, dict[str, Any]]]] | None = None,
+    fetch_centroid_pool_size_fn: Callable[[], Awaitable[int]] | None = None,
     substrate_min_centroids: int = 0,
 ) -> dict[str, Any]:
     """Discover anchors for parsed intent. Degrades lane-by-lane: a failing
@@ -369,17 +380,36 @@ async def discover_anchors(
             # W2a substrate-health guard: a collapsed centroid pool makes the
             # member-centroid basis pure noise. Suppress it visibly; atlas and
             # signal-headline bases proceed independently.
+            #
+            # The pool size MUST come from a count over the substrate, not from
+            # len(topics). Until 2026-07-28 this compared len(topics) against
+            # the floor while the fetch capped the list at 100 — so `100 < 80`
+            # was false by construction and a collapsed pool always reported
+            # healthy. Injected separately (one count(*) under the same WHERE)
+            # so the number the guard tests is the number that exists.
+            pool_size = len(topics)
+            if centroids_available and fetch_centroid_pool_size_fn is not None:
+                try:
+                    pool_size = int(await fetch_centroid_pool_size_fn())
+                except Exception as exc:
+                    # Falling back to len(topics) is the pre-fix behaviour, so
+                    # say out loud that the health number is an estimate.
+                    coverage_gaps.append(
+                        _semantic_component_gap("story_centroid_pool_size", exc)
+                    )
+                    pool_size = len(topics)
             if (
                 centroids_available
                 and substrate_min_centroids
-                and len(topics) < substrate_min_centroids
+                and pool_size < substrate_min_centroids
             ):
                 coverage_gaps.append({
                     "gap_type": "lane_degraded",
                     "lane": "semantic",
                     "component": "story_centroid",
+                    "centroid_pool_size": pool_size,
                     "note": (
-                        f"Story-centroid pool is thin ({len(topics)} active, "
+                        f"Story-centroid pool is thin ({pool_size} active, "
                         f"healthy ≥{substrate_min_centroids}); topic-level semantic "
                         "matches suppressed to avoid noise. Signal-headline "
                         "evidence below is unaffected."

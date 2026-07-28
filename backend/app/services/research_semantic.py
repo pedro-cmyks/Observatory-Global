@@ -21,6 +21,7 @@ are pure functions.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 import os
@@ -168,19 +169,57 @@ def embed_query(text: str) -> list[float] | None:
     return vecs[0] if vecs else None
 
 
-async def fetch_topic_centroids(conn: Any) -> list[dict[str, Any]]:
-    """Active, non-roundup dynamic topics with centroids. Roundups are
-    excluded per the do_not_promote_roundup guardrail — a grab-bag thread
-    matching everything semantically is noise, not recall."""
-    rows = await conn.fetch(
-        """
-        SELECT id, label, centroid_vec, agg_n_signals, last_seen
-        FROM dynamic_topics
+# The one WHERE that defines "the story-centroid substrate". The scoring query
+# and the pool-size count MUST share it verbatim, or the substrate-health guard
+# measures a different population than the lane scores.
+_ACTIVE_CENTROID_WHERE = """
         WHERE state = 'active'
           AND is_roundup = FALSE
           AND centroid_vec IS NOT NULL
-        ORDER BY last_seen DESC
-        LIMIT 100
+"""
+
+# Blast-radius cap, NOT a selector. `semantic_topic_candidates` scores in pure
+# Python (768 multiplies per topic, no numpy), so the pool size is CPU on the
+# event loop. Measured 2026-07-28 (float-convert + cosine scan): 1,165 topics
+# = 133 ms · 2,719 = 293 ms · 5,000 = 590 ms. The cap sits far above every pool
+# ever measured — 1,165 rows in prod today, 2,719 at the 2026-07-27 gold-eval —
+# so it never selects; it exists only to keep a runaway pool under a second.
+CENTROID_POOL_SCAN_CAP = 5000
+
+
+async def fetch_topic_centroids(conn: Any) -> list[dict[str, Any]]:
+    """Active, non-roundup dynamic topics with centroids. Roundups are
+    excluded per the do_not_promote_roundup guardrail — a grab-bag thread
+    matching everything semantically is noise, not recall.
+
+    Ordering/limit (fixed 2026-07-28). This was `ORDER BY last_seen DESC
+    LIMIT 100`, which served an arbitrary sliver of the field: `last_seen` is a
+    BATCH STAMP written by the nightly snapshot, not per-topic recency. Measured
+    on prod under this exact WHERE — 2026-07-27: 2,714 of 2,719 rows shared the
+    single newest stamp (the lane saw 100 = 3.7%); 2026-07-28: 1,144 of 1,165,
+    only 2 distinct stamps in the whole pool. So the LIMIT cut a planner-
+    arbitrary, call-to-call unstable slice out of one giant tie, and across the
+    20 gold queries the best-matching centroid fell inside the served 100 in
+    1 of 20 cases.
+
+    `agg_n_signals DESC NULLS LAST, id DESC` replaces it: a real, total,
+    deterministic order (id breaks the volume ties), so if the cap ever binds it
+    drops the smallest topics first instead of flipping a coin. Volume is not
+    quality, which is why the cap sits above the pool rather than being used to
+    rank — every active centroid is scored.
+
+    Cost of scoring the whole field, EXPLAIN ANALYZE on prod 2026-07-28:
+    169 ms for all 1,165 rows (bitmap index scan on idx_dynamic_topics_state +
+    a 203 kB quicksort), against ~133 ms of Python-side scoring. Under a second
+    end to end, which is what the correctness is bought with.
+    """
+    rows = await conn.fetch(
+        f"""
+        SELECT id, label, centroid_vec, agg_n_signals
+        FROM dynamic_topics
+        {_ACTIVE_CENTROID_WHERE}
+        ORDER BY agg_n_signals DESC NULLS LAST, id DESC
+        LIMIT {int(CENTROID_POOL_SCAN_CAP)}
         """
     )
     return [
@@ -192,6 +231,23 @@ async def fetch_topic_centroids(conn: Any) -> list[dict[str, Any]]:
         }
         for r in rows
     ]
+
+
+async def fetch_active_centroid_pool_size(conn: Any) -> int:
+    """TRUE size of the story-centroid substrate, before any query cap.
+
+    The substrate-health guard used to test `len(topics)`, which was capped at
+    100 by the fetch above — so `100 < 80` was false by construction and a
+    collapsed pool always reported healthy. The guard needs a number the cap
+    cannot touch; this is it. Same WHERE as `fetch_topic_centroids`, verbatim.
+
+    Costs nothing worth counting: 1.7 ms on prod 2026-07-28, reusing the same
+    bitmap index scan the centroid fetch just warmed.
+    """
+    total = await conn.fetchval(
+        f"SELECT count(*) FROM dynamic_topics {_ACTIVE_CENTROID_WHERE}"
+    )
+    return int(total or 0)
 
 
 def semantic_topic_candidates(
@@ -272,13 +328,37 @@ def embed_atlas_anchors(topics: list[dict[str, Any]]) -> list[dict[str, Any]] | 
 # measured relevant cluster.
 SIGNAL_MIN_SIMILARITY = 0.84
 SIGNAL_LANE_LIMIT = 12
-ANN_IVFFLAT_PROBES = 20
+ANN_IVFFLAT_PROBES = 10
+# The budget the probe count has to fit inside. Named next to it on purpose:
+# these two numbers are one decision, and 2026-07-13 tuned the first without
+# ever looking at the second.
+ANN_QUERY_TIMEOUT_SECONDS = 6
+
+
+class SemanticSignalLaneTimeout(TimeoutError):
+    """The ANN signal lane ran out of its query budget.
+
+    Subclasses TimeoutError so every existing degrade path keeps working
+    (`discover_anchors` turns it into a coverage gap, `corroboration` marks
+    atlas_hot unavailable). It exists to carry `degraded_reason`, so what the
+    caller surfaces is "we could not look" and not an unlabeled empty list —
+    the same rule the search G5 fix applies to query_thread.
+    """
+
+    degraded_reason = "ann_timeout"
 
 
 async def _prepare_ann_search(conn: Any) -> None:
-    # Measured 2026-07-13 over 20 deterministic dispersed queries against
-    # 326,762 halfvec rows: probes=10 mean recall@10=.955 but minimum=.60;
-    # probes=20 reached 1.00 for every query at 131 ms mean / 203 ms max.
+    # 2026-07-13 measured RECALL on an idle box over 20 deterministic dispersed
+    # queries against 326,762 halfvec rows: probes=10 mean recall@10=.955 but
+    # minimum=.60; probes=20 reached 1.00 for every query at 131 ms mean.
+    # It never measured LATENCY UNDER LOAD, and that is where the setting lived:
+    # re-measured 2026-07-27/28, probes=20 ran 1.5s idle but repeatedly >100s
+    # under the nightly job load (4 gold queries timed out twice each) — i.e.
+    # far past the 6s budget, so the lane contributed nothing at all whenever
+    # the DB was busy. The same queries at probes=10 returned in 2.1-2.9s.
+    # A lane that answers at .955 mean recall beats a lane that answers 1.00
+    # only when nothing else is running.
     await conn.execute(f"SET ivfflat.probes = {ANN_IVFFLAT_PROBES}")
 
 # Malformed scraped titles pollute the embedding corpus and match anything
@@ -356,8 +436,9 @@ async def fetch_semantic_signal_matches(
 ) -> list[dict[str, Any]]:
     vec_literal = "[" + ",".join(f"{x:.5f}" for x in query_vec) + "]"
     await _prepare_ann_search(conn)
-    rows = await conn.fetch(
-        f"""
+    try:
+        rows = await conn.fetch(
+            f"""
         SELECT s.id, s.headline, s.country_code, s.source_name, s.source_url,
                s.timestamp,
                1 - (e.vec <=> $1::halfvec) AS similarity,
@@ -376,12 +457,24 @@ async def fetch_semantic_signal_matches(
         ORDER BY e.vec <=> $1::halfvec
         LIMIT {int(limit * 3)}
         """,
-        vec_literal,
-        # Without the HNSW index this is a full seq-scan over ~476K halfvecs —
-        # it hung the whole research plan 40s+ (2026-07-02, index rebuild
-        # window). Bounded: degrade to a lane gap, never a hung plan.
-        timeout=6,
-    )
+            vec_literal,
+            # Without the ANN index this is a full seq-scan over ~476K halfvecs —
+            # it hung the whole research plan 40s+ (2026-07-02, index rebuild
+            # window). Bounded: degrade to a lane gap, never a hung plan.
+            timeout=ANN_QUERY_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:  # == builtin TimeoutError on 3.11+
+        # An empty list here would be indistinguishable from "the corpus holds
+        # nothing about this query", which is the one thing it does NOT mean.
+        # Raise a named degradation instead: `discover_anchors` renders it as a
+        # signal_headline coverage gap carrying degraded_reason=ann_timeout, and
+        # corroboration reports atlas_hot unavailable. Never a silent [].
+        # A server-side cancellation (QueryCanceledError) still degrades
+        # visibly through the generic path, just under its own name.
+        raise SemanticSignalLaneTimeout(
+            f"signal ANN lane exceeded {ANN_QUERY_TIMEOUT_SECONDS}s "
+            f"at ivfflat.probes={ANN_IVFFLAT_PROBES}"
+        ) from exc
     import html as _html
     matches = []
     seen_headlines: set[str] = set()
