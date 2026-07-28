@@ -1,0 +1,10 @@
+/* AtlasMark — canonical constellation glyph. Color rides the surface's accent
+   token chain: reader surfaces (--r-accent, theme-aware) win, console falls to
+   --color-accent-primary, then the emerald default LoadingMoment also uses. */
+.atlas-mark {
+    display: inline-block;
+    vertical-align: -0.14em;
+    flex: none;
+    margin-right: 0.45em;
+    color: var(--r-accent, var(--color-accent-primary, #1d9e75));
+}

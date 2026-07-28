@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReaderTheme, ReaderThemeToggle } from '../lib/readerTheme'
+import { AtlasMark } from '../components/AtlasMark'
 import '../styles/readerTheme.css'
 import './Docs.css'
 
@@ -118,7 +119,7 @@ export function Docs() {
                         href="/"
                         onClick={e => { e.preventDefault(); navigate('/') }}
                     >
-                        Atlas<span className="docs-mk-dot">.</span>
+                        <AtlasMark size={14} />Atlas<span className="docs-mk-dot">.</span>
                     </a>
                     <span className="docs-crumb">Documentation</span>
                     <div className="docs-nav-links">

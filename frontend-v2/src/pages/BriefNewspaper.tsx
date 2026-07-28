@@ -35,6 +35,7 @@ import {
     type DailyPublicationArtifact,
 } from '../lib/dailyPublication'
 import { buildStaleBanner } from '../lib/staleBanner'
+import { AtlasMark } from '../components/AtlasMark'
 import {
     composeCountrySections,
     fetchCountryEdition,
@@ -1127,7 +1128,7 @@ export function BriefNewspaper() {
                 {/* ============ MASTHEAD ============ */}
                 <header className="reader-masthead brief-masthead">
                     <div className="brief-brand">
-                        <p className="reader-eyebrow">The Daily Instrument · Global Edition</p>
+                        <p className="reader-eyebrow"><AtlasMark size={13} />The Daily Instrument · Global Edition</p>
                         <h1 className="reader-wordmark">ATLAS<span className="dot">.</span></h1>
                         <p className="reader-tagline">Narrative intelligence — measured from coverage, not editorialized.</p>
                     </div>
