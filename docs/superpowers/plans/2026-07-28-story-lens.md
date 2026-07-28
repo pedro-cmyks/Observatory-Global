@@ -1211,6 +1211,8 @@ if (STORY_LENS_AUTO && isLensAnchor(themeId)) storyLens.enter(themeId)
 
 - [ ] **Step 2: Exit wiring.** Wherever the thread detail closes or focus fully clears (ThemeDetail close handler + FocusIndicator `onClear` path in App), call `storyLens.exit()`. Entering a DIFFERENT thread re-enters (enter replaces state wholesale — already handled).
 
+- [ ] **Step 2b: Sticky lens during re-anchor (T6 quality-review issue 1).** Clicking a sibling row re-enters with a new anchor; `enter()` nulls `data` synchronously, so `hasLensContent` goes false for the fetch-latency window and SignalStream tears down to the CATEGORY model (streamFilter rewritten to 'notable', full unscoped refetch) then flips back — two stream resets per re-anchor. Fix in SignalStream's `lensActive` derivation: hold the lens model while a re-enter is in flight — `storyLens.state.active && (hasLensContent(storyLens.data) || storyLens.loading)` — and make `topicParam` return the PREVIOUS non-null lens param while loading (keep a ref), so the tab bar and scope never flicker mid-walk. Also apply the same `|| loading` hold to NarrativeThreads' `lensOn` ONLY if the ordering flicker proves visible in the T11 walkthrough (ordering is cheaper to re-run than a network refetch — decide by observation, not preemptively).
+
 - [ ] **Step 3: Deep link.** Next to the `entry=eclipse` effect (368–376), add a reactive effect on `location.search`:
 
 ```tsx
