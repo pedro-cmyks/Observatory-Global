@@ -1,0 +1,167 @@
+-- 093: extended expression statistics for the /search/thread OR-branches that
+-- are still invisible to the planner (themes, source_name).
+--
+-- NOT YET APPLIED. Apply with the ANALYZE below, then RE-MEASURE (see §5).
+--
+-- This is the direct sequel to migration 092, which fixed the SAME class of
+-- bug for `persons` and documented the mechanism. 092 fixed one of the four
+-- /search/thread branches; the other two blind ones are fixed here.
+--
+-- ============================================================================
+-- §1. THE FAILURE (measured on prod 2026-07-28, 168h window, 947,468 rows)
+-- ============================================================================
+--
+-- issue #266 residual: GET /api/v2/search/thread?q=  end-to-end wall clock
+--
+--     trump     1.23s   200, 300 signals
+--     election  5.60s   200, 300 signals
+--     weather   8.29s   200, 300 signals      <- against the 8s segment budget
+--     gaza      8.60s   200, degraded_reason="match_timeout", 0 signals
+--
+-- `gaza` is not merely slow: it exceeds SEARCH_SEGMENT_TIMEOUT_SECONDS on
+-- EVERY call, so the G5 honest-degradation path fires and the endpoint serves
+-- an empty thread. The underlying query, run to completion, takes 26.7s.
+--
+-- ============================================================================
+-- §2. THE MECHANISM: one plan shape, two opposite regimes
+-- ============================================================================
+--
+-- The match query ORs four LIKE branches and asks for ORDER BY timestamp DESC
+-- LIMIT 300. Postgres has two viable plans:
+--
+--   (A) WALK   -- Index Scan on idx_signals_v2_timestamp, newest first,
+--                 applying the OR as a filter, stopping at 300 hits.
+--                 Cost is proportional to 300 / match_density.
+--   (B) BITMAP -- BitmapOr over the four trigram indexes, then top-N sort.
+--                 Cost is proportional to the number of matches.
+--
+-- WALK is right for a DENSE needle, BITMAP is right for a SPARSE one. The
+-- planner picks between them from the estimated match density -- and that
+-- estimate is what is broken. Measured, same query, same window:
+--
+--   trump  WALK  chosen. ~7,800 rows walked.  341ms   <- correct choice
+--   gaza   WALK  chosen. 259,680 rows walked.  26,722ms  <- CATASTROPHIC
+--   gaza   BITMAP forced (SET enable_indexscan=off):
+--                734 heap blocks, 1,233 matches.  228ms   <- 117x faster
+--
+-- The good plan for `gaza` existed the whole time. The planner declined it
+-- because it estimated 15,195 matching rows when the truth is 1,233.
+--
+-- ============================================================================
+-- §3. WHERE THE 12x OVERESTIMATE COMES FROM
+-- ============================================================================
+--
+-- Per-branch estimated vs actual rows for '%gaza%' (from EXPLAIN ANALYZE):
+--
+--   branch       expression                                   est     actual
+--   headline     f_unaccent(lower(headline))                    96      1,317
+--   source_name  lower(source_name)                          8,109         11   <-- blind
+--   themes       lower(f_arr_text(themes))                   8,109          0   <-- blind
+--   persons      f_unaccent(lower(f_arr_text(persons)))         40        216
+--                                                          -------
+--                                              OR estimate  15,195      1,233
+--
+-- The entire error is the two blind branches: together they contribute 16,218
+-- phantom rows against a reality of 11. That inflated density is exactly what
+-- makes the WALK plan look cheap.
+--
+-- WHY they are blind -- quoting the mechanism 092 established: the planner
+-- NEVER consults a PARTIAL index's expression statistics, because
+-- examine_variable() skips them (their sample covers only the predicate
+-- subset). Both indexes are partial:
+--
+--   idx_signals_v2_themes_text_trgm       ... WHERE (themes IS NOT NULL)
+--   idx_signals_v2_source_name_trgm       ... WHERE (source_name IS NOT NULL)
+--
+-- So both fall through to like_selectivity()'s pattern-shape heuristic, which
+-- keys off pattern LENGTH alone -- hence the identical 8,109 for two branches
+-- whose real answers are 0 and 11. Confirmed: the only statistics object on
+-- signals_v2 today is stats_signals_v2_persons_text (092).
+--
+-- The headline branch is NOT affected: idx_signals_headline_trgm is a
+-- non-partial index, so its expression statistics ARE read. That asymmetry is
+-- why the headline estimate (96) is at least the right order of magnitude.
+--
+-- A CREATE STATISTICS object is not partial, so the planner does read it.
+-- That is the whole fix, and 092 already proved it works on this table:
+-- persons estimates went from a uniform 1,617 to trump 27,805 / putin 3,766 /
+-- maduro 111 after ANALYZE. It is also why `trump` is the one fast needle
+-- today -- its dominant branch is the one branch that already has statistics.
+--
+-- ============================================================================
+-- §4. WIDTH CHECK (the thing that would have made this a no-op)
+-- ============================================================================
+--
+-- ANALYZE drops values wider than WIDTH_THRESHOLD (1024 bytes) from MCV and
+-- histogram, so a statistics object over a long concatenation can silently
+-- collect nothing. Measured over 20,000 sampled rows before writing this:
+--
+--   length(f_arr_text(themes))   avg 164   p50 199   p95 262   max 361
+--   values over 1024 bytes:      0  (0.0%)
+--   length(f_arr_text(persons))  p95 91    values over 1024 bytes: 0
+--
+-- Every value is well under the threshold, so the MCV/histogram will actually
+-- be populated. source_name is a short outlet name -- not a concern.
+--
+-- ============================================================================
+-- §5. EXPECTED EFFECT, AND WHAT MUST BE RE-MEASURED
+-- ============================================================================
+--
+-- Direction is safe by construction for the sparse case: correcting a match
+-- density DOWNWARD strictly raises the modelled cost of WALK (it must walk
+-- 300/density rows) and lowers the modelled cost of BITMAP. So `gaza` can only
+-- move toward the 228ms plan, never further from it.
+--
+-- For the dense needles the direction is genuinely open, and this is the part
+-- that MUST be measured rather than assumed:
+--   - weather's themes branch really does match 29,799 rows (a broad GDELT
+--     theme token: '%weather%' hits NATURAL_DISASTER_WEATHER and friends), and
+--     election's 18,241. Their current BITMAP plans cost 9.05s and 4.98s,
+--     dominated by 25,820 / 18,539 scattered cold heap-block reads.
+--   - With honest statistics the planner may switch them to WALK. At the walk
+--     rate measured on this table (0.103 ms/row, from gaza's 259,680 rows in
+--     26.7s) weather would need ~10,700 rows ~= 1.1s -- i.e. potentially a 8x
+--     WIN, not a regression. But that is an extrapolation, not a measurement.
+--
+-- So after applying: re-run the four needles end-to-end and record the
+-- numbers. If a dense needle regresses, the reversal is one line (§6) and the
+-- fallback is to attach the statistics to `themes` only, or to none.
+--
+-- Honest residual regardless of outcome: a query whose themes branch legitimately
+-- matches ~30k signals scattered across a 1.1 GB table is inherently heavy.
+-- This migration makes the planner CHOOSE correctly; it does not make 30k
+-- scattered heap reads cheap. The 8s segment timeout plus the G5 degradation
+-- marker remain the right behaviour for that class.
+--
+-- ============================================================================
+-- §6. COST AND REVERSAL
+-- ============================================================================
+--
+-- Sample cost: 300 x <target> rows per ANALYZE per object; 092 measured
+-- ~60-110s on prod for one object at target 1000. Two objects here, but
+-- source_name is short and cheap; budget one slow ANALYZE pass. Autovacuum
+-- maintains both afterwards.
+--
+-- Reversal (either or both, instant, no rewrite):
+--   DROP STATISTICS stats_signals_v2_themes_text;
+--   DROP STATISTICS stats_signals_v2_source_name;
+
+-- Spelled EXACTLY as migration 090 indexed it and as search.py queries it.
+-- Themes are uppercase ASCII GDELT codes, so lower() with no accent fold --
+-- any other spelling produces a statistics object the planner will not match.
+CREATE STATISTICS IF NOT EXISTS stats_signals_v2_themes_text
+  ON (lower(f_arr_text(themes)))
+  FROM signals_v2;
+
+CREATE STATISTICS IF NOT EXISTS stats_signals_v2_source_name
+  ON (lower(source_name))
+  FROM signals_v2;
+
+-- 1000 MCVs / 1001 histogram bounds, matching 092. The LIKE estimator matches
+-- the pattern against these stored values, so resolution here is precisely
+-- what separates a broad GDELT theme token from one that matches nothing.
+ALTER STATISTICS stats_signals_v2_themes_text  SET STATISTICS 1000;
+ALTER STATISTICS stats_signals_v2_source_name  SET STATISTICS 1000;
+
+-- REQUIRED once after applying -- statistics objects are empty until ANALYZE.
+-- ANALYZE signals_v2;
