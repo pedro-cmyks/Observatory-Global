@@ -266,6 +266,11 @@ export default function ResearchPlanPanel({
 
   return (
     <div className="rp-panel">
+      {/* Scrollable body. The honesty rails (low-confidence tray + downranking
+          ledger) live OUTSIDE this scroller, pinned at the panel bottom, so a
+          short grid slot (laptop stream preset = 6 rows) can never clip them
+          out of existence — they are always painted. */}
+      <div className="rp-scroll">
       <div className="rp-intent">
         {plan.intent.geo_scope.length > 0 && (
           <span className="rp-intent-chip">{plan.intent.geo_scope.join(' ')}</span>
@@ -365,20 +370,27 @@ export default function ResearchPlanPanel({
           ))}
         </div>
       )}
+      </div>
 
-      {plan.low_confidence_tray.length > 0 && (
-        <div className="rp-tray">
-          <button className="rp-tray-toggle" onClick={() => setShowTray(s => !s)}>
-            {showTray ? '▾' : '▸'} LOW-CONFIDENCE CANDIDATES — ALL ACCESSIBLE ({plan.low_confidence_tray.length})
-          </button>
-          {showTray && plan.low_confidence_tray.map((a, i) =>
-            renderAnchor(a, plan.anchors.length + i))}
-        </div>
-      )}
+      {/* Honesty rails — pinned below the scroller, never clipped by a short
+          panel. The expanded tray scrolls within its own capped area. */}
+      {(plan.low_confidence_tray.length > 0 || plan.downranking_ledger) && (
+        <div className="rp-rails">
+          {plan.low_confidence_tray.length > 0 && (
+            <div className="rp-tray">
+              <button className="rp-tray-toggle" onClick={() => setShowTray(s => !s)}>
+                {showTray ? '▾' : '▸'} LOW-CONFIDENCE CANDIDATES — ALL ACCESSIBLE ({plan.low_confidence_tray.length})
+              </button>
+              {showTray && plan.low_confidence_tray.map((a, i) =>
+                renderAnchor(a, plan.anchors.length + i))}
+            </div>
+          )}
 
-      {plan.downranking_ledger && (
-        <div className="rp-ledger" data-tip={plan.downranking_ledger.appeal_action}>
-          {researchLedgerSummary(plan.downranking_ledger)}
+          {plan.downranking_ledger && (
+            <div className="rp-ledger" data-tip={plan.downranking_ledger.appeal_action}>
+              {researchLedgerSummary(plan.downranking_ledger)}
+            </div>
+          )}
         </div>
       )}
     </div>
