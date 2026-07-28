@@ -687,7 +687,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
     trows = await conn.fetch(
         "SELECT id, identity_key, state, snapshots_since_seen, label, "
         "centroid_vec, first_seen, last_seen, n_snapshots, agg_n_signals, "
-        "mean_cohesion, noise_rate, is_junk FROM dynamic_topics"
+        "mean_cohesion, noise_rate, is_junk, is_umbrella FROM dynamic_topics"
     )
     mrows = await conn.fetch(
         "SELECT dynamic_topic_id, emergent_cluster_id, snapshot_at "
@@ -704,6 +704,14 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
 
     topics: list[Topic] = []
     for tr in trows:
+        # Umbrellas are DERIVED aggregates (build_umbrella_topics): their member
+        # rows are cleared + rebuilt from children every night, so a cluster that
+        # attaches directly to one never founds its own identity and loses its
+        # membership at the next rebuild — then re-attaches on re-adoption, a
+        # permanent swallow cycle (72 orphaned clusters incl. a 70-signal
+        # fragment, 2026-07-28). They must never be matching targets here.
+        if tr["is_umbrella"]:
+            continue
         mem = members.get(int(tr["id"]), [])
         mem = [m for m in mem if m["cluster_id"] in clusters_by_id]
         if not mem:

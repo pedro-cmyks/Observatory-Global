@@ -5,6 +5,12 @@ import { TranslatableHeadline } from './TranslatableHeadline'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
+import { useEclipseMode } from '../contexts/EclipseModeContext'
+import {
+    type StreamTab, eclipseTopicParam, resolveStreamTab, streamRowEclipseClass,
+    streamTabModel, STREAM_DEFAULT_TAB,
+} from '../lib/streamTabs'
+import type { StreamLevel } from '../contexts/FocusContext'
 import { Pin, PinOff } from '../lib/icons'
 import PinReceiptButton from './PinReceiptButton'
 import { SignalDetailPanel } from './SignalDetailPanel'
@@ -139,7 +145,7 @@ export const SignalStream: React.FC = () => {
     const [velocity, setVelocity] = useState<Velocity | null>(null)
     const [allowlist, setAllowlist] = useState<string[]>([])
     const [isHovered, setIsHovered] = useState(false)
-    const [streamFilter, setStreamFilter] = useState<'all' | 'critical' | 'elevated' | 'notable' | 'conflict' | 'disaster' | 'trend' | 'person' | 'maritime'>('notable')
+    const [streamFilter, setStreamFilter] = useState<StreamTab>(STREAM_DEFAULT_TAB)
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
     // G5 (dataviz audit): distinguish a SERVICE FAILURE (fetch threw / non-2xx,
@@ -154,6 +160,27 @@ export const SignalStream: React.FC = () => {
     const dripQueueRef = useRef<StreamItem[]>([])
     const seenIdsRef = useRef<Set<number>>(new Set())
     const { pinItem, unpinItem, isPinned } = useWorkspace()
+
+    /* ECLIPSE LENS (spec §6.4, Phase 4): inside the lens the category tabs
+       collapse to ECLIPSE / SHADOW / ALL and stop being a theme filter — they
+       become a TOPIC scope resolved server-side via `/api/v2/signals?topic=`
+       (a signal row carries no topic linkage, which is why this phase waited on
+       the backend filter). Outside the lens `tabModel.eclipse` is false,
+       `topicParam` is null, and every path below is byte-identical to before. */
+    const { mode: eclipseMode, data: eclipseData } = useEclipseMode()
+    const eclipseActive = eclipseMode === 'ambient' && !!eclipseData
+    const tabModel = useMemo(() => streamTabModel(eclipseActive), [eclipseActive])
+
+    // Entering/leaving the lens invalidates the selected tab (a category tab
+    // means nothing in the lens and vice versa) — land on the model's default
+    // rather than render a bar with nothing selected. 'all' survives both ways.
+    useEffect(() => {
+        setStreamFilter(prev => resolveStreamTab(prev, tabModel))
+    }, [tabModel])
+
+    const topicParam = useMemo(
+        () => (eclipseActive ? eclipseTopicParam(streamFilter, eclipseData) : null),
+        [eclipseActive, streamFilter, eclipseData])
 
     // Fetch allowlist once
     useEffect(() => {
@@ -197,6 +224,7 @@ export const SignalStream: React.FC = () => {
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
                 if (filter.person) params.append('person', filter.person)
+                if (topicParam) params.append('topic', topicParam)
 
                 const sigRes = await fetch(`/api/v2/signals?${params.toString()}`)
 
@@ -282,7 +310,11 @@ export const SignalStream: React.FC = () => {
             isMounted = false
             if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null }
         }
-    }, [filter.country, filter.theme, filter.person])
+        // topicParam re-runs this effect on a lens tab switch: the scope is a
+        // server-side query, so switching Eclipse↔Shadow refetches rather than
+        // re-filtering the pool in the client. No new POLLING is added — the
+        // 15s interval below is the same one, just carrying the scope.
+    }, [filter.country, filter.theme, filter.person, topicParam])
 
     // Poll for new signals
     useEffect(() => {
@@ -298,6 +330,7 @@ export const SignalStream: React.FC = () => {
                 if (filter.country) params.append('country_code', filter.country)
                 if (filter.theme) params.append('theme', filter.theme)
                 if (filter.person) params.append('person', filter.person)
+                if (topicParam) params.append('topic', topicParam)
                 if (latestTimestampRef.current) params.append('since', latestTimestampRef.current)
 
                 const sigRes = await fetch(`/api/v2/signals?${params.toString()}`)
@@ -338,7 +371,7 @@ export const SignalStream: React.FC = () => {
             isMounted = false
             clearInterval(interval)
         }
-    }, [filter.country, filter.theme, filter.person, isHovered])
+    }, [filter.country, filter.theme, filter.person, isHovered, topicParam])
 
     // Drip-reveal: pop one queued signal every ~1 second for a live-stream feel
     useEffect(() => {
@@ -386,6 +419,10 @@ export const SignalStream: React.FC = () => {
     }
 
     const filteredItems = useMemo(() => items.filter(sig => {
+        // Lens tabs are a SERVER-side topic scope, already applied to what we
+        // fetched. Re-filtering here by theme keywords would silently drop
+        // members of the very stories the lens exists to surface.
+        if (tabModel.eclipse && streamFilter !== 'all') return true
         if (streamFilter === 'all') return true
         if (streamFilter === 'person') return sig.persons?.length > 0
         if (streamFilter === 'maritime') return MARITIME_KEYWORDS.test(sig.headline || '') || sig.themes.some(t => t.includes('MARITIME') || t.includes('VESSEL'))
@@ -408,9 +445,15 @@ export const SignalStream: React.FC = () => {
                 isOwnVoiceSignal(sig)
         }
         return true
-    }), [items, streamFilter])
+    }), [items, streamFilter, tabModel.eclipse])
 
-    const visibleItems = useMemo(() => filteredItems.filter(sig => isGeopoliticallyRelevant(sig)), [filteredItems])
+    // The noise-headline regex is a heuristic for an UNSCOPED stream. On a
+    // topic-scoped tab the scope is the measured selector, so applying the
+    // regex on top would be silent filtering of an explicitly-requested set.
+    const visibleItems = useMemo(
+        () => (topicParam ? filteredItems : filteredItems.filter(sig => isGeopoliticallyRelevant(sig))),
+        [filteredItems, topicParam])
+    const rowEclipseClass = tabModel.eclipse ? streamRowEclipseClass(streamFilter) : ''
 
     return (
         <>
@@ -433,25 +476,37 @@ export const SignalStream: React.FC = () => {
                         </span>
                     )}
                 </div>
-                <div className="stream-filter-bar">
-                    {(['all', 'critical', 'elevated', 'notable'] as const).map(f => (
+                <div className={`stream-filter-bar${tabModel.eclipse ? ' stream-filter-bar--eclipse' : ''}`}>
+                    {tabModel.primary.map(f => (
                         <button
                             key={f}
-                            className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}
-                            onClick={() => { setStreamFilter(f); setStreamLevel(f) }}
-                            data-tip={f === 'notable'
-                                ? 'Analyst-grade ranking: crisis/conflict, security, economy and political signals first. Sports and entertainment are filtered out.'
-                                : f === 'all' ? 'Everything, including sports and entertainment (lane-tagged).' : undefined}
+                            className={`stream-filter-tab${streamFilter === f ? ' active' : ''}${
+                                tabModel.eclipse && f !== 'all' ? ` ecl-tab-${f}` : ''}`}
+                            // Lens tabs are a topic scope, not a stream LEVEL — leave
+                            // the shared focus streamLevel alone so exiting the lens
+                            // restores the category the reader had chosen.
+                            onClick={() => {
+                                setStreamFilter(f)
+                                if (!tabModel.eclipse) setStreamLevel(f as StreamLevel)
+                            }}
+                            data-tip={
+                                f === 'eclipse' ? 'Signals inside the eclipsing story — the coverage everyone is already seeing.'
+                                : f === 'shadow' ? 'Signals from the consequential stories the eclipse is drowning out. Ranked by coverage-volume share — a proxy for attention, not audience eyeballs.'
+                                : f === 'notable' ? 'Analyst-grade ranking: crisis/conflict, security, economy and political signals first. Sports and entertainment are filtered out.'
+                                : f === 'all' ? (tabModel.eclipse
+                                    ? 'The whole stream, unscoped — step out of the eclipse lens.'
+                                    : 'Everything, including sports and entertainment (lane-tagged).')
+                                : undefined}
                         >
                             {f.toUpperCase()}
                         </button>
                     ))}
-                    <span className="stream-filter-sep" />
-                    {(['conflict', 'disaster', 'trend', 'person', 'maritime'] as const).map(f => (
+                    {tabModel.secondary.length > 0 && <span className="stream-filter-sep" />}
+                    {tabModel.secondary.map(f => (
                         <button
                             key={f}
                             className={`stream-filter-tab${streamFilter === f ? ' active' : ''}`}
-                            onClick={() => { setStreamFilter(f); setStreamLevel(f) }}
+                            onClick={() => { setStreamFilter(f); setStreamLevel(f as StreamLevel) }}
                         >
                             {f.toUpperCase()}
                         </button>
@@ -472,6 +527,17 @@ export const SignalStream: React.FC = () => {
                             <span className="stream-feed-error-dot" />
                             Signal feed unavailable — retrying…
                         </div>
+                    ) : topicParam ? (
+                        // Honest empty for a scoped tab: the stories exist (the
+                        // eclipse endpoint measured them) but none of their
+                        // member signals landed in this window. Say which, and
+                        // never let it read as "nothing is happening".
+                        <div className="empty-state">
+                            No signals yet from {streamFilter === 'eclipse' ? 'the eclipsing story' : 'the shadow stories'} in the last 24 h
+                            <span className="stream-empty-note">
+                                Stories are measured on classified coverage; membership lags ingest by up to one classifier pass.
+                            </span>
+                        </div>
                     ) : (
                         <div className="empty-state">No signals found</div>
                     )
@@ -483,7 +549,7 @@ export const SignalStream: React.FC = () => {
                             return (
                                 <div
                                     key={sig.id}
-                                    className={`signal-row priority-${getSignalPriority(sig)}${isNew ? ' new-entry' : ''}`}
+                                    className={`signal-row priority-${getSignalPriority(sig)}${isNew ? ' new-entry' : ''}${rowEclipseClass ? ` ${rowEclipseClass}` : ''}`}
                                     onClick={(e) => {
                                         // F2: the WHOLE banner opens the story — not just
                                         // the headline letters. Inner pills keep their own
