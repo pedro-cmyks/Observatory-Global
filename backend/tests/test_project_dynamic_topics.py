@@ -347,3 +347,53 @@ def test_fetch_by_ids_issues_one_bounded_statement_per_chunk(monkeypatch):
     rows = asyncio.run(pdt._fetch_by_ids(conn, "SELECT ...", list(range(7))))
     assert conn.calls == [[0, 1, 2], [3, 4, 5], [6]]  # no unbounded statement
     assert [r["id"] for r in rows] == list(range(7))  # all rows, in order
+
+
+def test_hydrate_topics_excludes_umbrellas_from_matching():
+    # 2026-07-28 orphan-cluster incident: hydrate loaded umbrella topics, so
+    # clusters could attach DIRECTLY to an umbrella (greedy match). An umbrella's
+    # member rows are derived — cleared + rebuilt from children every nightly
+    # umbrella pass — so the direct attach was deleted each night, the cluster
+    # re-adopted, re-attached, forever (72 orphans incl. the 70-signal Caspian
+    # fragment; never founded a topic, never served). Umbrellas must not hydrate
+    # into the matching population; their member rows still count toward `done`.
+    import asyncio
+    from datetime import datetime, timezone
+
+    from scripts.project_dynamic_topics import hydrate_topics
+
+    snap = datetime(2026, 7, 28, 3, 28, tzinfo=timezone.utc)
+    cen = [1.0] + [0.0] * 3
+
+    class _FakeConn:
+        async def fetch(self, sql, *args):
+            if "FROM dynamic_topics" in sql:
+                base = {
+                    "state": "active", "snapshots_since_seen": 0,
+                    "centroid_vec": cen, "first_seen": snap, "last_seen": snap,
+                    "n_snapshots": 2, "agg_n_signals": 20, "mean_cohesion": 0.9,
+                    "noise_rate": None, "is_junk": False,
+                }
+                return [
+                    {**base, "id": 1, "identity_key": "dyn-x-1", "label": "Real Story",
+                     "is_umbrella": False},
+                    {**base, "id": 2, "identity_key": "umbrella:1", "label": "Umbrella",
+                     "is_umbrella": True},
+                ]
+            return [  # dynamic_topic_members
+                {"dynamic_topic_id": 1, "emergent_cluster_id": 100, "snapshot_at": snap},
+                # derived copy of the child's row on the umbrella
+                {"dynamic_topic_id": 2, "emergent_cluster_id": 100, "snapshot_at": snap},
+                # the orphan class: attached ONLY to the umbrella
+                {"dynamic_topic_id": 2, "emergent_cluster_id": 200, "snapshot_at": snap},
+            ]
+
+    clusters_by_id = {
+        100: {"id": 100, "label": "Real Story", "centroid": np.array(cen),
+              "n_signals": 20, "cohesion": 0.9, "noise": None},
+        200: {"id": 200, "label": "Swallowed", "centroid": np.array(cen),
+              "n_signals": 10, "cohesion": 0.9, "noise": None},
+    }
+    topics, done = asyncio.run(hydrate_topics(_FakeConn(), clusters_by_id))
+    assert [t.identity_key for t in topics] == ["dyn-x-1"]  # umbrella never a match target
+    assert done == {100, 200}  # membership accounting unchanged
