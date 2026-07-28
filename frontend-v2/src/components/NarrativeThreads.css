@@ -627,3 +627,26 @@
     white-space: nowrap;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
+
+/* ---- STORY LENS (user-entered, per-thread) ---------------------------------
+   Calm cyan scoping — same idiom as the eclipse lens above (pinned rows +
+   section labels), but never a takeover: no !important war with the eclipse
+   colors since the two are mutually exclusive by construction (lensRole is
+   only ever computed when eclipseSets is absent). border-left-color needs
+   !important here for the same reason the eclipse rows do: the row's inline
+   style={{ borderLeftColor: threadAccent }} (category-family color) would
+   otherwise win over any plain stylesheet rule regardless of selector
+   specificity. */
+.narrative-row.sl-row-anchor { border-left-width: 2px; border-left-color: var(--story-cyan, #2aa7ad) !important; }
+.narrative-row.sl-row-sibling { border-left-width: 2px; border-left-color: rgba(42, 167, 173, 0.4) !important; }
+
+.sl-section-label {
+    flex: 0 0 auto;
+    color: var(--story-cyan, #2aa7ad);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 6px 8px 2px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    text-transform: uppercase;
+}

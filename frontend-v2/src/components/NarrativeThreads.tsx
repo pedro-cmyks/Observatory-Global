@@ -16,6 +16,8 @@ import { TranslatableText } from './TranslatableText'
 import { personPin } from '../lib/capturePayloads'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
+import { useStoryLens } from '../contexts/StoryLensContext'
+import { buildLensSets, threadLensRole, hasLensContent, siblingReasonText } from '../lib/storyLens'
 import './NarrativeThreads.css'
 
 interface TimelinePoint {
@@ -215,6 +217,32 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         return m
     }, [eclipseData])
 
+    /* STORY LENS: a user-driven investigative re-scope (unlike eclipse's
+       ambient condition) — entering the lens on an open thread pins its
+       measured neighborhood (hermanos/primos walked from the substrate) to the
+       top of THIS panel too, same section-per-role idiom as eclipse. Gate on
+       hasLensContent (never lensSets != null): an honest-empty siblings payload
+       (anchor found but zero siblings, or a degraded fetch) must not silently
+       disable the pre-existing #234 sibling ordering below it while showing
+       nothing itself. */
+    const storyLens = useStoryLens()
+    const lensOn = storyLens.state.active && hasLensContent(storyLens.data)
+    const lensSets = useMemo(
+        () => (lensOn ? buildLensSets(storyLens.data) : null),
+        [lensOn, storyLens.data])
+    // Reason text per lens sibling id (+ folded near-dup ids it absorbed),
+    // for the ↔ chip — mirrors relationReason below but sourced from the
+    // measured walk instead of the client-side entity/country heuristic.
+    const lensReasonById = useMemo(() => {
+        const m = new Map<string, string>()
+        for (const s of storyLens.data?.siblings ?? []) {
+            const txt = siblingReasonText(s) + (s.is_blob ? ' · ⚠ grab-bag' : '')
+            m.set(s.id, txt)
+            for (const f of s.folded ?? []) m.set(f, txt)
+        }
+        return m
+    }, [storyLens.data])
+
     // Threads are ambient — the live day (the VIEW selector is gone,
     // 2026-07-15; the global list was already capped to 24h because
     // spread_pct is meaningless at wider windows). Looking back = the map
@@ -360,11 +388,24 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         const role = eclipseSets ? threadEclipseRole(n.anchor_topics, n.thread_id, eclipseSets) : null
         return role === 'eclipse' ? 0 : role === 'shadow' ? 1 : 2
     }
+    // Story lens ordering: same stable-regroup idiom as eclipse. Precedence
+    // (explicit): eclipse > story-lens > person-match > #234 sibling relation
+    // — an ambient eclipse always wins outright (the branch below only runs
+    // when eclipseSets is falsy), and lensSets itself is only non-null when
+    // hasLensContent() passed, so an honest-empty siblings payload never
+    // engages this branch and falls through to person/sibling below.
+    const lensRank = (n: Narrative): number => {
+        if (!lensSets) return 2
+        const role = threadLensRole(n.anchor_topics, n.thread_id, lensSets)
+        return role === 'anchor' ? 0 : role === 'sibling' ? 1 : 2
+    }
     const liveOrdered = eclipseSets
         ? [...displayedNarratives].sort((a, b) => eclipseRank(a) - eclipseRank(b))
-        : relate
-            ? [...displayedNarratives].sort((a, b) => Number(relate(b)) - Number(relate(a)))
-            : displayedNarratives
+        : lensSets
+            ? [...displayedNarratives].sort((a, b) => lensRank(a) - lensRank(b))
+            : relate
+                ? [...displayedNarratives].sort((a, b) => Number(relate(b)) - Number(relate(a)))
+                : displayedNarratives
     // N5: while the pointer is over the list, pin the row order so a relation
     // re-sort or a poll refresh can't shuffle a row out from under the cursor
     // between hover and click (the mis-open bug that survived R2+R3). Content
@@ -382,12 +423,29 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         : null
     const firstEclipseIdx = rowRoles ? rowRoles.indexOf('eclipse') : -1
     const firstShadowIdx = rowRoles ? rowRoles.indexOf('shadow') : -1
+    // Same idiom for the story lens, but ONLY computed when eclipse isn't
+    // already running the show (precedence: eclipse wins outright, the lens
+    // branch must not run at all — matches the ordering gate above).
+    const lensRowRoles = (!eclipseSets && lensSets)
+        ? orderedNarratives.map(n => threadLensRole(n.anchor_topics, n.thread_id, lensSets))
+        : null
+    const firstLensAnchorIdx = lensRowRoles ? lensRowRoles.indexOf('anchor') : -1
+    const firstLensSiblingIdx = lensRowRoles ? lensRowRoles.indexOf('sibling') : -1
     // This shadow story's share of coverage, matched by thread id or any anchor
     // topic — the eclipse payload keys on topic id.
     const shadowShare = (n: Narrative): number | null => {
         for (const id of [n.thread_id, ...(n.anchor_topics ?? [])]) {
             const v = shadowShareById.get(id)
             if (v != null) return v
+        }
+        return null
+    }
+    // Lens reason lookup for a row: matches on thread_id first, then any
+    // anchor_topics entry — a row can be a lens sibling via either.
+    const lensReasonFor = (n: Narrative): string | null => {
+        for (const id of [n.thread_id, ...(n.anchor_topics ?? [])]) {
+            const txt = lensReasonById.get(id)
+            if (txt) return txt
         }
         return null
     }
@@ -485,9 +543,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
             )}
             {orderedNarratives.map((n, rowIdx) => {
                 const eclipseRole = rowRoles ? rowRoles[rowIdx] : null
+                const lensRole = lensRowRoles ? lensRowRoles[rowIdx] : null
                 const sectionLabel = rowIdx === firstEclipseIdx
                     ? '◤ The eclipse'
-                    : rowIdx === firstShadowIdx ? '◢ In its shadow' : null
+                    : rowIdx === firstShadowIdx ? '◢ In its shadow'
+                    : rowIdx === firstLensAnchorIdx ? '◈ The story'
+                    : rowIdx === firstLensSiblingIdx ? '◈ Measured neighborhood' : null
                 const isFocused = activeThreadId === n.thread_id
                 // Dim conditions:
                 //  - a country is locked AND this thread doesn't cover it -> dim
@@ -496,8 +557,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 const dimByPerson = anyPersonMatch && !threadMatchesPerson(n)
                 const dimByThread = !anyPersonMatch && anyThreadRelation && !threadRelated(n)
                 const isDimmed = dimByCountry || dimByPerson || dimByThread
+                // Story lens reason chip (measured walk) — takes precedence over
+                // the #234 heuristic chip below; a row never shows both.
+                const lensReason = lensRole === 'sibling' ? lensReasonFor(n) : null
                 // #234 legibility: show the relation reason on surfaced siblings.
-                const siblingReason = (anyThreadRelation && !anyPersonMatch && !filter.country
+                const siblingReason = (!lensReason && anyThreadRelation && !anyPersonMatch && !filter.country
                     && !isFocused && !isDimmed) ? relationReason(n) : null
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
@@ -517,12 +581,18 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 return (
                     <React.Fragment key={n.thread_id}>
                     {sectionLabel && (
-                        <div className={`ecl-section-label ecl-section-label--${rowIdx === firstEclipseIdx ? 'eclipse' : 'shadow'}`}>
-                            {sectionLabel}
-                        </div>
+                        rowIdx === firstEclipseIdx || rowIdx === firstShadowIdx ? (
+                            <div className={`ecl-section-label ecl-section-label--${rowIdx === firstEclipseIdx ? 'eclipse' : 'shadow'}`}>
+                                {sectionLabel}
+                            </div>
+                        ) : (
+                            <div className="sl-section-label">
+                                {sectionLabel}
+                            </div>
+                        )
                     )}
                     <div
-                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''} ${eclipseRole === 'eclipse' ? 'ecl-row-eclipse' : eclipseRole === 'shadow' ? 'ecl-row-shadow' : ''}`}
+                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''} ${eclipseRole === 'eclipse' ? 'ecl-row-eclipse' : eclipseRole === 'shadow' ? 'ecl-row-shadow' : ''} ${lensRole === 'anchor' ? 'sl-row-anchor' : lensRole === 'sibling' ? 'sl-row-sibling' : ''}`}
                         data-tip={rowHint}
                         onClick={() => handleClick(n)}
                         style={{ borderLeftColor: threadAccent }}
@@ -536,7 +606,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     <TranslatableText text={n.label} />
                                     <span className="narrative-cluster-label">
                                         {domainLabel}
-                                        {siblingReason && (
+                                        {lensReason ? (
+                                            <span className="narrative-sibling-reason" data-tip={`Measured relation: ${lensReason}`}>
+                                                ↔ {lensReason}
+                                            </span>
+                                        ) : siblingReason && (
                                             <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
                                                 ↔ {siblingReason}
                                             </span>
