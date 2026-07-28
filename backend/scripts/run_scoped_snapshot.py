@@ -67,6 +67,7 @@ import asyncpg
 import numpy as np
 
 from backend.scripts.cluster_subproc import ClusterTimeout, run_cluster_in_subprocess
+from backend.scripts.label_hygiene import ledger_alert, normalize_persisted_label
 from backend.scripts.emergent_poc import (
     _apply_gate, _clean_and_dedupe, _cluster, _cluster_stats, _label_all, _load_gate,
     pca_reduce, whiten_all_but_top,
@@ -565,6 +566,7 @@ async def main() -> None:
                   file=sys.stderr)
 
         total_written = total_clusters = done = failed = 0
+        label_total = label_usable = 0
         failed_ccs: list[str] = []
         deferred_ccs: list[str] = []
         timegap_ccs: list[str] = []
@@ -686,6 +688,10 @@ async def main() -> None:
                               "description": "", "confidence": 0.0} for c in clusters]
             else:
                 ds_labels = await _label_all(clusters, rows, ds_key)
+                label_total += len(ds_labels)
+                label_usable += sum(
+                    1 for dl in ds_labels
+                    if normalize_persisted_label(dl.get("label")))
             total_clusters += len(clusters)
             prepared = _prepare_snapshot_rows(
                 snapshot_at=snapshot_at,
@@ -852,6 +858,18 @@ async def main() -> None:
             save_rotation(rotation_path, deferred_ccs + timegap_ccs)
     finally:
         await conn.close()
+
+    # 2026-07-23..27: DeepSeek 402'd for five nights, every label came back a
+    # failure sentinel -> NULL, and labels_compatible(None, None) is False, so
+    # fragment merging was silently disabled ALL WEEK. A snapshot the labeler
+    # produced nothing for must say so the same night, in the ledger the
+    # human actually reads. >=20 keeps a tiny/dev run from crying wolf.
+    if not args.skip_label and label_total >= 20 and label_usable == 0:
+        ledger_alert(
+            "scoped-snapshot",
+            f"SNAPSHOT_UNLABELLED {label_total} clusters labeled, 0 usable — "
+            f"fragment merging is INERT for snapshot {snapshot_at.isoformat()} "
+            f"(labeler down?)")
 
     print(f"\nR1 DONE: snapshot_at={snapshot_at.isoformat()} · {total_clusters} clusters "
           f"formed, {total_written} written{' (DRY)' if args.dry_run else ''} · "

@@ -39,9 +39,9 @@ import numpy as np
 
 # Reuse the POC's pure helpers — they are stable and identical math.
 try:  # entry-point tolerant (-m backend.scripts.* vs -m scripts.*)
-    from backend.scripts.label_hygiene import normalize_persisted_label
+    from backend.scripts.label_hygiene import ledger_alert, normalize_persisted_label
 except ImportError:  # pragma: no cover
-    from scripts.label_hygiene import normalize_persisted_label
+    from scripts.label_hygiene import ledger_alert, normalize_persisted_label
 from backend.scripts.emergent_poc import (
     _apply_gate,
     _build_embedder,
@@ -459,6 +459,16 @@ async def main() -> None:
     else:
         print("labeling via DeepSeek...", file=sys.stderr)
         ds_labels = await _label_all(clusters, rows, ds_key or "")
+        usable = sum(1 for dl in ds_labels
+                     if normalize_persisted_label(dl.get("label")))
+        # A labelless snapshot silently disables fragment merging downstream
+        # (labels_compatible(None, None) is False) — say so in the ledger the
+        # night it happens, not five days later. >=20 avoids dev-run noise.
+        if len(ds_labels) >= 20 and usable == 0:
+            ledger_alert(
+                "emergent-snapshot",
+                f"SNAPSHOT_UNLABELLED {len(ds_labels)} clusters labeled, 0 usable "
+                f"— fragment merging is INERT for this snapshot (labeler down?)")
 
     if args.dry_run:
         print("--dry-run set; skipping INSERT.", file=sys.stderr)
