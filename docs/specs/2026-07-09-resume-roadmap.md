@@ -1,5 +1,62 @@
 # Atlas resume roadmap v2 — validated + corrected (2026-07-10)
 
+## 2026-07-30 STATUS — Phase 2 metric LIVE; engine levers measured
+Phase 2 below (P2.1/P2.2/P2.3) reads as not-yet-started. It is stale: the metric was
+built, run twice, and followed by a full engine-lever measurement campaign. Ground
+truth: CLAUDE.md top two blocks (2026-07-27, 2026-07-28..30); `docs/research/gold/`;
+`docs/research/recall-229/`.
+
+1. **P2.1 gold query set — DONE.** 20 anti-circular queries from RAW `signals_v2`
+   headlines (never a `dynamic_topics` label), 6 negative controls that PASS on honest
+   absence (`docs/research/gold/gold-query-set-v1.json` + `2026-07-27-gold-query-set-v1.md`).
+   Harness `run_gold_query_eval.py`. **API-arm baseline: 7–14% answer rate (n=14,
+   ±7pp/query)** — 07-27 run 14% (`2026-07-27-gold-query-eval.md`), 07-28 re-run 7% with
+   labels restored (`2026-07-28-gold-query-eval.md`, `2026-07-28-rerun-comparison.md`);
+   the label-blackout-confounder hypothesis was REFUTED by the re-run. **UI-pilot arm**
+   (6 of 20 queries, real UI not curl): **40% answer / 0.67 honesty** vs the same 6 on
+   the API arm (20% / 0.00) — `2026-07-30-ui-walkthrough-pilot.md` + content-first
+   rubric `rubric-v2-ui.md`. Full-20 UI run IN FLIGHT, not yet landed. **STILL OPEN
+   (Pedro):** his 5 hand-written + 5 external-agenda queries — the set has an
+   ingestion-gap blind spot (#235) it cannot see without them.
+
+2. **Engine-lever refutation campaign — 4 pre-registered kills + 1 in flight**
+   (`docs/research/recall-229/`, every gate written before the run): whitening at the
+   identity layer (anchor gap −0.547, destroys cross-lingual same-event pairs) ·
+   evidence-overlap merge-to-fixpoint (NO-GO, 96.2% connected component — but
+   REHABILITATES the SHIPPING cos≥0.90∧label≥0.80 rule, K2-safe, halves witness
+   fragmentation) · DeepSeek judge-as-confirmer (dead at volume, 2.4×–1117× the nightly
+   cap) · `used_t` removal (NO-GO, 2,247 false absorptions; **named the real disease:
+   argmax dispersion — same-event fragments don't share a top-12 nearest-topic pick,
+   today 11/54**). 5th gate (cluster-consolidation pre-projection under the surviving
+   SHIPPING rule) IN FLIGHT at write time.
+
+3. **Live fixes landed from the campaign** (see CLAUDE.md 07-27/07-28..30 for commits):
+   L1 seal resilience (nullable label + `SNAPSHOT_UNLABELLED` counted, never silently
+   dropped) · `/api/v2/stats` honesty (null + `degraded_metrics[]`, no fabricated 0) ·
+   person-timeline rebuilt on mig-090 trigram (cost 319,329→3,020) · `/attention/eclipse`
+   cached (24s→0.5s) · edge-snapshot weight clamp [-1,1] + atomic writes + 07-25 gap
+   deleted honest · silent-risk endpoint deleted (−478 lines) · `/api/v2/universe`
+   build/serve split, mig 091 (0%→200 in ~2.8s) · GDELT+RSS entity-decoding (#264 closed,
+   both lanes) · `_norm_headline` non-Latin fix (Cyrillic/Arabic/Farsi dedup was reading
+   digits only) · umbrella orphan-swallow fixed (`hydrate_topics` excludes umbrellas from
+   matching) · trigram planner mis-estimate fixed via extended statistics (mig 092;
+   index-stats-target tried first and REFUTED — partial-index stats are invisible to the
+   planner) · `fetch_topic_centroids` full-pool fix (was serving ~3.7% of topics) ·
+   ivfflat probes 20→10 + named `ann_timeout` degradation (was silent `[]`).
+
+4. **Where the metric says the bottleneck is now:** NOT ingestion volume, and NOT
+   retrieval-by-API-protocol — the UI pilot finds MORE than the frozen harness, not less
+   (GQ-02 Berlin Pride: 0 via API, 2 via UI — the story sat in 5 labelled threads the
+   search bar found on the first keystroke). Real bottlenecks: **fragmentation** (one
+   event, 8 live threads for the France/Spain wildfires, no surface says so) and the
+   **identity-layer geometry** (raw e5 cosine overlaps same-story/different-story
+   distributions — shreds one event into 8-33 clusters AND lets stale identities absorb
+   unrelated ones), plus a **UX-defect list**: invisible auto-scope silently
+   empties/hides thread detail, systematically wrong category chips on every receipt,
+   NAV-LOSS between search's related-thread list and the detail panel it opens.
+
+---
+
 v1 (2026-07-09) was stress-tested by three independent passes: a self-adversarial
 read, a strategy/resource stress-test, and a domain validation of the anomaly
 engine against real OSINT/early-warning practice AND this codebase's own measured
