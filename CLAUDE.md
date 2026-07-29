@@ -1,5 +1,71 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-28..29 (STORY LENS BUILT + GATED NO-GO; UI EVAL ALL-20 VALID; FIPS
+DISASTER FIXED; e5 BAKE-OFF NO-GO. Read FIRST for product+eval state.)**
+**UI GOLD EVAL COMPLETE — RUN VALID (20/20, K1v2 satisfied, 6/6 controls PASS):
+answered 2/14 = 14.3% · informed 10/14 = 71.4% · honesty 0.83 · NAV-LOSS 20/20 ·
+UI-BETTER ×14 / UI-WORSE ×0** (the UI arm strictly dominates the API arm; both
+arms of the primary metric now exist). Thesis "Atlas measures the right thing and
+then does not render it" SURVIVES with one amendment (sometimes the MEASUREMENT
+is the wrong country — better rendering makes that worse) and one exception (the
+markets panel renders its measured refusal "#226 re-run ~Oct 2026" — the ideal).
+Artifact `docs/research/gold/2026-07-30-ui-eval-v2-run.md` (4 batches + synthesis).
+**THE FIPS DISASTER (eval batch 4's top find): country_codes.py mapped FIPS LE
+(LEBANON) → LS — the Lesotho brief served 316 Lebanese signals.** Full audit
+(`b7ab7def`): **5 wrong entries + 89 missing divergent codes** — Paraguay filed
+as Panama, Zambia inside South Africa, Oman had ZERO presence (lived inside
+Mauritius). The old "LS/OS/MG = geocode noise" note was THIS bug misdiagnosed.
+Blast radius measured: 3,307 rows/7d fully-misfiled (mechanically recoverable),
+~117k contaminated (need GDELT re-derivation). Backfill chip started by Pedro.
+**STORY LENS (spec `docs/superpowers/specs/2026-07-28-story-lens-design.md`,
+plan+11-task TDD build, subagent-driven, every task two-stage-reviewed):**
+opening a dynamic-topic thread enters a lens — portaled banner (court chip,
+hermanos/primos split, via-child + country-degraded notes, Pin story), threads
+regroup ◈ The story / ◈ Measured neighborhood with ↔ receipt chips + ⚠ grab-bag
++ SYNTHESIZED sibling rows (the pool-only render was the gate's CRIT find),
+stream STORY|ALL over `topic=`, dock ◈ STORY → CC, Pin→Workbench/dossier/export
+freezes the neighborhood (mergePinSnapshot kills the wholesale-replace race;
+incumbent-wins capturedAt + one-shot pin = stamp never diverges from content).
+Backend `GET /api/v2/story/{id}/siblings` (LIVE on Fly): pure ranker over
+constellation_walk (ranking-with-receipts, NEVER merging — the refuted merge
+signals are safe as ranking), umbrella anchors resolve via largest ACTIVE child
+(note umbrella_resolved_via_child), in-process topics+graph cache 120s (first
+call ~9-14s then 0.4s), Redis 300s, honest reason codes all mapped to user copy
+(lensErrorCopy — db_error never reaches the screen). Kill switch STORY_LENS_AUTO;
+deep link ?lens=story&theme=; every exit strips lens= (resurrection bug found
+live). **T11 GATE: NO-GO** (`docs/research/gold/2026-07-29-story-lens-navloss-check.md`)
+— NAV-LOSS held 6/6. Cause 1 (mechanism, FIXED same session `02da9bd7`): panel
+only reordered its top-20 pool, 0/107 walked siblings renderable. **Cause 2 (the
+real one): the walk resolves onto FALSE neighbors — Berlin Pride's top sibling
+'Austrian Arrested for Fraud' 0.853, 18/18 is_blob — while live same-event
+fragments in the same panel are ABSENT: ARGMAX DISPERSION VISIBLE IN THE UI.**
+Spec §12's risk fired as written: cos-only candidates can't find true siblings
+on a shredded field. **NEXT (needs Pedro): pre-registered sibling-finder v2**
+(candidates = cos ∪ rare-entity ∪ country+time, gated on the witness families) —
+the lens mechanism is ready and waiting for honest data. Vercel NOT deployed
+(lens is dev-only until then); Fly deploys ×5 this session.
+**EMBEDDING BAKE-OFF v2: NO-GO — e5 is NOT the bottleneck**
+(`docs/research/recall-229/2026-07-31-embedding-bakeoff-v2.md`, 5 spaces, 43,138
+archive-recovered headlines): NO space wins argmax dispersion (the disease); no
+K2-safe cos-only point anywhere. bge-m3 (LAST in the 07-04 gate bake-off) is
+STRONGEST on disease stats, local+free+2.9× faster — task-dependence is total.
+e5-large ≡ e5-base to 3 decimals. OpenAI best pair-separation ($0.09-0.57/day)
+— a GATES lever, never identity. The identity layer, not the space, remains it.
+**ALSO THIS SESSION:** L2 tier chips shipped (TierChip shared component, AA on
+both themes, palette joins the family — irna.ir 481-signals now marked STATE in
+CountryBrief; the eval's unmarked-state-media hole); eval-defect chips all landed
+(timeout-as-'No results' dead `cc0bf804`, 0px dropdown labels `1a4d5e23`, clipped
+honesty ledger `f3004289`); #106 constellation identity merged; claude-CLI
+failover leg LIVE on M1 (`1fc1b529` — Max subscription backs the insight chain,
+single-provider risk mitigated); mig 093 ext-stats APPLIED + ANALYZE run (gaza
+needles re-measure pending); sibling cap 11 (anchor+11 = exactly _TOPIC_FILTER_MAX,
+never a silently-dropped rendered sibling). Trump-search "no data" = the
+timeout-as-absence defect: heaviest entities look emptiest; fixed in code, needs
+Vercel deploy. METHOD NOTE: the two-stage per-task review earned its keep ~20
+times (receipt referent, frozen-stamp divergence, palette AA, dim coherence,
+resurrection, connection-hold...) — and the GATE earned it once more by refusing
+to ship a lens that renders honest receipts over false neighbors.**
+
 **2026-07-28..30 (THE MEASUREMENT ARC — PRIMARY METRIC FIRST COMPUTED, FOUR
 PRE-REGISTERED REFUTATIONS, THE DISEASE NAMED. Read FIRST for engine strategy.)**
 **PRIMARY METRIC EXISTS AND IS MEASURED:** gold analyst query set built anti-circularly
