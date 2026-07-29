@@ -90,6 +90,72 @@ _COUNTRIES_SQL = """
 """
 
 
+# Umbrella fallback (T10 follow-up, 2026-07-29): /threads serves R2 UMBRELLAS
+# at the top level (build_umbrella_topics.py, mig 058 `parent_id`/`is_umbrella`
+# — same `dynamic-topic-<id>` prefix as a story-level topic), and the lens
+# auto-enter fires on whatever id the front page shows. An umbrella row has no
+# centroid_vec of its own and is deliberately excluded from `_TOPICS_SQL`, so
+# without this fallback exactly the BIGGEST stories (the ones an umbrella
+# collapses) would 100% miss into "seed_not_found_or_no_centroid". Resolve to
+# the umbrella's largest child that DOES carry a centroid, walk from there,
+# but keep the ANCHOR identity (id/label/label_status) as the umbrella's own —
+# the child is a stand-in for the walk, never the story the user asked about.
+_UMBRELLA_SQL = """
+    SELECT label, label_status
+    FROM dynamic_topics
+    WHERE id = $1 AND is_umbrella AND state = 'active'
+"""
+
+_UMBRELLA_CHILD_SQL = """
+    SELECT id
+    FROM dynamic_topics
+    WHERE parent_id = $1 AND NOT is_umbrella AND centroid_vec IS NOT NULL
+    ORDER BY agg_n_signals DESC NULLS LAST
+    LIMIT 1
+"""
+
+
+async def _resolve_umbrella_anchor(
+    topic_key: str,
+) -> tuple[str, str | None, str | None] | None:
+    """If `topic_key` names an active R2 umbrella, resolve it to its largest
+    child that carries a centroid (i.e. is walkable). Returns
+    (child_topic_key, umbrella_label, umbrella_label_status), or None when
+    `topic_key` is not an umbrella, or is one with no resolvable child (a
+    childless/all-blind-child umbrella — honest miss, not an error).
+
+    Tiny lookups (PK + the `idx_dynamic_topics_parent` index) — run on a
+    short-timeout acquire of their own, deliberately OUTSIDE the topics-cache
+    branch: unlike the topics matrix, this result is per-anchor, not shared
+    across every request in the TTL window. Only ever called after the
+    handler's own pool-availability guard has already passed, so no repeat
+    guard here — an unexpected missing pool would surface as an
+    AttributeError, caught by the broad except below same as any other
+    connection fault.
+    """
+    try:
+        tid = int(topic_key[len("dynamic-topic-"):])
+    except ValueError:
+        return None
+    try:
+        async with db.pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
+            umbrella_row = await conn.fetchrow(_UMBRELLA_SQL, tid)
+            if umbrella_row is None:
+                return None
+            child_row = await conn.fetchrow(_UMBRELLA_CHILD_SQL, tid)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("story siblings umbrella resolve failed: %s", exc, exc_info=True)
+        return None
+    if child_row is None:
+        return None
+    return (
+        f"dynamic-topic-{int(child_row['id'])}",
+        umbrella_row["label"],
+        umbrella_row["label_status"],
+    )
+
+
 def _redis_client():
     # Deferred (call-time) import — the house pattern (attention_eclipse.py,
     # delight.py, research.py): main_v2.py imports this router module while
@@ -227,15 +293,33 @@ async def get_story_siblings(thread_id: str) -> dict:
     # dishonest empty). That is a CALLER programming error, never a database
     # fault, so it — and any other compute failure (e.g. an OOM building the
     # similarity matrix) — must never be mislabeled "db_error".
+    # Umbrella stand-in state: set only when topic_key itself isn't a walkable
+    # story (see _resolve_umbrella_anchor above). anchor_label/anchor_status
+    # carry the UMBRELLA's own identity so the payload's `anchor` never
+    # reports the child's label as if it were the requested story's.
+    child_key: str | None = None
+    anchor_label: str | None = None
+    anchor_status: str | None = None
     try:
         if topic_key not in keys:
-            return _empty("seed_not_found_or_no_centroid")
+            resolved = await _resolve_umbrella_anchor(topic_key)
+            if resolved is None:
+                return _empty("seed_not_found_or_no_centroid")
+            child_key, anchor_label, anchor_status = resolved
+            if child_key not in keys:
+                return _empty("seed_not_found_or_no_centroid")
+            seed = keys.index(child_key)
+        else:
+            seed = keys.index(topic_key)
 
-        seed = keys.index(topic_key)
         whitened = apply_whitening(vecs_arr, whitening)
         siblings = rank_siblings(
             seed, whitened, keys, labels, cats, WalkParams.from_env(), cap=DEFAULT_CAP,
         )
+        if child_key is not None:
+            # The child is the anchor's stand-in for the walk, not a sibling
+            # of itself — it must never appear in the returned neighborhood.
+            siblings = [s for s in siblings if s.topic_key != child_key]
     except ValueError as exc:
         logger.error("story siblings contract violation: %s", exc, exc_info=True)
         return _empty("internal_error")
@@ -298,14 +382,16 @@ async def get_story_siblings(thread_id: str) -> dict:
         notes.append("country_receipts_degraded")
     if not siblings:
         notes.append("no_measured_kin")
+    if child_key is not None:
+        notes.append("umbrella_resolved_via_child")
 
     payload = {
         "contract": "story-siblings-v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "anchor": {
             "id": topic_key,
-            "label": labels[seed],
-            "label_status": statuses[seed],
+            "label": anchor_label if child_key is not None else labels[seed],
+            "label_status": anchor_status if child_key is not None else statuses[seed],
             "countries": anchor_countries,
         },
         "siblings": sib_payload,

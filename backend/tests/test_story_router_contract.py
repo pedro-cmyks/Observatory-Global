@@ -57,6 +57,19 @@ def test_unsupported_anchor_type_is_explicit():
     assert "unsupported_anchor_type" in ROUTER
 
 
+def test_umbrella_resolution_present():
+    # T10 follow-up (2026-07-29): /threads top rows are R2 umbrellas sharing
+    # the dynamic-topic- prefix; the lens must resolve them via their largest
+    # walkable child rather than 100%-missing the biggest stories.
+    assert "parent_id" in ROUTER
+    assert "is_umbrella" in ROUTER
+    assert "umbrella_resolved_via_child" in ROUTER
+
+
+def test_umbrella_child_excluded_from_siblings():
+    assert "s.topic_key != child_key" in ROUTER
+
+
 def test_normalize_thread_id_behavior():
     from app.routers.story import _normalize_thread_id
     assert _normalize_thread_id("dynamic-topic-5245") == "dynamic-topic-5245"
