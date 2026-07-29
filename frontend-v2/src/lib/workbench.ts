@@ -23,11 +23,14 @@ export interface PinSnapshot {
    *  renders "— outlet, Jul 8" (P0.3: dates everywhere). */
   evidence?: Array<{ headline: string; source?: string; url?: string; date?: string }>
   /** Story Lens Task 9: the measured neighborhood FROZEN at pin time (Pin
-   *  Story button on the lens banner). Deliberately thin — top-8, no
-   *  per-sibling evidence array — because the whole Investigation blob syncs
-   *  as one LWW unit (investigationSync.ts); keep it near O(1KB). */
+   *  Story button on the lens banner). Capped at {@link PIN_SIBLING_FREEZE_CAP}. */
   siblings?: Array<{ id: string; label: string; weight: number; reason: string }>
 }
+
+/** Story Lens Task 9: cap on {@link PinSnapshot.siblings} — deliberately thin
+ *  (no per-sibling evidence array) because the whole Investigation blob syncs
+ *  as one LWW unit (investigationSync.ts); keep the freeze near O(1KB). */
+export const PIN_SIBLING_FREEZE_CAP = 8
 
 /** A gate tier as it reaches the UI. `verified` cleared the strict quality gate
  *  (~90% precision), `extended` the ~75% threshold, `below_gate` neither, and
@@ -322,7 +325,10 @@ export function addPin(
 }
 
 /** W1: replace/enrich a pin's frozen snapshot (panel pins fetch their evidence
- *  asynchronously after the pin lands — the pin never waits on the network). */
+ *  asynchronously after the pin lands — the pin never waits on the network).
+ *
+ *  This is a WHOLESALE REPLACE — prefer {@link mergePinSnapshot} for additive
+ *  writes; this one clobbers whatever the pin already carried. */
 export function updatePinSnapshot(
   investigationId: string, anchorId: string, snapshot: PinSnapshot,
 ): Investigation | null {
@@ -345,10 +351,21 @@ export function updatePinSnapshot(
  *  after the pin call returns. Either write can land first — a wholesale
  *  `updatePinSnapshot` would let whichever lands SECOND erase whatever the
  *  first one wrote. A shallow merge makes write order irrelevant: every
- *  field the caller doesn't mention survives. `capturedAt` is the one field
- *  that does NOT just take the latest value — the EARLIEST capture wins, so
- *  the frozen moment stays the moment the analyst actually pinned, not
- *  whichever enrichment happened to write last. */
+ *  field the caller doesn't mention survives.
+ *
+ *  `capturedAt` rule (quality-review fold, 2026-07-28): INCUMBENT WINS — the
+ *  first snapshot's capturedAt is kept, never overwritten by a later merge.
+ *  Safe because a pin's FIRST snapshot always stamps `capturedAt` at pin time
+ *  (`addPin`, or `toWorkbenchPin` in WorkspaceContext.tsx), so the incumbent
+ *  is chronologically first by construction. A later merge NEVER moves the
+ *  frozen stamp forward — and the stamp staying
+ *  put is only honest because CONTENT never refreshes under it either: the
+ *  lens banner's "Pin story" button refuses to re-pin/re-merge once the pin
+ *  is already pinned (see StoryLensBanner's onPin early-return), so a stale
+ *  stamp can never end up paired with today's re-fetched content through
+ *  this surface. If a future caller needs a genuine "refresh the freeze"
+ *  action, it must bump BOTH stamp and content together — never content
+ *  alone under an old stamp. */
 export function mergePinSnapshot(
   investigationId: string, anchorId: string, partial: Partial<PinSnapshot>,
 ): Investigation | null {

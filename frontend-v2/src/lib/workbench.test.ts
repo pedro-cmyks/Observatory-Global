@@ -222,6 +222,26 @@ describe('mergePinSnapshot (race-proof snapshot writes)', () => {
     expect(pin.snapshot?.summary).toBe('first enrichment')
     expect(pin.snapshot?.capturedAt).toBeTruthy()
   })
+
+  it('incumbent-wins: a merge partial carrying its OWN capturedAt never moves the frozen stamp', () => {
+    const inv = createInvestigation('Lens test 2')
+    addPin(inv.id, {
+      anchorId: 'theme-z',
+      anchorType: 'theme',
+      label: 'Z',
+      snapshot: { capturedAt: '2026-07-25T00:00:00Z', summary: 'seed' },
+    })
+    // A later enrichment fetch that (incorrectly, or from stale caller state)
+    // carries its own capturedAt must NOT overwrite the incumbent's stamp —
+    // the pin was frozen on the 25th, not today.
+    mergePinSnapshot(inv.id, 'theme-z', {
+      capturedAt: '2026-07-28T12:00:00Z',
+      summary: 'refreshed content',
+    })
+    const pin = getInvestigation(inv.id)!.pins.find(p => p.anchorId === 'theme-z')!
+    expect(pin.snapshot?.capturedAt).toBe('2026-07-25T00:00:00Z')
+    expect(pin.snapshot?.summary).toBe('refreshed content')
+  })
 })
 
 const RECEIPT = {

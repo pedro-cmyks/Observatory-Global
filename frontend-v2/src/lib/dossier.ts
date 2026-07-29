@@ -133,6 +133,10 @@ export function dossierToMarkdown(d: DossierModel): string {
       // time — DossierView shows it on-screen as "MEASURED NEIGHBORHOOD", and
       // the export is the analyst's deliverable, so it must not silently drop.
       if (p.snapshot?.siblings && p.snapshot.siblings.length > 0) {
+        // Quality-review fold: a blank line before the header — without it
+        // CommonMark folds this bold line into the last evidence bullet above
+        // (no blank separator = same paragraph/list run).
+        lines.push('')
         lines.push('**Measured neighborhood (frozen):**')
         for (const s of p.snapshot.siblings) {
           lines.push(`- ${s.label} — ↔ ${s.reason}`)

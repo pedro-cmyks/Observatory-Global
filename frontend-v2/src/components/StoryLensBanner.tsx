@@ -6,7 +6,7 @@ import { decodeEntities } from '../lib/decodeEntities'
 import { resolveThreadTitle } from '../lib/themeLabels'
 import { siblingChipText } from '../lib/storyLens'
 import { threadPin } from '../lib/capturePayloads'
-import { getActiveInvestigationId, mergePinSnapshot } from '../lib/workbench'
+import { getActiveInvestigationId, mergePinSnapshot, PIN_SIBLING_FREEZE_CAP } from '../lib/workbench'
 import './storyLens.css'
 
 /** Portaled story-lens banner — same reasoning as EclipseChrome: rendered to
@@ -28,6 +28,7 @@ export function StoryLensBanner() {
   // falls back to the honest generic, never state.anchorId verbatim.
   const label = resolveThreadTitle(state.anchorId, knownLabel, loading)
   const pinId = state.anchorId ? `theme-${state.anchorId}` : null
+  const alreadyPinned = Boolean(pinId && isPinned(pinId))
 
   // Task 9: freeze this measured neighborhood into the analyst's active
   // investigation. `pinItem` handles the pin + its own async panel-snapshot
@@ -35,13 +36,19 @@ export function StoryLensBanner() {
   // SEPARATE write to the same pin. Write order between the two no longer
   // matters — mergePinSnapshot (Task 9) merges fields instead of replacing,
   // so whichever lands second never erases the other.
+  //
+  // Quality-review fold: onPin is a ONE-SHOT freeze, never a refresh. Once
+  // pinned, this early-returns — no re-pin, so no re-fetched panel snapshot,
+  // so the frozen `capturedAt` stamp (incumbent-wins, see mergePinSnapshot)
+  // can never end up paired with content that's newer than the stamp says.
+  // Managing/updating an existing pin is the Workbench's job, not the lens.
   const onPin = () => {
-    if (!state.anchorId || !anchor) return
-    pinItem(threadPin(state.anchorId, knownLabel ?? anchor.label, { lens: true }))
+    if (!state.anchorId || !anchor || alreadyPinned) return
+    pinItem(threadPin(state.anchorId, label, { lens: true }))
     const invId = getActiveInvestigationId()
     if (invId) {
       mergePinSnapshot(invId, `theme-${state.anchorId}`, {
-        siblings: (data?.siblings ?? []).slice(0, 8).map((s) => ({
+        siblings: (data?.siblings ?? []).slice(0, PIN_SIBLING_FREEZE_CAP).map((s) => ({
           id: s.id, label: s.label, weight: s.weight, reason: siblingChipText(s).text,
         })),
       })
@@ -67,11 +74,14 @@ export function StoryLensBanner() {
         <button
           type="button"
           className="sl-banner-pin"
-          data-pinned={pinId ? isPinned(pinId) : false}
+          data-pinned={alreadyPinned}
+          disabled={alreadyPinned}
           onClick={onPin}
-          data-tip="Freeze this neighborhood into an investigation"
+          data-tip={alreadyPinned
+            ? 'Frozen in your investigation — manage in the Workbench'
+            : 'Freeze this neighborhood into an investigation'}
         >
-          {pinId && isPinned(pinId) ? '◆ pinned' : '◇ Pin story'}
+          {alreadyPinned ? '◆ pinned' : '◇ Pin story'}
         </button>
       ) : null}
       <button type="button" className="sl-banner-exit" onClick={exit} aria-label="Exit story lens" data-tip="Exit story lens">
