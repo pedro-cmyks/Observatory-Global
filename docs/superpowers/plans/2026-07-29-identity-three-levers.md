@@ -66,3 +66,16 @@ env → two-night watch. Story lens flip (`STORY_LENS_AUTO=true`) still NOT in
 this plan — re-gates on a fresh NAV-LOSS run after B + A0b-fetch land.
 Separate serving defect chipped: 13/34 country doors serve zero rows
 (SQL↔Python snapshot-scope disagreement, task_890df3e7).
+
+
+## Decision record — Option A adopted (Pedro, 2026-07-29)
+GB trajectory 3→6→7→7 (four blind rounds, each catching a REAL distinct defect:
+contamination → calibration → label-as-evidence → withhold path). On the chip's
+collapsed binary the agreement is 9/10 with the lone miss in the safe
+direction. **`ATLAS_COURT_UMBRELLAS=on` set in ALW .env for the CHIPS consumer
+only**; label_court.py synced to the ALW tree (import-verified with mlvenv:
+quote-gate + withhold-mark present). The fetch-gate (Lever A0b) remains
+BLOCKED — its bar is unmet (all GB4 strict disagreements sit exactly on the
+failed/partial boundary it keys on). GB5 = later re-check with the enriched
+ledger. Residual documented: never-grounded rows' on-screen chip needs a
+thread_intelligence serializer change (label_checked_at not selected today).
