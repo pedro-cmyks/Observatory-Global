@@ -637,8 +637,19 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                                     <span className="search-item-meta">
                                         {t.total_signals.toLocaleString()} signals
                                         {t.category ? ` · ${t.category}` : ''}
-                                        {t.match === 'partial' ? ' · partial match' : ''}
                                     </span>
+                                    {/* Honesty marker OUTSIDE the truncatable meta: as meta
+                                        tail text, ellipsis clipped it off-screen and a loose
+                                        token-ANY hit read as a confident answer (gold-external
+                                        EQ-03/EQ-04). Un-shrinkable chip, like the name floor. */}
+                                    {t.match === 'partial' && (
+                                        <span
+                                            className="search-item-partial-chip"
+                                            data-tip="Loose match — only some words of your query appear in this thread's label"
+                                        >
+                                            partial match
+                                        </span>
+                                    )}
                                 </div>
                             ))}
                         </div>
