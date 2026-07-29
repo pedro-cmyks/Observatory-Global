@@ -17,7 +17,7 @@ import { personPin } from '../lib/capturePayloads'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import { useStoryLens } from '../contexts/StoryLensContext'
-import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText } from '../lib/storyLens'
+import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText, type StoryLensSibling } from '../lib/storyLens'
 import './NarrativeThreads.css'
 
 interface TimelinePoint {
@@ -74,6 +74,18 @@ interface Narrative {
     trending_keywords?: string[]
     has_wiki_activity?: boolean
     wiki_views?: number
+    // T11 gate fix (L1, CRIT): true for a lens-sibling row SYNTHESIZED from
+    // the story-siblings payload because the panel's own fetched /threads
+    // pool never carried it — measured the common case (0/107 renderable on
+    // the live field), not the exception. Every quantitative field above is
+    // honestly UNKNOWN for a synthesized row (0/null/empty, never a guess);
+    // this flag routes the render path around the count/trend/sparkline
+    // blocks that would otherwise print those placeholders as if measured.
+    synthesized?: boolean
+    // The one quantitative fact a synthesized row DOES carry — the measured
+    // composite walk weight (whitened cosine, product over hops). Rendered
+    // verbatim ("walk 0.85"), never reformatted into a fabricated count.
+    lensWeight?: number
 }
 
 // Sparkline SVG component.
@@ -174,6 +186,57 @@ const normalizeThread = (thread: any): Narrative => {
     subject_countries: thread.subject_countries || [],
     subject_country_names: thread.subject_country_names || [],
     subject_geography_status: thread.subject_geography_status || null,
+    }
+}
+
+// T11 gate fix (L1, CRIT): a minimal, honest row for a lens sibling the
+// panel's own /threads pool never fetched. `countries` (the backend's
+// country-receipt footprint for that topic) is the only geography the
+// sibling payload carries, so it fills top_countries/top_country_names —
+// real, measured data, presented as "Coverage" via threadCountryPresentation
+// exactly like a pool row would be. Every OTHER quantitative field is an
+// explicit unknown (0 / null / [] / 'stable' as a type-satisfying default
+// that the render path never surfaces — see `synthesized` below), never a
+// guess dressed as a measurement.
+function buildSyntheticSiblingRow(s: StoryLensSibling): Narrative {
+    const countries = s.countries || []
+    return {
+        thread_id: s.id,
+        label: stripCountrySuffix(decodeEntities(s.label)),
+        anchor_topics: [],
+        parent_domain: null,
+        signal_count: 0,
+        gated_signal_count: undefined,
+        gate_scored_count: undefined,
+        discussion_count: 0,
+        forum_sentiment: null,
+        country_count: countries.length,
+        source_count: 0,
+        top_sources: [],
+        first_seen: null,
+        changed_10h: 0,
+        trend: 'stable',
+        confidence_pct: null,
+        confidence_label: '',
+        show_confidence_bar: false,
+        confidence_trend_color: '#8892a0',
+        avg_confidence: undefined,
+        confidence_measured: false,
+        label_status: s.label_status ?? null,
+        label_proposed: null,
+        temporal_signature: null,
+        signature_meta: null,
+        crisis_relevant: false,
+        sentiment_swing_10h: null,
+        top_entities: [],
+        hourly_timeline: [],
+        top_countries: countries,
+        top_country_names: countries.map(c => resolveCountryName(c)),
+        subject_countries: [],
+        subject_country_names: [],
+        subject_geography_status: null,
+        synthesized: true,
+        lensWeight: s.weight,
     }
 }
 
@@ -434,21 +497,64 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const orderedNarratives = freezeThreadOrder(liveOrdered, frozenOrder)
     liveOrderIdsRef.current = liveOrdered.map(n => n.thread_id)
 
+    // T11 gate fix (L1): which sibling ids (their own id, or a folded
+    // near-dup id) already have a matching row in the panel's own pool — so
+    // a sibling that genuinely IS one of the panel's fetched threads is
+    // never rendered a second time as a synthesized row.
+    const poolSiblingCoverage = useMemo(() => {
+        const covered = new Set<string>()
+        if (!lensSets) return covered
+        for (const n of displayedNarratives) {
+            for (const id of [n.thread_id, ...(n.anchor_topics ?? [])]) {
+                if (lensSets.siblings.has(id)) covered.add(id)
+            }
+        }
+        return covered
+    }, [displayedNarratives, lensSets])
+
+    // T11 gate fix (L1, CRIT): the ◈ Measured neighborhood group could never
+    // render — the panel only re-labels rows it ALREADY fetched, and the
+    // walked siblings are near-never members of its own /threads pool
+    // (measured 0/107 renderable on the live field, the 2026-07-29 gate run
+    // — the common case, not the exception). Synthesize one minimal row per
+    // sibling the pool doesn't already carry; see buildSyntheticSiblingRow.
+    const synthesizedSiblingRows = useMemo<Narrative[]>(() => {
+        if (!lensSets || !storyLens.data) return []
+        const rows: Narrative[] = []
+        const seen = new Set<string>()
+        for (const s of storyLens.data.siblings) {
+            if (poolSiblingCoverage.has(s.id) || seen.has(s.id)) continue
+            seen.add(s.id)
+            rows.push(buildSyntheticSiblingRow(s))
+        }
+        return rows
+    }, [lensSets, storyLens.data, poolSiblingCoverage])
+
+    // Eclipse always wins outright (matches the ordering gate above) — a
+    // synthesized lens row must never join the render list while an ambient
+    // eclipse is running the show. Synthesized rows join AFTER the frozen
+    // pool order: they are lens-owned, not pool-owned, so N5's hover-freeze
+    // (which only ever pinned pool rows) is left completely untouched.
+    const showLensRows = !eclipseSets && !!lensSets
+    const renderRows = showLensRows ? [...orderedNarratives, ...synthesizedSiblingRows] : orderedNarratives
+
     // Per-row lens role, resolved against the RENDERED order so the section
     // labels land on the first row of each group. indexOf (not "differs from the
     // previous row") keeps at most ONE label per role even if a hover-freeze
     // still in effect (e.g. from before an ambient eclipse tier flip, which is
     // not freeze-released the way a lens transition is) interleaves the groups.
     const rowRoles = eclipseSets
-        ? orderedNarratives.map(n => threadEclipseRole(n.anchor_topics, n.thread_id, eclipseSets))
+        ? renderRows.map(n => threadEclipseRole(n.anchor_topics, n.thread_id, eclipseSets))
         : null
     const firstEclipseIdx = rowRoles ? rowRoles.indexOf('eclipse') : -1
     const firstShadowIdx = rowRoles ? rowRoles.indexOf('shadow') : -1
     // Same idiom for the story lens, but ONLY computed when eclipse isn't
     // already running the show (precedence: eclipse wins outright, the lens
-    // branch must not run at all — matches the ordering gate above).
+    // branch must not run at all — matches the ordering gate above). Now
+    // scanning renderRows (pool + synthesized) so a synthesized sibling gets
+    // its 'sibling' role exactly like a pool row would.
     const lensRowRoles = (!eclipseSets && lensSets)
-        ? orderedNarratives.map(n => threadLensRole(n.anchor_topics, n.thread_id, lensSets))
+        ? renderRows.map(n => threadLensRole(n.anchor_topics, n.thread_id, lensSets))
         : null
     const firstLensAnchorIdx = lensRowRoles ? lensRowRoles.indexOf('anchor') : -1
     const firstLensSiblingIdx = lensRowRoles ? lensRowRoles.indexOf('sibling') : -1
@@ -562,7 +668,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     Thread details show last {effectiveHours}h · counts reflect full {cappedHours}h window
                 </div>
             )}
-            {orderedNarratives.map((n, rowIdx) => {
+            {renderRows.map((n, rowIdx) => {
                 const eclipseRole = rowRoles ? rowRoles[rowIdx] : null
                 const lensRole = lensRowRoles ? lensRowRoles[rowIdx] : null
                 const sectionLabel = rowIdx === firstEclipseIdx
@@ -571,6 +677,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     : rowIdx === firstLensAnchorIdx ? '◈ The story'
                     : rowIdx === firstLensSiblingIdx ? '◈ Measured neighborhood' : null
                 const isFocused = activeThreadId === n.thread_id
+                // T11 gate fix (L1): this row was synthesized from the lens
+                // sibling payload, not fetched by the panel — every block
+                // below that would print a fabricated count/trend/sparkline
+                // is routed around instead.
+                const isSynthRow = !!n.synthesized
                 // Dim conditions:
                 //  - a country is locked AND this thread doesn't cover it -> dim
                 //  - a person is focused, some thread mentions them, this one doesn't -> dim (#234)
@@ -603,7 +714,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     && !isFocused && !isDimmed) ? relationReason(n) : null
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
-                const rowHint = `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
+                // T11 gate fix (L1): a synthesized row carries no measured
+                // count/source/country stats — say so honestly instead of
+                // printing the fabricated zeros the type defaults carry.
+                const rowHint = isSynthRow
+                    ? 'From the measured walk — not in the current top threads. Click to open.'
+                    : `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
                 const domainLabel = (n.parent_domain || 'narrative thread').replace(/-/g, ' ')
                 const geography = threadCountryPresentation(n)
                 // Unified threads (Pedro 2026-06-24): no living/aggregate source
@@ -630,7 +746,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                         )
                     )}
                     <div
-                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''} ${eclipseRole === 'eclipse' ? 'ecl-row-eclipse' : eclipseRole === 'shadow' ? 'ecl-row-shadow' : ''} ${lensRole === 'anchor' ? 'sl-row-anchor' : lensRole === 'sibling' ? 'sl-row-sibling' : ''}`}
+                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''} ${eclipseRole === 'eclipse' ? 'ecl-row-eclipse' : eclipseRole === 'shadow' ? 'ecl-row-shadow' : ''} ${lensRole === 'anchor' ? 'sl-row-anchor' : lensRole === 'sibling' ? 'sl-row-sibling' : ''} ${isSynthRow ? 'sl-row-synth' : ''}`}
                         data-tip={rowHint}
                         onClick={() => handleClick(n)}
                         style={{ borderLeftColor: threadAccent }}
@@ -639,7 +755,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                         <div className="narrative-header">
                             <div className="narrative-label">
                                 <span className={`sentiment-dot ${n.sentiment_swing_10h && n.sentiment_swing_10h > 0.1 ? 'pos' : n.sentiment_swing_10h && n.sentiment_swing_10h < -0.1 ? 'neg' : 'neu'}`} data-tip={`10h sentiment swing: ${n.sentiment_swing_10h == null ? 'not available' : n.sentiment_swing_10h.toFixed(2)}`} />
-                                <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>
+                                {!isSynthRow && <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>}
                                 <span className="narrative-label-text" data-tip={n.label}>
                                     <TranslatableText text={n.label} />
                                     <span className="narrative-cluster-label">
@@ -680,7 +796,18 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 - Dynamic rows (gate fields null): signal_count is the SERVED
                                   membership for the window → "gated"; the detail's raw count
                                   is honestly larger. */}
-                            {(() => {
+                            {isSynthRow ? (
+                                // T11 gate fix (L1): a synthesized row has no signal count to
+                                // show — the ONLY quantitative fact it carries is the measured
+                                // walk weight. Rendered verbatim, never reformatted into a
+                                // fabricated count/thin/limited badge.
+                                <span
+                                    className="narrative-count sl-row-synth-weight"
+                                    data-tip="Measured composite walk weight (whitened cosine, product over hops) — not a signal count. This story is not in the panel's current top-ranked pool; open it to see its own numbers."
+                                >
+                                    walk {n.lensWeight != null ? n.lensWeight.toFixed(2) : '—'}
+                                </span>
+                            ) : (() => {
                                 const rowBase = n.gated_signal_count != null ? 'raw' as const : 'gated' as const
                                 return (
                             <span
@@ -773,7 +900,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             <span className="narrative-age">{timeAgo(n.first_seen)}</span>
                         </div>
 
-                        {/* Row 3: Spread bar + trend */}
+                        {/* Row 3: Spread bar + trend — T11 gate fix (L1): a synthesized row
+                            has no confidence measurement and no trend; neither exists to
+                            show, so the row omits them rather than printing the type's
+                            placeholder defaults ('' / 'stable') as if they were measured. */}
+                        {!isSynthRow && (
                         <div className="spread-row">
                             {n.show_confidence_bar && n.confidence_pct != null && (
                                 <div className="narrative-grad-bar-track" data-tip="Measured Atlas confidence from the living-thread contract.">
@@ -791,11 +922,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {n.trend === 'accelerating' ? '▲ Accelerating' : n.trend === 'fading' ? '▼ Fading' : '→ Stable'}
                             </span>
                         </div>
+                        )}
 
-                        {/* Row 4: Sparkline */}
+                        {/* Row 4: Sparkline — omitted for a synthesized row (no hourly
+                            timeline exists; Sparkline would render null anyway, but the
+                            wrapping tooltip div would still show a misleading hover). */}
+                        {!isSynthRow && (
                         <div data-tip="Signal volume over time: each point is one hour. Rising = growing coverage, falling = cooling off.">
                             <Sparkline data={n.hourly_timeline} color={n.confidence_trend_color} />
                         </div>
+                        )}
                     </div>
                     </React.Fragment>
                 )

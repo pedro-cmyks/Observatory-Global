@@ -6,6 +6,7 @@
 // per-session investigative act, not an ambient condition).
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { lensErrorCopy, type StoryLensData, type StoryLensState } from '../lib/storyLens'
 
 interface StoryLensValue {
@@ -13,7 +14,16 @@ interface StoryLensValue {
   data: StoryLensData | null
   error: string | null
   loading: boolean
-  enter: (threadId: string) => void
+  // T11 gate fix (M1): the raw payload's own notes (e.g.
+  // 'umbrella_resolved_via_child' / 'country_receipts_degraded') — already on
+  // `data.notes`, mirrored here so a consumer that only wants the notes
+  // doesn't have to reach through `data` and re-null-check it.
+  notes: string[]
+  // T11 gate fix (L4): labelHint is optional — the opener's already-known
+  // label (thread row / research anchor / back-stack restore), used ONLY as
+  // a fallback title until the fetch resolves its own `anchor.label`, and
+  // the ONLY title left once a degraded fetch never resolves one at all.
+  enter: (threadId: string, labelHint?: string | null) => void
   exit: () => void
 }
 
@@ -37,12 +47,22 @@ export const StoryLensProvider: React.FC<{ children: ReactNode }> = ({ children 
   const dataRef = useRef(data)
   dataRef.current = data
 
+  // T11 gate fix (M3): the body-class strip must only ever apply while the
+  // console route is actually on screen. Without this, App stays mounted
+  // (display:none) under the keep-alive shell while the reader is on /brief —
+  // an active lens session would keep `body.story-lensed` toggled, adding a
+  // 28px strip to a reading surface that has no banner to justify it (the
+  // banner itself already carries this exact route guard, StoryLensBanner.tsx
+  // `location.pathname !== '/app'`). StoryLensProvider is rendered INSIDE
+  // BrowserRouter (main.tsx), so useLocation() here is valid.
+  const location = useLocation()
   useEffect(() => {
-    document.body.classList.toggle('story-lensed', state.active)
+    const onConsole = state.active && location.pathname === '/app'
+    document.body.classList.toggle('story-lensed', onConsole)
     return () => document.body.classList.remove('story-lensed')
-  }, [state.active])
+  }, [state.active, location.pathname])
 
-  const enter = useCallback((threadId: string) => {
+  const enter = useCallback((threadId: string, labelHint?: string | null) => {
     // Idempotent, but only for a genuinely resolved payload: no-op only when
     // this anchor already has an ANCHORED payload (dataRef.current?.anchor
     // truthy) — no redundant fetch, no flash of the loading state. Anchorless
@@ -51,7 +71,7 @@ export const StoryLensProvider: React.FC<{ children: ReactNode }> = ({ children 
     // those with HTTP 200 via _empty(), so dataRef.current itself is truthy
     // even though there is nothing to show yet and a retry may now succeed.
     if (stateRef.current.anchorId === threadId && dataRef.current?.anchor) return
-    setState({ active: true, anchorId: threadId })
+    setState({ active: true, anchorId: threadId, labelHint: labelHint ?? null })
     setData(null)
     setError(null)
     setLoading(true)
@@ -77,13 +97,18 @@ export const StoryLensProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [])
 
   const exit = useCallback(() => {
-    setState({ active: false, anchorId: null })
+    setState({ active: false, anchorId: null, labelHint: null })
     setData(null)
     setError(null)
+    // T11 gate fix (M1, L5-ctx): an exit mid-flight left `loading` stuck true
+    // forever — the in-flight fetch's own `.finally` early-returns once
+    // `stateRef.current.anchorId !== threadId` (the id this exit just
+    // cleared), so nothing else was resetting it.
+    setLoading(false)
   }, [])
 
   return (
-    <StoryLensContext.Provider value={{ state, data, error, loading, enter, exit }}>
+    <StoryLensContext.Provider value={{ state, data, error, loading, notes: data?.notes ?? [], enter, exit }}>
       {children}
     </StoryLensContext.Provider>
   )

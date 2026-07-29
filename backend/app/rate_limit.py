@@ -111,9 +111,18 @@ _RULE_SPECS: list[tuple[str, str, object]] = [
     # Thread detail only triggers a paid DeepSeek note when llm= is set;
     # normal opens fall through to the generous global bucket.
     (r"^/api/v2/threads/[^/]+$", "paid", _llm_flag),
-    # Story Lens siblings: whitening + a bounded topic-graph walk per request
-    # (Redis-cached 300s, same profile as the walk/eclipse endpoints above).
-    (r"^/api/v2/story/[^/]+/siblings$", "paid", None),
+    # Story Lens siblings: T11 gate fix (L3) — this fires on EVERY thread
+    # open through every door (syncLensToThreadOpen, App.tsx), not on an
+    # explicit paid action the way research/plan or country-edition are. The
+    # "paid" bucket (20/300s) is sized for those, and an analyst walking a
+    # single fragmented event — the lens's entire purpose — burns through it
+    # in a handful of opens, then sees "Neighborhood lookup failed" on every
+    # subsequent story (reproduced live during the 2026-07-29 gate walk).
+    # Ride the same generous bucket /threads (list) and the base
+    # /theme/{id} detail fetch already fall through to by having no rule of
+    # their own — "global" (600/60s) — since the siblings call always
+    # accompanies one of those on a normal open.
+    (r"^/api/v2/story/[^/]+/siblings$", "global", None),
     (r"^/api/v2/telemetry$", "write", None),
     (r"^/api/v2/research/events$", "write", None),
 ]

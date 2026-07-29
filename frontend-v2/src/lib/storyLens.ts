@@ -35,6 +35,10 @@ export interface StoryLensData {
 export interface StoryLensState {
   active: boolean
   anchorId: string | null
+  // T11 gate fix (L4): the opener's already-known label — a fallback title
+  // used only until the fetch resolves its own `anchor.label`, and the only
+  // title left when a degraded fetch never resolves one at all.
+  labelHint?: string | null
 }
 
 // One-line kill switch for the auto-enter behavior (Task 10): flip to false
@@ -127,6 +131,22 @@ export interface SiblingChipText { text: string; isBlob: boolean }
 export function siblingChipText(s: StoryLensSibling): SiblingChipText {
   const base = siblingReasonText(s)
   return { text: s.is_blob ? `${base} · ⚠ grab-bag` : base, isBlob: s.is_blob }
+}
+
+// T11 gate fix (L2): the banner used to report EVERY sibling as a "hermano"
+// (direct measured edge) regardless of `kinship` — erasing the hermano/primo
+// distinction that is the design's honesty core (a primo is an INDIRECT
+// walk, not a direct edge) and overstating measured directness. Zero-count
+// parts are omitted rather than printed as "0 hermanos · 3 primos", except
+// when BOTH are zero (an anchor with no kin at all still needs a count).
+export function siblingKinshipSummary(siblings: StoryLensSibling[]): string {
+  const hermanos = siblings.filter((s) => s.kinship === 'hermano').length
+  const primos = siblings.filter((s) => s.kinship === 'primo').length
+  const parts: string[] = []
+  if (hermanos > 0) parts.push(`${hermanos} hermano${hermanos === 1 ? '' : 's'}`)
+  if (primos > 0) parts.push(`${primos} primo${primos === 1 ? '' : 's'}`)
+  if (!parts.length) parts.push('0 hermanos')
+  return parts.join(' · ')
 }
 
 // User-facing copy for the siblings endpoint's closed reason-code set.

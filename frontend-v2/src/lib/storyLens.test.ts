@@ -6,8 +6,10 @@ import {
   lensErrorCopy,
   lensTopicParam,
   siblingChipText,
+  siblingKinshipSummary,
   threadLensRole,
   type StoryLensData,
+  type StoryLensSibling,
 } from './storyLens'
 
 const data: StoryLensData = {
@@ -75,6 +77,27 @@ describe('isLensAnchor', () => {
     expect(isLensAnchor('dynamic-topic-5245')).toBe(true)
     expect(isLensAnchor('disease-outbreak--CO')).toBe(false)
     expect(isLensAnchor('emergent-cluster-17')).toBe(false)
+  })
+})
+
+describe('siblingKinshipSummary', () => {
+  // T11 gate fix (L2): the banner used to report every sibling as a
+  // "hermano" regardless of `kinship`, erasing the direct-edge-vs-indirect-
+  // walk distinction the design exists to carry.
+  it('splits hermanos and primos, omitting a zero part', () => {
+    expect(siblingKinshipSummary(data.siblings)).toBe('1 hermano · 1 primo')
+  })
+  it('pluralizes correctly and omits the missing kinship entirely', () => {
+    const allHermanos: StoryLensSibling[] = [
+      { ...data.siblings[0], id: 'a' },
+      { ...data.siblings[0], id: 'b' },
+    ]
+    expect(siblingKinshipSummary(allHermanos)).toBe('2 hermanos')
+    const onePrimo: StoryLensSibling[] = [{ ...data.siblings[1], id: 'c' }]
+    expect(siblingKinshipSummary(onePrimo)).toBe('1 primo')
+  })
+  it('an anchor with no kin at all still reports a count, never a blank string', () => {
+    expect(siblingKinshipSummary([])).toBe('0 hermanos')
   })
 })
 

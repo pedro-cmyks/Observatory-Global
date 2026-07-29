@@ -307,13 +307,19 @@ function AppContent() {
   // actually open" again. The same-anchor guard also kills the cold-load
   // double-fetch (a deep link enters first; the second caller for the same
   // id no-ops instead of re-fetching).
-  const syncLensToThreadOpen = useCallback((id: string | null) => {
+  // T11 gate fix (L4): optional `labelHint` — the SAME plumbing Item 8 built
+  // so the theme chip never falls back to a generic skeleton on a named open
+  // — reused here so the lens banner has a real title BEFORE the siblings
+  // fetch resolves and STAYS with one if that fetch degrades (db_error /
+  // network throw never populates `data.anchor`, so the banner previously
+  // had nothing but the opaque anchorId to fall back to).
+  const syncLensToThreadOpen = useCallback((id: string | null, labelHint?: string | null) => {
     if (!STORY_LENS_AUTO) return
     if (!id || !isLensAnchor(id)) {
       if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
       return
     }
-    if (!(storyLens.state.active && storyLens.state.anchorId === id)) storyLens.enter(id)
+    if (!(storyLens.state.active && storyLens.state.anchorId === id)) storyLens.enter(id, labelHint)
   }, [storyLens, stripLensParam])
 
   // State
@@ -635,6 +641,16 @@ function AppContent() {
     // a theme (ThemeDetail country card → right panel) don't go through here.
     setSelectedTheme(null)
     setThemeBackStack([])
+    // T11 gate fix (M2): a country door is a full context switch AWAY from
+    // the open story, not a peel of one compound-focus dimension — exit the
+    // lens the same way popPanel's inline exit does when it closes the
+    // thread/theme panel. This one call covers every door that routes
+    // through handleCountryClick (Briefing's onCountrySelect,
+    // NarrativeThreads' onCountrySelect, map/EntityPanel/conflict-panel
+    // country clicks, etc.) — not syncLensToThreadOpen(null): its
+    // !STORY_LENS_AUTO early-return must not apply to an explicit
+    // navigation exit (see clearAll's comment above for the same reasoning).
+    if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
     setSelectedCountryCode(countryCode)
     setSelectedCountry({
       countryCode,
@@ -725,7 +741,7 @@ function AppContent() {
     setWorkbenchOpen(false)
     // Story Lens (Task 10, spec-review fix): a research-plan anchor is a
     // thread-open door too.
-    syncLensToThreadOpen(slug)
+    syncLensToThreadOpen(slug, label)
   }
 
   function handleResearchOpenCountry(countryCode: string) {
@@ -802,7 +818,10 @@ function AppContent() {
     // enter/exit, and the same-anchor no-op. Skipped on a redundant re-fire
     // for the already-open theme (isSameThemeReopen, issue 4) — a genuinely
     // different theme, or this theme's very first open, still syncs normally.
-    if (!isSameThemeReopen) syncLensToThreadOpen(theme)
+    // labelHint (Item 8's own param) rides straight through — the same fix
+    // for the theme chip's generic-skeleton fallback now covers the lens
+    // banner's degraded-path fallback too (T11 gate L4).
+    if (!isSameThemeReopen) syncLensToThreadOpen(theme, labelHint)
   }
 
   const handlePublicAttentionSelect = (item: PublicAttentionSelection) => {
@@ -1720,6 +1739,14 @@ function AppContent() {
 
       {/* A1: persistent focus chip — shows what's focused and gives one ✕ to
           return to the whole, unfocused view (the missing country deselect). */}
+      {/* T11 gate fix (M2), reviewed and DELIBERATELY left unwired: this is
+          the granular theme-chip ✕ (not a full country/context-switch door),
+          and a prior review (T5/T10) ruled that keeping the lens active here
+          is spec-compliant — it's the only door that reveals the STORY|ALL
+          stream tabs, so closing the theme panel alone should not also kill
+          the lens session the analyst may still want (e.g. to re-open a
+          sibling from the STORY tab). Only handleCountryClick and the
+          thread/theme-close paths in popPanel/clearAll/closeAll exit it. */}
       <FocusIndicator onClear={clearAll} onRemoveTheme={() => { setTheme(null); setSelectedTheme(null); setSelectedThread(null) }} />
       {/* Flywheel Task 2.4: the always-visible "investigation you're building" —
           pinned items auto-sorted into WHO/WHERE/WHAT lanes. Invisible until the
@@ -2053,6 +2080,8 @@ function AppContent() {
               setSelectedTheme({ theme: prevStreamCtx.theme, originCountry: prevStreamCtx.originCountry, originCountryName: prevStreamCtx.originCountryName })
               setPrevStreamCtx(null)
               // Story Lens (Task 10, spec-review fix): restoring A re-anchors to A.
+              // PrevCtx('theme') carries no label — the back-restore path has
+              // no cheap hint here (T11 gate L4 covers the doors that do).
               syncLensToThreadOpen(prevStreamCtx.theme)
             } else if (prevStreamCtx?.type === 'country') {
               handleCountryClick(prevStreamCtx.code)
@@ -2074,7 +2103,9 @@ function AppContent() {
               ? { code: previous.originCountry, name: previous.originCountryName }
               : null)
             // Story Lens (Task 10, spec-review fix): restoring A re-anchors to A.
-            syncLensToThreadOpen(previous.theme)
+            // Same label source line 2109 already trusts (thread.label, else
+            // the opener's labelHint) — T11 gate L4.
+            syncLensToThreadOpen(previous.theme, previous.thread?.label ?? previous.labelHint)
           }
           const backLabel = prevStreamCtx?.type === 'chokepoint'
             ? `← ${prevStreamCtx.cp.name}`
@@ -2289,7 +2320,12 @@ function AppContent() {
                   // Story Lens (Task 10, spec-review fix): THE lens's own
                   // panel — this is what wires the sibling walk (clicking a
                   // row under ◈ Measured neighborhood re-anchors here).
-                  syncLensToThreadOpen(target ? target.theme : null)
+                  // labelHint = the clicked row's own label (T11 gate L4) —
+                  // covers both an ordinary pool row AND a synthesized
+                  // sibling row (L1), so re-anchoring to a primo/hermano
+                  // never drops to the generic title while its own siblings
+                  // fetch is in flight or degrades.
+                  syncLensToThreadOpen(target ? target.theme : null, target?.thread?.label ?? thread.label)
                 }}
                 onCountrySelect={(code) => {
                 if (selectedTheme) {

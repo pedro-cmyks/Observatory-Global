@@ -14,8 +14,21 @@ def test_registered_in_main():
     assert "app.include_router(story.router)" in MAIN
 
 
-def test_paid_bucket_rule():
+def test_rate_rule_present():
     assert re.search(r"story/\[?\^?/?\]?\+?/siblings", RATE) or "/api/v2/story/" in RATE
+
+
+def test_siblings_bucket_is_not_paid():
+    # T11 gate fix (L3): siblings fires on every thread open (not an explicit
+    # paid action) — it must NOT ride the tight "paid" bucket (20/300s) that
+    # starved a normal browsing session during the 2026-07-29 gate walk.
+    line = next(
+        (ln for ln in RATE.splitlines() if "siblings" in ln and "/api/v2/story/" in ln),
+        "",
+    )
+    assert line, "siblings rate rule line not found"
+    assert '"paid"' not in line
+    assert '"global"' in line
 
 
 def test_full_path_and_contract():

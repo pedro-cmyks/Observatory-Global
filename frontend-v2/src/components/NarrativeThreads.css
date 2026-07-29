@@ -612,6 +612,13 @@
 .narrative-row.sl-row-anchor { border-left-color: var(--story-cyan, #2aa7ad) !important; }
 .narrative-row.sl-row-sibling { border-left-color: rgba(42, 167, 173, 0.4) !important; }
 
+/* T11 gate fix (L1): a synthesized sibling row — built from the lens payload
+   directly because the panel's own /threads pool never fetched it. Subtly
+   muted so it reads as "measured but not one of the panel's own threads",
+   never visually identical to an ordinary fetched row. */
+.narrative-row.sl-row-synth { background: rgba(42, 167, 173, 0.05); }
+.sl-row-synth-weight { color: var(--story-cyan, #2aa7ad); font-size: 12px; }
+
 .sl-section-label {
     flex: 0 0 auto;
     color: var(--story-cyan, #2aa7ad);

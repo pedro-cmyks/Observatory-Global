@@ -5,7 +5,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { decodeEntities } from '../lib/decodeEntities'
 import { resolveThreadTitle } from '../lib/themeLabels'
-import { siblingChipText } from '../lib/storyLens'
+import { siblingChipText, siblingKinshipSummary } from '../lib/storyLens'
 import { threadPin } from '../lib/capturePayloads'
 import { getActiveInvestigationId, mergePinSnapshot, PIN_SIBLING_FREEZE_CAP } from '../lib/workbench'
 import './storyLens.css'
@@ -16,7 +16,7 @@ import './storyLens.css'
  * dramatic takeover) and z-indexed BELOW the eclipse ribbon so the eclipse
  * always wins when both are active. */
 export function StoryLensBanner() {
-  const { state, data, error, loading, exit } = useStoryLens()
+  const { state, data, error, loading, notes, exit } = useStoryLens()
   const { pinItem, isPinned } = useWorkspace()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -55,7 +55,16 @@ export function StoryLensBanner() {
   // Decode entity-encoded labels BEFORE resolveThreadTitle (which passes a
   // truthy knownLabel straight through) so the banner never shows raw
   // '&#x...;' soup — same decode NarrativeThreads applies on the same field.
-  const knownLabel = anchor?.label ? decodeEntities(anchor.label) : null
+  // T11 gate fix (L4): the resolved payload's own anchor.label wins when it
+  // exists; otherwise fall back to state.labelHint — the clicked row's
+  // ALREADY-KNOWN label, captured at the moment the analyst opened it. This
+  // is the ONLY title available on the degraded path (db_error / network
+  // throw never populates `data.anchor`), where the banner used to drop to
+  // the generic "Narrative Thread" even though the clicked row carried the
+  // full name the whole time.
+  const knownLabel = anchor?.label
+    ? decodeEntities(anchor.label)
+    : state.labelHint ? decodeEntities(state.labelHint) : null
   // Never render a raw opaque id (council N9 class): while the fetch is in
   // flight this reads "Loading thread…"; once settled without a label it
   // falls back to the honest generic, never state.anchorId verbatim.
@@ -96,8 +105,32 @@ export function StoryLensBanner() {
         <LabelReviewChip labelStatus={anchor.label_status} variant="chip" className="sl-banner-court" />
       ) : null}
       {anchor ? (
+        // T11 gate fix (L2): truthful hermano/primo split — the payload's
+        // own `kinship` per sibling, never a flat "N hermanos" that erases
+        // the direct-edge-vs-indirect-walk distinction the design exists to
+        // carry.
         <span className="sl-banner-counts">
-          {data?.siblings.length ?? 0} hermanos · {anchor.countries.length} countries
+          {siblingKinshipSummary(data?.siblings ?? [])} · {anchor.countries.length} countries
+        </span>
+      ) : null}
+      {/* T11 gate fix (M1): the payload's own measured caveats, made visible
+          — an umbrella walked via a stand-in child, or a degraded (not
+          absent) country-receipt lane. Both can coexist with a resolved
+          anchor, so neither is gated on `loading`/`error`. */}
+      {notes.includes('umbrella_resolved_via_child') ? (
+        <span
+          className="sl-banner-note sl-banner-flag"
+          data-tip="This umbrella's neighborhood was measured from its largest child story — a stand-in, not the umbrella itself"
+        >
+          via child story
+        </span>
+      ) : null}
+      {notes.includes('country_receipts_degraded') ? (
+        <span
+          className="sl-banner-note sl-banner-degraded"
+          data-tip="The country footprint query failed — shared-country receipts are missing, not absent"
+        >
+          ⚠ country lane degraded
         </span>
       ) : null}
       {loading ? <span className="sl-banner-note" role="status">measuring…</span> : null}

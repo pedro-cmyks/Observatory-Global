@@ -30,6 +30,10 @@ body.eclipsed.story-lensed .sl-banner { top: 28px; }
 .sl-banner-counts { color: #8fc7cb; }
 .sl-banner-note { color: #8fa2bd; }
 .sl-banner-degraded { color: #e2a23a; }
+/* T11 gate fix (M1): a measured caveat on the walk itself (e.g. umbrella
+   resolved via a stand-in child) — quieter than the degraded/error color,
+   still visually distinct from the plain note color. */
+.sl-banner-flag { color: #8fc7cb; border: 1px solid var(--story-cyan-border); border-radius: 3px; padding: 0 5px; }
 /* Fit the shared court chip inside the 28px band without touching its
    colors/severity styling (labelReviewChip.css owns those). */
 .sl-banner-court { font-size: 9px; line-height: 1; margin-left: 0; align-self: center; }
@@ -48,3 +52,22 @@ body.eclipsed.story-lensed .sl-banner { top: 28px; }
   line-height: 1; padding: 1px 6px;
 }
 .sl-banner-exit:hover { border-color: var(--story-cyan); }
+
+/* T11 gate fix (L5): on phones, ThemeDetail's own overlay goes
+   `position:fixed;inset:0` (ThemeDetail.css, <=768px) — a position:fixed
+   element does NOT inherit the body's padding-top, so the fixed lens banner
+   (and the fixed eclipse ribbon stacked above it) sat ON TOP of the
+   overlay's own close (✕) and pin/share/export buttons instead of pushing
+   them down (measured: banner box top 0->28, theme-detail-close top 16,
+   both partly beneath it). Same class of bug as the eclipse-ribbon/
+   command-bar occlusion already on record (T12b's portal fix) — a fixed
+   strip added to the viewport top must explicitly relocate any OTHER fixed
+   surface underneath it; body padding alone can never reach a
+   fixed-position descendant. Scoped to the same two states the desktop
+   padding-top rules above already cover (lens alone / lens+eclipse). */
+@media (max-width: 768px) {
+  .sl-banner { font-size: 10px; gap: 6px; padding: 0 8px; }
+  .sl-banner-label { max-width: 44vw; }
+  body.story-lensed .theme-detail-overlay { top: 28px; height: calc(100dvh - 28px); }
+  body.eclipsed.story-lensed .theme-detail-overlay { top: 56px; height: calc(100dvh - 56px); }
+}
