@@ -29,6 +29,24 @@ agreement on a sample of umbrella verdicts) has passed. `--only-umbrellas`
 scopes an ad-hoc manual pass to umbrella rows regardless of the env gate (used
 for the one-off GB input run — it does not touch the cron flag).
 
+CONTAMINATION FIX (2026-07-29, GB blind-check `docs/research/label-court/
+2026-07-29-gb-blind-check.md`): the first umbrella run's 36 verdicts were
+VOID. `_RECEIPTS_SQL` had no `engine_version` or `quarantined` filter, so
+`topic_members` rows from the experimental `unified-v2` construction (F3,
+never cut over — rebuilt nightly, always-fresh timestamps) crowded the SERVED
+`v1-compat` evidence out of the `ORDER BY max(timestamp) DESC LIMIT k`
+window. The court was judging receipts users never saw — dose-response was
+monotonic (failed umbrellas 85.9% non-served receipts vs 50% for partial).
+Fixed: bind `engine_version` to `topic_members_engine_version()` (never a
+hardcoded literal, so this can't drift from the F4 cutover var again),
+exclude `quarantined` rows, and order by `tm.assigned_at` (served-evidence
+freshness) instead of `s.timestamp` (immune to nightly-rebuild timestamp
+churn on rows the product never serves). HYPOTHESIS for the next audit: the
+blind-spot audit's "court over-strictness" finding (13/15 sampled `partial`
+verdicts read fine to a human) may be the SAME contamination on the STORY
+lane — this fix applies there too (`_receipts_for` is shared), worth
+re-running that audit post-fix rather than assuming it was calibration only.
+
 Serving reads label_status only (additive). Reversible: NULL the four columns.
 
 Run (repo root, M1 env, off-peak — DeepSeek, ~cents):
@@ -52,25 +70,49 @@ from pathlib import Path
 
 import asyncpg
 
+# `app.*` lives under backend/ — this script is invoked both as
+# `backend.scripts.label_court` (repo root, cwd for the ALW runner) and as
+# `scripts.label_court` (backend/ as pytest rootdir, `app` already on
+# sys.path via pythonpath=.). The explicit insert makes the first case work
+# without relying on cwd; harmless / idempotent in the second. Same pattern
+# as scripts/measure_court_enforcement.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.services.thread_intelligence import topic_members_engine_version  # noqa: E402
+
 _DS_URL = "https://api.deepseek.com/chat/completions"
 _COURT_MODEL = "label-court-v0/deepseek-chat"
 _LEDGER_DIR = Path(__file__).resolve().parents[2] / "docs" / "research" / "label-court"
 
 _VALID = ("entailed", "partial", "failed")
 
-# Receipts for a topic's trial: distinct evidence headlines, freshest first.
+# Receipts for a topic's trial: distinct evidence headlines, SERVED-freshest
+# first. Scoped to the engine_version the product actually serves ($3, bound
+# to topic_members_engine_version() — never a hardcoded literal, see the
+# module docstring's 2026-07-29 contamination note) and excludes quarantined
+# members (migration 087 / audit_topic_blackholes.py — off-centroid, already
+# hidden from users). Ordered by tm.assigned_at (when THIS engine_version
+# attached the member) rather than s.timestamp (the signal's own timestamp,
+# which a nightly-rebuilt experimental lane can refresh independently of
+# whether it's served) — assigned_at is immune to that churn.
 _RECEIPTS_SQL = """
     SELECT s.headline, s.country_code
     FROM topic_members tm
     JOIN signals_v2 s ON s.id = tm.signal_id
     WHERE tm.topic_id = $1 AND tm.role = 'evidence'
+      AND tm.engine_version = $3
+      AND COALESCE(tm.quarantined, false) = false
       AND s.headline IS NOT NULL AND length(s.headline) >= 12
     GROUP BY s.headline, s.country_code
-    ORDER BY max(s.timestamp) DESC
+    ORDER BY max(tm.assigned_at) DESC
     LIMIT $2
 """
 # Fallback for topics whose typed membership has not been projected yet
 # (topic_members is behind): the emergent sample the snapshot always carries.
+# NOT a topic_members query (dynamic_topic_members/emergent_clusters instead)
+# — no engine_version or quarantined column exists on this path, so the
+# 2026-07-29 contamination fix does not apply here. If this fallback is ever
+# repointed at topic_members, it must gain the same two filters.
 _RECEIPTS_FALLBACK_SQL = """
     SELECT s.headline, s.country_code
     FROM dynamic_topic_members dtm
@@ -241,7 +283,12 @@ async def _ds_judge(label: str, receipts: list[dict], key: str, *,
 
 
 async def _receipts_for(conn, topic_id: str, dyn_id: int, k: int) -> list[dict]:
-    rows = await conn.fetch(_RECEIPTS_SQL, topic_id, k)
+    # Bound, not hardcoded (2026-07-29 contamination fix) — follows the same
+    # F4 cutover var thread_intelligence.py's serving reads follow, so the
+    # court can never again drift onto an engine_version the product doesn't
+    # serve.
+    engine_version = topic_members_engine_version()
+    rows = await conn.fetch(_RECEIPTS_SQL, topic_id, k, engine_version)
     if not rows:
         rows = await conn.fetch(_RECEIPTS_FALLBACK_SQL, dyn_id, k)
     # DECODE before the judge reads (2026-07-18): headlines arrive

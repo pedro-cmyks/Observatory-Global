@@ -1,8 +1,11 @@
 """Label Court pure-logic: verdict parsing + neutral-label building."""
+import asyncio
+
 from scripts.label_court import (
     parse_verdict, build_neutral_label, _dominant_geo,
     _judge_prompt, _flatten_family_receipts, _umbrella_clause,
     _CHILD_LABELS_RANKED_SQL, _UMBRELLA_MAX_CHILDREN, _UMBRELLA_RECEIPTS_PER_CHILD,
+    _RECEIPTS_SQL, _RECEIPTS_FALLBACK_SQL, _receipts_for, topic_members_engine_version,
 )
 
 
@@ -194,3 +197,71 @@ def test_child_labels_ranked_sql_schema_freeze():
     assert "label IS NOT NULL" in sql
     assert "LIMIT $2" in sql
     assert "agg_n_signals DESC" in sql
+
+
+# ---------------------------------------------------------------------------
+# 2026-07-29 GB blind-check fallout: _RECEIPTS_SQL had no engine_version or
+# quarantined filter — nightly-rebuilt unified-v2 topic_members rows (fresher
+# timestamps) crowded served v1-compat evidence out of the per-child window,
+# voiding all 36 umbrella verdicts (GB scored 3/10; see
+# docs/research/label-court/2026-07-29-gb-blind-check.md). Freeze the fix so
+# it can't silently regress: every receipts SQL that reads topic_members must
+# scope to the SERVED engine_version and exclude quarantined rows.
+# ---------------------------------------------------------------------------
+
+def test_receipts_sql_scoped_to_served_engine_version_and_not_quarantined():
+    sql = _RECEIPTS_SQL
+    assert "topic_members" in sql
+    # bound parameter, never a hardcoded literal — must track
+    # topic_members_engine_version() / the eventual F4 cutover var, or the
+    # court and the product can drift apart again.
+    assert "tm.engine_version = $3" in sql
+    assert "'v1-compat'" not in sql and '"v1-compat"' not in sql
+    assert "tm.quarantined" in sql and "false" in sql.lower()
+    assert "role = 'evidence'" in sql
+    # ordered by SERVED-evidence freshness (assigned_at), not the signal's own
+    # timestamp — the latter lets an experimental lane's nightly rebuild
+    # crowd out served rows purely by refreshing its own timestamps.
+    assert "max(tm.assigned_at)" in sql
+
+
+def test_receipts_fallback_sql_has_no_topic_members_contamination_surface():
+    # the emergent-sample fallback reads dynamic_topic_members/emergent_clusters,
+    # never topic_members — no engine_version/quarantined column exists there,
+    # so the contamination class this fix targets cannot occur on this path.
+    # If a future edit repoints it at topic_members, it must gain the same
+    # two filters and this assertion should flip.
+    assert "topic_members" not in _RECEIPTS_FALLBACK_SQL.replace("dynamic_topic_members", "")
+
+
+class _FakeConn:
+    """Minimal asyncpg-shaped stub that records every fetch() call's SQL+args
+    so we can assert the engine_version binding without touching a real DB."""
+
+    def __init__(self, rows_by_sql=None):
+        self.calls: list[tuple[str, tuple]] = []
+        self._rows_by_sql = rows_by_sql or {}
+
+    async def fetch(self, sql, *args):
+        self.calls.append((sql, args))
+        return self._rows_by_sql.get(sql, [])
+
+
+def test_receipts_for_binds_engine_version_as_third_param(monkeypatch):
+    monkeypatch.delenv("ATLAS_TOPIC_MEMBERS_ENGINE_VERSION", raising=False)
+    conn = _FakeConn()
+    asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8))
+    assert conn.calls, "expected at least one fetch() call"
+    sql, args = conn.calls[0]
+    assert sql == _RECEIPTS_SQL
+    assert args == ("dynamic-topic-1", 8, "v1-compat")
+    assert args[-1] == topic_members_engine_version()
+
+
+def test_receipts_for_falls_back_when_engine_version_scoped_query_is_empty():
+    # if the served engine_version yields nothing (topic_members not yet
+    # projected for this topic), the emergent-sample fallback still fires.
+    conn = _FakeConn({_RECEIPTS_FALLBACK_SQL: [{"headline": "Fallback headline text", "country_code": "GR"}]})
+    result = asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8))
+    assert len(conn.calls) == 2
+    assert result == [{"headline": "Fallback headline text", "country_code": "GR"}]
