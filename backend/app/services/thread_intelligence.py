@@ -1184,15 +1184,27 @@ SELECT
           )
     ), 0)::int AS changed_10h,
     ARRAY(
-        SELECT DISTINCT code
-        FROM dynamic_topic_members dtm2
-        JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
-        CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[])) AS code
-        WHERE dtm2.dynamic_topic_id = dt.id
-          AND dtm2.snapshot_at = (
-              SELECT MAX(snapshot_at) FROM dynamic_topic_members
-              WHERE dynamic_topic_id = dt.id
-          )
+        -- Deterministic, primary-first (2026-07-29 §9 latent hazard: DISTINCT
+        -- with no ORDER BY let LIMIT 5 drop a cluster-primary code
+        -- arbitrarily, so a row the country SQL selected could fail
+        -- thread_matches_country). MIN(ord) ranks a code by its best position
+        -- across the latest-snapshot member clusters; primary codes sort
+        -- first and can never be truncated away by the LIMIT.
+        SELECT code
+        FROM (
+            SELECT u.code, MIN(u.ord) AS first_ord
+            FROM dynamic_topic_members dtm2
+            JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
+            CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[]))
+                WITH ORDINALITY AS u(code, ord)
+            WHERE dtm2.dynamic_topic_id = dt.id
+              AND dtm2.snapshot_at = (
+                  SELECT MAX(snapshot_at) FROM dynamic_topic_members
+                  WHERE dynamic_topic_id = dt.id
+              )
+            GROUP BY u.code
+        ) ranked
+        ORDER BY first_ord, code
         LIMIT 5
     ) AS top_country_codes,
     ARRAY(
@@ -1235,10 +1247,21 @@ WHERE dt.state = 'active'
   -- recent-but-fading stories DECAY down the list instead of vanishing.
 """ + _DYNAMIC_TOPICS_CANDIDATE_LIMIT + _DYNAMIC_TOPICS_SELECT + _DYNAMIC_TOPICS_TAIL
 
-# Country view = the per-country CHILDREN, scoped by the PRIMARY country of a member
-# cluster ($3) — the R1 scoped topics for that country (e.g. "Venezuela Earthquake
-# Death Toll" for VE), not the global atlas-generic ones. Umbrellas are global →
-# excluded; children are NOT parent-filtered (a country wants its own version).
+# Country view = the per-country CHILDREN, scoped by the country's presence in a
+# member cluster's LATEST-snapshot codes ($3) — the R1 scoped topics for that
+# country (e.g. "Venezuela Earthquake Death Toll" for VE), not the global
+# atlas-generic ones. Umbrellas are global → excluded; children are NOT
+# parent-filtered (a country wants its own version).
+#
+# Dark-door defect (2026-07-29 court-enforcement simulation §9): this EXISTS
+# used to match `top_country_codes[1]` over ALL snapshots while the served
+# array below is latest-snapshot only, so thread_matches_country dropped every
+# row whose country membership was historical — 13/34 doors served zero rows
+# despite candidates (witness: topic 4237 was CO on 07-20/22/24, ES since
+# 07-25). The predicate is now the coverage PRE-IMAGE of the Python check:
+# latest snapshot only (a story that LEFT a country doesn't serve on its door)
+# and ANY position (thread_matches_country's coverage arm accepts any served
+# position, so a primary-only pre-filter would starve the door vs the arbiter).
 _DYNAMIC_TOPICS_COUNTRY_SQL = """
 WITH candidate_topics AS MATERIALIZED (
 SELECT dt.*
@@ -1248,7 +1271,12 @@ WHERE dt.state = 'active'
   AND EXISTS (
       SELECT 1 FROM dynamic_topic_members dtmc
       JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
-      WHERE dtmc.dynamic_topic_id = dt.id AND ecc.top_country_codes[1] = $3
+      WHERE dtmc.dynamic_topic_id = dt.id
+        AND dtmc.snapshot_at = (
+            SELECT MAX(snapshot_at) FROM dynamic_topic_members
+            WHERE dynamic_topic_id = dt.id
+        )
+        AND $3 = ANY(ecc.top_country_codes)
   )
   AND dt.last_seen > NOW() - (GREATEST($1::int, 72) * INTERVAL '1 hour')
   -- #250: 72h floor — a major event (VE earthquake, 380+169 signals) fell off
@@ -1294,15 +1322,23 @@ SELECT
           )
     ), 0)::int AS changed_10h,
     ARRAY(
-        SELECT DISTINCT code
-        FROM dynamic_topic_members dtm2
-        JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
-        CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[])) AS code
-        WHERE dtm2.dynamic_topic_id = dt.id
-          AND dtm2.snapshot_at = (
-              SELECT MAX(snapshot_at) FROM dynamic_topic_members
-              WHERE dynamic_topic_id = dt.id
-          )
+        -- Deterministic, primary-first — mirrors _DYNAMIC_TOPICS_SELECT (the
+        -- 2026-07-29 §9 LIMIT-without-ORDER-BY hazard); keep the two in sync.
+        SELECT code
+        FROM (
+            SELECT u.code, MIN(u.ord) AS first_ord
+            FROM dynamic_topic_members dtm2
+            JOIN emergent_clusters ec2 ON ec2.id = dtm2.emergent_cluster_id
+            CROSS JOIN LATERAL unnest(COALESCE(ec2.top_country_codes, ARRAY[]::text[]))
+                WITH ORDINALITY AS u(code, ord)
+            WHERE dtm2.dynamic_topic_id = dt.id
+              AND dtm2.snapshot_at = (
+                  SELECT MAX(snapshot_at) FROM dynamic_topic_members
+                  WHERE dynamic_topic_id = dt.id
+              )
+            GROUP BY u.code
+        ) ranked
+        ORDER BY first_ord, code
         LIMIT 5
     ) AS top_country_codes,
     ARRAY(
@@ -1627,11 +1663,12 @@ async def _fetch_dynamic_threads_with_conn(
                 _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
             )
         thread = assemble_dynamic_thread(topic, list(sample_signals))
-        # #238: the SQL pre-filters candidates by the coverage dateline primary
-        # country; re-key each on its verified SUBJECT geography and keep it only
-        # when the requested country is in its resolved key set. A thread whose
-        # subject is verified elsewhere drops out of this country's view; one that
-        # abstains falls back to coverage (which already matched) and stays.
+        # #238: the SQL pre-filters candidates by coverage (latest-snapshot codes,
+        # any position — the exact pre-image of this check's coverage arm); re-key
+        # each on its verified SUBJECT geography and keep it only when the
+        # requested country is in its resolved key set. A thread whose subject is
+        # verified elsewhere drops out of this country's view; one that abstains
+        # falls back to coverage (which already matched) and stays.
         if country_code and not thread_matches_country(
             country_code,
             subject_countries=thread.get("subject_countries"),

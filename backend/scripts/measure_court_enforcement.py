@@ -208,6 +208,11 @@ async def fetch_pool(conn: Any, cc: str | None, limit: int) -> list[dict]:
     )
 
 
+# Mirrors the serving _DYNAMIC_TOPICS_COUNTRY_SQL EXISTS (post dark-door fix,
+# 2026-07-29): latest-snapshot codes, any position — the honest candidate
+# definition. The pre-fix all-snapshot `top_country_codes[1]` variant counted
+# topics whose country membership was historical, which is exactly the
+# phantom-candidate defect §9 measured.
 _DOOR_CANDIDATES_SQL = """
 SELECT COUNT(DISTINCT dt.id)::int
 FROM dynamic_topics dt
@@ -215,7 +220,11 @@ JOIN dynamic_topic_members dtmc ON dtmc.dynamic_topic_id = dt.id
 JOIN emergent_clusters ecc ON ecc.id = dtmc.emergent_cluster_id
 WHERE dt.state='active' AND dt.is_umbrella = false
   AND dt.last_seen > NOW() - INTERVAL '72 hours'
-  AND ecc.top_country_codes[1] = $1
+  AND dtmc.snapshot_at = (
+      SELECT MAX(snapshot_at) FROM dynamic_topic_members
+      WHERE dynamic_topic_id = dt.id
+  )
+  AND $1 = ANY(ecc.top_country_codes)
 """
 
 
