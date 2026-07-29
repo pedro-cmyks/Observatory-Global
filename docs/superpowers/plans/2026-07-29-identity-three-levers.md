@@ -45,5 +45,24 @@ Set `ATLAS_WALK_BLOB_ENTROPY_TAU=2.6` + `ATLAS_WALK_BLOB_INDEG_MIN=4` on Fly (Wa
 `story.py`: for the ≤12 candidate siblings only, run `confirm_blob_candidates` (bounded member fetch, `_WALK_BLOB_MEMBERS_SQL` pattern) and set `is_blob` from CONFIRMED multimodality; entropy+indeg stays the cheap candidate filter. Budgeted: ≤12 topics × ≤200 members per request, off-connection, cached with the payload.
 **Pre-registered gate GC:** on the finder-v2 G1 true-positive set (11 rows), confirmed-blob rate ≤3/11 (was 6/11) while dt-466 and the calibration sample's hand-labeled blobs stay flagged ≥7/9. **Kill:** if the confirmer can't separate on those witnesses, the chip keeps entropy flags AND gains a "candidate" qualifier in the tooltip — never silently better-looking.
 
-## Order
-A0 → C1 (parallel, both cheap) → C2 → B1 → A1 → GB hand-check + A2 watch → B2 verify. Story lens flip (`STORY_LENS_AUTO=true`) is NOT in this plan — it re-gates on a fresh NAV-LOSS run after A+B+C land.
+## Order — REVISED by A0's measurement (2026-07-29)
+A0 returned GA NO-GO with two structural findings: (1) the rank damp ALREADY
+SHIPS (`_COURT_DAMP {failed:0.5, partial:0.85}` live since 07-18 via
+ATLAS_RANK_V2) and is +0.0pp BY CONSTRUCTION — /threads selects the page by
+recent_n_signals BEFORE ranking, so the un-enforced surface is the FETCH POOL,
+not the factor (3× pool + existing damp → global entailed 12.5%→32.5%);
+(2) ranks 1-7 are unchecked umbrellas — **Lever B is Lever A's prerequisite.**
+A1/A2 as originally written are DEAD (superseded, not failed).
+
+Revised order: ~~A0~~ ✓ → ~~C1~~ ✓ → ~~C2~~ ✓ (GC: witness A pass 1/11,
+witness B honest fail 3/9 → candidate qualifier ships) → **B1 (umbrella court —
+now the critical path) → GB hand-check → B2 serve** → **A0b: pre-register the
+FETCH-side gate** (over-fetch pool ≥3×, existing damp; conditions must include
+PER-DOOR COMPOSITION — the paper-pass over-fetch exploits GA's count-only
+condition and worsens US/TR/DE entailed-share — AND a newsworthiness guard:
+court-entailed skews small, median 44 vs 711 signals; a composition gate that
+only maximizes entailed-share promotes honest non-news) → fetch change behind
+env → two-night watch. Story lens flip (`STORY_LENS_AUTO=true`) still NOT in
+this plan — re-gates on a fresh NAV-LOSS run after B + A0b-fetch land.
+Separate serving defect chipped: 13/34 country doors serve zero rows
+(SQL↔Python snapshot-scope disagreement, task_890df3e7).
