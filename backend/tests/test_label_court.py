@@ -7,7 +7,8 @@ from scripts.label_court import (
     _CHILD_LABELS_RANKED_SQL, _UMBRELLA_MAX_CHILDREN, _UMBRELLA_RECEIPTS_PER_CHILD,
     _RECEIPTS_SQL, _RECEIPTS_FALLBACK_SQL, _receipts_for, topic_members_engine_version,
     _SINGLE_CHILD_SKIP_SQL, _SINGLE_CHILD_CLEANUP_SQL, _reason_quotes_a_receipt,
-    _WITHHOLD_CLEAR_SQL,
+    _WITHHOLD_MARK_SQL, _WITHHELD_COURT_MODEL, _absence_claim_contradicted,
+    _rule4_majority_satisfied, _COURT_MODEL,
 )
 
 
@@ -448,17 +449,137 @@ def test_reason_quotes_a_receipt_true_for_short_single_quoted_proper_noun():
     assert _reason_quotes_a_receipt(reason, receipts) is True
 
 
-def test_withhold_clear_sql_nulls_all_four_court_columns():
-    # "mark the verdict unchecked" (GB3) must be an ACTIVE reset keyed by id,
-    # not a silent skip — otherwise a row that already carries a stale stamp
-    # from an earlier pass keeps displaying it forever once a later pass
-    # finds the reason ungrounded.
-    sql = _WITHHOLD_CLEAR_SQL
+# ---------------------------------------------------------------------------
+# 2026-07-29 GB4 blind-check fallout: GB3's withhold cleared ALL FOUR court
+# columns unconditionally, erasing dt-8084's CORRECT prior `failed` stamp
+# once a later pass found its reasoning ungrounded. See
+# docs/research/label-court/2026-07-29-gb4-blind-check.md.
+# ---------------------------------------------------------------------------
+
+def test_withhold_mark_sql_never_touches_label_status():
+    # the fix: label_status is not in the SET list at all — a withheld
+    # attempt can only ever mark checked_at/court_model, never the verdict
+    # column, so a prior valid stamp is structurally impossible to erase.
+    sql = _WITHHOLD_MARK_SQL
     assert sql.startswith("UPDATE dynamic_topics SET")
-    for col in ("label_status=NULL", "label_checked_at=NULL",
-                "label_court_model=NULL", "label_proposed=NULL"):
-        assert col in sql
-    assert "WHERE id=$1" in sql
+    assert "label_status" not in sql.split("WHERE")[0]  # not in the SET clause
+    assert "label_checked_at=$2" in sql
+    assert "label_court_model=$3" in sql
+
+
+def test_withhold_mark_sql_scoped_to_rows_with_no_prior_stamp():
+    # the WHERE clause is what actually preserves a valid stamp: a row that
+    # already has entailed/partial/failed is excluded from this UPDATE
+    # entirely, so it survives byte-identical.
+    sql = _WITHHOLD_MARK_SQL
+    assert "WHERE id=$1 AND label_status IS NULL" in sql
+
+
+def test_withheld_court_model_is_distinguishable_from_the_ordinary_model():
+    # durable DB-level signal ("attempted, could not ground") distinct from
+    # "never reached" (label_checked_at IS NULL) — without needing a new
+    # label_status value (migration 080's CHECK constraint forbids one
+    # outside entailed/partial/failed/NULL; widening it is out of this fix's
+    # scope, see the module docstring).
+    assert _WITHHELD_COURT_MODEL != _COURT_MODEL
+    assert _WITHHELD_COURT_MODEL.startswith(_COURT_MODEL)
+    assert "withheld" in _WITHHELD_COURT_MODEL.lower()
+
+
+# --- GB4 fix 4: absence-claim contradiction (class B, third attempt) -------
+
+def test_absence_claim_contradicted_true_for_witness_dt_8175():
+    # the exact GB4 witness: the reason claims $91 is absent while an Arabic-
+    # script receipt reports it verbatim in plain Western digits.
+    receipts = [
+        {"headline": "أسعار النفط تنخفض بأكثر من 5% إلى 91 دولارا للبرميل بعد توقف الضربات الأمريكية على إيران",
+         "country_code": "AE"},
+        {"headline": "Trump vows to punish Iran, oil surges over $100", "country_code": "US"},
+    ]
+    reason = ('The label is contradicted: no receipt anywhere reports oil dropping '
+             'to $91 or any easing of tensions — the receipts instead describe '
+             'ongoing US strikes and Iranian warnings.')
+    assert _absence_claim_contradicted(reason, receipts) is True
+
+
+def test_absence_claim_contradicted_false_when_absence_is_genuine():
+    receipts = [{"headline": "Oil prices climb amid Middle East tensions", "country_code": "US"}]
+    reason = "No receipt anywhere reports a specific $91 figure, so the claim is unsupported."
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_false_without_an_absence_trigger():
+    # a bare number in an otherwise ordinary reason is not itself suspicious
+    receipts = [{"headline": "Oil falls to $91 a barrel", "country_code": "US"}]
+    reason = "The family is entailed: receipts confirm oil at $91 a barrel."
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_does_not_false_positive_on_larger_numbers():
+    # "91" must not match inside "1991" or "919" — word-boundary-ish digit match
+    receipts = [{"headline": "Founded in 1991, the agency reports 919 cases", "country_code": "US"}]
+    reason = "No receipt mentions 91 as a standalone figure."
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_false_for_single_digit_targets():
+    # a bare single digit near an absence trigger is too common to be
+    # meaningful (avoid trivial false-positives on "no receipt mentions 5 ...")
+    receipts = [{"headline": "5 dead in the incident", "country_code": "US"}]
+    reason = "No receipt mentions 5 witnesses being interviewed."
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_ignores_bare_years_far_from_the_trigger():
+    # regression (observed live, dt-8177): a long, comma-spliced reason had
+    # "no receipt mentions 'Pageants'" near the START and an unrelated
+    # "China Open 2026" clause LATER in the same period-delimited sentence —
+    # "2026" spuriously matched as a "contradicted absence target" purely
+    # because every receipt is dated 2026. The proximity window (scanning
+    # only right after the trigger) and the bare-year exclusion both guard
+    # against this.
+    receipts = [
+        {"headline": "Ana/Trias terhenti di babak pertama China Open 2026", "country_code": "ID"},
+        {"headline": "El gol de Ferran Torres hizo vibrar España", "country_code": "ES"},
+    ]
+    reason = ("The umbrella label is not supported: no receipt mentions 'Pageants' at all, "
+             "and the fourth child's receipts are about badminton at the China Open 2026, "
+             "which is not a FIFA or pageant event.")
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_still_catches_a_currency_figure_disguised_as_a_year():
+    # the year exclusion is narrow: a $-marked or %-marked figure that
+    # happens to look like a year is still a real target.
+    receipts = [{"headline": "Damages estimated at $2026 million", "country_code": "US"}]
+    reason = "No receipt mentions damages of $2026 million anywhere in the family."
+    assert _absence_claim_contradicted(reason, receipts) is True
+
+
+# --- GB4 fix 3: rule 4 numeric majority enforcement -------------------------
+
+def test_rule4_majority_satisfied_true_for_strict_majority():
+    assert _rule4_majority_satisfied("6/7 children support the wildfire clause.") is True
+    assert _rule4_majority_satisfied("Supported by 3 of 4 children.") is True
+
+
+def test_rule4_majority_satisfied_false_for_tie_or_minority():
+    # the exact GB4 witness: dt-5549 earned `partial` on a stated 4/8 tie
+    assert _rule4_majority_satisfied("The sanctions clause reaches 4/8 children.") is False
+    assert _rule4_majority_satisfied("Only 2 of 8 children support this claim.") is False
+
+
+def test_rule4_majority_satisfied_none_when_no_count_is_stated():
+    # rule 4 REQUIRES the count to be stated — an absent count is itself a
+    # defect (silently trusting an un-quantified "majority" claim is exactly
+    # how dt-5549 slipped through), not something to silently pass.
+    assert _rule4_majority_satisfied("Most children support the dominant clause.") is None
+
+
+def test_rule4_majority_satisfied_ignores_nonsensical_counts():
+    # defensive: a count where the numerator exceeds the denominator (a
+    # malformed or hallucinated fraction) is treated as no-count-stated.
+    assert _rule4_majority_satisfied("9 of 4 children support this.") is None
 
 
 def test_single_child_skip_sql_excludes_umbrellas_with_one_child():

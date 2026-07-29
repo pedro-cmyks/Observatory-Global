@@ -95,6 +95,53 @@ describe('labelReviewReason', () => {
   })
 })
 
+// 2026-07-29 GB4 fix 1: a court-withheld row (quote-gate / absence-check /
+// rule-4 failure, umbrella lane) must render something — the confidence
+// floor structurally can never fire for an umbrella (avg_confidence 0.95+).
+describe('labelReviewReason courtWithheld (GB4 fix 1)', () => {
+  it('derives awaiting-verification for a withheld row regardless of high confidence', () => {
+    // the dt-8070/dt-8084 case: avg_confidence ~0.98, label_status null,
+    // but the court DID try and could not ground a verdict.
+    expect(labelReviewReason({
+      labelStatus: null,
+      avgConfidence: 0.984,
+      confidenceMeasured: true,
+      courtWithheld: true,
+      floor: FLOOR,
+    })).toBe('awaiting-verification')
+  })
+
+  it('is a no-op when courtWithheld is absent — existing callers unaffected', () => {
+    expect(labelReviewReason({
+      labelStatus: null,
+      avgConfidence: 0.984,
+      confidenceMeasured: true,
+      floor: FLOOR,
+    })).toBeNull()
+  })
+
+  it('court verdicts still take precedence over courtWithheld', () => {
+    // withheld is only meaningful when there is NO verdict; a real verdict
+    // (even courtWithheld=true stale on the same payload) must win.
+    expect(labelReviewReason({
+      labelStatus: 'failed',
+      avgConfidence: 0.98,
+      courtWithheld: true,
+      floor: FLOOR,
+    })).toBe('label-failed')
+  })
+
+  it('courtWithheld=false behaves identically to omitted', () => {
+    expect(labelReviewReason({
+      labelStatus: null,
+      avgConfidence: 0.984,
+      confidenceMeasured: true,
+      courtWithheld: false,
+      floor: FLOOR,
+    })).toBeNull()
+  })
+})
+
 describe('labelReviewTip', () => {
   it('SUPPRESSES the internal token-triple placeholder (#261 — never surface it)', () => {
     // build_neutral_label emits "<geo>: <subject> — from N receipts" as an

@@ -70,6 +70,59 @@ receipt that supports that specific claim, not just an adjacent or broader
 family) and `_SINGLE_CHILD_SKIP_SQL` excludes one-child umbrellas from the
 family trial entirely (falls through to the story lane's judgment instead).
 
+GB4 FIXES (2026-07-29, docs/research/label-court/2026-07-29-gb4-blind-check.md,
+scored 7/10 — plateaued, and for the first time the error stopped being
+one-directional): four separable defects, all real regardless of any future
+enforcement decision.
+(1) WITHHOLD WAS NOT DISPLAY-SAFE. `_WITHHOLD_CLEAR_SQL` unconditionally
+nulled all four court columns — on a row that had NEVER carried a verdict
+this just stayed NULL either way, but on `dt-8084` (a CORRECT prior `failed`
+stamp from an earlier grounded pass) a later withheld attempt ERASED it,
+converting a real warning into a clean bill of health. And a row that has
+*never* successfully grounded (`dt-8070`, n=14,734 — the largest umbrella in
+the population) has label_status NULL and avg_confidence ~0.98, so the
+frontend's confidence-floor fallback (`labelReviewChip.tsx`, floor 0.70) can
+never fire for it either — no chip, ever. Checked the DB schema first
+(migration 080's CHECK constraint permits ONLY `entailed`/`partial`/`failed`/
+NULL on `label_status` — writing a new literal like `'awaiting_verification'`
+would violate that constraint and error at write time; widening it needs a
+migration, out of this pathspec). Fixed within the existing schema:
+`_WITHHOLD_MARK_SQL` only touches rows where `label_status IS NULL` (a prior
+valid stamp is never touched, let alone erased) and stamps `label_checked_at`
++ a distinguishing `label_court_model` suffix (`#withheld`) so "attempted,
+could not ground" is durably distinguishable from "never reached" at the DB
+level. Full on-screen chip visibility for a never-grounded row still needs a
+serializer change (`thread_intelligence.py` does not currently select
+`label_checked_at` at all) — out of scope here, documented as a follow-up.
+`labelReviewChip.tsx` gained a `courtWithheld` input so the derivation CAN
+express `'awaiting-verification'` once that wiring lands; today no caller
+sets it, so behavior is unchanged until the serializer catches up.
+(2) LEDGER ONLY RECORDED FAILURES. GB4 could not retrieve the court's own
+reasoning for `5549` or `8168` — exactly the two rows most needing audit,
+since rule 4 was the new suspect. Every graded verdict (entailed/partial/
+failed) and every withheld row now appends to the ledger with `lane`,
+`verdict`, and (for withheld) `withhold_reason` + the judge's original call.
+(3) RULE 4 HAD NO NUMBER TO ENFORCE. `5549` earned `partial` on a stated
+4-of-8 tie (not a majority) with two of three clauses fabricated; `8177`
+was failed 4-of-4 (unanimous) on its dominant clause. The rule 4 prompt text
+now requires the model to STATE the supporting count ("N/M children"), and
+`_rule4_majority_satisfied` parses it and withholds a `partial` verdict
+whose own stated count isn't a strict majority (or states none at all).
+(4) THE QUOTE-GATE IS A GROUNDING CHECK, NOT AN ABSENCE CHECK (class B,
+third attempt — survived GB3's fix). `8175`'s reason quoted a REAL receipt
+(`6993`'s "oil surges over $100") while separately asserting a FALSE absence
+("no receipt anywhere reports oil dropping to $91") that child `576`
+directly contradicts. `_absence_claim_contradicted` scans reasons for an
+absence-trigger phrase ("no receipt", "none mention", "not supported by",
+…) and, deliberately NARROW per the instruction to keep this cheap and
+testable: extracts only NUMERIC targets (a dollar figure, a percentage, a
+plain count) near the trigger and checks them by literal substring against
+every receipt. This is Latin/ASCII-digit only — numbers happen to be
+script-invariant (the `$91`/`91 دولارا` witness is Arabic-script prose with
+plain Western digits embedded, so the narrow numeric form still catches it),
+but a purely textual absence claim about a phrase inside a non-Latin-script
+receipt is NOT verified here. Documented limitation, not a silent gap.
+
 Serving reads label_status only (additive). Reversible: NULL the four columns.
 
 Run (repo root, M1 env, off-peak — DeepSeek, ~cents):
@@ -253,6 +306,96 @@ def _reason_quotes_a_receipt(reason: str, receipts: list[dict]) -> bool:
     return False
 
 
+# GB4 class B, third attempt (2026-07-29): the quote-gate above is a
+# GROUNDING check ("does the reason quote something real?"), not an ABSENCE
+# check ("is the thing it says is missing actually missing?"). dt-8175's
+# reason quoted a genuine receipt (a DIFFERENT one, about oil surging) while
+# separately asserting "no receipt anywhere reports oil dropping to $91" —
+# a receipt in the SAME family does, verbatim, in Arabic. Deliberately
+# NARROW per the instruction (cheap + testable, not a second LLM call):
+# only NUMERIC absence targets (a dollar figure, a percentage, a plain
+# count) near an absence-trigger phrase are checked, by literal substring.
+# Numbers are script-invariant in practice — modern news writing embeds
+# plain Western digits even inside Arabic/Cyrillic/CJK prose — so this
+# narrow form still catches the "$91" witness despite the receipt being
+# Arabic-script. A purely TEXTUAL absence claim about a phrase inside a
+# non-Latin-script receipt is NOT verified here — documented limitation,
+# not a silent gap; closing it properly would need per-language normalization
+# or a second grounded LLM call, both bigger than this fix.
+_ABSENCE_TRIGGER_RE = re.compile(
+    r"\bno receipts?\w*\b|\bnone\s+(?:mention|report|show|state|support)\w*\b|"
+    r"\bnot supported by\b|\bzero receipts?\b|\bno child\w*\b", re.IGNORECASE)
+_NUMERIC_TARGET_RE = re.compile(r"\$?\d+(?:[.,]\d+)?\s*%?")
+# A bare 4-digit year is essentially never the disputed figure in this class
+# of claim, and reliably co-occurs with an absence trigger by ACCIDENT in a
+# long reason simply because every receipt is dated 2026 — observed live on
+# dt-8177 ("no receipt mentions 'Pageants'... China Open 2026" spuriously
+# matched on "2026" alone). Excluded unless marked with $ or % (a currency/
+# percentage figure that happens to look like a year is still a real target).
+_BARE_YEAR_RE = re.compile(r"^(?:19|20)\d{2}$")
+# Proximity window (chars) scanned AFTER an absence-trigger match — bounds
+# the numeric scan to the SAME claim the trigger introduces, not any number
+# anywhere in a long, comma-spliced reason that happens to also contain one.
+_ABSENCE_PROXIMITY_CHARS = 80
+
+
+def _absence_claim_contradicted(reason: str, receipts: list[dict]) -> bool:
+    """True iff `reason` asserts a NUMERIC absence ("no receipt mentions
+    $91", "none report a 50% drop") that a receipt in the SAME family
+    directly contradicts. The numeric scan is bounded to a short window
+    immediately after an absence-trigger phrase (not the whole sentence —
+    GB4's own reasons run long and comma-spliced, and an unrelated number
+    later in the same sentence, e.g. a "2026" from an unrelated child two
+    clauses later, is not part of the claim the trigger introduces). Matches
+    on the bare digit sequence with non-digit boundaries so "91" matches
+    "$91"/"91%"/"91 دولارا" but not "1991" or "919" — deliberately loose
+    beyond that (a coincidental digit collision only makes this MORE likely
+    to withhold, which is the safe direction, never the dangerous one)."""
+    reason = reason or ""
+    for trig in _ABSENCE_TRIGGER_RE.finditer(reason):
+        window = reason[trig.end(): trig.end() + _ABSENCE_PROXIMITY_CHARS]
+        for m in _NUMERIC_TARGET_RE.finditer(window):
+            token = m.group(0)
+            digits = re.sub(r"\D", "", token)
+            if len(digits) < 2:  # a bare single digit is too common to be meaningful
+                continue
+            if _BARE_YEAR_RE.match(digits) and "$" not in token and "%" not in token:
+                continue
+            pattern = re.compile(r"(?<!\d)" + re.escape(digits) + r"(?!\d)")
+            for r in receipts:
+                if pattern.search(r.get("headline") or ""):
+                    return True
+    return False
+
+
+# GB4 rule 4 numeric enforcement (2026-07-29): dt-5549 earned `partial` on a
+# STATED 4-of-8 tie (not a majority) with two of its three clauses
+# fabricated; dt-8177 was failed on 4-of-4 (unanimous) support for its
+# dominant clause. Rule 4's prompt text now requires the model to STATE the
+# supporting count as "N/M children" (or "N of M children"); this parses
+# that count and enforces the rule's OWN majority requirement (N > M/2)
+# rather than trusting that the model applied its own stated numbers
+# correctly.
+_MAJORITY_FRACTION_RE = re.compile(
+    r"(\d+)\s*(?:/|of)\s*(\d+)\s*(?:children|kids)?", re.IGNORECASE)
+
+
+def _rule4_majority_satisfied(reason: str) -> bool | None:
+    """Parse an "N/M" or "N of M" child count from a `partial`-verdict
+    reason and check it is a STRICT majority (N > M/2) as rule 4 requires.
+    Returns True (majority stated and satisfied), False (a count is stated
+    but is a tie or minority), or None (no count stated at all — rule 4
+    requires one, so an absent count is itself a defect, not silently
+    passed). Callers should withhold whenever the result is not True."""
+    m = _MAJORITY_FRACTION_RE.search(reason or "")
+    if not m:
+        return None
+    n, mtot = int(m.group(1)), int(m.group(2))
+    if mtot <= 0 or n > mtot:
+        return None
+    return n > mtot / 2
+
+
 def _dominant_geo(country_codes: list[str]) -> str:
     codes = [c for c in country_codes if c and c.upper() != "XX"]
     if not codes:
@@ -388,14 +531,23 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
             "the specific claim, another child still belongs if it covers the "
             "SAME broader event, even if that child's own receipts don't "
             "repeat the specific detail.\n"
-            "4. COMPOUND LABELS GET PARTIAL, NOT FAILED: if the label makes "
-            "TWO OR MORE separate claims (e.g. 'X and Y', 'X; Z hits W') and "
-            "the majority of children strongly support ONE of those claims "
-            "while another claim has no supporting receipt anywhere, the "
-            "verdict is PARTIAL — the dominant, well-receipted clause earns "
-            "that much even though the secondary clause is unsupported. Only "
-            "call FAILED when the majority of children support NONE of the "
-            "label's claims.\n\n"
+            "4. COMPOUND LABELS GET PARTIAL, NOT FAILED — BUT ONLY ON A REAL "
+            "MAJORITY: if the label makes TWO OR MORE separate claims (e.g. "
+            "'X and Y', 'X; Z hits W') and a STRICT MAJORITY of the family's "
+            "children (MORE THAN HALF — a tie is NOT a majority) strongly "
+            "support ONE of those claims, while another claim has no "
+            "supporting receipt anywhere, the verdict is PARTIAL — the "
+            "dominant, well-receipted clause earns that much even though the "
+            "secondary clause is unsupported. If the best-supported claim "
+            "reaches only half the children or fewer, it is NOT dominant — "
+            "do not call PARTIAL on a tie or a minority; call FAILED instead "
+            "unless a genuine majority exists for some clause. YOU MUST STATE "
+            "THE COUNT: whenever you invoke this rule, your reason must say "
+            "exactly how many of how many children support the dominant "
+            "clause, as 'N/M children' (e.g. '6/7 children' or '3/8 "
+            "children') — this is checked, not decorative. Only call FAILED "
+            "when the majority of children support NONE of the label's "
+            "claims.\n\n"
             "Do the MAJORITY of these child stories genuinely belong to the "
             "family this umbrella label names, applying the rules above? "
             "Your REASON MUST ground whatever it claims IS supported with at "
@@ -408,7 +560,8 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
             "must ALSO quote a receipt for whatever part you say IS "
             "supported. Never write an unquoted assertion that nothing "
             "supports a claim if a receipt above contradicts it — quote that "
-            "receipt instead. "
+            "receipt instead; a false absence claim is checked and will get "
+            "this verdict withheld entirely. "
             "Reply ONLY with JSON:\n"
             '{"verdict": "entailed" | "partial" | "failed", '
             '"reason": "<one short sentence with a verbatim quoted receipt excerpt>"}\n'
@@ -594,15 +747,23 @@ _SINGLE_CHILD_CLEANUP_SQL = (
     "AND c.state = 'active' AND c.label IS NOT NULL) < 2"
 )
 
-# GB3 quote-gate write path (2026-07-29): "mark the verdict unchecked" means
-# an ACTIVE reset, not merely skipping the write — otherwise a row that
-# already carries a STALE stamp from an earlier (less-scrutinized) pass keeps
-# displaying that old verdict forever, which is exactly the "front page
-# stamped on an ungrounded reason" outcome the gate exists to prevent. Same
-# four columns as the ordinary write, same reversibility.
-_WITHHOLD_CLEAR_SQL = (
-    "UPDATE dynamic_topics SET label_status=NULL, label_checked_at=NULL, "
-    "label_court_model=NULL, label_proposed=NULL WHERE id=$1"
+# GB4 fix (2026-07-29, was _WITHHOLD_CLEAR_SQL — GB4 caught it erasing
+# dt-8084's CORRECT prior `failed` stamp): a withheld verdict must NEVER
+# destroy an existing valid stamp — `WHERE label_status IS NULL` means this
+# only ever touches a row that had NOTHING trustworthy to begin with. It
+# marks `label_checked_at` + a distinguishing `label_court_model` (the
+# `#withheld` suffix) so "the court tried this cycle and could not ground a
+# verdict" is a durable, query-able DB state, distinguishable from "never
+# reached" (`label_checked_at IS NULL`) — without writing anything to
+# `label_status` outside the migration-080 CHECK constraint's vocabulary
+# (`entailed`/`partial`/`failed`/NULL only; a new value needs a migration,
+# out of scope here). `label_status` itself is never touched by this
+# statement — either it was already NULL (stays NULL) or the WHERE clause
+# excludes the row entirely (a valid stamp survives untouched).
+_WITHHELD_COURT_MODEL = f"{_COURT_MODEL}#withheld"
+_WITHHOLD_MARK_SQL = (
+    "UPDATE dynamic_topics SET label_checked_at=$2, label_court_model=$3 "
+    "WHERE id=$1 AND label_status IS NULL"
 )
 
 
@@ -662,8 +823,8 @@ async def main() -> None:
 
         dist: Counter = Counter()
         tok_in = tok_out = 0
-        failures = []
-        ungrounded = 0
+        ledger_entries = []  # GB4: every graded verdict AND every withhold, not just failures
+        withheld = 0
         for r in rows:
             dyn_id = r["id"]
             topic_id = f"dynamic-topic-{dyn_id}"
@@ -683,23 +844,51 @@ async def main() -> None:
                                                      family_children=family_children)
             tok_in += usage["input_tokens"]; tok_out += usage["output_tokens"]
 
-            # GB3 quote-gate (2026-07-29): a family verdict whose reason is
-            # not grounded in a verbatim receipt quote is WITHHELD — not
-            # counted, not ledgered as a failure, and label_status is never
-            # written (stays whatever it already was, i.e. "unchecked"/NULL
-            # if this is the first pass). This is the umbrella lane's own
-            # defect-detector: GB3 caught reasons that cited child labels or
-            # fabricated an absence a receipt contradicted, and both are
-            # mechanically undetectable without this check.
-            if is_umbrella and not _reason_quotes_a_receipt(reason, receipts):
-                ungrounded += 1
-                print(f"  ? dt-{dyn_id} [umbrella] [UNGROUNDED verdict={verdict}, withheld] "
-                      f"{label[:40]} — reason lacked a verbatim receipt quote: {reason[:80]!r}")
+            def _ledger_entry(effective_verdict: str, **extra: object) -> dict:
+                return {
+                    "topic_id": topic_id, "served_label": label,
+                    "verdict": effective_verdict, "reason": reason,
+                    "receipts": [x["headline"] for x in receipts],
+                    "checked_at": checked_at.isoformat(),
+                    "lane": "umbrella" if is_umbrella else "story",
+                    **({"family": [{"child_id": c["child_id"], "child_label": c["child_label"]}
+                                   for c in family_children]} if family_children else {}),
+                    **extra,
+                }
+
+            # Three independent defect-detectors (2026-07-29, GB3+GB4) — any
+            # one of them withholds the verdict. All three are the umbrella
+            # lane's OWN checks (the story lane's single-topic question has
+            # no child labels, no compound-label rule, and was not the
+            # target of any of these fixes).
+            #   1. GROUNDING (GB3): the reason must quote a real receipt.
+            #   2. ABSENCE (GB4, class B): a numeric absence claim ("no
+            #      receipt reports $91") must not be contradicted by an
+            #      actual receipt.
+            #   3. RULE 4 MAJORITY (GB4): a `partial` verdict invoking the
+            #      compound-label rule must state a supporting count that is
+            #      an actual strict majority, not a tie or minority.
+            withhold_reason: str | None = None
+            if is_umbrella:
+                if not _reason_quotes_a_receipt(reason, receipts):
+                    withhold_reason = "ungrounded"
+                elif _absence_claim_contradicted(reason, receipts):
+                    withhold_reason = "absence-contradicted"
+                elif verdict == "partial" and _rule4_majority_satisfied(reason) is not True:
+                    withhold_reason = "rule4-majority-not-met"
+
+            if withhold_reason:
+                withheld += 1
+                print(f"  ? dt-{dyn_id} [umbrella] [WITHHELD:{withhold_reason} "
+                      f"judge-said={verdict}] {label[:40]} — {reason[:80]!r}")
+                ledger_entries.append(_ledger_entry(
+                    "withheld", withhold_reason=withhold_reason, judge_verdict=verdict))
                 if args.write:
-                    # Active reset (not a skip): a stale stamp from an
-                    # earlier pass must not keep showing once THIS pass finds
-                    # it ungrounded — "unchecked" has to mean unchecked.
-                    await conn.execute(_WITHHOLD_CLEAR_SQL, dyn_id)
+                    # Marks, never erases (see _WITHHOLD_MARK_SQL): a prior
+                    # valid stamp survives untouched; only a row with NOTHING
+                    # trustworthy gets the "attempted, ungrounded" marker.
+                    await conn.execute(_WITHHOLD_MARK_SQL, dyn_id, checked_at,
+                                       _WITHHELD_COURT_MODEL)
                 continue
 
             dist[verdict] += 1
@@ -708,16 +897,11 @@ async def main() -> None:
             tag = " [umbrella]" if is_umbrella else ""
             extra = f"  ->PROPOSE: {proposed}" if proposed else ""
             print(f"  {mark} dt-{dyn_id}{tag} [{verdict}] {label[:46]}{extra}")
-            if verdict == "failed":
-                failures.append({
-                    "topic_id": topic_id, "served_label": label,
-                    "verdict": verdict, "reason": reason, "proposed": proposed,
-                    "receipts": [x["headline"] for x in receipts],
-                    "checked_at": checked_at.isoformat(),
-                    "lane": "umbrella" if is_umbrella else "story",
-                    **({"family": [{"child_id": c["child_id"], "child_label": c["child_label"]}
-                                   for c in family_children]} if family_children else {}),
-                })
+            # GB4: every graded verdict is ledgered now, not just `failed` —
+            # GB4 could not retrieve the court's own reasoning for a
+            # `partial` row (5549, 8168) at all, the two rows most needing
+            # diagnosis since rule 4 was the new suspect.
+            ledger_entries.append(_ledger_entry(verdict, proposed=proposed))
             if args.write:
                 new_label = label
                 if proposed and apply_proposals:
@@ -734,19 +918,21 @@ async def main() -> None:
             cleared = await conn.execute(_SINGLE_CHILD_CLEANUP_SQL)
             print(f"single-child cleanup: {cleared}")
 
-        # ledger: failures are #204 training data
-        if failures:
+        # ledger: every verdict (entailed/partial/failed/withheld) is #204
+        # training data AND the only durable record of the court's own
+        # reasoning — GB4's diagnosis of rule 4 depended on reading it.
+        if ledger_entries:
             _LEDGER_DIR.mkdir(parents=True, exist_ok=True)
             led = _LEDGER_DIR / f"{checked_at.date().isoformat()}-label-court-failures.jsonl"
             with led.open("a", encoding="utf-8") as f:
-                for x in failures:
+                for x in ledger_entries:
                     f.write(json.dumps(x, ensure_ascii=False) + "\n")
-            print(f"\nledger += {len(failures)} failures -> {led}")
+            print(f"\nledger += {len(ledger_entries)} entries -> {led}")
 
         total = sum(dist.values())
         print(f"\nLABEL COURT DONE: {total} tried · "
               f"entailed {dist['entailed']} · partial {dist['partial']} · failed {dist['failed']} · "
-              f"ungrounded/withheld {ungrounded} · "
+              f"withheld {withheld} · "
               f"tokens in/out {tok_in}/{tok_out}{' · WRITTEN' if args.write else ' · DRY'}"
               f"{' · PROPOSALS APPLIED' if apply_proposals else ''}")
     finally:

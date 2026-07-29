@@ -24,10 +24,29 @@ import './labelReviewChip.css'
 // via the `floor` param.
 export const LABEL_REVIEW_FLOOR = LEAD_CONFIDENCE_FLOOR
 
-// 'awaiting-verification' (lane A lead-eligibility v2) is never DERIVED here —
-// it would chip every unstamped row on every surface. It exists so callers that
-// already gated via leadBlockReason (the Brief tray) can render the honest
-// timing state: the label is fine so far, the court just has not stamped it yet.
+// 'awaiting-verification' (lane A lead-eligibility v2) is deliberately NOT
+// derived from labelStatus/avgConfidence alone — deriving it from plain NULL
+// would chip every unstamped row on every surface (most rows are simply
+// "the incremental court hasn't reached this one yet", not a real signal).
+// It is derived in exactly one narrow case now (2026-07-29, GB4 fix 1 —
+// docs/research/label-court/2026-07-29-gb4-blind-check.md): `courtWithheld`,
+// an explicit "the court DID try this row and could not ground a verdict"
+// signal (label_court.py's quote-gate withhold, umbrella lane). That is a
+// stronger, more specific claim than ordinary unchecked-ness, and umbrella
+// rows sit at avg_confidence 0.95+ — far above the low-confidence floor — so
+// the ordinary fallback path can structurally never fire for them; without
+// this, a withheld umbrella renders with NO chip at all, indistinguishable
+// from a trusted label (the exact dt-8070/dt-8084 finding). It ALSO stays
+// available for callers that gate via leadBlockReason (the Brief tray) and
+// pass the `reason` override directly, same as before.
+// RESIDUAL (documented, not silently assumed away): as of this fix, no
+// backend payload actually SETS `courtWithheld` yet — thread_intelligence.py
+// does not select label_checked_at/label_court_model at all, so there is no
+// served signal to distinguish "withheld" from "never reached" today. This
+// change makes the derivation READY to consume that signal once a serializer
+// change wires it through; until then this path is dead code by construction
+// (courtWithheld defaults to undefined/false for every existing caller, so
+// behavior is unchanged).
 export type LabelReviewReason =
   | 'label-failed'
   | 'label-partial'
@@ -42,6 +61,13 @@ export interface LabelReviewInput {
   /** Whether avgConfidence is a real measurement. Defaults to "measured when a
    * finite number is present". */
   confidenceMeasured?: boolean
+  /**
+   * The court attempted this row and explicitly withheld its verdict (a
+   * quote-gate / absence-check / rule-4 failure — label_court.py, umbrella
+   * lane) rather than never having reached it. NOT yet populated by any
+   * served payload (see the RESIDUAL note above) — future-proofing only.
+   */
+  courtWithheld?: boolean
   /** Trust floor for the UNCHECKED-label fallback path. */
   floor: number
 }
@@ -58,7 +84,15 @@ export function labelReviewReason(input: LabelReviewInput): LabelReviewReason | 
   if (status === 'partial') return 'label-partial'
   if (status === 'entailed') return null
 
-  // Unchecked (null / undefined / anything else): fall back to the floor.
+  // Unchecked (null / undefined / anything else). A row the court explicitly
+  // WITHHELD (2026-07-29 GB4 fix 1) is a stronger, more specific claim than
+  // ordinary unchecked-ness — surface it ahead of the confidence-floor guess,
+  // and independently of the floor (an umbrella's avg_confidence sits at
+  // 0.95+, so the floor path alone can never fire for it; see the type's
+  // doc comment for the residual on wiring this signal through serving).
+  if (input.courtWithheld === true) return 'awaiting-verification'
+
+  // Otherwise fall back to the floor.
   const conf =
     typeof input.avgConfidence === 'number' && Number.isFinite(input.avgConfidence)
       ? input.avgConfidence
@@ -102,6 +136,12 @@ export interface LabelReviewChipProps {
   labelStatus?: string | null
   avgConfidence?: number | null
   confidenceMeasured?: boolean
+  /**
+   * The court attempted this row and explicitly withheld its verdict rather
+   * than never reaching it (2026-07-29 GB4 fix 1). See LabelReviewInput's
+   * doc comment — not yet populated by any served payload.
+   */
+  courtWithheld?: boolean
   /** Receipt-derived neutral label offered on a court failure (advisory only). */
   labelProposed?: string | null
   /** Trust floor; defaults to LABEL_REVIEW_FLOOR. Pass lane A's lead floor to
@@ -142,6 +182,7 @@ export function LabelReviewChip(props: LabelReviewChipProps): React.ReactElement
           labelStatus: props.labelStatus,
           avgConfidence: props.avgConfidence,
           confidenceMeasured: props.confidenceMeasured,
+          courtWithheld: props.courtWithheld,
           floor,
         })
   if (!reason) return null
