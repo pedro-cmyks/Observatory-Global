@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from datetime import datetime, timezone
 
 import numpy as np
@@ -36,6 +37,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _CACHE_TTL_S = 300
+
+# In-process topics-matrix cache — ANCHOR-INDEPENDENT: the same dynamic_topics
+# scan (~1.6k active rows x 768-float centroids) serves every anchor's walk, so
+# paying for it once per TTL instead of once per request is the fix for the
+# prod 15s-statement-timeout failure (Fly logs, 2026-07-28: "canceling
+# statement due to statement timeout" at the old bare `conn.fetch(_TOPICS_SQL)`
+# over the pooler). 120s TTL is generous against a nightly-churn corpus (this
+# project's CLAUDE.md: topics churn nightly, not intra-minute) and matches the
+# dossier walk's own `_WALK_CACHE_TTL_S` precedent (dossier.py:952). Mutated
+# in place (`.clear()` + `.update()`) rather than rebound, so no `global` is
+# needed. Redis payload cache (300s per anchor, `_CACHE_TTL_S` above) sits
+# above this and is unchanged — this cache is the shared substrate underneath
+# a Redis miss, not a replacement for it.
+_TOPICS_CACHE_TTL_S = 120
+_TOPICS_CACHE: dict = {}
 
 # Shape gate: a malformed id must short-circuit BEFORE any Redis/DB work — a
 # thread_id is untrusted path input, never assumed pre-validated by the
@@ -157,29 +173,35 @@ async def get_story_siblings(thread_id: str) -> dict:
         logger.warning("story siblings whitening unavailable: %s", exc, exc_info=True)
         return _empty("whitening_unavailable")
 
-    # (a) Acquire ONLY for the topic-universe fetch, then release — mirrors
-    # dossier.py's /walk (dossier.py:1027-1085), which never holds a
-    # connection across the O(n^2) whitening/graph-walk compute below.
-    try:
-        async with db.pool.acquire() as conn:
-            await conn.execute("SET statement_timeout = 15000")
-            rows = await conn.fetch(_TOPICS_SQL)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("story siblings topic fetch failed: %s", exc, exc_info=True)
-        return _empty("db_error")
+    # (a) Topics matrix: cache hit skips the DB entirely (this is the fix —
+    # the scan is ANCHOR-INDEPENDENT, so every anchor within the TTL window
+    # reuses the same parsed arrays). On a miss, acquire ONLY for the fetch,
+    # then release — mirrors dossier.py's /walk (dossier.py:1027-1085), which
+    # never holds a connection across the O(n^2) whitening/graph-walk compute
+    # below. Bumped 15000->30000ms: this is the one connection that pays for
+    # the full ~1.6k-row centroid scan; the countries connection below stays
+    # at its original 8000ms (bounded ANY($1) fetch, unaffected).
+    now = time.monotonic()
+    cached_topics = _TOPICS_CACHE
+    if cached_topics and (now - cached_topics["at"]) < _TOPICS_CACHE_TTL_S:
+        keys: list[str] = cached_topics["keys"]
+        labels: list[str] = cached_topics["labels"]
+        cats: list[str | None] = cached_topics["cats"]
+        statuses: list[str | None] = cached_topics["statuses"]
+        vecs_arr: np.ndarray = cached_topics["vecs"]
+    else:
+        try:
+            async with db.pool.acquire() as conn:
+                await conn.execute("SET statement_timeout = 30000")
+                rows = await conn.fetch(_TOPICS_SQL)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("story siblings topic fetch failed: %s", exc, exc_info=True)
+            return _empty("db_error")
 
-    # (b) Compute OUTSIDE any held connection: row parsing, whitening, the
-    # graph walk. `rank_siblings` raises ValueError loudly on a contract
-    # violation (misaligned/non-unit-norm arrays — Task 1's deliberate
-    # design: a silent [] there would read as "this story stands alone," a
-    # dishonest empty). That is a CALLER programming error, never a database
-    # fault, so it — and any other compute failure (e.g. an OOM building the
-    # similarity matrix) — must never be mislabeled "db_error".
-    try:
-        keys: list[str] = []
-        labels: list[str] = []
-        cats: list[str | None] = []
-        statuses: list[str | None] = []
+        keys = []
+        labels = []
+        cats = []
+        statuses = []
         vecs: list[list[float]] = []
         for r in rows:
             v = r["centroid_vec"]
@@ -191,12 +213,26 @@ async def get_story_siblings(thread_id: str) -> dict:
             cats.append(r["category"])
             statuses.append(r["label_status"])
             vecs.append([float(x) for x in v])
+        vecs_arr = np.asarray(vecs, dtype=np.float32)
 
+        _TOPICS_CACHE.clear()
+        _TOPICS_CACHE.update(
+            at=now, keys=keys, labels=labels, cats=cats, statuses=statuses, vecs=vecs_arr,
+        )
+
+    # (b) Compute OUTSIDE any held connection: seed lookup, whitening, the
+    # graph walk. `rank_siblings` raises ValueError loudly on a contract
+    # violation (misaligned/non-unit-norm arrays — Task 1's deliberate
+    # design: a silent [] there would read as "this story stands alone," a
+    # dishonest empty). That is a CALLER programming error, never a database
+    # fault, so it — and any other compute failure (e.g. an OOM building the
+    # similarity matrix) — must never be mislabeled "db_error".
+    try:
         if topic_key not in keys:
             return _empty("seed_not_found_or_no_centroid")
 
         seed = keys.index(topic_key)
-        whitened = apply_whitening(np.asarray(vecs, dtype=np.float32), whitening)
+        whitened = apply_whitening(vecs_arr, whitening)
         siblings = rank_siblings(
             seed, whitened, keys, labels, cats, WalkParams.from_env(), cap=DEFAULT_CAP,
         )
