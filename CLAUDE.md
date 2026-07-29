@@ -61,7 +61,15 @@ single-provider risk mitigated); mig 093 ext-stats APPLIED + ANALYZE run (gaza
 needles re-measure pending); sibling cap 11 (anchor+11 = exactly _TOPIC_FILTER_MAX,
 never a silently-dropped rendered sibling). Trump-search "no data" = the
 timeout-as-absence defect: heaviest entities look emptiest; fixed in code, needs
-Vercel deploy. METHOD NOTE: the two-stage per-task review earned its keep ~20
+Vercel deploy. **DECISIONS SETTLED (Pedro 07-29): Anthropic API will NOT be
+re-funded — the claude-CLI subscription leg IS the second provider (DeepSeek
+primary, OpenAI embeddings-only); STOP listing it as a blocker. The "5 gold
+queries from Pedro" dependency is DISSOLVED — the protocol is agent-driven
+browser investigation (click/screenshot/scroll the thread detail + focus, deep
+inspection), authored and executed by the agent; queue a 5-query external-agenda
+extension of the gold set after the finder-v2 verdict. Vercel deploy authorized:
+execute after finder-v2 lands so nothing ships half-flying.** METHOD NOTE: the
+two-stage per-task review earned its keep ~20
 times (receipt referent, frozen-stamp divergence, palette AA, dim coherence,
 resurrection, connection-hold...) — and the GATE earned it once more by refusing
 to ship a lens that renders honest receipts over false neighbors.**
