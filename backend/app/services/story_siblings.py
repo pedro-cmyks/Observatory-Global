@@ -13,6 +13,7 @@ from typing import Optional, Sequence
 import numpy as np
 
 from app.services.constellation_walk import (
+    KnnGraph,
     WalkParams,
     blob_connector_flags,
     build_knn_graph,
@@ -48,10 +49,23 @@ def rank_siblings(
     categories: Sequence[Optional[str]],
     params: WalkParams = WalkParams(),
     cap: int = DEFAULT_CAP,
+    *,
+    graph: Optional[KnnGraph] = None,
+    blob_flags: Optional[set[int]] = None,
 ) -> list[Sibling]:
     """Rank the measured neighborhood of one topic.
 
     whitened: unit-norm rows (apply_whitening output) aligned with keys/labels.
+
+    `graph`/`blob_flags` may be pre-computed by the caller — mirrors
+    `constellation_walk.walk_constellation`'s own caching hook. Both depend
+    only on `whitened`+`categories`+`params`, never on `seed`, so a caller
+    serving many seeds over the same matrix within a TTL window (the story
+    lens auto-enters on every thread open) should build the O(N^2) kNN graph
+    and the blob-entropy pass ONCE and pass them in here — per-request work
+    then reduces to the walk + dedup below. Omit either (the default) to have
+    this function compute them itself, unchanged behavior for every existing
+    caller/test.
 
     Misaligned arrays or a non-unit-norm seed row are CALLER programming
     errors, not honest absence — they raise loudly rather than returning []
@@ -65,8 +79,8 @@ def rank_siblings(
         return []
     if abs(float(np.linalg.norm(whitened[seed])) - 1.0) > 1e-3:
         raise ValueError("whitened rows must be unit-norm (apply_whitening output)")
-    graph = build_knn_graph(whitened, k=params.k)
-    blobs = blob_connector_flags(graph, categories, params)
+    graph = graph if graph is not None else build_knn_graph(whitened, k=params.k)
+    blobs = blob_flags if blob_flags is not None else blob_connector_flags(graph, categories, params)
     reached = max_product_walk([seed], graph, params, blob_flags=blobs)
     # Rank purely by -acc_weight (not walk_constellation's (degree, -acc_weight)
     # dedup-priority order): measured to yield equivalent rep sets here, chosen

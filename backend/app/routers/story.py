@@ -29,7 +29,11 @@ import numpy as np
 from fastapi import APIRouter
 
 from app import db
-from app.services.constellation_walk import WalkParams
+from app.services.constellation_walk import (
+    WalkParams,
+    blob_connector_flags,
+    build_knn_graph,
+)
 from app.services.story_siblings import DEFAULT_CAP, rank_siblings
 from app.services.whitening import apply_whitening, load_whitening
 
@@ -97,9 +101,12 @@ _COUNTRIES_SQL = """
 # centroid_vec of its own and is deliberately excluded from `_TOPICS_SQL`, so
 # without this fallback exactly the BIGGEST stories (the ones an umbrella
 # collapses) would 100% miss into "seed_not_found_or_no_centroid". Resolve to
-# the umbrella's largest child that DOES carry a centroid, walk from there,
-# but keep the ANCHOR identity (id/label/label_status) as the umbrella's own —
-# the child is a stand-in for the walk, never the story the user asked about.
+# the umbrella's largest ACTIVE child that carries a centroid (state='active'
+# is a WHERE clause, not a tiebreak — a retired-but-largest child must never
+# win LIMIT 1 and then hard-fail seed_not_found while a smaller active child
+# was walkable), walk from there, but keep the ANCHOR identity (id/label/
+# label_status) as the umbrella's own — the child is a stand-in for the walk,
+# never the story the user asked about.
 _UMBRELLA_SQL = """
     SELECT label, label_status
     FROM dynamic_topics
@@ -110,6 +117,7 @@ _UMBRELLA_CHILD_SQL = """
     SELECT id
     FROM dynamic_topics
     WHERE parent_id = $1 AND NOT is_umbrella AND centroid_vec IS NOT NULL
+      AND state = 'active'
     ORDER BY agg_n_signals DESC NULLS LAST
     LIMIT 1
 """
@@ -239,10 +247,14 @@ async def get_story_siblings(thread_id: str) -> dict:
         logger.warning("story siblings whitening unavailable: %s", exc, exc_info=True)
         return _empty("whitening_unavailable")
 
-    # (a) Topics matrix: cache hit skips the DB entirely (this is the fix —
-    # the scan is ANCHOR-INDEPENDENT, so every anchor within the TTL window
-    # reuses the same parsed arrays). On a miss, acquire ONLY for the fetch,
-    # then release — mirrors dossier.py's /walk (dossier.py:1027-1085), which
+    # (a) Topics matrix + its derived graph: cache hit skips the DB AND the
+    # O(N^2) compute entirely (this is the fix — apply_whitening/build_knn_
+    # graph (1600x1600)/blob_connector_flags all depend ONLY on this matrix,
+    # never on the requested seed, so every anchor within the TTL window
+    # reuses them — the lens auto-enters on EVERY thread open, so recomputing
+    # a 1600x1600 similarity matrix per request would block other requests on
+    # this worker's event loop). On a miss, acquire ONLY for the fetch, then
+    # release — mirrors dossier.py's /walk (dossier.py:1027-1085), which
     # never holds a connection across the O(n^2) whitening/graph-walk compute
     # below. Bumped 15000->30000ms: this is the one connection that pays for
     # the full ~1.6k-row centroid scan; the countries connection below stays
@@ -254,7 +266,10 @@ async def get_story_siblings(thread_id: str) -> dict:
         labels: list[str] = cached_topics["labels"]
         cats: list[str | None] = cached_topics["cats"]
         statuses: list[str | None] = cached_topics["statuses"]
-        vecs_arr: np.ndarray = cached_topics["vecs"]
+        whitened_arr: np.ndarray = cached_topics["whitened"]
+        graph = cached_topics["graph"]
+        blobs: set[int] = cached_topics["blobs"]
+        walk_params: WalkParams = cached_topics["params"]
     else:
         try:
             async with db.pool.acquire() as conn:
@@ -279,20 +294,39 @@ async def get_story_siblings(thread_id: str) -> dict:
             cats.append(r["category"])
             statuses.append(r["label_status"])
             vecs.append([float(x) for x in v])
+
+        if not keys:
+            # A transient/degenerate empty scan must NEVER be frozen into the
+            # cache — that would turn one bad fetch into 2 minutes of a false
+            # "seed not found" for every anchor on this worker (mirrors the
+            # Redis never-cache-a-degraded-payload rail at the bottom of this
+            # handler). Fall straight through to the honest empty WITHOUT
+            # caching; the next request re-tries the DB fresh rather than
+            # waiting out the TTL.
+            return _empty("seed_not_found_or_no_centroid")
+
         vecs_arr = np.asarray(vecs, dtype=np.float32)
+        walk_params = WalkParams.from_env()
+        whitened_arr = apply_whitening(vecs_arr, whitening)
+        graph = build_knn_graph(whitened_arr, k=walk_params.k)
+        blobs = blob_connector_flags(graph, cats, walk_params)
 
         _TOPICS_CACHE.clear()
         _TOPICS_CACHE.update(
-            at=now, keys=keys, labels=labels, cats=cats, statuses=statuses, vecs=vecs_arr,
+            at=now, keys=keys, labels=labels, cats=cats, statuses=statuses,
+            vecs=vecs_arr, whitened=whitened_arr, graph=graph, blobs=blobs,
+            params=walk_params,
         )
 
-    # (b) Compute OUTSIDE any held connection: seed lookup, whitening, the
-    # graph walk. `rank_siblings` raises ValueError loudly on a contract
-    # violation (misaligned/non-unit-norm arrays — Task 1's deliberate
-    # design: a silent [] there would read as "this story stands alone," a
-    # dishonest empty). That is a CALLER programming error, never a database
-    # fault, so it — and any other compute failure (e.g. an OOM building the
-    # similarity matrix) — must never be mislabeled "db_error".
+    # (b) Compute OUTSIDE any held connection: seed lookup + the walk itself.
+    # `rank_siblings` raises ValueError loudly on a contract violation
+    # (misaligned/non-unit-norm arrays — Task 1's deliberate design: a silent
+    # [] there would read as "this story stands alone," a dishonest empty).
+    # That is a CALLER programming error, never a database fault, so it — and
+    # any other compute failure — must never be mislabeled "db_error". With
+    # `graph`/`blob_flags` supplied from the cache above, `rank_siblings`
+    # skips its own O(N^2) graph build and does only the walk + dedup per
+    # request (M5).
     # Umbrella stand-in state: set only when topic_key itself isn't a walkable
     # story (see _resolve_umbrella_anchor above). anchor_label/anchor_status
     # carry the UMBRELLA's own identity so the payload's `anchor` never
@@ -312,9 +346,9 @@ async def get_story_siblings(thread_id: str) -> dict:
         else:
             seed = keys.index(topic_key)
 
-        whitened = apply_whitening(vecs_arr, whitening)
         siblings = rank_siblings(
-            seed, whitened, keys, labels, cats, WalkParams.from_env(), cap=DEFAULT_CAP,
+            seed, whitened_arr, keys, labels, cats, walk_params, cap=DEFAULT_CAP,
+            graph=graph, blob_flags=blobs,
         )
         if child_key is not None:
             # The child is the anchor's stand-in for the walk, not a sibling

@@ -70,6 +70,23 @@ def test_umbrella_child_excluded_from_siblings():
     assert "s.topic_key != child_key" in ROUTER
 
 
+def test_umbrella_child_query_scoped_to_active():
+    # M4: a retired-but-largest child must never win the umbrella fallback
+    # while a smaller active child was walkable — state='active' has to gate
+    # BOTH the topics-matrix scan and the umbrella-child query, not just one.
+    assert ROUTER.count("state = 'active'") >= 2
+
+
+def test_empty_topics_scan_never_cached():
+    # L3: a transient/degenerate empty scan must fall through to the honest
+    # empty WITHOUT populating _TOPICS_CACHE (else one bad fetch freezes a
+    # false "seed not found" for every anchor for the whole TTL window).
+    assert "if not keys:" in ROUTER
+    guard = ROUTER.index("if not keys:")
+    cache_write = ROUTER.index("_TOPICS_CACHE.update(")
+    assert guard < cache_write
+
+
 def test_normalize_thread_id_behavior():
     from app.routers.story import _normalize_thread_id
     assert _normalize_thread_id("dynamic-topic-5245") == "dynamic-topic-5245"
