@@ -16,6 +16,7 @@ from app.services.constellation_walk import (
     KnnGraph,
     WalkParams,
     actor_edge_weight,
+    blob_basis_for_ui,
     blob_connector_flags,
     build_knn_graph,
     category_entropy,
@@ -270,6 +271,33 @@ def test_confirm_blob_candidates_unpartitionable_input_falls_back():
     assert out[0].basis in ("entropy_only", "multimodality_confirmed")  # never crashes
     bad = confirm_blob_candidates({0}, {0: "not-an-array"})  # type: ignore[dict-item]
     assert bad[0].confirmed is True and bad[0].basis == "entropy_only"
+
+
+# ------------------------------------------------------- UI blob_basis (C2)
+# Lever C2 (plan docs/superpowers/plans/2026-07-29-identity-three-levers.md):
+# the reader-facing chip's honesty contract is DIFFERENT from the walk's own
+# `confirmed` field (which treats entropy_only as confirmed=True to preserve
+# the trail-brake penalty). `blob_basis_for_ui` must never present an
+# unconfirmed entropy guess as a flat "confirmed" — the GC kill rule.
+def test_blob_basis_for_ui_no_candidate_is_not_a_blob():
+    assert blob_basis_for_ui(None) == (False, None)
+
+
+def test_blob_basis_for_ui_entropy_only_degrades_never_confirmed():
+    fallback = BlobConfirmation(index=0, confirmed=True, basis="entropy_only")
+    assert blob_basis_for_ui(fallback) == (True, "candidate_unconfirmed")
+
+
+def test_blob_basis_for_ui_multimodality_confirmed_is_confirmed():
+    demoted = BlobConfirmation(index=0, confirmed=True, basis="multimodality_confirmed",
+                               gap_ratio=5.0, verdict=DEMOTE)
+    assert blob_basis_for_ui(demoted) == (True, "confirmed")
+
+
+def test_blob_basis_for_ui_spared_genuine_hub_clears_the_flag():
+    spared = BlobConfirmation(index=0, confirmed=False, basis="multimodality_confirmed",
+                              gap_ratio=0.5, verdict=KEEP)
+    assert blob_basis_for_ui(spared) == (False, None)
 
 
 # ------------------------------------------------- confirmer wired into the walk

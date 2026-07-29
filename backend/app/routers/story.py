@@ -31,8 +31,10 @@ from fastapi import APIRouter
 from app import db
 from app.services.constellation_walk import (
     WalkParams,
+    blob_basis_for_ui,
     blob_connector_flags,
     build_knn_graph,
+    confirm_blob_candidates,
 )
 from app.services.story_siblings import DEFAULT_CAP, rank_siblings
 from app.services.whitening import apply_whitening, load_whitening
@@ -92,6 +94,96 @@ _COUNTRIES_SQL = """
       AND s.country_code IS NOT NULL
     GROUP BY tm.topic_id, s.country_code
 """
+
+# Blob CONFIRMER (Lever C2, plan docs/superpowers/plans/2026-07-29-identity-
+# three-levers.md; measured docs/research/recall-229/2026-07-29-blob-flagger-
+# calibration.md). The cached `blobs` set (built once per _TOPICS_CACHE
+# refresh, above) is the CHEAP entropy first-pass only — measured AUC 0.564 at
+# the topic level (near coin-flip), blind to within-category fusions BY
+# CONSTRUCTION. The measured discriminator is MEMBERSHIP MULTIMODALITY
+# (`confirm_blob_candidates`, the same confirmer `/dossier/walk` already
+# uses) — bounded to ONLY the topics THIS response actually shows (never the
+# whole cached candidate field): the returned siblings, plus the umbrella
+# stand-in child when the anchor resolved through one. Mirrors dossier.py's
+# `_WALK_BLOB_MEMBERS_SQL` pattern exactly (engine_version v1-compat serving
+# default, evidence role only, quarantined rows excluded, capped per-topic via
+# ROW_NUMBER).
+BLOB_CONFIRM_MEMBERS_CAP = 200
+_BLOB_MEMBERS_SQL = """
+    WITH ranked AS (
+        SELECT (split_part(tm.topic_id, '-', 3))::int AS tid,
+               se.vec::text AS vec,
+               ROW_NUMBER() OVER (
+                   PARTITION BY tm.topic_id ORDER BY tm.signal_id
+               ) AS rn
+        FROM topic_members tm
+        JOIN signal_embeddings se ON se.signal_id = tm.signal_id
+        WHERE tm.topic_id = ANY($1::text[])
+          AND tm.role = 'evidence'
+          AND tm.engine_version = 'v1-compat'
+          AND tm.quarantined IS NOT TRUE
+    )
+    SELECT tid, vec FROM ranked WHERE rn <= $2
+"""
+
+
+async def _confirm_ui_blob_flags(
+    candidate_keys: dict[str, int],
+) -> dict[str, tuple[bool, str | None]]:
+    """Membership-multimodality confirmation for the reader-facing `is_blob`
+    chip (Lever C2). `candidate_keys` maps topic_key -> its node index, for
+    every entropy CANDIDATE that is actually about to be shown to the caller
+    (never the whole cached field — mindful, matches the dossier walk's own
+    bound). Returns (is_blob, blob_basis) per topic_key via
+    `blob_basis_for_ui` — GC kill rule: a candidate that can't be confirmed
+    (no DB, an old topic whose embeddings were pruned, too few embedded
+    members) DEGRADES to 'candidate_unconfirmed', never silently reads as
+    cleaner (dropped) or as a real confirmed fusion.
+
+    Bounded: at most `len(candidate_keys)` topics (≤12 siblings + 1 umbrella
+    stand-in child = ≤13 by construction) × BLOB_CONFIRM_MEMBERS_CAP member
+    rows each. A DB failure here degrades every requested candidate to
+    'candidate_unconfirmed' (via confirm_blob_candidates' own entropy_only
+    fallback over an empty member_vecs) rather than raising — this helper is
+    never allowed to turn a degraded fetch into a 500.
+    """
+    pool = db.pool
+    if not candidate_keys or pool is None:
+        return {}
+    member_vecs: dict[int, np.ndarray] = {}
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("SET statement_timeout = 8000")
+            rows = await conn.fetch(
+                _BLOB_MEMBERS_SQL, list(candidate_keys.keys()), BLOB_CONFIRM_MEMBERS_CAP,
+            )
+        idx_by_tid: dict[int, int] = {}
+        for topic_key, idx in candidate_keys.items():
+            try:
+                idx_by_tid[int(topic_key[len("dynamic-topic-"):])] = idx
+            except ValueError:
+                continue
+        by_idx: dict[int, list] = {}
+        for r in rows:
+            node_i = idx_by_tid.get(int(r["tid"]))
+            if node_i is None:
+                continue
+            try:
+                vec = np.asarray(json.loads(r["vec"]), dtype=np.float32)
+            except Exception:
+                continue
+            by_idx.setdefault(node_i, []).append(vec)
+        member_vecs = {i: np.vstack(v) for i, v in by_idx.items() if v}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("story siblings blob-confirm member fetch failed "
+                       "(degrades to candidate_unconfirmed): %s", exc, exc_info=True)
+        member_vecs = {}
+
+    confirmations = confirm_blob_candidates(set(candidate_keys.values()), member_vecs)
+    return {
+        topic_key: blob_basis_for_ui(confirmations.get(idx))
+        for topic_key, idx in candidate_keys.items()
+    }
 
 
 # Umbrella fallback (T10 follow-up, 2026-07-29): /threads serves R2 UMBRELLAS
@@ -361,6 +453,29 @@ async def get_story_siblings(thread_id: str) -> dict:
         logger.error("story siblings compute failed: %s", exc, exc_info=True)
         return _empty("internal_error")
 
+    # (b2) Blob CONFIRMER (Lever C2): `blobs` is the cheap entropy first-pass
+    # over the WHOLE cached field — confirm ONLY the topics this response is
+    # about to show (the ≤DEFAULT_CAP returned siblings, plus the umbrella
+    # stand-in child when the anchor resolved through one), never the whole
+    # candidate set. A sibling not in `blobs` at all was never flagged and
+    # needs no confirmation call — `_confirm_ui_blob_flags` degrades any
+    # DB/compute failure to 'candidate_unconfirmed' rather than raising, so
+    # this step can never turn into a 500.
+    key_to_idx = {k: i for i, k in enumerate(keys)}
+    candidate_keys: dict[str, int] = {}
+    for s in siblings:
+        idx = key_to_idx.get(s.topic_key)
+        if idx is not None and idx in blobs:
+            candidate_keys[s.topic_key] = idx
+    if child_key is not None:
+        child_idx = key_to_idx.get(child_key)
+        if child_idx is not None and child_idx in blobs:
+            candidate_keys[child_key] = child_idx
+    blob_ui = await _confirm_ui_blob_flags(candidate_keys)
+    anchor_is_blob, anchor_blob_basis = (
+        blob_ui.get(child_key, (False, None)) if child_key is not None else (False, None)
+    )
+
     # (c) Re-acquire ONLY for the bounded country-receipt fetch. A failure
     # here degrades gracefully (empty footprints, never a 500) but must be
     # surfaced honestly, not silently — and a degraded payload must never be
@@ -394,6 +509,10 @@ async def get_story_siblings(thread_id: str) -> dict:
         shared = sorted(set(_countries(s.topic_key)) & set(anchor_countries))
         if shared:
             reasons.append({"basis": "shared_country", "value": ",".join(shared)})
+        # C2: `is_blob` now reads CONFIRMED-only (membership multimodality),
+        # never the raw entropy candidate flag — `blob_ui` degrades honestly
+        # to 'candidate_unconfirmed' rather than silently reading as cleaner.
+        confirmed_is_blob, confirmed_blob_basis = blob_ui.get(s.topic_key, (False, None))
         sib_payload.append(
             {
                 "id": s.topic_key,
@@ -402,7 +521,8 @@ async def get_story_siblings(thread_id: str) -> dict:
                 "degree": s.degree,
                 "kinship": s.kinship,
                 "through_blob": s.through_blob,
-                "is_blob": s.is_blob,
+                "is_blob": confirmed_is_blob,
+                "blob_basis": confirmed_blob_basis,
                 "via_parent": s.via_parent_label,
                 "folded": list(s.folded),
                 "label_status": status_by_key.get(s.topic_key),
@@ -427,6 +547,13 @@ async def get_story_siblings(thread_id: str) -> dict:
             "label": anchor_label if child_key is not None else labels[seed],
             "label_status": anchor_status if child_key is not None else statuses[seed],
             "countries": anchor_countries,
+            # Confirmed only for the umbrella stand-in-child case (the walk's
+            # actual seed) — the plain non-umbrella anchor is never itself a
+            # RETURNED node in `siblings`, so it carries no confirmable trail
+            # penalty here; False/None honestly means "not evaluated", not
+            # "cleared". C2, same confirmer as the siblings above.
+            "is_blob": anchor_is_blob,
+            "blob_basis": anchor_blob_basis,
         },
         "siblings": sib_payload,
         "notes": notes,

@@ -18,7 +18,7 @@ const data: StoryLensData = {
   anchor: { id: 'dynamic-topic-1', label: 'Anchor', label_status: 'entailed', countries: ['IR'] },
   siblings: [
     { id: 'dynamic-topic-2', label: 'Sib A', weight: 0.7, degree: 1, kinship: 'hermano', through_blob: false, is_blob: false, via_parent: null, folded: ['dynamic-topic-9'], label_status: null, countries: ['IR'], reasons: [{ basis: 'whitened_cos', value: '0.70' }] },
-    { id: 'dynamic-topic-3', label: 'Sib B', weight: 0.4, degree: 2, kinship: 'primo', through_blob: false, is_blob: true, via_parent: 'Sib A', folded: [], label_status: 'failed', countries: [], reasons: [{ basis: 'whitened_cos', value: '0.40' }] },
+    { id: 'dynamic-topic-3', label: 'Sib B', weight: 0.4, degree: 2, kinship: 'primo', through_blob: false, is_blob: true, blob_basis: 'confirmed', via_parent: 'Sib A', folded: [], label_status: 'failed', countries: [], reasons: [{ basis: 'whitened_cos', value: '0.40' }] },
   ],
   notes: [],
 }
@@ -38,17 +38,32 @@ describe('buildLensSets / threadLensRole', () => {
 })
 
 describe('siblingChipText', () => {
-  it('flags a blob sibling structurally — isBlob true, text carries the marker', () => {
-    const blobSibling = data.siblings[1] // is_blob: true
+  it('flags a CONFIRMED blob sibling structurally — isBlob true, plain grab-bag marker', () => {
+    const blobSibling = data.siblings[1] // is_blob: true, blob_basis: 'confirmed'
     const chip = siblingChipText(blobSibling)
     expect(chip.isBlob).toBe(true)
     expect(chip.text).toContain('⚠ grab-bag')
+    expect(chip.text).not.toContain('⚠ grab-bag?')
+    expect(chip.tooltip).toBeUndefined()
   })
   it('a non-blob sibling never carries the marker', () => {
     const plainSibling = data.siblings[0] // is_blob: false
     const chip = siblingChipText(plainSibling)
     expect(chip.isBlob).toBe(false)
     expect(chip.text).not.toContain('⚠ grab-bag')
+  })
+  it('a candidate_unconfirmed blob is qualified, not silently confirmed nor cleared', () => {
+    // GC kill rule (docs/superpowers/plans/2026-07-29-identity-three-levers.md):
+    // a candidate the confirmer could not evaluate must read DIFFERENTLY from
+    // a structurally confirmed one — never identical (silently confirmed) and
+    // never plain (silently cleaner).
+    const degraded: StoryLensSibling = {
+      ...data.siblings[1], blob_basis: 'candidate_unconfirmed',
+    }
+    const chip = siblingChipText(degraded)
+    expect(chip.isBlob).toBe(true)
+    expect(chip.text).toContain('⚠ grab-bag?')
+    expect(chip.tooltip).toBe('entropy candidate — membership unconfirmed')
   })
 })
 

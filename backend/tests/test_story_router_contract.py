@@ -108,3 +108,46 @@ def test_normalize_thread_id_behavior():
     assert _normalize_thread_id("") is None
     assert _normalize_thread_id("a b") is None
     assert _normalize_thread_id("../etc/passwd") is None
+
+
+# ------------------------------------------------------- Lever C2 (blob confirmer)
+# is_blob rides membership multimodality (confirm_blob_candidates), not the raw
+# entropy candidate flag — plan docs/superpowers/plans/2026-07-29-identity-
+# three-levers.md, measured docs/research/recall-229/2026-07-29-blob-flagger-
+# calibration.md (entropy AUC 0.564 at the topic level, near coin-flip).
+def test_blob_confirmer_wired():
+    assert "confirm_blob_candidates" in ROUTER
+    assert "blob_basis_for_ui" in ROUTER
+
+
+def test_blob_basis_field_present_on_siblings_and_anchor():
+    assert '"blob_basis": confirmed_blob_basis' in ROUTER
+    assert '"blob_basis": anchor_blob_basis' in ROUTER
+
+
+def test_blob_confirm_bounded_to_shown_topics_only():
+    # never the whole cached candidate field — only siblings actually being
+    # returned, plus the umbrella stand-in child.
+    assert "candidate_keys: dict[str, int] = {}" in ROUTER
+    assert "for s in siblings:" in ROUTER
+    idx = ROUTER.index("candidate_keys: dict[str, int] = {}")
+    assert "child_key" in ROUTER[idx:idx + 800]
+
+
+def test_blob_confirm_member_fetch_mirrors_dossier_scoping():
+    # mirrors dossier.py's _WALK_BLOB_MEMBERS_SQL pattern verbatim.
+    assert "_BLOB_MEMBERS_SQL" in ROUTER
+    assert "engine_version = 'v1-compat'" in ROUTER
+    assert "tm.role = 'evidence'" in ROUTER
+    assert "tm.quarantined IS NOT TRUE" in ROUTER
+
+
+def test_blob_confirm_degrades_never_silently_cleaner():
+    # GC kill rule: a candidate that can't be confirmed must degrade to a
+    # qualified flag, never silently read as cleared (False) nor as a real
+    # confirmed fusion — that mapping lives in constellation_walk.blob_basis_for_ui.
+    from app.services.constellation_walk import BlobConfirmation, blob_basis_for_ui
+    degraded = BlobConfirmation(index=0, confirmed=True, basis="entropy_only")
+    is_blob, basis = blob_basis_for_ui(degraded)
+    assert is_blob is True
+    assert basis == "candidate_unconfirmed"

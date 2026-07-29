@@ -17,6 +17,14 @@ export interface StoryLensSibling {
   kinship: 'hermano' | 'primo'
   through_blob: boolean
   is_blob: boolean
+  // Lever C2 (2026-07-29, docs/superpowers/plans/2026-07-29-identity-three-
+  // levers.md): `is_blob` is now CONFIRMED-only (membership multimodality),
+  // never the raw entropy candidate flag on its own. `blob_basis` carries
+  // HOW: 'confirmed' (a real structural fusion) | 'candidate_unconfirmed'
+  // (the entropy pass flagged it but no/insufficient member embeddings were
+  // available to confirm — GC kill rule, degrade honestly, never silently
+  // clear or confirm) | null (never flagged at all).
+  blob_basis?: string | null
   via_parent: string | null
   folded: string[]
   label_status?: string | null
@@ -128,13 +136,32 @@ export function siblingReasonText(s: StoryLensSibling): string {
   return first ? `${first.basis} ${first.value}` : s.kinship
 }
 
-export interface SiblingChipText { text: string; isBlob: boolean }
+export interface SiblingChipText { text: string; isBlob: boolean; tooltip?: string }
 
 // Chip text + structured blob flag — consumers branch tooltips on isBlob,
 // never by re-parsing the rendered string.
+//
+// Lever C2 (2026-07-29, docs/superpowers/plans/2026-07-29-identity-three-
+// levers.md): a CONFIRMED fusion (membership multimodality actually
+// evaluated it) reads as the plain '⚠ grab-bag' this chip has always shown.
+// A candidate the confirmer could not evaluate (no/insufficient member
+// embeddings — 'candidate_unconfirmed') must never read identically to a
+// confirmed one — the GC kill rule ("never silently cleaner OR silently
+// confirmed") — so it gets the qualified '⚠ grab-bag?' plus an optional
+// `tooltip` a caller MAY surface; existing callers that only read `.text`/
+// `.isBlob` (NarrativeThreads) keep working unchanged, since the qualifier
+// already lives in the text itself.
 export function siblingChipText(s: StoryLensSibling): SiblingChipText {
   const base = siblingReasonText(s)
-  return { text: s.is_blob ? `${base} · ⚠ grab-bag` : base, isBlob: s.is_blob }
+  if (!s.is_blob) return { text: base, isBlob: false }
+  if (s.blob_basis === 'candidate_unconfirmed') {
+    return {
+      text: `${base} · ⚠ grab-bag?`,
+      isBlob: true,
+      tooltip: 'entropy candidate — membership unconfirmed',
+    }
+  }
+  return { text: `${base} · ⚠ grab-bag`, isBlob: true }
 }
 
 // T11 gate fix (L2): the banner used to report EVERY sibling as a "hermano"

@@ -1,0 +1,109 @@
+{
+  "contract": "c2-confirmer-check-v1",
+  "generated_at": "2026-07-29T14:56:33.089502+00:00",
+  "field_n": 1022,
+  "params": {
+    "blob_entropy_tau": 1.5,
+    "blob_indeg_min": 3
+  },
+  "witness_a": {
+    "dynamic-topic-7647": {
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-7717": {
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-7715": {
+      "is_blob": true,
+      "blob_basis": "candidate_unconfirmed"
+    },
+    "dynamic-topic-7356": {
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-7714": {
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-7716": {
+      "is_blob": true,
+      "blob_basis": "candidate_unconfirmed"
+    },
+    "dynamic-topic-6993": {
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-2805": {
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-5340": {
+      "is_blob": true,
+      "blob_basis": "candidate_unconfirmed"
+    },
+    "dynamic-topic-5488": {
+      "is_blob": true,
+      "blob_basis": "confirmed"
+    },
+    "dynamic-topic-5492": {
+      "is_blob": true,
+      "blob_basis": "candidate_unconfirmed"
+    }
+  },
+  "witness_a_raw_flagged": 6,
+  "witness_a_confirmed": 1,
+  "witness_a_any_flag": 5,
+  "witness_b": {
+    "dynamic-topic-2526": {
+      "hand_label": "blob",
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-3660": {
+      "hand_label": "blob",
+      "is_blob": true,
+      "blob_basis": "confirmed"
+    },
+    "dynamic-topic-2733": {
+      "hand_label": "blob",
+      "is_blob": false,
+      "blob_basis": null
+    },
+    "dynamic-topic-79": {
+      "hand_label": "blob",
+      "is_blob": true,
+      "blob_basis": "confirmed"
+    },
+    "dynamic-topic-901": {
+      "hand_label": "blob",
+      "is_blob": true,
+      "blob_basis": "confirmed"
+    },
+    "dynamic-topic-2774": {
+      "hand_label": "clean",
+      "is_blob": true,
+      "blob_basis": "candidate_unconfirmed"
+    },
+    "dynamic-topic-6975": {
+      "hand_label": "clean",
+      "is_blob": true,
+      "blob_basis": "candidate_unconfirmed"
+    },
+    "dynamic-topic-3567": {
+      "hand_label": "blob",
+      "is_blob": true,
+      "blob_basis": "candidate_unconfirmed"
+    },
+    "dynamic-topic-3902": {
+      "hand_label": "blob",
+      "is_blob": false,
+      "blob_basis": null
+    }
+  },
+  "witness_b_confirmed": 3,
+  "witness_b_any_flag": 6,
+  "witness_b_confirmed_true_blobs_of_7": 3,
+  "gc_pass": false
+}

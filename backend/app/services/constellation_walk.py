@@ -325,6 +325,35 @@ def confirm_blob_candidates(
     return out
 
 
+def blob_basis_for_ui(confirmation: Optional[BlobConfirmation]) -> tuple[bool, Optional[str]]:
+    """User-facing (is_blob, blob_basis) from a `BlobConfirmation` — Lever C2
+    (plan `docs/superpowers/plans/2026-07-29-identity-three-levers.md`,
+    measured in `docs/research/recall-229/2026-07-29-blob-flagger-calibration.md`).
+
+    The WALK's own `confirmed` field intentionally treats an unconfirmable
+    candidate (`basis='entropy_only'`) as `confirmed=True` — that preserves the
+    pre-A2 trail-brake behavior (a soft penalty, reversible, never a permanent
+    demote). A reader-facing chip is a different contract: presenting an
+    unconfirmed entropy guess as a flat "confirmed blob" would be dishonest in
+    the OTHER direction — entropy alone measures AUC 0.564 at the topic level
+    (near coin-flip; the calibration artifact's finding), so silently
+    confirming it is exactly as dishonest as silently clearing it. Three
+    honest outcomes, matching the GC kill rule ("never silently cleaner"):
+
+      no candidate at all            -> (False, None)            not flagged
+      entropy_only (data unavailable) -> (True,  'candidate_unconfirmed')
+      multimodality, spared (KEEP)    -> (False, None)            cleared
+      multimodality, confirmed        -> (True,  'confirmed')
+    """
+    if confirmation is None:
+        return False, None
+    if confirmation.basis == "entropy_only":
+        return True, "candidate_unconfirmed"
+    if confirmation.confirmed:
+        return True, "confirmed"
+    return False, None
+
+
 # ---------------------------------------------------------------- the walk
 def max_product_walk(seeds: Sequence[int], graph: KnnGraph,
                      params: WalkParams = WalkParams(),
