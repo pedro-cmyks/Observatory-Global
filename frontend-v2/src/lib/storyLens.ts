@@ -43,7 +43,11 @@ export interface StoryLensState {
 
 // One-line kill switch for the auto-enter behavior (Task 10): flip to false
 // to make opening a thread stop entering the lens, with zero other changes.
-export const STORY_LENS_AUTO = true
+// K1 (finder-v2 pre-registration, 2026-07-29): the field's blob density makes
+// auto-entered lens neighborhoods dishonest on the anchors /threads serves most
+// (dt-466 class). The lens ships DARK until identity heals — deep link
+// ?lens=story&theme= stays live for dogfooding (explicit request, ungated).
+export const STORY_LENS_AUTO = false
 
 // Story Lens (Task 10): v1 lens anchors are DYNAMIC topics only — the
 // siblings endpoint returns unsupported_anchor_type for atlas 'slug--cc' and
