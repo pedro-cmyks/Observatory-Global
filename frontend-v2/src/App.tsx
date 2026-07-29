@@ -276,6 +276,12 @@ function AppContent() {
   const location = useLocation()
   // Last search-string handled by the deep-link effect (keep-alive guard).
   const deepLinkProcessedRef = useRef<string | null>(null)
+  // Last search-string handled by the `?lens=story` deep-link effect (Task
+  // 10, spec-review issue 4): without this, an explicit banner ✕ (exit) can
+  // be resurrected by the next focus-driven URL write — mergeFocusIntoParams
+  // preserves `lens`/`theme` across those writes, so the effect would refire
+  // with `!state.active` true and re-enter a lens the analyst just closed.
+  const lensLinkProcessedRef = useRef<string | null>(null)
 
   // Sync filter state ↔ URL params for shareable links
   useUrlSync()
@@ -287,6 +293,36 @@ function AppContent() {
   // console touches the lens directly — the banner and stream/threads panels
   // read the same context independently.
   const storyLens = useStoryLens()
+  // Spec-review fix (issue 4 — deep-link resurrection): every exit ALSO
+  // strips `lens=` from the URL. Without this, the next focus-driven URL
+  // write (mergeFocusIntoParams preserves every param it doesn't own,
+  // including `lens`) leaves `lens=story&theme=X` intact; the deep-link
+  // effect then refires on that later change, reads `!state.active` as true
+  // (the analyst just exited), and silently resurrects the lens. Confirmed
+  // live via the banner's own ✕ (StoryLensBanner.tsx carries the same fix
+  // for that direct path — this one covers every OTHER exit call site).
+  const stripLensParam = useCallback(() => {
+    const p = new URLSearchParams(location.search)
+    if (!p.has('lens')) return
+    p.delete('lens')
+    navigate({ pathname: location.pathname, search: p.toString() }, { replace: true })
+  }, [location.pathname, location.search, navigate])
+  // Spec-review fix: handleThemeSelect is NOT the only thread-open door —
+  // NarrativeThreads' onThreadSelect (the lens's OWN panel, wiring the
+  // sibling walk), handleResearchOpenThread, the back-stack restores, and the
+  // attention+theme deep link all set selectedTheme directly. ONE helper,
+  // called at every door, so the lens can never desync from "what thread is
+  // actually open" again. The same-anchor guard also kills the cold-load
+  // double-fetch (a deep link enters first; the second caller for the same
+  // id no-ops instead of re-fetching).
+  const syncLensToThreadOpen = useCallback((id: string | null) => {
+    if (!STORY_LENS_AUTO) return
+    if (!id || !isLensAnchor(id)) {
+      if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
+      return
+    }
+    if (!(storyLens.state.active && storyLens.state.anchorId === id)) storyLens.enter(id)
+  }, [storyLens, stripLensParam])
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -399,6 +435,8 @@ function AppContent() {
   // (mergeFocusIntoParams preserves `lens` across those writes, by design).
   useEffect(() => {
     if (location.pathname !== '/app') return
+    if (lensLinkProcessedRef.current === location.search) return
+    lensLinkProcessedRef.current = location.search
     const p = new URLSearchParams(location.search)
     const theme = p.get('theme')
     if (p.get('lens') === 'story' && theme && isLensAnchor(theme) && !storyLens.state.active) {
@@ -659,9 +697,11 @@ function AppContent() {
     // Story Lens (Task 10, Step 2): the focus chip's ✕ is a full deselect —
     // the lens must not linger once everything else it was scoping has
     // cleared. Unconditional call is safe: exit() on an already-inactive
-    // lens is a no-op state reset (StoryLensContext).
+    // lens is a no-op state reset (StoryLensContext). stripLensParam (issue
+    // 4) keeps this exit from being resurrected by the next URL write.
     storyLens.exit()
-  }, [clearFocus, storyLens.exit])
+    stripLensParam()
+  }, [clearFocus, storyLens.exit, stripLensParam])
 
   // Workbench / research-plan handlers (Phase 2, #213). Anchors open the
   // existing surfaces: a thread anchor routes through the theme-detail
@@ -687,6 +727,9 @@ function AppContent() {
     setRightPanelThemeCountry(null)
     setThemeBackStack([])
     setWorkbenchOpen(false)
+    // Story Lens (Task 10, spec-review fix): a research-plan anchor is a
+    // thread-open door too.
+    syncLensToThreadOpen(slug)
   }
 
   function handleResearchOpenCountry(countryCode: string) {
@@ -721,6 +764,15 @@ function AppContent() {
 
   // Theme selection handlers
   const handleThemeSelect = (theme: string, countryCode?: string, countryName?: string, originAttention?: PublicAttentionOrigin, labelHint?: string) => {
+    // Story Lens (spec-review issue 4, second finding): captured BEFORE
+    // setSelectedTheme below — true when this call is a REDUNDANT re-fire for
+    // the theme that's ALREADY open, not a genuine new/different open. The
+    // Brief deep-link effect (~line 830s, pre-existing, guards only on the
+    // raw search STRING) re-calls handleThemeSelect on ANY unrelated URL
+    // change while `theme=` sits unchanged in the URL — e.g. a country click
+    // right after the analyst dismissed the lens via the banner's own ✕.
+    // Without this guard that redundant re-fire silently resurrects the lens.
+    const isSameThemeReopen = selectedTheme?.theme === theme
     // T5.1: a thread open is a value moment (the analyst reached real narrative).
     track('thread_open')
     trackOnce('first_value_moment', { kind: 'thread' })
@@ -747,18 +799,12 @@ function AppContent() {
     })
     setRightPanelThemeCountry(null)
 
-    // Story Lens (Task 10, Step 1 — spec D7): opening a story opens its
-    // measured neighborhood. Atlas/emergent/query-thread opens keep today's
-    // behavior untouched — never a lens guaranteed to come back empty (see
-    // isLensAnchor). Re-entering the SAME anchor is a no-op
-    // (StoryLensContext.enter is idempotent once anchored); opening a
-    // DIFFERENT non-lens thread while the lens is active exits it — the lens
-    // must never linger over an unrelated open story.
-    if (STORY_LENS_AUTO && isLensAnchor(theme)) {
-      storyLens.enter(theme)
-    } else if (storyLens.state.active) {
-      storyLens.exit()
-    }
+    // Story Lens (Task 10, spec D7): opening a story opens its measured
+    // neighborhood. syncLensToThreadOpen handles the isLensAnchor gate,
+    // enter/exit, and the same-anchor no-op. Skipped on a redundant re-fire
+    // for the already-open theme (isSameThemeReopen, issue 4) — a genuinely
+    // different theme, or this theme's very first open, still syncs normally.
+    if (!isSameThemeReopen) syncLensToThreadOpen(theme)
   }
 
   const handlePublicAttentionSelect = (item: PublicAttentionSelection) => {
@@ -823,6 +869,10 @@ function AppContent() {
         originAttention: { title },
       })
       setRightPanelThemeCountry(null)
+      // Story Lens (Task 10, spec-review fix): the attention+theme deep link
+      // sets selectedTheme directly — it doesn't route through
+      // handleThemeSelect, so it needs its own sync call.
+      syncLensToThreadOpen(theme)
       return
     }
     handlePublicAttentionSelect({ title })
@@ -1047,7 +1097,14 @@ function AppContent() {
     // thread/theme first (revealing a standing person/country), then peel the
     // person, then the country — per-dimension (setPerson/setCountry null),
     // never clearFocus() which would wipe the whole compound frame at once.
-    if (selectedTheme || selectedThread) { setSelectedTheme(null); setSelectedThread(null); setTheme(null); return true }
+    if (selectedTheme || selectedThread) {
+      setSelectedTheme(null); setSelectedThread(null); setTheme(null)
+      // Story Lens (Task 10, spec-review fix): Escape / mobile swipe-back
+      // closing the thread panel must exit the lens the same way every other
+      // close path does. stripLensParam (issue 4) prevents resurrection.
+      if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
+      return true
+    }
     if (focus.type === 'person') { setPerson(null); return true }
     if (selectedCountry || selectedCountryCode || filter.country) {
       setSelectedCountry(null)
@@ -1062,7 +1119,7 @@ function AppContent() {
     if (isMobile && entrySource === 'brief') { navigate('/brief'); return true }
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate])
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate, storyLens.state.active, storyLens.exit, stripLensParam])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
@@ -1977,7 +2034,9 @@ function AppContent() {
             // ThreadFocusPanel/PublicAttentionPanel close path — the panel is
             // going back to a blank stream, so the lens must not linger over
             // nothing. Unconditional call is safe (exit() no-ops when inactive).
+            // stripLensParam (issue 4) prevents resurrection.
             storyLens.exit()
+            stripLensParam()
             // 6.3a: on mobile, an analyst who entered from the Brief returns THERE
             // when the last reading panel closes — never a drop into the blank
             // Stream tab. Desktop unchanged (guarded on isMobile).
@@ -1992,6 +2051,8 @@ function AppContent() {
               setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); clearFocus()
               setSelectedTheme({ theme: prevStreamCtx.theme, originCountry: prevStreamCtx.originCountry, originCountryName: prevStreamCtx.originCountryName })
               setPrevStreamCtx(null)
+              // Story Lens (Task 10, spec-review fix): restoring A re-anchors to A.
+              syncLensToThreadOpen(prevStreamCtx.theme)
             } else if (prevStreamCtx?.type === 'country') {
               handleCountryClick(prevStreamCtx.code)
               setMapFlyCountry(prevStreamCtx.code)
@@ -2011,6 +2072,8 @@ function AppContent() {
             setRightPanelThemeCountry(previous.originCountry && previous.originCountryName
               ? { code: previous.originCountry, name: previous.originCountryName }
               : null)
+            // Story Lens (Task 10, spec-review fix): restoring A re-anchors to A.
+            syncLensToThreadOpen(previous.theme)
           }
           const backLabel = prevStreamCtx?.type === 'chokepoint'
             ? `← ${prevStreamCtx.cp.name}`
@@ -2222,6 +2285,10 @@ function AppContent() {
                   setThemeBackStack([])
                   setSelectedThread(target ? null : thread)
                   if (thread.top_countries[0]) setMapFlyCountry(thread.top_countries[0])
+                  // Story Lens (Task 10, spec-review fix): THE lens's own
+                  // panel — this is what wires the sibling walk (clicking a
+                  // row under ◈ Measured neighborhood re-anchors here).
+                  syncLensToThreadOpen(target ? target.theme : null)
                 }}
                 onCountrySelect={(code) => {
                 if (selectedTheme) {

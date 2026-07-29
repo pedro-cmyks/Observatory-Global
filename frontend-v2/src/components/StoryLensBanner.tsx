@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { LabelReviewChip } from '../lib/labelReviewChip'
@@ -19,6 +19,23 @@ export function StoryLensBanner() {
   const { state, data, error, loading, exit } = useStoryLens()
   const { pinItem, isPinned } = useWorkspace()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Spec-review fix (issue 4 — deep-link resurrection): an explicit ✕ must
+  // strip `lens=` from the URL, not just reset context state. Without this,
+  // the NEXT focus-driven URL write (mergeFocusIntoParams preserves every
+  // param it doesn't own, including `lens`) leaves `lens=story&theme=X`
+  // intact in the URL; the deep-link effect then refires on that change,
+  // reads `!state.active` as true (the analyst just exited), and silently
+  // re-enters the lens they just closed. Confirmed live: exit → click a
+  // country → banner came back before this fix.
+  const onExit = () => {
+    exit()
+    if (searchParams.get('lens')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('lens')
+      setSearchParams(next, { replace: true })
+    }
+  }
   if (!state.active) return null
   // Task 10 route guard: this banner portals to document.body from inside the
   // keep-alive App shell (main.tsx AppBriefKeepAlive gives App display:none
@@ -26,8 +43,9 @@ export function StoryLensBanner() {
   // display:none, so without this the banner would float over the Brief
   // reading surface whenever a lens session was left active. The lens is
   // console-only (its anchors are dynamic-topic threads opened in the
-  // console), so hide it off the console route.
-  if (!location.pathname.startsWith('/app')) return null
+  // console), so hide it off the console route. Predicate matches main.tsx's
+  // own `isApp = pathname === '/app'` exactly — no other path is "the console".
+  if (location.pathname !== '/app') return null
   const anchor = data?.anchor ?? null
   // Decode entity-encoded labels BEFORE resolveThreadTitle (which passes a
   // truthy knownLabel straight through) so the banner never shows raw
@@ -94,7 +112,7 @@ export function StoryLensBanner() {
           {alreadyPinned ? '◆ pinned' : '◇ Pin story'}
         </button>
       ) : null}
-      <button type="button" className="sl-banner-exit" onClick={exit} aria-label="Exit story lens" data-tip="Exit story lens">
+      <button type="button" className="sl-banner-exit" onClick={onExit} aria-label="Exit story lens" data-tip="Exit story lens">
         ✕
       </button>
     </div>,

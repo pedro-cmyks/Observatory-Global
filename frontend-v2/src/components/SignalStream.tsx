@@ -210,12 +210,21 @@ export const SignalStream: React.FC = () => {
     useEffect(() => {
         if (!storyLens.state.active) lastLensTopicParamRef.current = null
     }, [storyLens.state.active])
+    // Cache writes are a side effect — they belong in an effect (commit
+    // phase), not inside the topicParam useMemo below (render phase: a
+    // ref mutation there would double-fire under React StrictMode's
+    // dev-only double-invoke of render functions).
+    useEffect(() => {
+        if (!(tabModel.lens && streamFilter === 'story')) return
+        const fresh = lensTopicParam(storyLens.data)
+        if (fresh) lastLensTopicParamRef.current = fresh
+    }, [tabModel.lens, streamFilter, storyLens.data])
 
     const topicParam = useMemo(() => {
         if (eclipseActive) return eclipseTopicParam(streamFilter, eclipseData)
         if (tabModel.lens && streamFilter === 'story') {
             const fresh = lensTopicParam(storyLens.data)
-            if (fresh) { lastLensTopicParamRef.current = fresh; return fresh }
+            if (fresh) return fresh
             // No fresh scope yet (mid re-anchor fetch): hold the previous one
             // rather than momentarily scoping to nothing.
             return storyLens.loading ? lastLensTopicParamRef.current : null
