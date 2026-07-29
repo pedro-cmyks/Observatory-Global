@@ -1,0 +1,1050 @@
+{
+  "contract": "sibling-finder-v2-measurement-v1",
+  "generated_at": "2026-07-29T13:24:26.629785+00:00",
+  "field": {
+    "n_active_story_topics": 1022,
+    "n_evidence_member_rows_7d": 17805,
+    "topics_with_members": 1014,
+    "entity_vocab_post_junk_filter": 8663,
+    "entity_df_max": 136,
+    "topics_with_entity": 942,
+    "topics_with_shared_entity": 763,
+    "is_blob_flagged": 626,
+    "is_blob_share": 0.6125
+  },
+  "families": {
+    "berlin-pride": {
+      "harvested": 8,
+      "verified": 7,
+      "g1_eligible": true
+    },
+    "caspian": {
+      "harvested": 2,
+      "verified": 2,
+      "g1_eligible": false
+    },
+    "fresh:ukrainian-drone-strikes-on-russia": {
+      "harvested": 11,
+      "verified": 7,
+      "g1_eligible": true
+    },
+    "fresh:russian-strikes-on-ukrainian-ports": {
+      "harvested": 6,
+      "verified": 3,
+      "g1_eligible": false
+    },
+    "fresh:trump-threatens-iran": {
+      "harvested": 5,
+      "verified": 5,
+      "g1_eligible": true
+    },
+    "fresh:fontainebleau-forest-fire": {
+      "harvested": 5,
+      "verified": 4,
+      "g1_eligible": true
+    },
+    "fresh:france-heatwave-death-toll": {
+      "harvested": 5,
+      "verified": 1,
+      "g1_eligible": false
+    },
+    "fresh:trump-imposes-50-tariffs-on-canada": {
+      "harvested": 4,
+      "verified": 4,
+      "g1_eligible": true
+    },
+    "fresh:russian-ballistic-missile-attack-on-ky": {
+      "harvested": 4,
+      "verified": 0,
+      "g1_eligible": false
+    },
+    "fresh:us-iran-conflict-escalation": {
+      "harvested": 4,
+      "verified": 4,
+      "g1_eligible": true
+    }
+  },
+  "split": {
+    "dev": [
+      "fresh:ukrainian-drone-strikes-on-russia",
+      "fresh:fontainebleau-forest-fire",
+      "fresh:us-iran-conflict-escalation"
+    ],
+    "gate": [
+      "berlin-pride",
+      "caspian",
+      "fresh:trump-threatens-iran",
+      "fresh:trump-imposes-50-tariffs-on-canada"
+    ],
+    "gate_eligible": [
+      "berlin-pride",
+      "fresh:trump-threatens-iran",
+      "fresh:trump-imposes-50-tariffs-on-canada"
+    ],
+    "rules": {
+      "rule": "Family membership is HAND-VERIFIED against member evidence headlines; a member whose own receipts are a different event (or a fusion) is excluded with a written reason. A family is G1-eligible only at verified size >= 4 (one anchor + the >=3 TRUE fragments G1 requires).",
+      "split_rule": "Core families (berlin-pride, caspian) are GATE-only by pre-registration. G1-eligible FRESH families are sorted by (-verified_size, name); EVEN indices -> DEV (operating-point selection), ODD indices -> GATE. Frozen before the sweep; the gate families and the hand-judged G2 sample are never inputs to operating-point selection.",
+      "fresh_eligible_sorted": [
+        [
+          "fresh:ukrainian-drone-strikes-on-russia",
+          7
+        ],
+        [
+          "fresh:trump-threatens-iran",
+          5
+        ],
+        [
+          "fresh:fontainebleau-forest-fire",
+          4
+        ],
+        [
+          "fresh:trump-imposes-50-tariffs-on-canada",
+          4
+        ],
+        [
+          "fresh:us-iran-conflict-escalation",
+          4
+        ]
+      ]
+    }
+  },
+  "operating_point": {
+    "chosen": {
+      "form": "rrf",
+      "w_c": 1.0,
+      "w_e": 1.5,
+      "w_g": 0.5,
+      "df_gate": 2,
+      "g_max_day_gap": 2,
+      "g_min_score": 0.15,
+      "c_dedup": true,
+      "rrf_k": 60
+    },
+    "label": "rrf|wC1.0|wE1.5|wG0.5|dfE<=2|Ggap2|Gmin0.15|dedup1",
+    "selection_rule": "LEXICOGRAPHIC over DEV-only statistics: (1) max dev_families_passing; (2) max dev_true_total; (3) min mech_false_rate; (4) simplest op — fewest active lanes, then form order max < sum < rrf, then dedup as SHIPPED (True) before the changed behaviour (False). RECORDED CORRECTION: an absolute constraint mech_false_rate <= 0.040 was written into this harness before the first run and is DISCARDED as unsatisfiable — the v1 baseline itself measures 0.62 on this proxy, i.e. the proxy's scale is not the hand-judged gate's scale, so the number could never have been a threshold on it. The proxy is kept as a RELATIVE false-side comparator (v1 vs each op) only. No frozen GATE moved. DEV families and the 60-anchor mechanical false probe are the ONLY inputs; no gate-family or G2 number produced by any union operating point was seen before this rule was applied.",
+    "dev": {
+      "dev_families_passing": 1,
+      "dev_true_total": 6,
+      "dev_detail": {
+        "fresh:ukrainian-drone-strikes-on-russia": 3,
+        "fresh:fontainebleau-forest-fire": 2,
+        "fresh:us-iran-conflict-escalation": 1
+      },
+      "mech_false_rate": 0.64
+    },
+    "baseline_v1_dev": {
+      "dev_families_passing": 1,
+      "dev_detail": {
+        "fresh:ukrainian-drone-strikes-on-russia": 4,
+        "fresh:fontainebleau-forest-fire": 1,
+        "fresh:us-iran-conflict-escalation": 0
+      },
+      "mech_false_rate": 0.62
+    }
+  },
+  "lane_e_reachability": {
+    "df<=2": {
+      "true_pairs_reached": 8,
+      "true_pairs": 140
+    },
+    "df<=3": {
+      "true_pairs_reached": 12,
+      "true_pairs": 140
+    },
+    "df<=5": {
+      "true_pairs_reached": 14,
+      "true_pairs": 140
+    },
+    "df<=10": {
+      "true_pairs_reached": 30,
+      "true_pairs": 140
+    },
+    "df<=20": {
+      "true_pairs_reached": 30,
+      "true_pairs": 140
+    },
+    "df<=1000000": {
+      "true_pairs_reached": 50,
+      "true_pairs": 140
+    }
+  },
+  "mech_false_rate": {
+    "v1_baseline": 0.62,
+    "union_min": 0.6367,
+    "union_max": 0.7233,
+    "pure_lane_C_reference": 0.62
+  },
+  "G1": {
+    "passes": false,
+    "families": [
+      {
+        "family": "berlin-pride",
+        "size": 7,
+        "g1_eligible": true,
+        "v2_best_anchor": "dynamic-topic-7712",
+        "v2_best_anchor_label": "Berlin Pride Attack Suspect Killed",
+        "v2_true_in_top8": 6,
+        "v2_true": [
+          {
+            "key": "dynamic-topic-7647",
+            "label": "Berlin Pride Terror Attack",
+            "rank": 1,
+            "score": 0.0486,
+            "is_blob": false,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.570",
+                "kinship": "hermano",
+                "degree": 1,
+                "via": null
+              },
+              {
+                "basis": "shared_rare_actor",
+                "value": "alexander dobrindt (df 2) +1 more",
+                "n_shared": 2,
+                "shared": [
+                  "alexander dobrindt",
+                  "femke halsema"
+                ]
+              },
+              {
+                "basis": "country_time",
+                "value": "DE · peak Δ0d · cc-jaccard 1.00 · time-overlap 0.82",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 0.8182
+              }
+            ]
+          },
+          {
+            "key": "dynamic-topic-7715",
+            "label": "CSD Berlin Attack Suspect",
+            "rank": 2,
+            "score": 0.0232,
+            "is_blob": true,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.475",
+                "kinship": "hermano",
+                "degree": 1,
+                "via": null
+              },
+              {
+                "basis": "country_time",
+                "value": "DE · peak Δ0d · cc-jaccard 1.00 · time-overlap 1.00",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 1.0
+              }
+            ]
+          },
+          {
+            "key": "dynamic-topic-7717",
+            "label": "Berlin Pride Car Attack",
+            "rank": 5,
+            "score": 0.0228,
+            "is_blob": false,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.498",
+                "kinship": "hermano",
+                "degree": 1,
+                "via": null
+              },
+              {
+                "basis": "country_time",
+                "value": "DE · peak Δ0d · cc-jaccard 1.00 · time-overlap 0.62",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 0.625
+              }
+            ]
+          },
+          {
+            "key": "dynamic-topic-7356",
+            "label": "CSD Berlin Vehicle Attack",
+            "rank": 6,
+            "score": 0.0225,
+            "is_blob": true,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.365",
+                "kinship": "primo",
+                "degree": 2,
+                "via": "Bahnmitarbeiter Attacke Sturz"
+              },
+              {
+                "basis": "country_time",
+                "value": "DE · peak Δ0d · cc-jaccard 1.00 · time-overlap 0.65",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 0.6452
+              }
+            ]
+          },
+          {
+            "key": "dynamic-topic-7716",
+            "label": "Berlin Pride Attack Suspect",
+            "rank": 7,
+            "score": 0.0224,
+            "is_blob": true,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.314",
+                "kinship": "primo",
+                "degree": 2,
+                "via": "Berlin Pride Terror Attack"
+              },
+              {
+                "basis": "country_time",
+                "value": "DE · peak Δ0d · cc-jaccard 1.00 · time-overlap 1.00",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 1.0
+              }
+            ]
+          },
+          {
+            "key": "dynamic-topic-7714",
+            "label": "Berlin Car Attack on Crowd",
+            "rank": 8,
+            "score": 0.0222,
+            "is_blob": false,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.351",
+                "kinship": "primo",
+                "degree": 2,
+                "via": "Berlin Pride Car Attack"
+              },
+              {
+                "basis": "country_time",
+                "value": "DE · peak Δ0d · cc-jaccard 1.00 · time-overlap 0.62",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 0.625
+              }
+            ]
+          }
+        ],
+        "v1_best_anchor": "dynamic-topic-7712",
+        "v1_true_in_top8": 6,
+        "v1_true": [
+          "dynamic-topic-7647",
+          "dynamic-topic-7717",
+          "dynamic-topic-7715",
+          "dynamic-topic-7356",
+          "dynamic-topic-7714",
+          "dynamic-topic-7716"
+        ],
+        "passes": true,
+        "v2_per_anchor": [
+          {
+            "anchor": "dynamic-topic-7356",
+            "true_in_topk": 5,
+            "true": [
+              "dynamic-topic-7715",
+              "dynamic-topic-7717",
+              "dynamic-topic-7714",
+              "dynamic-topic-7712",
+              "dynamic-topic-7647"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-7712",
+            "true_in_topk": 6,
+            "true": [
+              "dynamic-topic-7647",
+              "dynamic-topic-7715",
+              "dynamic-topic-7717",
+              "dynamic-topic-7356",
+              "dynamic-topic-7716",
+              "dynamic-topic-7714"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-7647",
+            "true_in_topk": 4,
+            "true": [
+              "dynamic-topic-7712",
+              "dynamic-topic-7717",
+              "dynamic-topic-7716",
+              "dynamic-topic-7715"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-7717",
+            "true_in_topk": 5,
+            "true": [
+              "dynamic-topic-7647",
+              "dynamic-topic-7714",
+              "dynamic-topic-7356",
+              "dynamic-topic-7712",
+              "dynamic-topic-7716"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-7716",
+            "true_in_topk": 3,
+            "true": [
+              "dynamic-topic-7647",
+              "dynamic-topic-7712",
+              "dynamic-topic-7717"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-7715",
+            "true_in_topk": 2,
+            "true": [
+              "dynamic-topic-7356",
+              "dynamic-topic-7712"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-7714",
+            "true_in_topk": 4,
+            "true": [
+              "dynamic-topic-7717",
+              "dynamic-topic-7356",
+              "dynamic-topic-7647",
+              "dynamic-topic-7712"
+            ]
+          }
+        ],
+        "v2_top8_rows": [
+          {
+            "rank": 1,
+            "key": "dynamic-topic-7647",
+            "label": "Berlin Pride Terror Attack",
+            "score": 0.0486,
+            "is_blob": false,
+            "lane_c": 0.5703,
+            "lane_e": 0.6375,
+            "lane_g": 0.8182
+          },
+          {
+            "rank": 2,
+            "key": "dynamic-topic-7715",
+            "label": "CSD Berlin Attack Suspect",
+            "score": 0.0232,
+            "is_blob": true,
+            "lane_c": 0.4747,
+            "lane_e": 0.0,
+            "lane_g": 1.0
+          },
+          {
+            "rank": 3,
+            "key": "dynamic-topic-719",
+            "label": "Austrian Arrested for Fraud",
+            "score": 0.0229,
+            "is_blob": true,
+            "lane_c": 0.5373,
+            "lane_e": 0.0,
+            "lane_g": 0.4545
+          },
+          {
+            "rank": 4,
+            "key": "dynamic-topic-5017",
+            "label": "Bahnmitarbeiter Attacke Sturz",
+            "score": 0.0228,
+            "is_blob": false,
+            "lane_c": 0.5268,
+            "lane_e": 0.0,
+            "lane_g": 0.5882
+          },
+          {
+            "rank": 5,
+            "key": "dynamic-topic-7717",
+            "label": "Berlin Pride Car Attack",
+            "score": 0.0228,
+            "is_blob": false,
+            "lane_c": 0.4984,
+            "lane_e": 0.0,
+            "lane_g": 0.625
+          },
+          {
+            "rank": 6,
+            "key": "dynamic-topic-7356",
+            "label": "CSD Berlin Vehicle Attack",
+            "score": 0.0225,
+            "is_blob": true,
+            "lane_c": 0.3645,
+            "lane_e": 0.0,
+            "lane_g": 0.6452
+          },
+          {
+            "rank": 7,
+            "key": "dynamic-topic-7716",
+            "label": "Berlin Pride Attack Suspect",
+            "score": 0.0224,
+            "is_blob": true,
+            "lane_c": 0.3137,
+            "lane_e": 0.0,
+            "lane_g": 1.0
+          },
+          {
+            "rank": 8,
+            "key": "dynamic-topic-7714",
+            "label": "Berlin Car Attack on Crowd",
+            "score": 0.0222,
+            "is_blob": false,
+            "lane_c": 0.351,
+            "lane_e": 0.0,
+            "lane_g": 0.625
+          }
+        ]
+      },
+      {
+        "family": "caspian",
+        "size": 2,
+        "g1_eligible": false,
+        "v2_best_anchor": "dynamic-topic-7728",
+        "v2_best_anchor_label": "Iran Threatens Ukraine Over Ship Attack",
+        "v2_true_in_top8": 1,
+        "v2_true": [
+          {
+            "key": "dynamic-topic-7736",
+            "label": "Iran Warns Ukraine Over Vessel Attack",
+            "rank": 1,
+            "score": 0.0241,
+            "is_blob": false,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.615",
+                "kinship": "hermano",
+                "degree": 1,
+                "via": null
+              },
+              {
+                "basis": "country_time",
+                "value": "IR · peak Δ1d · cc-jaccard 1.00 · time-overlap 0.87",
+                "gap_days": 1,
+                "jaccard": 1.0,
+                "time_overlap": 0.8684
+              }
+            ]
+          }
+        ],
+        "v1_best_anchor": "dynamic-topic-7728",
+        "v1_true_in_top8": 1,
+        "v1_true": [
+          "dynamic-topic-7736"
+        ],
+        "passes": false,
+        "v2_per_anchor": [
+          {
+            "anchor": "dynamic-topic-7728",
+            "true_in_topk": 1,
+            "true": [
+              "dynamic-topic-7736"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-7736",
+            "true_in_topk": 1,
+            "true": [
+              "dynamic-topic-7728"
+            ]
+          }
+        ],
+        "v2_top8_rows": [
+          {
+            "rank": 1,
+            "key": "dynamic-topic-7736",
+            "label": "Iran Warns Ukraine Over Vessel Attack",
+            "score": 0.0241,
+            "is_blob": false,
+            "lane_c": 0.6151,
+            "lane_e": 0.0,
+            "lane_g": 0.8684
+          },
+          {
+            "rank": 2,
+            "key": "dynamic-topic-2802",
+            "label": "Iran Attacks UAE Tankers",
+            "score": 0.0221,
+            "is_blob": false,
+            "lane_c": 0.4818,
+            "lane_e": 0.0,
+            "lane_g": 0.3695
+          },
+          {
+            "rank": 3,
+            "key": "dynamic-topic-2239",
+            "label": "EEUU vs Irán Escalada",
+            "score": 0.0218,
+            "is_blob": false,
+            "lane_c": 0.3603,
+            "lane_e": 0.0,
+            "lane_g": 0.5942
+          },
+          {
+            "rank": 4,
+            "key": "dynamic-topic-2847",
+            "label": "US Resumes Iran Naval Blockade",
+            "score": 0.0208,
+            "is_blob": false,
+            "lane_c": 0.3213,
+            "lane_e": 0.0,
+            "lane_g": 0.5678
+          },
+          {
+            "rank": 5,
+            "key": "dynamic-topic-5849",
+            "label": "Russian Losses and Crisis",
+            "score": 0.0164,
+            "is_blob": false,
+            "lane_c": 0.6983,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 6,
+            "key": "dynamic-topic-1967",
+            "label": "Iran Missile Attack on Jordan",
+            "score": 0.0156,
+            "is_blob": false,
+            "lane_c": 0.4364,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 7,
+            "key": "dynamic-topic-2104",
+            "label": "Mass Drone Attack on Moscow",
+            "score": 0.0154,
+            "is_blob": false,
+            "lane_c": 0.4216,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 8,
+            "key": "dynamic-topic-4889",
+            "label": "Putin Faces Internal Threats",
+            "score": 0.0152,
+            "is_blob": false,
+            "lane_c": 0.3889,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          }
+        ]
+      },
+      {
+        "family": "fresh:trump-threatens-iran",
+        "size": 5,
+        "g1_eligible": true,
+        "v2_best_anchor": "dynamic-topic-573",
+        "v2_best_anchor_label": "Trump Threatens Iran",
+        "v2_true_in_top8": 1,
+        "v2_true": [
+          {
+            "key": "dynamic-topic-2854",
+            "label": "Trump Threatens Iran Strikes",
+            "rank": 8,
+            "score": 0.0081,
+            "is_blob": false,
+            "receipts": [
+              {
+                "basis": "country_time",
+                "value": "IR · peak Δ0d · cc-jaccard 1.00 · time-overlap 0.85",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 0.8537
+              }
+            ]
+          }
+        ],
+        "v1_best_anchor": "dynamic-topic-2854",
+        "v1_true_in_top8": 2,
+        "v1_true": [
+          "dynamic-topic-6993",
+          "dynamic-topic-2805"
+        ],
+        "passes": false,
+        "v2_per_anchor": [
+          {
+            "anchor": "dynamic-topic-573",
+            "true_in_topk": 1,
+            "true": [
+              "dynamic-topic-2854"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-2854",
+            "true_in_topk": 1,
+            "true": [
+              "dynamic-topic-6993"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-2805",
+            "true_in_topk": 1,
+            "true": [
+              "dynamic-topic-6993"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-5085",
+            "true_in_topk": 0,
+            "true": []
+          },
+          {
+            "anchor": "dynamic-topic-6993",
+            "true_in_topk": 0,
+            "true": []
+          }
+        ],
+        "v2_top8_rows": [
+          {
+            "rank": 1,
+            "key": "dynamic-topic-5343",
+            "label": "US Gas Prices Surge",
+            "score": 0.0198,
+            "is_blob": true,
+            "lane_c": 0.7176,
+            "lane_e": 0.0,
+            "lane_g": 0.2185
+          },
+          {
+            "rank": 2,
+            "key": "dynamic-topic-747",
+            "label": "US-Iran Conflict Escalation",
+            "score": 0.0197,
+            "is_blob": false,
+            "lane_c": 0.3442,
+            "lane_e": 0.0,
+            "lane_g": 0.2927
+          },
+          {
+            "rank": 3,
+            "key": "dynamic-topic-392",
+            "label": "Turkey S-400 Resale Talks",
+            "score": 0.0164,
+            "is_blob": true,
+            "lane_c": 0.8689,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 4,
+            "key": "dynamic-topic-2850",
+            "label": "US Drone Strike Iran Submarine",
+            "score": 0.0161,
+            "is_blob": true,
+            "lane_c": 0.8115,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 5,
+            "key": "dynamic-topic-226",
+            "label": "Greek concerns amid Russia-Ukraine war impacts",
+            "score": 0.0159,
+            "is_blob": true,
+            "lane_c": 0.7418,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 6,
+            "key": "dynamic-topic-319",
+            "label": "Greek Political Clash: Mitsotakis vs. Androulakis",
+            "score": 0.0154,
+            "is_blob": true,
+            "lane_c": 0.711,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 7,
+            "key": "dynamic-topic-2845",
+            "label": "Iran's Pickaxe Mountain Threat",
+            "score": 0.0082,
+            "is_blob": false,
+            "lane_c": 0.0,
+            "lane_e": 0.0,
+            "lane_g": 0.8537
+          },
+          {
+            "rank": 8,
+            "key": "dynamic-topic-2854",
+            "label": "Trump Threatens Iran Strikes",
+            "score": 0.0081,
+            "is_blob": false,
+            "lane_c": 0.0,
+            "lane_e": 0.0,
+            "lane_g": 0.8537
+          }
+        ]
+      },
+      {
+        "family": "fresh:trump-imposes-50-tariffs-on-canada",
+        "size": 4,
+        "g1_eligible": true,
+        "v2_best_anchor": "dynamic-topic-5494",
+        "v2_best_anchor_label": "Trump Imposes 50% Tariffs on Canada",
+        "v2_true_in_top8": 3,
+        "v2_true": [
+          {
+            "key": "dynamic-topic-5340",
+            "label": "Trump 50% Tariffs on Canada",
+            "rank": 2,
+            "score": 0.0242,
+            "is_blob": true,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.733",
+                "kinship": "hermano",
+                "degree": 1,
+                "via": null
+              },
+              {
+                "basis": "country_time",
+                "value": "CA · peak Δ0d · cc-jaccard 1.00 · time-overlap 0.91",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 0.9121
+              }
+            ]
+          },
+          {
+            "key": "dynamic-topic-5492",
+            "label": "US Imposes 50% Tariffs on Canada",
+            "rank": 3,
+            "score": 0.0233,
+            "is_blob": true,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.586",
+                "kinship": "hermano",
+                "degree": 1,
+                "via": null
+              },
+              {
+                "basis": "country_time",
+                "value": "CA · peak Δ0d · cc-jaccard 1.00 · time-overlap 0.85",
+                "gap_days": 0,
+                "jaccard": 1.0,
+                "time_overlap": 0.8462
+              }
+            ]
+          },
+          {
+            "key": "dynamic-topic-5488",
+            "label": "Trump 50% Tariffs on Canada",
+            "rank": 4,
+            "score": 0.0232,
+            "is_blob": true,
+            "receipts": [
+              {
+                "basis": "whitened_cos",
+                "value": "0.591",
+                "kinship": "hermano",
+                "degree": 1,
+                "via": null
+              },
+              {
+                "basis": "country_time",
+                "value": "CA · peak Δ1d · cc-jaccard 1.00 · time-overlap 0.45",
+                "gap_days": 1,
+                "jaccard": 1.0,
+                "time_overlap": 0.453
+              }
+            ]
+          }
+        ],
+        "v1_best_anchor": "dynamic-topic-5494",
+        "v1_true_in_top8": 3,
+        "v1_true": [
+          "dynamic-topic-5340",
+          "dynamic-topic-5488",
+          "dynamic-topic-5492"
+        ],
+        "passes": true,
+        "v2_per_anchor": [
+          {
+            "anchor": "dynamic-topic-5494",
+            "true_in_topk": 3,
+            "true": [
+              "dynamic-topic-5340",
+              "dynamic-topic-5492",
+              "dynamic-topic-5488"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-5488",
+            "true_in_topk": 2,
+            "true": [
+              "dynamic-topic-5340",
+              "dynamic-topic-5494"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-5492",
+            "true_in_topk": 3,
+            "true": [
+              "dynamic-topic-5340",
+              "dynamic-topic-5494",
+              "dynamic-topic-5488"
+            ]
+          },
+          {
+            "anchor": "dynamic-topic-5340",
+            "true_in_topk": 3,
+            "true": [
+              "dynamic-topic-5488",
+              "dynamic-topic-5494",
+              "dynamic-topic-5492"
+            ]
+          }
+        ],
+        "v2_top8_rows": [
+          {
+            "rank": 1,
+            "key": "dynamic-topic-3998",
+            "label": "Trump Threatens Tariffs Over Canada Wildfires",
+            "score": 0.0242,
+            "is_blob": true,
+            "lane_c": 0.7606,
+            "lane_e": 0.0,
+            "lane_g": 0.7253
+          },
+          {
+            "rank": 2,
+            "key": "dynamic-topic-5340",
+            "label": "Trump 50% Tariffs on Canada",
+            "score": 0.0242,
+            "is_blob": true,
+            "lane_c": 0.7333,
+            "lane_e": 0.0,
+            "lane_g": 0.9121
+          },
+          {
+            "rank": 3,
+            "key": "dynamic-topic-5492",
+            "label": "US Imposes 50% Tariffs on Canada",
+            "score": 0.0233,
+            "is_blob": true,
+            "lane_c": 0.5855,
+            "lane_e": 0.0,
+            "lane_g": 0.8462
+          },
+          {
+            "rank": 4,
+            "key": "dynamic-topic-5488",
+            "label": "Trump 50% Tariffs on Canada",
+            "score": 0.0232,
+            "is_blob": true,
+            "lane_c": 0.591,
+            "lane_e": 0.0,
+            "lane_g": 0.453
+          },
+          {
+            "rank": 5,
+            "key": "dynamic-topic-3028",
+            "label": "US Tariffs on Brazil",
+            "score": 0.0159,
+            "is_blob": true,
+            "lane_c": 0.6493,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 6,
+            "key": "dynamic-topic-6670",
+            "label": "Trump Tariffs on UK",
+            "score": 0.0152,
+            "is_blob": true,
+            "lane_c": 0.4887,
+            "lane_e": 0.0,
+            "lane_g": 0.0
+          },
+          {
+            "rank": 7,
+            "key": "dynamic-topic-6037",
+            "label": "Annual Burn Camp",
+            "score": 0.0082,
+            "is_blob": true,
+            "lane_c": 0.0,
+            "lane_e": 0.0,
+            "lane_g": 0.9231
+          },
+          {
+            "rank": 8,
+            "key": "dynamic-topic-3489",
+            "label": "Trump Threatens Canada Tariffs Over Wildfire Smoke",
+            "score": 0.0077,
+            "is_blob": true,
+            "lane_c": 0.0,
+            "lane_e": 0.0,
+            "lane_g": 0.6538
+          }
+        ]
+      }
+    ]
+  },
+  "G1_ceiling_posthoc": {
+    "n_ops": 163,
+    "ops_reaching_all_gate_families": 0,
+    "best_families_passing": 2,
+    "v1": {
+      "op": "v1-baseline",
+      "families_passing": 2,
+      "true_sum": 11,
+      "per_family": {
+        "berlin-pride": 6,
+        "fresh:trump-threatens-iran": 2,
+        "fresh:trump-imposes-50-tariffs-on-canada": 3
+      }
+    }
+  },
+  "G2": {
+    "status": "judged",
+    "rows": 50,
+    "false": 30,
+    "max_allowed": 2,
+    "passes": false,
+    "breakdown": {
+      "related": 20,
+      "unrelated": 27,
+      "unsure": 3
+    },
+    "rows_reachable_by_lane_C": 50,
+    "rows_introduced_by_E_or_G": 0,
+    "false_rate_among_C_reachable": 0.6,
+    "v1_top5_overlap_per_anchor": [
+      4,
+      5,
+      4,
+      5,
+      4,
+      3,
+      5,
+      5,
+      5,
+      3
+    ],
+    "v1_top5_overlap_mean": 4.3
+  },
+  "G3": {
+    "true_positive_siblings": 11,
+    "flagged_is_blob": 6,
+    "share": 0.5455,
+    "over_fires": true,
+    "field_blob_share": 0.6125,
+    "g2_rows_flagged_blob": 36,
+    "g2_true_rows_flagged_blob": 12,
+    "g2_false_rows_flagged_blob": 24
+  },
+  "K1_verdict": "NO-GO"
+}
