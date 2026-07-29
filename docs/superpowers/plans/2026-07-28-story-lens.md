@@ -1267,6 +1267,8 @@ git commit -m "measure(story-lens): NAV-LOSS spot-check post-lens" -- docs/resea
 
 ## Deferred (explicitly NOT in this plan)
 
+- **Spec §8 bullet 5 — syndication collapsed with count in the lens-scoped stream** — NOT delivered in v1 (found by the final whole-implementation review as the one unrecorded gap; recorded here). The stream's lens tabs render rows as-is; syndication collapse rides the existing `_norm_headline` machinery server-side only. V1.1 candidate alongside the lanes.
+
 - **Spec §10 item 3 reconciliation:** the TIMELINE lane needs NO new code — ThemeDetail (the lens's protagonist panel) already renders the combined activity timeline (C4b, shipped 2026-07-21); the VOICE lane moves to v1.1 alongside the country anchor (voice-mix is country-keyed, so it lands naturally with the country-anchored shell). Atención + Anomalías ship in v1 via Task 7 (AnomalyPanel carries both).
 - V1.1: physical-events + markets lanes; VOICE lane; country/person anchors on the shared shell.
 - V2: article-body enrichment through the Brief's fetch machinery; universal PA→story resolution.
