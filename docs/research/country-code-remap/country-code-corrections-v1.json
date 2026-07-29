@@ -1,0 +1,43 @@
+{
+  "artifact": "country-code-corrections-v1",
+  "generated": "2026-07-28",
+  "purpose": "Read-time correction rules for country_code values written by the GDELT lane before the FIPS/ISO map fix (commit b7ab7def). The hot table signals_v2 was mutated directly (see ledgers/); everything derived from the immutable external archive (/Volumes/Ext/Atlas gzip partitions, historical_topic_country_daily, historical_evidence_samples) must apply these rules AT READ OR ETL TIME instead — mutating archive-derived tables would be undone by any re-ETL from the uncorrected archive.",
+  "applies_to": {
+    "lane": "source_family = 'gdelt' (attribution_method gdelt_gkg / gdelt_gkg_translated). RSS/NewsData/social lanes write ISO directly and were never affected.",
+    "exclude_rows": "geo_confidence = 0.35 — the ingest outlet_origin_override path (ingest_v2._GEO_OVERRIDE_CONFIDENCE) writes ISO codes derived from the outlet ccTLD/domain, not FIPS; those rows are already correct (measured: all 82 conf-0.35 rows in the PA bucket are genuine Panama).",
+    "valid_from": "2025-12-04 (map inception, commit b0ac1a56 — the wrong/missing entries were present from the first version; the 2026-06 #235 alias fix cc68e3ef covered only AJ/RI/BK/MJ/IC/YM and backfilled them itself)",
+    "valid_until": "the moment commit b7ab7def reaches prod ingest (NOT yet deployed as of 2026-07-28; update this field at deploy time)"
+  },
+  "remap": {
+    "LS": "LB", "PM": "PA", "PA": "PY", "MG": "MN", "MN": "MC", "MC": "MO",
+    "GA": "GM", "RB": "RS", "KV": "XK", "CS": "CR", "OD": "SS", "PP": "PG",
+    "GG": "GE", "AN": "AD", "RQ": "PR", "BH": "BZ", "TI": "TJ", "NS": "SR",
+    "AY": "AQ", "GJ": "GD", "GK": "GG", "BP": "SB", "TX": "TM", "VQ": "VI",
+    "CJ": "KY", "GQ": "GU", "TT": "TL", "MF": "YT", "ST": "LC", "AC": "AG",
+    "TP": "ST", "MB": "MQ", "NH": "VU", "CW": "CK", "VT": "VA", "MH": "MS",
+    "AA": "AW", "AQ": "AS", "RM": "MH", "VI": "VG", "FP": "PF", "WI": "EH",
+    "EK": "GQ", "AV": "AI", "CQ": "MP", "WQ": "UM", "FG": "GF", "TL": "TK",
+    "RN": "MF", "SB": "PM"
+  },
+  "remap_semantics": "Single hop from the STORED code: a stored 'MN' becomes 'MC' and stops — never chained onward to 'MO'. Chains exist (BP→SB→PM→PA→PY, MG→MN→MC→MO, GK→GG→GE, AY→AQ→AS, ...) because each stored code was produced by a DIFFERENT FIPS input; apply the map exactly once per row.",
+  "special_cases": {
+    "LS": "FIPS LS (Liechtenstein) also passed through into this bucket alongside the mis-mapped Lebanon rows. Rows whose headline matches /liechtenstein|vaduz/i go to LI, all others to LB (measured 5 vs 1870 in the 7d window)."
+  },
+  "contaminated_do_not_remap": {
+    "CN": "China (via FIPS CH) + Comoros (GEC CN passthrough)",
+    "GB": "United Kingdom (via FIPS UK) + Gabon (GEC GB passthrough)",
+    "PL": "Poland (identity) + Portugal (old map sent FIPS PO to PL)",
+    "ZA": "South Africa (via FIPS SF) + Zambia (old map sent FIPS ZA to ZA)",
+    "MA": "Morocco (via FIPS MO, correct) + Madagascar (GEC MA passthrough)",
+    "LT": "Lithuania (via FIPS LH) + Lesotho (GEC LT passthrough)",
+    "TD": "Chad (via FIPS CD, correct) + Trinidad and Tobago (GEC TD passthrough)",
+    "PS": "Palestine (via GZ/WE, correct) + Palau (GEC PS passthrough)",
+    "note": "These buckets mix two countries under one stored code; splitting them requires re-deriving geography from raw GDELT V2ENHANCEDLOCATIONS in the archive, not a code remap."
+  },
+  "identified_but_unmapped": {
+    "OS": "GDELT GEC 'Oceans' pseudo-code (verified by sample: Caspian, Black Sea, Baltic, Adriatic, Odesa-port stories). No ISO equivalent; not a country.",
+    "YI": "GEC Serbia-and-Montenegro (defunct 2006). Content is pan-Yugoslav retrospective/nostalgia; no honest successor code.",
+    "CR": "Bucket is 100% geo_confidence-0.35 override rows = correct Costa Rica. Nothing to fix.",
+    "TK": "24 rows GDELT-geocoded (conf 0.85, coordinates) whose content is Turkey — GDELT geocoder pathology. Neither TK (ISO Tokelau) nor TC (Turks and Caicos) is honest; left as-is."
+  }
+}
