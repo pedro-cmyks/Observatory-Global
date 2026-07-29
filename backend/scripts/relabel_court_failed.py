@@ -4,7 +4,9 @@ The Label Court measured 84.4% of active labels asserting things their receipts
 don't support. This pass regenerates each failed topic's label from the SAME
 decoded receipts the court judged (DeepSeek one-liner, ~cents for 731), then
 resets label_status so the nightly court re-judges the new label — the
-before/after pass-rate is the measured outcome.
+before/after pass-rate is the measured outcome. A regenerated label equal to
+the current one (whitespace/case-insensitive) is a NO-OP: the failed stamp
+stays, ledger reason='relabel_no_change' (GB2 incidental, 2026-07-29).
 
 Display-only: identity, membership, centroids untouched. REVERSIBLE: every
 change is appended to docs/research/label-court/<date>-relabel-ledger.jsonl
@@ -21,6 +23,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,6 +65,16 @@ def clean_generated_label(text: str) -> str | None:
     return lab
 
 
+def is_label_unchanged(old: str | None, new: str | None) -> bool:
+    """True when the proposed relabel reproduces the current label
+    (whitespace runs collapsed + case folded for the comparison only)."""
+    if not old or not new:
+        return False
+    def norm(s: str) -> str:
+        return re.sub(r"\s+", " ", s).strip().casefold()
+    return norm(old) == norm(new)
+
+
 async def _ds_label(receipts: list[dict], key: str) -> tuple[str | None, dict]:
     import httpx
     body = {"model": "deepseek-chat", "temperature": 0,
@@ -93,7 +106,7 @@ async def main() -> None:
     now = datetime.now(timezone.utc)
     _LEDGER_DIR.mkdir(parents=True, exist_ok=True)
     ledger = _LEDGER_DIR / f"{now.date().isoformat()}-relabel-ledger.jsonl"
-    relabeled = skipped = failed = 0
+    relabeled = skipped = failed = unchanged = 0
     tok_in = tok_out = 0
     try:
         limit = args.limit or 1_000_000
@@ -123,6 +136,19 @@ async def main() -> None:
                 if not new_label:
                     failed += 1
                     continue
+                if is_label_unchanged(r["label"], new_label):
+                    # GB2 incidental finding (2026-07-29): regenerating the SAME
+                    # string that just failed must not clear the court stamp —
+                    # the next pass would re-fail it, cycling stamps off nightly.
+                    unchanged += 1
+                    print(f"  dt-{dyn_id}: unchanged {(r['label'] or '')[:48]!r} "
+                          "— keeping court stamp", flush=True)
+                    led.write(json.dumps({"topic_id": dyn_id, "old": r["label"],
+                                          "new": new_label,
+                                          "reason": "relabel_no_change",
+                                          "at": now.isoformat()},
+                                         ensure_ascii=False) + "\n")
+                    continue
                 print(f"  dt-{dyn_id}: {(r['label'] or '')[:38]!r} -> {new_label[:48]!r}",
                       flush=True)
                 led.write(json.dumps({"topic_id": dyn_id, "old": r["label"],
@@ -138,8 +164,8 @@ async def main() -> None:
                 relabeled += 1
     finally:
         await conn.close()
-    print(f"\nRELABEL DONE: {relabeled} relabeled · {skipped} skipped(<3 receipts) · "
-          f"{failed} failed · tokens {tok_in}/{tok_out}"
+    print(f"\nRELABEL DONE: {relabeled} relabeled · {unchanged} unchanged(stamp kept) · "
+          f"{skipped} skipped(<3 receipts) · {failed} failed · tokens {tok_in}/{tok_out}"
           f"{' · WRITTEN' if args.write else ' · DRY'}\nledger: {ledger}")
 
 
