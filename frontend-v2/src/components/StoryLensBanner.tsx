@@ -27,10 +27,15 @@ export function StoryLensBanner() {
   // intact in the URL; the deep-link effect then refires on that change,
   // reads `!state.active` as true (the analyst just exited), and silently
   // re-enters the lens they just closed. Confirmed live: exit → click a
-  // country → banner came back before this fix.
+  // country → banner came back before this fix. Twin of App.tsx's
+  // stripLensParam (the other exit paths there — clearAll/popPanel/closeAll
+  // — need the same URL cleanup; this component calls context.exit()
+  // directly and can't reach that helper) — keep the two in sync.
   const onExit = () => {
     exit()
-    if (searchParams.get('lens')) {
+    // .has(), not a truthy get(): an empty `lens=` must be stripped too,
+    // matching App.tsx's stripLensParam exactly.
+    if (searchParams.has('lens')) {
       const next = new URLSearchParams(searchParams)
       next.delete('lens')
       setSearchParams(next, { replace: true })

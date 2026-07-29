@@ -35,7 +35,7 @@ import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { StoryLensBanner } from './components/StoryLensBanner'
 import { useStoryLens } from './contexts/StoryLensContext'
-import { STORY_LENS_AUTO } from './lib/storyLens'
+import { STORY_LENS_AUTO, isLensAnchor } from './lib/storyLens'
 import { FocusIndicator } from './components/FocusIndicator'
 import { FrameStrip } from './components/FrameStrip'
 import { FrameSheet } from './components/FrameSheet'
@@ -203,14 +203,6 @@ const getNodePriority = (node: NodeData) => [
   node.heat ?? node.intensity ?? 0,
   node.signalCount ?? 0,
 ]
-
-// Story Lens (Task 10): v1 lens anchors are DYNAMIC topics only — the
-// siblings endpoint returns unsupported_anchor_type for atlas 'slug--cc' and
-// emergent-cluster ids (no dynamic_topics centroid; T2 quality-review issue
-// 3, recorded decision). Module-level and shared by both the auto-enter
-// (handleThemeSelect) and deep-link entry points so neither can drift from
-// the other's definition of "lens-eligible".
-const isLensAnchor = (id: string): boolean => id.startsWith('dynamic-topic-')
 
 // Error boundary to prevent Deck.gl/WebGL crashes from black-screening the entire app
 interface MapErrorBoundaryState { hasError: boolean }
@@ -699,6 +691,10 @@ function AppContent() {
     // cleared. Unconditional call is safe: exit() on an already-inactive
     // lens is a no-op state reset (StoryLensContext). stripLensParam (issue
     // 4) keeps this exit from being resurrected by the next URL write.
+    // Inline exit, NOT syncLensToThreadOpen(null): the helper early-returns
+    // on !STORY_LENS_AUTO, but deep-link entry is deliberately ungated — a
+    // deep-linked lens must stay exitable with the flag off. (Same reasoning
+    // at popPanel's and closeAll's inline exits below.)
     storyLens.exit()
     stripLensParam()
   }, [clearFocus, storyLens.exit, stripLensParam])
@@ -767,10 +763,12 @@ function AppContent() {
     // Story Lens (spec-review issue 4, second finding): captured BEFORE
     // setSelectedTheme below — true when this call is a REDUNDANT re-fire for
     // the theme that's ALREADY open, not a genuine new/different open. The
-    // Brief deep-link effect (~line 830s, pre-existing, guards only on the
-    // raw search STRING) re-calls handleThemeSelect on ANY unrelated URL
-    // change while `theme=` sits unchanged in the URL — e.g. a country click
-    // right after the analyst dismissed the lens via the banner's own ✕.
+    // Brief deep-link effect (guarded by deepLinkProcessedRef, pre-existing,
+    // guards only on the raw search STRING) re-calls handleThemeSelect on ANY
+    // unrelated URL change while `theme=` sits unchanged in the URL — e.g. a
+    // country click right after the analyst dismissed the lens via the
+    // banner's own ✕. syncLensToThreadOpen's same-anchor guard can't cover
+    // this: after an exit state.active is false, so its no-op never fires.
     // Without this guard that redundant re-fire silently resurrects the lens.
     const isSameThemeReopen = selectedTheme?.theme === theme
     // T5.1: a thread open is a value moment (the analyst reached real narrative).
@@ -1102,6 +1100,8 @@ function AppContent() {
       // Story Lens (Task 10, spec-review fix): Escape / mobile swipe-back
       // closing the thread panel must exit the lens the same way every other
       // close path does. stripLensParam (issue 4) prevents resurrection.
+      // Inline exit, not syncLensToThreadOpen(null) — see clearAll's comment
+      // above (the helper's !STORY_LENS_AUTO early-return must not apply here).
       if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
       return true
     }
@@ -2034,7 +2034,8 @@ function AppContent() {
             // ThreadFocusPanel/PublicAttentionPanel close path — the panel is
             // going back to a blank stream, so the lens must not linger over
             // nothing. Unconditional call is safe (exit() no-ops when inactive).
-            // stripLensParam (issue 4) prevents resurrection.
+            // stripLensParam (issue 4) prevents resurrection. Inline exit, not
+            // syncLensToThreadOpen(null) — see clearAll's comment above.
             storyLens.exit()
             stripLensParam()
             // 6.3a: on mobile, an analyst who entered from the Brief returns THERE

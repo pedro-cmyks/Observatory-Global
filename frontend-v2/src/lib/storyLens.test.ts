@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildLensSets,
   hasLensContent,
+  isLensAnchor,
   lensErrorCopy,
   lensTopicParam,
   siblingChipText,
@@ -64,6 +65,16 @@ describe('lensTopicParam', () => {
     expect(lensTopicParam(data, 2)).toBe('dynamic-topic-1,dynamic-topic-2')
     expect(lensTopicParam(null)).toBeNull()
     expect(lensTopicParam({ ...data, anchor: null, siblings: [] })).toBeNull()
+  })
+})
+
+describe('isLensAnchor', () => {
+  // Frontend half of the backend's unsupported_anchor_type contract
+  // (story.py:221) — v1 lens anchors are DYNAMIC topics only.
+  it('accepts a dynamic-topic id, rejects atlas slugs and emergent clusters', () => {
+    expect(isLensAnchor('dynamic-topic-5245')).toBe(true)
+    expect(isLensAnchor('disease-outbreak--CO')).toBe(false)
+    expect(isLensAnchor('emergent-cluster-17')).toBe(false)
   })
 })
 

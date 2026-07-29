@@ -41,6 +41,17 @@ export interface StoryLensState {
 // to make opening a thread stop entering the lens, with zero other changes.
 export const STORY_LENS_AUTO = true
 
+// Story Lens (Task 10): v1 lens anchors are DYNAMIC topics only — the
+// siblings endpoint returns unsupported_anchor_type for atlas 'slug--cc' and
+// emergent-cluster ids (no dynamic_topics centroid; T2 quality-review issue
+// 3, recorded decision — backend contract at story.py:221). Shared by every
+// thread-open door syncLensToThreadOpen wires (App.tsx) plus the `?lens=
+// story` deep-link entry point, so none of them can drift from the other's
+// definition of "lens-eligible".
+export function isLensAnchor(id: string): boolean {
+  return id.startsWith('dynamic-topic-')
+}
+
 // Mirrors TOPIC_PARAM_MAX in lib/streamTabs.ts (backend _TOPIC_FILTER_MAX = 12).
 // The backend sibling cap (story_siblings.DEFAULT_CAP) is 11, so anchor +
 // siblings is exactly 12 ids — this cap is a ceiling, never a truncation.
