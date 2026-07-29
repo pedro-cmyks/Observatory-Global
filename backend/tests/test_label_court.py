@@ -6,6 +6,7 @@ from scripts.label_court import (
     _judge_prompt, _flatten_family_receipts, _umbrella_clause,
     _CHILD_LABELS_RANKED_SQL, _UMBRELLA_MAX_CHILDREN, _UMBRELLA_RECEIPTS_PER_CHILD,
     _RECEIPTS_SQL, _RECEIPTS_FALLBACK_SQL, _receipts_for, topic_members_engine_version,
+    _SINGLE_CHILD_SKIP_SQL, _SINGLE_CHILD_CLEANUP_SQL,
 )
 
 
@@ -265,3 +266,85 @@ def test_receipts_for_falls_back_when_engine_version_scoped_query_is_empty():
     result = asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8))
     assert len(conn.calls) == 2
     assert result == [{"headline": "Fallback headline text", "country_code": "GR"}]
+
+
+# ---------------------------------------------------------------------------
+# 2026-07-29 GB2 (round 2) blind-check fallout: contamination was gone but the
+# calibration scored 6/10. Three fixes — receipts-over-labels, generic-bucket
+# honesty (bounded to not relax SPECIFIC labels), single-child skip.
+# See docs/research/label-court/2026-07-29-gb2-blind-check.md.
+# ---------------------------------------------------------------------------
+
+def test_family_prompt_states_receipts_over_labels_rule():
+    family = _family(n_children=1, n_receipts=1)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    low = prompt.lower()
+    assert "receipts over labels" in low
+    assert "stale" in low
+    assert "judge by the receipts" in low or "judge by the\nreceipts" in low
+    # the OLD (wrong-direction) instruction must be gone, not just supplemented
+    assert "judge its label first" not in low
+
+
+def test_family_prompt_states_generic_bucket_rule_with_named_examples():
+    family = _family(n_children=1, n_receipts=1)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    low = prompt.lower()
+    assert "generic bucket" in low
+    assert "daily earthquake updates" in low
+    assert "european heatwaves" in low
+    assert "italy and uk" in low
+
+
+def test_family_prompt_states_specific_label_still_needs_receipt_rule():
+    # the caution GB2 named explicitly: rule 2 must not become blanket
+    # lenience (dt-8193 "Heat Wave in Valencia" false-entailed over Spain-wide
+    # alerts) — the specificity bar must survive alongside the generic-bucket
+    # rule, in the same prompt.
+    family = _family(n_children=1, n_receipts=1)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    low = prompt.lower()
+    assert "specific labels still need a matching receipt" in low
+    assert "rule 2 never" in low and "relax" in low
+
+
+def test_family_prompt_all_three_rules_coexist_and_are_numbered():
+    family = _family(n_children=2, n_receipts=2)
+    prompt = _judge_prompt("Some Umbrella", [], family=True, family_children=family)
+    assert "1. RECEIPTS OVER LABELS" in prompt
+    assert "2. GENERIC BUCKETS ARE HONEST" in prompt
+    assert "3. SPECIFIC LABELS STILL NEED A MATCHING RECEIPT" in prompt
+    # ordering: rule 1 before rule 2 before rule 3
+    assert prompt.index("1. RECEIPTS") < prompt.index("2. GENERIC") < prompt.index("3. SPECIFIC")
+
+
+def test_single_child_skip_sql_excludes_umbrellas_with_one_child():
+    sql = _SINGLE_CHILD_SKIP_SQL
+    assert "is_umbrella = false OR" in sql
+    assert ">= 2" in sql
+    assert "c.state = 'active'" in sql
+    assert "c.label IS NOT NULL" in sql
+    assert "c.parent_id = dynamic_topics.id" in sql
+
+
+def test_single_child_skip_sql_is_a_noop_shape_for_non_umbrella_rows():
+    # the short-circuit `is_umbrella = false OR (...)` means a non-umbrella
+    # row never even evaluates the correlated subquery — freeze the OR-first
+    # ordering so this stays cheap and correct for the (much larger) story
+    # lane population.
+    sql = _SINGLE_CHILD_SKIP_SQL.strip()
+    assert sql.startswith("AND (is_umbrella = false OR")
+
+
+def test_single_child_cleanup_sql_nulls_all_four_court_columns():
+    # invariant companion to the skip: a single-child umbrella judged BEFORE
+    # this fix (e.g. GB2's dt-8193, false-entailed) must not keep a stale
+    # verdict forever just because the skip now prevents re-judgment.
+    sql = _SINGLE_CHILD_CLEANUP_SQL
+    assert sql.startswith("UPDATE dynamic_topics SET")
+    for col in ("label_status=NULL", "label_checked_at=NULL",
+                "label_court_model=NULL", "label_proposed=NULL"):
+        assert col in sql
+    assert "is_umbrella = true" in sql
+    assert "label_status IS NOT NULL" in sql  # no-op once already clean
+    assert "< 2" in sql

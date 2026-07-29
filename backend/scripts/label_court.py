@@ -47,6 +47,29 @@ verdicts read fine to a human) may be the SAME contamination on the STORY
 lane — this fix applies there too (`_receipts_for` is shared), worth
 re-running that audit post-fix rather than assuming it was calibration only.
 
+CALIBRATION FIX (2026-07-29, GB2 round-2 blind-check `docs/research/
+label-court/2026-07-29-gb2-blind-check.md`): scored 6/10 (contamination
+confirmed gone — the round-1 pathology of judging unserved evidence did not
+recur). Three separable, genuine calibration gaps, NOT contamination:
+(1) labels-over-receipts inversion — 20% of sampled child labels were stale
+against their own served receipts, and the OLD prompt's "judge its LABEL
+first" line told the judge to trust the stale label over the receipts that
+contradicted it (dt-8172's children labeled "France Heat Wave Deaths" serve
+receipts reading "300 mil evacuados" — literally the umbrella's own claim).
+(2) the pre-registered roundup residual, confirmed once more (a generic
+"global heatwaves" label over Italy+UK+Russia regional heatwaves was failed
+for not being literally global). (3) single-child umbrellas (3/10 of GB2's
+sample) make the family question vacuous. GB2 ALSO named the caution that
+must bound any fix: the residual is NOT monotone strictness — dt-8193 "Heat
+Wave in Valencia" was false-ENTAILED over Spain-wide alerts with no Valencia
+receipt, so a blanket-lenience fix would trade one error for another. Fixed:
+the family prompt now states RULES 1-3 explicitly (receipts-over-labels;
+generic buckets honestly covering generic families are entailed; but a
+SPECIFIC label — place/actor/figure/count/concrete-action — still needs a
+receipt that supports that specific claim, not just an adjacent or broader
+family) and `_SINGLE_CHILD_SKIP_SQL` excludes one-child umbrellas from the
+family trial entirely (falls through to the story lane's judgment instead).
+
 Serving reads label_status only (additive). Reversible: NULL the four columns.
 
 Run (repo root, M1 env, off-peak — DeepSeek, ~cents):
@@ -209,16 +232,29 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
                   family_children: list[dict] | None = None) -> str:
     lines = "\n".join(f"- {(r.get('headline') or '')[:160]}" for r in receipts)
     if family:
-        # Umbrella bar (2026-07-18, sharpened 2026-07-29 Lever B1): an umbrella
-        # label names an EVENT FAMILY (aftermath, tolls, rescues, responses of
-        # ONE event/story). Strict single-event entailment failed 34/36
-        # umbrellas incl. coherent ones — the right question is family
-        # membership, not headline identity. Showing each CHILD's own served
-        # label alongside its receipts (rather than a flat headline pool that
-        # erases which receipt came from which child) gives the judge a
-        # second, often decisive signal: a child whose label alone names a
-        # different event/actor/country is the tell, even before its
-        # headlines are read.
+        # Umbrella bar (2026-07-18, sharpened 2026-07-29 Lever B1, recalibrated
+        # 2026-07-29 GB2): an umbrella label names an EVENT FAMILY (aftermath,
+        # tolls, rescues, responses of ONE event/story) OR a genuinely generic
+        # bucket. Strict single-event entailment failed 34/36 umbrellas incl.
+        # coherent ones — the right question is family membership, not
+        # headline identity. Showing each CHILD's own served label alongside
+        # its receipts (rather than a flat headline pool that erases which
+        # receipt came from which child) gives the judge a second signal — BUT
+        # GB2 (`docs/research/label-court/2026-07-29-gb2-blind-check.md`) found
+        # the court was resolving label-vs-receipt conflicts the WRONG way:
+        # 20% of sampled child labels were stale against their own served
+        # receipts (dt-8172's children labeled "France Heat Wave Deaths" serve
+        # receipts reading "300 mil evacuados" — literally the umbrella's own
+        # claim), and the old prompt's "judge its LABEL first" instruction told
+        # the judge to prefer the stale label. Rule 1 below inverts that. GB2
+        # also confirmed the pre-registered roundup residual (rule 2) — but
+        # named a DIFFERENT failure mode in the same sample (dt-8193 "Heat Wave
+        # in Valencia" false-ENTAILED over Spain-wide alerts with no Valencia
+        # receipt): leniency must not become blanket, so rule 3 keeps the
+        # geography/subject specificity bar for labels that make a SPECIFIC
+        # claim. Single-child umbrellas (GB2: 3/10 of its sample) are excluded
+        # upstream in the SQL selection (main(), single_child_skip) — the
+        # family question is vacuous with one child, so it never reaches here.
         children = family_children or []
         if children:
             blocks = []
@@ -234,16 +270,39 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
         return (
             "You are a strict fact-checker auditing the LABEL of a news-story "
             "FAMILY (an umbrella covering several child stories: one event's "
-            "aftermath, casualty counts, rescues, responses, follow-ups) "
-            "against its child stories, each shown with its OWN served label "
-            "and a few receipt headlines.\n\n"
+            "aftermath, casualty counts, rescues, responses, follow-ups — OR a "
+            "genuinely generic category bucket, see rule 2) against its child "
+            "stories, each shown with its OWN served label and a few receipt "
+            "headlines.\n\n"
             f'FAMILY (UMBRELLA) LABEL: "{label}"\n\n{body}\n\n'
+            "RULES:\n"
+            "1. RECEIPTS OVER LABELS: child labels may be stale (frozen when "
+            "the child was created, not refreshed as the story moved). When a "
+            "child's receipts CONTRADICT its own label, judge by the "
+            "RECEIPTS. The question is whether the umbrella label covers what "
+            "the receipts report — not what a stale child label claims.\n"
+            "2. GENERIC BUCKETS ARE HONEST: a generic label honestly covering "
+            "a generic family counts as entailed — 'Daily Earthquake Updates' "
+            "over several distinct earthquakes IS honest, and regional "
+            "instances under a broader regional label are covered "
+            "('European heatwaves' covers Italy and UK heatwaves). Do not "
+            "fail a roundup label merely for containing more than one "
+            "instance of the thing it announces.\n"
+            "3. SPECIFIC LABELS STILL NEED A MATCHING RECEIPT: rule 2 never "
+            "relaxes specificity. If the label names a SPECIFIC place, actor, "
+            "figure, casualty count, or concrete action (a city, a named "
+            "person, a death toll, a blockade), AT LEAST ONE receipt SOMEWHERE "
+            "in the family must actually support THAT specific claim — a "
+            "family that is merely adjacent, broader, or a plausible-sounding "
+            "generalization of it, with NO receipt anywhere naming the "
+            "specific detail, is not enough. This is a check on the WHOLE "
+            "family, not a per-child requirement: once one receipt supports "
+            "the specific claim, another child still belongs if it covers the "
+            "SAME broader event, even if that child's own receipts don't "
+            "repeat the specific detail.\n\n"
             "Do the MAJORITY of these child stories genuinely belong to the "
-            "single event/story family this umbrella label names? A child "
-            "whose own label and headlines are a different angle, casualty "
-            "update, or follow-up of the SAME event belongs. A child naming a "
-            "different event, actor, or country does not — judge its LABEL "
-            "first, then its headlines. Reply ONLY with JSON:\n"
+            "family this umbrella label names, applying the rules above? "
+            "Reply ONLY with JSON:\n"
             '{"verdict": "entailed" | "partial" | "failed", "reason": "<one short sentence>"}\n'
             "- entailed: most children belong to the named family.\n"
             "- partial: the family is real but a large minority of children are unrelated.\n"
@@ -390,6 +449,42 @@ def _umbrella_clause(*, only_umbrellas: bool, umbrellas_enabled: bool) -> str:
     return "AND is_umbrella = false "
 
 
+# GB2 (2026-07-29, docs/research/label-court/2026-07-29-gb2-blind-check.md):
+# the family question — "do the children belong to the family the label
+# names?" — is VACUOUS for an umbrella with exactly one active child (3/10 of
+# GB2's blind sample); there is nothing for the family to disagree with, yet
+# the court still stamped a verdict on all three. Correlated subquery counts
+# active, labeled children of each candidate row (the bare "dynamic_topics"
+# table name is usable as its own range-variable from inside the aliased "c"
+# subquery — no outer alias needed); a single-child umbrella is EXCLUDED from
+# this trial entirely (label_status stays whatever it was, typically NULL) —
+# it falls through to the STORY lane's judgment of its lone child instead of
+# being tried as a family of one. No-op for non-umbrella rows (short-circuits
+# on `is_umbrella = false`).
+_SINGLE_CHILD_SKIP_SQL = (
+    "AND (is_umbrella = false OR (SELECT count(*) FROM dynamic_topics c "
+    "WHERE c.parent_id = dynamic_topics.id AND c.state = 'active' "
+    "AND c.label IS NOT NULL) >= 2) "
+)
+
+# Invariant companion to the skip above: a row judged BEFORE this fix shipped
+# (or one whose children later merged/retired down to one) can carry a STALE
+# family-lane verdict that this trial will now never touch again (GB2's
+# dt-8193 "Heat Wave in Valencia" — false-ENTAILED under the old prompt,
+# excluded from re-judgment by the skip, and left standing unless swept).
+# "Single-child umbrellas keep NULL" must be an invariant, not an accident of
+# when the skip landed — clear the stamp so a wrong stale verdict never
+# outlives the fix that was supposed to remove it. Idempotent; no-op once
+# clean.
+_SINGLE_CHILD_CLEANUP_SQL = (
+    "UPDATE dynamic_topics SET label_status=NULL, label_checked_at=NULL, "
+    "label_court_model=NULL, label_proposed=NULL "
+    "WHERE state='active' AND is_umbrella = true AND label_status IS NOT NULL "
+    "AND (SELECT count(*) FROM dynamic_topics c WHERE c.parent_id = dynamic_topics.id "
+    "AND c.state = 'active' AND c.label IS NOT NULL) < 2"
+)
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser(description="Label Court: try each active topic's label vs its receipts.")
     ap.add_argument("--limit", type=int, default=0, help="only the top-N served topics (0=all active)")
@@ -439,6 +534,7 @@ async def main() -> None:
             "WHERE state='active' AND label IS NOT NULL "
             f"{unchecked}"
             f"{umbrella_clause}"
+            f"{_SINGLE_CHILD_SKIP_SQL}"
             f"ORDER BY {order} LIMIT $1", limit)
         if not rows:
             print("no active topics to try"); return
@@ -488,6 +584,13 @@ async def main() -> None:
                     "UPDATE dynamic_topics SET label_status=$2, label_checked_at=$3, "
                     "label_court_model=$4, label_proposed=$5, label=$6 WHERE id=$1",
                     dyn_id, verdict, checked_at, _COURT_MODEL, proposed, new_label)
+
+        # Sweep stale single-child verdicts (see _SINGLE_CHILD_CLEANUP_SQL) —
+        # only meaningful when umbrellas are in scope at all, and only on a
+        # write pass (a dry-run must not mutate the DB).
+        if args.write and (args.only_umbrellas or umbrellas_enabled):
+            cleared = await conn.execute(_SINGLE_CHILD_CLEANUP_SQL)
+            print(f"single-child cleanup: {cleared}")
 
         # ledger: failures are #204 training data
         if failures:
