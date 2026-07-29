@@ -180,7 +180,17 @@ export const SignalStream: React.FC = () => {
        with no anchor/siblings to back it (an honest-empty payload must not
        flip the tab bar to a lens with nothing in it). */
     const storyLens = useStoryLens()
-    const lensActive = storyLens.state.active && hasLensContent(storyLens.data)
+    // Sticky lens during re-anchor (Task 10 Step 2b, T6 quality-review issue
+    // 1): clicking a sibling row re-enters the lens with a new anchor, and
+    // StoryLensContext.enter() nulls `data` synchronously — a naive
+    // `hasLensContent(storyLens.data)` gate would flip false for the whole
+    // fetch-latency window, tearing the stream down to CATEGORY (streamFilter
+    // rewritten, full unscoped refetch) and then back to STORY once the new
+    // payload lands: two full stream resets per re-anchor. Holding the lens
+    // "active" through `storyLens.loading` keeps the tab bar/model steady
+    // across a re-anchor; the topicParam ref below keeps the actual query
+    // scope steady too.
+    const lensActive = storyLens.state.active && (hasLensContent(storyLens.data) || storyLens.loading)
 
     const tabModel = useMemo(() => streamTabModel(eclipseActive, lensActive), [eclipseActive, lensActive])
 
@@ -191,11 +201,27 @@ export const SignalStream: React.FC = () => {
         setStreamFilter(prev => resolveStreamTab(prev, tabModel))
     }, [tabModel])
 
+    // Holds the last non-null lens topic scope through a re-anchor's fetch
+    // window: the instant enter() nulls `storyLens.data`, `lensTopicParam`
+    // would go null too, which is what forces the second stream reset above.
+    // Cleared on lens exit so a fresh lens session never inherits a stale
+    // scope left over from a previous, already-closed story.
+    const lastLensTopicParamRef = useRef<string | null>(null)
+    useEffect(() => {
+        if (!storyLens.state.active) lastLensTopicParamRef.current = null
+    }, [storyLens.state.active])
+
     const topicParam = useMemo(() => {
         if (eclipseActive) return eclipseTopicParam(streamFilter, eclipseData)
-        if (tabModel.lens && streamFilter === 'story') return lensTopicParam(storyLens.data)
+        if (tabModel.lens && streamFilter === 'story') {
+            const fresh = lensTopicParam(storyLens.data)
+            if (fresh) { lastLensTopicParamRef.current = fresh; return fresh }
+            // No fresh scope yet (mid re-anchor fetch): hold the previous one
+            // rather than momentarily scoping to nothing.
+            return storyLens.loading ? lastLensTopicParamRef.current : null
+        }
         return null
-    }, [eclipseActive, tabModel.lens, streamFilter, eclipseData, storyLens.data])
+    }, [eclipseActive, tabModel.lens, streamFilter, eclipseData, storyLens.data, storyLens.loading])
 
     // Fetch allowlist once
     useEffect(() => {

@@ -34,6 +34,8 @@ import { ThemeCompare } from './components/ThemeCompare'
 import { SourceProfile } from './components/SourceProfile'
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { StoryLensBanner } from './components/StoryLensBanner'
+import { useStoryLens } from './contexts/StoryLensContext'
+import { STORY_LENS_AUTO } from './lib/storyLens'
 import { FocusIndicator } from './components/FocusIndicator'
 import { FrameStrip } from './components/FrameStrip'
 import { FrameSheet } from './components/FrameSheet'
@@ -202,6 +204,13 @@ const getNodePriority = (node: NodeData) => [
   node.signalCount ?? 0,
 ]
 
+// Story Lens (Task 10): v1 lens anchors are DYNAMIC topics only — the
+// siblings endpoint returns unsupported_anchor_type for atlas 'slug--cc' and
+// emergent-cluster ids (no dynamic_topics centroid; T2 quality-review issue
+// 3, recorded decision). Module-level and shared by both the auto-enter
+// (handleThemeSelect) and deep-link entry points so neither can drift from
+// the other's definition of "lens-eligible".
+const isLensAnchor = (id: string): boolean => id.startsWith('dynamic-topic-')
 
 // Error boundary to prevent Deck.gl/WebGL crashes from black-screening the entire app
 interface MapErrorBoundaryState { hasError: boolean }
@@ -274,6 +283,10 @@ function AppContent() {
   // W1 (2026-07-05): one L3 store — the context adapts panel pins onto the
   // Workbench investigation; isOpen IS the workbench overlay state now.
   const { trackVisit, isOpen: workbenchOpen, setIsOpen: setWorkbenchOpen, items: workspaceItems, version: wbVersion, pinItem } = useWorkspace()
+  // Story Lens (Task 10): the entry/exit wiring below is the only place this
+  // console touches the lens directly — the banner and stream/threads panels
+  // read the same context independently.
+  const storyLens = useStoryLens()
 
   // State
   const [selectedCountry, setSelectedCountry] = useState<CountryDetail | null>(null)
@@ -375,6 +388,24 @@ function AppContent() {
       window.dispatchEvent(new Event('atlas:eclipse-refresh'))
     }
   }, [entrySource])
+  // Story Lens (Task 10, Step 3): deep-link entry `?lens=story&theme=dynamic-
+  // topic-N`. Ungated by STORY_LENS_AUTO — a deep link is an explicit request,
+  // not the auto-enter-on-open behavior that kill switch controls. Guarded to
+  // the console's own route the same way the theme/country deep-link effect
+  // below is (App stays mounted under the keep-alive shell while on /brief;
+  // its params must never drive this console's lens). isLensAnchor keeps an
+  // atlas/emergent `?theme=` from opening a lens guaranteed to come back
+  // empty; !state.active avoids re-firing on every focus-driven param rewrite
+  // (mergeFocusIntoParams preserves `lens` across those writes, by design).
+  useEffect(() => {
+    if (location.pathname !== '/app') return
+    const p = new URLSearchParams(location.search)
+    const theme = p.get('theme')
+    if (p.get('lens') === 'story' && theme && isLensAnchor(theme) && !storyLens.state.active) {
+      storyLens.enter(theme)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, location.pathname])
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
   const [tooltip] = useState<TooltipData | null>(null)
 
@@ -625,7 +656,12 @@ function AppContent() {
     setSelectedChokepoint(null)
     setRightPanelThemeCountry(null)
     setShowFlows(false)
-  }, [clearFocus])
+    // Story Lens (Task 10, Step 2): the focus chip's ✕ is a full deselect —
+    // the lens must not linger once everything else it was scoping has
+    // cleared. Unconditional call is safe: exit() on an already-inactive
+    // lens is a no-op state reset (StoryLensContext).
+    storyLens.exit()
+  }, [clearFocus, storyLens.exit])
 
   // Workbench / research-plan handlers (Phase 2, #213). Anchors open the
   // existing surfaces: a thread anchor routes through the theme-detail
@@ -710,6 +746,19 @@ function AppContent() {
       return nextTheme
     })
     setRightPanelThemeCountry(null)
+
+    // Story Lens (Task 10, Step 1 — spec D7): opening a story opens its
+    // measured neighborhood. Atlas/emergent/query-thread opens keep today's
+    // behavior untouched — never a lens guaranteed to come back empty (see
+    // isLensAnchor). Re-entering the SAME anchor is a no-op
+    // (StoryLensContext.enter is idempotent once anchored); opening a
+    // DIFFERENT non-lens thread while the lens is active exits it — the lens
+    // must never linger over an unrelated open story.
+    if (STORY_LENS_AUTO && isLensAnchor(theme)) {
+      storyLens.enter(theme)
+    } else if (storyLens.state.active) {
+      storyLens.exit()
+    }
   }
 
   const handlePublicAttentionSelect = (item: PublicAttentionSelection) => {
@@ -1924,6 +1973,11 @@ function AppContent() {
           const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
           const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
           const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null)
+            // Story Lens (Task 10, Step 2): this is the ThemeDetail/EntityPanel/
+            // ThreadFocusPanel/PublicAttentionPanel close path — the panel is
+            // going back to a blank stream, so the lens must not linger over
+            // nothing. Unconditional call is safe (exit() no-ops when inactive).
+            storyLens.exit()
             // 6.3a: on mobile, an analyst who entered from the Brief returns THERE
             // when the last reading panel closes — never a drop into the blank
             // Stream tab. Desktop unchanged (guarded on isMobile).

@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { LabelReviewChip } from '../lib/labelReviewChip'
@@ -17,7 +18,16 @@ import './storyLens.css'
 export function StoryLensBanner() {
   const { state, data, error, loading, exit } = useStoryLens()
   const { pinItem, isPinned } = useWorkspace()
+  const location = useLocation()
   if (!state.active) return null
+  // Task 10 route guard: this banner portals to document.body from inside the
+  // keep-alive App shell (main.tsx AppBriefKeepAlive gives App display:none
+  // while the router is on /brief) — but a PORTAL ESCAPES an ancestor's
+  // display:none, so without this the banner would float over the Brief
+  // reading surface whenever a lens session was left active. The lens is
+  // console-only (its anchors are dynamic-topic threads opened in the
+  // console), so hide it off the console route.
+  if (!location.pathname.startsWith('/app')) return null
   const anchor = data?.anchor ?? null
   // Decode entity-encoded labels BEFORE resolveThreadTitle (which passes a
   // truthy knownLabel straight through) so the banner never shows raw
