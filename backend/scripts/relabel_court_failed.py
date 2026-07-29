@@ -30,10 +30,18 @@ from pathlib import Path
 
 import asyncpg
 
-from backend.scripts.label_court import (
-    _receipts_for, _umbrella_receipts_for, _LEDGER_DIR,
-)
-from backend.scripts.label_hygiene import is_placeholder_label
+# Dual-mode import: the cron invokes this as `backend.scripts.relabel_court_failed`
+# (repo root cwd); pytest imports it as `scripts.relabel_court_failed` (backend cwd).
+try:
+    from backend.scripts.label_court import (
+        _receipts_for, _umbrella_receipts_for, _LEDGER_DIR,
+    )
+    from backend.scripts.label_hygiene import is_placeholder_label
+except ModuleNotFoundError:
+    from scripts.label_court import (  # type: ignore[no-redef]
+        _receipts_for, _umbrella_receipts_for, _LEDGER_DIR,
+    )
+    from scripts.label_hygiene import is_placeholder_label  # type: ignore[no-redef]
 
 _DS_URL = "https://api.deepseek.com/chat/completions"
 _LABEL_MODEL = "relabel-court-v1/deepseek-chat"
