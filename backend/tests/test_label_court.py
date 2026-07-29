@@ -6,7 +6,8 @@ from scripts.label_court import (
     _judge_prompt, _flatten_family_receipts, _umbrella_clause,
     _CHILD_LABELS_RANKED_SQL, _UMBRELLA_MAX_CHILDREN, _UMBRELLA_RECEIPTS_PER_CHILD,
     _RECEIPTS_SQL, _RECEIPTS_FALLBACK_SQL, _receipts_for, topic_members_engine_version,
-    _SINGLE_CHILD_SKIP_SQL, _SINGLE_CHILD_CLEANUP_SQL,
+    _SINGLE_CHILD_SKIP_SQL, _SINGLE_CHILD_CLEANUP_SQL, _reason_quotes_a_receipt,
+    _WITHHOLD_CLEAR_SQL,
 )
 
 
@@ -106,14 +107,30 @@ def test_judge_prompt_family_includes_umbrella_and_child_labels_and_receipts():
     family = _family(n_children=2, n_receipts=2)
     prompt = _judge_prompt("Halkidiki Wildfire Family", [], family=True, family_children=family)
     assert 'FAMILY (UMBRELLA) LABEL: "Halkidiki Wildfire Family"' in prompt
-    # every child's OWN label appears, not just a flat headline pool
-    assert 'CHILD LABEL: "Child Label 0"' in prompt
-    assert 'CHILD LABEL: "Child Label 1"' in prompt
+    # every child's OWN label still appears (marked stale), not just a flat
+    # headline pool — but demoted (2026-07-29 GB3): after its receipts.
+    assert '(label, may be stale — do not treat as evidence): "Child Label 0"' in prompt
+    assert '(label, may be stale — do not treat as evidence): "Child Label 1"' in prompt
     assert "Child 0 headline 0" in prompt
     assert "Child 1 headline 1" in prompt
     # the family question, not the single-headline-identity question
     assert "family" in prompt.lower()
     assert '"verdict": "entailed" | "partial" | "failed"' in prompt
+
+
+def test_judge_prompt_family_receipts_precede_label_per_child_block():
+    # GB3 (2026-07-29): the block used to lead with CHILD LABEL — the most
+    # salient token the judge sees — so the judge kept dismissing on-topic
+    # children by their stale label. Receipts must now appear BEFORE the
+    # label in each child's block.
+    family = _family(n_children=1, n_receipts=2)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    receipts_pos = prompt.index("RECEIPTS:")
+    label_pos = prompt.index('(label, may be stale')
+    assert receipts_pos < label_pos
+    # the actual headline text must also physically precede the label marker
+    headline_pos = prompt.index("Child 0 headline 0")
+    assert headline_pos < label_pos
 
 
 def test_judge_prompt_family_bounded_to_ten_children_three_receipts():
@@ -124,7 +141,7 @@ def test_judge_prompt_family_bounded_to_ten_children_three_receipts():
     assert _UMBRELLA_RECEIPTS_PER_CHILD == 3
     family = _family(n_children=_UMBRELLA_MAX_CHILDREN, n_receipts=_UMBRELLA_RECEIPTS_PER_CHILD)
     prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
-    assert prompt.count("CHILD LABEL:") == _UMBRELLA_MAX_CHILDREN
+    assert prompt.count("do not treat as evidence") == _UMBRELLA_MAX_CHILDREN
     for i in range(_UMBRELLA_MAX_CHILDREN):
         assert f"Child {i} headline {_UMBRELLA_RECEIPTS_PER_CHILD - 1}" in prompt
 
@@ -132,7 +149,7 @@ def test_judge_prompt_family_bounded_to_ten_children_three_receipts():
 def test_judge_prompt_family_child_with_no_receipts_stays_visible():
     family = [{"child_id": 1, "child_label": "Thin Child", "receipts": []}]
     prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
-    assert 'CHILD LABEL: "Thin Child"' in prompt
+    assert '(label, may be stale — do not treat as evidence): "Thin Child"' in prompt
     assert "no receipts" in prompt
 
 
@@ -316,6 +333,132 @@ def test_family_prompt_all_three_rules_coexist_and_are_numbered():
     assert "3. SPECIFIC LABELS STILL NEED A MATCHING RECEIPT" in prompt
     # ordering: rule 1 before rule 2 before rule 3
     assert prompt.index("1. RECEIPTS") < prompt.index("2. GENERIC") < prompt.index("3. SPECIFIC")
+
+
+# ---------------------------------------------------------------------------
+# 2026-07-29 GB3 (round 3) blind-check fallout: 7/10, one remaining mechanism
+# (child label read as evidence of non-membership), zero false-entailments.
+# See docs/research/label-court/2026-07-29-gb3-blind-check.md.
+# ---------------------------------------------------------------------------
+
+def test_family_prompt_states_compound_label_partial_trigger_rule():
+    family = _family(n_children=1, n_receipts=1)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    assert "4. COMPOUND LABELS GET PARTIAL, NOT FAILED" in prompt
+    assert prompt.index("3. SPECIFIC") < prompt.index("4. COMPOUND")
+    low = prompt.lower()
+    assert "partial" in low and "dominant" in low and "secondary clause" in low
+
+
+def test_family_prompt_requires_verbatim_quoted_receipt_in_reason():
+    family = _family(n_children=1, n_receipts=1)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    low = prompt.lower()
+    assert "verbatim" in low and "quoted" in low
+    assert "never from a child label" in low
+
+
+# --- quote-gate: pure, DB-free behavior (mirrors the AI-read quote-gate) ---
+
+_RECEIPTS_FIXTURE = [
+    {"headline": "Trump defends his tariffs during Michigan visit", "country_code": "US"},
+    {"headline": "Russians hit a foreign vessel with a drone in the Black Sea", "country_code": "UA"},
+]
+
+
+def test_reason_quotes_a_receipt_true_for_exact_verbatim_quote():
+    reason = 'The label is supported: one receipt says "Trump defends his tariffs during Michigan visit".'
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is True
+
+
+def test_reason_quotes_a_receipt_true_for_curly_quotes():
+    reason = 'It literally reads “Russians hit a foreign vessel with a drone in the Black Sea”.'
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is True
+
+
+def test_reason_quotes_a_receipt_true_for_partial_verbatim_excerpt():
+    # a short exact substring of a receipt still grounds the reason
+    reason = 'Confirmed by "defends his tariffs during Michigan visit".'
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is True
+
+
+def test_reason_quotes_a_receipt_false_when_no_quotes_at_all():
+    # GB3's dt-8111 class: a fabricated absence with no quote to check
+    reason = "None of the child story receipts mention a GM plant or a Michigan visit."
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is False
+
+
+def test_reason_quotes_a_receipt_false_when_quote_does_not_match_any_receipt():
+    # a quoted string that isn't actually in any receipt (fabricated quote,
+    # or a quoted CHILD LABEL instead of a receipt) must not pass
+    reason = 'The children are about "Romania Demands Drone Reprogramming", unrelated to ships.'
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is False
+
+
+def test_reason_quotes_a_receipt_false_for_short_quoted_fragment():
+    # too short to be a meaningful grounding quote (avoid trivial false-passes)
+    reason = 'It says "US" somewhere.'
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is False
+
+
+def test_reason_quotes_a_receipt_tolerant_of_whitespace_and_case():
+    reason = 'It reads: "TRUMP DEFENDS   his tariffs during michigan visit" per the wire.'
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is True
+
+
+def test_reason_quotes_a_receipt_true_for_single_quoted_receipt():
+    # DeepSeek observed live reaching for single quotes around a receipt
+    # excerpt (likely to dodge escaping receipts that contain double quotes)
+    reason = ("All three receipts report the same event, e.g., 'Trump defends "
+              "his tariffs during Michigan visit'.")
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is True
+
+
+def test_reason_quotes_a_receipt_ignores_leading_possessive_apostrophe():
+    # regression: a naive single-quote regex mis-paired an EARLIER possessive
+    # apostrophe ("child stories'") as the opening quote, swallowing the real
+    # quote's start and missing the genuine grounding excerpt entirely — this
+    # exact shape was observed live on dt-8130.
+    reason = ("All three child stories' receipts report that Trump was there, "
+              "e.g., 'Trump defends his tariffs during Michigan visit'.")
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is True
+
+
+def test_reason_quotes_a_receipt_false_for_possessives_only_no_real_quote():
+    reason = "It's the world's biggest story about Trump's tariffs and Canada's response."
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is False
+
+
+def test_reason_quotes_a_receipt_tolerates_trailing_punctuation_inside_quote():
+    # regression (observed live, dt-8130): the model closes a quote with a
+    # trailing period INSIDE the quote marks that the receipt itself doesn't
+    # carry — an American quote-punctuation habit, not a fabricated quote.
+    reason = 'Confirmed: "Trump defends his tariffs during Michigan visit."'
+    assert _reason_quotes_a_receipt(reason, _RECEIPTS_FIXTURE) is True
+
+
+def test_reason_quotes_a_receipt_true_for_short_single_quoted_proper_noun():
+    # regression (observed live, dt-8105): a naive 20-char floor on single
+    # quotes rejected a genuine short quote ('Typhoon Noul') contrasting with
+    # the label's unsupported claim ('Typhoon Bavi') — the lookaround already
+    # disambiguates apostrophes from real quote marks, so a length floor this
+    # low no longer needs to compensate.
+    receipts = [{"headline": "Typhoon Noul makes landfall in the Philippines", "country_code": "PH"}]
+    reason = "All receipts describe 'Typhoon Noul', not 'Typhoon Bavi' as the label claims."
+    assert _reason_quotes_a_receipt(reason, receipts) is True
+
+
+def test_withhold_clear_sql_nulls_all_four_court_columns():
+    # "mark the verdict unchecked" (GB3) must be an ACTIVE reset keyed by id,
+    # not a silent skip — otherwise a row that already carries a stale stamp
+    # from an earlier pass keeps displaying it forever once a later pass
+    # finds the reason ungrounded.
+    sql = _WITHHOLD_CLEAR_SQL
+    assert sql.startswith("UPDATE dynamic_topics SET")
+    for col in ("label_status=NULL", "label_checked_at=NULL",
+                "label_court_model=NULL", "label_proposed=NULL"):
+        assert col in sql
+    assert "WHERE id=$1" in sql
 
 
 def test_single_child_skip_sql_excludes_umbrellas_with_one_child():

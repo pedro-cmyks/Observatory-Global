@@ -182,6 +182,77 @@ def parse_verdict(text: str) -> tuple[str, str]:
     return verdict, (reason or raw[:200])
 
 
+# GB3 quote-gate (2026-07-29, docs/research/label-court/
+# 2026-07-29-gb3-blind-check.md): mirrors the AI-read quote-gate pattern
+# (article_read.py — every claim must carry a verbatim quote from the fetched
+# text, validated as a substring at parse; quoteless claims are DROPPED).
+# Applied here to the umbrella family lane: GB3 caught the court fabricating
+# an absence ("none mention a Michigan visit" — a receipt literally reads
+# "Trump defends his tariffs during Michigan visit") and citing CHILD LABELS
+# as if they were evidence. Forcing the reason to ground itself in a verbatim
+# receipt excerpt, and mechanically checking that grounding, makes both
+# failure modes self-detecting instead of silently shipping a stamp.
+#
+# TWO quote styles are accepted, not just the double-quote the prompt asks
+# for: DeepSeek frequently reaches for single quotes around a receipt excerpt
+# (observed live, dt-8130/8093/etc.) — very likely to dodge escaping a
+# receipt that itself contains double quotes inside a JSON string value. That
+# is reasonable model behaviour, not a defect, so the parser accommodates it.
+# Single-quote spans need lookaround, not just a length floor: a straight/
+# curly apostrophe (contractions, possessives — "Trump's", "world's") is
+# lexically identical to a single quote mark, and a NAIVE ['‘](.{20,}?)['’]
+# pattern was observed live mis-pairing an incidental possessive apostrophe
+# (e.g. "…stories' receipts report that…") as the OPENING quote, capturing
+# the wrong span entirely and missing the real quoted excerpt that followed.
+# Real opening quotes are preceded by non-word chars (space/punctuation) and
+# followed immediately by non-space; real closing quotes are preceded by
+# non-space and NOT followed by a word char (a possessive apostrophe always
+# IS). Once that lookaround disambiguates opening/closing from apostrophes,
+# the same 6-char floor as the double-quote pattern is safe — a plain length
+# floor was the wrong tool (it rejected genuine short quotes like 'Typhoon
+# Noul', observed live on dt-8105, while a NAIVE unguarded apostrophe pairing
+# is what needed the real fix). The REAL safety net either way is the
+# containment check below, not the regex: a spurious capture that isn't an
+# actual receipt substring simply returns False.
+_DOUBLE_QUOTE_PATTERN = re.compile(r'["“]([^"“”]{6,}?)["”]')
+_SINGLE_QUOTE_PATTERN = re.compile(r"(?<!\w)['‘](?=\S)([^'‘’]{6,}?)(?<=\S)['’](?!\w)")
+
+
+def _normalize_for_quote_match(text: str) -> str:
+    """Collapse whitespace + casefold so a model's lightly-retyped quote
+    (extra space, different case) still matches the receipt it cites. Also
+    strips leading/trailing punctuation — observed live: the model closes a
+    quote with a trailing period INSIDE the quote marks ('…de París.') that
+    the receipt itself doesn't carry ('…de París'), which is a formatting
+    habit (American quote-punctuation convention), not a fabricated quote;
+    without stripping it the containment check below fails on an otherwise
+    exact excerpt."""
+    t = re.sub(r"\s+", " ", (text or "")).strip().casefold()
+    return t.strip(".,;:!?\"'“”‘’")
+
+
+def _reason_quotes_a_receipt(reason: str, receipts: list[dict]) -> bool:
+    """True iff `reason` contains a quoted substring (double OR single
+    quotes, straight or curly — see the length-floor rationale above) that
+    actually appears in at least one receipt headline. False means the
+    verdict is UNGROUNDED — the reason cites nothing checkable (a label
+    paraphrase, an unquoted assertion, or a fabricated quote) and the caller
+    must withhold the verdict (never write label_status) rather than trust
+    it."""
+    reason = reason or ""
+    quotes = _DOUBLE_QUOTE_PATTERN.findall(reason) + _SINGLE_QUOTE_PATTERN.findall(reason)
+    if not quotes:
+        return False
+    haystacks = [_normalize_for_quote_match(r.get("headline") or "") for r in receipts]
+    for q in quotes:
+        needle = _normalize_for_quote_match(q)
+        if len(needle) < 6:
+            continue
+        if any(needle in h for h in haystacks if h):
+            return True
+    return False
+
+
 def _dominant_geo(country_codes: list[str]) -> str:
     codes = [c for c in country_codes if c and c.upper() != "XX"]
     if not codes:
@@ -233,28 +304,40 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
     lines = "\n".join(f"- {(r.get('headline') or '')[:160]}" for r in receipts)
     if family:
         # Umbrella bar (2026-07-18, sharpened 2026-07-29 Lever B1, recalibrated
-        # 2026-07-29 GB2): an umbrella label names an EVENT FAMILY (aftermath,
-        # tolls, rescues, responses of ONE event/story) OR a genuinely generic
-        # bucket. Strict single-event entailment failed 34/36 umbrellas incl.
-        # coherent ones — the right question is family membership, not
-        # headline identity. Showing each CHILD's own served label alongside
-        # its receipts (rather than a flat headline pool that erases which
-        # receipt came from which child) gives the judge a second signal — BUT
-        # GB2 (`docs/research/label-court/2026-07-29-gb2-blind-check.md`) found
-        # the court was resolving label-vs-receipt conflicts the WRONG way:
-        # 20% of sampled child labels were stale against their own served
-        # receipts (dt-8172's children labeled "France Heat Wave Deaths" serve
-        # receipts reading "300 mil evacuados" — literally the umbrella's own
-        # claim), and the old prompt's "judge its LABEL first" instruction told
-        # the judge to prefer the stale label. Rule 1 below inverts that. GB2
-        # also confirmed the pre-registered roundup residual (rule 2) — but
-        # named a DIFFERENT failure mode in the same sample (dt-8193 "Heat Wave
-        # in Valencia" false-ENTAILED over Spain-wide alerts with no Valencia
-        # receipt): leniency must not become blanket, so rule 3 keeps the
-        # geography/subject specificity bar for labels that make a SPECIFIC
-        # claim. Single-child umbrellas (GB2: 3/10 of its sample) are excluded
-        # upstream in the SQL selection (main(), single_child_skip) — the
-        # family question is vacuous with one child, so it never reaches here.
+        # 2026-07-29 GB2, GB3): an umbrella label names an EVENT FAMILY
+        # (aftermath, tolls, rescues, responses of ONE event/story) OR a
+        # genuinely generic bucket. Strict single-event entailment failed
+        # 34/36 umbrellas incl. coherent ones — the right question is family
+        # membership, not headline identity.
+        #
+        # GB2 (docs/research/label-court/2026-07-29-gb2-blind-check.md, 6/10):
+        # the court read stale CHILD LABELS over receipts (dt-8172's children
+        # labeled "France Heat Wave Deaths" serve receipts reading "300 mil
+        # evacuados" — literally the umbrella's own claim) and stamped
+        # single-child "families" where the question is vacuous. Fixed with
+        # rules 1-3 below + _SINGLE_CHILD_SKIP_SQL (main()).
+        #
+        # GB3 (docs/research/label-court/2026-07-29-gb3-blind-check.md, 7/10,
+        # ONE remaining mechanism, ZERO false-entailments): rule 1 said
+        # "receipts over labels" but the block still LED with `CHILD LABEL:
+        # "…"` — the most salient token the judge sees per child — so the
+        # judge kept dismissing children BY THEIR LABEL (dt-3433's child `383`
+        # "Romania Demands Drone Reprogramming" serves "Russians hit a foreign
+        # vessel with a drone in the Black Sea" — the label's own SHIPS
+        # clause, verbatim — counted AGAINST the label; dt-8111's court reason
+        # asserted "none mention a Michigan visit" while child `3996`
+        # literally serves "Trump defends his tariffs during Michigan visit"
+        # — a fabricated absence). Two structural fixes: (a) demote the
+        # label — receipts now print FIRST in each child block, the label
+        # prints AFTER, marked "may be stale"; (b) the reason must QUOTE a
+        # receipt verbatim (see `_reason_quotes_a_receipt` below) — a reason
+        # that only cites labels, or asserts an absence a receipt contradicts,
+        # is now mechanically detectable and the verdict is withheld (never
+        # stamped) rather than trusted. GB3 also measured 0/33 partial — the
+        # scale had collapsed to binary because nothing steered the judge
+        # toward it; rule 4 gives `partial` an explicit trigger for compound
+        # labels (dt-8168 "Wildfires…Japan": 6/7 children verbatim-support the
+        # wildfire clause, but "Quake Hits Japan" has no receipt anywhere).
         children = family_children or []
         if children:
             blocks = []
@@ -262,8 +345,10 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
                 child_lines = "\n".join(
                     f"      - {(r.get('headline') or '')[:160]}" for r in c.get("receipts", []))
                 blocks.append(
-                    f'  CHILD LABEL: "{c.get("child_label", "")}"\n'
-                    f"{child_lines if child_lines else '      (no receipts)'}")
+                    f"  RECEIPTS:\n"
+                    f"{child_lines if child_lines else '      (no receipts)'}\n"
+                    f'  (label, may be stale — do not treat as evidence): '
+                    f'"{c.get("child_label", "")}"')
             body = "CHILD STORIES:\n" + "\n\n".join(blocks)
         else:
             body = f"HEADLINES:\n{lines}"
@@ -272,15 +357,18 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
             "FAMILY (an umbrella covering several child stories: one event's "
             "aftermath, casualty counts, rescues, responses, follow-ups — OR a "
             "genuinely generic category bucket, see rule 2) against its child "
-            "stories, each shown with its OWN served label and a few receipt "
-            "headlines.\n\n"
+            "stories. Each child is shown RECEIPTS FIRST, then its own served "
+            "label (which may be stale — judge by the receipts).\n\n"
             f'FAMILY (UMBRELLA) LABEL: "{label}"\n\n{body}\n\n'
             "RULES:\n"
-            "1. RECEIPTS OVER LABELS: child labels may be stale (frozen when "
-            "the child was created, not refreshed as the story moved). When a "
-            "child's receipts CONTRADICT its own label, judge by the "
-            "RECEIPTS. The question is whether the umbrella label covers what "
-            "the receipts report — not what a stale child label claims.\n"
+            "1. RECEIPTS OVER LABELS: a child's label is shown LAST and may be "
+            "stale (frozen when the child was created, not refreshed as the "
+            "story moved). Read each child's RECEIPTS first. When a child's "
+            "receipts CONTRADICT its own label, judge by the RECEIPTS, never "
+            "by the label. The question is whether the umbrella label covers "
+            "what the receipts report — not what a stale child label claims — "
+            "and a child is NOT disqualified just because its label sounds "
+            "off-topic if its receipts are on-topic.\n"
             "2. GENERIC BUCKETS ARE HONEST: a generic label honestly covering "
             "a generic family counts as entailed — 'Daily Earthquake Updates' "
             "over several distinct earthquakes IS honest, and regional "
@@ -299,14 +387,36 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
             "family, not a per-child requirement: once one receipt supports "
             "the specific claim, another child still belongs if it covers the "
             "SAME broader event, even if that child's own receipts don't "
-            "repeat the specific detail.\n\n"
+            "repeat the specific detail.\n"
+            "4. COMPOUND LABELS GET PARTIAL, NOT FAILED: if the label makes "
+            "TWO OR MORE separate claims (e.g. 'X and Y', 'X; Z hits W') and "
+            "the majority of children strongly support ONE of those claims "
+            "while another claim has no supporting receipt anywhere, the "
+            "verdict is PARTIAL — the dominant, well-receipted clause earns "
+            "that much even though the secondary clause is unsupported. Only "
+            "call FAILED when the majority of children support NONE of the "
+            "label's claims.\n\n"
             "Do the MAJORITY of these child stories genuinely belong to the "
             "family this umbrella label names, applying the rules above? "
+            "Your REASON MUST ground whatever it claims IS supported with at "
+            "least one short VERBATIM quoted excerpt, copied EXACTLY, from "
+            "one of the RECEIPTS above — never from a child label, never a "
+            "paraphrase. This applies even when you also note something that "
+            "is UNSUPPORTED (e.g. a compound label's secondary clause, rule "
+            "4): quoting the label's own unsupported clause to name the gap "
+            "is fine, but it does NOT by itself ground the verdict — you "
+            "must ALSO quote a receipt for whatever part you say IS "
+            "supported. Never write an unquoted assertion that nothing "
+            "supports a claim if a receipt above contradicts it — quote that "
+            "receipt instead. "
             "Reply ONLY with JSON:\n"
-            '{"verdict": "entailed" | "partial" | "failed", "reason": "<one short sentence>"}\n'
+            '{"verdict": "entailed" | "partial" | "failed", '
+            '"reason": "<one short sentence with a verbatim quoted receipt excerpt>"}\n'
             "- entailed: most children belong to the named family.\n"
-            "- partial: the family is real but a large minority of children are unrelated.\n"
-            "- failed: most children do NOT belong to the named family.")
+            "- partial: the family is real but a large minority of children are unrelated, OR the "
+            "label is compound and only its dominant clause is receipted (rule 4).\n"
+            "- failed: most children do NOT belong to the named family (or, for a compound label, "
+            "NONE of its claims are supported).")
     return (
         "You are a strict fact-checker auditing a news-cluster LABEL against the "
         "actual headlines assigned to it.\n\n"
@@ -484,6 +594,17 @@ _SINGLE_CHILD_CLEANUP_SQL = (
     "AND c.state = 'active' AND c.label IS NOT NULL) < 2"
 )
 
+# GB3 quote-gate write path (2026-07-29): "mark the verdict unchecked" means
+# an ACTIVE reset, not merely skipping the write — otherwise a row that
+# already carries a STALE stamp from an earlier (less-scrutinized) pass keeps
+# displaying that old verdict forever, which is exactly the "front page
+# stamped on an ungrounded reason" outcome the gate exists to prevent. Same
+# four columns as the ordinary write, same reversibility.
+_WITHHOLD_CLEAR_SQL = (
+    "UPDATE dynamic_topics SET label_status=NULL, label_checked_at=NULL, "
+    "label_court_model=NULL, label_proposed=NULL WHERE id=$1"
+)
+
 
 async def main() -> None:
     ap = argparse.ArgumentParser(description="Label Court: try each active topic's label vs its receipts.")
@@ -542,6 +663,7 @@ async def main() -> None:
         dist: Counter = Counter()
         tok_in = tok_out = 0
         failures = []
+        ungrounded = 0
         for r in rows:
             dyn_id = r["id"]
             topic_id = f"dynamic-topic-{dyn_id}"
@@ -560,6 +682,26 @@ async def main() -> None:
                                                      family=is_umbrella,
                                                      family_children=family_children)
             tok_in += usage["input_tokens"]; tok_out += usage["output_tokens"]
+
+            # GB3 quote-gate (2026-07-29): a family verdict whose reason is
+            # not grounded in a verbatim receipt quote is WITHHELD — not
+            # counted, not ledgered as a failure, and label_status is never
+            # written (stays whatever it already was, i.e. "unchecked"/NULL
+            # if this is the first pass). This is the umbrella lane's own
+            # defect-detector: GB3 caught reasons that cited child labels or
+            # fabricated an absence a receipt contradicted, and both are
+            # mechanically undetectable without this check.
+            if is_umbrella and not _reason_quotes_a_receipt(reason, receipts):
+                ungrounded += 1
+                print(f"  ? dt-{dyn_id} [umbrella] [UNGROUNDED verdict={verdict}, withheld] "
+                      f"{label[:40]} — reason lacked a verbatim receipt quote: {reason[:80]!r}")
+                if args.write:
+                    # Active reset (not a skip): a stale stamp from an
+                    # earlier pass must not keep showing once THIS pass finds
+                    # it ungrounded — "unchecked" has to mean unchecked.
+                    await conn.execute(_WITHHOLD_CLEAR_SQL, dyn_id)
+                continue
+
             dist[verdict] += 1
             proposed = build_neutral_label(receipts) if verdict == "failed" else None
             mark = {"entailed": "✓", "partial": "~", "failed": "✗"}[verdict]
@@ -604,6 +746,7 @@ async def main() -> None:
         total = sum(dist.values())
         print(f"\nLABEL COURT DONE: {total} tried · "
               f"entailed {dist['entailed']} · partial {dist['partial']} · failed {dist['failed']} · "
+              f"ungrounded/withheld {ungrounded} · "
               f"tokens in/out {tok_in}/{tok_out}{' · WRITTEN' if args.write else ' · DRY'}"
               f"{' · PROPOSALS APPLIED' if apply_proposals else ''}")
     finally:
