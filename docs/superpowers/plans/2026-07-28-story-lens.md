@@ -1224,7 +1224,7 @@ useEffect(() => {
 }, [location.search])
 ```
 
-`?lens=` survives focus writes for free — `mergeFocusIntoParams` (navParams.ts:40-49) only owns theme/country/person. Verify by toggling a country focus with the lens open: the param must persist.
+`?lens=` survives focus writes (`mergeFocusIntoParams` only owns theme/country/person) — which is exactly why every EXIT path must STRIP it: the pre-existing theme deep-link effect re-fires `handleThemeSelect` on any unrelated URL write while `theme=` persists, and a surviving `lens=` would silently resurrect an explicitly-dismissed lens (found live in T10 verification; fixed via stripLensParam on every exit + the isSameThemeReopen guard — the referenced 'spec-review issue 4').
 
 - [ ] **Step 4: Build + full vitest** — `cd frontend-v2 && npm run build && npx vitest run`. Expected: green.
 
