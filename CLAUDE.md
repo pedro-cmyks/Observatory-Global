@@ -40,10 +40,22 @@ real one): the walk resolves onto FALSE neighbors — Berlin Pride's top sibling
 'Austrian Arrested for Fraud' 0.853, 18/18 is_blob — while live same-event
 fragments in the same panel are ABSENT: ARGMAX DISPERSION VISIBLE IN THE UI.**
 Spec §12's risk fired as written: cos-only candidates can't find true siblings
-on a shredded field. **NEXT (needs Pedro): pre-registered sibling-finder v2**
-(candidates = cos ∪ rare-entity ∪ country+time, gated on the witness families) —
-the lens mechanism is ready and waiting for honest data. Vercel NOT deployed
-(lens is dev-only until then); Fly deploys ×5 this session.
+on a shredded field. **FINDER-V2 MEASURED (2026-07-29): NO-GO by K1 — AND THE DIAGNOSIS INVERTS**
+(`docs/research/recall-229/2026-07-29-sibling-finder-v2-measurement.md`):
+dt-466 'Berlin Pride Attack' — the topic /threads SERVES — is a Greek-language
+crime FUSION; the T11 'false neighbors' were HONEST neighbors of a blob anchor.
+**v1 anchored on a real fragment (dt-7712) places 6/6 true fragments top-8 —
+THE FINDER WAS NEVER THE FAILURE; THE ANCHOR WAS.** Lane E refuted at
+reachability (12/140 true pairs share a rare entity); union added zero rows;
+G2 60% false inherited whole from cosine on a **61.25% is_blob field**; labels
+diverged from evidence widely (Halkidiki-wildfire = Chania explosion;
+Crimea-Congo-fever = Spanish femicide — 2 witness families dissolved on
+verification). Two chips spawned: is_blob threshold refit (real 80/60
+separation, wrong threshold) + label↔evidence divergence court instrument.
+**SHIPPED: everything merged to v3-intel-layer + pushed (Vercel deploying) with
+STORY_LENS_AUTO=false — the lens ships DARK per its own pre-registered K1 (no
+ship over false receipts); deep link ?lens=story&theme= live for dogfooding;
+one line back on when identity heals.** Fly deploys ×5 this session.
 **EMBEDDING BAKE-OFF v2: NO-GO — e5 is NOT the bottleneck**
 (`docs/research/recall-229/2026-07-31-embedding-bakeoff-v2.md`, 5 spaces, 43,138
 archive-recovered headlines): NO space wins argmax dispersion (the disease); no
