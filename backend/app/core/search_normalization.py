@@ -73,7 +73,11 @@ def build_query_variants(query: str, *, max_variants: int = MAX_VARIANTS) -> lis
 
     tokens = normalized.split()
     if len(tokens) > 1:
-        _add_variant(variants, seen, "".join(tokens))
+        # Compound form only for 2 tokens ("bird flu" -> "birdflu"); joining
+        # 3+ tokens never yields a real word and the junk variant leaks into
+        # the UI's Related-phrasings banner (gold-external EQ-01).
+        if len(tokens) == 2:
+            _add_variant(variants, seen, "".join(tokens))
 
         singular_tokens = [_singularize_token(token) for token in tokens]
         if singular_tokens != tokens:

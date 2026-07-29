@@ -39,6 +39,26 @@ def test_build_query_variants_normalizes_us_aliases():
     assert "united states" in variants
 
 
+def test_build_query_variants_keeps_compound_form_for_two_tokens():
+    variants = build_query_variants("bird flu")
+
+    assert "bird flu" in variants
+    assert "birdflu" in variants
+
+
+def test_build_query_variants_never_concatenates_long_queries():
+    # Gold-external eval EQ-01: 'Bolivia fuel dollar shortage subsidy' surfaced
+    # 'boliviafueldollarshortagesubsidy' in the Related-phrasings banner — a
+    # 3+-token concatenation is never a real compound word.
+    variants = build_query_variants("bolivia fuel dollar shortage subsidy")
+
+    assert "bolivia fuel dollar shortage subsidy" in variants
+    assert "boliviafueldollarshortagesubsidy" not in variants
+
+    variants = build_query_variants("rare earth export controls")
+    assert "rareearthexportcontrols" not in variants
+
+
 def test_should_offer_fuzzy_suggestion_uses_confidence_and_distinct_values():
     assert should_offer_fuzzy_suggestion("donlad trump", "donald trump", 0.72) is True
     assert should_offer_fuzzy_suggestion("donlad trunp", "donald trump", 0.3) is True
