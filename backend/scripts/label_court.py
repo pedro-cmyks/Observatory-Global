@@ -13,11 +13,29 @@ label unless ATLAS_LABEL_COURT_APPLY=on (default OFF) — the court flags, human
 (or a later gate) decide. Every failure is appended to a JSONL ledger under
 docs/research/label-court/ as labeler training data (#204 gold is starved).
 
+UMBRELLA LANE (2026-07-29, identity-three-levers Lever B1): the biggest served
+rows are umbrellas (migration 058, is_umbrella=true — the front-page lane
+after the R2 label-fold), and they carry no verdict by construction until this
+lane runs. An umbrella gets a FAMILY question instead of a headline-identity
+one: for each CHILD (bounded <=10, biggest-first), show its own served label +
+up to 3 decoded receipt headlines, and ask whether the majority of children
+genuinely belong to the family the umbrella label names — a child's own label
+is often the tell (a "Belgian shooting" child under a "Venezuela Earthquake"
+umbrella) even before its receipts are read. Gated by `ATLAS_COURT_UMBRELLAS`
+(default OFF): while off, the trial is `is_umbrella=false` only — today's cron
+keeps judging the story lane and never touches umbrellas. Flip it on (ALW
+`.env`) only after the pre-registered gate GB (>=8/10 blind hand-check
+agreement on a sample of umbrella verdicts) has passed. `--only-umbrellas`
+scopes an ad-hoc manual pass to umbrella rows regardless of the env gate (used
+for the one-off GB input run — it does not touch the cron flag).
+
 Serving reads label_status only (additive). Reversible: NULL the four columns.
 
 Run (repo root, M1 env, off-peak — DeepSeek, ~cents):
   python -m backend.scripts.label_court --dry-run --limit 20   # inspect
   python -m backend.scripts.label_court --write                # all active
+  ATLAS_COURT_UMBRELLAS=on python -m backend.scripts.label_court \
+      --write --only-umbrellas                                 # GB input run
 """
 from __future__ import annotations
 
@@ -145,27 +163,49 @@ def build_neutral_label(receipts: list[dict]) -> str:
     return f"{geo}: {subject} — from {n} receipts"
 
 
-def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False) -> str:
+def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
+                  family_children: list[dict] | None = None) -> str:
     lines = "\n".join(f"- {(r.get('headline') or '')[:160]}" for r in receipts)
     if family:
-        # Umbrella bar (2026-07-18): an umbrella label names an EVENT FAMILY
-        # (aftermath, tolls, rescues, responses of ONE event/story). Strict
-        # single-event entailment failed 34/36 umbrellas incl. coherent ones —
-        # the right question is family membership, not headline identity.
+        # Umbrella bar (2026-07-18, sharpened 2026-07-29 Lever B1): an umbrella
+        # label names an EVENT FAMILY (aftermath, tolls, rescues, responses of
+        # ONE event/story). Strict single-event entailment failed 34/36
+        # umbrellas incl. coherent ones — the right question is family
+        # membership, not headline identity. Showing each CHILD's own served
+        # label alongside its receipts (rather than a flat headline pool that
+        # erases which receipt came from which child) gives the judge a
+        # second, often decisive signal: a child whose label alone names a
+        # different event/actor/country is the tell, even before its
+        # headlines are read.
+        children = family_children or []
+        if children:
+            blocks = []
+            for c in children:
+                child_lines = "\n".join(
+                    f"      - {(r.get('headline') or '')[:160]}" for r in c.get("receipts", []))
+                blocks.append(
+                    f'  CHILD LABEL: "{c.get("child_label", "")}"\n'
+                    f"{child_lines if child_lines else '      (no receipts)'}")
+            body = "CHILD STORIES:\n" + "\n\n".join(blocks)
+        else:
+            body = f"HEADLINES:\n{lines}"
         return (
             "You are a strict fact-checker auditing the LABEL of a news-story "
-            "FAMILY (one event/story with its aftermath, casualty counts, "
-            "rescues, responses, follow-ups) against headlines drawn from "
-            "across the family.\n\n"
-            f'FAMILY LABEL: "{label}"\n\nHEADLINES:\n{lines}\n\n'
-            "Do the MAJORITY of these headlines belong to the single event/"
-            "story family this label names? Follow-ups and different angles of "
-            "the SAME event count as belonging. Unrelated events or wrong "
-            "geography do not. Reply ONLY with JSON:\n"
+            "FAMILY (an umbrella covering several child stories: one event's "
+            "aftermath, casualty counts, rescues, responses, follow-ups) "
+            "against its child stories, each shown with its OWN served label "
+            "and a few receipt headlines.\n\n"
+            f'FAMILY (UMBRELLA) LABEL: "{label}"\n\n{body}\n\n'
+            "Do the MAJORITY of these child stories genuinely belong to the "
+            "single event/story family this umbrella label names? A child "
+            "whose own label and headlines are a different angle, casualty "
+            "update, or follow-up of the SAME event belongs. A child naming a "
+            "different event, actor, or country does not — judge its LABEL "
+            "first, then its headlines. Reply ONLY with JSON:\n"
             '{"verdict": "entailed" | "partial" | "failed", "reason": "<one short sentence>"}\n'
-            "- entailed: most headlines belong to the named family.\n"
-            "- partial: the family is real but a large minority are unrelated.\n"
-            "- failed: most headlines do NOT belong to the named family.")
+            "- entailed: most children belong to the named family.\n"
+            "- partial: the family is real but a large minority of children are unrelated.\n"
+            "- failed: most children do NOT belong to the named family.")
     return (
         "You are a strict fact-checker auditing a news-cluster LABEL against the "
         "actual headlines assigned to it.\n\n"
@@ -180,11 +220,13 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False) -> 
 
 
 async def _ds_judge(label: str, receipts: list[dict], key: str, *,
-                    family: bool = False) -> tuple[str, str, dict]:
+                    family: bool = False,
+                    family_children: list[dict] | None = None) -> tuple[str, str, dict]:
     import httpx
     body = {"model": "deepseek-chat", "temperature": 0,
             "messages": [{"role": "user",
-                          "content": _judge_prompt(label, receipts, family=family)}]}
+                          "content": _judge_prompt(label, receipts, family=family,
+                                                   family_children=family_children)}]}
     async with httpx.AsyncClient() as c:
         r = await c.post(_DS_URL, json=body,
                          headers={"Authorization": f"Bearer {key}"}, timeout=40.0)
@@ -219,6 +261,9 @@ _CHILD_IDS_SQL = "SELECT id FROM dynamic_topics WHERE parent_id = $1 AND state='
 
 
 async def _umbrella_receipts_for(conn, umbrella_id: int, k: int) -> list[dict]:
+    # NOTE: kept for relabel_court_failed.py (imports this by name) — the flat,
+    # un-labeled receipt pool it uses to regenerate a neutral label. The court's
+    # own family TRIAL uses the richer _umbrella_family_for below.
     child_rows = await conn.fetch(_CHILD_IDS_SQL, umbrella_id)
     out: list[dict] = []
     seen: set[str] = set()
@@ -237,6 +282,67 @@ async def _umbrella_receipts_for(conn, umbrella_id: int, k: int) -> list[dict]:
     return out[:k]
 
 
+# Lever B1 (2026-07-29): the family TRIAL wants each child's own LABEL next to
+# its receipts, bounded so the prompt stays cheap — biggest children first (a
+# 40-child umbrella showing all of them would swamp the prompt and the budget).
+_UMBRELLA_MAX_CHILDREN = 10
+_UMBRELLA_RECEIPTS_PER_CHILD = 3
+
+_CHILD_LABELS_RANKED_SQL = """
+    SELECT id, label FROM dynamic_topics
+    WHERE parent_id = $1 AND state = 'active' AND label IS NOT NULL
+    ORDER BY agg_n_signals DESC NULLS LAST
+    LIMIT $2
+"""
+
+
+async def _umbrella_family_for(conn, umbrella_id: int,
+                               per_child: int = _UMBRELLA_RECEIPTS_PER_CHILD,
+                               max_children: int = _UMBRELLA_MAX_CHILDREN) -> list[dict]:
+    """Family fixture for the umbrella court question: per CHILD (bounded to
+    `max_children`, biggest-first), its own served label + up to `per_child`
+    decoded receipt headlines. Keeping receipts grouped under the child that
+    carries them — instead of the flat pool `_umbrella_receipts_for` builds —
+    lets the judge see a child whose LABEL ALONE reveals it does not belong
+    (e.g. a "Belgian shooting" child under a "Venezuela Earthquake" umbrella),
+    not just headlines stripped of which child served them."""
+    child_rows = await conn.fetch(_CHILD_LABELS_RANKED_SQL, umbrella_id, max_children)
+    family: list[dict] = []
+    for cr in child_rows:
+        cid = int(cr["id"])
+        receipts = await _receipts_for(conn, f"dynamic-topic-{cid}", cid, per_child)
+        family.append({"child_id": cid, "child_label": cr["label"] or "", "receipts": receipts})
+    return family
+
+
+def _flatten_family_receipts(family: list[dict]) -> list[dict]:
+    """Union of every child's receipts, deduped by headline prefix — the flat
+    list the neutral-label proposal and the failure ledger both expect."""
+    out: list[dict] = []
+    seen: set[str] = set()
+    for child in family:
+        for r in child.get("receipts", []):
+            key = (r.get("headline") or "")[:80]
+            if key and key not in seen:
+                seen.add(key)
+                out.append(r)
+    return out
+
+
+def _umbrella_clause(*, only_umbrellas: bool, umbrellas_enabled: bool) -> str:
+    """SQL WHERE-fragment deciding whether umbrella rows enter the trial.
+
+    Priority: --only-umbrellas (explicit, ad-hoc — e.g. the GB hand-check
+    input run) beats the env gate. Otherwise ATLAS_COURT_UMBRELLAS decides:
+    off (default) = umbrellas excluded, the story lane runs exactly as before
+    Lever B1; on = both lanes (story + umbrella family) are tried."""
+    if only_umbrellas:
+        return "AND is_umbrella = true "
+    if umbrellas_enabled:
+        return ""
+    return "AND is_umbrella = false "
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser(description="Label Court: try each active topic's label vs its receipts.")
     ap.add_argument("--limit", type=int, default=0, help="only the top-N served topics (0=all active)")
@@ -245,6 +351,10 @@ async def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="judge + print, no write (default if --write absent)")
     ap.add_argument("--only-unchecked", action="store_true",
                     help="incremental: only topics with label_status IS NULL")
+    ap.add_argument("--only-umbrellas", action="store_true",
+                    help="scope the trial to umbrella (family) rows only, regardless of "
+                         "ATLAS_COURT_UMBRELLAS — for ad-hoc manual passes (e.g. the GB "
+                         "hand-check input run); never touches the cron gate")
     args = ap.parse_args()
 
     db = os.environ.get("DATABASE_URL")
@@ -254,15 +364,21 @@ async def main() -> None:
     if not key:
         print("DEEPSEEK_API_KEY required", file=sys.stderr); sys.exit(2)
     apply_proposals = os.environ.get("ATLAS_LABEL_COURT_APPLY", "off").lower() == "on"
+    # Lever B1 kill-switch (2026-07-29, default OFF): while off, umbrellas are
+    # excluded from the trial entirely — the story lane keeps riding the cron
+    # unaffected. Flip on only after gate GB (>=8/10 blind hand-check
+    # agreement) passes. --only-umbrellas bypasses this for a scoped manual
+    # run without touching the switch itself.
+    umbrellas_enabled = os.environ.get("ATLAS_COURT_UMBRELLAS", "off").lower() == "on"
 
     conn = await asyncpg.connect(db)
     checked_at = datetime.now(timezone.utc)
     try:
         limit = args.limit or 1_000_000
         unchecked = "AND label_status IS NULL " if args.only_unchecked else ""
-        # Umbrellas INCLUDED (2026-07-18): the label-fold made the served
-        # front page umbrella-first — a court that skips them never judges
-        # the labels users actually see. Their receipts come from children.
+        umbrella_clause = _umbrella_clause(only_umbrellas=args.only_umbrellas,
+                                           umbrellas_enabled=umbrellas_enabled)
+        print(f"umbrella lane: {'ON (only-umbrellas)' if args.only_umbrellas else ('ON' if umbrellas_enabled else 'off')}")
         #
         # Ordering (2026-07-20, council R2 N2): the INCREMENTAL pass judges
         # NEWEST-PROMOTED first (id DESC). The 30-min cadence exists so a topic
@@ -275,6 +391,7 @@ async def main() -> None:
             "SELECT id, label, is_umbrella FROM dynamic_topics "
             "WHERE state='active' AND label IS NOT NULL "
             f"{unchecked}"
+            f"{umbrella_clause}"
             f"ORDER BY {order} LIMIT $1", limit)
         if not rows:
             print("no active topics to try"); return
@@ -286,27 +403,35 @@ async def main() -> None:
             dyn_id = r["id"]
             topic_id = f"dynamic-topic-{dyn_id}"
             label = r["label"]
-            if r["is_umbrella"]:
-                receipts = await _umbrella_receipts_for(conn, dyn_id, args.receipts)
+            is_umbrella = bool(r["is_umbrella"])
+            family_children: list[dict] | None = None
+            if is_umbrella:
+                family_children = await _umbrella_family_for(conn, dyn_id)
+                receipts = _flatten_family_receipts(family_children)
             else:
                 receipts = await _receipts_for(conn, topic_id, dyn_id, args.receipts)
             if len(receipts) < 2:
                 print(f"  dt-{dyn_id}: SKIP (only {len(receipts)} receipts) — {label[:50]}")
                 continue
             verdict, reason, usage = await _ds_judge(label, receipts, key,
-                                                     family=bool(r["is_umbrella"]))
+                                                     family=is_umbrella,
+                                                     family_children=family_children)
             tok_in += usage["input_tokens"]; tok_out += usage["output_tokens"]
             dist[verdict] += 1
             proposed = build_neutral_label(receipts) if verdict == "failed" else None
             mark = {"entailed": "✓", "partial": "~", "failed": "✗"}[verdict]
+            tag = " [umbrella]" if is_umbrella else ""
             extra = f"  ->PROPOSE: {proposed}" if proposed else ""
-            print(f"  {mark} dt-{dyn_id} [{verdict}] {label[:46]}{extra}")
+            print(f"  {mark} dt-{dyn_id}{tag} [{verdict}] {label[:46]}{extra}")
             if verdict == "failed":
                 failures.append({
                     "topic_id": topic_id, "served_label": label,
                     "verdict": verdict, "reason": reason, "proposed": proposed,
                     "receipts": [x["headline"] for x in receipts],
                     "checked_at": checked_at.isoformat(),
+                    "lane": "umbrella" if is_umbrella else "story",
+                    **({"family": [{"child_id": c["child_id"], "child_label": c["child_label"]}
+                                   for c in family_children]} if family_children else {}),
                 })
             if args.write:
                 new_label = label
