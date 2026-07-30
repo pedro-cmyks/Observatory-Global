@@ -486,7 +486,6 @@ export function Landing() {
                                 { label: 'Google Trends', href: 'https://trends.google.com' },
                                 { label: 'Wikipedia', href: 'https://wikipedia.org' },
                                 { label: 'ReliefWeb', href: 'https://reliefweb.int' },
-                                { label: 'GitHub', href: 'https://github.com/pedro-cmyks/Observatory-Global' },
                                 { label: 'Support', href: 'https://ko-fi.com/observatoryglobalatlas' },
                             ].map(({ label, href }) => (
                                 <a key={label} href={href} target="_blank" rel="noopener noreferrer">{label}</a>

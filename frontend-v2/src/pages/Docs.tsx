@@ -127,7 +127,6 @@ export function Docs() {
                             onKeyDown={e => { if (e.key === 'Enter') navigate('/brief') }}>Brief</a>
                         <a onClick={() => navigate('/app')} role="link" tabIndex={0}
                             onKeyDown={e => { if (e.key === 'Enter') navigate('/app') }}>Console</a>
-                        <a href="https://github.com/pedro-cmyks/Observatory-Global" target="_blank" rel="noopener noreferrer">GitHub</a>
                         <ReaderThemeToggle theme={theme} onToggle={toggle} />
                     </div>
                 </header>
