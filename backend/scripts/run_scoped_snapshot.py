@@ -68,6 +68,7 @@ import numpy as np
 
 from backend.scripts.cluster_subproc import ClusterTimeout, run_cluster_in_subprocess
 from backend.scripts.label_hygiene import ledger_alert, normalize_persisted_label
+from backend.scripts.script_floor import headline_length_predicate
 from backend.scripts.emergent_poc import (
     _apply_gate, _clean_and_dedupe, _cluster, _cluster_stats, _label_all, _load_gate,
     pca_reduce, whiten_all_but_top,
@@ -105,12 +106,22 @@ _ID_OFFSET = 100000  # per-country cluster_id block (>> max clusters/country)
 # consecutive nightly passes via the all-or-nothing guard, 2026-07-13→16).
 _COUNTRY_ATTEMPTS = 3
 
-_COUNTRIES = """
+def _countries_sql() -> str:
+    """Country-eligibility count — `HAVING COUNT(*) >= $3` (--min-embedded).
+
+    The headline-length predicate is script-aware behind ATLAS_CJK_LEN_FLOOR
+    (2026-07-30, threading-floor diagnosis §1/§6.3: a flat `>= 20` chars
+    excludes a disproportionate share of genuine CJK headlines — measured
+    +49/+176/+214/+77 JP/KR/TW/CN signals per 168h re-admitted with the gate
+    on, ~0 change for Latin-script countries). Default OFF = byte-identical
+    `length(s.headline) >= 20`, same as before this existed.
+    """
+    return f"""
     SELECT s.country_code, COUNT(*) AS n
     FROM signal_embeddings e JOIN signals_v2 s ON s.id = e.signal_id
     WHERE s.country_code IS NOT NULL AND s.country_code <> 'XX'
       AND s.timestamp > $1::timestamptz AND s.timestamp <= $2::timestamptz
-      AND s.headline IS NOT NULL AND length(s.headline) >= 20
+      AND s.headline IS NOT NULL AND {headline_length_predicate('s.headline')}
     GROUP BY s.country_code HAVING COUNT(*) >= $3
     ORDER BY n DESC
 """
@@ -127,13 +138,16 @@ _COUNTRIES = """
 #      matter the contention. Same corpus: (timestamp DESC, id DESC) is the
 #      total order over the SAME rows the old timestamp-only pull returned; the
 #      id tiebreak only makes ties deterministic (previously undefined).
-_FETCH_PAGE = """
+def _fetch_page_sql() -> str:
+    """Keyset-paginated per-country pull — see `_countries_sql` for the
+    ATLAS_CJK_LEN_FLOOR note; same predicate, same default-off behavior."""
+    return f"""
     SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
            se.vec::real[] AS emb
     FROM signal_embeddings se JOIN signals_v2 s ON s.id = se.signal_id
     WHERE s.country_code = $1
       AND s.timestamp > $2::timestamptz
-      AND s.headline IS NOT NULL AND length(s.headline) >= 20
+      AND s.headline IS NOT NULL AND {headline_length_predicate('s.headline')}
       AND (s.timestamp, s.id) < ($4::timestamptz, $5::bigint)
     ORDER BY s.timestamp DESC, s.id DESC
     LIMIT $3
@@ -171,7 +185,7 @@ async def _fetch_country_embeddings(conn, cc, hours, cap, page_rows,
         limit = page_rows if remaining is None else min(page_rows, remaining)
         if limit <= 0:
             break
-        page = await conn.fetch(_FETCH_PAGE, cc, cutoff, limit, last_ts, last_id)
+        page = await conn.fetch(_fetch_page_sql(), cc, cutoff, limit, last_ts, last_id)
         if not page:
             break
         out.extend(page)
@@ -546,7 +560,7 @@ async def main() -> None:
             # the old `> NOW() - hours` (no upper-bound) semantics.
             anchor = as_of or datetime.now(timezone.utc)
             upper = as_of or datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
-            rows = await conn.fetch(_COUNTRIES,
+            rows = await conn.fetch(_countries_sql(),
                                     anchor - timedelta(hours=args.hours),
                                     upper, args.min_embedded)
             ccs = [r["country_code"] for r in rows]
