@@ -21,7 +21,11 @@ any venv):
     the run records snapshot_at / done countries / next cluster-id base, so a
     crashed run RESUMES the same snapshot instead of losing the night;
   - rotation file: deferred/timed-out countries get next-night priority so
-    first-fit deferral never chronically starves the same countries.
+    first-fit deferral never chronically starves the same countries;
+  - ``split_tail_first`` / ``tail_reserve_seconds`` (P3, 2026-07-30): rotation
+    alone still spends the weekday budget on the head and leaves the thin
+    countries to weekend mode — the tail lane runs FIRST on a bounded slice so
+    a small country is clustered EVERY pass.
 
 Everything is env-reversible at the call site (run_scoped_snapshot.py):
 budget 0 = off, state dir unset = no checkpointing.
@@ -186,6 +190,86 @@ def order_countries(ccs: list[str], priority: list[str]) -> list[str]:
     pri = [c for c in priority if c in eligible]
     pri_set = set(pri)
     return pri + [c for c in ccs if c not in pri_set]
+
+
+# --------------------------------------------------------- tail reserve (P3)
+#
+# The rotation above is FAIR but not SUFFICIENT (threading-floor diagnosis,
+# 2026-07-29 §P3): the 150-min weekday budget defers 130-154 countries a night
+# and rotation only decides WHICH big countries run — a thin country is
+# clustered on weekend-mode nights only (07-28 reached 16 countries, 07-29 32,
+# neither reached the tail), so `persist_min=2` is unreachable for BO/ML by
+# construction. The tail does not starve because it is expensive; it starves
+# because the clock runs out on the head first.
+#
+# TAIL = countries whose cost is OVERHEAD, not clustering. The boundary is
+# ``RateEstimator._MIN_N`` (2000): below it the rate estimator refuses to even
+# learn from a country because it is "overhead-dominated" — the same class
+# whose deferral buys the run nothing. Measured on the 07-27 full pass (152
+# countries, Σn² = 12 470 M):
+#
+#     n < 1 000 →  69 countries, Σn² =  16 M (0.13 % of the pass), 229 clusters
+#     n < 2 000 →  98 countries, Σn² =  86 M (0.69 % of the pass), 449 clusters
+#     n < 4 000 → 116 countries, Σn² = 233 M (1.87 % of the pass), 667 clusters
+#
+# Every diagnosis witness sits 3-15× under the default (BO 745, ML 571, BF 373,
+# MM 162, NE 133). Running the whole tail first costs the head ~0.7 % of its
+# clustering budget — the real cost is per-country fetch + labeling overhead,
+# which is why the lane is CAPPED by a reserve slice rather than trusted to be
+# free, and ordered CHEAPEST-FIRST so the thin end always runs.
+TAIL_MAX_N_DEFAULT = 2_000
+
+
+def tail_reserve_seconds(run_budget_s: float, fraction: float) -> float:
+    """Wall-seconds of the run budget the TAIL lane may spend before the head
+    starts (a CEILING, not an allocation — the lane hands the rest back).
+
+    0 = uncapped lane: the feature is off (fraction ≤ 0) or there is no run
+    budget to slice. >1 clamps to the whole budget."""
+    if fraction <= 0 or run_budget_s <= 0:
+        return 0.0
+    return float(run_budget_s) * min(float(fraction), 1.0)
+
+
+def split_tail_first(ccs: list[str], sizes: dict[str, int], *,
+                     tail_max_n: int) -> tuple[list[str], int]:
+    """Reorder one pass's countries into TAIL-FIRST lanes.
+
+    Returns ``(ordered, tail_cut)`` — ``ordered[:tail_cut]`` is the tail lane,
+    ``ordered[tail_cut:]`` the head lane.
+
+      - tail = ``sizes[cc] < tail_max_n``; an UNKNOWN size is head (never put
+        an unmeasured country in the cheap lane);
+      - the tail is sorted ASCENDING by n so the thinnest countries — the ones
+        that cannot recover, and the ones the reserve is for — run first even
+        if the slice runs out mid-lane;
+      - the head keeps its incoming order EXACTLY (n-DESC, rotation priority
+        first). It starts later; nothing else about it moves. US/TR must keep
+        clustering: gate TF-4 pre-registers a ≤10 % no-regression bar on them,
+        so a global cheapest-first sort — which would defer the US — is
+        forbidden however tempting its symmetry.
+      - ``list.sort`` is stable, so equal-n countries keep the rotation order
+        they arrived in: the rotation file remains the tie-break inside each
+        lane rather than being overridden by it.
+
+    HONEST RESIDUAL: cheapest-first makes the thin end DETERMINISTIC (the point
+    of P3) at the cost of making rotation non-binding inside the lane — if the
+    reserve slice is chronically too small, the countries just under
+    ``tail_max_n`` starve in the same way the head used to starve the tail.
+    They are the richest countries in the lane, so the levers are a bigger
+    slice or a lower ``tail_max_n``; the ``TAIL LANE`` ledger line reports the
+    miss count every pass so the condition cannot go unnoticed.
+
+    ``tail_max_n <= 0`` returns the input order with cut 0 (feature off)."""
+    if tail_max_n <= 0:
+        return list(ccs), 0
+    tail: list[str] = []
+    head: list[str] = []
+    for cc in ccs:
+        n = sizes.get(cc)
+        (tail if n is not None and n < tail_max_n else head).append(cc)
+    tail.sort(key=lambda c: sizes[c])
+    return tail + head, len(tail)
 
 
 # ------------------------------------------------------------ checkpoint I/O

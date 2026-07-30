@@ -73,6 +73,7 @@ from backend.scripts.emergent_poc import (
     pca_reduce, whiten_all_but_top,
 )
 from backend.scripts.snapshot_budget import (
+    TAIL_MAX_N_DEFAULT,
     BudgetContext,
     Checkpoint,
     CountryDeferred,
@@ -86,6 +87,8 @@ from backend.scripts.snapshot_budget import (
     save_checkpoint,
     save_rotation,
     should_resume,
+    split_tail_first,
+    tail_reserve_seconds,
 )
 from backend.scripts.snapshot_emergent_topics import (
     SAMPLE_TOP_K,
@@ -438,6 +441,25 @@ async def main() -> None:
                     default=_env_int("ATLAS_SNAPSHOT_CAP_FLOOR_N", 4000),
                     help="never cap the clustering input below this — defer the "
                          "country instead of clustering a garbage sliver")
+    # P3 tail reserve (2026-07-30). Default 0 = OFF: the pass keeps the exact
+    # n-DESC/rotation order it has today.
+    ap.add_argument("--tail-reserve", type=float,
+                    default=_env_float("ATLAS_SNAPSHOT_TAIL_RESERVE", 0.0),
+                    help="fraction of the run budget reserved for the TAIL lane "
+                         "(countries under --tail-max-n), which runs FIRST and "
+                         "cheapest-first so a thin country is clustered every "
+                         "pass instead of only in weekend mode (env "
+                         "ATLAS_SNAPSHOT_TAIL_RESERVE; 0 = off, byte-identical; "
+                         "measured-appropriate value ~0.25 — the whole sub-2k "
+                         "population is 0.7 pct of the pass's sum-n2, its real "
+                         "cost is fetch+label overhead)")
+    ap.add_argument("--tail-max-n", type=int,
+                    default=_env_int("ATLAS_SNAPSHOT_TAIL_MAX_N",
+                                     TAIL_MAX_N_DEFAULT),
+                    help="tail-lane boundary in eligible signals (env "
+                         "ATLAS_SNAPSHOT_TAIL_MAX_N; inert unless --tail-reserve "
+                         "> 0). Default = the rate estimator's overhead-dominated "
+                         "floor; see snapshot_budget for the measured derivation")
     ap.add_argument("--state-dir",
                     default=os.environ.get("ATLAS_SNAPSHOT_STATE_DIR", ""),
                     help="dir for checkpoint/rotation files (unset = stateless)")
@@ -515,6 +537,7 @@ async def main() -> None:
     conn = await asyncpg.connect(db)
     await conn.execute("SET statement_timeout = '600s'")
     try:
+        sizes: dict[str, int] = {}   # cc -> eligible signals (tail-lane input)
         if args.countries:
             ccs = [c.strip().upper() for c in args.countries.split(",") if c.strip()]
         else:
@@ -527,6 +550,7 @@ async def main() -> None:
                                     anchor - timedelta(hours=args.hours),
                                     upper, args.min_embedded)
             ccs = [r["country_code"] for r in rows]
+            sizes = {r["country_code"]: int(r["n"]) for r in rows}
             if args.limit_countries:
                 ccs = ccs[: args.limit_countries]
             if rotation_path is not None:
@@ -543,6 +567,29 @@ async def main() -> None:
             print(f"RESUMING snapshot {snapshot_at.isoformat()} — {len(skip)} "
                   f"countries already banked, {len(ccs)} to go (run started "
                   f"{ck.started_at})", file=sys.stderr, flush=True)
+        # P3 TAIL RESERVE — applied LAST, over the final country list: the
+        # rotation ordering above (and the resume skip) decide WHICH countries
+        # this pass owns and in what order; the tail split only decides WHEN
+        # each lane runs. Rotation therefore survives as the tie-break inside
+        # each lane instead of being overwritten by it, and a resumed pass
+        # never re-runs a banked country just because it is thin.
+        # Needs measured sizes ⇒ full passes only (a --countries test slice
+        # keeps its literal order, like checkpointing and rotation).
+        tail_cut = 0
+        tail_set: set[str] = set()
+        tail_reserve_s = 0.0
+        if args.tail_reserve > 0 and sizes:
+            ccs, tail_cut = split_tail_first(ccs, sizes,
+                                             tail_max_n=args.tail_max_n)
+            tail_set = set(ccs[:tail_cut])
+            tail_reserve_s = tail_reserve_seconds(run_budget_s,
+                                                  args.tail_reserve)
+            print(f"tail reserve: {tail_cut}/{len(ccs)} countries under "
+                  f"n={args.tail_max_n} run FIRST (cheapest-first) on a "
+                  f"{tail_reserve_s / 60:.0f}min slice of the "
+                  f"{run_budget_s / 60:.0f}min run budget"
+                  f"{' — UNCAPPED (no run budget)' if tail_reserve_s <= 0 else ''}",
+                  file=sys.stderr)
         # NB: with an adopted (resumed) snapshot_at, `< $1` still lands on the
         # true prior snapshot — this run's own committed rows are excluded.
         prior = await _prior_snapshot_clusters(conn, snapshot_at)
@@ -572,9 +619,26 @@ async def main() -> None:
         timegap_ccs: list[str] = []
         processed = 0  # countries that finished (clusters or honest no-clusters)
         dump_countries: list[dict] = []
+        tail_slice_spent = False
         base = ck.next_base
         for pos, cc in enumerate(ccs):
             done += 1
+            if (pos < tail_cut and tail_reserve_s > 0
+                    and (time.monotonic() - t_mono) >= tail_reserve_s):
+                # The tail lane's slice is spent — hand the rest of the run to
+                # the HEAD rather than letting a cheap lane eat a budget the
+                # big countries need (TF-4 forbids a US/TR regression). Deferred
+                # in ONE bulk ledger line, exactly like the run-budget stop.
+                if not tail_slice_spent:
+                    tail_slice_spent = True
+                    rest = ccs[pos:tail_cut]
+                    deferred_ccs.extend(rest)
+                    print(f"  TAIL SLICE {tail_reserve_s / 60:.0f}min spent — "
+                          f"deferring {len(rest)} tail countries "
+                          f"({', '.join(rest[:12])}"
+                          f"{', …' if len(rest) > 12 else ''}); head lane starts",
+                          file=sys.stderr, flush=True)
+                continue
             remaining = None
             if run_budget_s > 0:
                 remaining = run_budget_s - (time.monotonic() - t_mono)
@@ -817,6 +881,17 @@ async def main() -> None:
                   f"{' (' + dshow + ')' if deferred_ccs else ''} — committed what "
                   f"completed; these age one cycle, resurrect on the next pass, "
                   f"and take rotation priority", file=sys.stderr, flush=True)
+        if tail_cut:
+            # The P3 receipt the verification pass reads: how much of the tail
+            # actually ran, and how much of the deferral landed on the head
+            # (where it belongs — an expensive country re-clusters in 1-2
+            # nights, a thin one used to wait for the weekend).
+            missed = [c for c in deferred_ccs + timegap_ccs + failed_ccs
+                      if c in tail_set]
+            print(f"  TAIL LANE: {tail_cut - len(missed)}/{tail_cut} tail "
+                  f"countries reached · {len(missed)} missed · "
+                  f"{len(deferred_ccs) - sum(1 for c in deferred_ccs if c in tail_set)}"
+                  f" head deferred", file=sys.stderr, flush=True)
         if processed == 0 and (deferred_ccs or timegap_ccs):
             # An all-deferred pass is BENIGN when a fresh banked snapshot
             # already exists (this run resumed one, or the previous cycle just

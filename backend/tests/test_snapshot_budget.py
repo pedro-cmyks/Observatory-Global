@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from scripts.snapshot_budget import (
+    TAIL_MAX_N_DEFAULT,
     Checkpoint,
     RateEstimator,
     empty_pass_is_benign,
@@ -34,6 +35,8 @@ from scripts.snapshot_budget import (
     save_checkpoint,
     save_rotation,
     should_resume,
+    split_tail_first,
+    tail_reserve_seconds,
 )
 
 NOW = datetime(2026, 7, 19, 2, 45, tzinfo=timezone.utc)
@@ -150,6 +153,70 @@ def test_order_countries_prepends_rotation_priority_in_list_order():
     out = order_countries(ccs, priority=["IT", "UY", "ZZ"])  # ZZ not eligible
     assert out == ["IT", "UY", "US", "IN", "GB", "RU"]
     assert order_countries(ccs, priority=[]) == ccs
+
+
+# ------------------------------------------------------- tail reserve (P3)
+
+# n-DESC as the countries query serves it; BO/ML/NE are the diagnosis witnesses.
+_SIZES = {"US": 40249, "IN": 20355, "GB": 9000, "RU": 4973,
+          "CO": 2753, "BO": 745, "ML": 571, "NE": 133}
+_NDESC = ["US", "IN", "GB", "RU", "CO", "BO", "ML", "NE"]
+
+
+def test_tail_reserve_seconds_slices_the_run_budget():
+    assert tail_reserve_seconds(9000.0, 0.25) == 2250.0
+    # a fraction over 1 buys the whole budget, never more
+    assert tail_reserve_seconds(9000.0, 4.0) == 9000.0
+
+
+def test_tail_reserve_seconds_is_zero_when_off_or_unbudgeted():
+    assert tail_reserve_seconds(9000.0, 0.0) == 0.0     # feature off
+    assert tail_reserve_seconds(9000.0, -1.0) == 0.0
+    assert tail_reserve_seconds(0.0, 0.25) == 0.0       # no run budget to slice
+
+
+def test_split_tail_first_runs_the_thin_countries_first_cheapest_first():
+    out, cut = split_tail_first(_NDESC, _SIZES, tail_max_n=TAIL_MAX_N_DEFAULT)
+    assert cut == 3
+    assert out[:cut] == ["NE", "ML", "BO"]          # ascending n, thinnest first
+    assert out[cut:] == ["US", "IN", "GB", "RU", "CO"]  # head order UNCHANGED
+
+
+def test_split_tail_first_leaves_the_head_order_exactly_as_given():
+    # rotation priority put IT/UY in front; the head must keep that order
+    rotated = order_countries(_NDESC + ["IT"], priority=["IT", "GB"])
+    sizes = {**_SIZES, "IT": 15000}
+    out, cut = split_tail_first(rotated, sizes, tail_max_n=TAIL_MAX_N_DEFAULT)
+    head_in = [c for c in rotated if sizes[c] >= TAIL_MAX_N_DEFAULT]
+    assert out[cut:] == head_in == ["IT", "GB", "US", "IN", "RU", "CO"]
+
+
+def test_split_tail_first_keeps_rotation_order_as_the_tie_break():
+    # equal-n countries must not be reshuffled: list.sort is stable, so the
+    # incoming (rotation) order decides between them.
+    sizes = {"AA": 500, "BB": 500, "CC": 500}
+    assert split_tail_first(["CC", "AA", "BB"], sizes, tail_max_n=2000) == (
+        ["CC", "AA", "BB"], 3)
+
+
+def test_split_tail_first_sends_unknown_sizes_to_the_head():
+    # never put an unmeasured country in the cheap lane
+    out, cut = split_tail_first(["ZZ", "BO"], {"BO": 745}, tail_max_n=2000)
+    assert (out, cut) == (["BO", "ZZ"], 1)
+
+
+def test_split_tail_first_off_is_the_identity():
+    for thr in (0, -1):
+        out, cut = split_tail_first(_NDESC, _SIZES, tail_max_n=thr)
+        assert out == _NDESC and cut == 0
+    # a threshold under every country is a no-op with an empty tail lane
+    assert split_tail_first(_NDESC, _SIZES, tail_max_n=10) == (_NDESC, 0)
+
+
+def test_split_tail_first_never_drops_or_duplicates_a_country():
+    out, cut = split_tail_first(_NDESC, _SIZES, tail_max_n=TAIL_MAX_N_DEFAULT)
+    assert sorted(out) == sorted(_NDESC) and len(out) == len(set(out))
+    assert 0 <= cut <= len(out)
 
 
 # ---------------------------------------------------------- checkpoint/resume
