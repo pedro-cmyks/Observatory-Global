@@ -331,6 +331,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         avg_confidence: number | null
         confidence_measured: boolean
         label_proposed: string | null
+        // 2026-07-30 (gb5-blind-check "cron-safety item 2"): court-attempted-
+        // but-ungrounded (umbrella lane) — see labelReviewChip.tsx.
+        court_withheld: boolean
     } | null>(null)
     // Per-thread forum discussion (L2 C3): semantic neighbors of the thread
     // centroid from the social lane. Discussion only — never gated evidence.
@@ -445,6 +448,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         avg_confidence: typeof t.avg_confidence === 'number' ? t.avg_confidence : null,
                         confidence_measured: t.confidence_measured === true,
                         label_proposed: t.label_proposed ?? null,
+                        court_withheld: t.court_withheld === true,
                     } : null)
                 }
             })
@@ -675,6 +679,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     avgConfidence={threadLabelTrust.avg_confidence}
                                     confidenceMeasured={threadLabelTrust.confidence_measured}
                                     labelProposed={threadLabelTrust.label_proposed}
+                                    courtWithheld={threadLabelTrust.court_withheld}
                                 />
                             )}
                             <TemporalSignatureChip

@@ -130,6 +130,11 @@ interface TopThread {
     // neutral receipt-derived label. NULL until the nightly court runs.
     label_status?: 'entailed' | 'partial' | 'failed' | null
     label_proposed?: string | null
+    // 2026-07-30 (gb5-blind-check "cron-safety item 2"): the court tried this
+    // row (umbrella lane) and could not ground a verdict — a live TopThread
+    // carries this from fetch_threads; a sealed DailyPublicationThread never
+    // does (see LabelTrustRow below).
+    court_withheld?: boolean
     edition_role?: string
 }
 
@@ -246,6 +251,7 @@ interface LabelTrustRow {
     avg_confidence?: number | null
     confidence_measured?: boolean
     label_proposed?: string | null
+    court_withheld?: boolean
 }
 function labelReviewChipProps(t: LabelTrustRow) {
     return {
@@ -253,6 +259,7 @@ function labelReviewChipProps(t: LabelTrustRow) {
         avgConfidence: typeof t.avg_confidence === 'number' ? t.avg_confidence : null,
         confidenceMeasured: t.confidence_measured === true,
         labelProposed: t.label_proposed ?? null,
+        courtWithheld: t.court_withheld === true,
     }
 }
 

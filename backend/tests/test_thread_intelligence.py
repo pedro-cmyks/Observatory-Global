@@ -11,6 +11,7 @@ from app.services.thread_intelligence import (
     THREAD_EVIDENCE_SQL,
     THREADS_SQL,
     _attach_atlas_evidence,
+    _is_court_withheld,
     _serialize_evidence,
     assemble_dynamic_thread,
     assemble_thread,
@@ -312,6 +313,86 @@ def test_assemble_dynamic_thread_does_not_invent_default_confidence():
     assert thread["avg_confidence"] is None
     assert thread["confidence_measured"] is False
     assert thread["confidence_source"] is None
+
+
+# 2026-07-30 (docs/research/label-court/2026-07-29-gb5-blind-check.md,
+# cron-safety item 2): a withheld umbrella verdict must reach the screen as
+# `court_withheld` — it was DB-durable since 520bbf5d but never serialized,
+# so 57/68 of a measured day's withholds rendered no chip at all.
+def test_is_court_withheld_true_for_the_exact_writer_shape():
+    """Matches label_court.py's _WITHHOLD_MARK_SQL: label_status stays NULL,
+    label_checked_at is stamped, label_court_model carries the `#withheld`
+    suffix — all in the SAME statement."""
+    assert _is_court_withheld(
+        None, "label-court-v0/deepseek-chat#withheld", "2026-07-30T08:00:00Z"
+    ) is True
+
+
+def test_is_court_withheld_false_when_never_reached():
+    """Ordinary unchecked row — the incremental court hasn't reached it yet.
+    Must NOT be conflated with a withheld verdict (that would chip every
+    unstamped row on every surface, the exact over-triggering the chip's own
+    doc comment warns against)."""
+    assert _is_court_withheld(None, None, None) is False
+
+
+def test_is_court_withheld_false_for_relabel_reset():
+    """relabel_court_failed.py resets label_status AND label_checked_at to
+    NULL on a rewritten label, leaving label_court_model stale (non-suffixed)
+    — the gb5 'relabel-reset' class, distinct from a genuine withhold."""
+    assert _is_court_withheld(None, "label-court-v0/deepseek-chat", None) is False
+
+
+def test_is_court_withheld_false_when_a_verdict_was_graded():
+    """A graded verdict (entailed/partial/failed) always overwrites
+    label_court_model back to the plain (non-suffixed) model in the same
+    write — label_status non-NULL must short-circuit to False regardless of
+    what label_court_model happens to contain."""
+    assert _is_court_withheld(
+        "failed", "label-court-v0/deepseek-chat#withheld", "2026-07-30T08:00:00Z"
+    ) is False
+
+
+def test_assemble_dynamic_thread_serializes_court_withheld_true():
+    thread = assemble_dynamic_thread(
+        {
+            "id": 8241,
+            "identity_key": "dyn-8241",
+            "label": "Iran Tensions Escalate After Drone Attacks and Threats",
+            "agg_n_signals": 1091,
+            "changed_10h": 4,
+            "noise_rate": 0.02,
+            "mean_cohesion": 0.9,
+            "first_seen": None,
+            "top_country_codes": ["IR"],
+            "label_status": None,
+            "label_court_model": "label-court-v0/deepseek-chat#withheld",
+            "label_checked_at": "2026-07-30T12:00:00Z",
+        },
+        [],
+    )
+    assert thread["court_withheld"] is True
+
+
+def test_assemble_dynamic_thread_serializes_court_withheld_false_by_default():
+    """A row whose SELECT never carried the new columns (dict lacks the
+    keys entirely) must default to False, not raise or fabricate True —
+    keeps every pre-existing caller's behavior unchanged."""
+    thread = assemble_dynamic_thread(
+        {
+            "id": 17,
+            "identity_key": "dyn-17",
+            "label": "Infrastructure and Public Services",
+            "agg_n_signals": 350,
+            "changed_10h": 25,
+            "noise_rate": 0.1938,
+            "mean_cohesion": 0.94,
+            "first_seen": None,
+            "top_country_codes": ["ID", "BR", "CA"],
+        },
+        [],
+    )
+    assert thread["court_withheld"] is False
 
 
 def test_trend_label_classifies_volume_delta():

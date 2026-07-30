@@ -1153,6 +1153,17 @@ SELECT
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
     dt.label_status,        -- Label Court verdict (entailed/partial/failed, NULL=unchecked)
     dt.label_proposed,      -- receipt-derived neutral label on 'failed' (never auto-served)
+    -- 2026-07-30 (gb5-blind-check, "cron-safety item 2" / GB4 blocker 6): a
+    -- withheld umbrella verdict (label_court.py's quote-gate/absence/rule-4
+    -- withhold, umbrella lane only) stamps label_checked_at + a `#withheld`-
+    -- suffixed label_court_model WITHOUT touching label_status (see
+    -- _WITHHOLD_MARK_SQL) — so a withheld row is otherwise indistinguishable
+    -- from "never reached" unless these two columns are carried through.
+    -- Without them, 57/68 of a measured day's withholds (avg_confidence
+    -- 0.968-0.991, far above the confidence-floor fallback) rendered NO chip
+    -- at all — a suppressed `failed` verdict displaying as trusted.
+    dt.label_court_model,
+    dt.label_checked_at,
     dt.temporal_signature,  -- mig 085: new/continuous/recurrent/resurrected (NULL=unclassified)
     dt.signature_meta,      -- {eras, gap_weeks, first_seen_week, returned_week, ...}
     COALESCE((
@@ -1304,6 +1315,10 @@ SELECT
     dt.crisis_relevant,     -- R3 lens flag: is this crisis-relevant? (analyst filter)
     dt.label_status,        -- Label Court verdict (entailed/partial/failed, NULL=unchecked)
     dt.label_proposed,      -- receipt-derived neutral label on 'failed' (never auto-served)
+    -- see _DYNAMIC_TOPICS_SELECT's identical pair above (2026-07-30 withheld-
+    -- verdict serializer fix) for why these two ride along with label_status.
+    dt.label_court_model,
+    dt.label_checked_at,
     dt.temporal_signature,  -- mig 085: new/continuous/recurrent/resurrected (NULL=unclassified)
     dt.signature_meta,      -- {eras, gap_weeks, first_seen_week, returned_week, ...}
     COALESCE((
@@ -1473,6 +1488,37 @@ def clean_thread_label(
     return derived or fallback
 
 
+# The suffix `label_court.py`'s _WITHHOLD_MARK_SQL stamps onto
+# label_court_model (never imported directly — scripts/ sits outside the
+# app/ package boundary that ships to Fly; kept as a literal mirror,
+# read alongside that file on change).
+_WITHHELD_COURT_MODEL_SUFFIX = "#withheld"
+
+
+def _is_court_withheld(label_status: Any, label_court_model: Any, label_checked_at: Any) -> bool:
+    """True iff the Label Court tried this row and could not ground a verdict
+    (label_court.py's quote-gate / absence-check / rule-4-majority withhold,
+    umbrella lane only) — as opposed to "never reached" (label_checked_at
+    NULL) or "relabel-reset" (relabel_court_failed.py nulls label_checked_at
+    too, per the 2026-07-30 gb5-blind-check finding).
+
+    Matches `_WITHHOLD_MARK_SQL` exactly: that statement is the ONLY writer
+    that sets `label_checked_at` while leaving `label_status` NULL, and it
+    always pairs that with a `label_court_model` ending in `#withheld` in the
+    SAME statement — so `label_status IS NULL AND label_court_model LIKE
+    '%#withheld'` alone already reconstructs the writer's invariant. The
+    `label_checked_at IS NOT NULL` check is redundant given that invariant
+    but kept as a belt-and-suspenders match to the literal predicate name
+    ("attempted, ungrounded") rather than trusting the suffix alone.
+    """
+    if label_status is not None:
+        return False
+    if label_checked_at is None:
+        return False
+    model = str(label_court_model) if label_court_model is not None else ""
+    return model.endswith(_WITHHELD_COURT_MODEL_SUFFIX)
+
+
 def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[str, Any]:
     topic_id = int(_record_get(topic_row, "id"))
     label_text = clean_thread_label(
@@ -1618,6 +1664,16 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         # receipt-derived alternative on 'failed' (advisory, never auto-served).
         "label_status": _record_get(topic_row, "label_status"),
         "label_proposed": _record_get(topic_row, "label_proposed"),
+        # 2026-07-30 (gb5-blind-check "cron-safety item 2" / GB4 blocker 6,
+        # display half): a withheld umbrella verdict carries no label_status
+        # at all, so without this flag it renders indistinguishable from a
+        # trusted/never-checked label — the frontend chip has been ready to
+        # consume this since 520bbf5d, this is the missing serializer half.
+        "court_withheld": _is_court_withheld(
+            _record_get(topic_row, "label_status"),
+            _record_get(topic_row, "label_court_model"),
+            _record_get(topic_row, "label_checked_at"),
+        ),
         # Temporal signature (mig 085, additive): how this story sits in TIME
         # vs the archive lineage — new/continuous/recurrent/resurrected, NULL
         # until the nightly classifier runs (or below the census member floor:

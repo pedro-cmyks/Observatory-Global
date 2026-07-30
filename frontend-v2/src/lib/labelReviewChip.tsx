@@ -39,14 +39,26 @@ export const LABEL_REVIEW_FLOOR = LEAD_CONFIDENCE_FLOOR
 // from a trusted label (the exact dt-8070/dt-8084 finding). It ALSO stays
 // available for callers that gate via leadBlockReason (the Brief tray) and
 // pass the `reason` override directly, same as before.
-// RESIDUAL (documented, not silently assumed away): as of this fix, no
-// backend payload actually SETS `courtWithheld` yet — thread_intelligence.py
-// does not select label_checked_at/label_court_model at all, so there is no
-// served signal to distinguish "withheld" from "never reached" today. This
-// change makes the derivation READY to consume that signal once a serializer
-// change wires it through; until then this path is dead code by construction
-// (courtWithheld defaults to undefined/false for every existing caller, so
-// behavior is unchanged).
+// SERVED as of 2026-07-30 (docs/research/label-court/2026-07-29-gb5-blind-
+// check.md, "cron-safety item 2" / this was GB4 blocker 6's display half):
+// thread_intelligence.py now selects label_checked_at/label_court_model and
+// serializes `court_withheld` on every dynamic-topic row (both the global +
+// country-scoped /threads SQL, and the single-thread detail path — one
+// serializer, `assemble_dynamic_thread`, covers all three). Wired through in
+// NarrativeThreads.tsx, ThemeDetail.tsx (via the /api/v2/threads/{id} fetch
+// that feeds `threadLabelTrust`), and BriefNewspaper.tsx's live TopThread
+// rows (a sealed DailyPublicationThread still carries no trust columns at
+// all, so it degrades to no chip via the same LabelTrustRow union it always
+// used). NOT wired: CountryBrief.tsx and the country-scoped NarrativeThreads
+// path structurally can never see a withheld row (the country /threads SQL
+// filters `is_umbrella = false`, and only the umbrella lane ever withholds);
+// UniverseView.tsx's field build explicitly excludes umbrellas too
+// (`WHERE ... AND NOT is_umbrella` in universe_field.py) — wiring either
+// would be dead code, not a fix. SearchBar.tsx, StoryLensBanner.tsx, and
+// DossierView.tsx's pinned-snapshot `labelStatus` read from separate
+// serializers (search.py, story.py, the workbench pin-snapshot contract)
+// that don't select these columns — genuinely separate follow-ups, not
+// covered here.
 export type LabelReviewReason =
   | 'label-failed'
   | 'label-partial'

@@ -56,6 +56,11 @@ interface Narrative {
     confidence_measured: boolean
     label_status: string | null
     label_proposed: string | null
+    // 2026-07-30 (gb5-blind-check "cron-safety item 2"): the court tried this
+    // row and could not ground a verdict (umbrella lane only) — a stronger
+    // claim than ordinary unchecked-ness, surfaced ahead of the confidence
+    // floor. See lib/labelReviewChip.tsx's courtWithheld doc comment.
+    court_withheld?: boolean
     // Temporal signature (mig 085): new/recurrent/resurrected chip;
     // continuous/null render nothing (default is not a badge).
     temporal_signature: string | null
@@ -175,6 +180,7 @@ const normalizeThread = (thread: any): Narrative => {
     confidence_measured: thread.confidence_measured === true,
     label_status: thread.label_status ?? null,
     label_proposed: thread.label_proposed ?? null,
+    court_withheld: thread.court_withheld === true,
     temporal_signature: thread.temporal_signature ?? null,
     signature_meta: thread.signature_meta ?? null,
     crisis_relevant: crisisRelevant,
@@ -224,6 +230,9 @@ function buildSyntheticSiblingRow(s: StoryLensSibling): Narrative {
         confidence_measured: false,
         label_status: s.label_status ?? null,
         label_proposed: null,
+        // Story-lens siblings never carry this signal (a different, pure
+        // ranker payload) — honest absence, never a guess.
+        court_withheld: false,
         temporal_signature: null,
         signature_meta: null,
         crisis_relevant: false,
@@ -781,6 +790,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     avgConfidence={n.avg_confidence}
                                     confidenceMeasured={n.confidence_measured}
                                     labelProposed={n.label_proposed}
+                                    courtWithheld={n.court_withheld}
                                 />
                                 <TemporalSignatureChip
                                     signature={n.temporal_signature}
