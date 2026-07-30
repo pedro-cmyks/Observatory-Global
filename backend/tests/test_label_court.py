@@ -727,3 +727,28 @@ def test_single_child_cleanup_sql_nulls_all_four_court_columns():
     assert "is_umbrella = true" in sql
     assert "label_status IS NOT NULL" in sql  # no-op once already clean
     assert "< 2" in sql
+
+
+def test_unchecked_backoff_sql_rests_fresh_withholds():
+    # 2026-07-30 withhold-loop fix: dt-8258/8228 were re-judged every 33-min
+    # cycle (23 identical `ungrounded` trials in a day) because a withheld row
+    # keeps label_status NULL. Fresh withholds must rest before retry.
+    from scripts.label_court import _UNCHECKED_BACKOFF_SQL
+    sql = _UNCHECKED_BACKOFF_SQL
+    assert "label_status IS NULL" in sql
+    assert "NOT LIKE '%#withheld'" in sql
+    assert "interval '6 hours'" in sql
+
+
+def test_unchecked_backoff_sql_is_null_safe_for_never_checked_rows():
+    # Three-valued-logic regression guard: the clause must be an OR chain
+    # whose first branch is `label_court_model IS NULL`. The rejected form
+    # `NOT (model LIKE ... AND checked_at > ...)` evaluates to NULL for a
+    # never-checked row (both columns NULL) and WHERE drops it — which would
+    # silently exclude every NEW topic from the court forever.
+    from scripts.label_court import _UNCHECKED_BACKOFF_SQL
+    sql = _UNCHECKED_BACKOFF_SQL
+    assert "label_court_model IS NULL" in sql
+    assert "NOT (" not in sql
+    # the aged-withhold re-entry branch uses <= (rested), not > (fresh)
+    assert "label_checked_at <= now()" in sql

@@ -870,6 +870,23 @@ _WITHHOLD_MARK_SQL = (
     "WHERE id=$1 AND label_status IS NULL"
 )
 
+# Withhold backoff (2026-07-30): a withheld row keeps label_status NULL by
+# design, so bare `label_status IS NULL` re-selected it EVERY 33-min cycle —
+# dt-8258/8228 burned 23 identical `ungrounded` trials in one day. Fresh
+# withholds rest 6h before retry (~4 tries/day, bounded). Written as an OR
+# chain, NOT `NOT (model LIKE ... AND checked_at > ...)`: with a never-checked
+# row both columns are NULL, the LIKE/comparison go NULL, and NOT(NULL) is
+# NULL — which WHERE treats as false, silently excluding every new topic from
+# the court forever. Each OR branch leads with a NULL-safe test instead.
+# A label/family change still re-enters immediately: the umbrella upsert NULLs
+# label_court_model, so the first branch is true again.
+_UNCHECKED_BACKOFF_SQL = (
+    "AND label_status IS NULL "
+    "AND (label_court_model IS NULL "
+    "OR label_court_model NOT LIKE '%#withheld' "
+    "OR label_checked_at <= now() - interval '6 hours') "
+)
+
 
 async def main() -> None:
     ap = argparse.ArgumentParser(description="Label Court: try each active topic's label vs its receipts.")
@@ -903,7 +920,7 @@ async def main() -> None:
     checked_at = datetime.now(timezone.utc)
     try:
         limit = args.limit or 1_000_000
-        unchecked = "AND label_status IS NULL " if args.only_unchecked else ""
+        unchecked = _UNCHECKED_BACKOFF_SQL if args.only_unchecked else ""
         umbrella_clause = _umbrella_clause(only_umbrellas=args.only_umbrellas,
                                            umbrellas_enabled=umbrellas_enabled)
         print(f"umbrella lane: {'ON (only-umbrellas)' if args.only_umbrellas else ('ON' if umbrellas_enabled else 'off')}")
