@@ -16,6 +16,7 @@ from app.services.thread_intelligence import (
     fetch_threads,
     fetch_topic_relationship,
     stamped_counts,
+    threads_fetch_mult,
 )
 
 router = APIRouter(prefix="/api/v2", tags=["threads"])
@@ -55,11 +56,17 @@ async def get_threads(
 ) -> dict:
     country = country_code.upper() if country_code else None
     person_q = person.strip() if person else None
-    cache_key = f"threads:list:{hours}:{limit}:{country or 'global'}:{(person_q or '').lower()}"
+    # A0b (docs/research/label-court/2026-07-29-a0b-fetch-gate-measurement.md):
+    # the fetch multiplier is a process-level env knob, read once so the cache
+    # key can carry it — a flip must never serve a stale-composition payload
+    # cached under yesterday's multiplier for up to THREADS_CACHE_TTL seconds.
+    mult = threads_fetch_mult()
+    cache_key = f"threads:list:{hours}:{limit}:{country or 'global'}:{(person_q or '').lower()}:m{mult}"
     cached = await _cache_get(cache_key)
     if cached is not None:
         return cached
 
+    fetch_meta: dict = {}
     threads = await fetch_threads(
         hours=hours,
         # #234: when filtering by person, search a wider ranked pool so the
@@ -67,6 +74,7 @@ async def get_threads(
         limit=40 if person_q else limit,
         country_codes=[country] if country else None,
         person=person_q,
+        fetch_meta=fetch_meta,
     )
     payload = {
         "beta": True,
@@ -75,11 +83,18 @@ async def get_threads(
         "country_code": country,
         "person": person_q,
         "threads": threads,
-        # N15 fold-coverage observability: Label Court verdict census of the
-        # SERVED page — {entailed, partial, failed, unchecked}. Cheap (pure
-        # count over the rows above); the weekly read greps it to see how much
-        # of the fold the court actually covers per request.
-        "meta": {"stamped_counts": stamped_counts(threads)},
+        "meta": {
+            # N15 fold-coverage observability: Label Court verdict census of
+            # the SERVED page — {entailed, partial, failed, unchecked}. Cheap
+            # (pure count over the rows above); the weekly read greps it to
+            # see how much of the fold the court actually covers per request.
+            "stamped_counts": stamped_counts(threads),
+            # A0b: the multiplier actually applied and how deep the dynamic
+            # candidate fetch went before the court-ranked page was cut to
+            # `limit` — legible even while the env stays at its default (1).
+            "fetch_mult": fetch_meta.get("fetch_mult", mult),
+            "pool_fetched": fetch_meta.get("pool_fetched"),
+        },
     }
     await _cache_set(cache_key, payload, THREADS_CACHE_TTL)
     return payload

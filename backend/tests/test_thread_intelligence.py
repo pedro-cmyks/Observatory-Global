@@ -20,6 +20,7 @@ from app.services.thread_intelligence import (
     evidence_role,
     fetch_threads,
     parse_thread_id,
+    threads_fetch_mult,
 )
 
 
@@ -523,6 +524,203 @@ def test_fetch_threads_translates_database_command_timeout(monkeypatch):
 
     with pytest.raises(DatabaseBusyError):
         asyncio.run(fetch_threads(hours=24, limit=10, conn=TimedOutConn()))
+
+
+# --- A0b fetch-gate multiplier (docs/research/label-court/2026-07-29-a0b-
+# fetch-gate-measurement.md, adopted M=2, default 1 = inert) -----------------
+
+
+def test_threads_fetch_mult_defaults_to_one_unset(monkeypatch):
+    """Unset env: must be the inert default — today's serving, untouched."""
+    monkeypatch.delenv("ATLAS_THREADS_FETCH_MULT", raising=False)
+    assert threads_fetch_mult() == 1
+
+
+def test_threads_fetch_mult_reads_env_within_the_measured_band(monkeypatch):
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "2")
+    assert threads_fetch_mult() == 2
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "3")
+    assert threads_fetch_mult() == 3
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "4")
+    assert threads_fetch_mult() == 4
+
+
+def test_threads_fetch_mult_clamps_above_the_measured_ceiling(monkeypatch):
+    """A0b measured only up to M=4 (docs §7 caveat) — anything higher floors
+    to 4, never an unbounded fetch."""
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "5")
+    assert threads_fetch_mult() == 4
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "9999")
+    assert threads_fetch_mult() == 4
+
+
+def test_threads_fetch_mult_floors_bad_values_to_the_inert_default(monkeypatch):
+    """A typo must degrade to today's behavior, never to an unbounded fetch:
+    zero/negative, blank, non-numeric, and float-looking strings all floor to
+    1 rather than raising or defaulting to something larger."""
+    for bad in ("0", "-3", "", "   ", "abc", "2.5", "1e2", "None"):
+        monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", bad)
+        assert threads_fetch_mult() == 1, repr(bad)
+    monkeypatch.delenv("ATLAS_THREADS_FETCH_MULT", raising=False)
+    assert threads_fetch_mult() == 1
+
+
+def test_threads_fetch_mult_tolerates_surrounding_whitespace(monkeypatch):
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "  2  ")
+    assert threads_fetch_mult() == 2
+
+
+# --- A0b wired into fetch_threads's dynamic path -----------------------------
+
+
+def _dynamic_topic_row(topic_id: int) -> dict:
+    """Minimal shape `assemble_dynamic_thread` accepts (mirrors the other
+    dynamic-thread tests above) — empty top_country_codes/sample_signal_ids
+    so no country filter or sample-signal fetch is exercised."""
+    return {
+        "id": topic_id,
+        "identity_key": f"dyn-{topic_id}",
+        "label": f"Test Topic {topic_id}",
+        "agg_n_signals": 50,
+        "changed_10h": 5,
+        "noise_rate": 0.2,
+        "mean_cohesion": 0.9,
+        "first_seen": None,
+        "top_country_codes": [],
+        "sample_signal_ids": [],
+    }
+
+
+class _DynamicPoolConn:
+    """Fakes the dynamic-topics candidate fetch: records the LIMIT ($2) it was
+    asked for and returns at most `available` rows — mirrors the real SQL's
+    `LIMIT $2` tail (a shallow pool cannot return more than exists)."""
+
+    def __init__(self, available: int = 100) -> None:
+        self.available = available
+        self.limit_calls: list[int] = []
+
+    async def fetchval(self, query, *args, **kwargs):
+        if "dynamic_topics" in query or "dynamic_topic_members" in query:
+            return True
+        if "emergent_clusters" in query:
+            return False
+        raise AssertionError(f"unexpected fetchval query: {query}")
+
+    async def fetch(self, query, *args, **kwargs):
+        if "candidate_topics" in query:
+            limit = args[1]  # (hours, limit[, country_code])
+            self.limit_calls.append(limit)
+            n = min(limit, self.available)
+            return [_dynamic_topic_row(i) for i in range(n)]
+        raise AssertionError(f"unexpected fetch query: {query}")
+
+
+def test_fetch_threads_default_mult_fetches_exactly_limit(monkeypatch):
+    """Byte-equivalence: ATLAS_THREADS_FETCH_MULT unset must ask the dynamic
+    SQL for exactly `limit` — the A0b flip's inert state must never widen the
+    serving-verbatim fetch depth."""
+    monkeypatch.delenv("ATLAS_THREADS_FETCH_MULT", raising=False)
+    monkeypatch.delenv("ATLAS_THREADS_CATEGORY_ROWS", raising=False)
+    monkeypatch.delenv("ATLAS_COUNTRY_CATEGORY_ROWS", raising=False)
+    conn = _DynamicPoolConn(available=100)
+
+    result = asyncio.run(fetch_threads(hours=24, limit=10, conn=conn))
+
+    assert conn.limit_calls == [10]
+    assert len(result) == 10
+
+
+def test_fetch_threads_mult_widens_the_fetch_but_still_cuts_to_limit(monkeypatch):
+    """A0b M=2: the dynamic fetch asks for mult*limit candidates so the shipped
+    ranker can select the page, but the served page stays exactly `limit` —
+    the SQL depth changes, the response contract does not."""
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "2")
+    monkeypatch.delenv("ATLAS_THREADS_CATEGORY_ROWS", raising=False)
+    monkeypatch.delenv("ATLAS_COUNTRY_CATEGORY_ROWS", raising=False)
+    conn = _DynamicPoolConn(available=100)
+
+    result = asyncio.run(fetch_threads(hours=24, limit=10, conn=conn))
+
+    assert conn.limit_calls == [20]  # 10 * 2
+    assert len(result) == 10  # still cut to the page size
+
+
+def test_fetch_threads_mult_never_fabricates_rows_on_a_thin_pool(monkeypatch):
+    """A pool thinner than mult*limit must still serve only what it found."""
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "3")
+    monkeypatch.delenv("ATLAS_THREADS_CATEGORY_ROWS", raising=False)
+    monkeypatch.delenv("ATLAS_COUNTRY_CATEGORY_ROWS", raising=False)
+    conn = _DynamicPoolConn(available=4)
+
+    result = asyncio.run(fetch_threads(hours=24, limit=10, conn=conn))
+
+    assert conn.limit_calls == [30]  # 10 * 3, even though only 4 exist
+    assert len(result) == 4
+
+
+def test_fetch_threads_country_door_shares_the_same_multiplied_shape(monkeypatch):
+    """A0b covered country doors too: the single-country branch reuses the
+    same `_fetch_dynamic_threads_with_conn` call, just a different SQL string
+    and an extra `$3` — the multiplier must reach it identically."""
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "2")
+    monkeypatch.delenv("ATLAS_COUNTRY_CATEGORY_ROWS", raising=False)
+    conn = _DynamicPoolConn(available=100)
+
+    asyncio.run(fetch_threads(hours=24, limit=24, country_codes=["US"], conn=conn))
+
+    assert conn.limit_calls == [48]  # 24 * 2
+
+
+def test_fetch_threads_atlas_only_branch_is_never_multiplied(monkeypatch):
+    """topic_slug routes through the atlas-only branch, which returns before
+    the A0b multiplier is even read — it was not measured, so it must not be
+    touched (docs §6 'apply to the dynamic path only')."""
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "3")
+
+    class FakeConn:
+        def __init__(self) -> None:
+            self.fetch_calls: list[tuple] = []
+
+        async def fetch(self, query, *args, **kwargs):
+            self.fetch_calls.append(args)
+            return []
+
+    fake = FakeConn()
+    asyncio.run(
+        fetch_threads(hours=12, limit=5, topic_slug="water-stress-drought", conn=fake)
+    )
+
+    assert len(fake.fetch_calls) == 1
+    assert fake.fetch_calls[0][1] == 5  # limit unchanged, no *3
+
+
+def test_fetch_threads_reports_mult_and_pool_size_via_fetch_meta(monkeypatch):
+    """The wiring the /threads router reads to legibly surface fetch_mult and
+    the fetched pool size in its response meta."""
+    monkeypatch.setenv("ATLAS_THREADS_FETCH_MULT", "2")
+    monkeypatch.delenv("ATLAS_THREADS_CATEGORY_ROWS", raising=False)
+    monkeypatch.delenv("ATLAS_COUNTRY_CATEGORY_ROWS", raising=False)
+    conn = _DynamicPoolConn(available=3)
+    meta: dict = {}
+
+    asyncio.run(fetch_threads(hours=24, limit=10, conn=conn, fetch_meta=meta))
+
+    assert meta["fetch_mult"] == 2
+    assert meta["pool_fetched"] == 3  # all available rows, before the [:limit] cut
+
+
+def test_fetch_threads_without_fetch_meta_is_unaffected(monkeypatch):
+    """Callers that don't pass fetch_meta (briefing, country_edition,
+    research_leads) must see no change in behavior."""
+    monkeypatch.delenv("ATLAS_THREADS_FETCH_MULT", raising=False)
+    monkeypatch.delenv("ATLAS_THREADS_CATEGORY_ROWS", raising=False)
+    monkeypatch.delenv("ATLAS_COUNTRY_CATEGORY_ROWS", raising=False)
+    conn = _DynamicPoolConn(available=5)
+
+    result = asyncio.run(fetch_threads(hours=24, limit=5, conn=conn))
+
+    assert len(result) == 5
 
 
 def test_serialize_evidence_includes_syndication_metadata():

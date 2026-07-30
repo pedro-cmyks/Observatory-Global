@@ -2237,6 +2237,38 @@ def stamped_counts(threads: list[dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+_THREADS_FETCH_MULT_DEFAULT = 1
+_THREADS_FETCH_MULT_MAX = 4
+
+
+def threads_fetch_mult() -> int:
+    """The A0b-adopted fetch-gate multiplier (docs/research/label-court/
+    2026-07-29-a0b-fetch-gate-measurement.md, adopted M=2 — NOT set by this
+    change; the flip is staggered separately).
+
+    `/threads` selects its page by `recent_n_signals` BEFORE `rank_threads`
+    runs, so the shipped court damp can reorder a page but never change what
+    is on it (the loophole GA named). Over-fetching `mult * limit` candidates,
+    ranking with the SHIPPED scorer unchanged, and serving the top `limit`
+    closes it — measured flat-cost in the topic SQL at every depth (C5).
+
+    Env `ATLAS_THREADS_FETCH_MULT`, default 1 (today, byte-identical serving).
+    Clamped to [1, 4] — A0b measured only up to M=4 — and floored to the
+    default on any unparseable/out-of-range value: a typo must degrade to
+    today's behavior, never to an unbounded fetch.
+    """
+    raw = os.environ.get("ATLAS_THREADS_FETCH_MULT", "").strip()
+    if not raw:
+        return _THREADS_FETCH_MULT_DEFAULT
+    try:
+        mult = int(raw)
+    except ValueError:
+        return _THREADS_FETCH_MULT_DEFAULT
+    if mult < _THREADS_FETCH_MULT_DEFAULT:
+        return _THREADS_FETCH_MULT_DEFAULT
+    return min(mult, _THREADS_FETCH_MULT_MAX)
+
+
 async def fetch_threads(
     *,
     hours: int = 24,
@@ -2246,6 +2278,7 @@ async def fetch_threads(
     person: str | None = None,
     attach_evidence: bool = False,
     conn: Any = None,
+    fetch_meta: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Returns atlas-anchored threads merged with emergent-cluster threads
     from the latest `emergent_clusters` snapshot, sorted by signal_count
@@ -2256,6 +2289,13 @@ async def fetch_threads(
     (atlas slugs / atlas country aggregates) and have no emergent
     analog yet. Emergent threads have their own detail dispatch via the
     `emergent-cluster-<id>` thread_id prefix.
+
+    `fetch_meta`, if given, is populated in place with `fetch_mult` and
+    `pool_fetched` — the A0b fetch-gate multiplier applied to the dynamic
+    candidate fetch and how many rows it returned before the final
+    `[:limit]` cut. Callers that don't care (briefing, country_edition,
+    research_leads) simply don't pass it; only the /threads router does, to
+    surface the change in its response meta.
     """
     # Dynamic topics apply for the GLOBAL list and for a SINGLE-country view (the R1
     # scoped children for that country — "Venezuela Earthquake" for VE, not the atlas
@@ -2287,16 +2327,28 @@ async def fetch_threads(
                 country_codes=country_codes,
             )
 
+        # A0b (docs/research/label-court/2026-07-29-a0b-fetch-gate-measurement.md,
+        # adopted M=2, default 1 = inert): over-fetch mult*limit candidates so
+        # the shipped court damp can SELECT the page, not just reorder it.
+        # Applies to the dynamic path only (global + single-country door,
+        # whichever SQL `_fetch_dynamic_threads_with_conn` picks) — the
+        # atlas_only branch above already returned, and the emergent fallback
+        # below keeps `limit` unmeasured.
+        mult = threads_fetch_mult()
+        fetch_limit = limit * mult
         dynamic: list[dict[str, Any]] = []
         try:
             dynamic = await _fetch_dynamic_threads_with_conn(
-                active_conn, hours=hours, limit=limit, country_code=single_country,
+                active_conn, hours=hours, limit=fetch_limit, country_code=single_country,
             )
         except TimeoutError:
             raise
         except Exception as exc:
             logger.warning("dynamic topics degraded: %s", exc)
             dynamic = []
+        if fetch_meta is not None:
+            fetch_meta["fetch_mult"] = mult
+            fetch_meta["pool_fetched"] = len(dynamic)
         # Serving category aggregates as sibling rows
         # next to real stories was level-mixing ("Gang control and urban
         # security n=319" beside "Ukraine War Updates n=107"). The global
