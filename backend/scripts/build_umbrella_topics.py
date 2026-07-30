@@ -158,6 +158,62 @@ def _shared_actor_edges(
     return edges
 
 
+# GB5 Class E fix (2026-07-30, docs/research/label-court/
+# 2026-07-29-gb5-blind-check.md): this upsert used to rewrite `label` (and
+# re-parent children) on EVERY rebuild without touching label_status/
+# label_proposed/label_checked_at/label_court_model at all — a court verdict
+# earned on ONE label (or ONE child set) rode forward, unchanged, onto
+# whatever the umbrella serves next. Measured live: 5/39 stamped umbrellas
+# (12.8%) were serving a label the court never judged; the sharpest case,
+# dt-8105, served "Typhoon Bavi Landfall" carrying an `entailed` stamp earned
+# by "Typhoon Noul Ravages Southern China" — every receipt still names Noul,
+# zero mention Bavi, and the row displays with NO chip (entailed = trusted).
+# `3433` kept a verdict through a 10-child family collapsing to 2 unrelated
+# children, which is why the invalidation condition below is not just "the
+# label text changed" — GB5 named it explicitly: "equally when the child set
+# changes". There is no child-set-fingerprint column (no migration in this
+# pass), so `agg_n_signals` — already recomputed every rebuild from the
+# CURRENT child set — is the cheap proxy: two different real-world child
+# sets essentially never sum to the exact same signal count over time, while
+# a genuinely-unchanged family reproduces it exactly. Whenever EITHER
+# condition trips, the four court columns reset to the "never judged" state
+# (NULL status/proposed/checked_at/model) and `label_updated_at` is stamped —
+# closing the exact blind spot GB5 measured (`label_updated_at >
+# label_checked_at` returned 0 of 39 because label_updated_at was never set
+# here at all).
+_LABEL_OR_FAMILY_CHANGED = (
+    "(dynamic_topics.label IS DISTINCT FROM EXCLUDED.label "
+    "OR dynamic_topics.agg_n_signals IS DISTINCT FROM EXCLUDED.agg_n_signals)"
+)
+
+_UMBRELLA_UPSERT_SQL = (
+    "INSERT INTO dynamic_topics "
+    "(identity_key, label, state, is_umbrella, centroid_vec, agg_n_signals, "
+    " mean_cohesion, crisis_class, category, crisis_relevant, umbrella_basis, "
+    " n_snapshots, snapshots_since_seen, is_roundup, first_seen, last_seen) "
+    "VALUES ($1,$2,'active',true,$3,$4,$5,$6,$8,$9,$10,1,0,false,"
+    " (SELECT MIN(first_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[])),"
+    " (SELECT MAX(last_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[]))) "
+    "ON CONFLICT (identity_key) DO UPDATE SET label=EXCLUDED.label, "
+    " centroid_vec=EXCLUDED.centroid_vec, agg_n_signals=EXCLUDED.agg_n_signals, "
+    " mean_cohesion=EXCLUDED.mean_cohesion, crisis_class=EXCLUDED.crisis_class, "
+    " category=EXCLUDED.category, crisis_relevant=EXCLUDED.crisis_relevant, "
+    " umbrella_basis=EXCLUDED.umbrella_basis, "
+    " last_seen=EXCLUDED.last_seen, updated_at=now(), "
+    f" label_status = CASE WHEN {_LABEL_OR_FAMILY_CHANGED} "
+    "                       THEN NULL ELSE dynamic_topics.label_status END, "
+    f" label_proposed = CASE WHEN {_LABEL_OR_FAMILY_CHANGED} "
+    "                       THEN NULL ELSE dynamic_topics.label_proposed END, "
+    f" label_checked_at = CASE WHEN {_LABEL_OR_FAMILY_CHANGED} "
+    "                       THEN NULL ELSE dynamic_topics.label_checked_at END, "
+    f" label_court_model = CASE WHEN {_LABEL_OR_FAMILY_CHANGED} "
+    "                       THEN NULL ELSE dynamic_topics.label_court_model END, "
+    f" label_updated_at = CASE WHEN {_LABEL_OR_FAMILY_CHANGED} "
+    "                       THEN now() ELSE dynamic_topics.label_updated_at END "
+    "RETURNING id"
+)
+
+
 class UmbrellaGroupingUnavailable(RuntimeError):
     """llm-event grouping failed AND the degraded fallback is disabled —
     the caller must abort before the destructive parent_id rewrite."""
@@ -539,20 +595,7 @@ async def main() -> None:
                                 if rows[i]["crisis_class"] and rows[i]["crisis_class"] != "non_crisis"]
                 dom_crisis = max(set(child_crisis), key=child_crisis.count) if child_crisis else "non_crisis"
                 uid = await conn.fetchval(
-                    "INSERT INTO dynamic_topics "
-                    "(identity_key, label, state, is_umbrella, centroid_vec, agg_n_signals, "
-                    " mean_cohesion, crisis_class, category, crisis_relevant, umbrella_basis, "
-                    " n_snapshots, snapshots_since_seen, is_roundup, first_seen, last_seen) "
-                    "VALUES ($1,$2,'active',true,$3,$4,$5,$6,$8,$9,$10,1,0,false,"
-                    " (SELECT MIN(first_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[])),"
-                    " (SELECT MAX(last_seen) FROM dynamic_topics WHERE id = ANY($7::bigint[]))) "
-                    "ON CONFLICT (identity_key) DO UPDATE SET label=EXCLUDED.label, "
-                    " centroid_vec=EXCLUDED.centroid_vec, agg_n_signals=EXCLUDED.agg_n_signals, "
-                    " mean_cohesion=EXCLUDED.mean_cohesion, crisis_class=EXCLUDED.crisis_class, "
-                    " category=EXCLUDED.category, crisis_relevant=EXCLUDED.crisis_relevant, "
-                    " umbrella_basis=EXCLUDED.umbrella_basis, "
-                    " last_seen=EXCLUDED.last_seen, updated_at=now() "
-                    "RETURNING id",
+                    _UMBRELLA_UPSERT_SQL,
                     ident, head["label"], [float(x) for x in cen], agg, coh, dom_crisis, child_ids,
                     dom_category, dom_relevant, basis)
                 await conn.execute(

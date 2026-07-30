@@ -10,6 +10,8 @@ from scripts.build_umbrella_topics import (
     _resolve_event_groups,
     _shared_actor_edges,
     _union_find_groups,
+    _UMBRELLA_UPSERT_SQL,
+    _LABEL_OR_FAMILY_CHANGED,
 )
 
 # Two topics whose centroids clear the 0.95 same-event cut → the deterministic
@@ -229,3 +231,58 @@ def test_semantic_chunk_order_colocates_neighbors():
         [0.1, 0.2, 0.1, 1.0],
     ]
     assert semantic_chunk_order(sims) == [0, 2, 1, 3]
+
+
+# ---------------------------------------------------------------------------
+# GB5 Class E (2026-07-30, docs/research/label-court/2026-07-29-gb5-blind-
+# check.md): the umbrella upsert rewrote label/agg_n_signals on every rebuild
+# without ever invalidating a court verdict earned on the PRIOR label or
+# child set — dt-8105 served "Typhoon Bavi Landfall" with an `entailed` stamp
+# earned by "Typhoon Noul Ravages Southern China". Schema-freeze / SQL-shape
+# tests: no DB needed, just confirm the CASE-WHEN invalidation is present and
+# wired to the right columns.
+# ---------------------------------------------------------------------------
+
+def test_umbrella_upsert_clears_all_four_court_columns_conditionally():
+    sql = _UMBRELLA_UPSERT_SQL
+    for col in ("label_status", "label_proposed", "label_checked_at", "label_court_model"):
+        assert f"{col} = CASE WHEN" in sql, f"{col} must be conditionally reset"
+        assert f"THEN NULL ELSE dynamic_topics.{col} END" in sql, \
+            f"{col} must fall back to its OWN prior value when unchanged, never get clobbered"
+
+
+def test_umbrella_upsert_stamps_label_updated_at_on_change():
+    # the GB5-cited staleness detector (label_updated_at > label_checked_at)
+    # returned 0/39 because this column was never touched by the upsert at
+    # all — it must be set to now() exactly when the invalidation fires.
+    sql = _UMBRELLA_UPSERT_SQL
+    assert "label_updated_at = CASE WHEN" in sql
+    assert "THEN now() ELSE dynamic_topics.label_updated_at END" in sql
+
+
+def test_umbrella_upsert_invalidation_condition_covers_label_and_family_shape():
+    # GB5 named BOTH triggers explicitly: "the label actually changed" AND
+    # "equally when the child set changes" (dt-3433 kept a verdict through a
+    # 10-child family collapsing to 2 unrelated children). No child-set
+    # fingerprint column exists (no migration in this pass) — agg_n_signals
+    # is the cheap, already-recomputed-every-rebuild proxy for "the family
+    # changed shape".
+    cond = _LABEL_OR_FAMILY_CHANGED
+    assert "dynamic_topics.label IS DISTINCT FROM EXCLUDED.label" in cond
+    assert "dynamic_topics.agg_n_signals IS DISTINCT FROM EXCLUDED.agg_n_signals" in cond
+    assert " OR " in cond
+    # every one of the five conditional columns must use the SAME condition
+    # (a drifted duplicate would silently reintroduce the bug for one column)
+    assert _UMBRELLA_UPSERT_SQL.count(cond) == 5
+
+
+def test_umbrella_upsert_still_updates_the_ordinary_columns():
+    # the fix must not regress the pre-existing rebuild-every-pass columns
+    sql = _UMBRELLA_UPSERT_SQL
+    for col in ("label=EXCLUDED.label", "centroid_vec=EXCLUDED.centroid_vec",
+                "agg_n_signals=EXCLUDED.agg_n_signals", "umbrella_basis=EXCLUDED.umbrella_basis",
+                "last_seen=EXCLUDED.last_seen", "updated_at=now()"):
+        assert col in sql
+    assert sql.strip().startswith("INSERT INTO dynamic_topics")
+    assert "ON CONFLICT (identity_key) DO UPDATE SET" in sql
+    assert sql.rstrip().endswith("RETURNING id")

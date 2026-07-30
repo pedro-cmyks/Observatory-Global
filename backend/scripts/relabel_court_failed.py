@@ -13,6 +13,28 @@ change is appended to docs/research/label-court/<date>-relabel-ledger.jsonl
 as {topic_id, old, new}; reverting = replaying the ledger backwards
 (scripts/revert via psql UPDATE ... SET label=old).
 
+CLASS F LIVELOCK FIX (2026-07-30, docs/research/label-court/2026-07-29-gb5-
+blind-check.md): the 30-min runner pairs this script with label_court.py —
+court judges NULL->failed, this script rewrites the label and resets
+label_status->NULL, court re-judges, ... For an umbrella whose family is
+genuinely incoherent, NO regenerated label can pass, so the pair never
+converges. Measured: 154 umbrella judgments over 43 rows in one day, 23 rows
+judged more than once, dt-8222 judged 12 times, dt-8235 cycled 5 distinct
+labels across 7 judgments. Two independent brakes, both keyed on
+`label_updated_at` (migration 055, already set by every write below — no
+migration needed) and this script's own ledger (already the durable,
+restart-surviving record the GB5 brief pointed at):
+  - COOLDOWN: a topic relabeled within the last 24h is skipped entirely (SQL
+    WHERE clause — cheap, no per-row ledger read needed).
+  - CAP: a topic already attempted >=3 times in the trailing 7 days is
+    skipped and STAYS on its current (failed, honestly chipped) label rather
+    than churning a 4th time — "a family no label can describe is an
+    over-merge, not a labeling problem" (GB5). The count is read from this
+    script's OWN ledger files (glob the trailing 7 daily files, count entries
+    for the topic_id) rather than a new DB column, since GB5 explicitly named
+    the ledger as an acceptable, already-durable mechanism and this pass adds
+    no migration.
+
 Run (repo root, M1 env):
   python -m backend.scripts.relabel_court_failed --dry-run --limit 10
   python -m backend.scripts.relabel_court_failed --write
@@ -25,7 +47,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import asyncpg
@@ -45,6 +67,57 @@ except ModuleNotFoundError:
 
 _DS_URL = "https://api.deepseek.com/chat/completions"
 _LABEL_MODEL = "relabel-court-v1/deepseek-chat"
+
+# GB5 Class F defaults: cheap, tunable via CLI, not env (this script has
+# always been CLI-flag configured, not env-gated like label_court.py).
+_DEFAULT_COOLDOWN_HOURS = 24
+_DEFAULT_MAX_ATTEMPTS = 3
+_DEFAULT_ATTEMPTS_WINDOW_DAYS = 7
+
+# Candidates: unchanged from before, PLUS the cooldown — a topic relabeled
+# within the cooldown window is not even fetched, so it can never burn an API
+# call or a ledger line this cycle. label_updated_at is nullable (never
+# refreshed = NULL, migration 055) so a topic that has never been relabeled
+# is always a candidate regardless of the cooldown.
+_RELABEL_CANDIDATES_SQL = (
+    "SELECT id, label, is_umbrella FROM dynamic_topics "
+    "WHERE state='active' AND label_status='failed' AND label IS NOT NULL "
+    "AND (label_updated_at IS NULL OR label_updated_at < now() - $2::interval) "
+    "ORDER BY agg_n_signals DESC LIMIT $1"
+)
+
+
+def _relabel_attempts_last_n_days(topic_id: int, now: datetime, *,
+                                   days: int = _DEFAULT_ATTEMPTS_WINDOW_DAYS) -> int:
+    """Count REAL relabel attempts (ledger entries that represent an actual
+    DeepSeek call, whether it changed the label or reproduced it) for this
+    topic across the trailing `days` days' ledger files. Reads from DISK so
+    the count survives a process restart — this script runs as a fresh
+    process every 30-min cron cycle, so an in-memory counter would reset
+    every time and never actually cap anything. Cooldown/cap SKIP entries
+    are NOT attempts (nothing was tried) and are excluded, so a capped topic
+    cannot inflate its own count further while parked."""
+    count = 0
+    for d in range(days):
+        day = (now - timedelta(days=d)).date()
+        led = _LEDGER_DIR / f"{day.isoformat()}-relabel-ledger.jsonl"
+        if not led.exists():
+            continue
+        with led.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if entry.get("topic_id") != topic_id:
+                    continue
+                if entry.get("reason") in ("relabel_cooldown_24h", "relabel_capped_7d"):
+                    continue
+                count += 1
+    return count
 
 
 def relabel_prompt(receipts: list[dict]) -> str:
@@ -103,6 +176,12 @@ async def main() -> None:
     ap.add_argument("--receipts", type=int, default=8)
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--cooldown-hours", type=float, default=_DEFAULT_COOLDOWN_HOURS,
+                    help="GB5 Class F: skip a topic relabeled within this many hours")
+    ap.add_argument("--max-attempts", type=int, default=_DEFAULT_MAX_ATTEMPTS,
+                    help="GB5 Class F: cap relabel attempts per topic within --attempts-window-days")
+    ap.add_argument("--attempts-window-days", type=int, default=_DEFAULT_ATTEMPTS_WINDOW_DAYS,
+                    help="GB5 Class F: the trailing window the attempt cap is counted over")
     args = ap.parse_args()
 
     db = os.environ.get("DATABASE_URL")
@@ -114,18 +193,36 @@ async def main() -> None:
     now = datetime.now(timezone.utc)
     _LEDGER_DIR.mkdir(parents=True, exist_ok=True)
     ledger = _LEDGER_DIR / f"{now.date().isoformat()}-relabel-ledger.jsonl"
-    relabeled = skipped = failed = unchanged = 0
+    relabeled = skipped = failed = unchanged = capped = 0
     tok_in = tok_out = 0
     try:
         limit = args.limit or 1_000_000
-        rows = await conn.fetch(
-            "SELECT id, label, is_umbrella FROM dynamic_topics "
-            "WHERE state='active' AND label_status='failed' AND label IS NOT NULL "
-            "ORDER BY agg_n_signals DESC LIMIT $1", limit)
-        print(f"{len(rows)} court-failed topics to relabel", flush=True)
+        cooldown = timedelta(hours=args.cooldown_hours)
+        rows = await conn.fetch(_RELABEL_CANDIDATES_SQL, limit, cooldown)
+        print(f"{len(rows)} court-failed topics to relabel "
+              f"(cooldown={args.cooldown_hours}h, cap={args.max_attempts}/"
+              f"{args.attempts_window_days}d)", flush=True)
         with ledger.open("a", encoding="utf-8") as led:
             for r in rows:
                 dyn_id = r["id"]
+
+                # GB5 Class F cap: a topic already attempted >= max_attempts
+                # times in the trailing window stops being relabeled — its
+                # current failed stamp stands (honest chip) instead of
+                # burning another DeepSeek call the pair cannot converge on.
+                attempts = _relabel_attempts_last_n_days(
+                    dyn_id, now, days=args.attempts_window_days)
+                if attempts >= args.max_attempts:
+                    capped += 1
+                    print(f"  dt-{dyn_id}: CAPPED ({attempts} attempts in "
+                          f"{args.attempts_window_days}d >= {args.max_attempts}) — "
+                          f"label stands, failed stamp kept", flush=True)
+                    led.write(json.dumps({
+                        "topic_id": dyn_id, "old": r["label"], "new": None,
+                        "reason": "relabel_capped_7d", "attempts": attempts,
+                        "at": now.isoformat()}, ensure_ascii=False) + "\n")
+                    continue
+
                 if r["is_umbrella"]:
                     receipts = await _umbrella_receipts_for(conn, dyn_id, args.receipts)
                 else:
@@ -173,7 +270,8 @@ async def main() -> None:
     finally:
         await conn.close()
     print(f"\nRELABEL DONE: {relabeled} relabeled · {unchanged} unchanged(stamp kept) · "
-          f"{skipped} skipped(<3 receipts) · {failed} failed · tokens {tok_in}/{tok_out}"
+          f"{capped} capped(livelock guard) · {skipped} skipped(<3 receipts) · "
+          f"{failed} failed · tokens {tok_in}/{tok_out}"
           f"{' · WRITTEN' if args.write else ' · DRY'}\nledger: {ledger}")
 
 

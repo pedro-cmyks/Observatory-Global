@@ -8,7 +8,7 @@ from scripts.label_court import (
     _RECEIPTS_SQL, _RECEIPTS_FALLBACK_SQL, _receipts_for, topic_members_engine_version,
     _SINGLE_CHILD_SKIP_SQL, _SINGLE_CHILD_CLEANUP_SQL, _reason_quotes_a_receipt,
     _WITHHOLD_MARK_SQL, _WITHHELD_COURT_MODEL, _absence_claim_contradicted,
-    _rule4_majority_satisfied, _COURT_MODEL,
+    _rule4_majority_satisfied, _COURT_MODEL, _rule4_named_children_verified,
 )
 
 
@@ -132,6 +132,26 @@ def test_judge_prompt_family_receipts_precede_label_per_child_block():
     # the actual headline text must also physically precede the label marker
     headline_pos = prompt.index("Child 0 headline 0")
     assert headline_pos < label_pos
+
+
+def test_judge_prompt_family_children_are_numbered_for_rule4_citation():
+    # GB5 Class D' fix: the model must be able to CITE which children
+    # support a compound label's dominant clause; each block is now labeled
+    # with a stable 1-based index it can name in "(children: 1,2,3)".
+    family = _family(n_children=3, n_receipts=1)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    for i in range(1, 4):
+        assert f"CHILD {i}:" in prompt
+    # numbering must precede that child's own receipts/label content
+    assert prompt.index("CHILD 1:") < prompt.index("Child 0 headline 0")
+
+
+def test_judge_prompt_rule4_text_requires_named_children_tail():
+    family = _family(n_children=2, n_receipts=1)
+    prompt = _judge_prompt("Umbrella", [], family=True, family_children=family)
+    low = prompt.lower()
+    assert "name the children" in low
+    assert "(children: 1,2,3)" in prompt or "(children:" in prompt
 
 
 def test_judge_prompt_family_bounded_to_ten_children_three_receipts():
@@ -556,6 +576,63 @@ def test_absence_claim_contradicted_still_catches_a_currency_figure_disguised_as
     assert _absence_claim_contradicted(reason, receipts) is True
 
 
+# --- GB5 Class B, fourth attempt: TEXTUAL absence targets -------------------
+
+def test_absence_claim_contradicted_true_for_witness_dt_8241():
+    # the exact GB5 witness: "drones" is Latin-script inside Greek prose —
+    # the reason claims the drone-attack clause is unsupported while a
+    # receipt reports it verbatim.
+    receipts = [
+        {"headline": "Ιράν: Ο στρατός επιτέθηκε στο Μπαχρέιν και στην Ιορδανία με drones",
+         "country_code": "GR"},
+        {"headline": "Αράκτσι υπόσχεται απάντηση στο Ζελένσκι", "country_code": "GR"},
+    ]
+    reason = ("No receipt mentions 'drone attacks' or 'threats' by Iran that escalate "
+             "tensions; the receipts describe AI-generated images of Trump, a war cost "
+             "figure, and unrelated claims about Ukraine.")
+    assert _absence_claim_contradicted(reason, receipts) is True
+
+
+def test_absence_claim_contradicted_false_when_textual_absence_is_genuine():
+    receipts = [{"headline": "Iran announces new oil export figures", "country_code": "IR"}]
+    reason = "No receipt mentions 'drone attacks' by Iran anywhere in the family."
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_textual_check_is_case_insensitive():
+    receipts = [{"headline": "DRONES strike energy infrastructure", "country_code": "UA"}]
+    reason = "No receipt mentions 'drones' anywhere in the family."
+    assert _absence_claim_contradicted(reason, receipts) is True
+
+
+def test_absence_claim_contradicted_textual_check_ignores_court_vocabulary():
+    # quoted words that are the court's OWN reasoning vocabulary (not a real
+    # target) must not self-trigger even though they'd trivially match any
+    # reason that also uses them, or a receipt that happens to share them.
+    receipts = [{"headline": "The family filed a claim about the umbrella label",
+                "country_code": "US"}]
+    reason = "No receipt mentions 'the claim' or 'this family' anywhere."
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_textual_check_ignores_short_words():
+    receipts = [{"headline": "A war over oil and gas", "country_code": "US"}]
+    reason = "No receipt mentions 'war' anywhere in the family."
+    # "war" is only 3 letters — below the >=4 floor, avoid trivial noise
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
+def test_absence_claim_contradicted_textual_check_respects_proximity_window():
+    # a quoted phrase far from the trigger (well past the 80-char window,
+    # in an unrelated later clause) must not be treated as the claim target —
+    # mirrors the "China Open 2026" numeric lesson, extended to text.
+    receipts = [{"headline": "Drone factory opens in Kharkiv", "country_code": "UA"}]
+    reason = ("No receipt supports the claim, since the family instead covers tariffs, "
+             "trade disputes, diplomatic meetings, and separately a child labeled "
+             "'drone factory' that is unrelated to this specific umbrella.")
+    assert _absence_claim_contradicted(reason, receipts) is False
+
+
 # --- GB4 fix 3: rule 4 numeric majority enforcement -------------------------
 
 def test_rule4_majority_satisfied_true_for_strict_majority():
@@ -580,6 +657,44 @@ def test_rule4_majority_satisfied_ignores_nonsensical_counts():
     # defensive: a count where the numerator exceeds the denominator (a
     # malformed or hallucinated fraction) is treated as no-count-stated.
     assert _rule4_majority_satisfied("9 of 4 children support this.") is None
+
+
+# --- GB5 Class D' fix: rule 4's stated count must be named + consistent ----
+
+def test_rule4_named_children_true_when_count_and_list_agree():
+    reason = "6/7 children (children: 1,2,3,4,6,7) support the wildfire clause."
+    assert _rule4_named_children_verified(reason, n_children_total=7) is True
+
+
+def test_rule4_named_children_witness_dt_8237_fabricated_count():
+    # the exact GB5 witness: "3/4" stated, but only ONE child is actually
+    # named as supporting — the count and the list disagree.
+    reason = "3/4 children (children: 1) support the 'Ukraine Aid Delayed' clause."
+    assert _rule4_named_children_verified(reason, n_children_total=4) is False
+
+
+def test_rule4_named_children_none_when_no_list_given():
+    # rule 4 now REQUIRES the named list — an absent one is itself a defect,
+    # mirroring _rule4_majority_satisfied's contract for an absent fraction.
+    reason = "6/7 children support the wildfire clause."
+    assert _rule4_named_children_verified(reason, n_children_total=7) is None
+
+
+def test_rule4_named_children_false_for_out_of_range_index():
+    # a named child number outside the family is a hallucinated reference
+    reason = "2/3 children (children: 1,9) support the clause."
+    assert _rule4_named_children_verified(reason, n_children_total=3) is False
+
+
+def test_rule4_named_children_false_for_duplicate_indices_padding_the_count():
+    # listing the same child twice to reach the stated N must not pass —
+    # DISTINCT indices are what's compared against N
+    reason = "3/5 children (children: 1,1,2) support the clause."
+    assert _rule4_named_children_verified(reason, n_children_total=5) is False
+
+
+def test_rule4_named_children_none_without_a_fraction_at_all():
+    assert _rule4_named_children_verified("Most children agree.", n_children_total=5) is None
 
 
 def test_single_child_skip_sql_excludes_umbrellas_with_one_child():

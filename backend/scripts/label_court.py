@@ -338,19 +338,58 @@ _BARE_YEAR_RE = re.compile(r"^(?:19|20)\d{2}$")
 # anywhere in a long, comma-spliced reason that happens to also contain one.
 _ABSENCE_PROXIMITY_CHARS = 80
 
+# GB5 Class B, fourth attempt (2026-07-30, docs/research/label-court/
+# 2026-07-29-gb5-blind-check.md): the numeric-only form left a live,
+# ledgered victim — dt-8241's reason said "No receipt mentions 'drone
+# attacks' or 'threats' by Iran…" while child `582` serves, verbatim, "Ιράν:
+# Ο στρατός επιτέθηκε στο Μπαχρέιν και στην Ιορδανία με drones" (Iran's army
+# announcing it struck Bahrain and Jordan WITH DRONES) — the Latin-script
+# word "drones" sitting inside Greek prose, exactly the same mechanism the
+# numeric check already uses (a literal substring, script-invariant because
+# modern news embeds Latin proper nouns/loanwords inside any script), just
+# never extended past digits. This extracts the QUOTED absence-target
+# phrase (reusing the SAME quote patterns the grounding gate uses — the
+# model already quotes what it claims is missing, as here) and checks its
+# component words (Latin ASCII letters only, >=4 chars, a small stopword
+# list of court/reasoning vocabulary so "receipt"/"family"/"claim" from the
+# model's OWN phrasing can't self-trigger) by case-insensitive substring
+# against every receipt. Same proximity-window + quoted-span requirement as
+# the numeric check carries forward the "China Open 2026" false-positive
+# guard: an unrelated word two clauses later in a long reason is never in
+# scope, only a word the model explicitly quoted as the missing thing.
+_ABSENCE_TEXT_STOPWORDS = {
+    "this", "that", "with", "from", "have", "were", "will", "there", "which",
+    "about", "after", "over", "into", "does", "these", "those", "would",
+    "could", "should", "clause", "claim", "claims", "label", "labels",
+    "children", "child", "receipt", "receipts", "family", "support",
+    "supports", "mention", "mentions", "anywhere", "story", "stories",
+    "event", "events", "specific", "umbrella", "clauses",
+}
+
 
 def _absence_claim_contradicted(reason: str, receipts: list[dict]) -> bool:
-    """True iff `reason` asserts a NUMERIC absence ("no receipt mentions
-    $91", "none report a 50% drop") that a receipt in the SAME family
-    directly contradicts. The numeric scan is bounded to a short window
-    immediately after an absence-trigger phrase (not the whole sentence —
-    GB4's own reasons run long and comma-spliced, and an unrelated number
-    later in the same sentence, e.g. a "2026" from an unrelated child two
-    clauses later, is not part of the claim the trigger introduces). Matches
-    on the bare digit sequence with non-digit boundaries so "91" matches
-    "$91"/"91%"/"91 دولارا" but not "1991" or "919" — deliberately loose
-    beyond that (a coincidental digit collision only makes this MORE likely
-    to withhold, which is the safe direction, never the dangerous one)."""
+    """True iff `reason` asserts an absence — NUMERIC ("no receipt mentions
+    $91") or, as of GB5, TEXTUAL ("no receipt mentions 'drone attacks'") —
+    that a receipt in the SAME family directly contradicts. Both scans are
+    bounded to a short window immediately after an absence-trigger phrase
+    (not the whole sentence — GB4/GB5's own reasons run long and comma-
+    spliced, and an unrelated token later in the same sentence, e.g. a
+    "2026" or a word from an unrelated child two clauses later, is not part
+    of the claim the trigger introduces).
+
+    NUMERIC: matches the bare digit sequence with non-digit boundaries so
+    "91" matches "$91"/"91%"/"91 دولارا" but not "1991" or "919".
+
+    TEXTUAL: extracts the QUOTED target phrase near the trigger and checks
+    its Latin-script words (>=4 chars, small stopword list) case-
+    insensitively against every receipt — catches a Latin-script target
+    word embedded inside a non-Latin-script receipt (numbers were already
+    proven script-invariant this way; this extends the same mechanism from
+    digits to words).
+
+    Both forms are deliberately loose beyond their stated guards: a
+    coincidental collision only makes this MORE likely to withhold, which is
+    the safe direction, never the dangerous one."""
     reason = reason or ""
     for trig in _ABSENCE_TRIGGER_RE.finditer(reason):
         window = reason[trig.end(): trig.end() + _ABSENCE_PROXIMITY_CHARS]
@@ -365,6 +404,15 @@ def _absence_claim_contradicted(reason: str, receipts: list[dict]) -> bool:
             for r in receipts:
                 if pattern.search(r.get("headline") or ""):
                     return True
+        quoted = _DOUBLE_QUOTE_PATTERN.findall(window) + _SINGLE_QUOTE_PATTERN.findall(window)
+        for phrase in quoted:
+            for word in re.findall(r"[A-Za-z]+", phrase):
+                wl = word.lower()
+                if len(wl) < 4 or wl in _ABSENCE_TEXT_STOPWORDS or wl in _STOP:
+                    continue
+                for r in receipts:
+                    if wl in (r.get("headline") or "").lower():
+                        return True
     return False
 
 
@@ -394,6 +442,54 @@ def _rule4_majority_satisfied(reason: str) -> bool | None:
     if mtot <= 0 or n > mtot:
         return None
     return n > mtot / 2
+
+
+# GB5 Class D' (2026-07-30): _rule4_majority_satisfied checks the STATED
+# fraction is a majority but never that it's TRUE. dt-8237 claimed "3/4
+# children support the 'Ukraine Aid Delayed' clause" with a TRUE count of
+# 1/4 — the number went from absent (GB4) to unfalsifiable. The chosen
+# enforcement (the GB5 brief's own named fallback, since verifying "does
+# child X's receipt actually ground clause Y" would need a second grounded
+# judgment): require the reason to NAME which children (by the 1-based
+# "CHILD n:" index each block is shown under, see _judge_prompt) support the
+# dominant clause, as a "(children: 1,2,3)" tail immediately after the
+# fraction. This makes the claim auditable in the ledger (a human — or GB6 —
+# can cross-check the named children against the family) and cheaply
+# self-consistency-checkable: the count of DISTINCT, in-range indices named
+# must equal the stated N. It does not prove the named children's receipts
+# truly ground the clause (that would need the second judgment call this
+# fix deliberately avoids) — it proves the model committed to a checkable,
+# specific claim instead of an unfalsifiable number, and catches the
+# cheapest/most common failure mode: a count with no matching detail at all.
+_RULE4_NAMED_CHILDREN_RE = re.compile(r"\(children:\s*([\d,\s]+)\)", re.IGNORECASE)
+
+
+def _rule4_named_children_verified(reason: str, n_children_total: int) -> bool | None:
+    """True iff a `partial` reason's stated "N/M children" is immediately
+    followed by a "(children: i,j,k,...)" list whose DISTINCT entries are
+    all in range [1, n_children_total] and number exactly N. None when no
+    such list follows the fraction at all (rule 4 now requires one — an
+    absent list is itself a defect, mirroring `_rule4_majority_satisfied`'s
+    contract); False when the list is present but inconsistent (wrong count,
+    or names a child number outside the family — a fabricated/hallucinated
+    reference)."""
+    frac = _MAJORITY_FRACTION_RE.search(reason or "")
+    if not frac:
+        return None
+    try:
+        n = int(frac.group(1))
+    except ValueError:
+        return None
+    tail = (reason or "")[frac.end(): frac.end() + 200]
+    m = _RULE4_NAMED_CHILDREN_RE.search(tail)
+    if not m:
+        return None
+    indices = {int(x) for x in re.findall(r"\d+", m.group(1))}
+    if not indices:
+        return None
+    if any(i < 1 or i > n_children_total for i in indices):
+        return False
+    return len(indices) == n
 
 
 def _dominant_geo(country_codes: list[str]) -> str:
@@ -484,10 +580,11 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
         children = family_children or []
         if children:
             blocks = []
-            for c in children:
+            for i, c in enumerate(children, start=1):
                 child_lines = "\n".join(
                     f"      - {(r.get('headline') or '')[:160]}" for r in c.get("receipts", []))
                 blocks.append(
+                    f"CHILD {i}:\n"
                     f"  RECEIPTS:\n"
                     f"{child_lines if child_lines else '      (no receipts)'}\n"
                     f'  (label, may be stale — do not treat as evidence): '
@@ -531,23 +628,30 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
             "the specific claim, another child still belongs if it covers the "
             "SAME broader event, even if that child's own receipts don't "
             "repeat the specific detail.\n"
-            "4. COMPOUND LABELS GET PARTIAL, NOT FAILED — BUT ONLY ON A REAL "
-            "MAJORITY: if the label makes TWO OR MORE separate claims (e.g. "
-            "'X and Y', 'X; Z hits W') and a STRICT MAJORITY of the family's "
-            "children (MORE THAN HALF — a tie is NOT a majority) strongly "
-            "support ONE of those claims, while another claim has no "
-            "supporting receipt anywhere, the verdict is PARTIAL — the "
+            "4. COMPOUND LABELS GET PARTIAL, NOT FAILED — BUT ONLY ON A REAL, "
+            "NAMED MAJORITY: if the label makes TWO OR MORE separate claims "
+            "(e.g. 'X and Y', 'X; Z hits W') and a STRICT MAJORITY of the "
+            "family's children (MORE THAN HALF — a tie is NOT a majority) "
+            "strongly support ONE of those claims, while another claim has "
+            "no supporting receipt anywhere, the verdict is PARTIAL — the "
             "dominant, well-receipted clause earns that much even though the "
             "secondary clause is unsupported. If the best-supported claim "
             "reaches only half the children or fewer, it is NOT dominant — "
             "do not call PARTIAL on a tie or a minority; call FAILED instead "
             "unless a genuine majority exists for some clause. YOU MUST STATE "
-            "THE COUNT: whenever you invoke this rule, your reason must say "
-            "exactly how many of how many children support the dominant "
-            "clause, as 'N/M children' (e.g. '6/7 children' or '3/8 "
-            "children') — this is checked, not decorative. Only call FAILED "
-            "when the majority of children support NONE of the label's "
-            "claims.\n\n"
+            "THE COUNT AND NAME THE CHILDREN: whenever you invoke this rule, "
+            "your reason must say exactly how many of how many children "
+            "support the dominant clause, as 'N/M children', AND immediately "
+            "follow it with exactly which children by their CHILD NUMBER "
+            "(the 'CHILD n:' label each block above is shown under, 1-based) "
+            "in the form '(children: 1,2,3)' — e.g. '6/7 children (children: "
+            "1,2,3,4,6,7) support the wildfire clause'. The listed numbers "
+            "must be EXACTLY the N children whose own shown receipts support "
+            "the dominant clause — never state a count without naming the "
+            "children, and never name more or fewer child numbers than the "
+            "stated N. This is checked, not decorative: an unnamed or "
+            "mismatched count voids the verdict. Only call FAILED when the "
+            "majority of children support NONE of the label's claims.\n\n"
             "Do the MAJORITY of these child stories genuinely belong to the "
             "family this umbrella label names, applying the rules above? "
             "Your REASON MUST ground whatever it claims IS supported with at "
@@ -856,18 +960,23 @@ async def main() -> None:
                     **extra,
                 }
 
-            # Three independent defect-detectors (2026-07-29, GB3+GB4) — any
-            # one of them withholds the verdict. All three are the umbrella
-            # lane's OWN checks (the story lane's single-topic question has
-            # no child labels, no compound-label rule, and was not the
-            # target of any of these fixes).
+            # Four independent defect-detectors (2026-07-29 GB3/GB4, 2026-07-30
+            # GB5) — any one of them withholds the verdict. All four are the
+            # umbrella lane's OWN checks (the story lane's single-topic
+            # question has no child labels, no compound-label rule, and was
+            # not the target of any of these fixes).
             #   1. GROUNDING (GB3): the reason must quote a real receipt.
-            #   2. ABSENCE (GB4, class B): a numeric absence claim ("no
-            #      receipt reports $91") must not be contradicted by an
-            #      actual receipt.
+            #   2. ABSENCE (GB4/GB5, class B): a numeric OR textual absence
+            #      claim ("no receipt reports $91" / "no receipt mentions
+            #      'drone attacks'") must not be contradicted by an actual
+            #      receipt.
             #   3. RULE 4 MAJORITY (GB4): a `partial` verdict invoking the
             #      compound-label rule must state a supporting count that is
             #      an actual strict majority, not a tie or minority.
+            #   4. RULE 4 NAMED COUNT (GB5, class D'): that count must be
+            #      backed by a named, in-range, count-matching list of
+            #      supporting children — not just a majority-shaped number
+            #      (dt-8237 stated "3/4" with a true count of 1/4).
             withhold_reason: str | None = None
             if is_umbrella:
                 if not _reason_quotes_a_receipt(reason, receipts):
@@ -876,6 +985,9 @@ async def main() -> None:
                     withhold_reason = "absence-contradicted"
                 elif verdict == "partial" and _rule4_majority_satisfied(reason) is not True:
                     withhold_reason = "rule4-majority-not-met"
+                elif verdict == "partial" and _rule4_named_children_verified(
+                        reason, len(family_children or [])) is not True:
+                    withhold_reason = "rule4-count-unverified"
 
             if withhold_reason:
                 withheld += 1
