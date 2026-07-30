@@ -395,6 +395,23 @@ def _select_primary_country(
     return iso.upper(), lat, lon, 0.85, 'gdelt_geo_prominence'
 
 
+# CJK-dominance check for the PAGE_TITLE validation below. The four unicode
+# ranges (Hiragana+Katakana U+3040-U+30FF, CJK Ext-A U+3400-U+4DBF, CJK
+# Unified Ideographs U+4E00-U+9FFF, Hangul Syllables U+AC00-U+D7A3) are
+# duplicated from backend/scripts/script_floor.py — scripts/ is not in the
+# Fly Docker image, so this module cannot import it; keep the two in sync.
+_CJK_TITLE_RE = re.compile("[぀-ヿ㐀-䶿一-鿿가-힣]")
+# A CJK-dominant title of 10+ chars is a complete headline (the same measured
+# floor as script_floor.CJK_FLOOR).
+_CJK_TITLE_MIN_CHARS = 10
+
+
+def _cjk_ratio(text: str) -> float:
+    if not text:
+        return 0.0
+    return len(_CJK_TITLE_RE.findall(text)) / len(text)
+
+
 def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
     """Parse a single GKG row into a signal dict."""
     if len(row) < 27:
@@ -432,9 +449,22 @@ def parse_gkg_row(row: list, source_lang: str = "en") -> Optional[dict]:
             # word unmatchable lexically AND splits reprint dedup into two
             # "different" stories.
             candidate = _html.unescape(m.group(1)).strip()
-            # Basic validation: at least 4 words, no GDELT doc IDs
+            # Basic validation: no GDELT doc IDs, and either >= 4 words OR a
+            # CJK-dominant title of >= 10 chars. The bare word-count check is
+            # script-blind: CJK titles carry few or no spaces, so a complete
+            # Japanese/Chinese headline splits into 1-3 "words" and was thrown
+            # away — measured 38-53% NULL headlines on the translingual lane
+            # for JP/TW/CN vs ~0% on the English lane (see docs/research/
+            # recall-229/2026-07-30-gdelt-null-headline-diagnosis.md). Junk
+            # placeholders ("Content 23748045") are ASCII, never CJK-dominant.
             words = candidate.split()
-            if len(words) >= 4 and not _re.match(r'^\d{6,}', candidate):
+            if not _re.match(r'^\d{6,}', candidate) and (
+                len(words) >= 4
+                or (
+                    len(candidate) >= _CJK_TITLE_MIN_CHARS
+                    and _cjk_ratio(candidate) > 0.5
+                )
+            ):
                 headline = candidate
 
     # Fall back to URL slug if no title found
