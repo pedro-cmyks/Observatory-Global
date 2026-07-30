@@ -49,6 +49,7 @@ import copy
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,7 @@ import asyncpg  # noqa: E402
 
 from app.services import thread_ranking  # noqa: E402
 from app.services.thread_intelligence import (  # noqa: E402
+    _DYNAMIC_TOPICS_SQL,
     _fetch_dynamic_threads_with_conn,
     dedupe_same_event_threads,
     stamped_counts,
@@ -340,6 +342,200 @@ async def run(doors: list[tuple[str, str | None, int]],
     return result
 
 
+# ==========================================================================
+# A0b — the fetch-side enforcement gate (pre-registration
+# `docs/superpowers/specs/2026-07-29-a0b-fetch-gate-preregistration.md`).
+#
+# The intervention: `/threads` fetches M x limit candidates, applies the
+# SHIPPED ranking (incl. the live court damp — no new rank code), serves the
+# top `limit`. This is exactly `fetch_threads`'s dynamic path with the fetch
+# widened and the cut unchanged:
+#
+#     dedupe_same_event_threads(rank_threads(dynamic))[:limit]
+#
+# so the harness calls the SAME functions in the SAME order and varies only
+# the depth handed to `_fetch_dynamic_threads_with_conn`.
+#
+# Conditions (frozen before this code was written):
+#   C1 global top-40 entailed-share delta >= +15pp
+#   C2 no door in the C2 set loses more than 5pp of entailed-share
+#   C3 global top-10 median signal_count >= 50% of baseline's
+#   C4 no door loses >25% of its served rows; global top-40 >= 30 rows
+#   C5 M x LIMIT fetch stays inside the endpoint's existing budget
+# ==========================================================================
+
+A0B_MULTS = (2, 3, 4)
+
+# Scored C2 set (operational reading, recorded before scoring): the gate says
+# "the 5 most populated doors (incl. US, TR, DE)". By candidate depth the five
+# most populated are RU/UA/IR/GB/IN, which would exclude all three mandated
+# doors, so the scored set is the three mandated + the two deepest remaining
+# (RU 142, UA 110 candidates). Every other alive door is measured too and
+# reported as an unscored shadow-C2 — a door outside the scored five that gets
+# worse is reported beside the verdict, never hidden by the frame.
+A0B_C2_SCORED = ("US", "TR", "DE", "RU", "UA")
+
+# Gate-required doors first (the artifact is dumped after each door, so a
+# truncated run still carries everything C1-C4 are scored on).
+A0B_DOORS: list[tuple[str, str | None, int]] = [
+    ("GLOBAL", None, 40),
+    ("US", "US", 24), ("TR", "TR", 24), ("DE", "DE", 24),
+    ("RU", "RU", 24), ("UA", "UA", 24),
+    # thin-but-alive (1 served row each at baseline — the only alive thin doors)
+    ("AR", "AR", 24), ("IL", "IL", 24),
+    # shadow-C2 (measured, unscored): the rest of the alive doors
+    ("IR", "IR", 24), ("GB", "GB", 24), ("IN", "IN", 24), ("ES", "ES", 24),
+    ("GR", "GR", 24), ("FR", "FR", 24), ("ID", "ID", 24), ("IT", "IT", 24),
+    ("BR", "BR", 24), ("CA", "CA", 24), ("CN", "CN", 24),
+]
+
+
+def median_signals(threads: list[dict], n: int) -> float:
+    vals = sorted(int(t.get("signal_count") or 0) for t in threads[:n])
+    if not vals:
+        return 0.0
+    mid = len(vals) // 2
+    return float(vals[mid]) if len(vals) % 2 else (vals[mid - 1] + vals[mid]) / 2
+
+
+def a0b_serve(pool: list[dict], page: int) -> list[dict]:
+    """Serving, verbatim: shipped damp, shipped scorer, shipped collapse, cut
+    to the page. The ONLY variable across arms is how deep `pool` was fetched."""
+    return _rank_with_damp(pool, dict(thread_ranking._COURT_DAMP))[:page]
+
+
+async def a0b_cost(conn: Any, page: int, mults: tuple[int, ...],
+                   reps: int) -> dict[str, Any]:
+    """C5 — timed real fetches at each depth, interleaved so cache warmth is
+    shared across arms (a cold baseline vs warm over-fetch would flatter the
+    over-fetch). Also EXPLAIN(ANALYZE) the bare topic SQL so the SQL cost and
+    the per-row sample-signal round trips can be told apart."""
+    depths = [page] + [page * m for m in mults]
+    timings: dict[int, list[float]] = {d: [] for d in depths}
+    for _ in range(reps):
+        for d in depths:
+            t0 = time.perf_counter()
+            await fetch_pool(conn, None, d)
+            timings[d].append(time.perf_counter() - t0)
+    def pct(vals: list[float], p: float) -> float:
+        s = sorted(vals)
+        return round(s[min(len(s) - 1, int(p * len(s)))], 3)
+    out: dict[str, Any] = {"reps": reps, "note": (
+        "wall-clock of _fetch_dynamic_threads_with_conn (topic SQL + one "
+        "sample-signal query per served row), run from this machine against "
+        "prod; interleaved arms share cache warmth"
+    ), "by_depth": {}}
+    for d in depths:
+        v = timings[d]
+        out["by_depth"][str(d)] = {
+            "p50_s": pct(v, 0.5), "p95_s": pct(v, 0.95),
+            "min_s": round(min(v), 3), "max_s": round(max(v), 3),
+            "samples": [round(x, 3) for x in v],
+        }
+    # SQL-only cost, separated from the per-row sample fetches
+    sql_only: dict[str, Any] = {}
+    for d in depths:
+        rows = await conn.fetch(
+            "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + _DYNAMIC_TOPICS_SQL,
+            24, d, timeout=120,
+        )
+        plan = json.loads(rows[0][0])[0]
+        sql_only[str(d)] = {
+            "execution_ms": round(plan.get("Execution Time", 0.0), 1),
+            "planning_ms": round(plan.get("Planning Time", 0.0), 1),
+            "rows_out": plan["Plan"].get("Actual Rows"),
+        }
+    out["topic_sql_explain_analyze"] = sql_only
+    return out
+
+
+async def run_a0b(doors: list[tuple[str, str | None, int]],
+                  mults: tuple[int, ...], cost_reps: int,
+                  out: Path | None = None) -> dict[str, Any]:
+    dsn = os.environ["DATABASE_URL"]
+    conn = await asyncpg.connect(dsn)
+    await conn.execute("SET default_transaction_read_only = on")
+    result: dict[str, Any] = {
+        "gate": "A0b",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "rank_v2_enabled": thread_ranking.rank_v2_enabled(),
+        "shipped_court_damp": dict(thread_ranking._COURT_DAMP),
+        "mults": list(mults),
+        "c2_scored_doors": list(A0B_C2_SCORED),
+        "visible_fold": VISIBLE_FOLD,
+        "doors": {},
+    }
+    try:
+        assert await conn.fetchval("SHOW default_transaction_read_only") == "on"
+        result["field"] = {
+            "topics_by_status": {
+                f"{'umbrella' if r['is_umbrella'] else 'child'}:{r['st']}": r["n"]
+                for r in await conn.fetch(
+                    "SELECT is_umbrella, COALESCE(label_status,'unchecked') st,"
+                    " COUNT(*)::int n FROM dynamic_topics WHERE state='active'"
+                    " GROUP BY 1,2"
+                )
+            },
+            "members_max_snapshot": str(await conn.fetchval(
+                "SELECT MAX(snapshot_at) FROM dynamic_topic_members")),
+            "clusters_max_snapshot": str(await conn.fetchval(
+                "SELECT MAX(snapshot_at) FROM emergent_clusters")),
+        }
+        for name, cc, page in doors:
+            print(f"[a0b] {name} page={page} ...", file=sys.stderr)
+            pools = {1: await fetch_pool(conn, cc, page)}
+            for m in mults:
+                pools[m] = await fetch_pool(conn, cc, page * m)
+            base = a0b_serve(pools[1], page)
+            base_comp = compose(base)
+            door: dict[str, Any] = {
+                "country_code": cc,
+                "page": page,
+                "baseline": {
+                    "pool_fetched": len(pools[1]),
+                    **base_comp,
+                    "median_signals_top10": median_signals(base, VISIBLE_FOLD),
+                    "head": head(base, 20),
+                },
+                "arms": {},
+            }
+            for m in mults:
+                served = a0b_serve(pools[m], page)
+                comp = compose(served)
+                door["arms"][f"M{m}"] = {
+                    "pool_fetched": len(pools[m]),
+                    **comp,
+                    "entailed_share_delta_pp": round(
+                        (comp["share"]["entailed"]
+                         - base_comp["share"]["entailed"]) * 100, 1),
+                    "failed_share_delta_pp": round(
+                        (comp["share"]["failed"]
+                         - base_comp["share"]["failed"]) * 100, 1),
+                    "unchecked_share": comp["share"]["unchecked"],
+                    "rows_pct_of_baseline": (
+                        round(len(served) / len(base), 4) if base else None),
+                    "median_signals_top10": median_signals(served, VISIBLE_FOLD),
+                    "median_signals_pct_of_baseline": (
+                        round(median_signals(served, VISIBLE_FOLD)
+                              / median_signals(base, VISIBLE_FOLD), 4)
+                        if median_signals(base, VISIBLE_FOLD) else None),
+                    "visible_fold": compose(served[:VISIBLE_FOLD]),
+                    "diff_vs_baseline": diff(base, served),
+                    "head": head(served, 20),
+                }
+            door["size_by_status_deepest_pool"] = size_by_status(
+                pools[max(mults)])
+            result["doors"][name] = door
+            if out is not None:      # partial dump: a killed run keeps its doors
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(json.dumps(result, indent=2, default=str))
+        print("[a0b] cost ...", file=sys.stderr)
+        result["cost"] = await a0b_cost(conn, 40, mults, cost_reps)
+    finally:
+        await conn.close()
+    return result
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True, help="JSON artifact path")
@@ -349,15 +545,27 @@ def main() -> None:
     )
     ap.add_argument("--no-scan", action="store_true",
                     help="skip the country-door candidates-vs-served scan")
+    ap.add_argument("--a0b", action="store_true",
+                    help="run the A0b fetch-gate simulation instead of A0")
+    ap.add_argument("--mults", default="2,3,4",
+                    help="A0b fetch multipliers (default 2,3,4)")
+    ap.add_argument("--cost-reps", type=int, default=5,
+                    help="A0b C5 timing repetitions per depth")
     args = ap.parse_args()
     doors = DEFAULT_DOORS
+    if args.a0b:
+        doors = A0B_DOORS
     if args.doors:
         doors = []
         for spec in args.doors.split(","):
             nm, cc, pg = spec.split(":")
             doors.append((nm, None if cc == "-" else cc.upper(), int(pg)))
-    payload = asyncio.run(run(doors, do_scan=not args.no_scan))
     out = Path(args.out)
+    if args.a0b:
+        mults = tuple(int(x) for x in args.mults.split(","))
+        payload = asyncio.run(run_a0b(doors, mults, args.cost_reps, out))
+    else:
+        payload = asyncio.run(run(doors, do_scan=not args.no_scan))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2, default=str))
     print(f"wrote {out}", file=sys.stderr)
