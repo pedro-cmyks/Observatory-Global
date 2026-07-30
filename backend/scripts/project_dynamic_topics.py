@@ -26,7 +26,9 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime
 from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -348,11 +350,11 @@ class Topic:
         "id", "identity_key", "state", "label_counts", "centroid", "anchor_centroid",
         "first_seen", "last_seen", "snapshots", "agg_n_signals", "cohesions",
         "roundup_votes", "n_labels", "since_seen", "members", "dirty", "new", "noises",
-        "is_junk",
+        "is_junk", "countries", "cc_snap",
     )
 
     def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None,
-                 content_roundup=False):
+                 content_roundup=False, countries=None):
         self.id: int | None = None
         self.identity_key = identity_key
         self.state = "candidate"
@@ -383,6 +385,29 @@ class Topic:
         # from the persisted row in hydrate. New topics start not-junk (they get
         # flagged once they carry unified-v2 members).
         self.is_junk = False
+        # P2 per-country clock (2026-07-30): the country codes of the topic's
+        # LATEST member snapshot — "where this topic currently lives". Same
+        # definition the post-dark-door serving door uses (latest-snapshot codes,
+        # ANY position; NOT the all-snapshot `top_country_codes[1]` variant that
+        # counted historical membership). Empty = unattributable → ages normally.
+        self.countries: set[str] = set()
+        self.cc_snap: Any = None
+        self._note_countries(snap, countries)
+
+    def _note_countries(self, snap, codes) -> None:
+        """Record a member cluster's countries, keeping only the LATEST snapshot.
+
+        Newer snapshot replaces; same snapshot unions (a topic can hold several
+        clusters at one snapshot); older is ignored. Members are replayed in
+        snapshot order in both hydrate and match paths, so this converges on the
+        latest-snapshot country set either way.
+        """
+        codes = {str(c).strip().upper() for c in (codes or []) if str(c).strip()}
+        if self.cc_snap is None or snap > self.cc_snap:
+            self.cc_snap = snap
+            self.countries = codes
+        elif snap == self.cc_snap:
+            self.countries |= codes
 
     @property
     def n_member_clusters(self) -> int:
@@ -425,6 +450,7 @@ class Topic:
         if cluster.get("noise") is not None:
             self.noises.append(float(cluster["noise"]))
         self.members.append({"cluster_id": cluster["id"], "snapshot_at": snap, "match_score": score})
+        self._note_countries(snap, cluster.get("countries"))
         self.dirty = True
 
     def absorb(self, other: "Topic") -> None:
@@ -446,6 +472,8 @@ class Topic:
         self.n_labels += other.n_labels
         self.label_counts.update(other.label_counts)
         self.since_seen = min(self.since_seen, other.since_seen)
+        if other.cc_snap is not None:
+            self._note_countries(other.cc_snap, other.countries)
         if self.state != "active" and other.state == "active":
             self.state = "active"
         self.members.extend(other.members)
@@ -540,6 +568,127 @@ def use_tick_v2(rebuild: bool, env: dict[str, str] | None = None) -> bool:
     return lifecycle_tick_v2_enabled(env) and not rebuild
 
 
+# ---------- P2: the per-country lifecycle clock ----------
+#
+# Measured defect (docs/research/recall-229/2026-07-29-threading-floor-diagnosis.md
+# §P2): the 150-min weekday run budget DEFERS 130-154 countries every weekday
+# night (0 on weekend nights), and a deferred country's topics age anyway. BO and
+# ML cluster fine — 1-7 gated clusters, 100% re-match — whenever the pass reaches
+# them; they die between passes. A country the budget deferred did not fail to
+# produce a story: Atlas failed to look. Only 30 of 168 clustered countries can
+# currently serve a thread, and 1,353 retired topics pass every quality bar.
+#
+# The fix: a topic ages only on passes that actually CLUSTERED one of its
+# countries. No quality bar moves — persist_min, volume_min, cohesion_min,
+# noise_max, roundup and junk are all untouched; only the clock is gated.
+#
+# WHERE THE COUNTRY LIST COMES FROM (the design choice):
+# the scoped snapshot's own checkpoint file, `ck.done` (snapshot_budget.py:
+# Checkpoint), written atomically after every banked country and read here.
+# It is the only source that keeps the distinction P2 depends on:
+#   BO deferred     -> absent from `done`        -> FROZEN (Atlas never looked)
+#   MM ran, 0 kept  -> done[MM] = "no_clusters"  -> AGES (Atlas looked, honestly)
+# Deriving the set from the pass's own clusters would be self-contained but
+# CONFLATES those two — Myanmar (`no gated clusters` on every pass, §2.3) would
+# be frozen forever, which is exactly the wrong answer. The runner already
+# exports ATLAS_SNAPSHOT_STATE_DIR before invoking this script
+# (scripts/run-scoped-snapshot.sh:44 -> :242), so no runner change and no new
+# artifact are needed. Countries that ERRORED out are also absent from `done`
+# and are therefore frozen too — same honest reason: nothing was looked at.
+#
+# FAIL OPEN, ALWAYS: any doubt about the country list (missing/corrupt file,
+# a checkpoint describing a different snapshot than the pass being ingested,
+# an empty ledger) degrades to today's behaviour — age everything — and says so
+# in the summary. Freezing on a stale ledger would un-age the whole field.
+# Env-gated + reversible: ATLAS_LIFECYCLE_COUNTRY_CLOCK (default OFF).
+LIFECYCLE_COUNTRY_CLOCK_ENV = "ATLAS_LIFECYCLE_COUNTRY_CLOCK"
+SNAPSHOT_CHECKPOINT_FILE = "scoped-snapshot-checkpoint.json"
+
+
+def lifecycle_country_clock_enabled(env: dict[str, str] | None = None) -> bool:
+    """True when the per-country lifecycle clock is switched on. Default OFF."""
+    src = os.environ if env is None else env
+    return (src.get(LIFECYCLE_COUNTRY_CLOCK_ENV) or "").strip().lower() in _TRUE_VALUES
+
+
+def use_country_clock(rebuild: bool, env: dict[str, str] | None = None) -> bool:
+    """Per-country clock applies to INCREMENTAL runs only.
+
+    `--rebuild` REPLAYS the whole snapshot history from an empty table; gating
+    that replay on ONE night's country ledger would freeze almost every topic in
+    almost every historical tick and fabricate a population that was never aged.
+    The nightly runner is incremental (see scripts/run-scoped-snapshot.sh Step 2),
+    so the exclusion costs the fix nothing — same rule as the v2 tick.
+    """
+    return lifecycle_country_clock_enabled(env) and not rebuild
+
+
+def _parse_snapshot_ts(value: Any) -> datetime | None:
+    """ISO -> datetime, or None. Never raises: a bad stamp must fail open."""
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def clustered_countries(checkpoint: dict[str, Any] | None, *,
+                        primary_snapshot: str | None) -> tuple[set[str] | None, str]:
+    """Country ledger for THIS pass -> (codes | None, reason). Pure.
+
+    None = unknown, and the caller must fail open (age everything). The ledger is
+    accepted only when the checkpoint describes the very snapshot being ingested:
+    `primary_snapshot` is the newest group of this run (count_passes), and the
+    checkpoint's `snapshot_at` is the snapshot the R1 pass just banked. A
+    mismatch means the file is stale (a crashed/skipped R1, a re-run projecting
+    an older night) and freezing on it would silently stop the clock.
+    """
+    if not checkpoint:
+        return None, "no_checkpoint"
+    if primary_snapshot is None:
+        return None, "no_primary_snapshot"
+    ck_ts = _parse_snapshot_ts(checkpoint.get("snapshot_at"))
+    pass_ts = _parse_snapshot_ts(primary_snapshot)
+    if ck_ts is None or pass_ts is None:
+        return None, "unparsable_snapshot"
+    if (ck_ts.tzinfo is None) != (pass_ts.tzinfo is None) or ck_ts != pass_ts:
+        return None, "snapshot_mismatch"
+    done = checkpoint.get("done")
+    if not isinstance(done, dict) or not done:
+        return None, "empty_ledger"
+    codes = {str(cc).strip().upper() for cc in done if str(cc).strip()}
+    return (codes, "checkpoint") if codes else (None, "empty_ledger")
+
+
+def load_snapshot_checkpoint(state_dir: str | None) -> dict[str, Any] | None:
+    """Read the scoped snapshot's checkpoint JSON. None on anything unusual."""
+    if not state_dir:
+        return None
+    try:
+        import json as _json
+        raw = _json.loads(
+            (Path(state_dir) / SNAPSHOT_CHECKPOINT_FILE).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return raw if isinstance(raw, dict) else None
+
+
+def is_frozen_country(topic: "Topic", clustered_ccs: set[str] | None) -> bool:
+    """True when this pass never clustered any country this topic lives in.
+
+    Fails open twice over: an unknown ledger (None) and an unattributable topic
+    (no country on its latest member snapshot — e.g. the identity-continuity
+    fallback in hydrate_topics, whose member clusters are gone) both age
+    normally, exactly as today.
+    """
+    if clustered_ccs is None or not topic.countries:
+        return False
+    return not (topic.countries & clustered_ccs)
+
+
 def count_passes(groups: list[tuple[str, list[dict[str, Any]]]]) -> dict[str, Any]:
     """Pass accounting for the v2 clock (the ORPHAN GUARD's reporting half).
 
@@ -597,6 +746,7 @@ def match_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], sna
                 label=c["label"], centroid=c["centroid"], snap=snap,
                 n_signals=c["n_signals"], cohesion=c.get("cohesion"), noise=c.get("noise"),
                 content_roundup=bool(c.get("content_roundup")),
+                countries=c.get("countries"),
             )
             # constructor seeds aggregates from this cluster; record its member row
             t.members.append({"cluster_id": c["id"], "snapshot_at": snap, "match_score": 1.0})
@@ -605,15 +755,31 @@ def match_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], sna
     return seen_topics
 
 
-def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleConfig) -> None:
+def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleConfig,
+                   clustered_ccs: set[str] | None = None) -> int:
     """Advance every topic's lifecycle clock by EXACTLY ONE tick.
 
     `seen_topics` = indices matched/founded during this tick. Under the v2 clock
     the caller passes the union over the whole pass, so a topic matched in any
     group (primary or re-entrant orphan) resets to 0 exactly as today.
+
+    `clustered_ccs` (P2, None = off/unknown) = the countries this pass actually
+    clustered. An UNSEEN topic none of whose countries were clustered is skipped
+    whole: neither the counter nor the state moves, because this pass did not
+    happen for it. Skipping the transition too is not a shortcut — for an unseen
+    topic `next_state` can only ever demote on `since_seen`, so evaluating it on
+    a frozen counter would be aging a topic on a pass that never looked.
+    SEEN topics are untouched by P2: they reset to 0 exactly as today, so a
+    ledger error can never hold a matched topic back.
+
+    Returns the number of topics frozen by the country clock (0 when off).
     """
+    frozen = 0
     for ti, t in enumerate(topics):
         seen = ti in seen_topics
+        if not seen and is_frozen_country(t, clustered_ccs):
+            frozen += 1
+            continue
         t.since_seen = 0 if seen else t.since_seen + 1
         new_state = next_state(
             t.state, seen_now=seen, n_snapshots=len(t.snapshots),
@@ -624,16 +790,25 @@ def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleCon
         if new_state != t.state:
             t.state = new_state
             t.dirty = True
+    return frozen
 
 
-def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], snap, cfg: LifecycleConfig) -> list[Topic]:
+def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], snap,
+                     cfg: LifecycleConfig,
+                     clustered_ccs: set[str] | None = None,
+                     report: dict[str, Any] | None = None) -> list[Topic]:
     """Match a snapshot's clusters, then advance every topic's state one tick.
 
     Legacy per-snapshot-group unit of work — unchanged; still the whole story
     when ATLAS_LIFECYCLE_TICK_V2 is off, and the per-historical-snapshot unit
-    under --rebuild.
+    under --rebuild. `clustered_ccs` (default None = off) is the P2 country
+    ledger, orthogonal to which tick regime is in force; `report` accumulates
+    the frozen-tick count across calls.
     """
-    advance_states(topics, match_snapshot(topics, snap_clusters, snap), cfg)
+    frozen = advance_states(topics, match_snapshot(topics, snap_clusters, snap), cfg,
+                            clustered_ccs)
+    if report is not None:
+        report["frozen"] = int(report.get("frozen", 0)) + frozen
     return topics
 
 
@@ -643,17 +818,26 @@ def apply_new_clusters(
     cfg: LifecycleConfig,
     *,
     tick_v2: bool,
+    clustered_ccs: set[str] | None = None,
+    report: dict[str, Any] | None = None,
 ) -> int:
     """Ingest every un-ingested snapshot group; return the number of ticks fired.
 
     tick_v2 OFF (default): one tick per group — byte-identical to the historical
     loop, including the phantom ticks the orphan cycle manufactures.
     tick_v2 ON: match all groups first, then age ONCE. The pass is the clock.
+
+    `clustered_ccs` (P2, default None = off) composes with either regime: the
+    ledger describes what the RUN clustered, so every tick the run fires — one
+    under v2, one per group under legacy — is gated by the same country set.
+    `report` collects "frozen" (topic-ticks skipped by the country clock).
     """
+    if report is not None:
+        report.setdefault("frozen", 0)
     if not tick_v2:
         ticks = 0
         for snap, snap_clusters in groups:
-            process_snapshot(topics, snap_clusters, snap, cfg)
+            process_snapshot(topics, snap_clusters, snap, cfg, clustered_ccs, report)
             ticks += 1
         return ticks
     if not groups:
@@ -661,7 +845,9 @@ def apply_new_clusters(
     seen_all: set[int] = set()
     for snap, snap_clusters in groups:
         seen_all |= match_snapshot(topics, snap_clusters, snap)
-    advance_states(topics, seen_all, cfg)
+    frozen = advance_states(topics, seen_all, cfg, clustered_ccs)
+    if report is not None:
+        report["frozen"] = int(report.get("frozen", 0)) + frozen
     return 1
 
 
@@ -700,7 +886,7 @@ async def _fetch_by_ids(conn, sql: str, all_ids: list[int]):
 async def load_clusters(conn) -> list[dict[str, Any]]:
     rows = await conn.fetch(
         "SELECT id, snapshot_at, cluster_id, label, n_signals, cohesion, "
-        "sample_signal_ids, centroid_vec, role_noise_rate "
+        "sample_signal_ids, centroid_vec, role_noise_rate, top_country_codes "
         "FROM emergent_clusters WHERE centroid_vec IS NOT NULL ORDER BY snapshot_at, cluster_id"
     )
     return [
@@ -713,6 +899,8 @@ async def load_clusters(conn) -> list[dict[str, Any]]:
             "centroid": np.array(r["centroid_vec"], dtype=np.float64),
             # cached per-cluster noise ($0: computed once, never recomputed)
             "noise": float(r["role_noise_rate"]) if r["role_noise_rate"] is not None else None,
+            # P2 per-country clock: which countries this cluster's signals sit in.
+            "countries": [str(x) for x in (r["top_country_codes"] or [])],
         }
         for r in rows
     ]
@@ -872,6 +1060,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
             snap=mem[0]["snapshot_at"], n_signals=first["n_signals"],
             cohesion=first.get("cohesion"), noise=first.get("noise"),
             content_roundup=bool(first.get("content_roundup")),
+            countries=first.get("countries"),
         )
         t.members.append({"cluster_id": first["id"], "snapshot_at": mem[0]["snapshot_at"], "match_score": 1.0})
         for m in mem[1:]:
@@ -989,7 +1178,19 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         new_clusters = [c for c in clusters if c["id"] not in done]
         groups = group_by_snapshot(new_clusters)
         tick_v2 = use_tick_v2(bool(args.rebuild))
-        processed_snaps = apply_new_clusters(topics, groups, cfg, tick_v2=tick_v2)
+        # P2: the country ledger for THIS pass (None = off or unusable = age all).
+        country_clock = use_country_clock(bool(args.rebuild))
+        clustered_ccs: set[str] | None = None
+        cc_reason = "off"
+        if country_clock:
+            clustered_ccs, cc_reason = clustered_countries(
+                load_snapshot_checkpoint(getattr(args, "snapshot_state_dir", None)),
+                primary_snapshot=(groups[-1][0] if groups else None),
+            )
+        clock_report: dict[str, Any] = {}
+        processed_snaps = apply_new_clusters(topics, groups, cfg, tick_v2=tick_v2,
+                                             clustered_ccs=clustered_ccs,
+                                             report=clock_report)
 
         merges = 0
         if args.rebuild:
@@ -1024,6 +1225,16 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             summary["n_snapshot_groups"] = acct["groups"]
             summary["n_reentrant_groups"] = acct["reentrant_groups"]
             summary["primary_snapshot"] = acct["primary_snapshot"]
+        if country_clock:
+            # Reported ONLY under the country clock so the legacy summary stays
+            # byte-identical. `country_clock_source` is the honesty field: it
+            # says "checkpoint" when the ledger was accepted and names the
+            # fail-open reason when it was not (aging then = today's behaviour).
+            summary["lifecycle_country_clock"] = True
+            summary["country_clock_source"] = cc_reason
+            summary["n_clustered_countries"] = (
+                len(clustered_ccs) if clustered_ccs is not None else None)
+            summary["n_frozen_topic_ticks"] = int(clock_report.get("frozen", 0))
         if regraded is not None:
             summary["regrade_promoted"], summary["regrade_demoted"] = regraded
         if not args.dry_run:
@@ -1053,6 +1264,13 @@ def parse_args() -> argparse.Namespace:
                     help="override LifecycleConfig.volume_min (min agg kept signals to promote; scoped regime ~12)")
     ap.add_argument("--noise-max", type=float, default=None,
                     help="override LifecycleConfig.noise_max (max student noise-rate to promote; 2026-07-08 recal=0.85)")
+    ap.add_argument("--snapshot-state-dir",
+                    default=os.environ.get("ATLAS_SNAPSHOT_STATE_DIR"),
+                    help="dir holding the scoped snapshot's checkpoint "
+                         "(scoped-snapshot-checkpoint.json) — the country ledger the "
+                         "P2 per-country clock reads. Defaults to ATLAS_SNAPSHOT_STATE_DIR, "
+                         "which run-scoped-snapshot.sh already exports. Ignored unless "
+                         "ATLAS_LIFECYCLE_COUNTRY_CLOCK is on; unusable = fail open.")
     ap.add_argument("--regrade", action="store_true",
                     help="one-time gate recalibration: re-evaluate the WHOLE standing population "
                          "against the current gate (promote qualified candidates/deprecated even if "

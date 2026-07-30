@@ -7,13 +7,18 @@ from scripts.project_dynamic_topics import (
     Topic,
     apply_new_clusters,
     chunk_ids,
+    clustered_countries,
     count_passes,
+    is_frozen_country,
     is_roundup_label,
+    lifecycle_country_clock_enabled,
     lifecycle_tick_v2_enabled,
+    load_snapshot_checkpoint,
     merge_duplicates,
     next_state,
     running_mean,
     process_snapshot,
+    use_country_clock,
     use_tick_v2,
 )
 
@@ -528,3 +533,212 @@ def test_count_passes_single_group_and_empty():
     assert count_passes([]) == {
         "passes": 0, "groups": 0, "reentrant_groups": 0, "primary_snapshot": None,
     }
+
+
+# ── P2 (2026-07-30): the per-country lifecycle clock ─────────────────────────
+# Defect: the 150-min weekday run budget defers 130-154 countries/night and the
+# deferred countries' topics age anyway — BO/ML cluster fine (100% re-match)
+# whenever the pass reaches them and die between passes. A topic ages only on
+# passes that actually clustered one of its countries. MM is the control: it IS
+# reached and returns "no gated clusters" every pass — an honest empty, which
+# must keep aging.
+
+PASS_SNAP = "2026-07-30T03:53:18.074187+00:00"
+
+
+def _country_topic(cc, key="dyn-s0-1", label="Colombia 42-Hour Workweek"):
+    t = Topic(key, label, [1.0, 0.0], "s0", 115, 0.9, countries=[cc])
+    t.state = "active"
+    t.since_seen = 0
+    t.new = False
+    t.dirty = False
+    return t
+
+
+def _pass_groups(snap=PASS_SNAP):
+    """One pass whose clusters can never match the fixture topics."""
+    return [(snap, [_far_cluster(snap, 1)])]
+
+
+def _checkpoint(done, snap=PASS_SNAP):
+    return {"snapshot_at": snap, "hours": 168, "started_at": snap,
+            "next_base": 0, "done": done, "complete": True, "version": 1}
+
+
+def test_lifecycle_country_clock_defaults_off():
+    assert lifecycle_country_clock_enabled({}) is False
+    assert lifecycle_country_clock_enabled({"ATLAS_LIFECYCLE_COUNTRY_CLOCK": ""}) is False
+    assert lifecycle_country_clock_enabled({"ATLAS_LIFECYCLE_COUNTRY_CLOCK": "off"}) is False
+    assert lifecycle_country_clock_enabled({"ATLAS_LIFECYCLE_COUNTRY_CLOCK": "0"}) is False
+    for on in ("1", "on", "true", "TRUE", " yes "):
+        assert lifecycle_country_clock_enabled({"ATLAS_LIFECYCLE_COUNTRY_CLOCK": on}) is True
+
+
+def test_use_country_clock_never_applies_to_rebuild():
+    env = {"ATLAS_LIFECYCLE_COUNTRY_CLOCK": "on"}
+    assert use_country_clock(False, env) is True
+    # --rebuild replays ALL history; one night's ledger would freeze it whole.
+    assert use_country_clock(True, env) is False
+    assert use_country_clock(False, {}) is False
+
+
+def test_clustered_countries_reads_the_checkpoint_ledger():
+    ccs, reason = clustered_countries(
+        _checkpoint({"US": "ok", "tr": "ok", "MM": "no_clusters"}),
+        primary_snapshot=PASS_SNAP)
+    assert reason == "checkpoint"
+    # MM ran and kept nothing — it IS in the ledger (an honest empty, not a gap).
+    assert ccs == {"US", "TR", "MM"}
+
+
+def test_clustered_countries_fails_open_on_a_stale_or_missing_ledger():
+    """Any doubt = age everything (today's behaviour), never freeze the field."""
+    assert clustered_countries(None, primary_snapshot=PASS_SNAP) == (None, "no_checkpoint")
+    assert clustered_countries(_checkpoint({"US": "ok"}), primary_snapshot=None) \
+        == (None, "no_primary_snapshot")
+    # a checkpoint describing ANOTHER night must never gate this pass
+    assert clustered_countries(_checkpoint({"US": "ok"}, snap="2026-07-29T22:00:00+00:00"),
+                               primary_snapshot=PASS_SNAP) == (None, "snapshot_mismatch")
+    assert clustered_countries(_checkpoint({"US": "ok"}, snap="not-a-date"),
+                               primary_snapshot=PASS_SNAP) == (None, "unparsable_snapshot")
+    # naive vs aware must not be compared, and an empty ledger is not a ledger
+    assert clustered_countries(_checkpoint({"US": "ok"}, snap="2026-07-30T03:53:18.074187"),
+                               primary_snapshot=PASS_SNAP) == (None, "snapshot_mismatch")
+    assert clustered_countries(_checkpoint({}), primary_snapshot=PASS_SNAP) \
+        == (None, "empty_ledger")
+
+
+def test_load_snapshot_checkpoint_never_raises(tmp_path):
+    assert load_snapshot_checkpoint(None) is None
+    assert load_snapshot_checkpoint(str(tmp_path)) is None          # no file
+    (tmp_path / "scoped-snapshot-checkpoint.json").write_text("{oops", encoding="utf-8")
+    assert load_snapshot_checkpoint(str(tmp_path)) is None          # corrupt
+    (tmp_path / "scoped-snapshot-checkpoint.json").write_text(
+        '{"snapshot_at": "s", "done": {"US": "ok"}}', encoding="utf-8")
+    assert load_snapshot_checkpoint(str(tmp_path))["done"] == {"US": "ok"}
+
+
+def test_is_frozen_country_fails_open_both_ways():
+    bo = _country_topic("BO")
+    assert is_frozen_country(bo, None) is False          # unknown ledger -> age
+    assert is_frozen_country(bo, {"US", "TR"}) is True   # BO never clustered
+    assert is_frozen_country(bo, {"US", "BO"}) is False
+    unattributable = Topic("dyn-x", "No members left", [1.0, 0.0], "s0", 10, 0.9)
+    assert is_frozen_country(unattributable, {"US"}) is False   # no country -> age
+
+
+def test_country_clock_freezes_a_deferred_country_topic():
+    """BO deferred by the run budget: Atlas failed to look, so BO does not age."""
+    bo = _country_topic("BO")
+    report: dict = {}
+    apply_new_clusters([bo], _pass_groups(), CFG, tick_v2=True,
+                       clustered_ccs={"US", "TR"}, report=report)
+    assert bo.since_seen == 0
+    assert bo.state == "active"
+    assert report["frozen"] == 1
+
+
+def test_country_clock_still_ages_a_processed_but_empty_country():
+    """MM ran and kept nothing — an honest empty. It must keep aging."""
+    mm = _country_topic("MM", key="dyn-mm-1", label="Myanmar Story")
+    report: dict = {}
+    apply_new_clusters([mm], _pass_groups(), CFG, tick_v2=True,
+                       clustered_ccs={"US", "MM"}, report=report)   # MM = "no_clusters"
+    assert mm.since_seen == 1
+    assert report["frozen"] == 0
+
+
+def test_country_clock_never_holds_back_a_seen_topic():
+    """A matched topic resets to 0 even if the ledger says its country sat out."""
+    t = _country_topic("BO")
+    t.since_seen = 3
+    groups = [(PASS_SNAP, [_cluster(PASS_SNAP, 9, [1.0, 0.0], "Colombia 42-Hour Workweek")])]
+    apply_new_clusters([t], groups, CFG, tick_v2=True, clustered_ccs={"US"})
+    assert t.since_seen == 0
+    assert t.state == "active"
+
+
+def test_country_clock_slows_the_clock_it_does_not_stop_it():
+    """Once BO IS clustered again, the ordinary staleness path still retires it."""
+    bo = _country_topic("BO")
+    for _ in range(3):                                   # three deferred nights
+        apply_new_clusters([bo], _pass_groups(), CFG, tick_v2=True, clustered_ccs={"US"})
+    assert bo.since_seen == 0 and bo.state == "active"
+    for _ in range(4):                                   # four nights BO ran, unseen
+        apply_new_clusters([bo], _pass_groups(), CFG, tick_v2=True, clustered_ccs={"BO"})
+    assert bo.since_seen == 4
+    assert bo.state == "retired"
+
+
+def test_country_clock_composes_with_tick_v2_both_on():
+    """4 groups (3 orphan re-entrants) + a deferred country = zero aging."""
+    bo = _country_topic("BO")
+    mm = _country_topic("MM", key="dyn-mm-1", label="Myanmar Story")
+    report: dict = {}
+    ticks = apply_new_clusters([bo, mm], _four_groups(), CFG, tick_v2=True,
+                               clustered_ccs={"US", "MM"}, report=report)
+    assert ticks == 1
+    assert bo.since_seen == 0        # deferred country: frozen
+    assert mm.since_seen == 1        # clustered country: one tick, not four
+    assert report["frozen"] == 1
+
+
+def test_country_clock_composes_with_tick_v2_off():
+    """P1 off: the legacy per-group tick still respects the country ledger."""
+    bo = _country_topic("BO")
+    mm = _country_topic("MM", key="dyn-mm-1", label="Myanmar Story")
+    report: dict = {}
+    ticks = apply_new_clusters([bo, mm], _four_groups(), CFG, tick_v2=False,
+                               clustered_ccs={"US", "MM"}, report=report)
+    assert ticks == 4
+    assert bo.since_seen == 0        # frozen in every one of the four ticks
+    assert bo.state == "active"
+    assert mm.since_seen == 4        # legacy phantom ticks, unchanged by P2
+    assert mm.state == "retired"
+    assert report["frozen"] == 4     # one skipped topic-tick per group
+
+
+def test_country_clock_flag_off_is_byte_identical_legacy_behaviour():
+    """FROZEN: clustered_ccs=None (the default) ages exactly as before P2."""
+    def _run(clustered_ccs):
+        bo = _country_topic("BO")
+        mm = _country_topic("MM", key="dyn-mm-1", label="Myanmar Story")
+        report: dict = {}
+        for tick_v2 in (False, True):
+            apply_new_clusters([bo, mm], _four_groups(), CFG, tick_v2=tick_v2,
+                               clustered_ccs=clustered_ccs, report=report)
+        return [(t.since_seen, t.state) for t in (bo, mm)], report.get("frozen", 0)
+
+    states, frozen = _run(None)
+    assert states == [(5, "retired"), (5, "retired")]   # 4 legacy ticks + 1 v2 tick
+    assert frozen == 0
+    # and the pre-P2 default path (no kwarg at all) is the same object
+    bo = _country_topic("BO")
+    apply_new_clusters([bo], _four_groups(), CFG, tick_v2=False)
+    assert (bo.since_seen, bo.state) == (4, "retired")
+
+
+def test_topic_countries_track_the_latest_member_snapshot():
+    """`countries` = the LATEST member snapshot's codes (the serving-door rule)."""
+    t = Topic("dyn-1", "Story", [1.0, 0.0], "s1", 20, 0.9, countries=["bo"])
+    assert t.countries == {"BO"}
+    same = _cluster("s1", 2, [1.0, 0.0], "Story")
+    same["countries"] = ["PE"]
+    t.attach(same, "s1", 1.0)
+    assert t.countries == {"BO", "PE"}          # same snapshot unions
+    newer = _cluster("s2", 3, [1.0, 0.0], "Story")
+    newer["countries"] = ["CL"]
+    t.attach(newer, "s2", 1.0)
+    assert t.countries == {"CL"}                # newer snapshot replaces
+    older = _cluster("s0", 4, [1.0, 0.0], "Story")
+    older["countries"] = ["AR"]
+    t.attach(older, "s0", 1.0)
+    assert t.countries == {"CL"}                # older is ignored
+
+
+def test_topic_countries_survive_a_merge():
+    a = Topic("dyn-a", "Story", [1.0, 0.0], "s1", 20, 0.9, countries=["BO"])
+    b = Topic("dyn-b", "Story", [1.0, 0.0], "s2", 20, 0.9, countries=["PE"])
+    a.absorb(b)
+    assert a.countries == {"PE"}                # b's snapshot is newer
+    assert a.cc_snap == "s2"
