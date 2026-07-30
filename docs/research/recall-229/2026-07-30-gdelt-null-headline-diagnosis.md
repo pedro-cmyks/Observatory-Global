@@ -191,3 +191,15 @@ GROUP BY 1,2;"
 Live-file replay: fetch the current `…translation.gkg.csv.zip` from
 `http://data.gdeltproject.org/gdeltv2/lastupdate-translation.txt`, run the
 validation predicate from `parse_gkg_row` over column 26's `<PAGE_TITLE>`.
+
+---
+
+## Post-deploy verification (2026-07-30, live ingest)
+
+Deployed to Fly and measured on FRESH rows (40-minute window, ~2 ingest cycles):
+- **JP: 42 rows, 0.0% NULL** (was 23.2%)
+- **CN: 133 rows, 1.5% NULL** (was 41.4%)
+
+The hole is closed at the source. Downstream compounding: these rows now also
+clear the (env-gated) script-aware length floor and enter the clustering
+funnel — the East-Asia information desert loses its largest single cause.
