@@ -5,12 +5,16 @@ import numpy as np
 from scripts.project_dynamic_topics import (
     LifecycleConfig,
     Topic,
+    apply_new_clusters,
     chunk_ids,
+    count_passes,
     is_roundup_label,
+    lifecycle_tick_v2_enabled,
     merge_duplicates,
     next_state,
     running_mean,
     process_snapshot,
+    use_tick_v2,
 )
 
 CFG = LifecycleConfig()
@@ -397,3 +401,130 @@ def test_hydrate_topics_excludes_umbrellas_from_matching():
     topics, done = asyncio.run(hydrate_topics(_FakeConn(), clusters_by_id))
     assert [t.identity_key for t in topics] == ["dyn-x-1"]  # umbrella never a match target
     assert done == {100, 200}  # membership accounting unchanged
+
+
+# ── P1 (2026-07-30): one lifecycle tick per pass ─────────────────────────────
+# Defect: build_umbrella_topics DELETEs umbrella member rows nightly, so orphaned
+# clusters re-enter at their ORIGINAL snapshot_at and each distinct snapshot_at
+# fired a full aging tick. Measured 2-4 ticks/night against ONE snapshot/day →
+# stale_k=2 + retire_m=4 both cleared in a single missed clustering pass.
+
+def _far_cluster(snap, cid, label="Unrelated Story"):
+    """A cluster that can never match the fixture topic (orthogonal centroid)."""
+    return _cluster(snap, cid, [0.0, 1.0], label)
+
+
+def _aged_active_topic():
+    t = Topic("dyn-s0-1", "Colombia 42-Hour Workweek", [1.0, 0.0], "s0", 115, 0.9)
+    t.state = "active"
+    t.since_seen = 0
+    t.new = False
+    t.dirty = False
+    return t
+
+
+def _four_groups():
+    """One real pass + three umbrella-orphan re-entrant groups (older snaps)."""
+    return [
+        ("2026-07-25T22:00:00", [_far_cluster("2026-07-25T22:00:00", 25)]),
+        ("2026-07-26T22:00:00", [_far_cluster("2026-07-26T22:00:00", 26)]),
+        ("2026-07-27T22:00:00", [_far_cluster("2026-07-27T22:00:00", 27)]),
+        ("2026-07-28T22:00:00", [_far_cluster("2026-07-28T22:00:00", 28)]),
+    ]
+
+
+def test_lifecycle_tick_v2_enabled_defaults_off():
+    assert lifecycle_tick_v2_enabled({}) is False
+    assert lifecycle_tick_v2_enabled({"ATLAS_LIFECYCLE_TICK_V2": ""}) is False
+    assert lifecycle_tick_v2_enabled({"ATLAS_LIFECYCLE_TICK_V2": "off"}) is False
+    assert lifecycle_tick_v2_enabled({"ATLAS_LIFECYCLE_TICK_V2": "0"}) is False
+    for on in ("1", "on", "true", "TRUE", " yes "):
+        assert lifecycle_tick_v2_enabled({"ATLAS_LIFECYCLE_TICK_V2": on}) is True
+
+
+def test_use_tick_v2_never_applies_to_rebuild():
+    env = {"ATLAS_LIFECYCLE_TICK_V2": "on"}
+    assert use_tick_v2(False, env) is True
+    # --rebuild REPLAYS history from empty; each historical snapshot keeps its
+    # own tick or the replayed population would never have been aged at all.
+    assert use_tick_v2(True, env) is False
+    assert use_tick_v2(False, {}) is False
+
+
+def test_apply_new_clusters_flag_off_is_byte_identical_legacy_loop():
+    """FROZEN: with the flag off, every snapshot group still fires a full tick."""
+    topics = [_aged_active_topic()]
+    ticks = apply_new_clusters(topics, _four_groups(), CFG, tick_v2=False)
+    assert ticks == 4                       # n_snapshots_processed = 4 (the measured number)
+    assert topics[0].since_seen == 4
+    assert topics[0].state == "retired"     # active -> deprecated -> retired in ONE night
+
+
+def test_apply_new_clusters_v2_fires_exactly_one_tick_per_pass():
+    """The pass is the clock: 4 groups (3 orphan re-entrants) = 1 tick."""
+    topics = [_aged_active_topic()]
+    ticks = apply_new_clusters(topics, _four_groups(), CFG, tick_v2=True)
+    assert ticks == 1
+    assert topics[0].since_seen == 1        # not 4
+    assert topics[0].state == "active"      # survives a single missed pass
+
+
+def test_apply_new_clusters_v2_still_retires_on_genuinely_repeated_misses():
+    """The clock is slowed, not stopped — stale_k/retire_m are untouched."""
+    topics = [_aged_active_topic()]
+    for _ in range(4):
+        apply_new_clusters(topics, _four_groups(), CFG, tick_v2=True)
+    assert topics[0].since_seen == 4
+    assert topics[0].state == "retired"
+
+
+def test_apply_new_clusters_v2_seen_reset_unchanged():
+    """A topic matched anywhere in the pass resets to 0 exactly as today."""
+    topics = [_aged_active_topic()]
+    topics[0].since_seen = 1
+    groups = [
+        # the topic's own cluster comes back in a RE-ENTRANT (older) group —
+        # the orphan guard's aging half: re-entrants are members of this pass.
+        ("2026-07-27T22:00:00", [_cluster("2026-07-27T22:00:00", 27, [1.0, 0.0], "Colombia 42-Hour Workweek")]),
+        ("2026-07-28T22:00:00", [_far_cluster("2026-07-28T22:00:00", 28)]),
+    ]
+    assert apply_new_clusters(topics, groups, CFG, tick_v2=True) == 1
+    assert topics[0].since_seen == 0
+    assert topics[0].state == "active"
+    assert len(topics) == 2                 # the unrelated cluster founded its own topic
+
+
+def test_apply_new_clusters_matching_is_identical_across_flag_states():
+    """Deferring the aging step must not change which cluster attaches where."""
+    def _run(tick_v2):
+        topics = [_aged_active_topic()]
+        apply_new_clusters(topics, _four_groups(), CFG, tick_v2=tick_v2)
+        return [(t.identity_key, t.label, t.n_member_clusters, t.agg_n_signals)
+                for t in topics]
+    assert _run(True) == _run(False)
+
+
+def test_apply_new_clusters_no_groups_fires_no_tick():
+    topics = [_aged_active_topic()]
+    assert apply_new_clusters(topics, [], CFG, tick_v2=True) == 0
+    assert apply_new_clusters(topics, [], CFG, tick_v2=False) == 0
+    assert topics[0].since_seen == 0        # an empty run never ages the field
+
+
+def test_count_passes_reports_reentrants_not_extra_passes():
+    acct = count_passes(_four_groups())
+    assert acct["passes"] == 1              # n_snapshots_processed, the TF-1 metric
+    assert acct["groups"] == 4
+    assert acct["reentrant_groups"] == 3    # the umbrella-orphan ledger
+    assert acct["primary_snapshot"] == "2026-07-28T22:00:00"
+
+
+def test_count_passes_single_group_and_empty():
+    one = [("2026-07-29T22:00:00", [_far_cluster("2026-07-29T22:00:00", 29)])]
+    assert count_passes(one) == {
+        "passes": 1, "groups": 1, "reentrant_groups": 0,
+        "primary_snapshot": "2026-07-29T22:00:00",
+    }
+    assert count_passes([]) == {
+        "passes": 0, "groups": 0, "reentrant_groups": 0, "primary_snapshot": None,
+    }

@@ -501,8 +501,75 @@ def merge_duplicates(topics: list[Topic], threshold: float = MERGE_THRESHOLD) ->
     return topics
 
 
-def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], snap, cfg: LifecycleConfig) -> list[Topic]:
-    """Match a snapshot's clusters, then advance every topic's state one tick."""
+# ── P1 (2026-07-30): ONE LIFECYCLE TICK PER PASS ────────────────────────────
+# Measured defect (docs/research/recall-229/2026-07-29-threading-floor-diagnosis.md
+# §2.1b): `run()` called process_snapshot once per distinct `snapshot_at` still
+# holding un-ingested clusters, and EVERY such group is a full aging tick.
+# Exactly one snapshot is produced per night, yet n_snapshots_processed measured
+# 4,3,4,3,2,3,4 over seven runs. The extra groups are umbrella ORPHANS:
+# build_umbrella_topics.py:517 DELETEs umbrella member rows every night, so the
+# clusters that had attached directly to an umbrella re-enter `new_clusters` at
+# their ORIGINAL snapshot_at and manufacture a tick for every topic in the world.
+# With stale_k=2 / retire_m=4 one missed clustering pass then deprecates AND
+# retires: 1,007 topics whose last match was 07-27 sat at since_seen=4 after a
+# single elapsed snapshot, and 1,353 retired topics pass every quality bar.
+#
+# The fix: THE PASS IS THE CLOCK. A run advances `snapshots_since_seen` by
+# exactly one regardless of how many snapshot groups it ingests; a topic matched
+# in ANY group of the pass (including a re-entrant orphan group) resets to 0.
+# Env-gated + reversible: ATLAS_LIFECYCLE_TICK_V2 (default OFF = legacy).
+LIFECYCLE_TICK_V2_ENV = "ATLAS_LIFECYCLE_TICK_V2"
+_TRUE_VALUES = {"1", "on", "true", "yes", "y"}
+
+
+def lifecycle_tick_v2_enabled(env: dict[str, str] | None = None) -> bool:
+    """True when the per-pass lifecycle clock is switched on. Default OFF."""
+    src = os.environ if env is None else env
+    return (src.get(LIFECYCLE_TICK_V2_ENV) or "").strip().lower() in _TRUE_VALUES
+
+
+def use_tick_v2(rebuild: bool, env: dict[str, str] | None = None) -> bool:
+    """Per-pass clock applies to INCREMENTAL runs only.
+
+    `--rebuild` REPLAYS the whole snapshot history from an empty table, so each
+    historical snapshot must still fire its own tick — collapsing all of history
+    into one tick would fabricate a population that was never aged. The nightly
+    runner is incremental (never --rebuild, see scripts/run-scoped-snapshot.sh
+    Step 2), so this exclusion costs the fix nothing.
+    """
+    return lifecycle_tick_v2_enabled(env) and not rebuild
+
+
+def count_passes(groups: list[tuple[str, list[dict[str, Any]]]]) -> dict[str, Any]:
+    """Pass accounting for the v2 clock (the ORPHAN GUARD's reporting half).
+
+    `groups` is group_by_snapshot() output — sorted ascending, so the LAST group
+    is the current pass's primary (newest) snapshot and every earlier group is a
+    RE-ENTRANT: clusters returning at a snapshot_at older than this pass. They
+    are members of the current pass, never additional passes. Under the v2 clock
+    they can no longer fire extra aging ticks (advance_states runs once per run),
+    so the guard's remaining independent job is to stop them being REPORTED as
+    processed snapshots — n_snapshots_processed is the TF-1 verification metric.
+    """
+    if not groups:
+        return {"passes": 0, "groups": 0, "reentrant_groups": 0, "primary_snapshot": None}
+    primary = groups[-1][0]
+    return {
+        "passes": 1,
+        "groups": len(groups),
+        "reentrant_groups": sum(1 for snap, _ in groups if snap < primary),
+        "primary_snapshot": primary,
+    }
+
+
+def match_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], snap) -> set[int]:
+    """Match/attach one snapshot group's clusters. NO aging.
+
+    Returns the indices of topics SEEN in this group (matched or newly founded).
+    Indices are stable across groups within a run because topics are only ever
+    appended. Matching reads centroids only — never `state` or `since_seen` — so
+    deferring the aging step cannot change which cluster attaches where.
+    """
     # greedy 1-to-1 match by centroid cosine
     pairs = []
     for ci, c in enumerate(snap_clusters):
@@ -535,8 +602,16 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
             t.members.append({"cluster_id": c["id"], "snapshot_at": snap, "match_score": 1.0})
             topics.append(t)
             seen_topics.add(len(topics) - 1)
+    return seen_topics
 
-    # advance state for every topic
+
+def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleConfig) -> None:
+    """Advance every topic's lifecycle clock by EXACTLY ONE tick.
+
+    `seen_topics` = indices matched/founded during this tick. Under the v2 clock
+    the caller passes the union over the whole pass, so a topic matched in any
+    group (primary or re-entrant orphan) resets to 0 exactly as today.
+    """
     for ti, t in enumerate(topics):
         seen = ti in seen_topics
         t.since_seen = 0 if seen else t.since_seen + 1
@@ -549,7 +624,45 @@ def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], s
         if new_state != t.state:
             t.state = new_state
             t.dirty = True
+
+
+def process_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], snap, cfg: LifecycleConfig) -> list[Topic]:
+    """Match a snapshot's clusters, then advance every topic's state one tick.
+
+    Legacy per-snapshot-group unit of work — unchanged; still the whole story
+    when ATLAS_LIFECYCLE_TICK_V2 is off, and the per-historical-snapshot unit
+    under --rebuild.
+    """
+    advance_states(topics, match_snapshot(topics, snap_clusters, snap), cfg)
     return topics
+
+
+def apply_new_clusters(
+    topics: list[Topic],
+    groups: list[tuple[str, list[dict[str, Any]]]],
+    cfg: LifecycleConfig,
+    *,
+    tick_v2: bool,
+) -> int:
+    """Ingest every un-ingested snapshot group; return the number of ticks fired.
+
+    tick_v2 OFF (default): one tick per group — byte-identical to the historical
+    loop, including the phantom ticks the orphan cycle manufactures.
+    tick_v2 ON: match all groups first, then age ONCE. The pass is the clock.
+    """
+    if not tick_v2:
+        ticks = 0
+        for snap, snap_clusters in groups:
+            process_snapshot(topics, snap_clusters, snap, cfg)
+            ticks += 1
+        return ticks
+    if not groups:
+        return 0
+    seen_all: set[int] = set()
+    for snap, snap_clusters in groups:
+        seen_all |= match_snapshot(topics, snap_clusters, snap)
+    advance_states(topics, seen_all, cfg)
+    return 1
 
 
 # ---------- DB ----------
@@ -874,10 +987,9 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
 
         # only snapshots with at least one not-yet-ingested cluster are new
         new_clusters = [c for c in clusters if c["id"] not in done]
-        processed_snaps = 0
-        for snap, snap_clusters in group_by_snapshot(new_clusters):
-            process_snapshot(topics, snap_clusters, snap, cfg)
-            processed_snaps += 1
+        groups = group_by_snapshot(new_clusters)
+        tick_v2 = use_tick_v2(bool(args.rebuild))
+        processed_snaps = apply_new_clusters(topics, groups, cfg, tick_v2=tick_v2)
 
         merges = 0
         if args.rebuild:
@@ -903,6 +1015,15 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             "noise_max": cfg.noise_max,
             "dry_run": args.dry_run,
         }
+        if tick_v2:
+            # Reported ONLY under the v2 clock so the legacy summary stays
+            # byte-identical. `n_snapshots_processed` is now a PASS count (the
+            # TF-1 metric); the group/re-entrant split is the orphan ledger.
+            acct = count_passes(groups)
+            summary["lifecycle_tick_v2"] = True
+            summary["n_snapshot_groups"] = acct["groups"]
+            summary["n_reentrant_groups"] = acct["reentrant_groups"]
+            summary["primary_snapshot"] = acct["primary_snapshot"]
         if regraded is not None:
             summary["regrade_promoted"], summary["regrade_demoted"] = regraded
         if not args.dry_run:
