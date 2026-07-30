@@ -269,8 +269,9 @@ what `thread_ranking._norm_headline` dedups on.
 the stated acceptance), #241 (premise stale — the HNSW index it blames is now
 **ivfflat**). **OPEN/HONEST:** ubiquitous names (`trump`, 26K rows) still degrade the
 timeline — heap-bound, not index-bound, and the window is a post-fetch filter, so a
-composite index is the follow-up; 2 `test_query_thread_router_contract` tests have
-failed since the search merge (`ad47d908`), verified pre-existing at `be37a543`;
+composite index is the follow-up; ~~2 `test_query_thread_router_contract` tests~~
+RESOLVED 2026-07-30: fixed by `933e844e` (shape-not-substring asserts, stronger
+contract) + `8d35c209`; verified 6/6 + 69/69 neighbors — the note was stale;
 `/edges/replay` now diffs 07-24→07-26 (48h) and should say so. **NEEDS PEDRO:** a
 SECOND LLM provider key — every sanctioned lane rides one balance and Anthropic is
 still 400; and a policy for what the Brief shows when the label court is down for
