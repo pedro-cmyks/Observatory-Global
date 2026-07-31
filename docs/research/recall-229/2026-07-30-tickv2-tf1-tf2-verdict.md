@@ -92,6 +92,22 @@ Nota de capacidad: el court acaba de recuperar throughput (backoff de withholds
 2026-07-30, `6d6d906f`) — ~1,700 juicios/día alcanzan para re-vetar una ola de
 revividos en ~24h.
 
+## ADDENDUM 2026-07-31 (2) — PRIMER PASE v2b EN VIVO: GATES PASS + fuga de cohorte cerrada
+
+Pase diurno manual (checkpoint-resume tras dos fallas WAN — patrón de
+inestabilidad del pooler en vigilancia): **(a) invariante 0 violaciones;
+(b) revival-directo-a-active = 0** — 94 revividos, todos → candidate con
+`revived_at` + court columns NULL; el court tomó 12 en los primeros ciclos
+(5 entailed / 3 failed) — el pipe completo funciona. **FUGA DETECTADA Y
+CERRADA**: la cohorte del revert TF-2 es pre-mig-094 (sin `revived_at`) y 465
+de sus 1,026 volvieron a active por la vía mecánica (la proyección parcial del
+cron 02:30, que murió en timeouts WAN tras escribir). Cirugía: 755 filas
+(465 ex-active + 290 candidates sin stamp) demoted+stamped en una transacción
+(ledger `ALW/logs/tf3b-cohort-gate-ledger-20260731.csv`) — cohorte completa
+ahora gateada (814 candidate/212 retired). Población gateada total ~849;
+capacidad del court la certifica en ~12h. Las puertas quedan más flacas unas
+horas — ese ES el diseño: nada revive a portada sin re-certificación.
+
 ## ADDENDUM 2026-07-31 — TF-3b CONSTRUIDO (opción b, Pedro): armado para esta noche
 
 Implementado el mismo día tras el KILL: revival→candidate + promoción gateada
