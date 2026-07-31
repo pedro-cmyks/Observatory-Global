@@ -1,15 +1,35 @@
-"""Sync processed historical artifacts into compact Supabase tables."""
+"""Sync processed historical artifacts into compact Supabase tables.
+
+Country-code correction layer (2026-07-30): artifact rows are derived from
+the IMMUTABLE external archive, which still carries the pre-b7ab7def FIPS/ISO
+bug (Lebanon stored as LS, Serbia as raw GEC RB, ...). The corrections in
+docs/research/country-code-remap/country-code-corrections-v1.json are applied
+HERE, at the write boundary, GDELT-lane rows only (source_family
+'gdelt'/'unknown' — see app/services/country_corrections.py for the measured
+scope). Rows that land on the same PK after correction (e.g. an ex-LS Lebanon
+aggregate beside a genuine override-path LB row) are merged with the
+documented merge policy. Without this layer any re-sync from the archive
+would re-poison historical_topic_country_daily.
+"""
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
 import os
+import sys
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 import asyncpg
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.services.country_corrections import (  # noqa: E402
+    correct_country_code,
+    merge_daily_rows,
+)
 
 
 UPSERT_SQL = """
@@ -106,12 +126,45 @@ def coerce_day(value: Any) -> date:
     raise TypeError(f"Unsupported historical aggregate day value: {value!r}")
 
 
+def apply_country_corrections(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Apply the corrections-v1 single-hop remap at the write boundary.
+
+    GDELT-lane rows only (correct_country_code scopes on source_family);
+    artifact rows that collide on the upsert PK after correction are merged
+    (merge_daily_rows policy) so the executemany upsert never has two rows
+    racing for one PK. Aggregate rows carry no headline, so the LS bucket
+    goes wholesale to LB (the ~375:1 Liechtenstein residue is documented in
+    the corrections artifact).
+    """
+    merged: dict[tuple, dict[str, Any]] = {}
+    order: list[tuple] = []
+    for row in rows:
+        row = dict(row)
+        row["country_code"] = correct_country_code(
+            row["country_code"], source_family=row.get("source_family")
+        )
+        key = (
+            coerce_day(row["day"]).isoformat(),
+            row["topic_slug"],
+            row["country_code"],
+            row["source_family"],
+            row["signal_class"],
+            row["model_version"],
+        )
+        if key in merged:
+            merged[key] = merge_daily_rows(merged[key], row)
+        else:
+            merged[key] = row
+            order.append(key)
+    return [merged[k] for k in order]
+
+
 def load_artifact(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     rows = data.get("rows")
     if not isinstance(rows, list):
         raise ValueError(f"Artifact missing rows array: {path}")
-    return build_upsert_payload(rows)
+    return apply_country_corrections(build_upsert_payload(rows))
 
 
 def load_source_artifact(path: Path) -> list[dict[str, Any]]:
