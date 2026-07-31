@@ -80,7 +80,20 @@ Embedding/NER pickup is by predicate — `embed_hot_corpus` selects
 LENGTH(headline) > 10`. A NULL-headline row was never embedded/NER'd, so the
 backfilled rows enter both queues automatically on the next cron cycles.
 
-## 5. Archive pass
+## 5. Archive pass (EXECUTED)
+
+**Final totals (77 days, ~3h wall):** 504,490 NULL occurrences → **443,614
+written = 87.9%**, 279 partitions rewritten across 192 incremental run dirs +
+the 2026-05-20 cutover; 15,623,403 titled GDELT URLs replayed; 2 missing
+GDELT buckets in the whole span. The ledger reconciles exactly:
+26,179 prod + 443,614 archive = 469,793 lines.
+
+**Verification: `archive_verify` PASSES on all 193 touched run dirs, 0
+failures** — every rewritten partition's sha256 (uncompressed-line digest),
+row_count and byte size agree with its updated manifest. A full
+post-backfill rescan of all 882 partitions counts **60,876 residual NULL
+occurrences = exactly 504,490 − 443,614** — every matched row was written,
+every write is accounted for.
 
 Matched partitions are rewritten in place with three invariants:
 

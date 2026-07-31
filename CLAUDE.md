@@ -1,6 +1,7 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
-**2026-07-31 (NULL-HEADLINE BACKFILL — prod DONE 88.1%, archive pass RUNNING.
+**2026-07-31 (NULL-HEADLINE BACKFILL — COMPLETE: prod 88.1% + archive 87.9%,
+all manifests verified.
 `523cb135` script+tests, doc `docs/research/recall-229/2026-07-31-null-headline-backfill.md`.)**
 The ff55d6b0 parser fix is CONFIRMED LIVE (translated-lane NULL 7.2%→~0.9%
 residual). Historical hole measured: **458,442 unique NULL ids in the external
@@ -17,15 +18,19 @@ killed run resumed with zero duplication), JSONL ledger before every write,
 Prod ran FIRST deliberately so the nightly archive-then-prune exports carry
 headlines. Embed/NER re-enqueue NOT needed — both select `headline IS NOT
 NULL` + unprocessed, backfilled rows enter queues by predicate next cron.
-**ARCHIVE PASS RUNNING** (nohup pid 22432, log `~/AtlasLocalWorker/logs/
-null-headline-backfill-archive-run.log`, ~4-7h for 77 days): rewrites only
-matched lines (rest byte-identical), recomputes manifest sha256 exactly as
-archive_export digests (archive_verify keeps passing), originals backed up
-to `/Volumes/Ext/Atlas/Backups/null-headline-backfill/` first-copy-wins.
-AFTER IT FINISHES: spot-run `archive_verify.py --archive-dir <touched run dir>`;
-optional chips: re-embed recovered archive rows (~460k × OpenAI 3-small ≈ $1-2,
-only worth it before the next archive-wide measurement) + English-gkg-lane
-NULLs (44,811, mostly no-PAGE_TITLE, low expected yield — measure first).**
+**ARCHIVE PASS EXECUTED + VERIFIED: 443,614/504,490 occurrences = 87.9%**,
+279 partitions rewritten (only matched lines re-serialized, rest
+byte-identical; manifest sha256 recomputed in the exact archive_export
+digest form) — **`archive_verify` PASSES on all 193 touched run dirs, 0
+failures**; ledger reconciles exactly (26,179 prod + 443,614 arch = 469,793
+lines); originals in `/Volumes/Ext/Atlas/Backups/null-headline-backfill/`
+(first-copy-wins; `--revert-archive` restores). Residual ~12% = GDELT ships
+no PAGE_TITLE or a title the current parser also rejects (short non-CJK —
+the parser's own open §5 residual). OPTIONAL CHIPS (not done, measured):
+re-embed recovered archive rows (~440k × OpenAI 3-small ≈ $1-2 — archive
+embed shards skipped NULL rows; only worth it before the next archive-wide
+measurement) + English-gkg-lane NULLs (44,811, mostly no-PAGE_TITLE, low
+expected yield — measure first).**
 
 
 **2026-07-28..29 (STORY LENS BUILT + GATED NO-GO; UI EVAL ALL-20 VALID; FIPS
