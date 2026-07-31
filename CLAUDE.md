@@ -1,5 +1,46 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-30..31 (THE CLOCK ARC — TWO PRE-REGISTERED KILLS HONORED + TF-3b BUILT
+SAME DAY; FETCH-MULT M=2 LIVE; FIPS ARCHIVE HEALED. Read FIRST for lifecycle
+state.)** **TICK-V2: TF-1 PASS mecánico / TF-2 KILL por composición**
+(`docs/research/recall-229/2026-07-30-tickv2-tf1-tf2-verdict.md`): el reloj es
+correcto (0 violaciones de invariante/6,649 topics; puertas CO/JP encendieron
+EN VIVO) pero 40 revividos muestreados = 37.5% label-correcto / 67.5% cluster-
+coherente ≪ 90% → KILL ejecutado: flag off + revert quirúrgico de los 1,026
+estados al baseline EXACTO (activos 1,001 al dígito; ledger ALW/logs). Lección:
+el reloj no estaba roto — LA PUERTA DE SALIDA sí (retired→active directo, 681
+filas sin re-vetting). **TF-3b CONSTRUIDO MISMO DÍA (opción b, Pedro): revival→
+CANDIDATE + promoción exige court `entailed`** — revival atómico (revived_at +
+4 court-columns NULL en EL MISMO UPDATE; 2 statements WAN = la clase edge-
+snapshot-a-medias), court juzga candidates revividos actives-first, relabel
+adopta los failed (loop: failed→relabel→re-juicio→entailed→promote). Review
+adversarial cazó 3 findings pre-ship (atomicidad, paridad --regrade, candidates
+inmortales). Mig 094 aplicada; 154 tests; flag ON + TAIL_RESERVE=0.25; snapshot
+chain corrida MANUAL diurna ("el cron es un horario, no una dependencia" —
+Pedro). **FETCH-MULT M=2 LIVE en Fly**: C1 +17.8pp entailed-share global
+(47→65%); C2-como-escrito disparó en US/DE pero fila-a-fila = artefacto de
+denominador (NINGÚN entailed perdido; US top-10 MEJOR — entró noticia real
+rank 5/9, salió fluff deportivo entailed; failed entran rank ≥13); C2b
+pre-registrado (conteo no cae + ningún failed al fold). ⚠ C5: depth-80 p95
+14.5s roza el timeout 15s — vigilar ann_timeout
+(`docs/research/label-court/2026-07-30-fetchmult-flip-postverify.md`).
+**COURT WITHHOLD-BACKOFF** (`6d6d906f`): el último livelock muerto — dt-8258/
+8228 quemaban 23 juicios idénticos/día; 6h backoff en forma OR null-safe (la
+forma NOT(LIKE AND) excluía todo topic nuevo por lógica trivaluada — cazado
+por test). Auditoría independiente: umbrella court SANO (0 stamps stale = GB5
+acceptance PASS; 5/5 spot-checks correctos). **FIPS ARCHIVO SANADO**:
+corrections-v1 tenía CERO consumidores → cableado en los 3 writers
+(historical_sync + populate_hes + archive_cluster_offline vía
+country_corrections.py) + 22,472 filas remapeadas con merge de colisiones PK
+(ledger historical/, idempotente re-run=0); sweep final 29 filas gap-window.
+**INCIDENTE**: relancé la proyección a prioridad completa con Pedro EN la
+máquina → swap-death 14.7GB (load 104) — "suavecito" = taskpolicy -b SIEMPRE;
+si muere de hambre la respuesta es la noche/máquina-libre, no más prioridad;
+guardia de memoria auto-kill ahora estándar en pases pesados. También: 13 dups
+iCloud fuera, .mypy_cache ignorado, los 2 tests query_thread "rotos" YA
+estaban arreglados (933e844e — nota stale), scheduled check TF-3b 08-01 07:30
+con protocolo KILL embebido (red de seguridad, no plan).**
+
 **2026-07-28..29 (STORY LENS BUILT + GATED NO-GO; UI EVAL ALL-20 VALID; FIPS
 DISASTER FIXED; e5 BAKE-OFF NO-GO. Read FIRST for product+eval state.)**
 **UI GOLD EVAL COMPLETE — RUN VALID (20/20, K1v2 satisfied, 6/6 controls PASS):
