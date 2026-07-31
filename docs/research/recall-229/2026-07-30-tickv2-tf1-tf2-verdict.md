@@ -91,3 +91,20 @@ promueve, la palanca no rinde y se reporta honesto.)
 Nota de capacidad: el court acaba de recuperar throughput (backoff de withholds
 2026-07-30, `6d6d906f`) — ~1,700 juicios/día alcanzan para re-vetar una ola de
 revividos en ~24h.
+
+## ADDENDUM 2026-07-31 — TF-3b CONSTRUIDO (opción b, Pedro): armado para esta noche
+
+Implementado el mismo día tras el KILL: revival→candidate + promoción gateada
+en `label_status='entailed'` (mig 094 `revived_at`; revival atómico con reset
+de columnas del court en el MISMO UPDATE; court juzga candidates revividos con
+actives-first; relabel adopta candidates court-failed — el loop
+failed→relabel→re-juicio→entailed→promote cierra). Revisión adversarial: 3
+hallazgos (atomicidad WAN, paridad --regrade, candidates inmortales)
+arreglados pre-ship; residuo documentado: `revived_at` nunca se limpia
+(re-entra al court tras demote posterior — barato) y los recibos de la
+primera noche pueden ser vida-vieja hasta que el ETL de topic_members alcanza
+(withheld + retry natural). 154 tests. Flag ON en ALW `.env` para el cron;
+baseline `lifecycle-pre-tf3b-20260731.csv` (7,095 topics); verificación
+mañana = gates (a) invariante + (b) CERO revival-directo-a-active + stamps y
+court-columns-reset en todo revivido; (c) composición ≥90% SOLO sobre
+promovidos cuando existan; (d) tránsito ≤3 noches para historias con volumen.
