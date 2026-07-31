@@ -1,5 +1,33 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-07-31 (NULL-HEADLINE BACKFILL — prod DONE 88.1%, archive pass RUNNING.
+`523cb135` script+tests, doc `docs/research/recall-229/2026-07-31-null-headline-backfill.md`.)**
+The ff55d6b0 parser fix is CONFIRMED LIVE (translated-lane NULL 7.2%→~0.9%
+residual). Historical hole measured: **458,442 unique NULL ids in the external
+archive (2026-05-09→07-24, 77 days, 279/882 partitions) + 29,722 in prod 7d**.
+Recovery = replay GDELT's forever-kept `…translation.gkg.csv.zip` per UTC day
+(signal timestamp IS the GKG col-0 bucket; match by source_url = UNIQUE
+DocumentIdentifier; recovered title must pass the SAME ff55d6b0 validation —
+lockstep dup, parity test-pinned). `backend/scripts/backfill_null_headlines.py`:
+dry-run default, per-day resumable (prod:/arch: state keys — proven live, a
+killed run resumed with zero duplication), JSONL ledger before every write,
+`--revert-prod`/`--revert-archive`, 6-thread downloads (~3min/day, ~1.2GB/day).
+**PROD EXECUTED: 26,179/29,722 = 88.1%** (per-day 84-91%; Jul-31 control day
+0% matched = correct, post-fix NULLs are exactly the unrecoverable class).
+Prod ran FIRST deliberately so the nightly archive-then-prune exports carry
+headlines. Embed/NER re-enqueue NOT needed — both select `headline IS NOT
+NULL` + unprocessed, backfilled rows enter queues by predicate next cron.
+**ARCHIVE PASS RUNNING** (nohup pid 22432, log `~/AtlasLocalWorker/logs/
+null-headline-backfill-archive-run.log`, ~4-7h for 77 days): rewrites only
+matched lines (rest byte-identical), recomputes manifest sha256 exactly as
+archive_export digests (archive_verify keeps passing), originals backed up
+to `/Volumes/Ext/Atlas/Backups/null-headline-backfill/` first-copy-wins.
+AFTER IT FINISHES: spot-run `archive_verify.py --archive-dir <touched run dir>`;
+optional chips: re-embed recovered archive rows (~460k × OpenAI 3-small ≈ $1-2,
+only worth it before the next archive-wide measurement) + English-gkg-lane
+NULLs (44,811, mostly no-PAGE_TITLE, low expected yield — measure first).**
+
+
 **2026-07-28..29 (STORY LENS BUILT + GATED NO-GO; UI EVAL ALL-20 VALID; FIPS
 DISASTER FIXED; e5 BAKE-OFF NO-GO. Read FIRST for product+eval state.)**
 **UI GOLD EVAL COMPLETE — RUN VALID (20/20, K1v2 satisfied, 6/6 controls PASS):
