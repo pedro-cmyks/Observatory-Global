@@ -79,9 +79,15 @@ _DEFAULT_ATTEMPTS_WINDOW_DAYS = 7
 # call or a ledger line this cycle. label_updated_at is nullable (never
 # refreshed = NULL, migration 055) so a topic that has never been relabeled
 # is always a candidate regardless of the cooldown.
+# TF-3b (2026-07-31): court-failed REVIVED candidates join — without this they
+# are immortal (never promoted: court_blocked; never relabeled: not active;
+# never re-tried: label_status not NULL). The loop closes here:
+# failed -> relabel (resets label_status via the court-column upsert) ->
+# fresh trial -> entailed -> promotes.
 _RELABEL_CANDIDATES_SQL = (
     "SELECT id, label, is_umbrella FROM dynamic_topics "
-    "WHERE state='active' AND label_status='failed' AND label IS NOT NULL "
+    "WHERE (state='active' OR (state='candidate' AND revived_at IS NOT NULL)) "
+    "AND label_status='failed' AND label IS NOT NULL "
     "AND (label_updated_at IS NULL OR label_updated_at < now() - $2::interval) "
     "ORDER BY agg_n_signals DESC LIMIT $1"
 )

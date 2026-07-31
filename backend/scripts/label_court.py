@@ -931,10 +931,23 @@ async def main() -> None:
         # bounded pass by lifetime agg_n_signals would stamp the old backlog
         # (~800 legacy actives) before today's served leads, leaving the fold
         # unstamped for hours. Full (non-incremental) runs keep biggest-first.
-        order = "id DESC" if args.only_unchecked else "agg_n_signals DESC"
+        # TF-3b (2026-07-31): revived candidates join the trial population —
+        # their promotion is court-gated (project_dynamic_topics revival NULLs
+        # the court columns, so they enter via label_status IS NULL). The
+        # candidate arm requires label_status IS NULL IN BOTH MODES: a
+        # court-failed candidate belongs to the RELABEL lane (which resets the
+        # status and re-enters it here), not to a nightly full-court re-trial
+        # of the same frozen receipts forever — the immortal-candidate burn.
+        # Actives keep priority (they serve NOW); revived fill the remaining
+        # per-cycle budget. Inert while nothing carries revived_at (the
+        # ATLAS_LIFECYCLE_TICK_V2 regime is the only writer).
+        order = ("(state='active') DESC, id DESC" if args.only_unchecked
+                 else "(state='active') DESC, agg_n_signals DESC")
         rows = await conn.fetch(
             "SELECT id, label, is_umbrella FROM dynamic_topics "
-            "WHERE state='active' AND label IS NOT NULL "
+            "WHERE (state='active' OR (state='candidate' AND revived_at IS NOT NULL "
+            "AND label_status IS NULL)) "
+            "AND label IS NOT NULL "
             f"{unchecked}"
             f"{umbrella_clause}"
             f"{_SINGLE_CHILD_SKIP_SQL}"

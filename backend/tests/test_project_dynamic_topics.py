@@ -382,6 +382,7 @@ def test_hydrate_topics_excludes_umbrellas_from_matching():
                     "centroid_vec": cen, "first_seen": snap, "last_seen": snap,
                     "n_snapshots": 2, "agg_n_signals": 20, "mean_cohesion": 0.9,
                     "noise_rate": None, "is_junk": False,
+                    "revived_at": None, "label_status": None,
                 }
                 return [
                     {**base, "id": 1, "identity_key": "dyn-x-1", "label": "Real Story",
@@ -742,3 +743,91 @@ def test_topic_countries_survive_a_merge():
     a.absorb(b)
     assert a.countries == {"PE"}                # b's snapshot is newer
     assert a.cc_snap == "s2"
+
+
+# ── TF-3b (2026-07-31): revive-to-candidate + court-gated promotion ──────────
+# TF-2 measured the disease: tick-v2 revived retired->active DIRECT (681 rows,
+# 62.5% mislabeled/blob served). v2b closes the exit door: revival always lands
+# candidate, and a revived candidate promotes only after the label court
+# re-certifies its label against the CURRENT receipts (label_status='entailed').
+
+def test_next_state_v2b_revival_lands_candidate_even_when_qualifying():
+    # the exact TF-2 hole: retired + seen + mechanically-qualifying used to
+    # jump straight to active. Under the regime it must land candidate.
+    s = next_state("retired", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True)
+    assert s == "candidate"
+    s = next_state("deprecated", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True)
+    assert s == "candidate"
+
+
+def test_next_state_v2b_court_blocked_revived_candidate_stays_candidate():
+    s = next_state("candidate", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, court_blocked=True)
+    assert s == "candidate"
+
+
+def test_next_state_v2b_court_cleared_revived_candidate_promotes():
+    s = next_state("candidate", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, court_blocked=False)
+    assert s == "active"
+
+
+def test_next_state_regime_off_is_byte_identical():
+    # flag off -> the historical behavior, including the direct resurrect
+    s = next_state("retired", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG)
+    assert s == "active"
+
+
+def test_next_state_v2b_fresh_candidates_unaffected_by_court():
+    # a NEVER-revived candidate (court_blocked defaults False) promotes
+    # mechanically exactly as today — the court gate scopes to revived stock.
+    s = next_state("candidate", seen_now=True, n_snapshots=2, mean_cohesion=0.8,
+                   agg_n_signals=100, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True)
+    assert s == "active"
+
+
+def test_next_state_v2b_aging_unchanged():
+    # not-seen aging is untouched by the regime
+    s = next_state("active", seen_now=False, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=2, cfg=CFG,
+                   revive_to_candidate=True)
+    assert s == "deprecated"
+
+
+def test_advance_states_v2b_marks_revival_and_blocks_until_entailed():
+    from scripts.project_dynamic_topics import advance_states, Topic
+    t = Topic(identity_key="k1", label="Old Story", centroid=[1.0, 0.0],
+              snap="2026-07-01T00:00:00", n_signals=500, cohesion=0.9)
+    t.state = "retired"
+    t.since_seen = 10
+    t.snapshots = {f"s{i}" for i in range(50)}
+    # pass 1: revival lands candidate + marked, never active
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "candidate"
+    assert t.newly_revived is True
+    # pass 2 (same in-memory run shape): still blocked — court has not entailed
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "candidate"
+    # court certifies -> next seen pass promotes
+    t.label_status = "entailed"
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "active"
+
+
+def test_advance_states_legacy_regime_still_resurrects_direct():
+    from scripts.project_dynamic_topics import advance_states, Topic
+    t = Topic(identity_key="k2", label="Old Story", centroid=[1.0, 0.0],
+              snap="2026-07-01T00:00:00", n_signals=500, cohesion=0.9)
+    t.state = "retired"
+    t.snapshots = {f"s{i}" for i in range(50)}
+    advance_states([t], {0}, CFG)  # regime off
+    assert t.state == "active"
+    assert t.newly_revived is False

@@ -161,3 +161,11 @@ def test_relabel_attempts_tolerates_malformed_lines(tmp_path, monkeypatch):
         f.write(json.dumps({"topic_id": 7, "old": "A", "new": "B",
                             "at": now.isoformat()}) + "\n")
     assert _relabel_attempts_last_n_days(7, now, days=7) == 1
+
+
+def test_relabel_candidates_include_revived_failed():
+    # TF-3b: without this arm a court-failed revived candidate is immortal
+    # (never promoted, never relabeled, never re-tried).
+    from scripts.relabel_court_failed import _RELABEL_CANDIDATES_SQL as sql
+    assert "state='candidate' AND revived_at IS NOT NULL" in sql
+    assert "label_status='failed'" in sql

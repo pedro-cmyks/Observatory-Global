@@ -752,3 +752,26 @@ def test_unchecked_backoff_sql_is_null_safe_for_never_checked_rows():
     assert "NOT (" not in sql
     # the aged-withhold re-entry branch uses <= (rested), not > (fresh)
     assert "label_checked_at <= now()" in sql
+
+
+def test_trial_population_includes_revived_candidates_actives_first():
+    # TF-3b: revived candidates (revived_at set by the v2b clock) must enter
+    # the trial so their court-gated promotion can ever clear; actives keep
+    # priority in the ORDER BY so serving rows never wait behind revivals.
+    import inspect
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    assert "state='candidate' AND revived_at IS NOT NULL" in src
+    assert "(state='active') DESC" in src
+
+
+def test_trial_candidate_arm_requires_null_status_no_retrial_burn():
+    # TF-3b finding-3 guard: a court-failed revived candidate belongs to the
+    # RELABEL lane; the nightly full court must not re-judge its frozen
+    # receipts forever. The candidate arm gates on label_status IS NULL in
+    # BOTH modes (relabel resets the status, which re-enters it here).
+    import inspect
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    assert "state='candidate' AND revived_at IS NOT NULL " in src
+    assert "AND label_status IS NULL))" in src
