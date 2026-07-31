@@ -85,7 +85,7 @@ else
   echo "[scoped-snapshot] heavy-job-lock.sh missing — running UNSERIALIZED" >&2
 fi
 
-for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY; do
+for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY ATLAS_LIFECYCLE_TICK_V2 ATLAS_SNAPSHOT_TAIL_RESERVE; do
   if [[ -z "${!key:-}" && -r "$LOCAL_ENV" ]]; then
     v="$(grep -E "^${key}=" "$LOCAL_ENV" | tail -n 1 | sed -E "s/^${key}=//" | tr -d '\r' || true)"
     [[ -n "$v" ]] && export "$key=$v"
