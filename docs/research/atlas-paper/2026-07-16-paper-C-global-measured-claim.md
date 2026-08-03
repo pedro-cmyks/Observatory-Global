@@ -1,11 +1,29 @@
 # Paper C — Making "global" a measured claim: voice ownership and open-set coverage
 
-**Status:** skeleton (justification-framing pass, 2026-07-16)
+**Status:** skeleton (justification-framing pass, 2026-07-16; results integrated
+through 2026-08-03)
 **Series role:** Paper C of the 3-paper justified core (A = evidence-role
 benchmark + methodology; B = measured refutations of intuitive proxies; **C =
 this**). Reorg rationale: `2026-07-16-papers-reorganization-justification-framing.md`.
 **Absorbs:** old P2 (voice / ownership honesty instrument) + old P8-reframed
 (scoped-per-country discovery + the whitening walk-back).
+
+**What changed in the 2026-08-03 integration.** "Global is a measured claim" now
+cuts *inward* as well as outward, and the paper gains two decisions and one
+sequel. (Decision 3) The instrument's own **country axis was audited and found
+corrupted since inception** — a FIPS→ISO translation defect that filed whole
+countries under other countries (Lebanon served as Lesotho) — measured, healed
+in hot and historical stores, and converted into a versioned correction layer;
+every per-country claim in this paper now carries that provenance boundary.
+(Decision 4) A **script-blind bug family** in the text heuristics (word-count
+title validation, flat character floors, Latin-only normalization) was measured
+to structurally exclude CJK and non-Latin coverage at capture, clustering and
+dedup time — the monoculture was not only in the feed, it was in the code's
+assumptions. And the discovery sequel: scoped partitioning recovered *formation*
+coverage, but **serving-level** global coverage was then measured at 30 of 168
+clustered countries — a floor set by the lifecycle clock, not by data volume —
+and the fix is itself a justified, gated design (per-country clock;
+revive-to-candidate with a court certificate).
 
 > **Framing contract (read before editing).** This paper does not argue Atlas is
 > "more diverse" or "better at discovery" than any named system. It argues two
@@ -37,19 +55,21 @@ instrument and a scoped-partition remedy for open-set narrative discovery."*
 ## Abstract (≤150 words)
 
 "Global media coverage" is usually asserted from outlet or volume counts. We
-argue it must be *measured*, and that two intuitive shortcuts fail. First, voice
-diversity: scoring who is heard by *language* miscounts foreign coverage of a
-country as that country's own voice (BBC Persian on Iran is soft power, not
-Iranian voice). We define a voice instrument that separates who-speaks from
-who-is-spoken-about and scores self-voice by outlet **ownership**; on a
-219-feed corpus it makes the monoculture a number (English 96.9% of
-language-known; Iran self-voice 1.4%; origin voice-entropy 0.71 over 89
-countries). Second, open-set discovery: a single global density clustering pass
-assigns 4.94% of signals to a topic; we show this is a *global-pass* artifact,
-not an intrinsic short-text ceiling — **scoped-per-country partitioning lifts
-assignment to 26.72%** across 117 countries. We also report a self-retraction:
-embedding whitening cures the pairwise geometry but does **not** by itself
-dissolve the cluster-level recall ceiling.
+argue it must be *measured* — including against the measuring instrument itself.
+Voice diversity scored by *language* miscounts foreign coverage as a country's
+own voice; our instrument separates who-speaks from who-is-spoken-about and
+scores self-voice by outlet **ownership** (English 96.9% of language-known; Iran
+self-voice 1.4%; origin voice-entropy 0.71 over 89 countries). Open-set
+discovery under one global clustering pass assigns 4.94% of signals;
+**scoped-per-country partitioning lifts it to 26.72%** — a global-pass artifact,
+not a short-text ceiling. We then turn the audit inward: the country axis itself
+was corrupted since inception (a FIPS→ISO defect served Lebanon as Lesotho;
+healed, with a 22,472-row historical remap), script-blind text heuristics
+silently discarded CJK coverage (~33k headlines/week recovered at the parser),
+and served coverage reached only 30 of 168 clustered countries — a lifecycle
+artifact, measured and fixed under a pre-registered composition gate. We also
+report the whitening self-retraction. "Global" holds only as far as each
+instrument has been audited.
 
 ---
 
@@ -85,6 +105,15 @@ showing it misleads:
    the cluster-level cliff. We report the walk-back in full because a
    justification paper must show what it ruled out, including its own earlier
    over-read.
+
+Since the 07-16 draft, a third claim-family joined the thesis: **the instrument
+is only as global as its own inputs, and those inputs must be audited, not
+assumed.** Three audits (Decisions 3–5) each found the "global" claim silently
+bounded by an internal defect — a country-code translation layer, a family of
+English-normative text heuristics, and a lifecycle clock that structurally
+excluded small countries from serving. Each was measured first, fixed second,
+and each fix carries its own verification. A diversity instrument that does not
+audit its own pipeline measures its pipeline's biases and calls them the world.
 
 Nothing here is pitched as beating a competitor. Where an external baseline is
 run (§3.2, BERTopic's HDBSCAN core), it is reported faithfully, including where
@@ -301,6 +330,181 @@ be an artifact of the global pass.
   *correct* fragmentation — which is exactly why purity + blob-resistance + noise
   (which reproduce), not the recall headline (which does not), carry the
   conclusion.
+- **The formation lift is not yet an identity lift.** Scoped partitioning forms
+  the clusters; the identity layer that should keep one event as one story was
+  subsequently measured to shred it (one event held as 22 same-day clusters;
+  fragments of one event do not share a nearest topic — "argmax dispersion",
+  Paper B §4). Coverage numbers in this section count *assignment*, not
+  *coherent served stories*; Decision 5 owns the serving half.
+
+---
+
+### Decision 3 — The country axis is audited, not assumed: the FIPS→ISO corruption and its heal
+
+**Decision.** Every country-keyed claim (voice mix, self-coverage, per-country
+discovery, country doors) rides on one translation layer
+(`country_codes.py`, GDELT FIPS/GEC → ISO). That layer is now **audited against
+row content, corrected, and versioned**, with a machine-readable correction
+layer (`country-code-corrections-v1.json`) that every archive reader and
+historical ETL must apply; the immutable external archive is never mutated.
+
+**Stakes.** The voice instrument's unit of analysis is the country. If the
+translation layer is wrong, "Iran self-voice 1.4%" is a claim about a bucket,
+not a country — and the error class is invisible from inside the system,
+because the wrong codes are *plausible* ISO codes.
+
+**Backing (the audit).** Provoked by the UI gold eval's control arm (a Lesotho
+query whose arrival brief rendered Lebanon — **316 Lebanese signals under
+`LS`**, `docs/research/gold/2026-07-30-ui-eval-v2-run.md` defect D2), the full
+audit found the map had **5 mis-translated FIPS entries and ~89 missing
+divergent codes since inception** (2025-12-04): FIPS `LE` (Lebanon) → `LS`
+(Lesotho), Paraguay filed under `PA` (Panama), Serbia under raw GEC `RB`,
+Kosovo under `KV`, Georgia-the-country under `GG` … —
+`docs/research/country-code-remap/2026-07-28-country-code-remap.md`. Two
+long-standing "known oddities" dissolved under the audit: the old "LS/OS/MG =
+geocode noise" note was **this bug misdiagnosed**, and `OS` was identified as
+GDELT's "Oceans" pseudo-code (correctly left unmapped, with a product follow-up
+to exclude it from country surfaces).
+
+**Backing (the heal, verified before writing).** The remap was executed
+verification-first: 20-headline samples per bucket; lane-split discovered
+(only the GDELT lane is wrong — RSS rows under `MN` are genuine Mongolia, so a
+whole-bucket remap would have shredded them); outlet-origin override rows
+(`geo_confidence = 0.35`) excluded as genuine; the LS bucket split
+Lebanon/Liechtenstein by keyword with the residual risk quantified (~375:1) and
+accepted in writing. Hot-window rows were remapped with reversible ledgers;
+the **historical store was healed in a 22,472-row remap** (PK collisions
+merged, idempotence proven: re-run = 0 ops), and the corrections layer was
+wired into the three archive writers that had zero consumers at audit time
+(fix `b7ab7def`; heal `f73c2ef6`; ledgers under
+`docs/research/country-code-remap/ledgers/`).
+
+**Alternatives ruled out.** Trusting the vendor's code space (the map was wrong
+for eight months); mutating the immutable archive (a re-ETL would resurrect the
+wrong codes — the correction layer at read time is the design); and remapping
+whole buckets without lane/confidence splits (measured to destroy genuine
+rows).
+
+**Honest limit.** The remap restores **GDELT's stated country, not per-row
+geographic truth** — upstream gazetteer noise (Bathurst NSW → Gambia,
+Montserrat-the-mountain → Montserrat-the-island) rides along unchanged, and is
+a different, disclosed error class. Rows contaminated in *derived* GDELT-side
+aggregations need re-derivation rather than remapping. And the boundary is
+temporal: per-country claims for the ~40 affected buckets dated before
+2026-07-28 must be read against the correction layer. This paper's Table 1
+voice numbers key on RSS-lane outlet ownership and subject countries whose
+buckets were sampled clean; the exposure is stated rather than assumed away.
+
+### Decision 4 — Script-aware text heuristics, because the monoculture was also in the code
+
+**Decision.** Every text-gating heuristic in the pipeline is audited for script
+blindness; three were measured excluding non-Latin coverage and fixed
+(character-composition rules keyed to the text, never to `source_lang`):
+1. **Capture:** GDELT translingual `<PAGE_TITLE>` validation required ≥4
+   whitespace-separated words — CJK titles have few or none, so complete
+   Japanese/Chinese headlines were discarded at ingest and stored as NULL.
+2. **Clustering eligibility:** a flat `length(headline) >= 20` floor.
+3. **Syndication dedup:** `_norm_headline` deleted non-Latin characters before
+   comparison (a Cyrillic headline reduced to its digits).
+
+**Stakes.** These are exactly the "surely harmless" validations every news
+pipeline carries. Each one silently deleted the non-English world from a
+different stage — capture, discovery, dedup — while every dashboard stayed
+green, and while this very paper claimed measured diversity.
+
+**Backing.**
+- The NULL-headline hole
+  (`docs/research/recall-229/2026-07-30-gdelt-null-headline-diagnosis.md`):
+  the translingual lane carried **53.3% NULL headlines for CN, 45.5% TW, 38.5%
+  JP** (English lane ~0.3%) — ~33k lost headlines/week — and the country
+  ordering is the mechanism's fingerprint (Korean uses spaces → KR only 10.8%).
+  Replayed on a live GDELT file: the title was present in 99.8% of rows; the
+  validator rejected 160 CJK-dominant complete headlines, and the
+  script-aware rule rescued **160/160** while every ASCII junk placeholder
+  stayed rejected by construction. Post-deploy, fresh-row NULL rates fell **JP
+  23.2% → 0.0%, CN 41.4% → 1.5%**.
+- The length floor
+  (`docs/research/recall-229/2026-07-30-cjk-length-floor-measurement.md`): the
+  headline "27.3% of Japanese signals" number was itself audited and found to
+  conflate NULL headlines with genuinely-short ones; the pure script-blind
+  effect is **JP 2.6% / KR 2.2% / TW 3.8% / CN 15.0%** vs US 0.95% — real,
+  CJK-shaped, and fixed behind a reversible flag (`ATLAS_CJK_LEN_FLOOR`) at the
+  two live clustering-pull sites, with a full census of every other
+  `length(headline)` site and its live/dormant status.
+- The dedup normalizer: fixed `924174b2`; the syndication-count inputs for
+  ru/uk/ar/fa were poisoned until then (bounds Paper B §3.2's diversity
+  estimates on non-Latin coverage, cross-referenced there).
+
+**Alternatives ruled out.** Keying rescues on `source_lang` metadata (measured
+unreliable — the translingual lane is `xx`); lowering floors globally (junk
+placeholders are ASCII and short for unrelated reasons; the script-aware rule
+keeps them out *by construction*).
+
+**Honest limit.** Historical NULL rows are not backfilled (mechanically
+recoverable from the archive; the hot store self-heals in a week). Short
+non-CJK titles (uk/lt/ne one-to-three-worders, ~0.6% incidence) still drop —
+the word-count validation remains script-blind for them, at low incidence,
+needing its own measurement. This family was found defect-by-defect, not by a
+systematic audit of every text heuristic; the enumeration in the length-floor
+artifact is the start of that audit, not its completion.
+
+### Decision 5 — A per-country lifecycle clock, because the serving floor was operational, not statistical
+
+**Decision.** Serving-level coverage — *can a country's door show a thread at
+all* — is now a measured, first-class number, and the lifecycle that produces
+it is being re-designed under pre-registered gates: one clock tick per snapshot
+pass; aging only when the topic's country was actually clustered; revival lands
+in `candidate` and must earn promotion through the label court's `entailed`
+certificate.
+
+**Stakes.** The intuitive readings of "small country serves nothing" are data
+poverty ("not enough signals") or threshold strictness ("lower the quality
+bars"). Acting on either would have been wrong in *both* directions — junk
+promotion without coverage gain.
+
+**Backing (the diagnosis, every intuitive cause refuted).**
+`docs/research/recall-229/2026-07-29-threading-floor-diagnosis.md`, triggered
+by the external-agenda gold queries (4/5 failures had the material in-corpus
+and still served zero threads). Measured: only **30 of 168 clustered countries
+could serve a thread**. Not volume — Bolivia and Mali form clusters the same
+size as the United States (tier-invariant mean 12.2 vs 12.7 members). Not
+eligibility — no witness country fell below the embedded floor. Not identity
+re-match — tail countries re-match at ~100%, better than the US. The binding
+mechanism is **the clock**: the staleness counter advanced 2–4× per night
+(straggler snapshot groups re-ticking the world) while a tail country is
+clustered only on weekend-budget nights, so one missed pass aged a topic
+through deprecation *and* retirement — measured directly as 1,007 topics at
+`snapshots_since_seen = 4` after exactly one elapsed snapshot, and **1,353
+retired topics that pass every quality bar**. The only survivors of that
+regime in tail countries were their wire/lottery feeds — junk the detectors
+rightly block, so the doors stayed dark honestly.
+
+**Backing (the fix, gated — and the gate fired).** The clock arithmetic fix
+passed its mechanical gate (0 invariant violations on 6,649 topics) and lit
+dark doors live (Colombia 8 threads, Japan 6) — and was **killed the same day
+by its pre-registered composition gate** (37.5% of revived-to-active topics
+were real stories vs a 90% bar) and surgically reverted: coverage bought with
+junk is a failure, not a partial win
+(`docs/research/recall-229/2026-07-30-tickv2-tf1-tf2-verdict.md`). The gated
+successor (revive-to-candidate + court certificate) improved composition
+**+33pp to 70.5%** at census scale and remains ON but not done — the residual
+is the certificate's own precision, with per-class levers enumerated
+(`2026-08-03-tf3b-gate-c-census.md`; full refutation chain: Paper B §4.6). The
+per-country clock itself is armed behind the completion of that verdict.
+
+**Alternatives ruled out.** Lowering `volume_min` / `cohesion_min` /
+`min_kept` (the bars are not what binds — the one country where a bar does
+bind, Myanmar, needs a longer window, not a lower bar); per-country adaptive
+thresholds (cluster sizes are tier-invariant, so there is nothing to adapt
+to); ungated revival (measured at 37.5% real).
+
+**Honest limit.** The serving-coverage claim (30/168) is one day's census under
+one budget configuration; the tail's weekday deferral is a scheduling artifact
+that the tail-reserve change addresses separately. The 70.5% composition is a
+census of one weekend cohort. The #238 subject-geography arm removes a third of
+a healthy door's candidates — if subject verification is systematically easier
+for foreign-subject stories, it is a second attrition lane pointed at the same
+countries; named, unmeasured.
 
 ---
 
@@ -385,6 +589,16 @@ Whitening's reproducible value is stabilization (blob-resistance, ~6–12pp lowe
 noise at held purity), and it is shipped default-off. The recall lift belongs to
 scoping (Table 2).
 
+**Table 4 — Instrument-integrity audits (Decisions 3–5).**
+
+| audit | headline number | after the fix | source |
+|---|---|---|---|
+| country-axis corruption (FIPS→ISO) | 5 wrong + ~89 missing codes since 2025-12-04; Lebanon served as Lesotho (316 signals) | hot remap ledgered; **22,472-row historical heal**, idempotent; corrections-v1 wired into 3 archive writers | `country-code-remap/2026-07-28-country-code-remap.md` |
+| CJK capture hole (title validation) | CN 53.3% / TW 45.5% / JP 38.5% NULL headlines in the translingual lane (~33k/week) | live replay: 160/160 CJK failures rescued, junk excluded by construction; fresh rows JP 0.0% / CN 1.5% NULL | `recall-229/2026-07-30-gdelt-null-headline-diagnosis.md` |
+| CJK clustering floor | JP 2.6 / KR 2.2 / TW 3.8 / CN 15.0% of non-NULL headlines under the flat 20-char floor (US 0.95%) | script-aware floor, env-gated default-off | `recall-229/2026-07-30-cjk-length-floor-measurement.md` |
+| non-Latin dedup normalizer | Cyrillic headline reduced to digits; ru/uk/ar/fa syndication dedup poisoned | fixed `924174b2` | same family, cited in the null-headline diagnosis |
+| serving-level country coverage | **30 / 168** clustered countries servable; 1,353 retired topics passing every quality bar; 1,007 topics aged 4 ticks in one snapshot | clock fix gated: ungated revival 37.5% real (KILLED); court-gated revival 70.5% (census n=244) | `recall-229/2026-07-29-threading-floor-diagnosis.md`, `2026-07-30-tickv2-tf1-tf2-verdict.md`, `2026-08-03-tf3b-gate-c-census.md` |
+
 ---
 
 ## 6. Limitations (LLM-panel gold first, then temporal, then power)
@@ -417,7 +631,21 @@ scoping (Table 2).
    HDBSCAN core only; the full UMAP + c-TF-IDF pipeline is toolchain-blocked and
    open.
 8. **Coverage-denominator discipline.** One defined denominator per claim; the
-   "54×" cross-country figure is dropped as a double-count.
+   "54×" cross-country figure is dropped as a double-count. A new claim-type
+   joined the canonicalization doc with Decision 5: **serving-level country
+   coverage** (countries with ≥1 servable thread) is distinct from funnel
+   coverage and scoped recall, and must never be chained with either.
+9. **Pre-heal per-country provenance.** Country-keyed measurements dated before
+   2026-07-28 must be read against `country-code-corrections-v1.json` for the
+   ~40 affected GDELT-lane buckets (Decision 3). The headline voice numbers'
+   exposure is bounded (ownership metrics key on the RSS lane, which was
+   clean), but any per-country GDELT-volume figure from before the heal
+   inherits the defect.
+10. **Formation ≠ identity ≠ serving.** Table 2 measures assignment; the
+    identity layer's fragmentation (Paper B §4) and the lifecycle's serving
+    floor (Decision 5) each sit between "assigned" and "an analyst sees one
+    coherent story." The three layers now have three separate measured numbers;
+    conflating them was the original sin of the coverage-denominator mess.
 
 ---
 
@@ -449,6 +677,15 @@ scoping (Table 2).
       scoped topics (are they real, distinct stories?) and (b) ownership labels on
       a sample of outlets — would give the paper its first non-LLM, non-definitional
       ground truth and directly address Limitation 1.
+- [ ] **Re-measure the voice and per-country tables post-heal** (Decision 3) and
+      post-CJK-capture-fix (Decision 4) — the East-Asia coverage numbers in
+      particular were structurally capped by the capture hole and should move.
+- [ ] **The serving-coverage census re-run** once the per-country clock lands:
+      the pre-registered target is countries-served 30 → ≥60 with composition
+      held (the TF-gate ladder in the threading-floor artifact §5).
+- [ ] **A systematic script-blindness audit** of every remaining text heuristic
+      (the length-floor artifact's site census is the worklist), converting
+      Decision 4 from defect-driven to audit-driven.
 
 **Explicitly out of scope (do not add / do not claim):**
 - Any "more diverse than [system]" or "better discovery than [system]" comparison.
