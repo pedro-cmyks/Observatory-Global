@@ -82,18 +82,60 @@ LISTICLE_LABEL = re.compile(
 DUMP_MIN_MEMBERS = 150
 DUMP_MAX_SOURCES = 8
 
+# PR-wire attorney-solicitation class (2026-08-03 TF-3b gate-(c) census): 15
+# promoted topics served pr-inside.com law-firm plaintiff-solicitation spam
+# ("SHAREHOLDER ALERT" Pomerantz / Levi & Korsinsky boilerplate). All three
+# rules above were blind — the spam grew its own honest-sounding category
+# ("Securities Class Actions", not in JUNK_CATEGORIES), the labels carry no
+# listicle marker, and the revived topics hold 1-13 members (feed-dump floor
+# 150). BOTH halves must match per receipt: PR wires also carry ordinary
+# corporate releases (domain alone never fires), and real outlets cover genuine
+# class actions (solicitation words alone never fire).
+PR_WIRE_DOMAINS = re.compile(
+    r"(pr-inside\.com|prnewswire|businesswire|globenewswire|accesswire|"
+    r"newsfilecorp|briefingwire)",
+    re.IGNORECASE,
+)
+ATTORNEY_SOLICITATION = re.compile(
+    r"(shareholder alert|investor alert|class action|lead plaintiff|"
+    r"securities fraud|stock loss|los[te] money on|"
+    r"reminds? investors|encourages? investors|"
+    r"urges? (?:\S+\s+){0,6}(shareholders|investors)|"
+    r"pomerantz|levi\s*&\s*korsinsky|rosen law|bronstein|glancy|kessler topaz|"
+    r"robbins geller|kahn swick|schall law|portnoy law|hagens berman|faruqi)",
+    re.IGNORECASE,
+)
+# Junk when at least half the sampled receipts are solicitation spam. Witness
+# topics sit at 0.77-1.0; a real securities story with genuine outlet coverage
+# dilutes the fraction well below the floor.
+PR_WIRE_MIN_FRACTION = 0.5
+
+
+def is_pr_wire_solicitation(
+    source_name: str | None,
+    source_url: str | None,
+    headline: str | None,
+) -> bool:
+    """One receipt = PR-wire domain (name or url) AND solicitation headline."""
+    hay = f"{source_name or ''} {source_url or ''}"
+    if not PR_WIRE_DOMAINS.search(hay):
+        return False
+    return bool(headline and ATTORNEY_SOLICITATION.search(_html.unescape(headline)))
+
 
 def classify_topic_junk(
     category: str | None,
     label: str | None,
     member_count: int,
     distinct_sources: int | None,
+    pr_wire_fraction: float | None = None,
 ) -> str | None:
     """Return a semicolon-joined junk reason, or None if the topic is useful.
 
     distinct_sources is the count over a sample of the topic's assigned members
     (unified-v2); pass None when unavailable (then the feed-dump rule is skipped —
-    the category/label rules still apply).
+    the category/label rules still apply). pr_wire_fraction is the share of that
+    same sample matching is_pr_wire_solicitation; None skips the PR-wire rule.
     """
     reasons: list[str] = []
     if category and category in JUNK_CATEGORIES:
@@ -106,4 +148,6 @@ def classify_topic_junk(
         and distinct_sources <= DUMP_MAX_SOURCES
     ):
         reasons.append(f"feed-dump:{distinct_sources}src/{member_count}mem")
+    if pr_wire_fraction is not None and pr_wire_fraction >= PR_WIRE_MIN_FRACTION:
+        reasons.append(f"pr-wire-solicitation:{pr_wire_fraction:.0%}")
     return ";".join(reasons) if reasons else None
