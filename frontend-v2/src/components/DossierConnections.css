@@ -72,7 +72,7 @@
 .dcx-howto span { display: inline-flex; align-items: center; gap: 4px; }
 .dcx-howto b { font-style: normal; }
 .dcx-k-pin { color: #7dd3fc; font-size: 13px; line-height: 1; }
-.dcx-k-nb { color: #64748b; font-size: 13px; line-height: 1; }
+.dcx-k-nb { color: var(--color-text-muted); font-size: 13px; line-height: 1; }
 .dcx-k-bridge { color: var(--color-text-primary); font-size: 13px; line-height: 1; }
 /* Edge-strength legend swatches — static, survive Markdown/PDF (no hover). */
 .dcx-edge-legend { margin-top: -2px; }
@@ -207,7 +207,7 @@
 /* Journey-map §1: the bridge/neighbor star is now capturable — the ◆ pins it. */
 .dcx-nb-pin {
   font-size: 8px;
-  fill: #64748b;
+  fill: var(--color-text-muted);
   cursor: pointer;
   transition: fill 0.12s;
 }
