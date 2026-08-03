@@ -1921,6 +1921,36 @@
 [data-theme='emerald-light'] .l2-tier-chip--major { color: #047857; }
 [data-theme='emerald-light'] .l2-tier-chip--local { color: #55657a; }
 
+/* #168 attention-relationship chip (RelationshipChip.tsx) — press-vs-public
+   classes measured from typed topic_members roles. Same split-per-scheme
+   discipline as the tier chips above: dark-panel hexes as the base, AA-tuned
+   overrides for the emerald-light paper ground. Tint + color only (batch A:
+   no border triple-coding); the attention-badge family look, since the chip
+   shares row 2 of the narrative rows with SEARCH/WIKI/FORUM. */
+.rel-chip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: default;
+}
+.rel-chip--media { color: #94a3b8; background: rgba(148, 163, 184, 0.12); }
+.rel-chip--public { color: #818cf8; background: rgba(129, 140, 248, 0.12); }
+.rel-chip--social { color: #fb923c; background: rgba(251, 146, 60, 0.12); }
+.rel-chip--silent { color: #f87171; background: rgba(248, 113, 113, 0.14); }
+.rel-chip--uncoupled { color: #7d8da1; background: rgba(125, 141, 161, 0.12); }
+
+[data-theme='emerald-light'] .rel-chip--media { color: #475569; background: rgba(71, 85, 105, 0.10); }
+[data-theme='emerald-light'] .rel-chip--public { color: #4338ca; background: rgba(67, 56, 202, 0.10); }
+[data-theme='emerald-light'] .rel-chip--social { color: #9a3412; background: rgba(154, 52, 18, 0.10); }
+[data-theme='emerald-light'] .rel-chip--silent { color: #b91c1c; background: rgba(185, 28, 28, 0.10); }
+[data-theme='emerald-light'] .rel-chip--uncoupled { color: #55657a; background: rgba(85, 101, 122, 0.10); }
+
 /* R3c defect 3 — emerald: globe scrubber pill themes (hardcoded dark ground
    under themed neutral text → dark-on-dark in emerald-light). Noir keeps its
    literal via the base rule above. */

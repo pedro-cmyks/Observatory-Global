@@ -18,6 +18,8 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from '../lib/icons'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { TierChip } from './TierChip'
+import { RelationshipChip } from './RelationshipChip'
+import { fetchTopicRelationship, type TopicRelationship } from '../lib/topicRelationship'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 
 const SUBJECT_BADGE: Record<SubjectType, string> = {
@@ -251,6 +253,19 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             .then(r => r.json())
             .then(d => { if (alive && d?.items) setDiscussion(d) })
             .catch(() => { /* section absent */ })
+        return () => { alive = false }
+    }, [theme])
+
+    // #168: press-vs-public relationship for this thread — full mode (all 5
+    // types render, media-led included; the list rows only badge the
+    // exceptions). Same topic-backed gate as thread voice: only topics with
+    // typed membership rows can carry the measurement. Failure -> absent.
+    const [relationship, setRelationship] = useState<TopicRelationship | null>(null)
+    useEffect(() => {
+        setRelationship(null)
+        if (!canHaveThreadVoice(theme)) return
+        let alive = true
+        fetchTopicRelationship(theme).then(rel => { if (alive) setRelationship(rel) })
         return () => { alive = false }
     }, [theme])
 
@@ -742,6 +757,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     source={data.source}
                                     warnings={data.warnings}
                                 />
+                                <RelationshipChip rel={relationship} />
                             </div>
                         )}
                         {conflictScopeCountry && scopedConflicts.length > 0 && (

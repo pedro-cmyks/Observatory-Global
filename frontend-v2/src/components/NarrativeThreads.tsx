@@ -13,6 +13,9 @@ import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { TranslatableText } from './TranslatableText'
+import { RelationshipChip } from './RelationshipChip'
+import { fetchTopicRelationship, type TopicRelationship } from '../lib/topicRelationship'
+import { canHaveThreadVoice } from '../lib/threadVoice'
 import { personPin } from '../lib/capturePayloads'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
@@ -404,6 +407,38 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
 
     // When country is active, show only threads that include that country
     const displayedNarratives = getNarrativesForDisplay(narratives, filter.country ?? undefined)
+
+    // #168: attention-relationship badges on the rows. One cheap fetch per
+    // displayed topic-backed thread (client-cached 5 min on top of the
+    // endpoint's own Redis cache); compact mode renders ONLY the
+    // differentiating classes (public-led / social-led / silent-risk), so
+    // the default media-led field stays visually quiet. Failure -> no badge.
+    const [relationships, setRelationships] = useState<Record<string, TopicRelationship>>({})
+    const relationshipIds = displayedNarratives
+        .map(n => n.thread_id)
+        .filter(id => canHaveThreadVoice(id))
+        .join(',')
+    useEffect(() => {
+        if (!relationshipIds) return
+        let alive = true
+        Promise.all(
+            relationshipIds.split(',').map(async id => [id, await fetchTopicRelationship(id)] as const),
+        ).then(entries => {
+            if (!alive) return
+            setRelationships(prev => {
+                let changed = false
+                const next = { ...prev }
+                for (const [id, rel] of entries) {
+                    if (rel && prev[id]?.relationship !== rel.relationship) {
+                        next[id] = rel
+                        changed = true
+                    }
+                }
+                return changed ? next : prev
+            })
+        })
+        return () => { alive = false }
+    }, [relationshipIds])
 
     // #234: when a person is focused, surface the threads that mention them
     // (the person appears in top_entities) and dim the rest — mirroring the
@@ -906,6 +941,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                         FORUM {n.discussion_count}{n.forum_sentiment != null ? ` · ${n.forum_sentiment > 0.1 ? '▲' : n.forum_sentiment < -0.1 ? '▼' : '–'}` : ''}
                                     </span>
                                 )}
+                                <RelationshipChip rel={relationships[n.thread_id]} compact />
                             </div>
                             <span className="narrative-age">{timeAgo(n.first_seen)}</span>
                         </div>
