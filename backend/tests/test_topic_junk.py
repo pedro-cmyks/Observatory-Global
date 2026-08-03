@@ -9,7 +9,9 @@ fail.
 from scripts.topic_junk import (
     DUMP_MAX_SOURCES,
     DUMP_MIN_MEMBERS,
+    PR_WIRE_MIN_FRACTION,
     classify_topic_junk,
+    is_pr_wire_solicitation,
 )
 
 
@@ -84,3 +86,86 @@ def test_missing_source_count_skips_dump_rule():
     # None distinct_sources: category/label still apply, dump rule skipped
     assert classify_topic_junk("Crime and Accidents", "plain headline", 5000, None) is None
     assert classify_topic_junk("Other", "plain headline", 5000, None)
+
+
+# --- PR-wire attorney-solicitation class (2026-08-03 TF-3b gate-(c) census) ---
+# 15 promoted topics served pr-inside.com law-firm plaintiff-solicitation spam
+# (witnesses dt-34 / dt-1626 / dt-4656). All three existing rules were blind:
+# the spam grew its own honest-sounding category ("Securities Class Actions" —
+# not in JUNK_CATEGORIES), the labels carry no listicle marker, and the revived
+# topics hold 1-13 members (feed-dump floor is 150). New signal: fraction of
+# sampled receipts that are PR-wire domain + attorney-solicitation headline.
+
+def test_pr_wire_solicitation_signal_matches_witness_receipts():
+    # real receipts from dt-34 / dt-1626 / dt-4656 (2026-08-03 prod)
+    cases = [
+        ("pr-inside.com", None,
+         "Levi & Korsinsky Urges PicS N.V. (PICS) Shareholders to Act Before Deadline"),
+        ("pr-inside.com", None,
+         "Did You Lose Money on Planet Fitness, Inc. (PLNT)? Levi & Korsinsky Reminds Investors"),
+        ("pr-inside.com", None,
+         "Investor Alert: Deadline Approaching to Join ZoomInfo Technologies Class Action"),
+        ("pr-inside.com", None,
+         "Contact Levi & Korsinsky by August 4, 2026 to Join Class Action Against Badger Meter"),
+        ("pr-inside.com", None,
+         "$MSFT Stock Loss: Microsoft May Have Misrepresented Its Business"),
+        ("pr-inside.com", None,
+         "SHAREHOLDER ALERT: Pomerantz Law Firm Investigates Claims On Behalf of Investors"),
+        # syndicated boilerplate on another wire domain still counts
+        ("prnewswire.com", None,
+         "ROSEN, A LEADING LAW FIRM, Encourages Investors With Losses to Secure Counsel"),
+        # domain evidence may live in the URL when source_name is a display name
+        ("PR Inside", "https://www.pr-inside.com/investor-alert-deadline-r5262",
+         "Investor Alert: Kessler Topaz Reminds Shareholders of Lead Plaintiff Deadline"),
+    ]
+    for src, url, headline in cases:
+        assert is_pr_wire_solicitation(src, url, headline), headline
+
+
+def test_pr_wire_domain_without_solicitation_headline_is_not_spam():
+    # PR wires also carry ordinary corporate releases — domain alone never fires
+    assert not is_pr_wire_solicitation(
+        "prnewswire.com", None, "Acme Corp Opens New Plant in Ohio")
+    assert not is_pr_wire_solicitation(
+        "pr-inside.com", None, "Quarterly results show revenue growth")
+
+
+def test_solicitation_words_on_real_outlet_are_not_spam():
+    # genuine class-action NEWS from a real outlet must never count as PR spam
+    assert not is_pr_wire_solicitation(
+        "reuters.com", None, "Tesla shareholders win class action over Musk pay")
+    assert not is_pr_wire_solicitation(
+        "nytimes.com", "https://nytimes.com/x", "Investors sue bank in securities fraud case")
+
+
+def test_pr_wire_fraction_flags_witness_topics():
+    # dt-34: 10/13 solicitation receipts; category/label/dump rules all blind
+    r = classify_topic_junk("Securities Class Actions", "Levi & Korsinsky Class Actions",
+                            13, 3, pr_wire_fraction=10 / 13)
+    assert r and "pr-wire" in r
+    # dt-1626
+    r = classify_topic_junk("Securities Class Actions", "Securities Class Actions",
+                            12, 3, pr_wire_fraction=10 / 12)
+    assert r and "pr-wire" in r
+    # dt-4656: a single receipt that IS the spam
+    r = classify_topic_junk("Business & Markets", "Class Action Deadlines",
+                            1, 1, pr_wire_fraction=1.0)
+    assert r and "pr-wire" in r
+
+
+def test_pr_wire_fraction_below_threshold_or_missing_is_skipped():
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, pr_wire_fraction=0.2) is None
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, pr_wire_fraction=None) is None
+    # boundary: exactly at the floor fires
+    assert classify_topic_junk("Business & Markets", "x",
+                               10, 5, pr_wire_fraction=PR_WIRE_MIN_FRACTION)
+
+
+def test_guard_real_stories_survive_with_zero_pr_wire():
+    # the existing must-survive guard, now with the new signal present-and-clean
+    assert classify_topic_junk("Armed conflict escalation", "NATO Summit in Ankara",
+                               778, 12, pr_wire_fraction=0.0) is None
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, pr_wire_fraction=0.0) is None

@@ -33,6 +33,20 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Country-code correction layer (2026-07-30): the shard metas / archive rows
+# still carry the pre-b7ab7def FIPS/ISO codes (Lebanon as LS, Serbia as RB…).
+# Corrections apply at the daily/evidence WRITE boundary below, scoped to
+# GDELT-lane rows via the archive row's RAW source_family (lookup carries it
+# as `raw_family`; a missing lookup = lane unknown = left uncorrected).
+# KNOWN LIMIT: archive_topics.country_code (the SCOPE) is NOT corrected here —
+# shard metas carry no source_family, so scope-level correction could move
+# genuine ISO rows (e.g. rss-lane Mongolia). The scope-level fix is a rebuild
+# from a corrected archive read; this model_version is DELETE-and-replace
+# rebuildable by design. See app/services/country_corrections.py.
+from app.services.country_corrections import correct_country_code  # noqa: E402
+
 MODEL_VERSION = "archive-topics-v1"
 GLOBAL_SCOPE = "__global__"
 
@@ -182,6 +196,9 @@ def load_evidence_lookup(archive_root: Path, win_start: date, win_end: date) -> 
                                 "url": r.get("source_url"),
                                 "source": r.get("source_name"),
                                 "family": r.get("source_family") or "press",
+                                # RAW lane marker for the correction layer
+                                # (None = pre-family era = gdelt lane).
+                                "raw_family": r.get("source_family"),
                                 "klass": r.get("signal_class") or "news",
                                 "ts": r.get("timestamp"),
                                 "sentiment": r.get("nlp_sentiment") or r.get("sentiment"),
@@ -450,6 +467,10 @@ async def process_window(conn, args, categories: list[str],
         for m, s in zip(members, sims):
             info = lookup.get(m["sha1"]) or {}
             cc = t["country_code"] or (m.get("cc") or "GLOBAL")
+            if "raw_family" in info:  # lane known → apply corrections-v1
+                cc = correct_country_code(
+                    cc, source_family=info["raw_family"] or "unknown",
+                    headline=m.get("headline"))
             per_day[(m["date"], cc, info.get("family", "press"),
                      info.get("klass", "news"))] += info.get("dup", 1)
             all_assignments.append({"sha1": m["sha1"], "topic_id": tid,
@@ -465,10 +486,15 @@ async def process_window(conn, args, categories: list[str],
             if not info or not info.get("url") or info.get("source") in seen_src:
                 continue
             seen_src.add(info.get("source"))
+            ev_cc = t["country_code"] or (m.get("cc") or "GLOBAL")
+            if "raw_family" in info:  # lane known → apply corrections-v1
+                ev_cc = correct_country_code(
+                    ev_cc, source_family=info["raw_family"] or "unknown",
+                    headline=m.get("headline"))
             evidence_rows.append({
                 "sample_id": f"{slug}:{m['sha1'][:16]}",
                 "day": date.fromisoformat(m["date"]), "topic_slug": slug,
-                "country_code": t["country_code"] or (m.get("cc") or "GLOBAL"),
+                "country_code": ev_cc,
                 "family": info["family"], "klass": info["klass"],
                 "path": info["path"], "source": info["source"], "url": info["url"],
                 "headline": m["headline"][:300], "ts": info.get("ts"),

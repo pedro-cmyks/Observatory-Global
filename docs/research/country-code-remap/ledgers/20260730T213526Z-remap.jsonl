@@ -1,0 +1,1 @@
+{"type": "meta", "run_at": "2026-07-30T21:35:26.748965+00:00", "cutoff": "2026-07-29T00:00:00+00:00", "planned_rows": 0, "scope": "signals_v2 source_family='gdelt' geo_confidence!=0.35"}

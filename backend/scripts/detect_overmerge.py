@@ -88,6 +88,24 @@ COUNTRY_FALLBACK_ENABLED = os.environ.get(
 LANE_EMBEDDING = "embedding"
 LANE_COUNTRY = "country-fallback"
 
+# Blob-veto stamping (2026-08-03 gate-(c) census): the census measured the
+# court's `entailed` stamp at ~70% precision as a serving certificate — 28
+# judge-confirmable blobs were certified AND promoted, and this sweep missed
+# all 28 because it scanned actives only. With the flag on, the sweep
+# (a) also scans the revived stock the TF-3b court gate holds at candidate
+#     (revived_at IS NOT NULL — NOT the whole ~4k candidate pool; the revived
+#     set is ~1k and its old members are mostly embedding-co-pruned, so the
+#     member fetch stays bounded);
+# (b) on --write, stamps dynamic_topics.blob_confirmed_at=NOW() on every
+#     confirmed fusion (active or candidate — the demote UPDATE still only
+#     touches actives), and NULLs the stamp on topics it re-evaluated CLEAN
+#     (measured KEEP; an unevaluable or unresolved-borderline pass never
+#     clears — precision-first symmetry with the stamp itself).
+# project_dynamic_topics vetoes candidate->active while the stamp is fresh.
+# Off = byte-identical legacy sweep (active-only scan, no stamp writes).
+BLOB_STAMP_ENABLED = os.environ.get(
+    "ATLAS_OVERMERGE_BLOB_STAMP", "on").strip().lower() == "on"
+
 # The relabel-ledger vague-blob CROSS-REF set. The merge sprint's ledger is the
 # ground-truth-ish population of relabels; these tokens flag the vague UMBRELLA
 # labels a fusion tends to acquire. Deliberately a COARSE proxy — the whole point
@@ -110,12 +128,18 @@ VAGUE_BLOB_TOKENS = (
 _TOPICS_SQL = """
 SELECT dt.id, dt.label, dt.category, dt.agg_n_signals, dt.label_status
 FROM dynamic_topics dt
-WHERE dt.state = 'active'
+WHERE ({population_filter})
   AND COALESCE(dt.is_umbrella, false) = false
   AND COALESCE(dt.is_junk, false) = false
   AND dt.centroid_vec IS NOT NULL
 ORDER BY dt.id
 """
+
+
+def _topics_sql() -> str:
+    pop = ("dt.state = 'active' OR dt.revived_at IS NOT NULL"
+           if BLOB_STAMP_ENABLED else "dt.state = 'active'")
+    return _TOPICS_SQL.format(population_filter=pop)
 
 _MEMBERS_SQL = """
 SELECT (split_part(tm.topic_id, '-', 3))::int AS tid,
@@ -276,7 +300,7 @@ async def run_audit(seed: int, params: OverMergeParams, artifact_path: Path,
     conn = await _connect()
     try:
         has_qcol = (await conn.fetchval(_QUARANTINE_COL_SQL)) > 0
-        topics = await conn.fetch(_TOPICS_SQL)
+        topics = await conn.fetch(_topics_sql())
         meta = {r["id"]: {"label": r["label"], "category": r["category"],
                           "agg_n_signals": r["agg_n_signals"],
                           "label_status": r["label_status"]} for r in topics}
@@ -285,7 +309,9 @@ async def run_audit(seed: int, params: OverMergeParams, artifact_path: Path,
             ids = ids[:limit]
             meta = {i: meta[i] for i in ids}
             print(f"[--limit {limit}] scanning a bounded subset (read-only smoke)")
-        print(f"population: {len(ids)} active non-umbrella non-junk topics "
+        print(f"population: {len(ids)} "
+              f"{'active + revived' if BLOB_STAMP_ENABLED else 'active'} "
+              f"non-umbrella non-junk topics "
               f"(quarantine col: {'present' if has_qcol else 'absent'})")
         vague_ids = _load_vague_blob_ids()
         print(f"relabel-ledger vague-blob cross-ref set: {len(vague_ids)} topic ids")
@@ -687,6 +713,7 @@ def _assemble_artifact(seed, params, records, headlines, vague_ids, has_qcol,
                    "tau_countries": params.tau_countries,
                    "tau_dominance": params.tau_dominance,
                    "country_fallback_enabled": COUNTRY_FALLBACK_ENABLED,
+                   "blob_stamp_enabled": BLOB_STAMP_ENABLED,
                    "seed": seed, "engine": DURABLE_ENGINE, "judge_ran": did_judge},
         "population": {
             "topics": len(records), "eligible": len(eligible),
@@ -789,6 +816,44 @@ def _print_summary(artifact: dict, records: list, headlines: dict,
 
 
 # ---------------------------------------------------------------- write / revert
+def _evaluated_clean(rec: dict) -> bool:
+    """A KEEP that was actually MEASURED clean — eligible to clear a prior blob
+    stamp. 'Too few embedded members' / 'unpartitionable' KEEPs never ran the
+    2-means, and a country-lane stop at 'too few located' never ran the country
+    test: clearing on those would launder a real stamp through an unevaluable
+    pass. BORDERLINE (judge not run / unavailable) neither stamps nor clears."""
+    if rec.get("verdict") != KEEP:
+        return False
+    if rec.get("gap_ratio") is not None:
+        return True  # 2-means ran to a measured verdict
+    return (rec.get("lane") == LANE_COUNTRY
+            and "too few located" not in (rec.get("reason") or ""))
+
+
+async def _write_blob_stamps(conn, artifact: dict, demote: list[dict]) -> None:
+    """Stamp blob_confirmed_at on every confirmed fusion; clear it on topics
+    this run re-evaluated and found clean. Rides run_write (the audit stays
+    read-only). Stamp-without-demote is the point for candidates (the veto
+    holds them at candidate); demote-without-stamp on a crash between the two
+    statements is just today's behavior — both orders are safe."""
+    demote_ids = [r["topic_id"] for r in demote]
+    if demote_ids:
+        await conn.execute(
+            "UPDATE dynamic_topics SET blob_confirmed_at=NOW(), "
+            "updated_at=NOW() WHERE id = ANY($1::bigint[])", demote_ids)
+    clean_ids = [r["topic_id"] for r in artifact.get("topics", [])
+                 if _evaluated_clean(r)]
+    cleared = "UPDATE 0"
+    if clean_ids:
+        cleared = await conn.execute(
+            "UPDATE dynamic_topics SET blob_confirmed_at=NULL, "
+            "updated_at=NOW() WHERE id = ANY($1::bigint[]) "
+            "AND blob_confirmed_at IS NOT NULL", clean_ids)
+    print(f"[blob-stamp] stamped {len(demote_ids)} confirmed fusions; "
+          f"cleared {cleared.split()[-1]} prior stamps "
+          f"(of {len(clean_ids)} evaluated-clean topics)")
+
+
 async def run_write(artifact_path: Path, params: OverMergeParams,
                     force_unsafe: bool) -> None:
     """Demote DEMOTE-verdict topics active -> candidate (reversible, loud).
@@ -812,10 +877,12 @@ async def run_write(artifact_path: Path, params: OverMergeParams,
         sys.exit(3)
     run = artifact["run_id"]
     demote = [r for r in artifact["topics"] if r["verdict"] == DEMOTE]
-    if not demote:
+    if not demote and not BLOB_STAMP_ENABLED:
         print("no DEMOTE verdicts in artifact — nothing to write")
         return
-    print(f"write plan: run={run} -> demote {len(demote)} topics active->candidate")
+    if demote:
+        print(f"write plan: run={run} -> demote {len(demote)} topics "
+              f"active->candidate")
 
     conn = await _connect()
     LEDGER_DIR.mkdir(parents=True, exist_ok=True)
@@ -861,9 +928,15 @@ async def run_write(artifact_path: Path, params: OverMergeParams,
                     print(f"           two stories fused —")
                     print(f"             A: {a}")
                     print(f"             B: {b}")
-        print(f"\nTOTAL demoted: {moved}/{len(demote)} topics")
-        print(f"ledger -> {ledger_path}")
-        print(f"REVERSAL: python -m scripts.detect_overmerge --revert {run}")
+        if not demote:
+            ledger_path.unlink(missing_ok=True)  # no empty ledgers in docs/
+        if demote:
+            print(f"\nTOTAL demoted: {moved}/{len(demote)} topics "
+                  f"(a candidate in the band stamps without moving)")
+            print(f"ledger -> {ledger_path}")
+            print(f"REVERSAL: python -m scripts.detect_overmerge --revert {run}")
+        if BLOB_STAMP_ENABLED:
+            await _write_blob_stamps(conn, artifact, demote)
     finally:
         await conn.close()
 
@@ -890,17 +963,34 @@ async def run_revert(run_id: str) -> None:
         print(f"no ledger for run {run_id} at {ledger_path}", file=sys.stderr)
         sys.exit(2)
     ids = []
+    demoted_ids = []
     for line in ledger_path.read_text().splitlines():
         line = line.strip()
         if line:
-            ids.append(json.loads(line)["topic_id"])
+            rec = json.loads(line)
+            ids.append(rec["topic_id"])
+            # changed=0 = this run never moved it (it was already a candidate
+            # — the stamp-only band); restoring those would PROMOTE a topic
+            # the run never demoted.
+            if rec.get("changed", 1):
+                demoted_ids.append(rec["topic_id"])
     conn = await _connect()
     try:
         res = await conn.execute(
             "UPDATE dynamic_topics SET state='active', last_state_change=NOW(), "
             "updated_at=NOW() WHERE id = ANY($1::bigint[]) AND state='candidate'",
-            ids)
-        print(f"reverted {run_id}: {res} ({len(ids)} ledger ids)")
+            demoted_ids)
+        print(f"reverted {run_id}: {res} ({len(demoted_ids)} demoted of "
+              f"{len(ids)} ledger ids)")
+        if BLOB_STAMP_ENABLED and ids:
+            # a reverted run's confirmations were wrong — its stamps go too.
+            # (Stamps it CLEARED are not restorable; the next sweep re-judges.)
+            cleared = await conn.execute(
+                "UPDATE dynamic_topics SET blob_confirmed_at=NULL, "
+                "updated_at=NOW() WHERE id = ANY($1::bigint[]) "
+                "AND blob_confirmed_at IS NOT NULL", ids)
+            print(f"[blob-stamp] cleared {cleared.split()[-1]} stamps from "
+                  f"the reverted run")
     finally:
         await conn.close()
 

@@ -727,3 +727,51 @@ def test_single_child_cleanup_sql_nulls_all_four_court_columns():
     assert "is_umbrella = true" in sql
     assert "label_status IS NOT NULL" in sql  # no-op once already clean
     assert "< 2" in sql
+
+
+def test_unchecked_backoff_sql_rests_fresh_withholds():
+    # 2026-07-30 withhold-loop fix: dt-8258/8228 were re-judged every 33-min
+    # cycle (23 identical `ungrounded` trials in a day) because a withheld row
+    # keeps label_status NULL. Fresh withholds must rest before retry.
+    from scripts.label_court import _UNCHECKED_BACKOFF_SQL
+    sql = _UNCHECKED_BACKOFF_SQL
+    assert "label_status IS NULL" in sql
+    assert "NOT LIKE '%#withheld'" in sql
+    assert "interval '6 hours'" in sql
+
+
+def test_unchecked_backoff_sql_is_null_safe_for_never_checked_rows():
+    # Three-valued-logic regression guard: the clause must be an OR chain
+    # whose first branch is `label_court_model IS NULL`. The rejected form
+    # `NOT (model LIKE ... AND checked_at > ...)` evaluates to NULL for a
+    # never-checked row (both columns NULL) and WHERE drops it — which would
+    # silently exclude every NEW topic from the court forever.
+    from scripts.label_court import _UNCHECKED_BACKOFF_SQL
+    sql = _UNCHECKED_BACKOFF_SQL
+    assert "label_court_model IS NULL" in sql
+    assert "NOT (" not in sql
+    # the aged-withhold re-entry branch uses <= (rested), not > (fresh)
+    assert "label_checked_at <= now()" in sql
+
+
+def test_trial_population_includes_revived_candidates_actives_first():
+    # TF-3b: revived candidates (revived_at set by the v2b clock) must enter
+    # the trial so their court-gated promotion can ever clear; actives keep
+    # priority in the ORDER BY so serving rows never wait behind revivals.
+    import inspect
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    assert "state='candidate' AND revived_at IS NOT NULL" in src
+    assert "(state='active') DESC" in src
+
+
+def test_trial_candidate_arm_requires_null_status_no_retrial_burn():
+    # TF-3b finding-3 guard: a court-failed revived candidate belongs to the
+    # RELABEL lane; the nightly full court must not re-judge its frozen
+    # receipts forever. The candidate arm gates on label_status IS NULL in
+    # BOTH modes (relabel resets the status, which re-enters it here).
+    import inspect
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    assert "state='candidate' AND revived_at IS NOT NULL " in src
+    assert "AND label_status IS NULL))" in src

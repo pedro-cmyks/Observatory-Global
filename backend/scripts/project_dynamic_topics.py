@@ -26,7 +26,7 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
@@ -257,8 +257,19 @@ def next_state(
     cfg: LifecycleConfig,
     noise_rate: float | None = None,
     is_junk: bool = False,
+    revive_to_candidate: bool = False,
+    court_blocked: bool = False,
 ) -> str:
-    """Pure state transition for one snapshot tick."""
+    """Pure state transition for one snapshot tick.
+
+    TF-3b (2026-07-31): `revive_to_candidate` closes the exit door TF-2
+    measured — a retired/deprecated topic that re-matches always lands
+    `candidate` (an old topic passes the mechanical gate trivially: lifetime
+    persist/volume), and a revived candidate promotes only once
+    `court_blocked` is False (the label court re-certified its label against
+    the CURRENT receipts). Both default off = byte-identical legacy behavior,
+    including the direct resurrect.
+    """
     quality_ok = noise_rate is None or noise_rate < cfg.noise_max
     # is_junk (2026-07-09 useful-coverage gate) is a content-based quality flag
     # persisted by scripts/flag_junk_topics.py (grab-bag category / listicle label
@@ -275,6 +286,10 @@ def next_state(
     if seen_now:
         if is_roundup or is_junk or not quality_ok:
             return "candidate"  # roundup/junk/high-noise: never promoted; demote if active
+        if revive_to_candidate and state in ("deprecated", "retired"):
+            return "candidate"  # v2b: revival NEVER jumps to active — court re-vets first
+        if revive_to_candidate and state == "candidate" and court_blocked:
+            return "candidate"  # revived, label not yet re-certified vs current receipts
         if qualifies:
             return "active"
         if state in ("deprecated", "retired"):
@@ -307,6 +322,27 @@ def _qualifies(t: "Topic", cfg: LifecycleConfig) -> bool:
     )
 
 
+# Blob veto (2026-08-03 gate-(c) census): the label court's `entailed` stamp
+# measured ~70% precise as a serving certificate — 28 judge-confirmed blob
+# topics were certified AND promoted through the TF-3b gate. Promotion now
+# also requires NO FRESH blob stamp (detect_overmerge stamps
+# dynamic_topics.blob_confirmed_at on judge-confirmed fusions and clears it on
+# re-evaluated-clean topics). The 7-day horizon is a staleness bound, not a
+# pardon: the nightly sweep re-stamps a still-fused topic, so only a topic the
+# sweep stopped confirming (typically membership re-formed under the same
+# identity) ages out of the veto — an eternal stamp would block the identity
+# long after its evidence changed.
+BLOB_CONFIRMED_FRESH_DAYS = 7
+
+
+def blob_confirmed_fresh(stamp: datetime | None,
+                         now: datetime | None = None) -> bool:
+    if stamp is None:
+        return False
+    return ((now or datetime.now(timezone.utc)) - stamp
+            < timedelta(days=BLOB_CONFIRMED_FRESH_DAYS))
+
+
 def regrade_states(topics: list[Topic], cfg: LifecycleConfig) -> tuple[int, int]:
     """Apply the current gate to the WHOLE population (gate-recalibration pass).
 
@@ -331,7 +367,17 @@ def regrade_states(topics: list[Topic], cfg: LifecycleConfig) -> tuple[int, int]
         # stories the old gate wrongly blocked", not "everything that ever met
         # the volume bar".
         fresh = t.since_seen < cfg.stale_k
-        if ok and fresh and t.state in ("candidate", "deprecated"):
+        # TF-3b: a manual --regrade must not bypass the court gate on revived
+        # stock — same condition the nightly clock applies. `newly_revived`
+        # matters: --regrade runs AFTER apply_new_clusters in the same
+        # invocation, and a same-pass revival has revived_at still None in
+        # memory (the DB stamp lands in persist). Composed OR with the blob
+        # veto: an entailed label must not promote a judge-confirmed fusion.
+        court_blocked = (
+            (t.revived_at is not None or t.newly_revived)
+            and t.label_status != "entailed"
+        ) or blob_confirmed_fresh(t.blob_confirmed_at)
+        if ok and fresh and not court_blocked and t.state in ("candidate", "deprecated"):
             t.state = "active"; t.dirty = True; promoted += 1
         elif not ok and t.state == "active":
             t.state = "candidate"; t.dirty = True; demoted += 1
@@ -350,7 +396,8 @@ class Topic:
         "id", "identity_key", "state", "label_counts", "centroid", "anchor_centroid",
         "first_seen", "last_seen", "snapshots", "agg_n_signals", "cohesions",
         "roundup_votes", "n_labels", "since_seen", "members", "dirty", "new", "noises",
-        "is_junk", "countries", "cc_snap",
+        "is_junk", "countries", "cc_snap", "revived_at", "label_status", "newly_revived",
+        "blob_confirmed_at",
     )
 
     def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None,
@@ -392,6 +439,17 @@ class Topic:
         # counted historical membership). Empty = unattributable → ages normally.
         self.countries: set[str] = set()
         self.cc_snap: Any = None
+        # TF-3b revival bookkeeping: revived_at/label_status hydrate from the
+        # persisted row; newly_revived marks a revival that happened THIS pass
+        # (persist stamps revived_at=NOW() + NULLs the court columns so the
+        # stamp must re-certify against the topic's CURRENT receipts).
+        self.revived_at: Any = None
+        self.label_status: str | None = None
+        self.newly_revived = False
+        # Blob-veto stamp; owned by scripts/detect_overmerge.py (stamped on
+        # judge-confirmed fusion, NULLed on re-evaluated-clean), loaded from
+        # the persisted row in hydrate. persist() never writes it.
+        self.blob_confirmed_at: Any = None
         self._note_countries(snap, countries)
 
     def _note_countries(self, snap, codes) -> None:
@@ -756,7 +814,8 @@ def match_snapshot(topics: list[Topic], snap_clusters: list[dict[str, Any]], sna
 
 
 def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleConfig,
-                   clustered_ccs: set[str] | None = None) -> int:
+                   clustered_ccs: set[str] | None = None,
+                   revive_to_candidate: bool = False) -> int:
     """Advance every topic's lifecycle clock by EXACTLY ONE tick.
 
     `seen_topics` = indices matched/founded during this tick. Under the v2 clock
@@ -781,13 +840,28 @@ def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleCon
             frozen += 1
             continue
         t.since_seen = 0 if seen else t.since_seen + 1
+        # TF-3b: a revived candidate stays blocked until the court re-certifies
+        # its label against the current receipts. `newly_revived` counts too so
+        # the block is airtight within the same in-memory run. Composed OR with
+        # the blob veto (gate-(c) census): court `entailed` alone measured ~70%
+        # precise as a serving certificate, so an entailed label must not
+        # promote a topic the overmerge judge freshly confirmed as a fusion.
+        court_blocked = (
+            (t.revived_at is not None or t.newly_revived)
+            and t.label_status != "entailed"
+        ) or blob_confirmed_fresh(t.blob_confirmed_at)
+        was_state = t.state
         new_state = next_state(
             t.state, seen_now=seen, n_snapshots=len(t.snapshots),
             mean_cohesion=t.mean_cohesion, agg_n_signals=t.agg_n_signals,
             is_roundup=t.is_roundup, since_seen=t.since_seen, cfg=cfg,
             noise_rate=t.noise_rate, is_junk=t.is_junk,
+            revive_to_candidate=revive_to_candidate, court_blocked=court_blocked,
         )
         if new_state != t.state:
+            if (revive_to_candidate and seen and new_state == "candidate"
+                    and was_state in ("deprecated", "retired")):
+                t.newly_revived = True
             t.state = new_state
             t.dirty = True
     return frozen
@@ -845,9 +919,14 @@ def apply_new_clusters(
     seen_all: set[int] = set()
     for snap, snap_clusters in groups:
         seen_all |= match_snapshot(topics, snap_clusters, snap)
-    frozen = advance_states(topics, seen_all, cfg, clustered_ccs)
+    # TF-3b rides ONLY the v2 clock: revival-to-candidate + court-gated
+    # promotion are part of the tick_v2 regime (flag off = legacy everything,
+    # including the direct resurrect TF-2 measured).
+    frozen = advance_states(topics, seen_all, cfg, clustered_ccs,
+                            revive_to_candidate=True)
     if report is not None:
         report["frozen"] = int(report.get("frozen", 0)) + frozen
+        report["revived_to_candidate"] = sum(1 for t in topics if t.newly_revived)
     return 1
 
 
@@ -988,7 +1067,8 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
     trows = await conn.fetch(
         "SELECT id, identity_key, state, snapshots_since_seen, label, "
         "centroid_vec, first_seen, last_seen, n_snapshots, agg_n_signals, "
-        "mean_cohesion, noise_rate, is_junk, is_umbrella FROM dynamic_topics"
+        "mean_cohesion, noise_rate, is_junk, is_umbrella, revived_at, "
+        "label_status, blob_confirmed_at FROM dynamic_topics"
     )
     mrows = await conn.fetch(
         "SELECT dynamic_topic_id, emergent_cluster_id, snapshot_at "
@@ -1048,6 +1128,9 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
             t.state = tr["state"]
             t.since_seen = int(tr["snapshots_since_seen"] or 0)
             t.is_junk = bool(tr["is_junk"])
+            t.revived_at = tr["revived_at"]
+            t.label_status = tr["label_status"]
+            t.blob_confirmed_at = tr["blob_confirmed_at"]
             t.new = False
             t.members = []
             t.dirty = False
@@ -1070,6 +1153,9 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
         t.state = tr["state"]
         t.since_seen = int(tr["snapshots_since_seen"] or 0)
         t.is_junk = bool(tr["is_junk"])
+        t.revived_at = tr["revived_at"]
+        t.label_status = tr["label_status"]
+        t.blob_confirmed_at = tr["blob_confirmed_at"]
         t.new = False
         t.members = []   # already persisted
         t.dirty = False  # only re-persist if touched this run
@@ -1115,17 +1201,32 @@ async def persist(conn, topics: list[Topic]) -> dict[str, int]:
             # label=COALESCE(...): a run whose member labels are all placeholders
             # projects label=None — keep the previously persisted real label
             # rather than downgrading it to NULL (Lane A never-persist rule).
+            # TF-3b revival rides the SAME statement ($12) — atomic by
+            # construction. Two autocommit statements over the WAN pooler was
+            # the half-written-snapshot failure class: state='candidate'
+            # landing WITHOUT the court-column reset would let a stale
+            # `entailed` from the topic's former life promote it next tick.
+            # In one statement either both land or neither does; the old stamp
+            # can never certify the NEW receipts.
             await conn.execute(
                 "UPDATE dynamic_topics SET state=$2, label=COALESCE($3, label), centroid_vec=$4, "
                 "last_seen=$5::timestamptz, n_snapshots=$6, agg_n_signals=$7, mean_cohesion=$8, "
                 "is_roundup=$9, snapshots_since_seen=$10, noise_rate=$11, updated_at=NOW(), "
-                "last_state_change=CASE WHEN state IS DISTINCT FROM $2 THEN NOW() ELSE last_state_change END "
+                "last_state_change=CASE WHEN state IS DISTINCT FROM $2 THEN NOW() ELSE last_state_change END, "
+                "revived_at=CASE WHEN $12 THEN NOW() ELSE revived_at END, "
+                "label_status=CASE WHEN $12 THEN NULL ELSE label_status END, "
+                "label_checked_at=CASE WHEN $12 THEN NULL ELSE label_checked_at END, "
+                "label_court_model=CASE WHEN $12 THEN NULL ELSE label_court_model END, "
+                "label_proposed=CASE WHEN $12 THEN NULL ELSE label_proposed END "
                 "WHERE id=$1",
                 t.id, t.state, t.label or None, [float(x) for x in t.centroid], last_seen,
                 len(t.snapshots), t.agg_n_signals, cohesion, t.is_roundup, t.since_seen,
-                t.noise_rate,
+                t.noise_rate, t.newly_revived,
             )
             written["updated"] += 1
+            if t.newly_revived:
+                t.newly_revived = False
+                written["revived"] = written.get("revived", 0) + 1
         if t.id is not None:
             for m in t.members:
                 res = await conn.execute(
@@ -1225,6 +1326,10 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             summary["n_snapshot_groups"] = acct["groups"]
             summary["n_reentrant_groups"] = acct["reentrant_groups"]
             summary["primary_snapshot"] = acct["primary_snapshot"]
+            # TF-3b gate-(b) receipt — visible in dry-run too (persist's
+            # written["revived"] only exists on write passes).
+            summary["revived_to_candidate"] = int(
+                clock_report.get("revived_to_candidate", 0))
         if country_clock:
             # Reported ONLY under the country clock so the legacy summary stays
             # byte-identical. `country_clock_source` is the honesty field: it

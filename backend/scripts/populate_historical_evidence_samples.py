@@ -31,6 +31,16 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Country-code correction layer (2026-07-30): the archive is immutable and
+# still carries the pre-b7ab7def FIPS/ISO bug (Lebanon as LS, Serbia as RB…).
+# Corrections apply at THIS write boundary, GDELT-lane rows only — see
+# app/services/country_corrections.py. sample_id stays derived from the RAW
+# archive cc so re-runs conflict with (and never duplicate) rows written
+# before the correction layer / healed by the backfill.
+from app.services.country_corrections import correct_country_code  # noqa: E402
+
 ARCHIVE_ROOT = Path(os.environ.get("ATLAS_ARCHIVE_ROOT", "/Volumes/Ext/Atlas/Archive"))
 
 # Mirrors research_semantic.is_junk_headline (kept inline: offline script,
@@ -75,13 +85,21 @@ def _sample_day(files: list[Path], day: str, per_country: int) -> list[tuple]:
                         r = json.loads(line)
                     except Exception:
                         continue
-                    cc = (r.get("country_code") or "").strip().upper()
-                    if len(cc) != 2:
-                        continue
-                    if len(by_cc[cc]) >= per_country:
+                    cc_raw = (r.get("country_code") or "").strip().upper()
+                    if len(cc_raw) != 2:
                         continue
                     headline = html.unescape(r.get("headline") or "").strip()
                     if _is_junk(headline):
+                        continue
+                    # Corrected cc drives grouping/caps and the stored column;
+                    # sample_id keeps the RAW cc (idempotency vs pre-existing
+                    # rows — see module note above).
+                    cc = correct_country_code(
+                        cc_raw,
+                        source_family=r.get("source_family"),
+                        headline=headline,
+                    )
+                    if len(by_cc[cc]) >= per_country:
                         continue
                     src = (r.get("source_name") or "").strip().lower()
                     hl_key = headline.lower()
@@ -92,7 +110,7 @@ def _sample_day(files: list[Path], day: str, per_country: int) -> list[tuple]:
                     seen_src[cc].add(src)
                     seen_hl[cc].add(hl_key)
                     rel = str(f.relative_to(ARCHIVE_ROOT))
-                    sid = f"hes1:{day}:{cc}:" + hashlib.sha1(hl_key.encode()).hexdigest()[:12]
+                    sid = f"hes1:{day}:{cc_raw}:" + hashlib.sha1(hl_key.encode()).hexdigest()[:12]
                     by_cc[cc].append({
                         "sample_id": sid,
                         "day": day,

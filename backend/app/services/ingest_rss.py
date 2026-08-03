@@ -518,8 +518,11 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "http://www.granma.cu/feed",
         "state", "CU", "es", True,
     ),
+    # Canonical /en/feed/ path (the ?feed=rss2 form 301s onto it anyway).
+    # Listed in _CACHE_BUST_FEEDS: sana.sy's page cache froze this URL's copy
+    # on 2026-07-28 while the site kept publishing.
     "sana_sy": (
-        "https://sana.sy/en/?feed=rss2",
+        "https://sana.sy/en/feed/",
         "state", "SY", "en", True,
     ),
     # ── WAVE 8: DOMESTIC SELF-COVERAGE, round 2 (#235) ────────────────────────
@@ -1148,6 +1151,23 @@ def parse_entry_time(entry) -> datetime:
 
 # ── Feed fetcher ──────────────────────────────────────────────────────────────
 
+# Feeds whose origin cache serves a permanently STALE copy of the bare feed
+# URL. Measured on sana.sy 2026-08-03: /en/feed/ was frozen at 2026-07-28
+# while the site kept publishing (GDELT saw /en/ article ids ~1,100 past the
+# frozen copy), so every item fell outside the 2h overlap window and the feed
+# yielded zero signals for days. An UNRECOGNIZED query param bypasses the
+# page cache and reaches the live feed; WordPress-known params (?feed=rss2)
+# canonicalize back onto the stuck cache entry, and request Cache-Control
+# headers are ignored. The param is timestamped so the bypass key can never
+# itself become a stuck cache entry.
+_CACHE_BUST_FEEDS = {"sana_sy"}
+
+
+def _cache_bust(url: str) -> str:
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}_cb={int(datetime.now(timezone.utc).timestamp())}"
+
+
 async def fetch_feed(
     session: aiohttp.ClientSession,
     feed_name: str,
@@ -1160,6 +1180,8 @@ async def fetch_feed(
 ) -> list[dict]:
     """Fetch one RSS feed and return normalized signal dicts."""
     signals = []
+    if feed_name in _CACHE_BUST_FEEDS:
+        url = _cache_bust(url)
     try:
         async with session.get(
             url,
@@ -1251,7 +1273,17 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
     async with pool.acquire() as conn:
         for s in signals:
             try:
-                result = await conn.execute(
+                # #235 attribution race (2026-07-31): the GDELT firehose usually
+                # wins the source_url insert with POOR attribution (no origin
+                # country / unknown lang), and DO NOTHING then discarded the RSS
+                # lane's RICH attribution — SANA rows existed but Syria showed
+                # 2/855 self-voice. Conflict now UPGRADES attribution only:
+                # origin fills NULL, lang fills NULL/'xx', state-media can only
+                # turn ON. The WHERE guard skips the write entirely when nothing
+                # improves (RSS re-encounters the same URLs every 2h overlap
+                # cycle — unconditional DO UPDATE would churn WAL/bloat, the
+                # 15KB/row lesson). Headline/geo/NLP fields never touched.
+                row = await conn.fetchrow(
                     """
                     INSERT INTO signals_v2 (
                         timestamp, country_code, latitude, longitude, sentiment,
@@ -1262,7 +1294,20 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     )
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
                             $16,$17,$18,$19,$20,$21,$22,$23)
-                    ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO NOTHING
+                    ON CONFLICT (source_url) WHERE source_url IS NOT NULL DO UPDATE SET
+                        source_origin_country = COALESCE(signals_v2.source_origin_country,
+                                                         EXCLUDED.source_origin_country),
+                        source_lang = CASE WHEN signals_v2.source_lang IS NULL
+                                             OR signals_v2.source_lang = 'xx'
+                                           THEN EXCLUDED.source_lang
+                                           ELSE signals_v2.source_lang END,
+                        is_state_media = (signals_v2.is_state_media OR EXCLUDED.is_state_media)
+                    WHERE (signals_v2.source_origin_country IS NULL
+                           AND EXCLUDED.source_origin_country IS NOT NULL)
+                       OR ((signals_v2.source_lang IS NULL OR signals_v2.source_lang = 'xx')
+                           AND EXCLUDED.source_lang IS NOT NULL AND EXCLUDED.source_lang <> 'xx')
+                       OR (NOT signals_v2.is_state_media AND EXCLUDED.is_state_media)
+                    RETURNING (xmax = 0) AS was_insert
                     """,
                     s["timestamp"], s["country_code"], s["latitude"], s["longitude"],
                     s["sentiment"], s["source_url"], s["source_name"], s["headline"],
@@ -1275,7 +1320,10 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
                     s.get("snippet"),
                     s.get("source_origin_country"),
                 )
-                if result == "INSERT 0 1":
+                # RETURNING row present + xmax=0 -> genuinely new; xmax!=0 ->
+                # attribution upgrade of an existing row; None -> conflict with
+                # no improvement (guard skipped the write).
+                if row is not None and row["was_insert"]:
                     inserted += 1
             except Exception as e:
                 logger.warning("[RSS] insert error: %s: %s", type(e).__name__, str(e)[:120])
