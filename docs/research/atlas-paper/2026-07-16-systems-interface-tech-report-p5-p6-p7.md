@@ -398,11 +398,15 @@ Three concrete forms of that thesis, one per section:
    evidence that honesty-by-construction is a *per-surface* property that must
    be audited per surface, not an architecture guarantee.
 5. **Graduation-gate status, honestly.** This is a structured, frozen-rubric,
-   single-evaluator instrument — far stronger than no study, and **not** the
-   10–15-user task-time study the P7 gate names. The comparative
-   "better than commodity dashboards" claim stays dropped; what the eval
-   licenses is the *validity-of-representation* claim, now with measured
-   counterexamples and fixes in flight.
+   single-evaluator instrument — far stronger than no study, and not a
+   multi-rater study. The comparative "better than commodity dashboards" claim
+   stays dropped at this stage; what this run licenses is the
+   *validity-of-representation* claim, now with measured counterexamples and
+   fixes in flight. **Path forward decided (Pedro, 2026-08-03):** the
+   multi-rater requirement is met with an **agent-evaluator panel** (5
+   evaluators + 1 adjudicator, design frozen in §7), with a human-anchor subset
+   and an optional commodity-baseline arm that would license a caveated
+   comparative claim. This run is that study's pilot.
 
 ### P7.7 — The Story Lens: a renderer fix dark-shipped by its own gate
 
@@ -509,12 +513,16 @@ Three concrete forms of that thesis, one per section:
 5. **P6 systems numbers absent.** Latency-per-bucket and cost-per-row are
    unmeasured; P6 cannot make a systems-superiority claim and stays an appendix.
 6. **P7's study gap is narrowed, not closed.** The "measurably better than
-   commodity dashboards" claim stays **removed**. What now exists is a frozen-
-   rubric, rendered-pixels, full-20 evaluation with negative controls (§P7.6) —
-   a structured instrument that tested and amended the honesty thesis — run by
-   **one evaluator**. The 10–15-user task-time study the graduation gate names
-   remains open; single-rater rubric application is a measured variance source
-   in the sibling API-arm series and must be presumed here too.
+   commodity dashboards" claim stays **removed** until the panel's baseline arm
+   runs. What now exists is a frozen-rubric, rendered-pixels, full-20 evaluation
+   with negative controls (§P7.6) — a structured instrument that tested and
+   amended the honesty thesis — run by **one evaluator**; single-rater rubric
+   application is a measured variance source in the sibling API-arm series and
+   must be presumed here too. The successor study is defined and decided (§7):
+   a 5-agent evaluator panel + adjudicator with Fleiss κ, a 5-query
+   human-anchor subset (the author is the only available human rater — stated,
+   not hidden), and a paired commodity-baseline arm. Raters will be LLM agents;
+   that disclosure travels with any number the panel produces.
 7. **Serving-time NER-wins-over-gazetteer is uncorrected on sports/entity-dense
    headlines** — a known false-verify path (England→PERSON).
 8. **Coverage denominators must not be chained.** This report quotes the single
@@ -542,11 +550,40 @@ Three concrete forms of that thesis, one per section:
   - reproducibility of compact aggregates from the cold archive;
   - recency-scheduling coverage impact (served window vs full 168h under load).
 - **P7 → CHI/VIS design paper** needs:
-  - a **10–15-user task-time study** on the seven analyst questions (the only thing
-    that would license any comparative claim; until then, drop all "better than"
-    language). The §P7.6 single-evaluator rubric run is the pilot instrument for
-    this study, not its substitute — its rubric, controls and NAV-LOSS dimension
-    transfer directly;
+  - an **agent-evaluator panel study** (decision, Pedro 2026-08-03: the only
+    available human evaluator is the author, so the multi-rater requirement is
+    met with an agent court — the same move Paper A's 3-LLM consensus panel and
+    the gate-(c) census's double-judging already made, disclosed as such).
+    **Design, fixed here before any run:**
+    - **5 independent evaluator agents + 1 adjudicator.** Five = odd majority +
+      persona coverage of the product wedge (journalist · OSINT/conflict
+      researcher · policy/NGO analyst · newsroom desk editor · data-savvy
+      generalist); three is the Fleiss-κ minimum, five buys stable majority
+      levels. The adjudicator resolves only ≥3-way splits and every
+      adjudication is ledgered with reasons (the GB-round pattern).
+    - **Instrument unchanged:** rubric v2 verbatim (pixels-only, U1–U6 protocol,
+      6 negative controls, K1/K2 validity rules). No evaluator sees another's
+      transcript; prompts are persona-framed but rubric-identical.
+    - **Same-window discipline:** all five run against the same corpus
+      day/window (parallel or same-session) — the measured day-over-day churn
+      (Paper A R8) would otherwise confound inter-rater disagreement with
+      corpus drift.
+    - **Report:** per-query majority level + full level matrix + **Fleiss κ**;
+      per-metric (answered / informed / honesty / NAV-LOSS) majority values
+      with ranges. A run is VALID only if every evaluator's control arm passes.
+    - **Human anchor:** Pedro double-scores a fixed 5-query subset; agent↔human
+      agreement on that subset is reported as the panel's human-validity bound.
+    - **Comparative claim, now reachable with a caveat:** a second arm runs the
+      SAME panel + queries against a commodity baseline surface (raw GDELT
+      dashboard / Google News). Paired scoring licenses "measured better/worse
+      than commodity *under this rubric, agent-rated*" — the comparative
+      language returns only in that caveated form, never bare.
+    - **Standing disclosure:** raters are LLM agents, not human analysts;
+      n_human_raters = 1 (subset anchor). This replaces the single-evaluator
+      limitation with a measured-κ multi-rater one; it does not manufacture
+      human ground truth.
+    The §P7.6 single-evaluator run is this study's pilot: rubric, controls and
+    NAV-LOSS dimension transfer directly;
   - the Orbital "who entered this week?" task-time vs the signal list (the acceptance
     metric the view was built to make measurable);
   - the **BERTopic-proper external baseline** (UMAP + c-TF-IDF) once the

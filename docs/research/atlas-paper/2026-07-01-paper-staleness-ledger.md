@@ -2,9 +2,10 @@
 
 Date opened: 2026-07-01 · Owner: engine track · Status: **ACTIVE** (PR3 doc
 track CLOSED 2026-07-01 — 10 resolved, 1 partial; **PR4 reconciliation pass
-executed 2026-08-03** — 10 resolved against the 2026-07-16 reorg set, 3 OPEN on
-Pedro's call; see the "2026-08-03 reconciliation pass (PR4)" section at the
-bottom)
+executed 2026-08-03** — 13/13 resolved: 10 doc rows + PR4-11/12/13 decided by
+Pedro same day (keep B unified · keep A's framing · P7 multi-rater = a 5-agent
+evaluator court + adjudicator, design frozen in the systems report §7); see the
+"2026-08-03 reconciliation pass (PR4)" section at the bottom)
 Companion: `docs/specs/2026-07-01-atlas-engine-r3-unification.md` §8 (the PR3
 paper-coherence track). Purpose (Pedro, 2026-07-01): the papers drifted from the
 engine reality; instead of patching ad-hoc, **track each stale claim as a
@@ -102,9 +103,9 @@ its own commit).
 | **PR4-08** | report P7 | "no analyst study exists" (comparative claim removed, thesis untested) | the honest-by-construction thesis is **tested**: full-20 rendered-pixels eval (answered 14.3% / informed 71.4% / honesty 0.83 / NAV-LOSS 20/20 / UI-WORSE ×0) — survives with one amendment (mis-measured country renders worse) + one exception (markets panel paints its own refusal); 23-defect ledger = honesty is per-surface; Story Lens **dark-shipped by its own pre-registered gate** (NAV-LOSS held 6/6; anchor-fusion inversion — "the finder was never the failure") | P7.6 + P7.7 authored; limitation 6 re-scoped (gap narrowed, not closed); graduation gate updated | **RESOLVED** `35cc0384` — `gold/2026-07-30-ui-eval-v2-run.md`, `2026-07-29-story-lens-navloss-check.md`, `recall-229/2026-07-29-sibling-finder-v2-measurement.md` |
 | **PR4-09** | report P6 | temporal section had zero measured systems results | two: tick semantics bound global serving coverage (2–4 ticks/night; 1,007 topics aged 4 in one snapshot; TF-1 PASS / TF-2 KILL); fetch-boundary enforcement under a frozen 5-condition gate (M=2 live, entailed +17.8pp, **C2 denominator-artifact lesson → C2b pre-registered**) | P6.3 + P6.4 authored; results rows 17–20 | **RESOLVED** `35cc0384` — `label-court/2026-07-29-a0b-fetch-gate-measurement.md`, `2026-07-30-fetchmult-flip-postverify.md`, `2026-07-29-court-enforcement-simulation.md` |
 | **PR4-10** | master-plan cross-ref index | last refreshed 2026-07-06/16; lags the engine by ~4 weeks (the PR3-06 standing trigger) | index re-dated with the 2026-07-17→08-03 evolution block + new rows | see master-plan commit | **RESOLVED** (same pass) |
-| **PR4-11** | Paper B (structure) | — | the identity arc is large enough (5 kills + named disease + instrument suite) to be a standalone paper ("Argmax dispersion: pre-registered refutations at the news-identity layer") | integrated into B Part II for now; splitting is an editorial call | **OPEN — Pedro's call** |
-| **PR4-12** | Paper A (center of gravity) | title/venue framed on the classification benchmark | the task-level metric + persistence + two-arm decomposition may now be the stronger headline; re-titling/re-centering would reorder §3 | integrated as §3.7/§3.8 without re-centering | **OPEN — Pedro's call** |
-| **PR4-13** | report P7 (graduation) | gate = 10–15-user task-time study | a frozen-rubric single-evaluator full-20 instrument now exists; whether it (plus a small-n replication) suffices for a CHI/VIS case-study submission is a judgment call | gate kept as written; §P7.6 records the status honestly | **OPEN — Pedro's call** |
+| **PR4-11** | Paper B (structure) | — | the identity arc is large enough (5 kills + named disease + instrument suite) to be a standalone paper ("Argmax dispersion: pre-registered refutations at the news-identity layer") | integrated into B Part II; splitting was an editorial call | **RESOLVED 2026-08-03 (Pedro)** — keep unified in B per the integration recommendation |
+| **PR4-12** | Paper A (center of gravity) | title/venue framed on the classification benchmark | the task-level metric + persistence + two-arm decomposition may now be the stronger headline; re-titling/re-centering would reorder §3 | integrated as §3.7/§3.8 without re-centering | **RESOLVED 2026-08-03 (Pedro)** — keep A's current framing per the integration recommendation |
+| **PR4-13** | report P7 (graduation) | gate = 10–15-user task-time study | only available human evaluator is the author → multi-rater requirement met with an **agent-evaluator court** (Pedro's decision, evaluator count delegated) | gate re-written in the report §7: **5 evaluator agents (wedge personas) + 1 ledgered adjudicator**, rubric v2 verbatim, same-corpus-window discipline, Fleiss κ, per-evaluator control-arm validity, 5-query human-anchor subset (author double-scores), paired commodity-baseline arm licensing only a caveated agent-rated comparative claim; standing disclosure "raters are LLM agents, n_human_raters = 1 (anchor)" | **RESOLVED 2026-08-03 (Pedro + design frozen this pass)** — study itself still to run |
 
 Standing rules unchanged: on any engine change that invalidates a paper number,
 append a row BEFORE the paper is next touched; index-lag is itself a ledger

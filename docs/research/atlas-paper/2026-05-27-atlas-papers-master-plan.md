@@ -1269,10 +1269,14 @@ where these now live.
 | **Script-blind bug family**: GDELT translingual title validation (≥4 words) stored CN 53.3%/TW 45.5%/JP 38.5% NULL headlines (~33k/week) — fixed at the parser, post-deploy JP 0.0%/CN 1.5%; flat 20-char clustering floor CJK-shaped (CN 15.0% vs US 0.95%), script-aware fix env-gated; `_norm_headline` non-Latin deletion (fixed `924174b2`) | **Paper C Decision 4** (the monoculture was in the code's assumptions) + report P5 cross-ref | `recall-229/2026-07-30-gdelt-null-headline-diagnosis.md`, `2026-07-30-cjk-length-floor-measurement.md` |
 | **Serving-level coverage = a fourth claim-type**: assigned → formed → served each carry their own canonical number; per-country pre-2026-07-28 figures carry FIPS provenance | **canonicalization doc Group D** | `2026-07-16-coverage-metric-canonicalization.md` §Group D |
 
-Open on Pedro's call (ledger PR4-11/12/13): split the identity arc out of Paper
-B into its own paper? · re-center Paper A's title on the task-level metric? ·
-does the frozen-rubric single-evaluator eval (plus a small replication) suffice
-for a P7 CHI/VIS case-study submission?
+PR4-11/12/13 DECIDED (Pedro, 2026-08-03): the identity arc stays inside Paper B
+(no split) · Paper A keeps its current framing (no re-centering) · the P7
+multi-rater gap is closed by design with an **agent-evaluator court** — 5
+evaluator agents (wedge personas) + 1 ledgered adjudicator, rubric v2 verbatim,
+same-corpus-window discipline, Fleiss κ, a 5-query human-anchor subset (Pedro is
+the sole human rater, disclosed), and a paired commodity-baseline arm that
+licenses only a caveated agent-rated comparative claim. Design frozen in the
+systems report §7; the study itself is still to run.
 
 Governance note (standing): Atlas rules the papers — these are RESULTS the
 papers absorb, never constraints on what Atlas builds next.
