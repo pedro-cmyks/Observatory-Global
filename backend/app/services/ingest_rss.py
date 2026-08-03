@@ -518,8 +518,11 @@ CURATED_FEEDS: dict[str, tuple[str, str, str, str, bool]] = {
         "http://www.granma.cu/feed",
         "state", "CU", "es", True,
     ),
+    # Canonical /en/feed/ path (the ?feed=rss2 form 301s onto it anyway).
+    # Listed in _CACHE_BUST_FEEDS: sana.sy's page cache froze this URL's copy
+    # on 2026-07-28 while the site kept publishing.
     "sana_sy": (
-        "https://sana.sy/en/?feed=rss2",
+        "https://sana.sy/en/feed/",
         "state", "SY", "en", True,
     ),
     # ── WAVE 8: DOMESTIC SELF-COVERAGE, round 2 (#235) ────────────────────────
@@ -1148,6 +1151,23 @@ def parse_entry_time(entry) -> datetime:
 
 # ── Feed fetcher ──────────────────────────────────────────────────────────────
 
+# Feeds whose origin cache serves a permanently STALE copy of the bare feed
+# URL. Measured on sana.sy 2026-08-03: /en/feed/ was frozen at 2026-07-28
+# while the site kept publishing (GDELT saw /en/ article ids ~1,100 past the
+# frozen copy), so every item fell outside the 2h overlap window and the feed
+# yielded zero signals for days. An UNRECOGNIZED query param bypasses the
+# page cache and reaches the live feed; WordPress-known params (?feed=rss2)
+# canonicalize back onto the stuck cache entry, and request Cache-Control
+# headers are ignored. The param is timestamped so the bypass key can never
+# itself become a stuck cache entry.
+_CACHE_BUST_FEEDS = {"sana_sy"}
+
+
+def _cache_bust(url: str) -> str:
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}_cb={int(datetime.now(timezone.utc).timestamp())}"
+
+
 async def fetch_feed(
     session: aiohttp.ClientSession,
     feed_name: str,
@@ -1160,6 +1180,8 @@ async def fetch_feed(
 ) -> list[dict]:
     """Fetch one RSS feed and return normalized signal dicts."""
     signals = []
+    if feed_name in _CACHE_BUST_FEEDS:
+        url = _cache_bust(url)
     try:
         async with session.get(
             url,
