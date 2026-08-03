@@ -2,8 +2,10 @@
 
 Computes the content-based junk flag (scripts/topic_junk.classify_topic_junk) for
 every topic that carries unified-v2 members — the served + anchoring population —
-from three signals: the R3.1 category, the label, and the per-topic distinct-source
-count over a member sample. Persists dynamic_topics.is_junk / junk_reason, and
+from four signals: the R3.1 category, the label, the per-topic distinct-source
+count over a member sample, and the PR-wire attorney-solicitation receipt fraction
+over the same sample (2026-08-03 census class). Persists dynamic_topics.is_junk /
+junk_reason, and
 (unless --no-demote) demotes junk ACTIVE topics to 'candidate' so they stop serving.
 
 Effects, once persisted:
@@ -30,7 +32,7 @@ from collections import Counter, defaultdict
 
 import asyncpg
 
-from scripts.topic_junk import classify_topic_junk
+from scripts.topic_junk import classify_topic_junk, is_pr_wire_solicitation
 
 ENGINE_VERSION = "unified-v2"
 # Denominator for the coverage %: embedded signals in the build window. 336h to
@@ -57,13 +59,17 @@ async def _topics_with_members(conn: asyncpg.Connection) -> list[asyncpg.Record]
     )
 
 
-async def _distinct_sources(conn: asyncpg.Connection, ids: list[int],
-                            sample: int) -> dict[int, int]:
-    """Distinct outlet count over the `sample` most-recent members of each topic."""
+async def _member_source_stats(
+    conn: asyncpg.Connection, ids: list[int], sample: int,
+) -> tuple[dict[int, int], dict[int, float | None]]:
+    """Over the `sample` most-recent members of each topic: distinct outlet
+    count + fraction of receipts that are PR-wire attorney-solicitation spam
+    (None when the topic yields no joinable sample rows)."""
     rows = await conn.fetch(
         f"""
-        SELECT tid, source_name FROM (
+        SELECT tid, source_name, source_url, headline FROM (
           SELECT (split_part(tm.topic_id, '-', 3))::int AS tid, s.source_name,
+                 s.source_url, s.headline,
                  row_number() OVER (PARTITION BY tm.topic_id
                                     ORDER BY s.timestamp DESC) AS rn
           FROM topic_members tm
@@ -76,10 +82,19 @@ async def _distinct_sources(conn: asyncpg.Connection, ids: list[int],
         [f"dynamic-topic-{i}" for i in ids],
     )
     srcs: dict[int, set[str]] = defaultdict(set)
+    pr_counts: dict[int, list[int]] = defaultdict(lambda: [0, 0])  # [spam, total]
     for r in rows:
         if r["source_name"]:
             srcs[r["tid"]].add(r["source_name"])
-    return {i: len(srcs.get(i, set())) for i in ids}
+        pr_counts[r["tid"]][1] += 1
+        if is_pr_wire_solicitation(r["source_name"], r["source_url"], r["headline"]):
+            pr_counts[r["tid"]][0] += 1
+    nsrc = {i: len(srcs.get(i, set())) for i in ids}
+    pr_frac = {
+        i: (pr_counts[i][0] / pr_counts[i][1] if pr_counts[i][1] else None)
+        for i in ids
+    }
+    return nsrc, pr_frac
 
 
 async def _useful_coverage(conn: asyncpg.Connection, junk_ids: set[int]) -> dict:
@@ -133,13 +148,14 @@ async def run(dry_run: bool, no_demote: bool, sample: int) -> int:
             print("no topics carry unified-v2 members — nothing to flag")
             return 0
         ids = [int(r["id"]) for r in topics]
-        nsrc = await _distinct_sources(conn, ids, sample)
+        nsrc, pr_frac = await _member_source_stats(conn, ids, sample)
 
         junk: dict[int, str] = {}
         reason_hist: Counter = Counter()
         for r in topics:
             reason = classify_topic_junk(
-                r["category"], r["label"], int(r["mem"]), nsrc.get(int(r["id"])))
+                r["category"], r["label"], int(r["mem"]), nsrc.get(int(r["id"])),
+                pr_wire_fraction=pr_frac.get(int(r["id"])))
             if reason:
                 junk[int(r["id"])] = reason
                 reason_hist[reason.split(";")[0].split(":")[0]] += 1
