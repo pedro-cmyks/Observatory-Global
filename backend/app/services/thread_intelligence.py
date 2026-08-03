@@ -12,6 +12,7 @@ from app.core.gdelt_taxonomy import get_theme_label
 from app.core.iso_country_names import ISO_COUNTRY_NAMES, resolve_country_name
 from app.services.label_fold import is_refusal_label as _is_refusal_label
 from app.services.narrative_note import build_thread_narrative_note
+from app.services.stream_relevance import classify_stream_lane
 from app.services.subject_geography import infer_receipt_subject_geography
 from app.services.thread_packet import build_thread_packet
 from app.services.thread_ranking import rank_threads
@@ -916,6 +917,36 @@ def evidence_role(syndication_count: int) -> str:
     return "representative"
 
 
+# #248 item 2 — evidence-LEVEL lane damp inside a thread. The #246 lifestyle
+# damp operates on whole-thread RANKING; inside a crisis-relevant mega-thread a
+# lifestyle/sports/entertainment receipt could still surface as the LEAD
+# evidence (the "Ek Hota Maalin" class). Within a crisis thread, noise-lane
+# receipts sink to the tail — a stable partition, damp NEVER drop (no silent
+# filtering: every receipt still serves, order within each class preserved).
+# Lane comes from the shared stream classifier: analyst themes override
+# headline keywords, so a stadium-attack row with crisis themes stays analyst
+# and is never sunk by its sporty headline.
+_EVIDENCE_NOISE_LANES = frozenset({"sports", "entertainment", "lifestyle"})
+
+
+def order_crisis_evidence(rows: list[Any], crisis_relevant: bool | None) -> list[Any]:
+    """Stable-partition evidence rows for a CRISIS thread: noise-lane receipts
+    last. `crisis_relevant` None/False (untyped or honestly non-crisis) leaves
+    the order untouched — a lifestyle thread's lifestyle receipts are its
+    story, not noise."""
+    if crisis_relevant is not True:
+        return list(rows)
+    head: list[Any] = []
+    tail: list[Any] = []
+    for row in rows:
+        themes = [str(t) for t in _as_list(_record_get(row, "themes"))]
+        raw_headline = _record_get(row, "headline")
+        headline = html.unescape(raw_headline) if raw_headline else raw_headline
+        lane = classify_stream_lane(themes, headline)
+        (tail if lane in _EVIDENCE_NOISE_LANES else head).append(row)
+    return head + tail
+
+
 def _serialize_evidence(row: Any) -> dict[str, Any]:
     timestamp = _record_get(row, "timestamp")
     syndication = int(_record_get(row, "syndication_count") or 1)
@@ -1655,7 +1686,13 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         ),
         "subthreads": [],
         "related_threads": [],
-        "evidence_samples": [_serialize_evidence(sig) for sig in sample_signals],
+        # #248 item 2: inside a crisis-relevant thread, noise-lane receipts
+        # (sports/entertainment/lifestyle) sink below the analyst evidence —
+        # the Brief's lead receipt is evidence_samples[0].
+        "evidence_samples": [
+            _serialize_evidence(sig)
+            for sig in order_crisis_evidence(sample_signals, bool(crisis_relevant) if crisis_relevant is not None else None)
+        ],
         "narrative_note": None,
         "cluster_cohesion": float(cohesion) if cohesion is not None else None,
         # Label Court (#204/#224): the verdict on this thread's own label vs its
@@ -2049,8 +2086,11 @@ async def _attach_atlas_evidence(
                 per_thread,
                 timeout=8,
             )
+            # #248 item 2: atlas topics are the crisis taxonomy
+            # (crisis_relevant=True by construction) — noise-lane receipts sink.
             thread["evidence_samples"] = [
-                _serialize_evidence(row) for row in evidence_rows
+                _serialize_evidence(row)
+                for row in order_crisis_evidence(evidence_rows, True)
             ]
         except Exception as exc:  # noqa: BLE001 - degrade, never 500
             logger.warning(
@@ -2546,7 +2586,10 @@ async def fetch_thread_detail(
             timeout=8,
         )
 
-    threads[0]["evidence_samples"] = [_serialize_evidence(row) for row in evidence_rows]
+    # #248 item 2: atlas detail path — same crisis-taxonomy damp as the list.
+    threads[0]["evidence_samples"] = [
+        _serialize_evidence(row) for row in order_crisis_evidence(evidence_rows, True)
+    ]
     threads[0]["narrative_note"] = build_thread_narrative_note(threads[0])
     packet_rows = [
         {**dict(r), "sentiment": (r["nlp_sentiment"] if "nlp_sentiment" in r else r["sentiment"])}
