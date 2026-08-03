@@ -2286,7 +2286,10 @@ def stamped_counts(threads: list[dict[str, Any]]) -> dict[str, int]:
     found 31/37 served threads unstamped including ALL leads, and without this
     number the gap is invisible. Unknown/missing statuses count as 'unchecked'
     (absence over guess)."""
-    counts = {"entailed": 0, "partial": 0, "failed": 0, "unchecked": 0}
+    # 'too_broad' (#261 item 3, migration 096): a graded verdict — counting it
+    # as 'unchecked' would hide exactly the mega-topic fusions the vocabulary
+    # exists to surface.
+    counts = {"entailed": 0, "partial": 0, "failed": 0, "too_broad": 0, "unchecked": 0}
     for t in threads:
         status = str(t.get("label_status") or "").strip().lower()
         counts[status if status in counts else "unchecked"] += 1

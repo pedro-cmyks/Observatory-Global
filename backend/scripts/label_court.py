@@ -123,6 +123,25 @@ plain Western digits embedded, so the narrow numeric form still catches it),
 but a purely textual absence claim about a phrase inside a non-Latin-script
 receipt is NOT verified here. Documented limitation, not a silent gap.
 
+TOO-BROAD VERDICT + STRATIFIED RECEIPTS (2026-08-03, #261 item 3): the story
+lane's vocabulary gains `too_broad` — the mega-topic fusion case the issue
+named ("8 random receipts don't entail one label for a 3,000-signal topic")
+was folded into `failed`, which reads as "wrong label" when the real finding
+is "no SINGLE label could describe this topic; it is a fusion". Distinctions
+that matter downstream: a `too_broad` row gets NO neutral-label proposal (by
+definition none fits) and is NOT selected by relabel_court_failed.py (which
+targets `label_status='failed'` only) — the structural fix for a fusion is
+the over-merge lane, not a relabel. Migration 096 widens migration 080's
+CHECK to admit the new literal. The FAMILY (umbrella) lane keeps its
+three-verdict vocabulary untouched: an umbrella is a family of stories by
+construction, so "too broad" is not a defect there, and the GB-calibrated
+prompt + withhold detectors are left exactly as measured. Receipt sampling
+can also be STRATIFIED across the topic's whole assigned_at span (NTILE
+buckets, newest-per-bucket) instead of the pure recency window that shows
+the judge only the newest sub-story — env `ATLAS_COURT_STRATIFIED_RECEIPTS`
+(default OFF: the court is under active blind-check calibration and a silent
+input change would confound those measurements; flip is one ALW .env line).
+
 Serving reads label_status only (additive). Reversible: NULL the four columns.
 
 Run (repo root, M1 env, off-peak — DeepSeek, ~cents):
@@ -160,7 +179,12 @@ _DS_URL = "https://api.deepseek.com/chat/completions"
 _COURT_MODEL = "label-court-v0/deepseek-chat"
 _LEDGER_DIR = Path(__file__).resolve().parents[2] / "docs" / "research" / "label-court"
 
-_VALID = ("entailed", "partial", "failed")
+_VALID = ("entailed", "partial", "failed", "too_broad")
+# The family (umbrella) lane keeps the original three-verdict vocabulary —
+# see the 2026-08-03 docstring note. parse_verdict is shared, so a stray
+# "too_broad" from the family judge would still parse; the family prompt
+# simply never offers it.
+_MARKS = {"entailed": "✓", "partial": "~", "failed": "✗", "too_broad": "⊃"}
 
 # Receipts for a topic's trial: distinct evidence headlines, SERVED-freshest
 # first. Scoped to the engine_version the product actually serves ($3, bound
@@ -183,6 +207,44 @@ _RECEIPTS_SQL = """
     ORDER BY max(tm.assigned_at) DESC
     LIMIT $2
 """
+# #261 item 3 (2026-08-03): STRATIFIED receipt sampling. The recency window
+# above shows the judge only the NEWEST sub-story of a long-lived topic — the
+# exact blindness that lets a mega-topic fusion read as a clean single story
+# (or a still-accurate label read as failed because the newest receipts
+# drifted). This variant keeps every serving-lane filter identical and spreads
+# the k-receipt budget across the topic's WHOLE assigned_at span: NTILE(k)
+# buckets over the distinct receipts, newest-per-bucket, returned
+# newest-first. With fewer than k distinct receipts NTILE degrades to one row
+# per bucket = the full set, same as the recency query. Env-gated
+# ATLAS_COURT_STRATIFIED_RECEIPTS (default OFF — see the docstring note).
+_RECEIPTS_STRATIFIED_SQL = """
+    WITH pool AS (
+        SELECT s.headline, s.country_code, max(tm.assigned_at) AS assigned_at
+        FROM topic_members tm
+        JOIN signals_v2 s ON s.id = tm.signal_id
+        WHERE tm.topic_id = $1 AND tm.role = 'evidence'
+          AND tm.engine_version = $3
+          AND COALESCE(tm.quarantined, false) = false
+          AND s.headline IS NOT NULL AND length(s.headline) >= 12
+        GROUP BY s.headline, s.country_code
+    ), bucketed AS (
+        SELECT headline, country_code, assigned_at,
+               NTILE($2) OVER (ORDER BY assigned_at DESC) AS bucket
+        FROM pool
+    ), picked AS (
+        SELECT DISTINCT ON (bucket) headline, country_code, assigned_at
+        FROM bucketed
+        ORDER BY bucket, assigned_at DESC
+    )
+    SELECT headline, country_code FROM picked ORDER BY assigned_at DESC
+"""
+
+
+def stratified_receipts_enabled() -> bool:
+    """One switch, read at call time (testable, flippable per run)."""
+    return os.environ.get("ATLAS_COURT_STRATIFIED_RECEIPTS", "off").lower() == "on"
+
+
 # Fallback for topics whose typed membership has not been projected yet
 # (topic_members is behind): the emergent sample the snapshot always carries.
 # NOT a topic_members query (dynamic_topic_members/emergent_clusters instead)
@@ -219,17 +281,24 @@ def parse_verdict(text: str) -> tuple[str, str]:
     try:
         obj = json.loads(body)
         if isinstance(obj, dict):
-            verdict = str(obj.get("verdict", "")).strip().lower()
+            # Normalize separator drift ("too broad" / "too-broad") before the
+            # vocabulary check — models paraphrase compound enum values.
+            verdict = str(obj.get("verdict", "")).strip().lower().replace("-", "_").replace(" ", "_")
             reason = str(obj.get("reason", "")).strip()
     except (json.JSONDecodeError, ValueError):
         pass
     if verdict not in _VALID:
         low = raw.lower()
-        # bare-word / embedded verdict
-        for v in _VALID:
-            if v in low:
-                verdict = v
-                break
+        # bare-word / embedded verdict — the compound value first (most
+        # specific; "too broad" prose must not fall through to a bare
+        # "failed" elsewhere in the same text).
+        if "too_broad" in low or "too broad" in low:
+            verdict = "too_broad"
+        else:
+            for v in _VALID:
+                if v in low:
+                    verdict = v
+                    break
     if verdict not in _VALID:
         return "partial", raw[:200]
     return verdict, (reason or raw[:200])
@@ -680,11 +749,17 @@ def _judge_prompt(label: str, receipts: list[dict], *, family: bool = False,
         f'LABEL: "{label}"\n\nHEADLINES:\n{lines}\n\n'
         "Does the LABEL accurately describe the MAJORITY of these headlines? "
         "Judge on subject and geography, not vibe. Reply ONLY with JSON:\n"
-        '{"verdict": "entailed" | "partial" | "failed", "reason": "<one short sentence>"}\n'
+        '{"verdict": "entailed" | "partial" | "failed" | "too_broad", "reason": "<one short sentence>"}\n'
         "- entailed: the label fits most headlines.\n"
         "- partial: the label fits some but a large minority are off-topic.\n"
         "- failed: the label does NOT describe most headlines (wrong subject or "
-        "wrong country).")
+        "wrong country) — but the headlines themselves belong to one story a "
+        "BETTER label could describe.\n"
+        "- too_broad: the headlines span MULTIPLE distinct unrelated stories — "
+        "no single label (including this one) could describe the majority; the "
+        "cluster is a fusion, not a mislabeling. Use this ONLY when you can see "
+        "at least three clearly unrelated stories; a label that is merely "
+        "generic over one diverse-but-real family is entailed, not too_broad.")
 
 
 async def _ds_judge(label: str, receipts: list[dict], key: str, *,
@@ -714,7 +789,12 @@ async def _receipts_for(conn, topic_id: str, dyn_id: int, k: int) -> list[dict]:
     # court can never again drift onto an engine_version the product doesn't
     # serve.
     engine_version = topic_members_engine_version()
-    rows = await conn.fetch(_RECEIPTS_SQL, topic_id, k, engine_version)
+    # #261 item 3: stratified sampling spreads the budget across the topic's
+    # whole lifetime instead of the newest sub-story. Same lane filters either
+    # way; the recency query stays the default while the court is under
+    # blind-check calibration.
+    receipts_sql = _RECEIPTS_STRATIFIED_SQL if stratified_receipts_enabled() else _RECEIPTS_SQL
+    rows = await conn.fetch(receipts_sql, topic_id, k, engine_version)
     if not rows:
         rows = await conn.fetch(_RECEIPTS_FALLBACK_SQL, dyn_id, k)
     # DECODE before the judge reads (2026-07-18): headlines arrive
@@ -1034,8 +1114,12 @@ async def main() -> None:
                 continue
 
             dist[verdict] += 1
+            # `too_broad` gets NO proposal: by definition no single label fits
+            # a fusion — the structural fix is the over-merge lane, and
+            # relabel_court_failed.py (label_status='failed' only) correctly
+            # never touches these rows.
             proposed = build_neutral_label(receipts) if verdict == "failed" else None
-            mark = {"entailed": "✓", "partial": "~", "failed": "✗"}[verdict]
+            mark = _MARKS[verdict]
             tag = " [umbrella]" if is_umbrella else ""
             extra = f"  ->PROPOSE: {proposed}" if proposed else ""
             print(f"  {mark} dt-{dyn_id}{tag} [{verdict}] {label[:46]}{extra}")
@@ -1074,6 +1158,7 @@ async def main() -> None:
         total = sum(dist.values())
         print(f"\nLABEL COURT DONE: {total} tried · "
               f"entailed {dist['entailed']} · partial {dist['partial']} · failed {dist['failed']} · "
+              f"too_broad {dist['too_broad']} · "
               f"withheld {withheld} · "
               f"tokens in/out {tok_in}/{tok_out}{' · WRITTEN' if args.write else ' · DRY'}"
               f"{' · PROPOSALS APPLIED' if apply_proposals else ''}")

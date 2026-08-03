@@ -775,3 +775,72 @@ def test_trial_candidate_arm_requires_null_status_no_retrial_burn():
     src = inspect.getsource(lc.main)
     assert "state='candidate' AND revived_at IS NOT NULL " in src
     assert "AND label_status IS NULL))" in src
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-03 #261 item 3: the `too_broad` verdict (mega-topic fusion named,
+# not folded into `failed`) + stratified receipt sampling (env-gated OFF).
+# ---------------------------------------------------------------------------
+from scripts.label_court import (  # noqa: E402
+    _MARKS, _VALID, _RECEIPTS_STRATIFIED_SQL, stratified_receipts_enabled,
+)
+
+
+def test_parse_verdict_too_broad_json_and_separator_drift():
+    assert parse_verdict('{"verdict": "too_broad", "reason": "three unrelated stories"}')[0] == "too_broad"
+    # models paraphrase compound enum values — space/hyphen forms normalize
+    assert parse_verdict('{"verdict": "too broad", "reason": "fusion"}')[0] == "too_broad"
+    assert parse_verdict('{"verdict": "too-broad", "reason": "fusion"}')[0] == "too_broad"
+
+
+def test_parse_verdict_too_broad_bare_prose_wins_over_embedded_failed():
+    # unparseable prose mentioning both: the compound (most specific) term wins
+    v, _ = parse_verdict("this label failed because the cluster is TOO BROAD")
+    assert v == "too_broad"
+
+
+def test_marks_cover_every_valid_verdict():
+    # the print path indexes _MARKS[verdict] — a vocabulary word without a mark
+    # would crash the cron mid-run
+    assert set(_MARKS) == set(_VALID)
+
+
+def test_stratified_receipts_env_gated_default_off(monkeypatch):
+    monkeypatch.delenv("ATLAS_COURT_STRATIFIED_RECEIPTS", raising=False)
+    assert stratified_receipts_enabled() is False
+    conn = _FakeConn()
+    asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8))
+    assert conn.calls[0][0] == _RECEIPTS_SQL
+
+
+def test_stratified_receipts_env_on_switches_sql_same_binds(monkeypatch):
+    monkeypatch.delenv("ATLAS_TOPIC_MEMBERS_ENGINE_VERSION", raising=False)
+    monkeypatch.setenv("ATLAS_COURT_STRATIFIED_RECEIPTS", "on")
+    conn = _FakeConn()
+    asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8))
+    sql, args = conn.calls[0]
+    assert sql == _RECEIPTS_STRATIFIED_SQL
+    assert args == ("dynamic-topic-1", 8, "v1-compat")
+
+
+def test_stratified_sql_keeps_the_contamination_filters():
+    # the 2026-07-29 contamination fix must hold on BOTH receipt queries:
+    # served engine_version bind, quarantined exclusion, evidence role,
+    # assigned_at ordering (never s.timestamp)
+    assert "tm.engine_version = $3" in _RECEIPTS_STRATIFIED_SQL
+    assert "COALESCE(tm.quarantined, false) = false" in _RECEIPTS_STRATIFIED_SQL
+    assert "tm.role = 'evidence'" in _RECEIPTS_STRATIFIED_SQL
+    assert "NTILE($2)" in _RECEIPTS_STRATIFIED_SQL
+    assert "s.timestamp" not in _RECEIPTS_STRATIFIED_SQL
+
+
+def test_story_prompt_offers_too_broad_family_prompt_does_not():
+    story = _judge_prompt("Some Label", [{"headline": "h1", "country_code": "US"},
+                                         {"headline": "h2", "country_code": "FR"}])
+    assert "too_broad" in story
+    # the GB-calibrated family lane keeps its three-verdict vocabulary
+    family = _judge_prompt("Family Label", [{"headline": "h1", "country_code": "US"}],
+                           family=True,
+                           family_children=[{"child_id": 1, "child_label": "c1",
+                                             "receipts": [{"headline": "h1", "country_code": "US"}]}])
+    assert "too_broad" not in family
