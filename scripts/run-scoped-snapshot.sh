@@ -88,7 +88,7 @@ fi
 # ATLAS_CLAUDE_CLI* (2026-07-28): the insight chain's claude_cli failover leg
 # (insight_llm.py) — the seal's synthesis step needs them; BIN is absolute
 # because launchd's minimal PATH can't find `claude`.
-for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY ATLAS_CLAUDE_CLI ATLAS_CLAUDE_CLI_BIN ATLAS_LIFECYCLE_TICK_V2 ATLAS_SNAPSHOT_TAIL_RESERVE ATLAS_OVERMERGE_BLOB_STAMP; do
+for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY ATLAS_CLAUDE_CLI ATLAS_CLAUDE_CLI_BIN ATLAS_LIFECYCLE_TICK_V2 ATLAS_SNAPSHOT_TAIL_RESERVE ATLAS_OVERMERGE_BLOB_STAMP ATLAS_LIFECYCLE_COUNTRY_CLOCK; do
   if [[ -z "${!key:-}" && -r "$LOCAL_ENV" ]]; then
     v="$(grep -E "^${key}=" "$LOCAL_ENV" | tail -n 1 | sed -E "s/^${key}=//" | tr -d '\r' || true)"
     [[ -n "$v" ]] && export "$key=$v"
