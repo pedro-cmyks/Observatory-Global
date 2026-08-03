@@ -26,7 +26,7 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
@@ -322,6 +322,27 @@ def _qualifies(t: "Topic", cfg: LifecycleConfig) -> bool:
     )
 
 
+# Blob veto (2026-08-03 gate-(c) census): the label court's `entailed` stamp
+# measured ~70% precise as a serving certificate — 28 judge-confirmed blob
+# topics were certified AND promoted through the TF-3b gate. Promotion now
+# also requires NO FRESH blob stamp (detect_overmerge stamps
+# dynamic_topics.blob_confirmed_at on judge-confirmed fusions and clears it on
+# re-evaluated-clean topics). The 7-day horizon is a staleness bound, not a
+# pardon: the nightly sweep re-stamps a still-fused topic, so only a topic the
+# sweep stopped confirming (typically membership re-formed under the same
+# identity) ages out of the veto — an eternal stamp would block the identity
+# long after its evidence changed.
+BLOB_CONFIRMED_FRESH_DAYS = 7
+
+
+def blob_confirmed_fresh(stamp: datetime | None,
+                         now: datetime | None = None) -> bool:
+    if stamp is None:
+        return False
+    return ((now or datetime.now(timezone.utc)) - stamp
+            < timedelta(days=BLOB_CONFIRMED_FRESH_DAYS))
+
+
 def regrade_states(topics: list[Topic], cfg: LifecycleConfig) -> tuple[int, int]:
     """Apply the current gate to the WHOLE population (gate-recalibration pass).
 
@@ -350,11 +371,12 @@ def regrade_states(topics: list[Topic], cfg: LifecycleConfig) -> tuple[int, int]
         # stock — same condition the nightly clock applies. `newly_revived`
         # matters: --regrade runs AFTER apply_new_clusters in the same
         # invocation, and a same-pass revival has revived_at still None in
-        # memory (the DB stamp lands in persist).
+        # memory (the DB stamp lands in persist). Composed OR with the blob
+        # veto: an entailed label must not promote a judge-confirmed fusion.
         court_blocked = (
             (t.revived_at is not None or t.newly_revived)
             and t.label_status != "entailed"
-        )
+        ) or blob_confirmed_fresh(t.blob_confirmed_at)
         if ok and fresh and not court_blocked and t.state in ("candidate", "deprecated"):
             t.state = "active"; t.dirty = True; promoted += 1
         elif not ok and t.state == "active":
@@ -375,6 +397,7 @@ class Topic:
         "first_seen", "last_seen", "snapshots", "agg_n_signals", "cohesions",
         "roundup_votes", "n_labels", "since_seen", "members", "dirty", "new", "noises",
         "is_junk", "countries", "cc_snap", "revived_at", "label_status", "newly_revived",
+        "blob_confirmed_at",
     )
 
     def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None,
@@ -423,6 +446,10 @@ class Topic:
         self.revived_at: Any = None
         self.label_status: str | None = None
         self.newly_revived = False
+        # Blob-veto stamp; owned by scripts/detect_overmerge.py (stamped on
+        # judge-confirmed fusion, NULLed on re-evaluated-clean), loaded from
+        # the persisted row in hydrate. persist() never writes it.
+        self.blob_confirmed_at: Any = None
         self._note_countries(snap, countries)
 
     def _note_countries(self, snap, codes) -> None:
@@ -815,11 +842,14 @@ def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleCon
         t.since_seen = 0 if seen else t.since_seen + 1
         # TF-3b: a revived candidate stays blocked until the court re-certifies
         # its label against the current receipts. `newly_revived` counts too so
-        # the block is airtight within the same in-memory run.
+        # the block is airtight within the same in-memory run. Composed OR with
+        # the blob veto (gate-(c) census): court `entailed` alone measured ~70%
+        # precise as a serving certificate, so an entailed label must not
+        # promote a topic the overmerge judge freshly confirmed as a fusion.
         court_blocked = (
             (t.revived_at is not None or t.newly_revived)
             and t.label_status != "entailed"
-        )
+        ) or blob_confirmed_fresh(t.blob_confirmed_at)
         was_state = t.state
         new_state = next_state(
             t.state, seen_now=seen, n_snapshots=len(t.snapshots),
@@ -1038,7 +1068,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
         "SELECT id, identity_key, state, snapshots_since_seen, label, "
         "centroid_vec, first_seen, last_seen, n_snapshots, agg_n_signals, "
         "mean_cohesion, noise_rate, is_junk, is_umbrella, revived_at, "
-        "label_status FROM dynamic_topics"
+        "label_status, blob_confirmed_at FROM dynamic_topics"
     )
     mrows = await conn.fetch(
         "SELECT dynamic_topic_id, emergent_cluster_id, snapshot_at "
@@ -1100,6 +1130,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
             t.is_junk = bool(tr["is_junk"])
             t.revived_at = tr["revived_at"]
             t.label_status = tr["label_status"]
+            t.blob_confirmed_at = tr["blob_confirmed_at"]
             t.new = False
             t.members = []
             t.dirty = False
@@ -1124,6 +1155,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
         t.is_junk = bool(tr["is_junk"])
         t.revived_at = tr["revived_at"]
         t.label_status = tr["label_status"]
+        t.blob_confirmed_at = tr["blob_confirmed_at"]
         t.new = False
         t.members = []   # already persisted
         t.dirty = False  # only re-persist if touched this run

@@ -85,3 +85,81 @@ def test_load_vague_blob_ids_matches_fusion_labels(tmp_path, monkeypatch):
 def test_load_vague_blob_ids_missing_file_is_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(dom, "RELABEL_LEDGER", tmp_path / "nope.jsonl")
     assert dom._load_vague_blob_ids() == set()
+
+
+# ── blob-veto stamping (2026-08-03 gate-(c) census) ──────────────────────────
+def test_topics_sql_population_gated_by_blob_stamp_flag(monkeypatch):
+    monkeypatch.setattr(dom, "BLOB_STAMP_ENABLED", True)
+    sql = dom._topics_sql()
+    assert "dt.state = 'active'" in sql
+    assert "dt.revived_at IS NOT NULL" in sql  # revived stock joins the scan
+    monkeypatch.setattr(dom, "BLOB_STAMP_ENABLED", False)
+    sql = dom._topics_sql()
+    assert "revived_at" not in sql  # legacy active-only scan
+
+
+def test_evaluated_clean_requires_a_measured_verdict():
+    keep_measured = {"verdict": dom.KEEP, "gap_ratio": 0.41,
+                     "lane": dom.LANE_EMBEDDING, "reason": "no fusion signal"}
+    keep_unmeasured = {"verdict": dom.KEEP, "gap_ratio": None,
+                       "lane": dom.LANE_EMBEDDING,
+                       "reason": "too few embedded members to split"}
+    keep_country = {"verdict": dom.KEEP, "gap_ratio": None,
+                    "lane": dom.LANE_COUNTRY,
+                    "reason": "country-lane KEEP: not multimodal "
+                              "(distinct 1, dominant 1.00)"}
+    keep_country_thin = {"verdict": dom.KEEP, "gap_ratio": None,
+                         "lane": dom.LANE_COUNTRY,
+                         "reason": "country-lane KEEP: too few located members "
+                                   "(2 < 5)"}
+    assert dom._evaluated_clean(keep_measured) is True
+    assert dom._evaluated_clean(keep_country) is True
+    assert dom._evaluated_clean(keep_unmeasured) is False  # 2-means never ran
+    assert dom._evaluated_clean(keep_country_thin) is False
+    assert dom._evaluated_clean({"verdict": dom.DEMOTE, "gap_ratio": 0.9}) is False
+    assert dom._evaluated_clean({"verdict": dom.BORDERLINE, "gap_ratio": 0.7}) is False
+
+
+class _FakeConn:
+    def __init__(self):
+        self.calls: list[tuple[str, list[int]]] = []
+
+    async def execute(self, sql, ids):
+        self.calls.append((sql, list(ids)))
+        return f"UPDATE {len(ids)}"
+
+
+def test_write_blob_stamps_stamps_confirmed_and_clears_clean():
+    import asyncio
+    artifact = {"topics": [
+        {"topic_id": 1, "verdict": dom.DEMOTE, "gap_ratio": 0.9,
+         "lane": dom.LANE_EMBEDDING, "reason": "fusion"},
+        {"topic_id": 2, "verdict": dom.KEEP, "gap_ratio": 0.4,
+         "lane": dom.LANE_EMBEDDING, "reason": "clean"},
+        {"topic_id": 3, "verdict": dom.KEEP, "gap_ratio": None,
+         "lane": dom.LANE_EMBEDDING,
+         "reason": "too few embedded members to split"},
+        {"topic_id": 4, "verdict": dom.BORDERLINE, "gap_ratio": 0.7,
+         "lane": dom.LANE_EMBEDDING, "reason": "judge not run"},
+    ]}
+    demote = [artifact["topics"][0]]
+    conn = _FakeConn()
+    asyncio.run(dom._write_blob_stamps(conn, artifact, demote))
+    assert len(conn.calls) == 2
+    stamp_sql, stamp_ids = conn.calls[0]
+    clear_sql, clear_ids = conn.calls[1]
+    assert "blob_confirmed_at=NOW()" in stamp_sql and stamp_ids == [1]
+    # 3 was unevaluable and 4 unresolved: neither may clear a prior stamp
+    assert "blob_confirmed_at=NULL" in clear_sql and clear_ids == [2]
+
+
+def test_write_blob_stamps_no_ops_on_empty_sets():
+    import asyncio
+    artifact = {"topics": [
+        {"topic_id": 3, "verdict": dom.KEEP, "gap_ratio": None,
+         "lane": dom.LANE_EMBEDDING,
+         "reason": "too few embedded members to split"},
+    ]}
+    conn = _FakeConn()
+    asyncio.run(dom._write_blob_stamps(conn, artifact, []))
+    assert conn.calls == []  # no empty ANY() statements

@@ -383,6 +383,7 @@ def test_hydrate_topics_excludes_umbrellas_from_matching():
                     "n_snapshots": 2, "agg_n_signals": 20, "mean_cohesion": 0.9,
                     "noise_rate": None, "is_junk": False,
                     "revived_at": None, "label_status": None,
+                    "blob_confirmed_at": None,
                 }
                 return [
                     {**base, "id": 1, "identity_key": "dyn-x-1", "label": "Real Story",
@@ -831,3 +832,83 @@ def test_advance_states_legacy_regime_still_resurrects_direct():
     advance_states([t], {0}, CFG)  # regime off
     assert t.state == "active"
     assert t.newly_revived is False
+
+
+# ── Blob veto (2026-08-03 gate-(c) census) ───────────────────────────────────
+# The census measured the court's `entailed` stamp at ~70% precision as a
+# serving certificate: 28 judge-confirmable blob topics were certified AND
+# promoted, and the nightly overmerge sweep missed all 28. detect_overmerge now
+# stamps dynamic_topics.blob_confirmed_at on judge-confirmed fusions; promotion
+# is vetoed while the stamp is FRESH (<7d), composed OR with the TF-3b court
+# gate. A stale stamp (the sweep stopped re-confirming — membership re-formed)
+# must NOT block: the horizon keeps the veto evidence-bound.
+
+def _qualifying_candidate(stamp=None):
+    t = Topic(identity_key="kb", label="Confirmed Fusion", centroid=[1.0, 0.0],
+              snap="2026-07-01T00:00:00", n_signals=500, cohesion=0.9)
+    t.state = "candidate"
+    t.snapshots = {f"s{i}" for i in range(50)}
+    t.blob_confirmed_at = stamp
+    return t
+
+
+def test_blob_confirmed_fresh_horizon():
+    from datetime import datetime, timedelta, timezone
+
+    from scripts.project_dynamic_topics import blob_confirmed_fresh
+    now = datetime(2026, 8, 3, 12, 0, tzinfo=timezone.utc)
+    assert blob_confirmed_fresh(None, now=now) is False
+    assert blob_confirmed_fresh(now - timedelta(days=1), now=now) is True
+    assert blob_confirmed_fresh(now - timedelta(days=6, hours=23), now=now) is True
+    assert blob_confirmed_fresh(now - timedelta(days=7), now=now) is False
+    assert blob_confirmed_fresh(now - timedelta(days=30), now=now) is False
+
+
+def test_advance_states_blob_fresh_stamp_blocks_promotion():
+    from datetime import datetime, timedelta, timezone
+
+    from scripts.project_dynamic_topics import advance_states
+    t = _qualifying_candidate(datetime.now(timezone.utc) - timedelta(days=1))
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "candidate"
+
+
+def test_advance_states_blob_stale_stamp_promotes():
+    from datetime import datetime, timedelta, timezone
+
+    from scripts.project_dynamic_topics import advance_states
+    t = _qualifying_candidate(datetime.now(timezone.utc) - timedelta(days=8))
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "active"
+
+
+def test_advance_states_blob_clear_promotes():
+    from scripts.project_dynamic_topics import advance_states
+    t = _qualifying_candidate(None)
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "active"
+
+
+def test_advance_states_legacy_regime_ignores_blob_stamp():
+    # ATLAS_LIFECYCLE_TICK_V2 off = byte-identical legacy: the veto rides ONLY
+    # the v2 clock (same scoping as the TF-3b court gate).
+    from datetime import datetime, timedelta, timezone
+
+    from scripts.project_dynamic_topics import advance_states
+    t = _qualifying_candidate(datetime.now(timezone.utc) - timedelta(days=1))
+    advance_states([t], {0}, CFG)  # regime off
+    assert t.state == "active"
+
+
+def test_regrade_blob_fresh_stamp_blocks_promotion():
+    # --regrade parity (the TF-3b review lesson): a manual regrade must not
+    # bypass the blob veto any more than the court gate.
+    from datetime import datetime, timedelta, timezone
+
+    from scripts.project_dynamic_topics import regrade_states
+    fresh = _qualifying_candidate(datetime.now(timezone.utc) - timedelta(days=1))
+    stale = _qualifying_candidate(datetime.now(timezone.utc) - timedelta(days=8))
+    promoted, demoted = regrade_states([fresh, stale], CFG)
+    assert fresh.state == "candidate"
+    assert stale.state == "active"
+    assert (promoted, demoted) == (1, 0)
