@@ -11,6 +11,8 @@ import { groupThemeTopics } from '../lib/themeHierarchy'
 import { Pin, PinOff } from '../lib/icons'
 import { CompareSearchModal } from './CompareSearchModal'
 import PinReceiptButton from './PinReceiptButton'
+import { EvidenceRoute } from './EvidenceRoute'
+import { buildPersonEvidenceRoute } from '../lib/evidenceRoute'
 import { receiptFrom } from '../lib/capturePayloads'
 import './EntityPanel.css'
 
@@ -122,7 +124,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
     return (
         <div className={cls}>
             {/* Header */}
-            <div className="entity-header">
+            <div className="entity-header" id="ep-header">
                 <div className="entity-header-meta">
                     <span className="entity-type-tag">
                         {focusType === 'person' ? 'PERSON' : 'THEME'}
@@ -209,6 +211,20 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
             {!loading && data && (
                 <div className="entity-body">
 
+                    {/* #173 Evidence Route — the entity funnel: mentioned-in ->
+                        countries [-> threads, person focus only] -> key subjects.
+                        Real counts from the payloads this panel already fetched. */}
+                    <EvidenceRoute
+                        steps={buildPersonEvidenceRoute({
+                            personName: displayName,
+                            signalCount: data.summary.total_signals,
+                            countryCount: data.summary.total_countries,
+                            threadCount: focusType === 'person' ? personThreads.length : undefined,
+                            keySubjectCount: keySubjects.length,
+                        })}
+                        onStepClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    />
+
                     {/* Trust Indicators */}
                     <div className="entity-section">
                         <div className="entity-section-label">Trust Indicators</div>
@@ -232,7 +248,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
 
                     {/* Top Countries */}
                     {topNodes.length > 0 && (
-                        <div className="entity-section">
+                        <div className="entity-section" id="ep-countries">
                             <div className="entity-section-label">Coverage by Country</div>
                             <div className="entity-country-list">
                                 {topNodes.map((node, i) => (
@@ -265,7 +281,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                     {/* Threads this person participates in (spec T3) — the living
                         narrative threads, ABOVE the demoted GDELT "Related Themes". */}
                     {focusType === 'person' && personThreads.length > 0 && (
-                        <div className="entity-section">
+                        <div className="entity-section" id="ep-threads">
                             <div className="entity-section-label">Threads {displayName} participates in</div>
                             <div className="entity-threads">
                                 {personThreads.slice(0, 6).map(t => (
@@ -316,7 +332,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
 
                     {/* Key Subjects — typed: person is one type (#176) */}
                     {keySubjects.length > 0 && (
-                        <div className="entity-section">
+                        <div className="entity-section" id="ep-subjects">
                             <div className="entity-section-label">Key Subjects</div>
                             <div className="entity-people">
                                 {keySubjects.map(s => {
@@ -436,7 +452,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
 
                     {/* Recent Coverage */}
                     {data.headlines.length > 0 && (
-                        <div className="entity-section">
+                        <div className="entity-section" id="ep-coverage">
                             <div className="entity-section-label">Recent Coverage</div>
                             <div className="entity-headlines">
                                 {data.headlines.slice(0, 8).map((h, i) => {
