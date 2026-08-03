@@ -1,5 +1,49 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-08-03 (LUNES — GATE-C CENSO + 3 PALANCAS MISMO DÍA; 7º GATE KILL CON LA
+PRIMERA VICTORIA DE LANDING; 8º PRE-REGISTRADO Y CORRIENDO. Read FIRST.)**
+**El finde validó TF-3b solo**: court juzgó 97.6% de 1,192 gateados → 35%
+entailed / 65% failed (converge con el 37.5% medido a mano en TF-2); 245
+promovieron por la vía vetada; puertas CO/JP vivas con historias reales.
+**GATE (c) CENSO** (`docs/research/recall-229/2026-08-03-tf3b-gate-c-census.md`,
+workflow 51 agentes, doble-juez acuerdo 98.4%): **strict-real 70.5% < 90% =
+FAIL con atribución limpia** (0/72 fails son decay post-promoción — el
+certificado `entailed` del court es ~70% preciso como pase de serving; +33pp
+vs sin-gate así que TF-3b SE QUEDA). Sobre-bloqueo 11.1%. **3 palancas el
+mismo día**: cirugía 72 fails fuera de serving (footprint revivido 100%
+verificado, ledger), junk-gate PR-wire (chip `5560dc0d` mergeado — 3 reglas
+ciegas a la vez, cazó 2 spam extra), blob-veto mig 095 (`ad946ef6` —
+`blob_confirmed_at` + veto en promoción + sweep ampliado a revividos, 28
+testigos pre-estampados). **RE-CENSO pre-registrado**: cohorte de promociones
+FRESCAS post-08-03 en 2-3 noches (mide el gate mejorado, no la cirugía).
+**SANA sanado** (root cause de lujo: caché WordPress congeló el feed el 07-28;
+código inocente; fix = URL canónica + cache-buster timestamped por-feed,
+desplegado, 3 filas state + 8 upgrades SY confirmados en vivo). dt-4917 "hard
+miss" = ausencia honesta de 24h (no bug). Tail-reserve: finde con 164 países /
+CERO diferidos (test weekday esta noche). **COUNTRY-CLOCK ARMADO** esta noche
+(fail-open, allowlist ambas copias). C5/ann_timeout: 0 en 4 días — watch
+cerrado. **GOLD DÍA-4**: answered 29% (récord), honestidad recuperó 0.09→0.40
+(colapso día-3 NO estable), **primera persistencia 3/3 de la serie** — 4
+identidades sobreviven día-a-día (día 3 tenía cero); día-5 = test de
+persistencia-como-estado. **7º GATE (consolidación+shared-country con
+LANDING como primaria)**: pre-registrado ANTES del build
+(`docs/superpowers/specs/2026-08-03-consolidation-landing-preregistration.md`)
+→ **KILL en G-FOUNDING (50.5% vs 15%) PERO G-LANDING pasó 6/6 vs 2/6 de
+producción — la primera vez en siete gates** (`ce412acf`, artefacto
+`2026-08-03-consolidation-landing.md`). El defecto tiene nombre: el PREDICADO
+`labels_compatible` (SeqMatcher ASCII ≥0.80) bloquea ~50% de pares
+misma-historia + auto-bloqueo cirílico a cos=1.0. **8º GATE pre-registrado y
+CORRIENDO** (`2026-08-03-landing-predicate-preregistration.md`): P-nuevo =
+Unicode-norm + contención de tokens de sujeto, 4 arms (incl. court-gris con
+contador de viabilidad 150/noche), G-PREDICADO nuevo (calibración 10/10 ANTES),
+G-FOUNDING intacto en 15%, auto-fundados cuentan solo sin identidad correcta
+existente. GO → pipeline nocturno → NAV-LOSS → lens despierta. **Síntesis del
+programa de identidad** (6→8 gates):
+`docs/research/recall-229/2026-08-03-identity-program-synthesis.md`. **CHIPS de
+Pedro corriendo aparte**: papers-integración-narrativa + trabajar-issues
+(sweep matutino: 14→13, #266 cerrado con re-check vivo). Issues workables
+priorizados: #168 #247 #173 #261 #248.**
+
 **2026-07-30..31 (THE CLOCK ARC — TWO PRE-REGISTERED KILLS HONORED + TF-3b BUILT
 SAME DAY; FETCH-MULT M=2 LIVE; FIPS ARCHIVE HEALED. Read FIRST for lifecycle
 state.)** **TICK-V2: TF-1 PASS mecánico / TF-2 KILL por composición**
