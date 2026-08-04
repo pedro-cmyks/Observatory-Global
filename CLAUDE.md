@@ -1,5 +1,42 @@
 # CLAUDE.md - Project Guidelines and Agent Configuration
 
+**2026-08-04 (MARTES — DÍA-5 "IDENTIDAD ES ESTADO"; RE-CENSO FAIL CON SPLIT;
+TRES LEONES CAZADOS EN UNA TARDE. Read FIRST.)** **GOLD DÍA-5** (939bd60b):
+veredicto en capas — **la persistencia de IDENTIDAD ya es un estado** (las 4
+identidades del día-4 re-sirvieron, 2 pares de noches consecutivos, GQ-13
+sobrevivió un relabel overnight del mismo id — primera afirmación estructural
+positiva de la serie) pero answer-persistence 2/4: ambas rupturas en el
+DETAIL-SERVING (dt-8057 surging 41 miembros sirviendo 1 recibo, silencioso).
+Answered 21% (los 3 días post-M=2 ≥21%), honestidad 0.27 (sin repetir
+colapso). **STARVATION FIX** (e55cb08e): causa = retención 7d borra señales
+mientras sample_signal_ids apuntan a fantasmas (el conteo persiste, los
+recibos no); fix = unión de lanes + flag honesto `member_sample_starved`;
+hallazgo lateral: la cobertura fresca aterriza en identidades HERMANAS
+(dispersión argmax — alimenta el programa de landing). **RE-CENSO ola fresca
+PRE-registrado: FAIL 59.2%** (2026-08-04-recensus-fresh-cohort.md) con el
+split que nombra los leones: mecánicas 61.6% (clases de servicio) / vetadas
+33.3% (cola de revivals pegajosos — entailment de vida-vieja). **TRES LEONES
+MISMA TARDE**: (1) service-junk (30495460 — 5 familias, separación medida
+ANTES: testigos 88-100% vs 0%/30 random, corpus 0.1%, señal estructural
+medida y RECHAZADA, 8 demoted vivo); (2) sticky-revivals (6fe6c28b — court
+exige recibos POST-revival vía 4º bind NULL-guarded + withhold sin frescos;
+cap revival_count≥3 mig 097a; hallazgos: assigned_at-latency = certificación
+espera la noche siguiente [conservador], cap no muerde el loop puro [el knob
+es candidate-aging]); (3) recibos durables (55fb4639 — mig 097b
+sample_receipts jsonb congelados al INSERT, backfill 138,317 recibos/111k ya
+muertos=pérdida honesta, serving con archived:true + chip FROM THE ARCHIVE +
+saturation guard, desplegado; primer archived sirve tras la poda de esta
+noche). **CHIPS DE PEDRO mergeados** (edca2585..): issues (badges #168,
+too_broad #261→ALW, damp #248→Fly, EvidenceRoute #173, #247) + papers (6
+commits narrativos) + backfill NULL-headlines (443k/504k=87.9%). CLAUDE.md
+conflict resuelto cronológico. **CONDENACIÓN run-1: 38.7→28.3%** (−10.4pp en
+3 noches; trigger 15% congelado, cada 3 noches). Country-clock noche-1 +
+blob-sweep 372 stamps + weekday tail-reserve: 163 países/0 diferidos CON
+presupuesto de 150min. RELOJES: re-censo ~08-06 (leones activos, barra 90%
+intacta) · condenación ~08-07 · archived-receipt eyeball mañana. Chips en
+cola: earnings-autogen (corriendo) · receipts-retention (corriendo) ·
+candidate-aging (diseño).**
+
 **2026-08-03 (LUNES — GATE-C CENSO + 3 PALANCAS MISMO DÍA; 7º GATE KILL CON LA
 PRIMERA VICTORIA DE LANDING; 8º PRE-REGISTRADO Y CORRIENDO. Read FIRST.)**
 **El finde validó TF-3b solo**: court juzgó 97.6% de 1,192 gateados → 35%
