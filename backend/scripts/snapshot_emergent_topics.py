@@ -89,7 +89,7 @@ def _social_seed_pred(alias: str = "") -> str:
 
 async def _pull_signals(conn: asyncpg.Connection, hours: int, max_n: int):
     return await conn.fetch(f"""
-        SELECT id, headline, country_code, source_name, timestamp
+        SELECT id, headline, country_code, source_name, source_url, timestamp
         FROM signals_v2
         WHERE timestamp > NOW() - INTERVAL '{int(hours)} hours'
           AND headline IS NOT NULL
@@ -101,8 +101,8 @@ async def _pull_signals(conn: asyncpg.Connection, hours: int, max_n: int):
 
 
 _PERSISTED_SELECT = """
-    SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
-           se.vec::text AS emb
+    SELECT s.id, s.headline, s.country_code, s.source_name, s.source_url,
+           s.timestamp, se.vec::text AS emb
     FROM signal_embeddings se
     JOIN signals_v2 s ON s.id = se.signal_id
     WHERE s.timestamp > NOW() - INTERVAL '{hours} hours'
@@ -236,14 +236,50 @@ _INSERT_SNAPSHOT_SQL = """
         snapshot_at, snapshot_window_h, cluster_id, label, description,
         raw_signal_count, n_signals, gate_threshold, velocity, cohesion,
         top_country_codes, sample_signal_ids, raw_sample_ids,
-        centroid_vec, vendor_agreement, vendor_labels
+        centroid_vec, vendor_agreement, vendor_labels, sample_receipts
     ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
         $11, $12, $13,
-        $14, $15, $16::jsonb
+        $14, $15, $16::jsonb, $17::jsonb
     )
 """
+
+
+def build_sample_receipts(rows: list, idxs: list[int]) -> str:
+    """Freeze retention-proof receipt snapshots for a cluster's sample (mig 097).
+
+    The 7-day signals_v2 hot retention deletes rows that sample_signal_ids
+    keeps referencing, so an aged story's receipt lane starves (dt-8057:
+    11 persisted ids -> 1 alive). Capturing {id, h, u, src, cc, ts} AT
+    snapshot-write time from the in-memory row data (already in hand — zero
+    extra queries) makes the receipts durable: serving prefers the live row
+    while it exists (the id key) and falls back to this frozen copy, visibly
+    marked archived, once retention deletes it.
+
+    Same cap as sample_signal_ids by construction: `idxs` IS the top-K set.
+    Tolerant of rows lacking source_url (legacy callers): u falls to None.
+    Returns a JSON string (asyncpg $n::jsonb parameter form).
+    """
+    def _get(row: Any, key: str):
+        try:
+            return row[key]
+        except (KeyError, IndexError, TypeError):
+            return None
+
+    receipts = []
+    for i in idxs:
+        r = rows[i]
+        ts = _get(r, "timestamp")
+        receipts.append({
+            "id": int(r["id"]),
+            "h": _get(r, "headline"),
+            "u": _get(r, "source_url"),
+            "src": _get(r, "source_name"),
+            "cc": _get(r, "country_code"),
+            "ts": ts.isoformat() if ts is not None else None,
+        })
+    return json.dumps(receipts, ensure_ascii=False)
 
 
 def _prepare_snapshot_rows(
@@ -293,6 +329,10 @@ def _prepare_snapshot_rows(
             [float(x) for x in kept_cen.tolist()],
             "deepseek",
             json.dumps({"deepseek": dl}, ensure_ascii=False),
+            # mig 097: retention-proof receipt snapshots — same top-K set as
+            # sample_signal_ids, frozen from the in-memory rows already in
+            # hand (headline/url/source/cc/ts), zero extra queries.
+            build_sample_receipts(rows, c["top_signal_idxs"]),
         ))
     return rows_to_insert
 

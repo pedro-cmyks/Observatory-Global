@@ -142,8 +142,8 @@ def _fetch_page_sql() -> str:
     """Keyset-paginated per-country pull — see `_countries_sql` for the
     ATLAS_CJK_LEN_FLOOR note; same predicate, same default-off behavior."""
     return f"""
-    SELECT s.id, s.headline, s.country_code, s.source_name, s.timestamp,
-           se.vec::real[] AS emb
+    SELECT s.id, s.headline, s.country_code, s.source_name, s.source_url,
+           s.timestamp, se.vec::real[] AS emb
     FROM signal_embeddings se JOIN signals_v2 s ON s.id = se.signal_id
     WHERE s.country_code = $1
       AND s.timestamp > $2::timestamptz
@@ -161,8 +161,10 @@ async def _fetch_country_embeddings(conn, cc, hours, cap, page_rows,
                                     as_of: datetime | None = None):
     """Keyset-paginate the scoped pull so no single statement times out.
 
-    Returns the same row set (id, headline, country_code, source_name, timestamp,
-    emb) the old single-shot _FETCH did, in (timestamp DESC, id DESC) order, with
+    Returns the same row set (id, headline, country_code, source_name,
+    source_url, timestamp, emb) the old single-shot _FETCH did (source_url
+    added 2026-08-04 for the mig-097 receipt freeze), in
+    (timestamp DESC, id DESC) order, with
     `emb` a binary-decoded list[float] (not text). cap>0 stops after `cap` newest
     rows (old LIMIT NULLIF($3,0) semantics); cap<=0 traverses every eligible row.
 
@@ -285,7 +287,8 @@ async def _country_clusters(conn, cc, hours, cap, mcs, ms, gate, min_kept, top_n
     if len(recs) < mcs * 2:
         return None
     rows = _clean_and_dedupe([{k: r[k] for k in
-                               ("id", "headline", "country_code", "source_name", "timestamp")}
+                               ("id", "headline", "country_code", "source_name",
+                                "source_url", "timestamp")}
                               for r in recs])
     if len(rows) < mcs * 2:
         return None

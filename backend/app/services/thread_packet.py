@@ -210,6 +210,11 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
             "sentiment": float(_val(r, "sentiment") or 0),
             "otherThemes": (_val(r, "themes") or [])[:5],
             "persons": (_val(r, "persons") or [])[:5],
+            # mig 097 durable receipts: True when this row is a frozen
+            # snapshot whose live signals_v2 row retention deleted — the
+            # frontend renders it visibly archived (FROM THE ARCHIVE chip).
+            # False for every live row (callers without the key get False).
+            "archived": bool(_val(r, "archived")),
         }
 
     return {

@@ -870,19 +870,100 @@ async def _dynamic_topic_detail(
         ORDER BY s.timestamp DESC
         LIMIT 200
     """, member_ids)
+    # ------------------------------------------------------------------
+    # Durable receipts (mig 097, 2026-08-04): member ids whose live
+    # signals_v2 row the 7-day hot retention already deleted fall back to
+    # the frozen sample_receipts captured at snapshot-write time. Live
+    # rows ALWAYS win (the id key dedupes — an archived copy never
+    # shadows a live one); archived receipts carry `archived: True` so
+    # the frontend renders them visibly archived (the DayEvidencePanel
+    # 'FROM THE ARCHIVE' honesty pattern), and sentiment stays None —
+    # the snapshot froze content, not stats, so none is fabricated.
+    # member_sample_starved then fires only when even durable receipts
+    # cannot reach min(5, total).
+    # ------------------------------------------------------------------
+    live_ids = {int(s["id"]) for s in signals_all}
+    missing_ids = {i for i in member_ids if i not in live_ids}
+    archived_rows: list[dict] = []
+    # Guard: when the live fetch SATURATED its LIMIT 200, an unfetched id is
+    # not evidence of retention death — treating it as archived would stamp
+    # LIVE stories 'FROM THE ARCHIVE'. A saturated fetch can't starve either,
+    # so the durable lane simply stands down.
+    if missing_ids and len(signals_all) < 200:
+        try:
+            receipt_rows = await conn.fetch("""
+                SELECT ec.sample_receipts
+                FROM dynamic_topic_members dtm
+                JOIN emergent_clusters ec
+                  ON ec.id = dtm.emergent_cluster_id
+                WHERE dtm.dynamic_topic_id = $1
+                  AND ec.sample_receipts IS NOT NULL
+            """, int(topic_row["id"]))
+            frozen: dict[int, dict] = {}
+            for rr in receipt_rows:
+                data = rr["sample_receipts"]
+                if isinstance(data, (str, bytes)):
+                    data = json.loads(data)
+                for rcpt in data or []:
+                    rid = rcpt.get("id")
+                    if rid is None or not rcpt.get("h"):
+                        continue
+                    frozen.setdefault(int(rid), rcpt)
+            for rid in sorted(missing_ids):
+                rcpt = frozen.get(rid)
+                if rcpt is None:
+                    continue
+                ts = None
+                if rcpt.get("ts"):
+                    try:
+                        ts = datetime.fromisoformat(rcpt["ts"])
+                        if ts.tzinfo is None:
+                            # naive frozen ts would poison the aware-vs-naive
+                            # merge sort below — pin to UTC.
+                            ts = ts.replace(tzinfo=timezone.utc)
+                    except (ValueError, TypeError):
+                        ts = None
+                archived_rows.append({
+                    "id": rid,
+                    "source_lang": None,
+                    "timestamp": ts,
+                    "country_code": rcpt.get("cc"),
+                    "source_name": rcpt.get("src"),
+                    "source_url": rcpt.get("u"),
+                    "sentiment": None,  # not frozen — never fabricated
+                    "headline": rcpt.get("h"),
+                    "themes": [],
+                    "persons": [],
+                    "archived": True,
+                })
+        except Exception:
+            # receipts lane absent/degraded (pre-097 rows, transient DB) —
+            # live lanes still serve; lane failure never costs the detail.
+            archived_rows = []
+
+    _TS_FLOOR = datetime.min.replace(tzinfo=timezone.utc)
+    served_all = sorted(
+        list(signals_all) + archived_rows,
+        key=lambda s: s["timestamp"] or _TS_FLOOR,
+        reverse=True,
+    )[:200]
     # Starvation is judged UNSCOPED: a thin country slice of a healthy
-    # sample is honest scoping, not serving decay.
-    live_member_count = len(signals_all)
+    # sample is honest scoping, not serving decay. Durable (archived)
+    # receipts count — they are real, visibly-labeled evidence.
+    live_member_count = len(served_all)
     starved, degraded_reason = _starvation(live_member_count)
     signals = (
-        [s for s in signals_all if s["country_code"] == country_code]
-        if country_code else list(signals_all)
+        [s for s in served_all if s["country_code"] == country_code]
+        if country_code else list(served_all)
     )
 
     sample = len(signals)
-    avg_sentiment = (
-        sum(float(s["sentiment"] or 0) for s in signals) / sample if sample else 0
-    )
+    # Average over rows that HAVE a sentiment — archived receipts freeze
+    # content, not stats, and must not dilute the mean toward 0.
+    _sent_vals = [
+        float(s["sentiment"]) for s in signals if s["sentiment"] is not None
+    ]
+    avg_sentiment = sum(_sent_vals) / len(_sent_vals) if _sent_vals else 0
 
     # Re-derive the display label now that the actual receipts are in hand
     # (the base_payload pass had none to fall back on).
@@ -903,6 +984,10 @@ async def _dynamic_topic_detail(
     warnings = ["dynamic_topic_member_preview_sample"]
     if starved:
         warnings.append("member_sample_starved")
+    if archived_rows:
+        # Named, never silent: some receipts are frozen snapshots whose live
+        # rows retention deleted (each also carries archived=true).
+        warnings.append("archived_receipts_served")
     semantic_members: list = []
     try:
         from app.services.research_semantic import fetch_semantic_thread_members
@@ -946,6 +1031,10 @@ async def _dynamic_topic_detail(
         "semanticMemberCount": len(semantic_members),
         "semanticNonEnglishCount": len(non_english),
         "coherence": coherence,
+        "archivedReceiptCount": sum(
+            1 for s in signals
+            if isinstance(s, dict) and s.get("archived")
+        ),
         "degraded": starved,
         "degraded_reason": degraded_reason,
         "warnings": warnings,

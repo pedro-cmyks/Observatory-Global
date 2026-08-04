@@ -283,3 +283,10 @@
     color: #fbbf24;
     border: 1px solid rgba(250, 204, 21, 0.3);
 }
+/* mig 097 durable receipts: frozen snapshot whose live signal aged out of
+   the hot window — the DayEvidencePanel FROM-THE-ARCHIVE honesty family. */
+.coverage-badge--archived {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}

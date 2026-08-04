@@ -168,6 +168,7 @@ def _fake_records(n: int = 24, dim: int = 16):
             "headline": f"Distinct scoped-cluster fixture headline number {i} for testing",
             "country_code": "US",
             "source_name": f"src-{i}",
+            "source_url": f"https://src-{i}.example/story",
             "timestamp": None,
             "emb": [float(v) for v in embs[i]],
         })

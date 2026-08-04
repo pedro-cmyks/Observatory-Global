@@ -75,6 +75,9 @@ interface ThemeData {
         sentiment: number
         otherThemes: string[]
         persons: string[]
+        /** mig 097 durable receipts: frozen snapshot whose live signal aged
+         *  out of the 7-day hot window — rendered visibly archived. */
+        archived?: boolean
     }>
     graphSignals?: Array<{
         id?: number
@@ -87,6 +90,7 @@ interface ThemeData {
         sentiment: number
         otherThemes: string[]
         persons: string[]
+        archived?: boolean
     }>
     countryBreakdown: Array<{ code: string; count: number; sentiment: number }>
     relatedThemes: Array<{ theme: string; count: number }>
@@ -531,7 +535,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // feedback 2026-06-25 — the old list showed only metadata + a "View
     // Source" link, never the headline).
     const renderArticle = (
-        sig: { id?: number; timestamp: string; country: string; source: string; url: string; headline?: string | null; source_lang?: string | null; sentiment: number; persons: string[] },
+        sig: { id?: number; timestamp: string; country: string; source: string; url: string; headline?: string | null; source_lang?: string | null; sentiment: number; persons: string[]; archived?: boolean },
         opts: { showSource?: boolean } = {},
     ) => {
         // Evidence headlines can arrive HTML-entity-encoded — decode for display.
@@ -568,11 +572,24 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                     )}
                     {opts.showSource && <span className="coverage-article-source">{sig.source || 'Unknown'}</span>}
                     {opts.showSource && sig.source && <TierChip source={sig.source} />}
-                    <span>{formatTime(sig.timestamp)}</span>
+                    {/* mig 097 durable receipt — frozen snapshot, visibly
+                        archived (mirrors DayEvidencePanel's FROM THE ARCHIVE
+                        tier). Sentiment was not frozen, so none is shown. */}
+                    {sig.archived && (
+                        <span
+                            className="coverage-badge coverage-badge--archived"
+                            data-tip="Frozen receipt captured when this story was clustered — the live signal has aged out of the 7-day hot window. Headline and link are real; live stats no longer include it."
+                        >
+                            FROM THE ARCHIVE
+                        </span>
+                    )}
+                    {sig.timestamp && <span>{formatTime(sig.timestamp)}</span>}
                     {sig.country && <span>{sig.country}</span>}
-                    <span style={{ color: getSentimentColor(sig.sentiment) }}>
-                        {sig.sentiment > 0 ? '+' : ''}{sig.sentiment.toFixed(2)}
-                    </span>
+                    {!sig.archived && (
+                        <span style={{ color: getSentimentColor(sig.sentiment) }}>
+                            {sig.sentiment > 0 ? '+' : ''}{sig.sentiment.toFixed(2)}
+                        </span>
+                    )}
                 </div>
             </div>
         )
