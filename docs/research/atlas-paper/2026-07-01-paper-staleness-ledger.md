@@ -1,9 +1,11 @@
 # Paper Staleness Ledger (PR3.0)
 
-Date opened: 2026-07-01 · Owner: engine track · Status: **ACTIVE** (doc track
-CLOSED 2026-07-01 — 10 resolved, 1 partial: PR3-10's temporal hold-out is
-DATA-LIMITED + `role_noise_rate` calibration remains; see the
-"PR3 reconciliation pass" note at the bottom)
+Date opened: 2026-07-01 · Owner: engine track · Status: **ACTIVE** (PR3 doc
+track CLOSED 2026-07-01 — 10 resolved, 1 partial; **PR4 reconciliation pass
+executed 2026-08-03** — 13/13 resolved: 10 doc rows + PR4-11/12/13 decided by
+Pedro same day (keep B unified · keep A's framing · P7 multi-rater = a 5-agent
+evaluator court + adjudicator, design frozen in the systems report §7); see the
+"2026-08-03 reconciliation pass (PR4)" section at the bottom)
 Companion: `docs/specs/2026-07-01-atlas-engine-r3-unification.md` §8 (the PR3
 paper-coherence track). Purpose (Pedro, 2026-07-01): the papers drifted from the
 engine reality; instead of patching ad-hoc, **track each stale claim as a
@@ -77,3 +79,36 @@ The PR3.1 + PR3.3 doc reconciliation ran this date. Result:
   re-dated, pub-order Paper-1 close-criteria), `2026-06-30-paper-8-result-skeleton.md`
   (baseline banner-marked SUPERSEDED + dynamism subheads past-tensed), and this
   ledger.
+
+## 2026-08-03 reconciliation pass (PR4) — the July/August results integrated into the reorg set
+
+Trigger (Pedro, 2026-08-03): the papers fell ~3 weeks behind the measurement
+arc (recall-229), the clock arc, the serving-enforcement arc, the primary
+metric, the FIPS heal and the script-blind family. Method: every paper of the
+2026-07-16 reorg set read in full, each result integrated **narratively in
+place** (never as an addendum), every number cited to its artifact path.
+Papers edited: A (`f5f09002`), B (`1131f784`), C (`a1ffeeb5`), systems report
+(`35cc0384`), canonicalization + reorg framing (`07460cb3`), master plan (see
+its own commit).
+
+| id | paper · loc | claim as written (pre-pass) | current reality (2026-08-03) | fix applied | status |
+|---|---|---|---|---|---|
+| **PR4-01** | Paper B (whole) | four refutations of ranking proxies = the paper's content | ten refutations: the identity arc added five pre-registered kills (whitening-at-identity STOP; evidence-overlap NO-GO by percolation, 48×; LLM judge dead-at-volume 2.4–1117×; `used_t` NO-GO ×1000 + **argmax dispersion named**, 43/54 top-12; consolidation NO-GO — coverage ≠ correctness, 4/6 wrong identity) + the ungated-revival composition KILL (37.5%→ gated 70.5%) + the silent-risk placebo kill | Part II authored (§4), method section §5 (pre-registration, false-side-same-pass, density≠precision, blind detectors, measure-twice), results table 10 rows, methods/limitations updated | **RESOLVED** `1131f784` — artifacts `recall-229/2026-07-{28,29,30,31}-*`, `2026-08-03-tf3b-gate-c-census.md`, `silent-risk/2026-07-22-*` |
+| **PR4-02** | Paper A §3.6 / Paper C Table 3 | whitening = "geometry cure + stabilizer, not the recall lever" (two boundaries) | third + fourth boundary measured: whitened identity gates STOP (anchor gap −0.5471) because the removed top PC carries **cross-lingual alignment** in multilingual-e5; encoder swap NO-GO (e5-large ≡ e5-base; task-dependence total — the gate-bake-off loser bge-m3 is strongest on identity stats) | A §2 anisotropy bullet + §3.6 extended ("not the recall lever, not a gate, not fixable by a better encoder"); C cross-refs Paper B §4 | **RESOLVED** `f5f09002` / `a1ffeeb5` — `recall-229/2026-07-28-whitened-identity-taus.md`, `2026-07-31-embedding-bakeoff-v2.md` |
+| **PR4-03** | Paper A (title concept) | "answerability-first" had no end-to-end answerability measurement anywhere in the series | the primary metric exists and is a day series: anti-circular gold set (20+6 controls, sha-pinned), answer rate **14→7→21→29%**, honesty floor 0.17→0.23→0.09→0.40, **persistence first-class** (instability witness GQ-02; churn total → first 3/3 hold under the M=2+TF-3b ensemble), two-arm UI/API decomposition (14.3% answered vs 71.4% informed), label-blackout confounder refuted, semantic-into-search refuted | A §3.7 + R8 authored; methods + limitations (n=14, single judge, K3 unrun, day-4 attribution confounded) | **RESOLVED** `f5f09002` — `gold/2026-07-{27,28}-gold-query-eval.md`, `2026-07-28-rerun-comparison.md`, `2026-07-31-gold-eval-day3-m2.md`, `2026-08-03-gold-eval-day4.md`, `2026-07-30-ui-eval-v2-run.md`, `2026-07-27-semantic-search-feasibility.md` |
+| **PR4-04** | Paper A §2 (LLM-as-judge) | judge hazards named (drift confound) but no production-judge calibration existed | the label court is calibrated like an annotator: GB1→GB5 blind checks 3/10→7/10 (bar ≥8/10 never met, flag never flipped), blind-spot audit (PASS-stamp 0/30; `partial` over-strict 13/15; **enforcement gap** 66% court-failed still serving), certificate precision at census scale 70.5% (n=244, inter-judge 98.4%, +33pp vs ungated, 0/72 decay) | A §3.8 + R9 authored; related-work extended | **RESOLVED** `f5f09002` — `label-court/2026-07-29-gb*-blind-check.md`, `2026-07-29-court-blindspot-audit.md`, `recall-229/2026-08-03-tf3b-gate-c-census.md` |
+| **PR4-05** | Paper C (every per-country number) | country axis implicitly trusted | FIPS→ISO map wrong since inception (5 mis-translations + ~89 missing codes; Lebanon served as Lesotho — 316 signals, found by the UI eval's control arm); hot remap ledgered, **22,472-row historical heal** (idempotent), corrections-v1 wired into 3 archive writers; old "LS/OS/MG geocode noise" note re-attributed to this bug; OS identified as GDELT "Oceans" pseudo-code | C Decision 3 authored; Table 4 row; limitation 9 (pre-heal provenance); canonicalization provenance note | **RESOLVED** `a1ffeeb5` + `07460cb3` — `country-code-remap/2026-07-28-country-code-remap.md` + ledgers |
+| **PR4-06** | Paper C (diversity claims) | corpus diversity measured at the feed level only | the **script-blind heuristic family** structurally excluded CJK/non-Latin at capture (≥4-word title validation: CN 53.3%/TW 45.5%/JP 38.5% NULL headlines, ~33k/week; fixed, post-deploy JP 0.0%/CN 1.5%), clustering (flat 20-char floor: CN 15.0% vs US 0.95%; script-aware, env-gated) and dedup (`_norm_headline`, fixed `924174b2`) | C Decision 4 authored; B §3.2 postscript cross-ref | **RESOLVED** `a1ffeeb5` — `recall-229/2026-07-30-gdelt-null-headline-diagnosis.md`, `2026-07-30-cjk-length-floor-measurement.md` |
+| **PR4-07** | canonicalization doc | three claim-types (funnel / scoped / served-count) | fourth claim-type: **serving-level country coverage** (30/168 census; lifecycle-bound, not a data floor; recovery gated on revival composition 37.5%→70.5%, bar 90%); assigned→formed→served each carry their own number | Group D + citation-card rows | **RESOLVED** `07460cb3` — `recall-229/2026-07-29-threading-floor-diagnosis.md`, `2026-07-30-tickv2-tf1-tf2-verdict.md`, `2026-08-03-tf3b-gate-c-census.md` |
+| **PR4-08** | report P7 | "no analyst study exists" (comparative claim removed, thesis untested) | the honest-by-construction thesis is **tested**: full-20 rendered-pixels eval (answered 14.3% / informed 71.4% / honesty 0.83 / NAV-LOSS 20/20 / UI-WORSE ×0) — survives with one amendment (mis-measured country renders worse) + one exception (markets panel paints its own refusal); 23-defect ledger = honesty is per-surface; Story Lens **dark-shipped by its own pre-registered gate** (NAV-LOSS held 6/6; anchor-fusion inversion — "the finder was never the failure") | P7.6 + P7.7 authored; limitation 6 re-scoped (gap narrowed, not closed); graduation gate updated | **RESOLVED** `35cc0384` — `gold/2026-07-30-ui-eval-v2-run.md`, `2026-07-29-story-lens-navloss-check.md`, `recall-229/2026-07-29-sibling-finder-v2-measurement.md` |
+| **PR4-09** | report P6 | temporal section had zero measured systems results | two: tick semantics bound global serving coverage (2–4 ticks/night; 1,007 topics aged 4 in one snapshot; TF-1 PASS / TF-2 KILL); fetch-boundary enforcement under a frozen 5-condition gate (M=2 live, entailed +17.8pp, **C2 denominator-artifact lesson → C2b pre-registered**) | P6.3 + P6.4 authored; results rows 17–20 | **RESOLVED** `35cc0384` — `label-court/2026-07-29-a0b-fetch-gate-measurement.md`, `2026-07-30-fetchmult-flip-postverify.md`, `2026-07-29-court-enforcement-simulation.md` |
+| **PR4-10** | master-plan cross-ref index | last refreshed 2026-07-06/16; lags the engine by ~4 weeks (the PR3-06 standing trigger) | index re-dated with the 2026-07-17→08-03 evolution block + new rows | see master-plan commit | **RESOLVED** (same pass) |
+| **PR4-11** | Paper B (structure) | — | the identity arc is large enough (5 kills + named disease + instrument suite) to be a standalone paper ("Argmax dispersion: pre-registered refutations at the news-identity layer") | integrated into B Part II; splitting was an editorial call | **RESOLVED 2026-08-03 (Pedro)** — keep unified in B per the integration recommendation |
+| **PR4-12** | Paper A (center of gravity) | title/venue framed on the classification benchmark | the task-level metric + persistence + two-arm decomposition may now be the stronger headline; re-titling/re-centering would reorder §3 | integrated as §3.7/§3.8 without re-centering | **RESOLVED 2026-08-03 (Pedro)** — keep A's current framing per the integration recommendation |
+| **PR4-13** | report P7 (graduation) | gate = 10–15-user task-time study | only available human evaluator is the author → multi-rater requirement met with an **agent-evaluator court** (Pedro's decision, evaluator count delegated) | gate re-written in the report §7: **5 evaluator agents (wedge personas) + 1 ledgered adjudicator**, rubric v2 verbatim, same-corpus-window discipline, Fleiss κ, per-evaluator control-arm validity, 5-query human-anchor subset (author double-scores), paired commodity-baseline arm licensing only a caveated agent-rated comparative claim; standing disclosure "raters are LLM agents, n_human_raters = 1 (anchor)" | **RESOLVED 2026-08-03 (Pedro + design frozen this pass)** — study itself still to run |
+
+Standing rules unchanged: on any engine change that invalidates a paper number,
+append a row BEFORE the paper is next touched; index-lag is itself a ledger
+trigger. Still open from PR3: `role_noise_rate` calibration; temporal hold-out
+remains DATA-LIMITED for batch-03 (the gold day series now provides task-level
+temporal structure, but it is not a classification hold-out).

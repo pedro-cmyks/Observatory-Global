@@ -17,6 +17,26 @@ anchoring-within-noise stated honestly (independently audited PASS). The old
 master plan is NOT overwritten (a parallel session edits it); reconcile via the
 old→new map in §3 when that session closes.
 
+**STATUS 2026-08-03 — the July/August results are INTEGRATED into the drafts
+(narratively, in place; staleness ledger `2026-07-01-paper-staleness-ledger.md`
+§"2026-08-03 reconciliation pass" is the row-level record):**
+- **A** gained the task-level answerability metric it is named for (gold query
+  day series, persistence, two arms) + the label-court-as-certificate
+  calibration arc (§3.7/§3.8, R8/R9).
+- **B** grew from 4 refutations to 10 — the identity arc (whitening-at-identity,
+  evidence-overlap/percolation, judge-at-volume, `used_t`, consolidation,
+  bake-off, ungated revival) with pre-registration as the paper's central
+  method.
+- **C** turned the audit inward: FIPS country-axis heal, the script-blind
+  heuristic family, and serving-level country coverage as a fourth claim-type.
+- **The tech report**'s P7 thesis is now *tested* (full-20 rendered-pixels eval;
+  Story Lens dark-shipped by its own gate) and P6 carries two real systems
+  results (tick semantics; fetch-boundary enforcement).
+- **Canonicalization** gained Group D (serving-level country coverage) and the
+  per-country FIPS provenance note.
+The §2 per-paper reframe table below is left as the 07-16 snapshot it was; the
+papers themselves are the living text.
+
 Anchors in existing canon:
 - `2026-05-27-atlas-papers-master-plan.md` (the 8-paper index being reorganized)
 - `2026-05-25-...state-of-art-and-validation-plan.md` ("make a paper **defensible**";

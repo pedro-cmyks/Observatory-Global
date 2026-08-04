@@ -1,7 +1,7 @@
 # Atlas Systems & Interface: Justified Design Decisions (P5 sentiment/NLP · P6 temporal · P7 visualization)
 
 **Type:** Technical report (skeleton) — NOT three standalone papers yet.
-**Date:** 2026-07-16
+**Date:** 2026-07-16 · results integrated through 2026-08-03
 **Status:** justification-layer draft, following the reorg framing
 (`2026-07-16-papers-reorganization-justification-framing.md`, §1 template).
 **Series role:** the "Systems & interface" report of §3 of the reorg. Each of
@@ -10,6 +10,21 @@ standalone paper only when its ONE named missing study exists** (P5 → a
 human-labeled per-language accuracy set; P6 → latency-per-bucket + cost-per-row;
 P7 → a 10–15-user task-time study). Until then this is a report/appendix that
 cites Paper A's benchmark and its gold disclosure.
+
+**What changed in the 2026-08-03 integration.** P7's honest-by-construction
+thesis stopped being untested: a **full-20 rendered-pixels gold eval** ran
+against the live product under a frozen rubric and the thesis *survived with one
+amendment and one exception* (§P7.6) — alongside a 23-defect ledger of exactly
+the places where measured honesty failed to reach the screen. Its headline
+defect (navigation loss, 20/20) drove a built feature that was then
+**dark-shipped by its own pre-registered gate** rather than shipped over false
+receipts (§P7.7). P6 gained two real systems results: the lifecycle clock's
+tick semantics were measured as the binding constraint on global serving
+coverage (§P6.3), and serving-side quality enforcement moved to the fetch
+boundary under a pre-registered five-condition gate, including a
+denominator-artifact lesson about per-door bars (§P6.4). P5 gains a
+cross-reference: the script-blind eligibility floors on its own NLP selectors
+are cataloged in Paper C Decision 4.
 
 > **Gold disclosure (repeated in every methods block below, non-negotiable):**
 > every precision/agreement number in this report is **agreement with an
@@ -203,6 +218,69 @@ Three concrete forms of that thesis, one per section:
    architecture-justification appendix of the backbone paper, **not a standalone
    systems paper.** No claim of systems superiority is made.
 
+### P6.3 — Lifecycle tick semantics: the clock, not the data, set the global serving floor
+
+1. **Decision.** The lifecycle staleness counter (`snapshots_since_seen`) is
+   being re-defined to advance **once per snapshot pass**, and only for topics
+   whose country was actually clustered that pass; revival from `retired` lands
+   in `candidate` and must earn promotion through the label court's `entailed`
+   certificate (Paper B §4.6 owns the gate chain; Paper C Decision 5 owns the
+   coverage claim).
+2. **Stakes.** Tick semantics look like an implementation detail. Measured, they
+   were the single largest determinant of which countries exist in the product:
+   the counter advanced 2–4× per night (straggler snapshot groups re-ticking
+   every topic) while the weekday run budget deferred 130–154 tail countries, so
+   one missed pass carried a topic through deprecation *and* retirement — 1,007
+   topics aged 4 ticks after one elapsed snapshot; only **30 of 168** clustered
+   countries could serve a thread
+   (`docs/research/recall-229/2026-07-29-threading-floor-diagnosis.md`).
+3. **Backing.** The diagnosis refuted every data-side explanation before
+   touching the clock (cluster sizes tier-invariant; eligibility floor excludes
+   nobody; tail re-match ~100%); the clock fix passed its mechanical invariant
+   gate (0 violations / 6,649 topics) and was **killed by its composition gate**
+   (37.5% real vs a 90% bar) — the systems change was correct and still
+   unshippable, because the field it revived carries upstream diseases. The
+   court-gated redesign measured +33pp composition (70.5%, census n=244).
+4. **Alternatives ruled out.** Lowering quality floors (not binding); adaptive
+   per-country thresholds (nothing to adapt to); ungated revival (measured
+   37.5%).
+5. **Honest limit.** The per-country clock is armed, not yet verdict-complete;
+   the 90% composition bar is still unmet (the residual is the certificate's
+   precision, not the clock). A scheduling correctness property turned out to
+   be inseparable from a data-quality property — the honest systems claim is
+   the coupled measurement, not the clock fix alone.
+
+### P6.4 — Serving-side enforcement at the fetch boundary, gated on five frozen conditions
+
+1. **Decision.** `/threads` fetches `M × limit` candidates (M=2), applies the
+   shipped ranking (including the court damp), and serves the top `limit` — so
+   the court's verdict can change *what is on the page*, not merely its order.
+2. **Stakes.** The prior enforcement (a rank damp) was measured to be a
+   **paper-pass**: the page was selected by `recent_n_signals` *before* the
+   scorer ran, so 66% court-failed topics kept serving (GA verdict, NO-GO —
+   `docs/research/label-court/2026-07-29-court-enforcement-simulation.md`,
+   `2026-07-29-court-blindspot-audit.md`).
+3. **Backing.** Pre-registered gate (C1–C5 frozen before measurement): offline,
+   global top-40 entailed-share **25.0% → 42.5%**, no door loses a row, topic
+   SQL cost flat in M (`2026-07-29-a0b-fetch-gate-measurement.md`). Post-flip
+   live re-measure: entailed-share **+17.8pp** (47.2% → 65.0%), court-failed
+   share −25.6pp, top-10 newsworthiness held at 77.8% of baseline
+   (`2026-07-30-fetchmult-flip-postverify.md`).
+4. **Alternatives ruled out.** Rank-damping alone (measured paper-pass); larger
+   M (M=3/4 pass the numbers but promote a measured non-newsworthiness witness
+   into the visible fold — the smallest passing multiplier wins).
+5. **Honest limit — the denominator-artifact lesson (C2/C2b).** The per-door
+   bar as written ("no door's entailed *share* drops >5pp") **breached** on
+   US/DE — and row-by-row analysis showed the artifact: M=2 fills pages that
+   ran short, growing the denominator while no door lost a single entailed row.
+   The breach is reported as fired; the keep decision is documented and
+   reversible; and the corrected bar (**C2b**: per door, the entailed *count*
+   does not fall AND no `failed` row enters the visible fold) is pre-registered
+   for every future measurement of this lever. Share-based per-door bars punish
+   exactly what coverage bars reward — a transferable gate-design lesson.
+   Watch item: depth-80 p95 14.5s grazes the 15s statement timeout
+   (`ann_timeout` visible at eval surface on 3 payloads, day-4 gold run).
+
 ### P7.1 — Equal-Earth projection (equal-area, no size lie)
 
 1. **Decision.** The map uses an Equal-Earth (equal-area) projection.
@@ -285,6 +363,79 @@ Three concrete forms of that thesis, one per section:
 5. **Honest limit.** The distinctiveness cutoff (`min(3, 25%)`) is a chosen
    threshold, not a tuned one; relation-quality has no task-time validation.
 
+### P7.6 — The honest-by-construction thesis, tested: the full-20 rendered-pixels gold eval
+
+1. **What ran.** The gold analyst-query set (Paper A §3.7) executed against the
+   **rendered UI** — pixels only; a payload field not painted scores as absent —
+   under a frozen rubric (`docs/research/gold/rubric-v2-ui.md`), 20 queries in 4
+   batches, 6 negative controls, one evaluator, prod data
+   (`docs/research/gold/2026-07-30-ui-eval-v2-run.md`). Run VALID: 6/6 controls
+   PASS, K1 satisfied.
+2. **Headline.** Answered **14.3%** · informed **71.4%** · honesty **0.83** ·
+   navigation-loss **20/20** · divergence vs the API arm **UI-BETTER ×14, SAME
+   ×6, WORSE ×0**. The informed-vs-answered 5× gap is the report's sharpest
+   product statement: the failures cluster at the seam between measuring and
+   painting — the API arm scores what Atlas *concluded*, the UI arm what Atlas
+   *has*.
+3. **The thesis verdict, as pre-registered in the run.** *"Atlas measures the
+   right thing and then does not render it"* **survives, with one amendment and
+   one exception.** Amendment: sometimes the *measurement* is the wrong country
+   — better rendering makes a mis-measurement worse (the FIPS defect surfaced
+   through a control query; Paper C Decision 3). Exception: the markets panel
+   renders its own measured refusal — *"relation analysis — pending validation
+   (#226, re-run ~Oct 2026)"* — the honest-by-construction ideal, painted.
+4. **Where honesty-by-construction failed to reach the screen** (defect ledger,
+   23 entries, each root-caused to file:line): a failed/timed-out retrieval lane
+   rendered as `No results` (D3 — the defect that corrupts the honest-absence
+   distinction the whole eval rests on, while the correct sentence already
+   exists one surface away); state-media markers absent on the country brief
+   while the *same renderer* works on the thread panel (D6 — `irna.ir`, 490
+   signals, unmarked, on the query about whose voice it is); a degraded
+   voice-mix payload silently dropped instead of rendering its own honest
+   reason (D7); the court verdict invisible on every opened thread (D8). The
+   pattern across all four: **the honest branch exists and is not wired at the
+   surface where the analyst lands.** These are now the report's central
+   evidence that honesty-by-construction is a *per-surface* property that must
+   be audited per surface, not an architecture guarantee.
+5. **Graduation-gate status, honestly.** This is a structured, frozen-rubric,
+   single-evaluator instrument — far stronger than no study, and not a
+   multi-rater study. The comparative "better than commodity dashboards" claim
+   stays dropped at this stage; what this run licenses is the
+   *validity-of-representation* claim, now with measured counterexamples and
+   fixes in flight. **Path forward decided (Pedro, 2026-08-03):** the
+   multi-rater requirement is met with an **agent-evaluator panel** (5
+   evaluators + 1 adjudicator, design frozen in §7), with a human-anchor subset
+   and an optional commodity-baseline arm that would license a caveated
+   comparative claim. This run is that study's pilot.
+
+### P7.7 — The Story Lens: a renderer fix dark-shipped by its own gate
+
+1. **What happened.** The eval's 20/20 navigation-loss defect (D1) motivated a
+   sibling-neighborhood lens (banner, regrouped threads panel, reason-chipped
+   siblings, pin-frozen neighborhoods) with a **pre-registered ship criterion:
+   NAV-LOSS falls on the re-run set.** The gate re-ran and **held at 6/6 — 
+   NO-GO**; the lens shipped **dark** (flag off, deep-link only)
+   (`docs/research/gold/2026-07-29-story-lens-navloss-check.md`).
+2. **Why this is a P7 method result and not just a miss.** The gate found two
+   causes. The mechanical one (the panel only reordered its top-20 pool; 0 of
+   107 walked siblings were renderable) was fixed same-session. The real one is
+   the report's sharpest falsifiability instance: the walk resolved onto
+   **honest neighbors of a fused anchor** — the front page served a fused
+   identity as "the story", and the neighborhood of a fused identity is a fused
+   neighborhood. The follow-up measurement inverted the diagnosis entirely: the
+   flagship "Berlin Pride" anchor was a Greek-language crime fusion, and
+   anchored on a *real* fragment the existing finder already places 6/6 true
+   fragments in its top-8 — **the finder was never the failure; the anchor
+   was** (`docs/research/recall-229/2026-07-29-sibling-finder-v2-measurement.md`).
+   A visualization fed by the engine's own substrate (P7.3's claim) surfaced an
+   engine disease — argmax dispersion — as a visible UI fact, and the
+   pre-registered gate refused to paint honest receipts over false neighbors.
+   "No ship over false receipts" is the interaction-design analogue of the
+   series' honest-absence rule.
+3. **Honest limit.** The lens's rails (honest degraded states, exit hygiene,
+   pin-freeze semantics) verified sound and are kept; the neighborhood renders
+   only when the identity layer heals (Paper B §4). One line turns it on.
+
 ---
 
 ## 4. Methods
@@ -332,6 +483,12 @@ Three concrete forms of that thesis, one per section:
 | 14 | P7.2 | e5 centroid NN similarity p50 | 0.943 | backed | why a fixed edge threshold was rejected |
 | 15 | P7.5 | Common-actor laundering | "donald trump" in 14/30 concurrent threads | backed | rarity-weighting justification |
 | 16 | P7.3/all | Analyst task-time study | — | needs-experiment | gates the P7 "better than commodity" claim (currently dropped) |
+| 17 | P6.3 | Serving-level country coverage bound by tick semantics | 30/168 countries; 1,007 topics aged 4 ticks in one snapshot; 1,353 qualified-but-retired | backed | `recall-229/2026-07-29-threading-floor-diagnosis.md` |
+| 18 | P6.3 | Revival composition, ungated vs court-gated | 37.5% real (KILLED) → 70.5% (census n=244, inter-judge 98.4%) | backed | `recall-229/2026-07-30-tickv2-tf1-tf2-verdict.md`, `2026-08-03-tf3b-gate-c-census.md` |
+| 19 | P6.4 | Fetch-side enforcement (M=2), live | entailed-share +17.8pp (47.2→65.0%); failed −25.6pp; no door lost an entailed row | backed | `label-court/2026-07-30-fetchmult-flip-postverify.md` |
+| 20 | P6.4 | C5 cost watch | depth-80 p50 12.6s / p95 14.5s vs 15s timeout | backed (watch item) | same; `ann_timeout` seen on 3 gold-eval payloads (day 4) |
+| 21 | P7.6 | Rendered-pixels gold eval | answered 14.3% · informed 71.4% · honesty 0.83 · NAV-LOSS 20/20 · UI-WORSE ×0 | backed (single evaluator, frozen rubric) | `gold/2026-07-30-ui-eval-v2-run.md` |
+| 22 | P7.7 | Story Lens ship gate | NAV-LOSS held 6/6 → dark-shipped; 0/107 siblings renderable (fixed); anchor-fusion cause → identity layer | backed | `gold/2026-07-29-story-lens-navloss-check.md`, `recall-229/2026-07-29-sibling-finder-v2-measurement.md` |
 
 ---
 
@@ -355,9 +512,17 @@ Three concrete forms of that thesis, one per section:
    derivation-stated, not reproducible, until the artifact lands.
 5. **P6 systems numbers absent.** Latency-per-bucket and cost-per-row are
    unmeasured; P6 cannot make a systems-superiority claim and stays an appendix.
-6. **P7 has no analyst study.** The "measurably better than commodity dashboards"
-   claim is **removed** (it was false, not merely unproven — no study exists). The
-   honesty-of-encoding claims stand alone; the comparative claim is gated on §7.
+6. **P7's study gap is narrowed, not closed.** The "measurably better than
+   commodity dashboards" claim stays **removed** until the panel's baseline arm
+   runs. What now exists is a frozen-rubric, rendered-pixels, full-20 evaluation
+   with negative controls (§P7.6) — a structured instrument that tested and
+   amended the honesty thesis — run by **one evaluator**; single-rater rubric
+   application is a measured variance source in the sibling API-arm series and
+   must be presumed here too. The successor study is defined and decided (§7):
+   a 5-agent evaluator panel + adjudicator with Fleiss κ, a 5-query
+   human-anchor subset (the author is the only available human rater — stated,
+   not hidden), and a paired commodity-baseline arm. Raters will be LLM agents;
+   that disclosure travels with any number the panel produces.
 7. **Serving-time NER-wins-over-gazetteer is uncorrected on sports/entity-dense
    headlines** — a known false-verify path (England→PERSON).
 8. **Coverage denominators must not be chained.** This report quotes the single
@@ -385,14 +550,54 @@ Three concrete forms of that thesis, one per section:
   - reproducibility of compact aggregates from the cold archive;
   - recency-scheduling coverage impact (served window vs full 168h under load).
 - **P7 → CHI/VIS design paper** needs:
-  - a **10–15-user task-time study** on the seven analyst questions (the only thing
-    that would license any comparative claim; until then, drop all "better than"
-    language);
+  - an **agent-evaluator panel study** (decision, Pedro 2026-08-03: the only
+    available human evaluator is the author, so the multi-rater requirement is
+    met with an agent court — the same move Paper A's 3-LLM consensus panel and
+    the gate-(c) census's double-judging already made, disclosed as such).
+    **Design, fixed here before any run:**
+    - **5 independent evaluator agents + 1 adjudicator.** Five = odd majority +
+      persona coverage of the product wedge (journalist · OSINT/conflict
+      researcher · policy/NGO analyst · newsroom desk editor · data-savvy
+      generalist); three is the Fleiss-κ minimum, five buys stable majority
+      levels. The adjudicator resolves only ≥3-way splits and every
+      adjudication is ledgered with reasons (the GB-round pattern).
+    - **Instrument unchanged:** rubric v2 verbatim (pixels-only, U1–U6 protocol,
+      6 negative controls, K1/K2 validity rules). No evaluator sees another's
+      transcript; prompts are persona-framed but rubric-identical.
+    - **Same-window discipline:** all five run against the same corpus
+      day/window (parallel or same-session) — the measured day-over-day churn
+      (Paper A R8) would otherwise confound inter-rater disagreement with
+      corpus drift.
+    - **Report:** per-query majority level + full level matrix + **Fleiss κ**;
+      per-metric (answered / informed / honesty / NAV-LOSS) majority values
+      with ranges. A run is VALID only if every evaluator's control arm passes.
+    - **Human anchor:** Pedro double-scores a fixed 5-query subset; agent↔human
+      agreement on that subset is reported as the panel's human-validity bound.
+    - **Comparative claim, now reachable with a caveat:** a second arm runs the
+      SAME panel + queries against a commodity baseline surface (raw GDELT
+      dashboard / Google News). Paired scoring licenses "measured better/worse
+      than commodity *under this rubric, agent-rated*" — the comparative
+      language returns only in that caveated form, never bare.
+    - **Standing disclosure:** raters are LLM agents, not human analysts;
+      n_human_raters = 1 (subset anchor). This replaces the single-evaluator
+      limitation with a measured-κ multi-rater one; it does not manufacture
+      human ground truth.
+    The §P7.6 single-evaluator run is this study's pilot: rubric, controls and
+    NAV-LOSS dimension transfer directly;
   - the Orbital "who entered this week?" task-time vs the signal list (the acceptance
     metric the view was built to make measurable);
   - the **BERTopic-proper external baseline** (UMAP + c-TF-IDF) once the
     numba/py3.14 toolchain is unblocked — to isolate the schema/engine's own
-    contribution behind the P7 visualizations.
+    contribution behind the P7 visualizations;
+  - the **Story Lens re-gate** once the identity layer heals (§P7.7) — the
+    pre-registered NAV-LOSS criterion is already written; a pass converts the
+    dark-shipped lens into the paper's assembly-gap fix, with before/after
+    informed-rate movement as its measured effect.
+- **P6's two new results sharpen its gate, not close it:** §P6.3/§P6.4 give the
+  temporal section real measured systems findings (tick semantics as a coverage
+  determinant; fetch-boundary enforcement under a frozen gate + the C2b
+  denominator lesson), but latency-per-bucket and cost-per-row remain the
+  blocking numbers for a standalone systems paper.
 
 **Housekeeping that costs credibility if left (from the reorg §4):** attach the
 `2.37` derivation artifact; keep every coverage claim to one named denominator;

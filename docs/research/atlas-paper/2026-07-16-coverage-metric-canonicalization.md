@@ -1,6 +1,7 @@
 # Coverage / recall denominator reconciliation (housekeeping)
 
-Date: 2026-07-16 · Author: Claude (Opus 4.8) · Status: **canonical reference**
+Date: 2026-07-16 (Group D + provenance note added 2026-08-03) · Author: Claude
+(Opus 4.8) · Status: **canonical reference**
 · Scope: reconciles the many `%` coverage/recall numbers scattered across the
 Atlas docs into ONE table + ONE canonical metric per claim-type, so papers stop
 chaining incomparable numbers.
@@ -75,6 +76,32 @@ pick per group). "num/den" = numerator / denominator.
 | **731** | scoped clusters written by the R1 production run (126 countries) | paper-8 §Intervention-3 |
 | **26 umbrellas / 55 children** | R2 complete-linkage collapse of cross-country duplicates | paper-8 §Intervention-4 |
 | **"~54× more narratives"** | 3,662 scoped clusters ÷ ~68 global topics | paper-8 §Intervention-2 table — **DEFECTIVE, see §3** |
+
+### Group D — SERVING-LEVEL COUNTRY COVERAGE (added 2026-08-03: can a country's door show a thread at all)
+
+| # | num / den | window · scope | state | source doc |
+|---|---|---|---|---|
+| **30 / 168** | countries with ≥1 servable thread / countries clustered | 2026-07-29 census · serving | BEFORE (lifecycle-clock defect measured) | `recall-229/2026-07-29-threading-floor-diagnosis.md` |
+| **1,353** | retired topics passing every quality bar, matched within 2 passes (the measured headroom) | same census | BEFORE | same |
+| **37.5%** | real stories / 40-sample of ungated revivals | 2026-07-30 · composition | intervention KILLED by its gate | `recall-229/2026-07-30-tickv2-tf1-tf2-verdict.md` |
+| **70.5%** | strict-real / 244 court-certified promotions (census, 2 judges @98.4%) | 2026-08-03 · composition | court-gated revival ON, bar 90% unmet | `recall-229/2026-08-03-tf3b-gate-c-census.md` |
+
+> Serving-level country coverage is a **fourth claim-type**. It must never be
+> chained with funnel coverage (Group A) or scoped recall (Group B): a signal can
+> be assigned (A), its country's partition can cluster it (B), and the country
+> can still serve nothing because the lifecycle retired the topic between passes.
+> The three layers — assigned → formed → served — each have their own canonical
+> number now; conflating them was the original sin this doc exists to prevent.
+
+### Provenance note on every PER-COUNTRY number (added 2026-08-03)
+
+Country-keyed figures dated **before 2026-07-28** are exposed to the FIPS→ISO
+translation defect (5 wrong + ~89 missing codes since 2025-12-04; Lebanon under
+LS, Paraguay under PA, Serbia under RB…). Hot rows were remapped with ledgers
+and the historical store healed (22,472 rows); archive readers must apply
+`docs/research/country-code-remap/country-code-corrections-v1.json`. Any
+pre-heal per-country count for an affected bucket must cite that layer or be
+re-derived (`country-code-remap/2026-07-28-country-code-remap.md`).
 
 ### Out-of-scope legacy numbers (name-collide with "coverage/recall" but measure something else — do NOT fold into the arc)
 
@@ -204,5 +231,7 @@ all-zeros bootstrap-batch-02.json").
 | funnel coverage | **25.8% useful** | non-junk assigned ÷ 24h ingested signals, live prod 2026-07-09, embed-backlog-capped |
 | scoped recall | **4.94% → 26.72%** | global vs partition-scoped, over 131,210 signals / 117 countries, R0 168h; lift **~5.4×** |
 | served narratives | **549 active** | umbrella-deduplicated served topics (68→392/348→597→549) |
+| serving country coverage | **30 / 168** (2026-07-29 census) | countries with ≥1 servable thread ÷ countries clustered; lifecycle-bound, NOT a data floor; recovery gated on revival composition (37.5% ungated → 70.5% court-gated, bar 90%) |
 | v2 label precision | **59.02%** [46.5, 70.5] | bootstrap-combined-01-02, N=61 (NOT batch-02) |
 | DROP | ~~54× more narratives~~ | cross-country double-count; R2 collapses it — use 5.4× or 68→549 |
+| per-country provenance | pre-2026-07-28 figures | cite `country-code-corrections-v1.json` for affected GDELT-lane buckets |
