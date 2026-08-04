@@ -181,6 +181,101 @@ _SVC_DIGIT = re.compile(r"\d")
 # the floor.
 SERVICE_CONTENT_MIN_FRACTION = 0.5
 
+# EARNINGS-AUTOGEN class (2026-08-04, witness dt-9420 'Earnings Results
+# Announcements' — measured 8% under the service rule, deliberately out of its
+# scope): quarterly-report robo-posts from the MarketBeat autogen network
+# (tickerreport / themarketsdaily / dailypolitical — the same network as
+# dt-4013's ratings) plus the boilerplate shapes it and its peers syndicate
+# (AP "Q2 Earnings Snapshot" robot stories on local papers, fool/yahoo
+# "Earnings Call Transcript/Summary" series, globenewswire results templates).
+# MEASURED 2026-08-04 (union receipt lane, witness + 33 earnings-labeled
+# active siblings vs 30 random actives + 10k-corpus probe): autogen cohort
+# 0.50-1.00 of receipts match, every real-news earnings topic 0.00-0.38, all
+# 30 random topics 0.00, corpus fire rate 16/10,000 = 0.16% with all 16
+# hand-checked true. BOTH-halves discipline: fire = strong autogen SHAPE
+# (each shape is itself earnings-subject AND template) OR network DOMAIN +
+# earnings pattern — an earnings pattern alone never fires on real news
+# ("Apple crushes earnings expectations, stock soars" clean; "HSBC beats
+# estimates with US$10.1 billion quarterly profit" clean; "Kosmos reports 12%
+# production growth in Q2 as GTA, Jubilee drive results" clean — the measured
+# near-FP that forced the filler-token gap in shape B):
+#   A ticker-boilerplate: exchange-ticker parenthetical "(NASDAQ:ALGM)" AND
+#     an earnings word. Real journalism does not headline exchange tickers.
+#   B press-release results template: verb (announces/reports/posts/issues/
+#     releases/schedules/unveils) + quarter phrase + RESULTS where the
+#     quarter->results gap holds only year/fiscal filler tokens (the PR title
+#     convention) — real sentences carry arbitrary words there and never
+#     fire; also "earnings results"/"earnings guidance" after the verb, and
+#     the reversed "results for <quarter>".
+#   C EPS-delta boilerplate: "beats/misses estimates by $X" or "EPS of $X
+#     beats/misses" — real coverage writes "beats estimates with ...".
+#   D earnings-calendar: "to announce/post/release/report earnings on
+#     <weekday>" — the weekday IS the calendar signature; "set to report
+#     earnings after the bell" never fires.
+#   E call series: "Q[1-4] (20xx) Earnings Call Highlights|Summary|
+#     Transcript" — the autogen series title, not an earnings-call news event.
+#   F AP robot series: "Q[1-4] Earnings Snapshot".
+# Domain list is corpus-verified (tickerreport 1,494 / themarketsdaily 2,248 /
+# dailypolitical 1,835 signals in 14d) + the network hub and the task-named
+# class anchor (marketbeat, americanbankingnews); weak shapes ("What to
+# Expect From X's Earnings" previews) ride ONLY this domain half so genuine
+# outlet previews survive.
+EARNINGS_AUTOGEN_DOMAINS = re.compile(
+    r"(marketbeat\.com|tickerreport\.com|themarketsdaily\.com|"
+    r"dailypolitical\.com|americanbankingnews\.com)",
+    re.IGNORECASE,
+)
+_ERN_WORD = re.compile(
+    r"(\bearnings\b|\beps\b|\bquarterly results\b)", re.IGNORECASE)
+_ERN_TICKER = re.compile(
+    r"\((?:NASDAQ|NYSE(?:AMERICAN|ARCA)?|OTCMKTS|OTCBB|OTC|AMEX|BATS|LON|TSE|"
+    r"TSX|TSXV|CVE|CSE|ASX|NZE|FRA|ETR|EPA|AMS|EBR|BIT|STO|CPH|HEL|OSE|SWX|"
+    r"VTX|HKG|KRX|KOSDAQ|TYO|JPX|NSE|BOM|SGX|JSE|MEX|BVMF|BCBA)"
+    r"\s*:\s*[A-Z0-9.\-]{1,12}\)",
+)
+_ERN_WEEKDAY = r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)"
+_ERN_QTR = (
+    r"(?:(?:first|second|third|fourth|1st|2nd|3rd|4th)[\s-]+quarter|q[1-4]\b|"
+    r"quarterly|half[\s-]?year|full[\s-]?year|fy\s?20\d\d|h[12]\s?20\d\d)")
+# between the quarter phrase and "results", only year/fiscal filler tokens may
+# appear (the press-release title convention) — real sentences ("...growth in
+# Q2 as GTA, Jubilee drive results") carry arbitrary words there, never fire
+_ERN_QTR_FILLER = (
+    r"(?:[\s,]+(?:of|fiscal|fy\s?20\d\d|20\d\d|financial|operating|"
+    r"operational|consolidated|unaudited|interim|earnings|and))*")
+_ERN_PR_RESULTS = re.compile(
+    r"\b(?:announce|report|post|issue|release|unveil|schedule)s?\b"
+    r"[^.;:!?]{0,60}?"
+    r"(?:" + _ERN_QTR + _ERN_QTR_FILLER + r"[\s,]+results\b"
+    r"|\b(?:financial\s+|operating\s+|fiscal\s+)*results\s+for\s+(?:the\s+)?"
+    + _ERN_QTR +
+    r"|\bearnings\s+results\b"
+    r"|\bearnings\s+guidance\b)",
+    re.IGNORECASE,
+)
+_ERN_EPS_DELTA = re.compile(
+    r"((?:beats?|miss(?:es)?|meets?|tops?)\s+(?:analysts['’]?\s+)?"
+    r"(?:estimates?|expectations?|consensus|the\s+street)\s+by\s+\(?\$"
+    r"|eps\s+of\s+\$?\(?[\d.]+\)?\s+(?:beats?|miss(?:es)?|meets?))",
+    re.IGNORECASE,
+)
+_ERN_CAL = re.compile(
+    r"to\s+(?:announce|post|release|report|issue)\s+(?:its\s+)?"
+    r"(?:quarterly\s+|q[1-4]\s+)?earnings\s+on\s+" + _ERN_WEEKDAY,
+    re.IGNORECASE,
+)
+_ERN_CALL_SERIES = re.compile(
+    r"\bq[1-4](?:\s+20\d\d)?\s+earnings\s+call\s+"
+    r"(?:highlights|summary|transcript)\b",
+    re.IGNORECASE,
+)
+_ERN_SNAPSHOT = re.compile(r"\bq[1-4]\s+earnings\s+snapshot\b", re.IGNORECASE)
+# Junk when at least half the sampled receipts are earnings autogen (mirrors
+# the PR-wire and service-content floors). Measured: flagged cohort min 0.50
+# (dt-8723, whose non-firing half is other junk, not journalism), real-news
+# max 0.38 (dt-4738, whose firing receipts are true AP-snapshot strays).
+EARNINGS_AUTOGEN_MIN_FRACTION = 0.5
+
 
 def is_recurring_service_content(headline: str | None) -> bool:
     """One receipt = calendar-driven service content (see family comments)."""
@@ -203,6 +298,38 @@ def is_recurring_service_content(headline: str | None) -> bool:
     return False
 
 
+def is_earnings_autogen(
+    source_name: str | None,
+    source_url: str | None,
+    headline: str | None,
+) -> bool:
+    """One receipt = quarterly-report autogen (see family comments above).
+
+    fire = strong SHAPE (A-F, each earnings-subject AND template by
+    construction) OR network DOMAIN + earnings pattern. A pattern alone never
+    fires on real earnings news.
+    """
+    if not headline:
+        return False
+    h = _html.unescape(headline)
+    if _ERN_TICKER.search(h) and _ERN_WORD.search(h):
+        return True  # A ticker-boilerplate
+    if _ERN_PR_RESULTS.search(h):
+        return True  # B press-release results/guidance template
+    if _ERN_EPS_DELTA.search(h):
+        return True  # C EPS beats/misses-by-$ boilerplate
+    if _ERN_CAL.search(h):
+        return True  # D earnings-calendar (weekday signature)
+    if _ERN_CALL_SERIES.search(h):
+        return True  # E earnings-call highlights/summary/transcript series
+    if _ERN_SNAPSHOT.search(h):
+        return True  # F AP "Q2 Earnings Snapshot" robot series
+    hay = f"{source_name or ''} {source_url or ''}"
+    if EARNINGS_AUTOGEN_DOMAINS.search(hay) and _ERN_WORD.search(h):
+        return True  # network domain + earnings subject (previews etc.)
+    return False
+
+
 def is_pr_wire_solicitation(
     source_name: str | None,
     source_url: str | None,
@@ -222,6 +349,7 @@ def classify_topic_junk(
     distinct_sources: int | None,
     pr_wire_fraction: float | None = None,
     service_fraction: float | None = None,
+    earnings_fraction: float | None = None,
 ) -> str | None:
     """Return a semicolon-joined junk reason, or None if the topic is useful.
 
@@ -230,7 +358,8 @@ def classify_topic_junk(
     the category/label rules still apply). pr_wire_fraction is the share of that
     same sample matching is_pr_wire_solicitation; None skips the PR-wire rule.
     service_fraction is the share matching is_recurring_service_content; None
-    skips the service-content rule.
+    skips the service-content rule. earnings_fraction is the share matching
+    is_earnings_autogen; None skips the earnings-autogen rule.
     """
     reasons: list[str] = []
     if category and category in JUNK_CATEGORIES:
@@ -250,4 +379,9 @@ def classify_topic_junk(
         and service_fraction >= SERVICE_CONTENT_MIN_FRACTION
     ):
         reasons.append(f"service-content:{service_fraction:.0%}")
+    if (
+        earnings_fraction is not None
+        and earnings_fraction >= EARNINGS_AUTOGEN_MIN_FRACTION
+    ):
+        reasons.append(f"earnings-autogen:{earnings_fraction:.0%}")
     return ";".join(reasons) if reasons else None

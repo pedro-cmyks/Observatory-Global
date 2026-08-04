@@ -9,9 +9,11 @@ fail.
 from scripts.topic_junk import (
     DUMP_MAX_SOURCES,
     DUMP_MIN_MEMBERS,
+    EARNINGS_AUTOGEN_MIN_FRACTION,
     PR_WIRE_MIN_FRACTION,
     SERVICE_CONTENT_MIN_FRACTION,
     classify_topic_junk,
+    is_earnings_autogen,
     is_pr_wire_solicitation,
     is_recurring_service_content,
 )
@@ -355,3 +357,190 @@ def test_guard_real_stories_survive_with_zero_service_fraction():
     assert classify_topic_junk("Business & Markets", "Financial Market Movements",
                                198, 30, pr_wire_fraction=0.0,
                                service_fraction=0.0) is None
+
+
+# --- EARNINGS-AUTOGEN class (2026-08-04, witness dt-9420) ---
+# Quarterly-report robo-posts: the MarketBeat autogen network (tickerreport /
+# themarketsdaily / dailypolitical — same network as dt-4013's ratings) plus
+# the boilerplate shapes it syndicates (AP "Q2 Earnings Snapshot" robots, fool/
+# yahoo "Earnings Call Transcript" series, press-release results templates).
+# Measured 2026-08-04 (union receipt lane, witness + 33 earnings-labeled active
+# siblings vs 30 random actives): autogen cohort 0.50-1.00, every real-news
+# earnings topic 0.00-0.38, all 30 random topics 0.00, corpus fire rate
+# 16/10,000 = 0.16% with all 16 hand-checked true. Both halves per receipt:
+# an earnings pattern alone never fires on real news.
+
+def test_ticker_earnings_boilerplate_matches_witness_receipts():
+    # real receipts from dt-9420 / dt-2690 / dt-8648 / dt-8668 (2026-08-04
+    # prod): exchange-ticker parenthetical + earnings word = autogen shape,
+    # fires with no source information at all
+    cases = [
+        "Allegro MicroSystems (NASDAQ:ALGM) Issues Earnings Results, Beats Estimates By $0.02 EPS",
+        "AltaGas (TSE:ALA) Announces Quarterly Earnings Results",
+        "TVA Group (TSE:TVA.B) Announces Quarterly Earnings Results",
+        "Melrose Industries (LON:MRO) Releases Quarterly Earnings Results",
+        "Chiyoda (OTCMKTS:CHYCY) Posts Quarterly Earnings Results",
+        "Terex (NYSE:TEX) Releases FY 2026 Earnings Guidance",
+        "AbbVie (NYSE:ABBV) Updates Q3 2026 Earnings Guidance",
+        "DXC Technology (NYSE:DXC) Releases Q2 2027 Earnings Guidance",
+    ]
+    for h in cases:
+        assert is_earnings_autogen(None, None, h), h
+
+
+def test_press_release_results_template_matches():
+    # the globenewswire-syndication shape (dt-30 / dt-1949 / dt-8548 receipts):
+    # verb + quarter phrase + year/fiscal filler only + "results"
+    cases = [
+        "Balchem Corporation Reports Second Quarter 2026 Financial Results",
+        "FEMSA Announces Second Quarter 2026 Results",
+        "Yangarra Announces 2026 Second Quarter Financial and Operating Results",
+        "KBR Reports Second Quarter Fiscal 2026 Results",
+        # results-before-quarter (reversed) branch
+        "Leonardo DRS Announces Financial Results for Second Quarter 2026",
+        "Imperial announces second quarter 2026 financial and operating results",
+        "Tecogen Schedules Earnings Release Date and Conference Call for Q2 2026 Results",
+    ]
+    for h in cases:
+        assert is_earnings_autogen(None, None, h), h
+
+
+def test_real_earnings_news_never_fires():
+    # THE guard — event-driven earnings journalism (real receipts from
+    # dt-4289 / dt-8155 / dt-8539 / dt-8548, the surviving siblings): the
+    # quarter->results gap in real sentences carries arbitrary words, "beats
+    # estimates" comes without "by $", school results carry no quarter word
+    for h in [
+        "Apple crushes earnings expectations, stock soars",
+        "HSBC beats estimates with US$10.1 billion quarterly profit, announces fresh US$1 billion stock buyback",
+        "Kosmos reports 12% production growth in Q2 as GTA, Jubilee drive results",
+        "BP's Q2 profit doubles to top US$5 billion on oil surge",
+        "Saudi Aramco Reports Net Income of $32.7 Bln in Second Quarter",
+        "Rivian Q2 2026: EV Revenue Jumps 27% as R2 Drives Higher Deliveries, Gross Profit and Outlook",
+        "Zalando reports lower Q2 net income; narrows full-year guidance",
+        "Diamondback Raises 2026 Output Forecast After Production Milestone",
+        "Ather Energy shares surge over 16%, hit 52-week high after Q1 results; brokerages bullish",
+        "SoftBank's AI Funding Plans to Face Reckoning at Q1 earnings",
+        "Nivea Maker Beiersdorf Cuts Guidance For 2026, Citing Difficult Market",
+        # calendar RESULTS that are not corporate quarters
+        "BISE Peshawar Announces 10th Class Results 2026",
+        "ZIMSEC releases 2026 June exam results; O-Level pass rate drops, A-Level performance improves",
+    ]:
+        assert not is_earnings_autogen(None, None, h), h
+        # and a real outlet name never changes the verdict
+        assert not is_earnings_autogen("reuters.com", None, h), h
+
+
+def test_eps_delta_boilerplate_matches():
+    # "beats/misses estimates by $X" and "EPS of $X beats/misses" only exist
+    # in autogen posts; real coverage writes "beats estimates with ..."
+    cases = [
+        "Madrigal Pharmaceuticals (NASDAQ:MDGL) Posts Earnings Results, Beats Estimates By $0.69 EPS",
+        "Wallbox (NYSE:WBX) Announces Quarterly Earnings Results, Misses Estimates By $0.09 EPS",
+        # the ticker-free variant of the same generator (task-named shape)
+        "Alamos Gold Q2 Earnings: EPS of $0.32 beats by $0.07",
+    ]
+    for h in cases:
+        assert is_earnings_autogen(None, None, h), h
+
+
+def test_earnings_calendar_autogen_matches():
+    # dt-4576 / dt-9119 receipts: "to Announce/Post/Release (Quarterly)
+    # Earnings on <weekday>" — the weekday IS the calendar signature
+    cases = [
+        "Energy Services of America (ESOA) to Release Quarterly Earnings on Wednesday",
+        "Airbnb (ABNB) Expected to Announce Earnings on Thursday",
+        "Marathon Digital (MARA) to Post Quarterly Earnings on Thursday",
+        "Ultralife (ULBI) Projected to Release Earnings on Friday",
+    ]
+    for h in cases:
+        assert is_earnings_autogen(None, None, h), h
+    # no weekday = no calendar signature (real preview coverage survives)
+    assert not is_earnings_autogen(
+        None, None, "Apple set to report earnings after the bell")
+
+
+def test_call_series_and_snapshot_match():
+    # MarketBeat "Q2 Earnings Call Highlights" + fool/yahoo "Earnings Call
+    # Transcript/Summary" + the AP "Q2 Earnings Snapshot" robot series
+    cases = [
+        "Cameco Q2 Earnings Call Highlights",
+        "Stellantis N.V. Q2 2026 Earnings Call Summary",
+        "Labcorp (LH) Q2 2026 Earnings Call Transcript",
+        "Proto Labs: Q2 Earnings Snapshot",
+    ]
+    for h in cases:
+        assert is_earnings_autogen(None, None, h), h
+    # an earnings call as a news EVENT is not the series
+    assert not is_earnings_autogen(
+        None, None, "Novo Nordisk earnings call: CEO addresses investor concerns")
+
+
+def test_autogen_domain_half():
+    # weak patterns (previews) fire only on the measured network domains —
+    # the same headline from a real outlet survives
+    assert is_earnings_autogen(
+        "tickerreport.com", None, "What to Expect From GE Aerospace's Earnings")
+    assert not is_earnings_autogen(
+        "cnbc.com", None, "What to expect from Apple's earnings report")
+    # domain alone never fires (non-earnings network content is out of scope
+    # here — the ratings posts belong to the service-content rule)
+    assert not is_earnings_autogen(
+        "themarketsdaily.com", None, "Insider Selling at Acme Corp")
+    # domain evidence may live in the URL when source_name is a display name
+    assert is_earnings_autogen(
+        "Ticker Report", "https://www.tickerreport.com/x",
+        "GE Aerospace Earnings Preview")
+
+
+def test_earnings_autogen_handles_none_and_entities():
+    assert not is_earnings_autogen(None, None, None)
+    assert not is_earnings_autogen("tickerreport.com", None, "")
+    # HTML-entity-encoded punctuation still matches (the #264 lesson)
+    assert is_earnings_autogen(
+        None, None,
+        "Greggs&#039; (LON:GRG) Announces Quarterly Earnings Results")
+
+
+def test_earnings_fraction_flags_witness_topics():
+    # dt-9420: 11/12 receipts autogen; category/label/dump/pr-wire/service all
+    # blind (honest-sounding category, no listicle label, 12 members)
+    r = classify_topic_junk("Corporate Earnings Reports",
+                            "Earnings Results Announcements",
+                            12, 3, earnings_fraction=11 / 12)
+    assert r and "earnings-autogen" in r
+    # dt-8668: guidance clone at 1.0
+    r = classify_topic_junk("Earnings Guidance", "FY 2026 Earnings Guidance",
+                            33, 3, earnings_fraction=1.0)
+    assert r and "earnings-autogen" in r
+    # dt-9103: the AP snapshot series
+    r = classify_topic_junk("Business & Markets", "Q2 Earnings Snapshots",
+                            16, 8, earnings_fraction=1.0)
+    assert r and "earnings-autogen" in r
+    # dt-10057: transcript series at 0.73
+    r = classify_topic_junk("Quarterly Earnings Coverage", "Q2 2026 Earnings Calls",
+                            75, 12, earnings_fraction=0.73)
+    assert r and "earnings-autogen" in r
+
+
+def test_earnings_fraction_below_threshold_or_missing_is_skipped():
+    # dt-4738 measured 0.38 — majority real earnings journalism, survives
+    assert classify_topic_junk("Corporate Earnings", "Q2 Profit Rises",
+                               45, 20, earnings_fraction=0.38) is None
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, earnings_fraction=None) is None
+    # boundary: exactly at the floor fires (dt-8723 measured 0.50)
+    assert classify_topic_junk("Business & Markets", "x",
+                               10, 5,
+                               earnings_fraction=EARNINGS_AUTOGEN_MIN_FRACTION)
+
+
+def test_guard_real_stories_survive_with_zero_earnings_fraction():
+    assert classify_topic_junk("Armed conflict escalation", "NATO Summit in Ankara",
+                               778, 12, pr_wire_fraction=0.0,
+                               service_fraction=0.0,
+                               earnings_fraction=0.0) is None
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, pr_wire_fraction=0.0,
+                               service_fraction=0.0,
+                               earnings_fraction=0.0) is None

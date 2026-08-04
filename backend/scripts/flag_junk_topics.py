@@ -1,13 +1,16 @@
 """Flag + demote junk topics; report useful coverage (2026-07-09 gate).
 
 Computes the content-based junk flag (scripts/topic_junk.classify_topic_junk) for
-every topic that carries unified-v2 members — the served + anchoring population —
-from five signals: the R3.1 category, the label, the per-topic distinct-source
-count over a member sample, the PR-wire attorney-solicitation receipt fraction
-over the same sample (2026-08-03 census class), and the recurring service-content
-receipt fraction over the same sample (2026-08-04 fresh-cohort re-census class:
-daily exchange-rate posts / rating reiterations / gadget spec listicles /
-production-cost report mills / prayer-horoscope-lottery calendars). Persists
+every topic that carries unified-v2 members OR served v1-compat evidence members
+— the served + anchoring population — from six signals: the R3.1 category, the
+label, the per-topic distinct-source count over a member sample, the PR-wire
+attorney-solicitation receipt fraction over the same sample (2026-08-03 census
+class), the recurring service-content receipt fraction (2026-08-04 fresh-cohort
+re-census class: daily exchange-rate posts / rating reiterations / gadget spec
+listicles / production-cost report mills / prayer-horoscope-lottery calendars),
+and the earnings-autogen receipt fraction (2026-08-04, witness dt-9420:
+MarketBeat-network quarterly-report robo-posts, AP earnings-snapshot robots,
+call-transcript series, press-release results templates). Persists
 dynamic_topics.is_junk / junk_reason, and
 (unless --no-demote) demotes junk ACTIVE topics to 'candidate' so they stop serving.
 
@@ -37,6 +40,7 @@ import asyncpg
 
 from scripts.topic_junk import (
     classify_topic_junk,
+    is_earnings_autogen,
     is_pr_wire_solicitation,
     is_recurring_service_content,
 )
@@ -56,31 +60,48 @@ WINDOW_HOURS = 336
 
 
 async def _topics_with_members(conn: asyncpg.Connection) -> list[asyncpg.Record]:
-    # Every topic that carries unified-v2 members = the served + anchoring set
-    # (active topics AND u2- candidates that build_unified_topics anchors on).
+    # Every topic that carries unified-v2 members OR served v1-compat evidence
+    # members = the served + anchoring set (active topics AND u2- candidates
+    # that build_unified_topics anchors on). The served lane was added
+    # 2026-08-04: five earnings-autogen witnesses (dt-4497/8648/8668/9103/
+    # 10099) carry ZERO unified-v2 members — their junk lives entirely in
+    # serving, so a u2-only population could never reach them (the e55cb08e
+    # silent-starvation class). mem counts the unified-v2 lane ONLY, so the
+    # feed-dump rule's semantics are unchanged (a served-only topic has mem=0
+    # and can never trip the >=150 floor).
     return await conn.fetch(
         """
         SELECT dt.id, dt.label, dt.category, dt.state, dt.identity_key,
-               count(tm.signal_id) AS mem
+               count(tm.signal_id) FILTER (WHERE tm.engine_version = $1) AS mem
         FROM dynamic_topics dt
         JOIN topic_members tm
-          ON tm.topic_id = 'dynamic-topic-' || dt.id AND tm.engine_version = $1
+          ON tm.topic_id = 'dynamic-topic-' || dt.id
+         AND (tm.engine_version = $1
+              OR (tm.engine_version = $2 AND tm.role = 'evidence'
+                  AND COALESCE(tm.quarantined, false) = false))
         WHERE dt.state = 'active'
            OR (dt.state = 'candidate' AND dt.identity_key LIKE 'u2-%')
         GROUP BY dt.id
         """,
         ENGINE_VERSION,
+        SERVED_ENGINE_VERSION,
     )
 
 
 async def _member_source_stats(
     conn: asyncpg.Connection, ids: list[int], sample: int,
-) -> tuple[dict[int, int], dict[int, float | None], dict[int, float | None]]:
+) -> tuple[
+    dict[int, int],
+    dict[int, float | None],
+    dict[int, float | None],
+    dict[int, float | None],
+]:
     """Per topic, over the `sample` most-recent members PER LANE: distinct
     outlet count + PR-wire spam fraction (both from the unified-v2 sample,
-    unchanged) + recurring service-content fraction (over the UNION of the
-    unified-v2 sample and the SERVED v1-compat evidence receipts — the lane
-    the court measured and the analyst sees; junk in either lane pollutes).
+    unchanged) + recurring service-content fraction + earnings-autogen
+    fraction (the latter two over the UNION of the unified-v2 sample and the
+    SERVED v1-compat evidence receipts — the lane the court measured and the
+    analyst sees; junk in either lane pollutes).
     Fractions are None when the topic yields no joinable rows in their lane."""
     rows = await conn.fetch(
         f"""
@@ -106,6 +127,7 @@ async def _member_source_stats(
     srcs: dict[int, set[str]] = defaultdict(set)
     pr_counts: dict[int, list[int]] = defaultdict(lambda: [0, 0])  # [spam, total]
     svc_counts: dict[int, list[int]] = defaultdict(lambda: [0, 0])  # [svc, total]
+    ern_counts: dict[int, list[int]] = defaultdict(lambda: [0, 0])  # [ern, total]
     for r in rows:
         if r["lane"] == "u2":
             if r["source_name"]:
@@ -117,6 +139,10 @@ async def _member_source_stats(
         svc_counts[r["tid"]][1] += 1
         if is_recurring_service_content(r["headline"]):
             svc_counts[r["tid"]][0] += 1
+        ern_counts[r["tid"]][1] += 1
+        if is_earnings_autogen(
+                r["source_name"], r["source_url"], r["headline"]):
+            ern_counts[r["tid"]][0] += 1
     nsrc = {i: len(srcs.get(i, set())) for i in ids}
     pr_frac = {
         i: (pr_counts[i][0] / pr_counts[i][1] if pr_counts[i][1] else None)
@@ -126,7 +152,11 @@ async def _member_source_stats(
         i: (svc_counts[i][0] / svc_counts[i][1] if svc_counts[i][1] else None)
         for i in ids
     }
-    return nsrc, pr_frac, svc_frac
+    ern_frac = {
+        i: (ern_counts[i][0] / ern_counts[i][1] if ern_counts[i][1] else None)
+        for i in ids
+    }
+    return nsrc, pr_frac, svc_frac, ern_frac
 
 
 async def _useful_coverage(conn: asyncpg.Connection, junk_ids: set[int]) -> dict:
@@ -181,7 +211,8 @@ async def run(dry_run: bool, no_demote: bool, sample: int,
             print("no topics carry unified-v2 members — nothing to flag")
             return 0
         ids = [int(r["id"]) for r in topics]
-        nsrc, pr_frac, svc_frac = await _member_source_stats(conn, ids, sample)
+        nsrc, pr_frac, svc_frac, ern_frac = await _member_source_stats(
+            conn, ids, sample)
 
         junk: dict[int, str] = {}
         reason_hist: Counter = Counter()
@@ -189,7 +220,8 @@ async def run(dry_run: bool, no_demote: bool, sample: int,
             reason = classify_topic_junk(
                 r["category"], r["label"], int(r["mem"]), nsrc.get(int(r["id"])),
                 pr_wire_fraction=pr_frac.get(int(r["id"])),
-                service_fraction=svc_frac.get(int(r["id"])))
+                service_fraction=svc_frac.get(int(r["id"])),
+                earnings_fraction=ern_frac.get(int(r["id"])))
             if reason:
                 junk[int(r["id"])] = reason
                 reason_hist[reason.split(";")[0].split(":")[0]] += 1
