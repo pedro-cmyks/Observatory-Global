@@ -367,5 +367,5 @@
 .source-tier-chip--wire { background: rgba(59, 130, 246, 0.16); color: #3b82f6; }
 .source-tier-chip--state { background: rgba(245, 158, 11, 0.18); color: #b45309; }
 .source-tier-chip--major { background: rgba(16, 185, 129, 0.16); color: #047857; }
-.source-tier-chip--local { background: rgba(100, 116, 139, 0.18); color: #475569; }
+.source-tier-chip--local { background: rgba(100, 116, 139, 0.18); color: var(--color-text-muted); }
 .source-tier-chip--unknown { background: rgba(100, 116, 139, 0.10); color: #94a3b8; }

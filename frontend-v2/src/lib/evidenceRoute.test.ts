@@ -95,3 +95,64 @@ describe('Evidence Route breadcrumb builder (#173)', () => {
     expect(steps.find(s => s.key === 'sources')?.detail).toBe('19% foreign')
   })
 })
+
+import { buildPersonEvidenceRoute, buildSignalEvidenceRoute, buildTopicEvidenceRoute } from './evidenceRoute'
+
+describe('cross-context Evidence Routes (#173, 2026-08-03)', () => {
+  it('topic route: Thread -> Raw -> Gate-verified -> Countries -> Source Mix -> Evidence', () => {
+    const steps = buildTopicEvidenceRoute({
+      topicLabel: 'Ceuta Migration Crisis',
+      rawAssignedCount: 502,
+      verifiedCount: 347,
+      countryCount: 9,
+      outletCount: 22,
+      sourcedEvidenceCount: 120,
+    })
+    expect(steps.map(s => s.key)).toEqual(['topic', 'raw', 'verified', 'countries', 'sources', 'signals'])
+    expect(steps.map(s => s.count)).toEqual([null, 502, 347, 9, 22, 120])
+    expect(steps.every(s => s.targetId.startsWith('td-'))).toBe(true)
+  })
+
+  it('topic route: missing rawTotal renders honest absence, never a fabricated number', () => {
+    const steps = buildTopicEvidenceRoute({ topicLabel: 'X', verifiedCount: 10 })
+    expect(steps.find(s => s.key === 'raw')?.count).toBeNull()
+  })
+
+  it('person route includes the threads step only when the context measures it', () => {
+    const person = buildPersonEvidenceRoute({
+      personName: 'Malhar Jammu',
+      signalCount: 6,
+      countryCount: 2,
+      threadCount: 3,
+      keySubjectCount: 4,
+    })
+    expect(person.map(s => s.key)).toEqual(['person', 'signals', 'countries', 'threads', 'subjects'])
+    expect(person.find(s => s.key === 'threads')?.count).toBe(3)
+
+    const themeEntity = buildPersonEvidenceRoute({
+      personName: 'water-stress',
+      signalCount: 40,
+      countryCount: 7,
+      keySubjectCount: 5,
+    })
+    expect(themeEntity.map(s => s.key)).toEqual(['person', 'signals', 'countries', 'subjects'])
+  })
+
+  it('signal route carries the measured stream lane as the source-class detail', () => {
+    const steps = buildSignalEvidenceRoute({
+      lane: 'analyst',
+      connectedThreadCount: 2,
+      semanticNeighborCount: 8,
+      gdeltThemeCount: 5,
+    })
+    expect(steps.map(s => s.key)).toEqual(['signal', 'threads', 'neighbors', 'taxonomy'])
+    expect(steps[0].detail).toBe('analyst lane')
+    expect(steps.map(s => s.count)).toEqual([null, 2, 8, 5])
+  })
+
+  it('signal route while context is still loading: counts are absent, not zero', () => {
+    const steps = buildSignalEvidenceRoute({ gdeltThemeCount: 3 })
+    expect(steps.find(s => s.key === 'threads')?.count).toBeNull()
+    expect(steps.find(s => s.key === 'neighbors')?.count).toBeNull()
+  })
+})

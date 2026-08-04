@@ -228,3 +228,16 @@ describe('LabelReviewChip dot variant (dense surfaces)', () => {
     expect(el.props.className).not.toContain('label-review-chip--dot')
   })
 })
+
+describe('too_broad verdict (#261 item 3, migration 096)', () => {
+  it('derives label-too-broad from the court verdict, ahead of the floor', () => {
+    expect(labelReviewReason({ labelStatus: 'too_broad', avgConfidence: 0.95, floor: 0.7 }))
+      .toBe('label-too-broad')
+  })
+
+  it('tip names the fusion, never implying a mere wrong label', () => {
+    const tip = labelReviewTip('label-too-broad')
+    expect(tip).toContain('multiple distinct stories')
+    expect(tip).toContain('no single label')
+  })
+})

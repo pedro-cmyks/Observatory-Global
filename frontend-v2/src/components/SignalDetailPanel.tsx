@@ -4,6 +4,8 @@ import { decodeEntities } from '../lib/decodeEntities'
 import { resolveCountryName } from '../lib/countryNames'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 import { TierChip } from './TierChip'
+import { EvidenceRoute } from './EvidenceRoute'
+import { buildSignalEvidenceRoute } from '../lib/evidenceRoute'
 import './SignalDetailPanel.css'
 
 // Per-signal narrative context (#228 §2.3): the Narrative Threads this signal
@@ -180,7 +182,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                 </div>
 
                 <div className="sdp-body">
-                    <div className="sdp-headline">
+                    <div className="sdp-headline" id="sdp-headline">
                         {signal.headline ? decodeEntities(signal.headline) : `Signal from ${signal.source}`}
                     </div>
 
@@ -203,6 +205,21 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     </div>
 
                     <div className="sdp-divider" />
+
+                    {/* #173 Evidence Route — why this signal is on screen: its
+                        measured stream lane, then the living threads it connects
+                        to, its nearest-meaning neighbours, and the raw GDELT
+                        taxonomy (navigation index, demoted last). Counts stay
+                        "—" until the context fetch lands — absence, never 0. */}
+                    <EvidenceRoute
+                        steps={buildSignalEvidenceRoute({
+                            lane: signal.lane ?? null,
+                            connectedThreadCount: context ? context.connected_threads.length : null,
+                            semanticNeighborCount: context ? context.semantic_neighbors.length : null,
+                            gdeltThemeCount: signal.themes.length,
+                        })}
+                        onStepClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    />
 
                     <div>
                         <div className="sdp-section-label">Sentiment</div>
@@ -234,7 +251,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         of hiding it — a missing connection is a gap to surface,
                         not a fact of nature (no silent filtering). */}
                     {context && (
-                        <div>
+                        <div id="sdp-threads">
                             <div
                                 className="sdp-section-label"
                                 data-tip="The living Narrative Threads this signal belongs to or connects to. IN THREAD = assigned membership; RELATED = linked via nearest-meaning neighbours; KEYWORD = headline-term overlap with a thread."
@@ -280,7 +297,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     )}
 
                     {signal.themes.length > 0 && (
-                        <details className="sdp-taxonomy-details">
+                        <details className="sdp-taxonomy-details" id="sdp-taxonomy">
                             <summary
                                 className="sdp-section-label sdp-section-label--taxonomy"
                                 data-tip="GDELT taxonomy codes — a navigation index, not the story model. 'Where this fits' above is the product unit. Collapsed by default; being phased out of the surface."
@@ -338,7 +355,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         onClick. Falls back to the legacy prop only while the
                         context fetch is in flight. */}
                     {context && context.semantic_neighbors.length > 0 ? (
-                        <div>
+                        <div id="sdp-neighbors">
                             <div
                                 className="sdp-section-label"
                                 data-tip="Nearest signals by meaning (multilingual embedding similarity), not by shared taxonomy code. Similarity shown per item; UNVERIFIED = not assigned to any gated thread."

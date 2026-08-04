@@ -20,7 +20,7 @@ def test_counts_each_verdict_bucket():
         _t(None),
     ]
     assert stamped_counts(threads) == {
-        "entailed": 2, "partial": 1, "failed": 1, "unchecked": 1,
+        "entailed": 2, "partial": 1, "failed": 1, "too_broad": 0, "unchecked": 1,
     }
 
 
@@ -31,17 +31,25 @@ def test_missing_field_and_unknown_values_count_as_unchecked():
         _t("weird-future-value"),
     ]
     assert stamped_counts(threads) == {
-        "entailed": 0, "partial": 0, "failed": 0, "unchecked": 3,
+        "entailed": 0, "partial": 0, "failed": 0, "too_broad": 0, "unchecked": 3,
     }
 
 
 def test_normalizes_case_and_whitespace():
     assert stamped_counts([_t(" Entailed "), _t("FAILED")]) == {
-        "entailed": 1, "partial": 0, "failed": 1, "unchecked": 0,
+        "entailed": 1, "partial": 0, "failed": 1, "too_broad": 0, "unchecked": 0,
     }
 
 
 def test_empty_page_serves_all_zero():
     assert stamped_counts([]) == {
-        "entailed": 0, "partial": 0, "failed": 0, "unchecked": 0,
+        "entailed": 0, "partial": 0, "failed": 0, "too_broad": 0, "unchecked": 0,
+    }
+
+
+def test_too_broad_is_a_graded_bucket_not_unchecked():
+    # #261 item 3 (migration 096): a measured fusion verdict must not hide
+    # inside 'unchecked' — that would bury exactly what the vocabulary names.
+    assert stamped_counts([_t("too_broad"), _t(None)]) == {
+        "entailed": 0, "partial": 0, "failed": 0, "too_broad": 1, "unchecked": 1,
     }

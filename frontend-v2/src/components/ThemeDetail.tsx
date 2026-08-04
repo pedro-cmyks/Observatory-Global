@@ -18,6 +18,10 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from '../lib/icons'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { TierChip } from './TierChip'
+import { RelationshipChip } from './RelationshipChip'
+import { fetchTopicRelationship, type TopicRelationship } from '../lib/topicRelationship'
+import { EvidenceRoute } from './EvidenceRoute'
+import { buildTopicEvidenceRoute } from '../lib/evidenceRoute'
 import { buildKeySubjects, type SubjectType } from '../lib/countryBriefSubjects'
 
 const SUBJECT_BADGE: Record<SubjectType, string> = {
@@ -251,6 +255,19 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             .then(r => r.json())
             .then(d => { if (alive && d?.items) setDiscussion(d) })
             .catch(() => { /* section absent */ })
+        return () => { alive = false }
+    }, [theme])
+
+    // #168: press-vs-public relationship for this thread — full mode (all 5
+    // types render, media-led included; the list rows only badge the
+    // exceptions). Same topic-backed gate as thread voice: only topics with
+    // typed membership rows can carry the measurement. Failure -> absent.
+    const [relationship, setRelationship] = useState<TopicRelationship | null>(null)
+    useEffect(() => {
+        setRelationship(null)
+        if (!canHaveThreadVoice(theme)) return
+        let alive = true
+        fetchTopicRelationship(theme).then(rel => { if (alive) setRelationship(rel) })
         return () => { alive = false }
     }, [theme])
 
@@ -668,7 +685,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 </div>
 
 
-                <div className="theme-detail-header">
+                <div className="theme-detail-header" id="td-header">
                     <span className="theme-detail-icon">{getThemeIcon(theme)}</span>
                     <div style={{ flex: 1 }}>
                         <h2>
@@ -742,6 +759,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     source={data.source}
                                     warnings={data.warnings}
                                 />
+                                <RelationshipChip rel={relationship} />
                             </div>
                         )}
                         {conflictScopeCountry && scopedConflicts.length > 0 && (
@@ -763,6 +781,22 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <span>{data.coherence.warning}</span>
                                 <span className="theme-coherence-score">coherence {data.coherence.score.toFixed(2)}</span>
                             </div>
+                        )}
+                        {/* #173 Evidence Route — the topic funnel, each chip its real
+                            count, clickable to scroll to the section it names. Query
+                            threads skip it: raw/gate lineage does not apply to them. */}
+                        {data && !isQueryThread && (
+                            <EvidenceRoute
+                                steps={buildTopicEvidenceRoute({
+                                    topicLabel: displayLabel,
+                                    rawAssignedCount: data.rawTotal ?? data.total,
+                                    verifiedCount: data.total,
+                                    countryCount: data.countryBreakdown.length,
+                                    outletCount: data.topSources.length,
+                                    sourcedEvidenceCount: data.signals.length,
+                                })}
+                                onStepClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            />
                         )}
                     </div>
                 </div>
@@ -1132,7 +1166,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             const totalFramingSignals = framing.reduce((s, c) => s + c.signal_count, 0)
                             const extraCountries = data.countryBreakdown.length - countryFramingRows.length
                             return (
-                                <div className="theme-section framing-section">
+                                <div className="theme-section framing-section" id="td-coverage">
                                     <div className="framing-header-row">
                                         <h3 data-help="Each card shows how a country's media frames this topic. Tone ranges from −10 (critical) to +10 (supportive). Click any card to see country-specific signals.">How It's Covered</h3>
                                         <span className="framing-scope">
@@ -1313,7 +1347,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
                         {/* Top Sources */}
                         {data.topSources.length > 0 && (
-                            <div className="theme-section">
+                            <div className="theme-section" id="td-sources">
                                 <h3>Top Sources</h3>
                                 <div className="source-list">
                                     {data.topSources.map(s => {
@@ -1386,7 +1420,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             original article. Per-source coverage lives in the
                             expand under each Top Source above. */}
                         {data.signals.length > 0 && (
-                            <div className="theme-section">
+                            <div className="theme-section" id="td-signals">
                                 <button
                                     className="all-coverage-toggle"
                                     onClick={() => setShowAllCoverage(v => !v)}

@@ -62,6 +62,7 @@ export const LABEL_REVIEW_FLOOR = LEAD_CONFIDENCE_FLOOR
 export type LabelReviewReason =
   | 'label-failed'
   | 'label-partial'
+  | 'label-too-broad'
   | 'low-confidence'
   | 'awaiting-verification'
 
@@ -94,6 +95,9 @@ export function labelReviewReason(input: LabelReviewInput): LabelReviewReason | 
   const status = input.labelStatus
   if (status === 'failed') return 'label-failed'
   if (status === 'partial') return 'label-partial'
+  // #261 item 3 (migration 096): the court measured a mega-topic fusion — the
+  // receipts span multiple distinct stories no single label could describe.
+  if (status === 'too_broad') return 'label-too-broad'
   if (status === 'entailed') return null
 
   // Unchecked (null / undefined / anything else). A row the court explicitly
@@ -137,6 +141,8 @@ export function labelReviewTip(reason: LabelReviewReason, labelProposed?: string
       return `This label did not match its receipts.${advisory}`
     case 'label-partial':
       return `This label only partially matches its receipts.${advisory}`
+    case 'label-too-broad':
+      return `This topic spans multiple distinct stories — no single label describes the majority of its receipts.${advisory}`
     case 'low-confidence':
       return `Low assignment confidence — this label may not match its receipts yet.${advisory}`
     case 'awaiting-verification':
@@ -218,7 +224,11 @@ export function LabelReviewChip(props: LabelReviewChipProps): React.ReactElement
       data-reason={reason}
       data-tip={tip}
     >
-      {reason === 'awaiting-verification' ? 'AWAITING VERIFICATION' : 'LABEL UNDER REVIEW'}
+      {reason === 'awaiting-verification'
+        ? 'AWAITING VERIFICATION'
+        : reason === 'label-too-broad'
+          ? 'LABEL TOO BROAD'
+          : 'LABEL UNDER REVIEW'}
     </span>
   )
 }

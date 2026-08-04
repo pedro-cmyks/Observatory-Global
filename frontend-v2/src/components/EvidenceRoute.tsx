@@ -13,6 +13,11 @@ interface EvidenceRouteProps {
   onStepClick?: (targetId: string) => void
 }
 
+// Context-head steps (the entity the route starts from) carry no count by
+// design — they must not render the honest-absence "—" that a MISSING count
+// gets on the funnel steps.
+const HEAD_KEYS = new Set(['country', 'topic', 'person', 'signal'])
+
 export const EvidenceRoute: React.FC<EvidenceRouteProps> = ({ steps, onStepClick }) => {
   if (steps.length === 0) return null
   return (
@@ -30,7 +35,7 @@ export const EvidenceRoute: React.FC<EvidenceRouteProps> = ({ steps, onStepClick
             {step.count !== null && (
               <span className="evidence-route-count">{step.count.toLocaleString()}</span>
             )}
-            {step.count === null && step.key !== 'country' && (
+            {step.count === null && !HEAD_KEYS.has(step.key) && (
               <span className="evidence-route-count evidence-route-count--absent">—</span>
             )}
             {step.detail && (
