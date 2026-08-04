@@ -472,6 +472,24 @@ else
   echo "[scoped-snapshot] skip universe field build (ATLAS_UNIVERSE_FIELD=off)" >&2
 fi
 
+# Step 8 (2026-08-04): RECEIPT PRUNE — bound mig 097's sample_receipts growth.
+# emergent_clusters never prunes rows (identity history: dynamic_topic_members
+# references them) and the receipt writer stamps ~2,700 clusters/night, so the
+# jsonb column grows unbounded on the shared Supabase. The policy is
+# REFERENCE-STATE based, never cluster age alone (active topics reference
+# member clusters back to 2026-05-31 — age-based pruning would eat reachable
+# receipts of exactly the long stories mig 097 protects): NULL only where no
+# non-retired topic references the cluster AND every referencing retirement
+# (and the cluster itself) is older than 90d — outside the revival window.
+# Ledgered + restorable (see the script docstring). Non-fatal: a skipped
+# prune costs bytes, never correctness. Disable with ATLAS_RECEIPT_PRUNE=off.
+if [[ "${ATLAS_RECEIPT_PRUNE:-on}" == "on" ]]; then
+  atlas_step "sample-receipt prune" "$ROOT_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.prune_sample_receipts --execute
+else
+  echo "[scoped-snapshot] skip sample-receipt prune (ATLAS_RECEIPT_PRUNE=off)" >&2
+fi
+
 # The run's verdict. A provider outage or a majority-failed run now exits
 # non-zero — launchd records the failure instead of a plausible success. The
 # heavy-lock EXIT trap still fires on this exit, so the mutex is released.
