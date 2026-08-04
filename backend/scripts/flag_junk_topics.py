@@ -2,10 +2,13 @@
 
 Computes the content-based junk flag (scripts/topic_junk.classify_topic_junk) for
 every topic that carries unified-v2 members — the served + anchoring population —
-from four signals: the R3.1 category, the label, the per-topic distinct-source
-count over a member sample, and the PR-wire attorney-solicitation receipt fraction
-over the same sample (2026-08-03 census class). Persists dynamic_topics.is_junk /
-junk_reason, and
+from five signals: the R3.1 category, the label, the per-topic distinct-source
+count over a member sample, the PR-wire attorney-solicitation receipt fraction
+over the same sample (2026-08-03 census class), and the recurring service-content
+receipt fraction over the same sample (2026-08-04 fresh-cohort re-census class:
+daily exchange-rate posts / rating reiterations / gadget spec listicles /
+production-cost report mills / prayer-horoscope-lottery calendars). Persists
+dynamic_topics.is_junk / junk_reason, and
 (unless --no-demote) demotes junk ACTIVE topics to 'candidate' so they stop serving.
 
 Effects, once persisted:
@@ -32,9 +35,20 @@ from collections import Counter, defaultdict
 
 import asyncpg
 
-from scripts.topic_junk import classify_topic_junk, is_pr_wire_solicitation
+from scripts.topic_junk import (
+    classify_topic_junk,
+    is_pr_wire_solicitation,
+    is_recurring_service_content,
+)
 
 ENGINE_VERSION = "unified-v2"
+# The engine version serving/court actually read (thread detail + label court
+# default). The service-content witnesses (dt-633/4013/6485/1577, 2026-08-04)
+# carry their junk in this lane — their unified-v2 presence is 1-12 incidental
+# members — so the service fraction must see the SERVED evidence receipts, not
+# only the unified-v2 sample. nsrc + pr-wire stay on the unified-v2 sample
+# (unchanged behavior).
+SERVED_ENGINE_VERSION = "v1-compat"
 # Denominator for the coverage %: embedded signals in the build window. 336h to
 # match the runner's PROJECT_HOURS (build_unified_topics --hours). Reported both
 # ways (embedded-window and 24h-signals) so the number is unambiguous.
@@ -61,40 +75,58 @@ async def _topics_with_members(conn: asyncpg.Connection) -> list[asyncpg.Record]
 
 async def _member_source_stats(
     conn: asyncpg.Connection, ids: list[int], sample: int,
-) -> tuple[dict[int, int], dict[int, float | None]]:
-    """Over the `sample` most-recent members of each topic: distinct outlet
-    count + fraction of receipts that are PR-wire attorney-solicitation spam
-    (None when the topic yields no joinable sample rows)."""
+) -> tuple[dict[int, int], dict[int, float | None], dict[int, float | None]]:
+    """Per topic, over the `sample` most-recent members PER LANE: distinct
+    outlet count + PR-wire spam fraction (both from the unified-v2 sample,
+    unchanged) + recurring service-content fraction (over the UNION of the
+    unified-v2 sample and the SERVED v1-compat evidence receipts — the lane
+    the court measured and the analyst sees; junk in either lane pollutes).
+    Fractions are None when the topic yields no joinable rows in their lane."""
     rows = await conn.fetch(
         f"""
-        SELECT tid, source_name, source_url, headline FROM (
-          SELECT (split_part(tm.topic_id, '-', 3))::int AS tid, s.source_name,
+        SELECT lane, tid, source_name, source_url, headline FROM (
+          SELECT CASE WHEN tm.engine_version = $1 THEN 'u2' ELSE 'served' END
+                     AS lane,
+                 (split_part(tm.topic_id, '-', 3))::int AS tid, s.source_name,
                  s.source_url, s.headline,
-                 row_number() OVER (PARTITION BY tm.topic_id
+                 row_number() OVER (PARTITION BY tm.topic_id, tm.engine_version
                                     ORDER BY s.timestamp DESC) AS rn
           FROM topic_members tm
           JOIN signals_v2 s ON s.id = tm.signal_id
-          WHERE tm.engine_version = $1
-            AND tm.topic_id = ANY($2::text[])
+          WHERE tm.topic_id = ANY($2::text[])
+            AND (tm.engine_version = $1
+                 OR (tm.engine_version = $3 AND tm.role = 'evidence'
+                     AND COALESCE(tm.quarantined, false) = false))
         ) q WHERE rn <= {int(sample)}
         """,
         ENGINE_VERSION,
         [f"dynamic-topic-{i}" for i in ids],
+        SERVED_ENGINE_VERSION,
     )
     srcs: dict[int, set[str]] = defaultdict(set)
     pr_counts: dict[int, list[int]] = defaultdict(lambda: [0, 0])  # [spam, total]
+    svc_counts: dict[int, list[int]] = defaultdict(lambda: [0, 0])  # [svc, total]
     for r in rows:
-        if r["source_name"]:
-            srcs[r["tid"]].add(r["source_name"])
-        pr_counts[r["tid"]][1] += 1
-        if is_pr_wire_solicitation(r["source_name"], r["source_url"], r["headline"]):
-            pr_counts[r["tid"]][0] += 1
+        if r["lane"] == "u2":
+            if r["source_name"]:
+                srcs[r["tid"]].add(r["source_name"])
+            pr_counts[r["tid"]][1] += 1
+            if is_pr_wire_solicitation(
+                    r["source_name"], r["source_url"], r["headline"]):
+                pr_counts[r["tid"]][0] += 1
+        svc_counts[r["tid"]][1] += 1
+        if is_recurring_service_content(r["headline"]):
+            svc_counts[r["tid"]][0] += 1
     nsrc = {i: len(srcs.get(i, set())) for i in ids}
     pr_frac = {
         i: (pr_counts[i][0] / pr_counts[i][1] if pr_counts[i][1] else None)
         for i in ids
     }
-    return nsrc, pr_frac
+    svc_frac = {
+        i: (svc_counts[i][0] / svc_counts[i][1] if svc_counts[i][1] else None)
+        for i in ids
+    }
+    return nsrc, pr_frac, svc_frac
 
 
 async def _useful_coverage(conn: asyncpg.Connection, junk_ids: set[int]) -> dict:
@@ -132,7 +164,8 @@ async def _useful_coverage(conn: asyncpg.Connection, junk_ids: set[int]) -> dict
     }
 
 
-async def run(dry_run: bool, no_demote: bool, sample: int) -> int:
+async def run(dry_run: bool, no_demote: bool, sample: int,
+              list_reason: str | None = None) -> int:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         print("DATABASE_URL not set", file=sys.stderr)
@@ -148,14 +181,15 @@ async def run(dry_run: bool, no_demote: bool, sample: int) -> int:
             print("no topics carry unified-v2 members — nothing to flag")
             return 0
         ids = [int(r["id"]) for r in topics]
-        nsrc, pr_frac = await _member_source_stats(conn, ids, sample)
+        nsrc, pr_frac, svc_frac = await _member_source_stats(conn, ids, sample)
 
         junk: dict[int, str] = {}
         reason_hist: Counter = Counter()
         for r in topics:
             reason = classify_topic_junk(
                 r["category"], r["label"], int(r["mem"]), nsrc.get(int(r["id"])),
-                pr_wire_fraction=pr_frac.get(int(r["id"])))
+                pr_wire_fraction=pr_frac.get(int(r["id"])),
+                service_fraction=svc_frac.get(int(r["id"])))
             if reason:
                 junk[int(r["id"])] = reason
                 reason_hist[reason.split(";")[0].split(":")[0]] += 1
@@ -184,6 +218,18 @@ async def run(dry_run: bool, no_demote: bool, sample: int) -> int:
         print(f"coverage vs 24h-signals ({cov['denom_24h_signals']}): "
               f"total {cov['total_cov_24h']:.1%} -> useful {cov['useful_cov_24h']:.1%}")
         print(f"would demote {len(demote_ids)} active junk topics -> candidate")
+
+        if list_reason:
+            # spot-check surface: every flagged topic whose reason carries the
+            # given prefix, with state + label (used by the service-content
+            # dry-run review; harmless in every mode).
+            by_id = {int(r["id"]): r for r in topics}
+            print(f"flagged topics matching reason '{list_reason}':")
+            for i in sorted(junk):
+                if list_reason in junk[i]:
+                    r = by_id[i]
+                    print(f"  dt-{i} [{r['state']}] ({r['category']}) "
+                          f"{r['label']!r} -> {junk[i]}")
 
         if dry_run:
             print("(dry-run — no writes)")
@@ -223,8 +269,12 @@ def main() -> int:
                     help="flag is_junk but leave active state (de-anchor only)")
     ap.add_argument("--sample", type=int, default=60,
                     help="members per topic sampled for the distinct-source count")
+    ap.add_argument("--list-reason", default=None,
+                    help="print flagged topics whose junk_reason contains this "
+                         "substring (spot-check surface, e.g. 'service-content')")
     args = ap.parse_args()
-    return asyncio.run(run(args.dry_run, args.no_demote, args.sample))
+    return asyncio.run(
+        run(args.dry_run, args.no_demote, args.sample, args.list_reason))
 
 
 if __name__ == "__main__":

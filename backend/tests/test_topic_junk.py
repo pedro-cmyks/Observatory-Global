@@ -10,8 +10,10 @@ from scripts.topic_junk import (
     DUMP_MAX_SOURCES,
     DUMP_MIN_MEMBERS,
     PR_WIRE_MIN_FRACTION,
+    SERVICE_CONTENT_MIN_FRACTION,
     classify_topic_junk,
     is_pr_wire_solicitation,
+    is_recurring_service_content,
 )
 
 
@@ -169,3 +171,187 @@ def test_guard_real_stories_survive_with_zero_pr_wire():
                                778, 12, pr_wire_fraction=0.0) is None
     assert classify_topic_junk("Business & Markets", "Financial Market Movements",
                                198, 30, pr_wire_fraction=0.0) is None
+
+
+# --- recurring service-content class (2026-08-04 fresh-cohort re-census) ---
+# Calendar-driven posts published daily regardless of events. Witnesses:
+# dt-633 (daily Saudi riyal / gold-price posts from Egyptian SEO outlets +
+# Friday-prayer duas), dt-4013 (analyst rating reiterations), dt-6485 (budget
+# 5G phone spec listicles), dt-1577 (chemical production-cost boilerplate).
+# Measured 2026-08-04 (court-scoped receipts, witnesses vs 30 random actives):
+# witnesses 88-100% of receipts match, all 30 random topics 0%. Every family
+# requires BOTH halves so a pattern alone never kills genuine news.
+
+def test_daily_rate_receipts_match_witnesses():
+    # real receipts from dt-633 (2026-08-04 prod): rate-word + today-word +
+    # weekday/date — the full calendar enumeration is the service signature
+    cases = [
+        "سعر الريال السعودي اليوم الجمعة 31-7-2026 في البنوك",
+        "أسعار الذهب اليوم الاثنين في السعودية",
+        "تراجع سعر الريال السعودي  اليوم الأحد 2 أغسطس 2026",
+        "استقرار سعر الريال السعودي اليوم الخميس 30 يوليو 2026.. تعرف إلى أسعار جميع البنوك",
+        "أسعار الذهب في السعودية اليوم الثلاثاء",
+        # same shape in Spanish (corpus-verified live receipt, laprovincia.es)
+        "El precio de la gasolina y diésel hoy sábado 1 de agosto: las gasolineras más baratas",
+        # cotización variant (live receipt from dt-1329, elpais.com.uy)
+        "Unidad Indexada hoy: cuánto cotiza la UI este martes 4 de agosto de 2026 en pesos uruguayos",
+        "Precio del dólar hoy en República Dominicana: martes 4 de agosto de 2026",
+        # and in English (maharashtratimes.com live receipt)
+        "Gold Silver Rate Hike Today 3 August 2026",
+    ]
+    for h in cases:
+        assert is_recurring_service_content(h), h
+
+
+def test_price_news_is_not_service_content():
+    # a price MOVE tied to an event is news; both-halves discipline means the
+    # rate-word alone (or with a bare "today") never fires
+    for h in [
+        "Oil price crashes after OPEC decision",
+        "Gold prices surge today as dollar weakens",
+        "Egypt central bank raises interest rates on Thursday",
+        # rate-word + weekday but no today-word: market commentary, not service
+        "The Fed Didn't Raise Rates Wednesday – So Why Did the Market Plunge?",
+        "Precio del dólar repunta tras el anuncio de aranceles",
+        "La bolsa de Buenos Aires cotiza en alza tras el acuerdo comercial",
+    ]:
+        assert not is_recurring_service_content(h), h
+
+
+def test_prayer_horoscope_lottery_calendars_match():
+    # dt-633 receipts include Friday-prayer duas; horoscope/lottery same class
+    cases = [
+        "دعاء الصباح اليوم الجمعة 31-7-2026.. أفضل الأدعية المستحبة لبدء يوم الجمعة بالخير والبركة",
+        "Aries Horoscope Today, August 1, 2026: Keep your expectations realistic",
+        "Horóscopo de hoy, martes 04 de agosto: las predicciones para la salud",
+        "Kerala Lottery Result Today 4 August 2026: Sthree Sakthi SS-400 winners",
+        # Spanish lottery draws (live receipts from dt-1329)
+        "Sorteo de la Lotería de México: números ganadores de hoy lunes, 3 de agosto de 2026",
+        "Resultados Super Astro Luna de hoy: números ganadores del último sorteo del lunes 3 de agosto",
+    ]
+    for h in cases:
+        assert is_recurring_service_content(h), h
+    # calendar word in a NEWS context (no calendar enumeration) never fires
+    assert not is_recurring_service_content(
+        "Lottery winner sues state over unpaid jackpot")
+    assert not is_recurring_service_content(
+        "Detienen al organizador del sorteo fraudulento en Madrid")
+
+
+def test_rating_reiteration_boilerplate_matches_witnesses():
+    # real receipts from dt-4013 (2026-08-04 prod) — MarketBeat-network shapes
+    cases = [
+        'Deutsche Bank Aktiengesellschaft Reiterates "Buy" Rating for NatWest Group (LON:NWG)',
+        "Unite Group (LON:UTG) Given Hold Rating at Jefferies Financial Group",
+        "Greggs' (GRG) Sell Rating Reiterated at Deutsche Bank Aktiengesellschaft",
+        "Lloyds Banking Group (LON:LLOY) Receives Buy Rating from Jefferies Financial Group",
+        'NatWest Group\'s (NWG) "Buy" Rating Reaffirmed at Jefferies Financial Group',
+        "dotdigital Group (LON:DOTD) Earns \"Buy\" Rating from Canaccord Genuity Group",
+        "London Stock Exchange Group (LON:LSEG) Given Outperform Rating at Royal Bank Of Canada",
+        "QXO (QXO) – Research Analysts' Weekly Ratings Changes",
+        "O-I Glass (OI) – Research Analysts' Weekly Ratings Updates",
+        "Recent Analysts' Ratings Changes for BrightSpring Health Services (BTSG)",
+        "Zacks Research Maintains $12.50 Price Target for Vodafone",
+    ]
+    for h in cases:
+        assert is_recurring_service_content(h), h
+
+
+def test_agency_rating_news_is_not_service_content():
+    # sovereign / agency rating NEWS must never fire (different vocabulary:
+    # affirms/downgrades, no brokerage grade-word next to "rating")
+    for h in [
+        "Fitch affirms US AAA rating",
+        "S&P downgrades France's credit rating on debt concerns",
+        "Moody's maintains negative outlook on French banks",
+        "EU watchdog investigates credit rating agencies",
+    ]:
+        assert not is_recurring_service_content(h), h
+
+
+def test_production_cost_report_boilerplate_matches_witnesses():
+    # real receipts from dt-1577 (briefingwire.com SEO report mill)
+    cases = [
+        "Calcium Cyanamide Production Cost, Analysis & Breakdown",
+        "Calcium Iodate Production Cost | Cost Analysis & Breakdown",
+        "Calcium Lactate Price Trend 2026: Market Analysis, Drivers, Forecast",
+        "Bosentan Production Cost, Cost Analysis & Breakdown",
+    ]
+    for h in cases:
+        assert is_recurring_service_content(h), h
+    # production costs in a NEWS sentence never fire
+    assert not is_recurring_service_content(
+        "EV production cost falls as battery prices drop")
+    assert not is_recurring_service_content(
+        "Farmers protest rising production costs across France")
+
+
+def test_gadget_spec_listicles_match_witnesses():
+    # real receipts from dt-6485: mAh battery-spec numbers + multi-way "vs"
+    # spec comparisons (both carry model/spec digits by construction)
+    cases = [
+        "OnePlus का 7,000 mAh बैटरी वाला नया 5G फोन लॉन्च, सस्ते में मिलेगा",
+        "6500mAh ব্যাটারি সহ সস্তা iQOO 5G ফোনের সেল আগামীকাল",
+        "OnePlus N6x vs iQOO Z11 Lite vs Realme Narzo 100x 5G: ডিসপ্লে, প্রসেসর তুলনা",
+        "Vivo T5e vs Samsung Galaxy M17e 5G vs Realme P4 Lite 5G: 16 হাজার টাকার বাজেটে",
+    ]
+    for h in cases:
+        assert is_recurring_service_content(h), h
+
+
+def test_gadget_needs_spec_shape():
+    # plain product news / digit-free comparisons never fire
+    for h in [
+        "Apple launches iPhone 17 with satellite messaging",
+        "Singapore vs Hong Kong vs Dubai: Regional HQ Trade-Offs for Investors",
+        "Samsung and Apple battle for the budget 5G market",
+        "Nottm Forest vs Blackburn Rovers preview",
+    ]:
+        assert not is_recurring_service_content(h), h
+
+
+def test_service_content_handles_none_and_entities():
+    assert not is_recurring_service_content(None)
+    assert not is_recurring_service_content("")
+    # HTML-entity-encoded quotes still match (the #264 lesson)
+    assert is_recurring_service_content(
+        "Deutsche Bank Reiterates &quot;Buy&quot; Rating for NatWest Group")
+
+
+def test_service_fraction_flags_witness_topics():
+    # dt-633: 11/11 receipts are daily-rate/dua posts; every other rule blind
+    # (category "Currency & Fiscal Policy", no listicle label, 11 members)
+    r = classify_topic_junk("Currency & Fiscal Policy", "Saudi Riyal and Gold Prices",
+                            11, 4, service_fraction=1.0)
+    assert r and "service-content" in r
+    # dt-4013: 22/22 rating reiterations in an honest-sounding category
+    r = classify_topic_junk("Business & Markets", "Analyst Rating Reiterations",
+                            22, 3, service_fraction=1.0)
+    assert r and "service-content" in r
+    # dt-6485: 7/8 gadget listicles
+    r = classify_topic_junk("Science & Technology", "Budget 5G Smartphone Launches",
+                            8, 3, service_fraction=7 / 8)
+    assert r and "service-content" in r
+    # dt-1577: 18/18 production-cost boilerplate
+    r = classify_topic_junk("Business & Markets", "Chemical Production Cost Analysis",
+                            18, 1, service_fraction=1.0)
+    assert r and "service-content" in r
+
+
+def test_service_fraction_below_threshold_or_missing_is_skipped():
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, service_fraction=0.2) is None
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, service_fraction=None) is None
+    # boundary: exactly at the floor fires
+    assert classify_topic_junk("Business & Markets", "x",
+                               10, 5, service_fraction=SERVICE_CONTENT_MIN_FRACTION)
+
+
+def test_guard_real_stories_survive_with_zero_service_fraction():
+    assert classify_topic_junk("Armed conflict escalation", "NATO Summit in Ankara",
+                               778, 12, pr_wire_fraction=0.0,
+                               service_fraction=0.0) is None
+    assert classify_topic_junk("Business & Markets", "Financial Market Movements",
+                               198, 30, pr_wire_fraction=0.0,
+                               service_fraction=0.0) is None

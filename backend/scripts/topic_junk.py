@@ -110,6 +110,98 @@ ATTORNEY_SOLICITATION = re.compile(
 # dilutes the fraction well below the floor.
 PR_WIRE_MIN_FRACTION = 0.5
 
+# Recurring SERVICE-CONTENT class (2026-08-04 fresh-cohort re-census): posts
+# published on a CALENDAR, not on events — daily exchange-rate/gold-price
+# posts (Egyptian SEO outlets), Friday-prayer duas, brokerage rating
+# reiterations (the MarketBeat autogen network), budget-gadget spec
+# listicles, and SEO production-cost/price-trend report mills. Witnesses
+# dt-633 / dt-4013 / dt-6485 / dt-1577; category/label/dump/pr-wire rules all
+# blind (honest-sounding categories, no listicle label, 8-22 members).
+# Measured on court-scoped receipts (witnesses vs 30 random actives,
+# docs/research + this module's shipping run): witnesses 88-100% of receipts
+# match, ALL 30 random topics 0%, corpus-wide fire rate ~0.1% and true.
+# BOTH-halves discipline per family — a pattern alone never kills real news:
+#   A daily-rate: rate-word AND today-word AND weekday/date. "Oil price
+#     crashes after OPEC decision" (no calendar) and "The Fed Didn't Raise
+#     Rates Wednesday" (no today-word) never fire; the service posts always
+#     enumerate the calendar ("سعر الريال اليوم الجمعة 31-7-2026").
+#   B calendar content: prayer/horoscope/lottery word AND calendar mark.
+#     "Lottery winner sues state" never fires.
+#   C rating boilerplate: brokerage GRADE word inside the rating phrase.
+#     Agency news ("Fitch affirms AAA", "S&P downgrades France") never fires.
+#   D report mill: "Production Cost"/"Price Trend" + analysis/breakdown/
+#     forecast boilerplate. "EV production cost falls" never fires.
+#   E gadget spec: mAh spec-number, or a 3-way "vs" comparison carrying a
+#     digit (model numbers). "Singapore vs Hong Kong vs Dubai" never fires.
+_SVC_RATE_WORD = re.compile(
+    r"(\bprices?\b|\brates?\b|\bprecios?\b|\bcotizaci[oó]n\b|\bcotiza\b|"
+    r"سعر|أسعار|اسعار)", re.IGNORECASE)
+_SVC_TODAY = re.compile(r"(\btoday\b|\bhoy\b|اليوم)", re.IGNORECASE)
+_SVC_WEEKDAY = re.compile(
+    r"(\bmonday\b|\btuesday\b|\bwednesday\b|\bthursday\b|\bfriday\b|"
+    r"\bsaturday\b|\bsunday\b|"
+    r"\blunes\b|\bmartes\b|\bmi[eé]rcoles\b|\bjueves\b|\bviernes\b|"
+    r"\bs[aá]bado\b|\bdomingo\b|"
+    r"الاثنين|الإثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|السبت|الأحد|الاحد)",
+    re.IGNORECASE)
+_SVC_NUM_DATE = re.compile(r"\b\d{1,2}\s*[-/]\s*\d{1,2}\s*[-/]\s*\d{2,4}\b")
+_SVC_MONTH_DATE = re.compile(
+    r"\b\d{1,2}\s+(january|february|march|april|may|june|july|august|"
+    r"september|october|november|december|"
+    r"enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|"
+    r"noviembre|diciembre|"
+    r"يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|"
+    r"أكتوبر|اكتوبر|نوفمبر|ديسمبر)",
+    re.IGNORECASE)
+_SVC_CAL_WORD = re.compile(
+    r"(دعاء|أدعية|الأدعية|horoscopes?\b|hor[oó]scopos?\b|rashifal|राशिफल|"
+    r"panchang|पंचांग|lottery results?|lotto results?|"
+    r"\bsorteo\b|\bloter[ií]a\b|n[uú]meros ganadores)", re.IGNORECASE)
+_SVC_GRADE = (
+    r"(buy|sell|hold|outperform|underperform|overweight|underweight|neutral|"
+    r"market perform|sector perform|moderate buy|strong[- ]buy|positive)")
+_SVC_RATING_BOILER = re.compile(
+    r"((reiterat|reaffirm)\w*\s+[\"“']?" + _SVC_GRADE + r"[\"”']?\s+rating|"
+    + _SVC_GRADE + r"[\"”']?\s+rating\s+(reiterated|reaffirmed)\b|"
+    r"(given|receives?|earns?)\s+[\"“']?" + _SVC_GRADE +
+    r"[\"”']?\s+rating\s+(at|from)\b|"
+    r"maintains?\s+.{0,30}price\s+target|"
+    r"analysts['’]?\s+(weekly\s+|recent\s+)?ratings?\s+(changes|updates))",
+    re.IGNORECASE)
+_SVC_REPORT_BOILER = re.compile(
+    r"(production\s+cost\W{0,8}.{0,30}(analysis|breakdown|report)|"
+    r"price\s+trend\s+20\d\d|price\s+trend\W{0,4}.{0,40}(analysis|forecast))",
+    re.IGNORECASE)
+_SVC_MAH = re.compile(r"\d[\d,.٫٬]*\s*mAh", re.IGNORECASE)
+_SVC_DOUBLE_VS = re.compile(r"\svs\.?\s.{1,80}\svs\.?\s", re.IGNORECASE)
+_SVC_DIGIT = re.compile(r"\d")
+# Junk when at least half the sampled receipts are service content (mirrors
+# PR_WIRE_MIN_FRACTION). Witnesses sit at 0.88-1.0; every random-30 topic
+# measured 0.0, so a real story with one calendar-shaped receipt never nears
+# the floor.
+SERVICE_CONTENT_MIN_FRACTION = 0.5
+
+
+def is_recurring_service_content(headline: str | None) -> bool:
+    """One receipt = calendar-driven service content (see family comments)."""
+    if not headline:
+        return False
+    h = _html.unescape(headline)
+    calendar_mark = (
+        _SVC_WEEKDAY.search(h) or _SVC_NUM_DATE.search(h)
+        or _SVC_MONTH_DATE.search(h))
+    if _SVC_RATE_WORD.search(h) and _SVC_TODAY.search(h) and calendar_mark:
+        return True  # A daily-rate
+    if _SVC_CAL_WORD.search(h) and (calendar_mark or _SVC_TODAY.search(h)):
+        return True  # B prayer/horoscope/lottery calendar
+    if _SVC_RATING_BOILER.search(h):
+        return True  # C brokerage rating boilerplate
+    if _SVC_REPORT_BOILER.search(h):
+        return True  # D production-cost / price-trend report mill
+    if _SVC_MAH.search(h) or (_SVC_DOUBLE_VS.search(h) and _SVC_DIGIT.search(h)):
+        return True  # E gadget spec listicle
+    return False
+
 
 def is_pr_wire_solicitation(
     source_name: str | None,
@@ -129,6 +221,7 @@ def classify_topic_junk(
     member_count: int,
     distinct_sources: int | None,
     pr_wire_fraction: float | None = None,
+    service_fraction: float | None = None,
 ) -> str | None:
     """Return a semicolon-joined junk reason, or None if the topic is useful.
 
@@ -136,6 +229,8 @@ def classify_topic_junk(
     (unified-v2); pass None when unavailable (then the feed-dump rule is skipped —
     the category/label rules still apply). pr_wire_fraction is the share of that
     same sample matching is_pr_wire_solicitation; None skips the PR-wire rule.
+    service_fraction is the share matching is_recurring_service_content; None
+    skips the service-content rule.
     """
     reasons: list[str] = []
     if category and category in JUNK_CATEGORIES:
@@ -150,4 +245,9 @@ def classify_topic_junk(
         reasons.append(f"feed-dump:{distinct_sources}src/{member_count}mem")
     if pr_wire_fraction is not None and pr_wire_fraction >= PR_WIRE_MIN_FRACTION:
         reasons.append(f"pr-wire-solicitation:{pr_wire_fraction:.0%}")
+    if (
+        service_fraction is not None
+        and service_fraction >= SERVICE_CONTENT_MIN_FRACTION
+    ):
+        reasons.append(f"service-content:{service_fraction:.0%}")
     return ";".join(reasons) if reasons else None
