@@ -797,7 +797,52 @@ async def _dynamic_topic_detail(
         "countryFraming": [],
         "relatedConcepts": [],
     }
-    if not sample_ids:
+    # ------------------------------------------------------------------
+    # Member-receipt lanes (2026-08-04, gold day-5 GQ-08/GQ-12): the
+    # emergent_clusters.sample_signal_ids lane persists *references* while
+    # the signals_v2 7-day hot retention deletes the referenced rows, so a
+    # long-running story's persisted sample decays to 1-2 live receipts
+    # while `total` (agg_n_signals, a persisted integer that survives
+    # retention) still advertises the full membership — dt-8057 served
+    # 41/1 silently. Union the typed topic_members evidence projection
+    # (engine-agnostic across v1-compat/unified-v2, deduped — the
+    # relationship-endpoint UNION pattern) with the cluster sample ids and
+    # let the signals_v2 join decide liveness. When every lane together
+    # serves fewer live receipts than min(5, total), the payload carries
+    # degraded/degraded_reason (the query_thread G5 contract shape) —
+    # absence is fine, silent thinness is not.
+    # ------------------------------------------------------------------
+    member_ids: list[int] = list(dict.fromkeys(
+        int(x) for x in sample_ids if x is not None
+    ))
+    try:
+        tm_rows = await conn.fetch(
+            """
+            SELECT DISTINCT tm.signal_id
+            FROM topic_members tm
+            WHERE tm.topic_id = $1
+              AND tm.role = 'evidence'
+              AND tm.quarantined IS NOT TRUE
+            """,
+            f"dynamic-topic-{topic_row['id']}",
+        )
+        seen = set(member_ids)
+        for r in tm_rows:
+            sid = int(r["signal_id"])
+            if sid not in seen:
+                seen.add(sid)
+                member_ids.append(sid)
+    except Exception:
+        # topic_members absent/degraded — the cluster-sample lane still
+        # serves; lane failure must never cost the whole detail.
+        pass
+
+    def _starvation(live_count: int) -> tuple[bool, Optional[str]]:
+        starved = live_count < min(5, gated_total)
+        return starved, ("member_sample_starved" if starved else None)
+
+    if not member_ids:
+        starved, degraded_reason = _starvation(0)
         return {
             **base_payload,
             "signalSample": 0,
@@ -811,23 +856,28 @@ async def _dynamic_topic_detail(
             "topSources": [],
             "topPersons": [],
             "timeline": [],
-            "warnings": ["dynamic_topic_empty_sample"],
+            "degraded": starved,
+            "degraded_reason": degraded_reason,
+            "warnings": ["dynamic_topic_empty_sample"]
+            + (["member_sample_starved"] if starved else []),
         }
 
-    where = ["s.id = ANY($1::bigint[])"]
-    params: list = [sample_ids]
-    if country_code:
-        where.append("s.country_code = $2")
-        params.append(country_code)
-    where_clause = " AND ".join(where)
-
-    signals = await conn.fetch(f"""
+    signals_all = await conn.fetch("""
         SELECT s.id, s.source_lang, s.timestamp, s.country_code, s.source_name,
                s.source_url, s.sentiment, s.headline, s.themes, s.persons
         FROM signals_v2 s
-        WHERE {where_clause}
+        WHERE s.id = ANY($1::bigint[])
         ORDER BY s.timestamp DESC
-    """, *params)
+        LIMIT 200
+    """, member_ids)
+    # Starvation is judged UNSCOPED: a thin country slice of a healthy
+    # sample is honest scoping, not serving decay.
+    live_member_count = len(signals_all)
+    starved, degraded_reason = _starvation(live_member_count)
+    signals = (
+        [s for s in signals_all if s["country_code"] == country_code]
+        if country_code else list(signals_all)
+    )
 
     sample = len(signals)
     avg_sentiment = (
@@ -851,12 +901,14 @@ async def _dynamic_topic_detail(
     # which is "could not look", not "nothing there": it gets a named warning
     # so zero semantic members never masquerades as a measured absence.
     warnings = ["dynamic_topic_member_preview_sample"]
+    if starved:
+        warnings.append("member_sample_starved")
     semantic_members: list = []
     try:
         from app.services.research_semantic import fetch_semantic_thread_members
 
         semantic_members = await fetch_semantic_thread_members(
-            conn, int(topic_row["id"]), hours=hours, exclude_ids=sample_ids,
+            conn, int(topic_row["id"]), hours=hours, exclude_ids=member_ids,
         )
         if country_code:
             semantic_members = [
@@ -894,6 +946,8 @@ async def _dynamic_topic_detail(
         "semanticMemberCount": len(semantic_members),
         "semanticNonEnglishCount": len(non_english),
         "coherence": coherence,
+        "degraded": starved,
+        "degraded_reason": degraded_reason,
         "warnings": warnings,
     }
 
