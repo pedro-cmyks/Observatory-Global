@@ -383,7 +383,7 @@ def test_hydrate_topics_excludes_umbrellas_from_matching():
                     "n_snapshots": 2, "agg_n_signals": 20, "mean_cohesion": 0.9,
                     "noise_rate": None, "is_junk": False,
                     "revived_at": None, "label_status": None,
-                    "blob_confirmed_at": None,
+                    "blob_confirmed_at": None, "revival_count": 2,
                 }
                 return [
                     {**base, "id": 1, "identity_key": "dyn-x-1", "label": "Real Story",
@@ -408,6 +408,9 @@ def test_hydrate_topics_excludes_umbrellas_from_matching():
     topics, done = asyncio.run(hydrate_topics(_FakeConn(), clusters_by_id))
     assert [t.identity_key for t in topics] == ["dyn-x-1"]  # umbrella never a match target
     assert done == {100, 200}  # membership accounting unchanged
+    # revival_count (mig 097) hydrates from the persisted row — the re-revival
+    # cap is meaningless if the counter resets to 0 every incremental run.
+    assert topics[0].revival_count == 2
 
 
 # ── P1 (2026-07-30): one lifecycle tick per pass ─────────────────────────────
@@ -912,3 +915,213 @@ def test_regrade_blob_fresh_stamp_blocks_promotion():
     assert fresh.state == "candidate"
     assert stale.state == "active"
     assert (promoted, demoted) == (1, 0)
+
+
+# ── Re-revival cap (2026-08-04 re-census fresh cohort) ───────────────────────
+# docs/research/recall-229/2026-08-04-recensus-fresh-cohort.md: VETTED
+# revivals measured 33.3% real — the residual tail is sticky old identities
+# (sport churn / old wars / service buckets) that re-match promiscuously
+# forever. revival_count (mig 097) counts revivals since the last CLEAN
+# promotion (candidate->active through the court gate, which resets it); at
+# >= REVIVAL_CAP the revival door closes: a re-matching deprecated/retired
+# topic stays RETIRED (hard-retired by exhaustion). A candidate at the cap is
+# living its last granted revival — court-gated promotion stays open.
+
+def test_revival_cap_is_frozen_at_three():
+    from scripts.project_dynamic_topics import REVIVAL_CAP
+    assert REVIVAL_CAP == 3
+
+
+def test_next_state_v2b_exhausted_retired_stays_retired():
+    s = next_state("retired", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, revival_exhausted=True)
+    assert s == "retired"
+
+
+def test_next_state_v2b_exhausted_deprecated_hard_retires():
+    # "stays retired — hard-retired by exhaustion": the deprecated arm parks
+    # terminally at retired, never lingers as a seen-forever deprecated zombie
+    s = next_state("deprecated", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, revival_exhausted=True)
+    assert s == "retired"
+
+
+def test_next_state_v2b_exhaustion_outranks_the_roundup_door():
+    # the roundup/junk branch returns "candidate" — for a deprecated/retired
+    # topic that IS a revival by another name; the cap must close it too
+    s = next_state("retired", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=True, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, revival_exhausted=True)
+    assert s == "retired"
+
+
+def test_next_state_v2b_below_cap_revival_unchanged():
+    s = next_state("retired", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, revival_exhausted=False)
+    assert s == "candidate"
+
+
+def test_next_state_v2b_exhausted_candidate_still_promotes_through_court():
+    # a candidate AT the cap is living its last granted revival: the cap
+    # blocks the NEXT revival, never this life's court-gated promotion
+    # (which resets the counter on landing).
+    s = next_state("candidate", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, court_blocked=False,
+                   revival_exhausted=True)
+    assert s == "active"
+    s = next_state("candidate", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revive_to_candidate=True, court_blocked=True,
+                   revival_exhausted=True)
+    assert s == "candidate"
+
+
+def test_next_state_legacy_ignores_exhaustion_byte_identical():
+    # flag off = the historical direct resurrect, untouched by the cap
+    s = next_state("retired", seen_now=True, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=0, cfg=CFG,
+                   revival_exhausted=True)
+    assert s == "active"
+
+
+def test_next_state_exhaustion_never_touches_aging():
+    s = next_state("active", seen_now=False, n_snapshots=50, mean_cohesion=0.9,
+                   agg_n_signals=500, is_roundup=False, since_seen=2, cfg=CFG,
+                   revive_to_candidate=True, revival_exhausted=True)
+    assert s == "deprecated"
+
+
+def _revivable_topic(state="retired", revival_count=0):
+    t = Topic(identity_key="krc", label="Sticky Old Story", centroid=[1.0, 0.0],
+              snap="2026-07-01T00:00:00", n_signals=500, cohesion=0.9)
+    t.state = state
+    t.snapshots = {f"s{i}" for i in range(50)}
+    t.revival_count = revival_count
+    return t
+
+
+def test_advance_states_hard_retires_exhausted_reviver():
+    from scripts.project_dynamic_topics import advance_states
+    t = _revivable_topic(revival_count=3)
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "retired"
+    assert t.newly_revived is False
+    assert t.newly_promoted is False
+
+
+def test_advance_states_below_cap_still_revives_and_marks():
+    from scripts.project_dynamic_topics import advance_states
+    t = _revivable_topic(revival_count=2)
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "candidate"
+    assert t.newly_revived is True
+
+
+def test_advance_states_clean_promotion_marks_counter_reset():
+    from scripts.project_dynamic_topics import advance_states
+    from datetime import datetime, timezone
+    t = _revivable_topic(state="candidate", revival_count=3)
+    t.revived_at = datetime(2026, 8, 4, 4, 0, tzinfo=timezone.utc)
+    t.label_status = "entailed"           # court-certified on CURRENT receipts
+    advance_states([t], {0}, CFG, revive_to_candidate=True)
+    assert t.state == "active"
+    assert t.newly_promoted is True       # persist() resets the counter on $13
+
+
+def test_advance_states_legacy_never_marks_promotion():
+    # flag off must stay byte-identical INCLUDING the column: legacy never
+    # writes revival_count, so the marker must never be set either.
+    from scripts.project_dynamic_topics import advance_states
+    t = _revivable_topic(state="candidate", revival_count=0)
+    advance_states([t], {0}, CFG)         # regime off
+    assert t.state == "active"
+    assert t.newly_promoted is False
+
+
+def test_regrade_exhausted_deprecated_not_promoted():
+    # --regrade parity (the TF-3b/blob-veto lesson): a manual regrade must not
+    # hand an exhausted identity another life through the deprecated arm.
+    from scripts.project_dynamic_topics import regrade_states
+    exhausted = _revivable_topic(state="deprecated", revival_count=3)
+    below = _revivable_topic(state="deprecated", revival_count=2)
+    promoted, demoted = regrade_states([exhausted, below], CFG)
+    assert exhausted.state == "deprecated"
+    assert below.state == "active"
+    assert (promoted, demoted) == (1, 0)
+
+
+def test_regrade_candidate_at_cap_promotes_through_court_and_marks_reset():
+    from scripts.project_dynamic_topics import regrade_states
+    from datetime import datetime, timezone
+    t = _revivable_topic(state="candidate", revival_count=3)
+    t.revived_at = datetime(2026, 8, 4, 4, 0, tzinfo=timezone.utc)
+    t.label_status = "entailed"
+    promoted, _ = regrade_states([t], CFG)
+    assert t.state == "active"
+    assert t.newly_promoted is True
+    assert promoted == 1
+
+
+def test_persist_revival_counter_rides_the_single_atomic_update():
+    # The half-written-snapshot lesson (TF-3b): revival stamp + court-column
+    # reset + counter increment must land in ONE statement — a second WAN
+    # statement can be lost mid-flight and desync the counter from the state.
+    import asyncio as _asyncio
+
+    from scripts.project_dynamic_topics import persist
+
+    class _Conn:
+        def __init__(self):
+            self.calls: list[tuple[str, tuple]] = []
+
+        async def execute(self, sql, *args):
+            self.calls.append((sql, args))
+            return "UPDATE 1"
+
+        async def fetchrow(self, sql, *args):
+            self.calls.append((sql, args))
+            return None
+
+    def _dirty(state, **kw):
+        t = _revivable_topic(state=state)
+        t.id = 7
+        t.new = False
+        t.dirty = True
+        t.members = []
+        for k, v in kw.items():
+            setattr(t, k, v)
+        return t
+
+    # revival: $12 increments the counter in the SAME statement as the stamp
+    conn = _Conn()
+    t = _dirty("candidate", newly_revived=True, revival_count=1)
+    _asyncio.run(persist(conn, [t]))
+    assert len(conn.calls) == 1
+    sql, args = conn.calls[0]
+    assert ("revival_count=CASE WHEN $12 THEN revival_count+1 "
+            "WHEN $13 THEN 0 ELSE revival_count END") in sql
+    assert "revived_at=CASE WHEN $12 THEN NOW()" in sql   # same statement = atomic
+    assert args[11] is True and args[12] is False          # $12 revived, $13 promoted
+    assert t.revival_count == 2                            # in-memory tracks the DB
+    assert t.newly_revived is False
+
+    # clean promotion: $13 resets the counter (and only $13 — no NOW() stamp)
+    conn = _Conn()
+    t = _dirty("active", newly_promoted=True, revival_count=3)
+    _asyncio.run(persist(conn, [t]))
+    _, args = conn.calls[0]
+    assert args[11] is False and args[12] is True
+    assert t.revival_count == 0
+    assert t.newly_promoted is False
+
+    # ordinary dirty update: both False -> the column is left untouched
+    conn = _Conn()
+    t = _dirty("active", revival_count=2)
+    _asyncio.run(persist(conn, [t]))
+    _, args = conn.calls[0]
+    assert args[11] is False and args[12] is False
+    assert t.revival_count == 2

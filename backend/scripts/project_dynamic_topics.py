@@ -259,6 +259,7 @@ def next_state(
     is_junk: bool = False,
     revive_to_candidate: bool = False,
     court_blocked: bool = False,
+    revival_exhausted: bool = False,
 ) -> str:
     """Pure state transition for one snapshot tick.
 
@@ -269,6 +270,16 @@ def next_state(
     `court_blocked` is False (the label court re-certified its label against
     the CURRENT receipts). Both default off = byte-identical legacy behavior,
     including the direct resurrect.
+
+    Re-revival cap (2026-08-04): `revival_exhausted` (revival_count >=
+    REVIVAL_CAP, computed by the caller) blocks the revival door entirely
+    under the v2 regime — an exhausted deprecated/retired topic that
+    re-matches stays RETIRED (hard-retired by exhaustion), through EVERY
+    door including the roundup/junk demote branch, which would otherwise
+    return `candidate` and be a revival by another name. A candidate at the
+    cap is LIVING its last granted revival: its court-gated promotion stays
+    open (a clean promotion resets the counter). Default off = byte-identical
+    legacy behavior.
     """
     quality_ok = noise_rate is None or noise_rate < cfg.noise_max
     # is_junk (2026-07-09 useful-coverage gate) is a content-based quality flag
@@ -284,6 +295,13 @@ def next_state(
         and quality_ok
     )
     if seen_now:
+        # Exhaustion outranks every revival door: the roundup/junk branch
+        # below returns "candidate" for a deprecated/retired topic too, which
+        # IS a revival — an exhausted identity must not slip back in as a
+        # roundup-flagged candidate either.
+        if (revive_to_candidate and revival_exhausted
+                and state in ("deprecated", "retired")):
+            return "retired"  # hard-retired by exhaustion (REVIVAL_CAP)
         if is_roundup or is_junk or not quality_ok:
             return "candidate"  # roundup/junk/high-noise: never promoted; demote if active
         if revive_to_candidate and state in ("deprecated", "retired"):
@@ -343,6 +361,25 @@ def blob_confirmed_fresh(stamp: datetime | None,
             < timedelta(days=BLOB_CONFIRMED_FRESH_DAYS))
 
 
+# Re-revival cap (2026-08-04 re-census fresh cohort,
+# docs/research/recall-229/2026-08-04-recensus-fresh-cohort.md): VETTED
+# revivals measured 33.3% real — the residual tail is sticky old identities
+# (sport churn "Spain World Cup Victory", old wars "Khamenei Funeral Threats",
+# service buckets "Analyst Rating Reiterations") that re-match promiscuously
+# forever. `revival_count` (migration 097) counts revivals since the last
+# CLEAN promotion: the atomic revival UPDATE in persist() increments it; a
+# candidate->active promotion through the court gate resets it to 0. Once the
+# counter reaches the cap, a deprecated/retired topic that re-matches does
+# NOT revive — it is HARD-RETIRED by exhaustion; its signals fall to other
+# candidates or found new identities (the landing program's job). FROZEN
+# constant, deliberately not env-tunable: three whole revival lives without a
+# single clean promotion is evidence about the IDENTITY, not the night, and a
+# tunable bar invites silently widening it. Rides ONLY the v2 regime
+# (revive_to_candidate) — legacy stays byte-identical; the counter is only
+# ever written under the v2 clock, so the cap is inert until revivals exist.
+REVIVAL_CAP = 3
+
+
 def regrade_states(topics: list[Topic], cfg: LifecycleConfig) -> tuple[int, int]:
     """Apply the current gate to the WHOLE population (gate-recalibration pass).
 
@@ -378,6 +415,15 @@ def regrade_states(topics: list[Topic], cfg: LifecycleConfig) -> tuple[int, int]
             and t.label_status != "entailed"
         ) or blob_confirmed_fresh(t.blob_confirmed_at)
         if ok and fresh and not court_blocked and t.state in ("candidate", "deprecated"):
+            # Re-revival cap parity (2026-08-04, same lesson as the court gate
+            # + blob veto): a manual --regrade must not hand an exhausted
+            # identity another life through the deprecated arm. A CANDIDATE at
+            # the cap is living its last granted revival — its court-gated
+            # promotion stays open (and resets the counter below).
+            if t.state == "deprecated" and t.revival_count >= REVIVAL_CAP:
+                continue
+            if t.state == "candidate":
+                t.newly_promoted = True  # clean promotion -> counter resets
             t.state = "active"; t.dirty = True; promoted += 1
         elif not ok and t.state == "active":
             t.state = "candidate"; t.dirty = True; demoted += 1
@@ -397,7 +443,7 @@ class Topic:
         "first_seen", "last_seen", "snapshots", "agg_n_signals", "cohesions",
         "roundup_votes", "n_labels", "since_seen", "members", "dirty", "new", "noises",
         "is_junk", "countries", "cc_snap", "revived_at", "label_status", "newly_revived",
-        "blob_confirmed_at",
+        "blob_confirmed_at", "revival_count", "newly_promoted",
     )
 
     def __init__(self, identity_key, label, centroid, snap, n_signals, cohesion, noise=None,
@@ -446,6 +492,12 @@ class Topic:
         self.revived_at: Any = None
         self.label_status: str | None = None
         self.newly_revived = False
+        # Re-revival cap bookkeeping (2026-08-04): revivals since the last
+        # CLEAN promotion, hydrated from the persisted row; persist()
+        # increments it on revival ($12) and resets it on a clean
+        # candidate->active promotion ($13, newly_promoted).
+        self.revival_count = 0
+        self.newly_promoted = False
         # Blob-veto stamp; owned by scripts/detect_overmerge.py (stamped on
         # judge-confirmed fusion, NULLed on re-evaluated-clean), loaded from
         # the persisted row in hydrate. persist() never writes it.
@@ -857,11 +909,19 @@ def advance_states(topics: list[Topic], seen_topics: set[int], cfg: LifecycleCon
             is_roundup=t.is_roundup, since_seen=t.since_seen, cfg=cfg,
             noise_rate=t.noise_rate, is_junk=t.is_junk,
             revive_to_candidate=revive_to_candidate, court_blocked=court_blocked,
+            revival_exhausted=t.revival_count >= REVIVAL_CAP,
         )
         if new_state != t.state:
             if (revive_to_candidate and seen and new_state == "candidate"
                     and was_state in ("deprecated", "retired")):
                 t.newly_revived = True
+            # Re-revival cap (2026-08-04): a CLEAN candidate->active promotion
+            # (under the v2 regime that path IS the court gate) resets the
+            # revival counter — the identity earned a real life. Gated on the
+            # regime so the flag-off path never writes the column at all.
+            if (revive_to_candidate and seen and new_state == "active"
+                    and was_state == "candidate"):
+                t.newly_promoted = True
             t.state = new_state
             t.dirty = True
     return frozen
@@ -1068,7 +1128,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
         "SELECT id, identity_key, state, snapshots_since_seen, label, "
         "centroid_vec, first_seen, last_seen, n_snapshots, agg_n_signals, "
         "mean_cohesion, noise_rate, is_junk, is_umbrella, revived_at, "
-        "label_status, blob_confirmed_at FROM dynamic_topics"
+        "label_status, blob_confirmed_at, revival_count FROM dynamic_topics"
     )
     mrows = await conn.fetch(
         "SELECT dynamic_topic_id, emergent_cluster_id, snapshot_at "
@@ -1131,6 +1191,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
             t.revived_at = tr["revived_at"]
             t.label_status = tr["label_status"]
             t.blob_confirmed_at = tr["blob_confirmed_at"]
+            t.revival_count = int(tr["revival_count"] or 0)
             t.new = False
             t.members = []
             t.dirty = False
@@ -1156,6 +1217,7 @@ async def hydrate_topics(conn, clusters_by_id: dict[int, dict[str, Any]]) -> tup
         t.revived_at = tr["revived_at"]
         t.label_status = tr["label_status"]
         t.blob_confirmed_at = tr["blob_confirmed_at"]
+        t.revival_count = int(tr["revival_count"] or 0)
         t.new = False
         t.members = []   # already persisted
         t.dirty = False  # only re-persist if touched this run
@@ -1208,12 +1270,17 @@ async def persist(conn, topics: list[Topic]) -> dict[str, int]:
             # `entailed` from the topic's former life promote it next tick.
             # In one statement either both land or neither does; the old stamp
             # can never certify the NEW receipts.
+            # revival_count (2026-08-04) rides the same atomic statement:
+            # $12 (revival) increments it, $13 (clean candidate->active
+            # promotion) resets it to 0 — mutually exclusive in practice (one
+            # tick cannot do both), $12 wins by CASE order if ever forced.
             await conn.execute(
                 "UPDATE dynamic_topics SET state=$2, label=COALESCE($3, label), centroid_vec=$4, "
                 "last_seen=$5::timestamptz, n_snapshots=$6, agg_n_signals=$7, mean_cohesion=$8, "
                 "is_roundup=$9, snapshots_since_seen=$10, noise_rate=$11, updated_at=NOW(), "
                 "last_state_change=CASE WHEN state IS DISTINCT FROM $2 THEN NOW() ELSE last_state_change END, "
                 "revived_at=CASE WHEN $12 THEN NOW() ELSE revived_at END, "
+                "revival_count=CASE WHEN $12 THEN revival_count+1 WHEN $13 THEN 0 ELSE revival_count END, "
                 "label_status=CASE WHEN $12 THEN NULL ELSE label_status END, "
                 "label_checked_at=CASE WHEN $12 THEN NULL ELSE label_checked_at END, "
                 "label_court_model=CASE WHEN $12 THEN NULL ELSE label_court_model END, "
@@ -1221,12 +1288,18 @@ async def persist(conn, topics: list[Topic]) -> dict[str, int]:
                 "WHERE id=$1",
                 t.id, t.state, t.label or None, [float(x) for x in t.centroid], last_seen,
                 len(t.snapshots), t.agg_n_signals, cohesion, t.is_roundup, t.since_seen,
-                t.noise_rate, t.newly_revived,
+                t.noise_rate, t.newly_revived, t.newly_promoted,
             )
             written["updated"] += 1
             if t.newly_revived:
                 t.newly_revived = False
                 written["revived"] = written.get("revived", 0) + 1
+                # keep the in-memory counter in step with the DB increment so
+                # a same-process re-evaluation sees the true count
+                t.revival_count += 1
+            if t.newly_promoted:
+                t.newly_promoted = False
+                t.revival_count = 0
         if t.id is not None:
             for m in t.members:
                 res = await conn.execute(

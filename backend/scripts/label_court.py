@@ -142,6 +142,29 @@ the judge only the newest sub-story — env `ATLAS_COURT_STRATIFIED_RECEIPTS`
 (default OFF: the court is under active blind-check calibration and a silent
 input change would confound those measurements; flip is one ALW .env line).
 
+POST-REVIVAL RECEIPTS (2026-08-04, re-census fresh cohort
+`docs/research/recall-229/2026-08-04-recensus-fresh-cohort.md`): VETTED
+revivals measured 33.3% real — the residual revival tail is sticky old
+identities (sport churn, old wars, service buckets) whose labels DO entail
+their OLD-LIFE receipts. TF-3b NULLs the court columns on revival, but the
+receipt fetch took the most RECENT topic_members rows, which for a stale
+identity are still old-life rows until fresh members project — the court was
+certifying a revival against its former life. Fix: when the topic on trial is
+a REVIVED CANDIDATE (state='candidate' AND revived_at IS NOT NULL), the
+receipt fetch is scoped to `tm.assigned_at > revived_at` (a NULL-guarded
+fourth bind on the SAME two queries, so the 2026-07-29 contamination filters
+can never drift apart between lanes), and the emergent-sample fallback is
+SKIPPED (it has no revival-time semantics — it would reintroduce the former
+life). If fewer than the court's minimum receipts (2) have landed since the
+revival, the verdict is WITHHELD via the existing machinery (mark + 6h
+backoff + retry once fresh members project) — never judged on the old life.
+NOTE the honest latency: the dynamic-lane ETL stamps `assigned_at` with the
+member's SNAPSHOT time (etl_topic_members._DYNAMIC_SAMPLE), which precedes
+the revival stamp by minutes-to-hours on the reviving night itself, so
+certification typically waits for the NEXT night's members — withhold, not
+wrong, by design. Kill-switch `ATLAS_COURT_POST_REVIVAL_RECEIPTS` (default
+ON: the revived population is small and the failure mode is withhold).
+
 Serving reads label_status only (additive). Reversible: NULL the four columns.
 
 Run (repo root, M1 env, off-peak — DeepSeek, ~cents):
@@ -195,6 +218,12 @@ _MARKS = {"entailed": "✓", "partial": "~", "failed": "✗", "too_broad": "⊃"
 # attached the member) rather than s.timestamp (the signal's own timestamp,
 # which a nightly-rebuilt experimental lane can refresh independently of
 # whether it's served) — assigned_at is immune to that churn.
+# $4 (2026-08-04, post-revival receipts): NULL-guarded lower bound on
+# tm.assigned_at. NULL (every ordinary trial) is a provable no-op; a revived
+# candidate binds its revived_at so the trial sees ONLY members that landed
+# after the revival — never its former life. One shared query per lane, so
+# the contamination filters above can never drift between the ordinary and
+# post-revival paths.
 _RECEIPTS_SQL = """
     SELECT s.headline, s.country_code
     FROM topic_members tm
@@ -202,6 +231,7 @@ _RECEIPTS_SQL = """
     WHERE tm.topic_id = $1 AND tm.role = 'evidence'
       AND tm.engine_version = $3
       AND COALESCE(tm.quarantined, false) = false
+      AND ($4::timestamptz IS NULL OR tm.assigned_at > $4)
       AND s.headline IS NOT NULL AND length(s.headline) >= 12
     GROUP BY s.headline, s.country_code
     ORDER BY max(tm.assigned_at) DESC
@@ -225,6 +255,7 @@ _RECEIPTS_STRATIFIED_SQL = """
         WHERE tm.topic_id = $1 AND tm.role = 'evidence'
           AND tm.engine_version = $3
           AND COALESCE(tm.quarantined, false) = false
+          AND ($4::timestamptz IS NULL OR tm.assigned_at > $4)
           AND s.headline IS NOT NULL AND length(s.headline) >= 12
         GROUP BY s.headline, s.country_code
     ), bucketed AS (
@@ -243,6 +274,14 @@ _RECEIPTS_STRATIFIED_SQL = """
 def stratified_receipts_enabled() -> bool:
     """One switch, read at call time (testable, flippable per run)."""
     return os.environ.get("ATLAS_COURT_STRATIFIED_RECEIPTS", "off").lower() == "on"
+
+
+def post_revival_receipts_enabled() -> bool:
+    """Kill-switch for the post-revival receipt scoping (2026-08-04). Default
+    ON — the revived-candidate population is small and the failure mode is
+    withhold-not-wrong; `ATLAS_COURT_POST_REVIVAL_RECEIPTS=off` restores the
+    pre-fix behavior (revived candidates judged on their full history)."""
+    return os.environ.get("ATLAS_COURT_POST_REVIVAL_RECEIPTS", "on").lower() == "on"
 
 
 # Fallback for topics whose typed membership has not been projected yet
@@ -783,7 +822,8 @@ async def _ds_judge(label: str, receipts: list[dict], key: str, *,
     return verdict, reason, usage
 
 
-async def _receipts_for(conn, topic_id: str, dyn_id: int, k: int) -> list[dict]:
+async def _receipts_for(conn, topic_id: str, dyn_id: int, k: int,
+                        revived_after: datetime | None = None) -> list[dict]:
     # Bound, not hardcoded (2026-07-29 contamination fix) — follows the same
     # F4 cutover var thread_intelligence.py's serving reads follow, so the
     # court can never again drift onto an engine_version the product doesn't
@@ -794,8 +834,14 @@ async def _receipts_for(conn, topic_id: str, dyn_id: int, k: int) -> list[dict]:
     # way; the recency query stays the default while the court is under
     # blind-check calibration.
     receipts_sql = _RECEIPTS_STRATIFIED_SQL if stratified_receipts_enabled() else _RECEIPTS_SQL
-    rows = await conn.fetch(receipts_sql, topic_id, k, engine_version)
-    if not rows:
+    rows = await conn.fetch(receipts_sql, topic_id, k, engine_version, revived_after)
+    if not rows and revived_after is None:
+        # Post-revival trials (revived_after set) must NEVER fall back to the
+        # emergent-sample pool: it has no revival-time semantics (ordered by
+        # s.timestamp over ALL member clusters), so it would reintroduce the
+        # former life this scoping exists to exclude. Starvation is the
+        # designed outcome there — the caller withholds and retries next
+        # cycle once fresh members project (2026-08-04).
         rows = await conn.fetch(_RECEIPTS_FALLBACK_SQL, dyn_id, k)
     # DECODE before the judge reads (2026-07-18): headlines arrive
     # HTML-entity-encoded (&#x395;… soup) — an undecoded Greek/Russian receipt
@@ -1024,7 +1070,7 @@ async def main() -> None:
         order = ("(state='active') DESC, id DESC" if args.only_unchecked
                  else "(state='active') DESC, agg_n_signals DESC")
         rows = await conn.fetch(
-            "SELECT id, label, is_umbrella FROM dynamic_topics "
+            "SELECT id, label, is_umbrella, state, revived_at FROM dynamic_topics "
             "WHERE (state='active' OR (state='candidate' AND revived_at IS NOT NULL "
             "AND label_status IS NULL)) "
             "AND label IS NOT NULL "
@@ -1045,12 +1091,49 @@ async def main() -> None:
             label = r["label"]
             is_umbrella = bool(r["is_umbrella"])
             family_children: list[dict] | None = None
+            # Post-revival receipts (2026-08-04): a REVIVED CANDIDATE is tried
+            # against members that landed AFTER its revival stamp only — the
+            # court must never certify a revival on its former life. Story
+            # lane only (umbrellas are never revival targets: hydrate excludes
+            # them from matching, so revived_at is never stamped on one).
+            revived_after = None
+            if (not is_umbrella and r["state"] == "candidate"
+                    and r["revived_at"] is not None
+                    and post_revival_receipts_enabled()):
+                revived_after = r["revived_at"]
             if is_umbrella:
                 family_children = await _umbrella_family_for(conn, dyn_id)
                 receipts = _flatten_family_receipts(family_children)
             else:
-                receipts = await _receipts_for(conn, topic_id, dyn_id, args.receipts)
+                receipts = await _receipts_for(conn, topic_id, dyn_id, args.receipts,
+                                               revived_after=revived_after)
             if len(receipts) < 2:
+                if revived_after is not None:
+                    # Fewer than the court's minimum receipts have landed since
+                    # the revival: WITHHOLD (never judge the old life, never a
+                    # bare skip that re-burns every 33-min cycle). Rides the
+                    # existing machinery — mark (never erases a valid stamp),
+                    # 6h backoff under --only-unchecked, retry once fresh
+                    # members project. No judge call was made: this branch is
+                    # cheaper than every other withhold class.
+                    withheld += 1
+                    print(f"  ? dt-{dyn_id} [revived] "
+                          f"[WITHHELD:no-post-revival-receipts n={len(receipts)}] "
+                          f"{label[:46]}")
+                    ledger_entries.append({
+                        "topic_id": topic_id, "served_label": label,
+                        "verdict": "withheld", "reason": "",
+                        "receipts": [x["headline"] for x in receipts],
+                        "checked_at": checked_at.isoformat(),
+                        "lane": "story",
+                        "withhold_reason": "no-post-revival-receipts",
+                        "judge_verdict": None,
+                        "revived_at": r["revived_at"].isoformat(),
+                    })
+                    if args.write:
+                        await conn.execute(_WITHHOLD_MARK_SQL, dyn_id, checked_at,
+                                           _WITHHELD_COURT_MODEL)
+                    continue
                 print(f"  dt-{dyn_id}: SKIP (only {len(receipts)} receipts) — {label[:50]}")
                 continue
             verdict, reason, usage = await _ds_judge(label, receipts, key,

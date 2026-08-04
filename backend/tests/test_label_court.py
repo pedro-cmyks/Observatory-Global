@@ -293,8 +293,10 @@ def test_receipts_for_binds_engine_version_as_third_param(monkeypatch):
     assert conn.calls, "expected at least one fetch() call"
     sql, args = conn.calls[0]
     assert sql == _RECEIPTS_SQL
-    assert args == ("dynamic-topic-1", 8, "v1-compat")
-    assert args[-1] == topic_members_engine_version()
+    # 4th bind = revived_after (2026-08-04 post-revival receipts): None on
+    # every ordinary trial — the NULL-guarded clause is a provable no-op.
+    assert args == ("dynamic-topic-1", 8, "v1-compat", None)
+    assert args[2] == topic_members_engine_version()
 
 
 def test_receipts_for_falls_back_when_engine_version_scoped_query_is_empty():
@@ -820,7 +822,7 @@ def test_stratified_receipts_env_on_switches_sql_same_binds(monkeypatch):
     asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8))
     sql, args = conn.calls[0]
     assert sql == _RECEIPTS_STRATIFIED_SQL
-    assert args == ("dynamic-topic-1", 8, "v1-compat")
+    assert args == ("dynamic-topic-1", 8, "v1-compat", None)
 
 
 def test_stratified_sql_keeps_the_contamination_filters():
@@ -844,3 +846,109 @@ def test_story_prompt_offers_too_broad_family_prompt_does_not():
                            family_children=[{"child_id": 1, "child_label": "c1",
                                              "receipts": [{"headline": "h1", "country_code": "US"}]}])
     assert "too_broad" not in family
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-04 post-revival receipts: the re-census fresh cohort
+# (docs/research/recall-229/2026-08-04-recensus-fresh-cohort.md) measured
+# VETTED revivals at 33.3% real — the court was certifying revivals against
+# OLD-LIFE receipts (the most recent topic_members rows of a stale identity
+# are its former life until fresh members project). A REVIVED CANDIDATE's
+# trial is now scoped to tm.assigned_at > revived_at (NULL-guarded 4th bind
+# on the SAME queries), the emergent-sample fallback is skipped, and a
+# starved trial (<2 post-revival receipts) is WITHHELD via the existing
+# machinery — never judged on the former life.
+# ---------------------------------------------------------------------------
+from datetime import datetime, timezone  # noqa: E402
+
+from scripts.label_court import post_revival_receipts_enabled  # noqa: E402
+
+_REVIVED_TS = datetime(2026, 8, 4, 4, 0, tzinfo=timezone.utc)
+
+
+def test_post_revival_receipts_env_default_on(monkeypatch):
+    # default ON: the revived population is small and the failure mode is
+    # withhold-not-wrong; "off" is the kill-switch back to full-history trials
+    monkeypatch.delenv("ATLAS_COURT_POST_REVIVAL_RECEIPTS", raising=False)
+    assert post_revival_receipts_enabled() is True
+    monkeypatch.setenv("ATLAS_COURT_POST_REVIVAL_RECEIPTS", "off")
+    assert post_revival_receipts_enabled() is False
+    monkeypatch.setenv("ATLAS_COURT_POST_REVIVAL_RECEIPTS", "on")
+    assert post_revival_receipts_enabled() is True
+
+
+def test_receipts_sql_null_guarded_revival_bound_on_both_queries():
+    # ONE shared clause per lane (recency + stratified) so the 2026-07-29
+    # contamination filters and the revival bound can never drift apart
+    # between an ordinary and a post-revival trial.
+    clause = "($4::timestamptz IS NULL OR tm.assigned_at > $4)"
+    assert clause in _RECEIPTS_SQL
+    assert clause in _RECEIPTS_STRATIFIED_SQL
+    # the emergent-sample fallback has NO revival-time semantics and must
+    # never quietly gain the bind — post-revival trials skip it entirely.
+    assert "$4" not in _RECEIPTS_FALLBACK_SQL
+
+
+def test_receipts_for_binds_revived_after_as_fourth_param(monkeypatch):
+    monkeypatch.delenv("ATLAS_TOPIC_MEMBERS_ENGINE_VERSION", raising=False)
+    monkeypatch.delenv("ATLAS_COURT_STRATIFIED_RECEIPTS", raising=False)
+    conn = _FakeConn()
+    asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8,
+                              revived_after=_REVIVED_TS))
+    sql, args = conn.calls[0]
+    assert sql == _RECEIPTS_SQL
+    assert args == ("dynamic-topic-1", 8, "v1-compat", _REVIVED_TS)
+
+
+def test_receipts_for_post_revival_never_falls_back_to_emergent_sample():
+    # An empty post-revival pool means STARVED, never "borrow the former
+    # life": the emergent-sample fallback (ordered by s.timestamp over ALL
+    # member clusters) is exactly the old-life reservoir this lane excludes.
+    conn = _FakeConn({_RECEIPTS_FALLBACK_SQL: [
+        {"headline": "Old-life fallback headline", "country_code": "GR"}]})
+    result = asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8,
+                                       revived_after=_REVIVED_TS))
+    assert len(conn.calls) == 1          # no second (fallback) fetch fired
+    assert result == []                  # honest starvation -> caller withholds
+
+
+def test_receipts_for_post_revival_composes_with_stratified(monkeypatch):
+    monkeypatch.delenv("ATLAS_TOPIC_MEMBERS_ENGINE_VERSION", raising=False)
+    monkeypatch.setenv("ATLAS_COURT_STRATIFIED_RECEIPTS", "on")
+    conn = _FakeConn()
+    asyncio.run(_receipts_for(conn, "dynamic-topic-1", 1, 8,
+                              revived_after=_REVIVED_TS))
+    sql, args = conn.calls[0]
+    assert sql == _RECEIPTS_STRATIFIED_SQL
+    assert args == ("dynamic-topic-1", 8, "v1-compat", _REVIVED_TS)
+
+
+def test_main_scopes_revived_candidates_and_withholds_when_starved():
+    import inspect
+
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    # the trial selection carries the columns the scoping decision needs
+    assert "SELECT id, label, is_umbrella, state, revived_at FROM dynamic_topics" in src
+    # revived-candidate detection: story lane only, env kill-switch honored
+    assert 'r["state"] == "candidate"' in src
+    assert 'r["revived_at"] is not None' in src
+    assert "post_revival_receipts_enabled()" in src
+    # a starved post-revival trial rides the EXISTING withhold machinery
+    # (mark that never erases a valid stamp + the 6h backoff class), and is
+    # ledgered with its own reason — never a silent skip that re-burns
+    # every 33-min cycle, never a judgment on the old life.
+    assert "no-post-revival-receipts" in src
+    assert src.count("_WITHHOLD_MARK_SQL") >= 2   # umbrella branch + this one
+
+
+def test_main_starved_withhold_branch_precedes_the_plain_skip():
+    # inside the <2-receipts arm the revived branch must come FIRST: a
+    # revived candidate short on post-revival receipts is a WITHHOLD (marked,
+    # backed off, retried once fresh members project), not an ordinary skip.
+    import inspect
+
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    lt2 = src.index("if len(receipts) < 2:")
+    assert lt2 < src.index("no-post-revival-receipts") < src.index("SKIP (only")
