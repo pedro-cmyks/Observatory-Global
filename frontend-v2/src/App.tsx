@@ -1108,38 +1108,91 @@ function AppContent() {
     }
   }, [filter.country])
 
-  // Back navigation: pop the topmost open panel. Used by Escape (desktop) and
-  // by swipe-right-from-the-edge (mobile, like a native app). Order = most
-  // recently opened first.
+  // #236 Task 7: the console's focus, read ONCE and handed to the ladder that
+  // the stream slot (which panel to render), the Lens (what to name) and Back
+  // (what to peel) all decide from. Declared above popPanel because that
+  // callback depends on it.
+  const consoleFocus = useMemo(() => ({
+    storyQuery,
+    threadId: selectedThread?.thread_id ?? null,
+    threadLabel: selectedThread?.label ?? null,
+    themeId: selectedTheme?.theme ?? null,
+    // resolveThreadTitle, not resolveThreadLabel: for an opaque numeric id with
+    // no label yet the latter returns the literal "Narrative Thread", which
+    // reads as if the thread were nameless rather than still loading — and it
+    // would be the breadcrumb's permanent text if the fetch never lands.
+    // `loading` = we have no label from any opener yet; ThemeDetail's
+    // onLabelResolved fills it in and pushScope swaps the trail entry.
+    themeLabel: selectedTheme
+      ? resolveThreadTitle(
+          selectedTheme.theme,
+          selectedTheme.thread?.label ?? selectedTheme.labelHint,
+          !(selectedTheme.thread?.label ?? selectedTheme.labelHint),
+        )
+      : null,
+    personName: focus.type === 'person' ? focus.value : null,
+    countryCode: selectedCountryCode,
+    countryName: selectedCountryCode ? resolveCountryName(selectedCountryCode, selectedCountry?.name) : null,
+    attentionTitle: selectedPublicAttention?.title ?? null,
+    chokepointId: selectedChokepoint?.id ?? null,
+    chokepointName: selectedChokepoint?.name ?? null,
+  }), [storyQuery, selectedThread, selectedTheme, focus.type, focus.value, selectedCountryCode, selectedCountry, selectedPublicAttention, selectedChokepoint])
+
+  // Back navigation: pop the topmost open panel. Used by Escape (desktop), by
+  // swipe-right-from-the-edge (mobile) and by the Lens breadcrumb.
   const popPanel = useCallback((): boolean => {
+    // LAYERS ABOVE THE SLOT, peeled first because they are literally drawn on
+    // top of it — a modal, the source profile, the theme's country drill-in.
+    // They are deliberately NOT in consoleSlot: none of them is a Lens scope,
+    // and peeling what sits underneath while one covers the screen would move
+    // nothing the reader can see.
     if (showBriefing) { setShowBriefing(false); return true }
     if (selectedSourceProfile) { setSelectedSourceProfile(null); return true }
     if (rightPanelThemeCountry) { setRightPanelThemeCountry(null); return true }
-    // Flywheel compound focus: peel ONE dimension per Back. Close an open
-    // thread/theme first (revealing a standing person/country), then peel the
-    // person, then the country — per-dimension (setPerson/setCountry null),
-    // never clearFocus() which would wipe the whole compound frame at once.
-    if (selectedTheme || selectedThread) {
-      setSelectedTheme(null); setSelectedThread(null); setTheme(null)
-      // Story Lens (Task 10, spec-review fix): Escape / mobile swipe-back
-      // closing the thread panel must exit the lens the same way every other
-      // close path does. stripLensParam (issue 4) prevents resurrection.
-      // Inline exit, not syncLensToThreadOpen(null) — see clearAll's comment
-      // above (the helper's !STORY_LENS_AUTO early-return must not apply here).
-      if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
-      return true
+
+    // THE SLOT ITSELF — ask the ladder, do not re-guess its order.
+    //
+    // This was a FOURTH hand-written copy of that ordering, and it disagreed
+    // with the other three: it peeled thread/theme before story and attention
+    // before person, where consoleSlot ranks story first and person above
+    // attention. The disagreement was reachable, not theoretical —
+    // FrameSheet's onOpenPin sets a person focus WITHOUT clearing an open
+    // attention item (unlike handleThemeSelect and handleCountryClick, which
+    // both null it), so the slot showed the person while Back cleared the
+    // attention underneath it: the screen did not change and the tap did
+    // nothing. Same shape for story-under-thread via SearchBar's onOpenStory.
+    // Peel exactly the dimension that is SHOWING, and the three affordances
+    // that share this function can no longer disagree with what is on screen.
+    // Still one dimension per Back (never clearFocus, which would wipe the
+    // whole compound frame at once).
+    switch (consoleSlot(consoleFocus, false)) {
+      case 'story': setStoryQuery(null); return true
+      case 'person': setPerson(null); return true
+      case 'attention': setSelectedPublicAttention(null); return true
+      case 'thread':
+      case 'theme':
+        setSelectedTheme(null); setSelectedThread(null); setTheme(null)
+        // Story Lens (Task 10, spec-review fix): Escape / mobile swipe-back
+        // closing the thread panel must exit the lens the same way every other
+        // close path does. stripLensParam (issue 4) prevents resurrection.
+        // Inline exit, not syncLensToThreadOpen(null) — see clearAll's comment
+        // above (the helper's !STORY_LENS_AUTO early-return must not apply here).
+        if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
+        return true
+      case 'country':
+        setSelectedCountry(null)
+        setSelectedCountryCode(null)
+        setShowFlows(false)
+        setCountry(null)
+        return true
+      case 'chokepoint': setSelectedChokepoint(null); return true
     }
-    // #236 Task 7 review: these three reading panels were never peelable. Back
-    // fell straight through them — so Escape, the edge-swipe and (once the Lens
-    // named these scopes) its breadcrumb were dead controls on a story, an
-    // attention item or a chokepoint: nothing happened, or on a Brief entry the
-    // fall-through at the bottom left the console entirely. Peeled here, above
-    // person/country, because each is opened ON TOP of whatever focus was
-    // already standing and Back peels most-recent-first.
-    if (storyQuery) { setStoryQuery(null); return true }
-    if (selectedPublicAttention) { setSelectedPublicAttention(null); return true }
-    if (selectedChokepoint) { setSelectedChokepoint(null); return true }
-    if (focus.type === 'person') { setPerson(null); return true }
+
+    // Nothing is IN the slot, but a compound-focus COUNTRY CHIP can still be
+    // standing: filter.country outlives the CountryBrief that set it, and the
+    // ladder does not model it (the Lens never scopes to a chip alone). Kept
+    // so Escape still clears a country focus set from the map without opening
+    // a panel — the one peel the slot cannot see.
     if (selectedCountry || selectedCountryCode || filter.country) {
       setSelectedCountry(null)
       setSelectedCountryCode(null)
@@ -1153,7 +1206,7 @@ function AppContent() {
     if (isMobile && entrySource === 'brief') { navigate('/brief'); return true }
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate, storyLens.state.active, storyLens.exit, stripLensParam, storyQuery, selectedPublicAttention, selectedChokepoint])
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, consoleFocus, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate, storyLens.state.active, storyLens.exit, stripLensParam])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
@@ -1200,35 +1253,6 @@ function AppContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
-
-  // #236 Task 7: the console's focus, read ONCE and handed to the ladder that
-  // both the stream slot (which panel to render) and the Lens (what to name)
-  // decide from. Two consumers, one decision — see lib/lensScope consoleSlot.
-  const consoleFocus = useMemo(() => ({
-    storyQuery,
-    threadId: selectedThread?.thread_id ?? null,
-    threadLabel: selectedThread?.label ?? null,
-    themeId: selectedTheme?.theme ?? null,
-    // resolveThreadTitle, not resolveThreadLabel: for an opaque numeric id with
-    // no label yet the latter returns the literal "Narrative Thread", which
-    // reads as if the thread were nameless rather than still loading — and it
-    // would be the breadcrumb's permanent text if the fetch never lands.
-    // `loading` = we have no label from any opener yet; ThemeDetail's
-    // onLabelResolved fills it in and pushScope swaps the trail entry.
-    themeLabel: selectedTheme
-      ? resolveThreadTitle(
-          selectedTheme.theme,
-          selectedTheme.thread?.label ?? selectedTheme.labelHint,
-          !(selectedTheme.thread?.label ?? selectedTheme.labelHint),
-        )
-      : null,
-    personName: focus.type === 'person' ? focus.value : null,
-    countryCode: selectedCountryCode,
-    countryName: selectedCountryCode ? resolveCountryName(selectedCountryCode, selectedCountry?.name) : null,
-    attentionTitle: selectedPublicAttention?.title ?? null,
-    chokepointId: selectedChokepoint?.id ?? null,
-    chokepointName: selectedChokepoint?.name ?? null,
-  }), [storyQuery, selectedThread, selectedTheme, focus.type, focus.value, selectedCountryCode, selectedCountry, selectedPublicAttention, selectedChokepoint])
 
   const lensScope = useMemo(() => consoleLensScope(consoleFocus), [consoleFocus])
 
@@ -2117,9 +2141,9 @@ function AppContent() {
         // which is what the flag actually decides. Its only consumer is
         // `paused`; <LensPanel/> owns the visibility toggle off the same
         // `fieldVisible` rule, so the pane and its paused flag cannot drift.
-        // The read pane is the exact mirror — hidden precisely when the field
-        // shows — and takes the same rule when its `paused` lands (the TODO at
-        // its call site below).
+        // The read pane is the exact mirror: it serves the two surfaces the
+        // field does not, so it is hidden precisely when the field shows.
+        // Both are derived from the one exported rule for that reason.
         const fieldHidden = mobileSurface !== null && !fieldVisible(mobileSurface)
 
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}

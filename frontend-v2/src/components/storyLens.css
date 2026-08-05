@@ -68,6 +68,16 @@ body.eclipsed.story-lensed .sl-banner { top: 28px; }
 @media (max-width: 768px) {
   .sl-banner { font-size: 10px; gap: 6px; padding: 0 8px; }
   .sl-banner-label { max-width: 44vw; }
+  /* SUPERSEDED INSIDE THE LENS (#236 Task 7), still live outside it. When the
+     phone console is on screen the overlay sits under `.lens-shell`, which
+     stacks its own fixed breadcrumb above this banner, so
+     `.lens-shell:has(.lens-breadcrumb) .terminal-panel.stream
+     .theme-detail-overlay` (LensPanel.css) owns the offset there and composes
+     BOTH strips off --lens-top-offset + --lens-chrome-h. Its (0,5,0) beats the
+     (0,3,1) below deliberately — do not "fix" that by raising these, or the
+     breadcrumb loses its 44px again.
+     NOT deleted: ThemeCompare.tsx renders ThemeDetail outside the console, so
+     these still fire where no .lens-shell ancestor exists. */
   body.story-lensed .theme-detail-overlay { top: 28px; height: calc(100dvh - 28px); }
   body.eclipsed.story-lensed .theme-detail-overlay { top: 56px; height: calc(100dvh - 56px); }
 }

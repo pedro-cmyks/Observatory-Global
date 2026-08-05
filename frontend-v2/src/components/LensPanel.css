@@ -123,9 +123,11 @@
 /* The scope name wraps rather than ellipsising mid-word, but stops at two
    lines — because --lens-chrome-h is a promise the read's inset relies on, and
    a three-line breadcrumb (59px at this size) would silently overrun the 44px
-   it reserved and cover the top of the read. Two lines fit in 42px. The
-   untruncated name is always in .lens-scope-heading, which is what a screen
-   reader gets. */
+   it reserved and cover the top of the read. Two lines fit in 42px.
+   What protects the name is that `line-clamp` truncates VISUALLY only: the
+   button's DOM text stays the complete previous-scope title, so its accessible
+   name is intact. (Not .lens-scope-heading — that renders the CURRENT scope,
+   which is a different value, not this one's counterpart.) */
 .lens-breadcrumb-label {
   display: -webkit-box;
   -webkit-line-clamp: 2;
