@@ -441,6 +441,42 @@
 @media (max-width: 768px) {
     .signal-stream-container { height: auto; max-height: 72vh; }
     .signal-list { max-height: 60vh; }
+
+    /* #236 — the stream is the phone's default surface. 39px rows with a
+       headline truncated mid-word is a desktop density on a touch screen.
+       Two lines of headline, 48px minimum, and a fade on the lane strip so
+       the lanes that scroll off the edge announce themselves instead of
+       vanishing. No lane is removed — dropping one to fit would be silent
+       filtering. */
+    .signal-row {
+        min-height: 48px;
+        align-items: flex-start;
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+    /* .headline > span:first-child is the actual truncating element (see
+       the note above it) — .headline itself never sets a fixed height, so
+       clamping the span is enough for the row to grow around it. */
+    .headline > span:first-child {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        white-space: normal;
+        line-height: 1.3;
+    }
+    .stream-filter-bar {
+        position: relative;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+        mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+    }
+    .stream-filter-bar > * {
+        scroll-snap-align: start;
+        min-height: 44px;
+    }
 }
 
 /* ── ECLIPSE LENS tabs (spec §6.4, Phase 4) ─────────────────────────────
