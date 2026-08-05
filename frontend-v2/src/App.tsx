@@ -94,6 +94,7 @@ import { Legend } from './components/Legend'
 import { useUrlSync } from './hooks/useUrlSync'
 import { useSavedWatches } from './hooks/useSavedWatches'
 import { useIsMobile } from './hooks/useIsMobile'
+import { useMobileNav } from './contexts/MobileNavContext'
 
 
 
@@ -387,11 +388,12 @@ function AppContent() {
   // X0 (L2 review 2026-07-05): the stream slot is L2's core state machine and
   // it was invisible to telemetry — panel_swap makes the middle of the
   // L0→L3 funnel readable.
-  // Mobile L2 IA: instead of a long scroll of the desktop cockpit, show one
-  // full-screen surface at a time via a bottom tab bar. Default to the live
-  // stream (the L2 value). Desktop ignores this.
+  // Mobile IA (#236 Task 6): the phone has THREE tabs — Brief ◈ · Lens ◎ ·
+  // Live ≋ — and the bar that switches them lives at the root (MobileTabBar),
+  // because Brief is a route and the console is a surface. App only reads
+  // which of its two console surfaces is showing. Desktop ignores this.
   const isMobile = useIsMobile()
-  const [mobileTab, setMobileTab] = useState<'map' | 'stream' | 'threads' | 'pulse'>('stream')
+  const { consoleTab, setConsoleTab } = useMobileNav()
   // R3 emerald foundation: compact day/night flip in the command bar (full
   // theme selection, incl. Intel Noir, stays in Settings).
   const { theme: consoleTheme, toggleDayNight } = useTheme()
@@ -1169,9 +1171,10 @@ function AppContent() {
     }
   }, [popPanel])
 
-  // On mobile, secondary panels (thread detail, person, source, country drill-in)
-  // render inside the Stream slot. Opening one from the Map/Threads tab would
-  // leave it on a hidden tab — so bring the Stream tab forward automatically.
+  // #236 Task 6: a drill-in (thread, person, source, country, attention) is
+  // exactly the thing the Lens exists to re-scope to, so opening one brings
+  // the Lens forward — not Live, which is the unfocused firehose. The Lens
+  // then renders the opened item (see `lensPanel` in the shell below).
   useEffect(() => {
     if (!isMobile) return
     if (
@@ -1179,7 +1182,7 @@ function AppContent() {
       rightPanelThemeCountry || selectedCountry || selectedCountryCode ||
       selectedPublicAttention
     ) {
-      setMobileTab('stream')
+      setConsoleTab('lens')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
@@ -2458,21 +2461,37 @@ function AppContent() {
         </div>
         )
 
+        // #236 Task 7 seam: the Lens is the surface that re-scopes to whatever
+        // is focused. It does not exist yet, so it stands in — but a plain
+        // `lensPanel = threadsPanel` DEAD-ENDS the phone's core gesture:
+        // tapping a thread sets selectedTheme, and ThemeDetail renders inside
+        // the STREAM panel, which the Lens tab does not mount. Measured at
+        // 375px: the tap changed nothing on screen.
+        //
+        // So the stand-in states the Lens contract in miniature — the focused
+        // thing when there is one, the field when there is not. Same ladder as
+        // streamPanel's own (source profile / country-theme render as overlays
+        // outside the layout, so they are not part of it).
+        // REPLACE THIS with <LensPanel/> in Task 7.
+        const lensHasFocus = !!(
+          storyQuery || selectedThread || selectedTheme ||
+          (focus.type === 'person' && focus.value) ||
+          selectedCountryCode || selectedPublicAttention || selectedChokepoint
+        )
+        const lensPanel = lensHasFocus ? streamPanel : threadsPanel
+
         if (isMobile) {
-          // Mobile keeps the proven tab IA untouched: one CSS class swap shows
-          // one full-screen panel at a time (display-toggle, no unmounts) —
-          // EXCEPT the radar (6.3b): the map's 2D-canvas rAF loop keeps running
-          // while CSS-hidden, burning the phone's battery/main thread during a
-          // read. Mount it only on the map tab so it unmounts (rAF stops) on
-          // stream/threads/pulse. Re-mount re-applies its live props from App
-          // state (flyCountry/resetNonce) — see note in the handoff.
+          // #236: the phone has two console surfaces. The Lens is whatever is
+          // focused (see LensPanel, Task 7); Live is the raw stream. The map
+          // is no longer a tab — it is a section INSIDE the Lens — so the
+          // radar panel is not mounted here at all and its rAF loop never runs
+          // on a phone. The dock (anomaly/sources/radar/markets) is likewise
+          // absorbed as Lens sections in Task 8, and the correlation matrix
+          // was only ever mounted-and-CSS-hidden here, so neither is mounted.
           return (
-            <div className={`terminal-layout mobile-tab-${mobileTab}`}>
-              {mobileTab === 'map' && radarPanel}
-              {streamPanel}
-              {threadsPanel}
-              {matrixPanel}
-              {dockPanel}
+            <div className={`terminal-layout mobile-tab-${consoleTab}`}>
+              {consoleTab === 'live' && streamPanel}
+              {consoleTab === 'lens' && lensPanel}
             </div>
           )
         }
@@ -2515,23 +2534,9 @@ function AppContent() {
         />
       )}
 
-      {/* Mobile L2 bottom navigation — one full-screen surface at a time */}
-      {isMobile && (
-        <nav className="mobile-tabbar" aria-label="Console sections" data-tour="mobile-tabs">
-          <button className={mobileTab === 'map' ? 'active' : ''} onClick={() => setMobileTab('map')}>
-            <span className="mobile-tab-glyph">◍</span>Map
-          </button>
-          <button className={mobileTab === 'threads' ? 'active' : ''} onClick={() => setMobileTab('threads')}>
-            <span className="mobile-tab-glyph">⌗</span>Threads
-          </button>
-          <button className={mobileTab === 'stream' ? 'active' : ''} onClick={() => setMobileTab('stream')}>
-            <span className="mobile-tab-glyph">≋</span>Stream
-          </button>
-          <button className={mobileTab === 'pulse' ? 'active' : ''} onClick={() => setMobileTab('pulse')}>
-            <span className="mobile-tab-glyph">◎</span>Pulse
-          </button>
-        </nav>
-      )}
+      {/* The mobile tab bar used to live here. It now renders once at the root
+          (main.tsx → MobileTabBar) so /app and /brief share one bar — see
+          #236 Task 6. */}
 
       {/* Hover Tooltip */}
       <MapTooltip tooltip={tooltip} />

@@ -70,6 +70,8 @@ import { EclipseChrome } from './components/EclipseChrome'
 import './components/eclipse.css'
 import { StoryLensProvider } from './contexts/StoryLensContext'
 import './components/storyLens.css'
+import { MobileNavProvider } from './contexts/MobileNavContext'
+import { MobileTabBar } from './components/MobileTabBar.tsx'
 import App from './App.tsx'
 import { Landing } from './pages/Landing.tsx'
 import { Docs } from './pages/Docs.tsx'
@@ -108,6 +110,11 @@ createRoot(document.getElementById('root')!).render(
           <AuthProvider>
             <EclipseProvider>
               <StoryLensProvider>
+                {/* #236 Task 6: which console surface the phone is showing —
+                    shared state, because the tab bar lives at the root and the
+                    console reads it. Outside <Routes>, like the panes it
+                    drives, so a Brief↔console hop never resets it. */}
+                <MobileNavProvider>
                 <WarmCacheRouteReset />
                 {/* App+Brief live OUTSIDE <Routes> so route switches hide, never
                     unmount them (#239 slice 2). Their Route entries render null —
@@ -121,9 +128,14 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/docs/*" element={<Docs />} />
                   <Route path="*" element={<Landing />} />
                 </Routes>
+                {/* The phone's Brief ◈ · Lens ◎ · Live ≋ bar. One instance for
+                    both keep-alive routes — it navigates and nothing else, so
+                    it carries no state across the hop. */}
+                <MobileTabBar />
                 <InstallPrompt />
                 <EclipseTakeover />
                 <EclipseChrome />
+                </MobileNavProvider>
               </StoryLensProvider>
             </EclipseProvider>
           </AuthProvider>
