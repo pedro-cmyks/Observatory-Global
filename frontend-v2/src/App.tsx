@@ -2767,29 +2767,39 @@ function AppContent() {
                 onClose={() => setWorkbenchOpen(false)}
               />
             </div>
-            <div className="workbench-overlay-right">
-              {researchQuery ? (
-                <>
-                  <div className="workbench-suggest-head" data-tip="Live anchors from the research plan for this investigation's query — re-ranked on every open, never frozen. Pin one to capture it into the route.">
-                    <span className="workbench-suggest-label">ATLAS SUGGESTS</span>
-                    <span className="workbench-suggest-query">{researchQuery}</span>
+            {/* Task 10 (#236): the research plan ("Atlas suggests") is a
+                second, search-driven column — genuinely a desktop working
+                surface, not a capture list. WorkbenchPanel tells a mobile
+                analyst it lives on the computer; that claim would be false
+                the moment this column rendered beside it on the same phone
+                screen, so it does not mount at all below 768. Nothing moves
+                to an overflow menu — it is simply absent, matching the
+                honest line. */}
+            {!isMobile && (
+              <div className="workbench-overlay-right">
+                {researchQuery ? (
+                  <>
+                    <div className="workbench-suggest-head" data-tip="Live anchors from the research plan for this investigation's query — re-ranked on every open, never frozen. Pin one to capture it into the route.">
+                      <span className="workbench-suggest-label">ATLAS SUGGESTS</span>
+                      <span className="workbench-suggest-query">{researchQuery}</span>
+                    </div>
+                    <ResearchPlanPanel
+                      query={researchQuery}
+                      hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
+                      onOpenThread={handleResearchOpenThread}
+                      onOpenCountry={handleResearchOpenCountry}
+                      onBranchQuery={(q) => setResearchQuery(q)}
+                      onPinsChanged={() => setWbRefresh(t => t + 1)}
+                    />
+                  </>
+                ) : (
+                  <div className="workbench-overlay-hint">
+                    Create or select an investigation, then its research plan appears here.
+                    Anchors open real Atlas surfaces; pin the useful ones.
                   </div>
-                  <ResearchPlanPanel
-                    query={researchQuery}
-                    hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
-                    onOpenThread={handleResearchOpenThread}
-                    onOpenCountry={handleResearchOpenCountry}
-                    onBranchQuery={(q) => setResearchQuery(q)}
-                    onPinsChanged={() => setWbRefresh(t => t + 1)}
-                  />
-                </>
-              ) : (
-                <div className="workbench-overlay-hint">
-                  Create or select an investigation, then its research plan appears here.
-                  Anchors open real Atlas surfaces; pin the useful ones.
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

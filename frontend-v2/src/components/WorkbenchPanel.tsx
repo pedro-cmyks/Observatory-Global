@@ -35,6 +35,8 @@ import { countQualifier } from '../lib/countQualifier';
 import { extractSnapshotUrls, stateTag, useArticleStates } from '../lib/articleEnrichment';
 import { fetchLeads, fetchReadings, readProvenance, type LeadsResult, type Reading } from '../lib/aiRead';
 import { resolveLauncherVerbs } from '../lib/launcherVerbs';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { useAuth } from '../contexts/AuthContext';
 import './WorkbenchPanel.css';
 
 // Gate-tier badge copy for pinned receipts — the same honesty labels the
@@ -82,6 +84,18 @@ export default function WorkbenchPanel({
   // reversible for a few seconds so a mis-click never loses a pinned receipt.
   const [undoToast, setUndoToast] = useState<{ message: string; undo: () => void } | null>(null);
   void refreshToken;
+
+  // Task 10 (#236): the phone's Workbench is capture only — pin list + export.
+  // The constellation, the research plan (a sibling column in App.tsx) and the
+  // dossier are desktop working surfaces; below 768 they are replaced by one
+  // honest line rather than rendered cramped or, worse, silently absent with
+  // no explanation. `session` decides which of the two true sentences about
+  // where a captured pin actually goes gets said — sync is real, but only
+  // once the analyst has signed in (accounts-v1, AuthContext.tsx); anonymous
+  // is pure localStorage on this one device, and the copy must not claim
+  // otherwise.
+  const isMobile = useIsMobile();
+  const { session } = useAuth();
 
   const rerender = useCallback(() => setTick(t => t + 1), []);
 
@@ -254,7 +268,12 @@ export default function WorkbenchPanel({
           <div className="wb-empty">Select or create an investigation.</div>
         ) : (
           <>
-            {showDossier && (
+            {/* Task 10: dossier is a computer surface (report synthesis + live
+                corroboration). REPORT/CORROBORATE below are the only setters
+                of showDossier, and both are hidden on mobile — this guard is
+                the defensive match, so a route resized from desktop mid-open
+                never leaves a full-screen dossier stranded on a phone. */}
+            {showDossier && !isMobile && (
               <DossierView
                 investigation={active}
                 autoCorroborate={autoCorroborate}
@@ -268,8 +287,16 @@ export default function WorkbenchPanel({
             <div className="wb-header">
               <span className="wb-title">{active.title}</span>
               <div className="wb-actions">
-                <button className="wb-action wb-action--report" onClick={() => { setAutoCorroborate(false); setShowDossier(true); }} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
-                <button className="wb-action wb-action--corroborate" onClick={() => { setAutoCorroborate(true); setShowDossier(true); }} data-tip="Check every evidence-bearing pin against live web coverage; metadata-only context is marked not applicable. Duration grows with the route." disabled={active.pins.length === 0}>CORROBORATE</button>
+                {/* Task 10: REPORT and CORROBORATE both open the dossier — a
+                    computer working surface (report synthesis, live web
+                    corroboration). Hidden on mobile; EXPORT is the durability
+                    mechanism that stays everywhere. */}
+                {!isMobile && (
+                  <>
+                    <button className="wb-action wb-action--report" onClick={() => { setAutoCorroborate(false); setShowDossier(true); }} data-tip="Generate a report from the pinned route (Phase 3)" disabled={active.pins.length === 0}>REPORT</button>
+                    <button className="wb-action wb-action--corroborate" onClick={() => { setAutoCorroborate(true); setShowDossier(true); }} data-tip="Check every evidence-bearing pin against live web coverage; metadata-only context is marked not applicable. Duration grows with the route." disabled={active.pins.length === 0}>CORROBORATE</button>
+                  </>
+                )}
                 <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">{exported ? 'DOWNLOADED ✓' : 'EXPORT'}</button>
                 <button
                   className="wb-action wb-action--airead"
@@ -313,15 +340,34 @@ export default function WorkbenchPanel({
               </div>
             </div>
 
-            {/* Incremental constellation seed: the universe builds as you pin
-                (absent under 2 thread pins — nothing to connect). The absence
-                gets one honest sentence instead of silent nothing (council
-                wish 21). */}
-            <WorkbenchConstellation inv={active} onOpenThread={onOpenThread} onRerender={rerender} />
-            {connectionTopicIds(active).length < 2 && (
-              <div className="wb-constellation-hint" data-tip="The constellation measures semantic proximity, shared countries and shared actors between pinned topic threads — it needs at least two to have anything to connect.">
-                Pin 2+ topic threads to see their measured connections.
+            {/* Task 10 (#236): on the phone, capture replaces investigation-
+                building. The constellation (below) and the research plan (the
+                sibling column App.tsx does not mount on mobile — see its
+                comment) both stay real computer surfaces; this is the one
+                honest line standing in for both, plus the dossier that REPORT/
+                CORROBORATE would have opened. `session` makes the sync claim
+                true rather than aspirational (localStorage is per-device until
+                sign-in; accounts-v1 / AuthContext.tsx). */}
+            {isMobile ? (
+              <div className="wb-desktop-only" data-tip="The constellation reads measured semantic proximity, shared countries and shared actors between pinned threads; the research plan and the dossier both run live model passes. All three assume the screen space and the working session a phone read does not have.">
+                The constellation, the research plan and the dossier are worked on the computer.{' '}
+                {session
+                  ? 'Pins you capture here sync to your signed-in session — open them on the desktop.'
+                  : 'Pins you capture here stay on this phone unless you sign in to sync — export is below to carry them anywhere now.'}
               </div>
+            ) : (
+              <>
+                {/* Incremental constellation seed: the universe builds as you pin
+                    (absent under 2 thread pins — nothing to connect). The absence
+                    gets one honest sentence instead of silent nothing (council
+                    wish 21). */}
+                <WorkbenchConstellation inv={active} onOpenThread={onOpenThread} onRerender={rerender} />
+                {connectionTopicIds(active).length < 2 && (
+                  <div className="wb-constellation-hint" data-tip="The constellation measures semantic proximity, shared countries and shared actors between pinned topic threads — it needs at least two to have anything to connect.">
+                    Pin 2+ topic threads to see their measured connections.
+                  </div>
+                )}
+              </>
             )}
 
             <div className="wb-section-title">PINNED ROUTE ({active.pins.length})</div>
