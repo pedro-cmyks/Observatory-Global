@@ -276,5 +276,6 @@
         /* Above the thread overlay (z 9000): drilling into a country from a
            thread's "How It's Covered" must appear ON TOP, not behind it. */
         z-index: 9100;
+        padding-bottom: calc(16px + var(--mobile-bottom-reserve));
     }
 }

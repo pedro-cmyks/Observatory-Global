@@ -18,6 +18,8 @@
  * contract stays `data-tip="…"` — no component changes.
  */
 
+import { hoverIsAvailable } from './hoverCapable'
+
 const GAP = 8 // px between trigger and tip
 const MARGIN = 8 // px minimum distance from any viewport edge
 
@@ -49,6 +51,10 @@ function hide() {
 }
 
 function show(trigger: Element) {
+  if (!hoverIsAvailable(typeof window !== 'undefined' ? (q) => window.matchMedia(q) : undefined)) {
+    hide()
+    return
+  }
   const text = trigger.getAttribute('data-tip')
   if (!text) {
     hide()

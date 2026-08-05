@@ -1928,3 +1928,24 @@
   background: rgba(var(--color-raise-rgb), 0.92);
   border-color: var(--color-border-medium);
 }
+
+/* #236 mobile primitives — one place, applies to every surface.
+   44px is the iOS minimum; the audit measured command-bar buttons at 23-25px
+   and signal rows at 39px. */
+@media (max-width: 768px) {
+    .command-bar button,
+    .command-bar a,
+    .mobile-tabbar button {
+        min-height: 44px;
+    }
+    /* iOS zooms the whole page when a focused input is under 16px. Component
+       stylesheets set their own `font-size` with class selectors, which beat a
+       bare type selector regardless of the media query — so this one shared
+       floor is the exception that earns `!important`. It applies only under
+       768px and only to the font-size. */
+    input,
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
+}

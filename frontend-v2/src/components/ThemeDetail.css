@@ -1285,7 +1285,11 @@
     /* No sideways drag — the read scrolls vertically only. The 56px top
        clears the absolute action buttons (pin/share/export) so the thread
        title never runs under them. */
-    .theme-detail-panel { padding: 56px 16px 16px; overflow-x: hidden; touch-action: pan-y; }
+    .theme-detail-panel {
+        padding: 56px 16px calc(16px + var(--mobile-bottom-reserve));
+        overflow-x: hidden;
+        touch-action: pan-y;
+    }
     .theme-detail-header h2 { font-size: 1.4rem; line-height: 1.2; }
     .coverage-article-headline { font-size: 15px; }
     .source-item { min-height: 44px; }
