@@ -4,14 +4,21 @@ import { visibleEntities, MOBILE_ENTITY_CAP } from './threadRowMobile'
 describe('visibleEntities', () => {
   const five = ['donald trump', 'abbas araghchi', 'takahiro asaoka', 'faisal ben', 'ali larijani']
 
+  it('caps at 2', () => {
+    expect(MOBILE_ENTITY_CAP).toBe(2)
+  })
+
   it('shows every entity on desktop', () => {
     expect(visibleEntities(five, false)).toEqual({ shown: five, hiddenCount: 0 })
   })
 
   it('caps the list on mobile and reports the remainder', () => {
+    // Hardcoded, not derived from the same slice/subtract the implementation
+    // uses — this pins actual behaviour and would catch a cap change or an
+    // ordering bug, not just mirror whatever the code already does.
     expect(visibleEntities(five, true)).toEqual({
-      shown: five.slice(0, MOBILE_ENTITY_CAP),
-      hiddenCount: five.length - MOBILE_ENTITY_CAP,
+      shown: ['donald trump', 'abbas araghchi'],
+      hiddenCount: 3,
     })
   })
 

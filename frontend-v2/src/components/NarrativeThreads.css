@@ -671,10 +671,14 @@
    Give the title the full row width and its own line before anything else,
    clamp it to two lines instead of ellipsizing to a fragment, and demote the
    instrumentation (sparkline, peak annotation) to a quieter second tier.
-   Honesty chips (LabelReviewChip, TemporalSignatureChip, court/temporal
-   markers, gated counts) are siblings of .narrative-label-text inside
-   .narrative-label, NOT inside the clamped span — they are never hidden,
-   only wrapped onto their own line via .narrative-label's own flex-wrap. */
+   .narrative-label-text now wraps ONLY the <TranslatableText> title node
+   (review fix — it used to also wrap .narrative-cluster-label, so a
+   two-line title could silently swallow the ↔ relation-reason chip inside
+   the clamp with no indication). Every honesty chip — .narrative-cluster-label
+   (domain + the ↔ relation-reason chip), LabelReviewChip, TemporalSignatureChip
+   — is a sibling of .narrative-label-text inside .narrative-label, NOT inside
+   the clamped span: never hidden, only wrapped onto their own line via
+   .narrative-label's own flex-wrap. */
 @media (max-width: 768px) {
     .narrative-row {
         min-height: 44px;

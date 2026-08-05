@@ -5,6 +5,13 @@
  * entity chips wrapped over three lines. Chips are context; the title is the
  * story. We cap the chips and state the remainder — a count, never a silent
  * drop.
+ *
+ * `hiddenCount` here is only honest relative to whatever `entities` array is
+ * passed in. If a caller pre-truncates its input before calling this (e.g.
+ * NarrativeThreads.tsx's separate, pre-existing desktop 4-cap), it must
+ * compute the TRUE remainder itself against the untruncated total — this
+ * function has no way to know about a ceiling applied before it ever sees
+ * the list.
  */
 export const MOBILE_ENTITY_CAP = 2
 

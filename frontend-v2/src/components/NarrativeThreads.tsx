@@ -745,6 +745,19 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // changes. The visible domain label is the secondary encoding.
                 const threadAccent = familyColor(n.parent_domain)
                 const threadGradient = familyGradient(n.parent_domain)
+                // #236: on a phone, cap the entity chips and count what's
+                // genuinely hidden. n.top_entities is NOT bounded by the
+                // backend; the .slice(0, 4) below is a separate, pre-existing
+                // desktop ceiling. If we counted the mobile remainder against
+                // that already-sliced array, a thread with (say) 10 entities
+                // would read "+2" while 8 are actually not shown — a silent
+                // drop moved one truncation earlier than the one being
+                // counted. Count against the TRUE total instead so "+N" is
+                // honest. Desktop keeps its own separate, pre-existing silent
+                // 4-cap unchanged (out of scope here — see task report).
+                const cappedEntities = n.top_entities.slice(0, 4)
+                const { shown: shownEntities } = visibleEntities(cappedEntities, isMobile)
+                const hiddenEntityCount = isMobile ? n.top_entities.length - shownEntities.length : 0
                 return (
                     <React.Fragment key={n.thread_id}>
                     {sectionLabel && (
@@ -771,23 +784,30 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {!isSynthRow && <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>}
                                 <span className="narrative-label-text" data-tip={n.label}>
                                     <TranslatableText text={n.label} />
-                                    <span className="narrative-cluster-label">
-                                        {domainLabel}
-                                        {lensReason ? (
-                                            <span
-                                                className="narrative-sibling-reason"
-                                                data-tip={lensReason.isBlob
-                                                    ? `Measured relation: ${lensReason.text} — flagged as a possible multi-story blob; relation may be inflated`
-                                                    : `Measured relation: ${lensReason.text}`}
-                                            >
-                                                ↔ {lensReason.text}
-                                            </span>
-                                        ) : siblingReason && (
-                                            <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
-                                                ↔ {siblingReason}
-                                            </span>
-                                        )}
-                                    </span>
+                                </span>
+                                {/* #236 review fix: this used to live INSIDE .narrative-label-text,
+                                    which on mobile is a -webkit-line-clamp box — a long title could
+                                    fill both clamped lines and silently swallow the ↔ relation-reason
+                                    chip with no indication, defeating the no-silent-filtering rail it
+                                    exists to satisfy. Hoisted to a sibling of .narrative-label-text so
+                                    it gets the same treatment as LabelReviewChip/TemporalSignatureChip
+                                    below: never inside the clamp, always wraps onto its own line. */}
+                                <span className="narrative-cluster-label">
+                                    {domainLabel}
+                                    {lensReason ? (
+                                        <span
+                                            className="narrative-sibling-reason"
+                                            data-tip={lensReason.isBlob
+                                                ? `Measured relation: ${lensReason.text} — flagged as a possible multi-story blob; relation may be inflated`
+                                                : `Measured relation: ${lensReason.text}`}
+                                        >
+                                            ↔ {lensReason.text}
+                                        </span>
+                                    ) : siblingReason && (
+                                        <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
+                                            ↔ {siblingReason}
+                                        </span>
+                                    )}
                                 </span>
                                 <LabelReviewChip
                                     labelStatus={n.label_status}
@@ -871,42 +891,40 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {geography.codes.map((c, index) => (
                                     <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`${geography.label}: ${geography.names[index] || resolveCountryName(c, c)}`}><Flag code={c} /> {c}</button>
                                 ))}
-                                {(() => {
-                                    const { shown, hiddenCount } = visibleEntities(n.top_entities.slice(0, 4), isMobile)
+                                {shownEntities.map(p => {
+                                    const personPinId = `person-${p}`
+                                    const personPinned = isPinned(personPinId)
                                     return (
-                                        <>
-                                            {shown.map(p => {
-                                                const personPinId = `person-${p}`
-                                                const personPinned = isPinned(personPinId)
-                                                return (
-                                                    <span key={p} className={`person-pip${filter.person === p ? ' person-pip--active' : ''}`}>
-                                                        <button
-                                                            type="button"
-                                                            className="person-pip-focus"
-                                                            onClick={e => { e.stopPropagation(); setPerson(p) }}
-                                                            data-tip={`Focus on ${p}`}
-                                                        >{p}</button>
-                                                        <button
-                                                            type="button"
-                                                            className={`person-pip-pin${personPinned ? ' person-pip-pin--active' : ''}`}
-                                                            data-tip={personPinned ? 'Unpin from investigation' : 'Pin person to investigation'}
-                                                            onClick={e => {
-                                                                e.stopPropagation()
-                                                                if (personPinned) unpinItem(personPinId)
-                                                                else pinItem(personPin(p))
-                                                            }}
-                                                        >◆</button>
-                                                    </span>
-                                                )
-                                            })}
-                                            {hiddenCount > 0 && (
-                                                <span className="narrative-entity-more" data-tip="More entities in this thread">
-                                                    +{hiddenCount}
-                                                </span>
-                                            )}
-                                        </>
+                                        <span key={p} className={`person-pip${filter.person === p ? ' person-pip--active' : ''}`}>
+                                            <button
+                                                type="button"
+                                                className="person-pip-focus"
+                                                onClick={e => { e.stopPropagation(); setPerson(p) }}
+                                                data-tip={`Focus on ${p}`}
+                                            >{p}</button>
+                                            <button
+                                                type="button"
+                                                className={`person-pip-pin${personPinned ? ' person-pip-pin--active' : ''}`}
+                                                data-tip={personPinned ? 'Unpin from investigation' : 'Pin person to investigation'}
+                                                onClick={e => {
+                                                    e.stopPropagation()
+                                                    if (personPinned) unpinItem(personPinId)
+                                                    else pinItem(personPin(p))
+                                                }}
+                                            >◆</button>
+                                        </span>
                                     )
-                                })()}
+                                })}
+                                {/* Deliberate v1 trade-off: the entities folded into +N lose
+                                    their individual focus/pin affordances on mobile — the count
+                                    is honest, but it offers no way to act on any one of them.
+                                    Not a bug; do not "fix" by expanding the cap without deciding
+                                    that trade-off on purpose. */}
+                                {hiddenEntityCount > 0 && (
+                                    <span className="narrative-entity-more" data-tip="More entities in this thread">
+                                        +{hiddenEntityCount}
+                                    </span>
+                                )}
                                 {n.has_public_interest && (
                                     <span className="attention-badge search" data-tip={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
                                         SEARCH
