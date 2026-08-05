@@ -47,6 +47,12 @@
   gap: 8px;
 }
 
+/* Task 5 (#236): short-form dateline is mobile-only (see the ≤768px block
+   below) — desktop always shows the full "Weekday, Month Day, Year" form. */
+.brief-dateline-short {
+  display: none;
+}
+
 .brief-eclipse-mark {
   border: none;
   background: #07060a;
@@ -1934,3 +1940,139 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
    moved to src/components/CoverageGapCard.css (Task 6) with the rest of the
    gap-card block. It still applies here because BriefNewspaper.tsx
    unconditionally imports CoverageGapCard, so that stylesheet always loads. */
+
+/* ===== Mobile IA Task 5 (#236): the Brief buried its news under ~1707px of
+   chrome before the first headline. The freshness box and the markets band
+   are honesty surfaces (staleness truth / "not part of the sealed edition"),
+   so they collapse to a tappable one-line summary instead of being deleted;
+   the instrument strip and section tabs become horizontal-scroll strips; the
+   choropleth is skipped outright (see the JSX gate on isMobile — this
+   display:none alone would not stop the GeoJSON fetch). Desktop (>768px) is
+   untouched — every rule here is scoped to the phone breakpoint. */
+@media (max-width: 768px) {
+    .brief-band-summary {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-height: 44px;
+        padding: 0 12px;
+        background: transparent;
+        border: 1px solid var(--r-line);
+        border-radius: 6px;
+        font: inherit;
+        font-family: var(--r-mono);
+        font-size: 12px;
+        text-align: left;
+        color: var(--r-ink-soft, var(--r-ink));
+        cursor: pointer;
+        margin: 10px 0;
+    }
+    .brief-instrument {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 8px;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+        mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+    }
+    .brief-instrument > * {
+        flex: 0 0 auto;
+        min-width: 132px;
+        scroll-snap-align: start;
+    }
+    .brief-tablist {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 6px;
+    }
+    .brief-tablist > * {
+        flex: 0 0 auto;
+        min-height: 44px;
+    }
+    /* The literal chrome collapses above (band summaries + scroll strips) cut
+       ~1000px but still left leadTop well over the 500px acceptance bar — the
+       masthead alone measured ~300px on a phone (the reader-theme wordmark's
+       clamp() floor, `3.1rem`, was sized for desktop and never reconsidered
+       under 768px). Scoped to .brief-masthead only (readerTheme.css is shared
+       with Docs, which is untouched); nothing FUNCTIONAL is removed — every
+       actionable control (Home/Console/Share/theme toggle) and every fact
+       (date, "Measured · Last 24 hours") stays, just smaller and denser. Only
+       the two purely decorative sentences (eyebrow + italic tagline — brand
+       copy, not data) are dropped; the "ATLAS." wordmark alone still carries
+       the identity. */
+    .brief-masthead {
+        padding: 10px 0 8px;
+        gap: 6px 16px;
+    }
+    .brief-masthead .reader-eyebrow,
+    .brief-masthead .reader-tagline {
+        display: none;
+    }
+    .brief-masthead .reader-wordmark {
+        font-size: 1.7rem;
+        line-height: 1;
+    }
+    .brief-topbar {
+        display: none;
+    }
+    .brief-masthead-right {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 10px;
+    }
+    .brief-masthead-right .reader-chip {
+        padding: 4px 9px;
+    }
+    .brief-dateline-full {
+        display: none;
+    }
+    .brief-dateline-short {
+        display: inline;
+    }
+    .brief-masthead-actions {
+        gap: 6px;
+    }
+    .brief-minimap {
+        display: none;
+    }
+    /* The instrument strip's own padding (14/15/13px per card × 3 lines of
+       content) was still tall enough at 6-up scroll-strip width to keep the
+       lead below the fold; the "sub" caption line ("ingested in the last
+       24h") is real but secondary to the number itself, so it degrades to a
+       tooltip on the phone instead of a third visible line. Every block's
+       own top/bottom margin (18-26px each, tuned for a spacious desktop
+       front page) is tightened the same way — the fact stays, the breathing
+       room shrinks. */
+    .brief-vital {
+        padding: 6px 8px 5px;
+    }
+    .brief-vital .sub {
+        display: none;
+    }
+    .brief-band-summary {
+        margin: 3px 0;
+    }
+    .brief-instrument {
+        margin: 3px 0;
+    }
+    .brief-filter-row {
+        margin: 0 0 5px;
+    }
+    .brief-tablist {
+        margin-bottom: 6px;
+    }
+    .brief-section-title {
+        font-size: 1.15rem;
+        line-height: 1.1;
+        margin-top: 2px;
+    }
+    .brief-section-lede {
+        margin: 2px 0 3px;
+        font-size: 0.76rem;
+        line-height: 1.3;
+    }
+}
