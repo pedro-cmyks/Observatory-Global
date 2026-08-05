@@ -7,6 +7,7 @@ import {
   scopeKey,
   trailsEqual,
   consoleLensScope,
+  consoleSlot,
   type ConsoleFocus,
 } from './lensScope'
 
@@ -135,5 +136,67 @@ describe('consoleLensScope', () => {
   it('falls back to the id when a label has not resolved yet', () => {
     expect(consoleLensScope({ ...BLANK, themeId: 'dynamic-topic-8057', themeLabel: null }))
       .toEqual({ kind: 'thread', id: 'dynamic-topic-8057', label: 'dynamic-topic-8057' })
+  })
+})
+
+/**
+ * consoleSlot is THE ladder — App's stream slot picks its panel from it and
+ * consoleLensScope picks its name from it. These pin every ordering, not only
+ * the obvious ones: a case left untested is a case either caller can silently
+ * flip.
+ */
+describe('consoleSlot precedence', () => {
+  const S = (f: Partial<ConsoleFocus>) => consoleSlot({ ...BLANK, ...f }, false)
+
+  it('is blank when nothing is focused', () => {
+    expect(S({})).toBe('blank')
+  })
+  it('collapses to blank on the Live tab whatever is focused', () => {
+    expect(consoleSlot({ ...BLANK, themeId: 't', storyQuery: 'q', personName: 'p' }, true)).toBe('blank')
+  })
+  it('a story outranks everything', () => {
+    expect(S({ storyQuery: 'q', themeId: 't', threadId: 'th', personName: 'p', countryCode: 'IL', attentionTitle: 'a', chokepointId: 'c' })).toBe('story')
+  })
+  // The compound-focus rule (App.tsx: "show the thread"). A standing person
+  // focus stays a scope chip; it must NOT take the panel from an open read.
+  it('an open theme outranks a standing person focus', () => {
+    expect(S({ themeId: 't', personName: 'trump' })).toBe('theme')
+  })
+  it('an open thread outranks a standing person focus', () => {
+    expect(S({ threadId: 'th', personName: 'trump' })).toBe('thread')
+  })
+  it('a person takes the panel only when no thread or theme is open', () => {
+    expect(S({ personName: 'trump' })).toBe('person')
+    expect(S({ personName: 'trump', countryCode: 'IL' })).toBe('person')
+  })
+  // THE divergence: the guards let attention and thread both be true, and the
+  // pick order — not the guards — settles it. This is the single reason the
+  // ladder has to carry two orders at all.
+  it('an attention item outranks an open thread', () => {
+    expect(S({ attentionTitle: 'a', threadId: 'th' })).toBe('attention')
+  })
+  it('but a theme outranks an attention item', () => {
+    expect(S({ attentionTitle: 'a', themeId: 't' })).toBe('theme')
+  })
+  it('a country outranks an attention item', () => {
+    expect(S({ attentionTitle: 'a', countryCode: 'IL' })).toBe('country')
+  })
+  it('a thread outranks a theme', () => {
+    expect(S({ threadId: 'th', themeId: 't' })).toBe('thread')
+  })
+  it('a thread outranks a country', () => {
+    expect(S({ threadId: 'th', countryCode: 'IL' })).toBe('thread')
+  })
+  it('a chokepoint loses to every other focus and wins only alone', () => {
+    expect(S({ chokepointId: 'hormuz' })).toBe('chokepoint')
+    for (const other of [
+      { personName: 'p' }, { countryCode: 'IL' }, { themeId: 't' },
+      { attentionTitle: 'a' }, { storyQuery: 'q' },
+    ]) {
+      expect(S({ chokepointId: 'hormuz', ...other })).not.toBe('chokepoint')
+    }
+  })
+  it('a thread still outranks a chokepoint', () => {
+    expect(S({ chokepointId: 'hormuz', threadId: 'th' })).toBe('thread')
   })
 })

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { MobileSurface } from '../lib/mobileNav'
+import { fieldVisible, type MobileSurface } from '../lib/mobileNav'
 import { scopeTitle, type LensScope } from '../lib/lensScope'
 import './LensPanel.css'
 
@@ -44,7 +44,7 @@ export interface LensPanelProps {
  * it were still a direct child of the shell.
  */
 export function LensPanel({ surface, trail, onBack, field, read }: LensPanelProps) {
-  const showsField = surface === 'lens-field'
+  const showsField = fieldVisible(surface)
   // Live is not a Lens surface: it is the unfocused firehose, and it wears no
   // scope chrome. The read slot is visible under both, which is exactly why
   // the chrome is a sibling of the slots and not a wrapper around them.
@@ -63,7 +63,8 @@ export function LensPanel({ surface, trail, onBack, field, read }: LensPanelProp
               onClick={onBack}
               data-tip="Back to the scope you came from"
             >
-              <span aria-hidden="true">←</span> {scopeTitle(previous)}
+              <span aria-hidden="true">←</span>
+              <span className="lens-breadcrumb-label">{scopeTitle(previous)}</span>
             </button>
           )}
           {/* A real heading for the surface, carrying the FULL scope title —

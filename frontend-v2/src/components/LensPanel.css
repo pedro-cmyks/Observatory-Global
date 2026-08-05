@@ -12,9 +12,26 @@
 .terminal-layout[class*="mobile-tab-"].lens-shell {
   display: flex;
   flex-direction: column;
-  /* One number, two rules: the chrome's own height and the inset it costs the
-     full-screen read below. */
+  /* Two numbers, composed by every rule below instead of each hard-coding its
+     own `top`. --lens-top-offset is the height of whatever fixed strips the
+     app has already stacked at the viewport top; --lens-chrome-h is the
+     breadcrumb row's own height. */
   --lens-chrome-h: 44px;
+  --lens-top-offset: 0px;
+}
+
+/* A fixed element does NOT inherit `body { padding-top }`, so a fixed strip
+   added to the viewport top must explicitly relocate every OTHER fixed surface
+   beneath it. storyLens.css:55-67 documents this exact class of bug and
+   already relocates `.theme-detail-overlay`; the Lens chrome is a NEW fixed
+   strip and has to follow the same precedent. Without it the story-lens banner
+   (fixed, top 0, 28px, z 100000) and the eclipse ribbon stacked above it paint
+   over the top 28-56px of a 44px chrome whose label is vertically centred —
+   taking the text and most of the tap target with it.
+   Same two states the existing rules cover: lens alone / lens+eclipse. */
+@media (max-width: 768px) {
+  body.story-lensed .terminal-layout.lens-shell { --lens-top-offset: 28px; }
+  body.eclipsed.story-lensed .terminal-layout.lens-shell { --lens-top-offset: 56px; }
 }
 
 /* THE READ IS NOT ALWAYS IN THE SLOT. Most reads are (CountryBrief and
@@ -30,9 +47,9 @@
    ThemeDetail from the in-slot ThreadFocusPanel. Where `:has()` is not
    supported the chrome just stays in flow behind the read: the breadcrumb is
    unreachable on that scope, and the read itself is untouched. */
-.lens-shell:has(.theme-detail-overlay) .lens-chrome {
+.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay) .lens-chrome {
   position: fixed;
-  top: 0;
+  top: var(--lens-top-offset);
   left: 0;
   right: 0;
   height: var(--lens-chrome-h);
@@ -43,17 +60,23 @@
   border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
 }
 
-/* Gated on the chrome EXISTING, not merely on being inside the Lens shell:
-   the Live surface wears no chrome, so an unconditional inset would leave a
-   44px strip of console showing above a read that is supposed to be
-   full-bleed. (Live never renders this overlay today — verified — but the
-   inset would be wrong the day it does.)
+/* Gated on the BREADCRUMB, not on the chrome: the chrome renders on every
+   focused scope but is zero-height when it carries only the visually-hidden
+   heading, and the breadcrumb is the child that actually costs 44px. (The
+   Live surface has no chrome at all, so it is excluded either way.)
+   ONE composed inset rather than three rules racing over `top`: storyLens.css
+   sets `top: 28px/56px` on this same overlay for the banner states, and
+   `body.eclipsed.story-lensed .theme-detail-overlay` (0,3,1) would outrank a
+   (0,3,0) selector of ours — dropping the chrome's 44px back on the floor.
+   Naming the stream panel we are already inside (verified: the overlay's
+   closest .terminal-panel is .stream) lifts this to (0,5,0) so the composed
+   value wins in every banner state instead of by stylesheet order.
    Unscoped by breakpoint on purpose: `.lens-shell` only exists inside App's
    `if (isMobile)` branch, so this cannot reach the desktop overlay, which
    stays `position: static` inside the stream panel. */
-.lens-shell:has(.lens-chrome) .theme-detail-overlay {
-  top: var(--lens-chrome-h);
-  height: calc(100dvh - var(--lens-chrome-h));
+.lens-shell:has(.lens-breadcrumb) .terminal-panel.stream .theme-detail-overlay {
+  top: calc(var(--lens-top-offset) + var(--lens-chrome-h));
+  height: calc(100dvh - var(--lens-top-offset) - var(--lens-chrome-h));
 }
 
 /* Beats the Task 6 rule's `height: 100%` on specificity (0,3,0 vs 0,2,1), so
@@ -95,10 +118,22 @@
   letter-spacing: 0.03em;
   text-align: left;
   cursor: pointer;
-  /* The scope name is never truncated — a long thread title wraps rather than
-     ending in an ellipsis that hides which scope you are returning to. */
-  white-space: normal;
+}
+
+/* The scope name wraps rather than ellipsising mid-word, but stops at two
+   lines — because --lens-chrome-h is a promise the read's inset relies on, and
+   a three-line breadcrumb (59px at this size) would silently overrun the 44px
+   it reserved and cover the top of the read. Two lines fit in 42px. The
+   untruncated name is always in .lens-scope-heading, which is what a screen
+   reader gets. */
+.lens-breadcrumb-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .lens-breadcrumb:active {

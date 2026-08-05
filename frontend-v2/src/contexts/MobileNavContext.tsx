@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import type { ConsoleTab } from '../lib/mobileNav'
-import { FIELD_SCOPE, pushScope, trailsEqual, type LensScope } from '../lib/lensScope'
+import { FIELD_SCOPE, popScope, pushScope, trailsEqual, type LensScope } from '../lib/lensScope'
 
 interface MobileNavValue {
   consoleTab: ConsoleTab
@@ -13,10 +13,19 @@ interface MobileNavValue {
    * the trail can never claim a scope the panel is not rendering.
    */
   focusLens: (s: LensScope) => void
-  // There is deliberately NO `unfocusLens` here. Walking the trail back on its
-  // own would be a silent no-op: the derivation re-pushes the scope the
-  // console is still showing on the very next render. Back is the console's
-  // own `popPanel` — the trail follows what that leaves behind.
+  /**
+   * Shorten the trail by one. ONLY valid paired with the console's own
+   * `popPanel` in the same handler — alone it does not move the console, so
+   * the head would sit wrong until the next scope change (it would NOT be
+   * re-pushed immediately: the push effect is dep-gated on the derived scope,
+   * which a bare pop does not change).
+   *
+   * Paired, it is what keeps a back-tap from DEEPENING the trail: peeling a
+   * thread can reveal a country the trail never visited, and appending that
+   * on top of the thread just closed leaves a breadcrumb pointing back at it
+   * — one tap from a loop.
+   */
+  rewindLens: () => void
 }
 
 // No default value on purpose: a silent no-op setter would let a consumer
@@ -43,9 +52,16 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const rewindLens = useCallback(() => {
+    setTrail((prev) => {
+      const next = popScope(prev)
+      return trailsEqual(prev, next) ? prev : next
+    })
+  }, [])
+
   const value = useMemo(
-    () => ({ consoleTab, setConsoleTab, trail, focusLens }),
-    [consoleTab, trail, focusLens],
+    () => ({ consoleTab, setConsoleTab, trail, focusLens, rewindLens }),
+    [consoleTab, trail, focusLens, rewindLens],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

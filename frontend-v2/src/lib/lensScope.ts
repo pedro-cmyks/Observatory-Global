@@ -8,27 +8,40 @@
  * unbounded breadcrumb.
  *
  * SINGLE SOURCE OF TRUTH: the trail's head is not set by the doors that open
- * things — it is DERIVED from the console's own focus state by
- * `consoleLensScope`. That is deliberate. If each door pushed its own scope,
- * the trail would be a second notion of "what am I looking at", free to
- * disagree with the panel actually on screen. Derivation makes disagreement
- * unrepresentable: the panel and the breadcrumb read the same state.
+ * things — it is DERIVED from the console's own focus state. If each door
+ * pushed its own scope, the trail would be a second notion of "what am I
+ * looking at", free to disagree with the panel actually on screen.
+ *
+ * That derivation runs through `consoleSlot`, which is THE ladder: App's
+ * stream slot calls it to decide which panel to render, and `consoleLensScope`
+ * calls it to decide what the Lens names. One function, two callers, so the
+ * breadcrumb and the panel cannot pick differently. (The first cut of this
+ * module transcribed App's ladder by hand and claimed disagreement was
+ * "unrepresentable" — with two copies it was merely well-guarded. Now the
+ * copy is gone.)
  */
-export type LensScopeKind =
-  // The five scopes the Lens design names.
+export type ReachableScopeKind =
   | 'field'
   | 'thread'
   | 'country'
   | 'person'
-  | 'signal'
-  // Three more the console can actually reach. They are here because the
-  // alternative — filing them under one of the five — would make the
-  // breadcrumb name a thing the panel is not showing. `story` is a research
-  // plan over a free query; `attention` is a trends/wiki item; `chokepoint`
-  // is a maritime passage. See consoleLensScope for how each is reached.
+  // Three more the console can reach that the five-scope sketch did not name.
+  // They are here because the alternative — filing them under one of the five
+  // — would make the breadcrumb name a thing the panel is not showing.
+  // `story` is a research plan over a free query; `attention` is a
+  // trends/wiki item; `chokepoint` is a maritime passage.
   | 'story'
   | 'attention'
   | 'chokepoint'
+
+/**
+ * `signal` is in the union and has NO producer: an open signal lives in
+ * SignalStream's own local state, not the console's, so `consoleSlot` cannot
+ * see one and the phone cannot reach the scope. Splitting the union is how
+ * that deferral stays visible in the type rather than in a comment someone
+ * has to find.
+ */
+export type LensScopeKind = ReachableScopeKind | 'signal'
 
 export interface LensScope {
   kind: LensScopeKind
@@ -60,11 +73,15 @@ export function pushScope(trail: LensScope[], next: LensScope): LensScope[] {
 /**
  * Walk the trail back one step.
  *
- * Part of this module's API and tested, but NOT how the app goes back today:
- * because the head is derived, popping the trail alone would be re-pushed on
- * the next render. The Lens's back button drives the console's own `popPanel`
- * and the trail follows. Kept because the rewind is the trail's own
- * definition, and Task 8 may need it once a scope owns state of its own.
+ * Never called ALONE — popping the trail on its own does not move the console,
+ * so the head would sit wrong until the next scope change (it would not be
+ * "re-pushed on the next render": the push effect is dep-gated on the derived
+ * scope, which did not change). It is called TOGETHER with the console's own
+ * `popPanel`, and that pairing is what stops a back-tap from DEEPENING the
+ * trail: peeling a thread can reveal a country the trail never visited, which
+ * a bare append would add on top of the thread just closed — leaving a
+ * breadcrumb pointing at it, one tap from a loop. Shortening first means the
+ * revealed scope lands at the same depth instead.
  */
 export function popScope(trail: LensScope[]): LensScope[] {
   if (trail.length <= 1) return [FIELD_SCOPE]
@@ -92,6 +109,12 @@ export function trailsEqual(a: LensScope[], b: LensScope[]): boolean {
  * `threadId` is ThreadFocusPanel's thread; `themeId` is ThemeDetail's theme.
  * Both are threads to a reader, so both derive a `thread` scope — they differ
  * only in which panel renders them.
+ *
+ * Presence is decided by the ID being truthy. App used to test the enclosing
+ * OBJECT (`!!selectedTheme`), which is a slightly wider predicate: an object
+ * carrying an empty id would have rendered ThemeDetail. Now that App reads its
+ * slot from here, whatever the predicate is, both callers get the same answer
+ * — the asymmetry is gone rather than documented.
  */
 export interface ConsoleFocus {
   storyQuery: string | null
@@ -108,22 +131,38 @@ export interface ConsoleFocus {
 }
 
 /**
- * Derive the scope the console is CURRENTLY showing.
- *
- * COUPLING, named so it is not discovered the hard way: the guards and the
- * pick order below mirror the stream slot's ladder in App.tsx (the
- * `isStory`/`isThread`/... booleans and the JSX chain that consumes them,
- * which are NOT in the same order — the guards make most pairs mutually
- * exclusive and the JSX settles the rest). Change one without the other and
- * the Lens names one thing while rendering another. Both are exercised by
- * the precedence tests in lensScope.test.ts.
- *
- * There is deliberately no `signal` branch: an open signal lives in
- * SignalStream's own local state, not the console's, so the phone cannot
- * reach a signal scope yet. That is a gap, not an oversight — see the Lens
- * report for Task 7.
+ * What the console's stream slot renders. `thread` is ThreadFocusPanel and
+ * `theme` is ThemeDetail — two panels a reader would call the same thing, so
+ * they collapse to one Lens scope but stay distinct here, because App has to
+ * pick a component.
  */
-export function consoleLensScope(f: ConsoleFocus): LensScope {
+export type ConsoleSlot =
+  | 'blank'
+  | 'story'
+  | 'person'
+  | 'attention'
+  | 'thread'
+  | 'country'
+  | 'theme'
+  | 'chokepoint'
+
+/**
+ * THE ladder. App's stream slot calls this to choose a panel; consoleLensScope
+ * calls it to choose a name. Previously App held one copy and this module held
+ * a transcription of it.
+ *
+ * Two orders are folded in here, and they are genuinely different: the GUARDS
+ * (which make most pairs mutually exclusive) and the PICK order (which settles
+ * the pairs the guards leave open). `attention` over `thread` is the one place
+ * they truly diverge — the guards permit both, and the pick resolves it. Both
+ * are pinned by the precedence tests.
+ *
+ * `liveTab` collapses everything to `blank`: on the phone's Live tab the slot
+ * is the firehose whatever is focused. The Lens passes `false` — it must keep
+ * naming the scope it will return to while Live is on screen.
+ */
+export function consoleSlot(f: ConsoleFocus, liveTab: boolean): ConsoleSlot {
+  if (liveTab) return 'blank'
   const isStory = !!f.storyQuery
   const isThread = !!f.threadId && !isStory
   const isTheme = !!f.themeId && !isThread && !isStory
@@ -132,13 +171,26 @@ export function consoleLensScope(f: ConsoleFocus): LensScope {
   const isAttention = !!f.attentionTitle && !isPerson && !isCountry && !isTheme && !isStory
   const isChokepoint = !!f.chokepointId && !isPerson && !isCountry && !isTheme && !isAttention && !isStory
 
-  // Pick order = the JSX chain's order, not the declaration order above.
-  if (isStory) return { kind: 'story', id: f.storyQuery!, label: f.storyQuery! }
-  if (isPerson) return { kind: 'person', id: f.personName!, label: f.personName! }
-  if (isAttention) return { kind: 'attention', id: f.attentionTitle!, label: f.attentionTitle! }
-  if (isThread) return { kind: 'thread', id: f.threadId!, label: f.threadLabel || f.threadId! }
-  if (isCountry) return { kind: 'country', id: f.countryCode!, label: f.countryName || f.countryCode! }
-  if (isTheme) return { kind: 'thread', id: f.themeId!, label: f.themeLabel || f.themeId! }
-  if (isChokepoint) return { kind: 'chokepoint', id: f.chokepointId!, label: f.chokepointName || f.chokepointId! }
-  return FIELD_SCOPE
+  if (isStory) return 'story'
+  if (isPerson) return 'person'
+  if (isAttention) return 'attention'
+  if (isThread) return 'thread'
+  if (isCountry) return 'country'
+  if (isTheme) return 'theme'
+  if (isChokepoint) return 'chokepoint'
+  return 'blank'
+}
+
+/** Name the scope the console is showing, off the same ladder that renders it. */
+export function consoleLensScope(f: ConsoleFocus): LensScope {
+  switch (consoleSlot(f, false)) {
+    case 'story': return { kind: 'story', id: f.storyQuery!, label: f.storyQuery! }
+    case 'person': return { kind: 'person', id: f.personName!, label: f.personName! }
+    case 'attention': return { kind: 'attention', id: f.attentionTitle!, label: f.attentionTitle! }
+    case 'thread': return { kind: 'thread', id: f.threadId!, label: f.threadLabel || f.threadId! }
+    case 'country': return { kind: 'country', id: f.countryCode!, label: f.countryName || f.countryCode! }
+    case 'theme': return { kind: 'thread', id: f.themeId!, label: f.themeLabel || f.themeId! }
+    case 'chokepoint': return { kind: 'chokepoint', id: f.chokepointId!, label: f.chokepointName || f.chokepointId! }
+    default: return FIELD_SCOPE
+  }
 }

@@ -52,7 +52,7 @@ import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
-import { resolveThreadLabel } from './lib/themeLabels'
+import { resolveThreadLabel, resolveThreadTitle } from './lib/themeLabels'
 import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addCitation } from './lib/workbench'
 import { countryPin, receiptFrom } from './lib/capturePayloads'
 import { buildBriefParams, parseConsoleDeepLink } from './lib/navParams'
@@ -96,7 +96,7 @@ import { useSavedWatches } from './hooks/useSavedWatches'
 import { useIsMobile } from './hooks/useIsMobile'
 import { useMobileNav } from './contexts/MobileNavContext'
 import { surfaceFor, fieldVisible, type MobileSurface } from './lib/mobileNav'
-import { consoleLensScope } from './lib/lensScope'
+import { consoleLensScope, consoleSlot } from './lib/lensScope'
 import { LensPanel } from './components/LensPanel'
 
 
@@ -396,7 +396,7 @@ function AppContent() {
   // because Brief is a route and the console is a surface. App only reads
   // which of its two console surfaces is showing. Desktop ignores this.
   const isMobile = useIsMobile()
-  const { consoleTab, setConsoleTab, trail: lensTrail, focusLens } = useMobileNav()
+  const { consoleTab, setConsoleTab, trail: lensTrail, focusLens, rewindLens } = useMobileNav()
   // R3 emerald foundation: compact day/night flip in the command bar (full
   // theme selection, incl. Intel Noir, stays in Settings).
   const { theme: consoleTheme, toggleDayNight } = useTheme()
@@ -1129,6 +1129,16 @@ function AppContent() {
       if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
       return true
     }
+    // #236 Task 7 review: these three reading panels were never peelable. Back
+    // fell straight through them — so Escape, the edge-swipe and (once the Lens
+    // named these scopes) its breadcrumb were dead controls on a story, an
+    // attention item or a chokepoint: nothing happened, or on a Brief entry the
+    // fall-through at the bottom left the console entirely. Peeled here, above
+    // person/country, because each is opened ON TOP of whatever focus was
+    // already standing and Back peels most-recent-first.
+    if (storyQuery) { setStoryQuery(null); return true }
+    if (selectedPublicAttention) { setSelectedPublicAttention(null); return true }
+    if (selectedChokepoint) { setSelectedChokepoint(null); return true }
     if (focus.type === 'person') { setPerson(null); return true }
     if (selectedCountry || selectedCountryCode || filter.country) {
       setSelectedCountry(null)
@@ -1143,7 +1153,7 @@ function AppContent() {
     if (isMobile && entrySource === 'brief') { navigate('/brief'); return true }
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate, storyLens.state.active, storyLens.exit, stripLensParam])
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate, storyLens.state.active, storyLens.exit, stripLensParam, storyQuery, selectedPublicAttention, selectedChokepoint])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
@@ -1191,19 +1201,26 @@ function AppContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
 
-  // #236 Task 7: the Lens's scope, DERIVED from the console's focus state
-  // rather than pushed by the doors that open things. This is the whole
-  // defence against a second notion of "what am I looking at": the breadcrumb
-  // and the panel read one state, so they cannot disagree. consoleLensScope
-  // mirrors the stream slot's own ladder (see its comment — the two must move
-  // together).
-  const lensScope = useMemo(() => consoleLensScope({
+  // #236 Task 7: the console's focus, read ONCE and handed to the ladder that
+  // both the stream slot (which panel to render) and the Lens (what to name)
+  // decide from. Two consumers, one decision — see lib/lensScope consoleSlot.
+  const consoleFocus = useMemo(() => ({
     storyQuery,
     threadId: selectedThread?.thread_id ?? null,
     threadLabel: selectedThread?.label ?? null,
     themeId: selectedTheme?.theme ?? null,
+    // resolveThreadTitle, not resolveThreadLabel: for an opaque numeric id with
+    // no label yet the latter returns the literal "Narrative Thread", which
+    // reads as if the thread were nameless rather than still loading — and it
+    // would be the breadcrumb's permanent text if the fetch never lands.
+    // `loading` = we have no label from any opener yet; ThemeDetail's
+    // onLabelResolved fills it in and pushScope swaps the trail entry.
     themeLabel: selectedTheme
-      ? resolveThreadLabel(selectedTheme.theme, selectedTheme.thread?.label ?? selectedTheme.labelHint)
+      ? resolveThreadTitle(
+          selectedTheme.theme,
+          selectedTheme.thread?.label ?? selectedTheme.labelHint,
+          !(selectedTheme.thread?.label ?? selectedTheme.labelHint),
+        )
       : null,
     personName: focus.type === 'person' ? focus.value : null,
     countryCode: selectedCountryCode,
@@ -1212,6 +1229,8 @@ function AppContent() {
     chokepointId: selectedChokepoint?.id ?? null,
     chokepointName: selectedChokepoint?.name ?? null,
   }), [storyQuery, selectedThread, selectedTheme, focus.type, focus.value, selectedCountryCode, selectedCountry, selectedPublicAttention, selectedChokepoint])
+
+  const lensScope = useMemo(() => consoleLensScope(consoleFocus), [consoleFocus])
 
   useEffect(() => {
     // Phone only: on desktop the Lens does not render and the trail stays at
@@ -2083,13 +2102,14 @@ function AppContent() {
         // tabs, because the Lens changes shape with focus — see surfaceFor,
         // where the tab decides FIRST so Live can never resolve to the same
         // thing as the Lens. Computed only on the phone; the `isMobile &&`
-        // short-circuit means desktop never evaluates the focus ladder.
+        // short-circuit means desktop never evaluates the ladder.
+        // Task 7 review: "is anything focused" was a THIRD hand-listing of the
+        // focus states, free to drift from the two that decide what renders.
+        // It is the same question consoleSlot already answers — anything but
+        // `blank` — so it asks that instead. liveTab is false here on purpose:
+        // this argument is about FOCUS, and surfaceFor applies the tab itself.
         const mobileSurface: MobileSurface | null = isMobile
-          ? surfaceFor(consoleTab, !!(
-              storyQuery || selectedThread || selectedTheme ||
-              (focus.type === 'person' && focus.value) ||
-              selectedCountryCode || selectedPublicAttention || selectedChokepoint
-            ))
+          ? surfaceFor(consoleTab, consoleSlot(consoleFocus, false) !== 'blank')
           : null
         // #236 Task 7 rename: `threadsHidden` named the DESKTOP panel it
         // happened to hide. On the phone that panel is the Lens's FIELD — the
@@ -2097,10 +2117,9 @@ function AppContent() {
         // which is what the flag actually decides. Its only consumer is
         // `paused`; <LensPanel/> owns the visibility toggle off the same
         // `fieldVisible` rule, so the pane and its paused flag cannot drift.
-        // (`streamHidden`'s other consumer was that same visibility toggle,
-        // which leaves only the read pane's `paused` — still a TODO at its
-        // call site below — so it is gone rather than renamed into a variable
-        // nothing reads.)
+        // The read pane is the exact mirror — hidden precisely when the field
+        // shows — and takes the same rule when its `paused` lands (the TODO at
+        // its call site below).
         const fieldHidden = mobileSurface !== null && !fieldVisible(mobileSurface)
 
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
@@ -2111,17 +2130,26 @@ function AppContent() {
           // Lens-direction dead end, mirrored. Focus is NOT cleared: the open
           // thread is still there when the user taps back to the Lens.
           const liveTab = mobileSurface === 'live'
-          const isStory = !liveTab && !!storyQuery
-          // Flywheel compound focus: a freshly-opened thread/theme outranks a
-          // standing person focus for the middle panel (Pedro's call — "show the
-          // thread"); the person stays a scope chip driving the map/list. Person
-          // wins the panel only when no thread/theme is open.
-          const isThread = !liveTab && !!selectedThread && !isStory
-          const isTheme = !liveTab && !!selectedTheme && !isThread && !isStory
-          const isPerson = !liveTab && focus.type === 'person' && !!focus.value && !isStory && !isThread && !isTheme
-          const isCountry = !liveTab && !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
-          const isPublicAttention = !liveTab && !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
-          const isChokepoint = !liveTab && !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
+          // #236 Task 7 review: the ladder that used to live here — seven
+          // guarded booleans plus the JSX chain that ranked them — now lives in
+          // lib/lensScope `consoleSlot`, because the Lens needs the SAME answer
+          // to name what this renders. It was transcribed there before; a
+          // transcription is a copy, and a copy drifts. These booleans are now
+          // views of one decision, kept so the ~40 call sites below read the
+          // same as they always did.
+          // Flywheel compound focus is IN that ladder: a freshly-opened
+          // thread/theme outranks a standing person focus for the middle panel
+          // (Pedro's call — "show the thread"); the person stays a scope chip
+          // driving the map/list. Person wins the panel only when no
+          // thread/theme is open. lensScope.test.ts pins that ordering.
+          const slot = consoleSlot(consoleFocus, liveTab)
+          const isStory = slot === 'story'
+          const isThread = slot === 'thread'
+          const isTheme = slot === 'theme'
+          const isPerson = slot === 'person'
+          const isCountry = slot === 'country'
+          const isPublicAttention = slot === 'attention'
+          const isChokepoint = slot === 'chokepoint'
           const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null)
             // Story Lens (Task 10, Step 2): this is the ThemeDetail/EntityPanel/
             // ThreadFocusPanel/PublicAttentionPanel close path — the panel is
@@ -2334,12 +2362,12 @@ function AppContent() {
                     }}
                   />
                 ) : (
-                  // TODO(#236): pause the read pane when it is hidden — the
-                  // flag is `mobileSurface !== null && fieldVisible(mobileSurface)`,
+                  // TODO(#236): pause the read pane when it is hidden — the flag
+                  // is `mobileSurface !== null && fieldVisible(mobileSurface)`,
                   // the mirror of `fieldHidden` above. Not wired here because
-                  // SignalStream's `paused` prop is another agent's
-                  // uncommitted chip: passing it would not compile for anyone
-                  // without their working tree. Their chip adds this one line.
+                  // SignalStream's `paused` prop is another agent's uncommitted
+                  // chip: passing it would not compile for anyone without their
+                  // working tree. Their chip adds this one line.
                   <SignalStream />
                 )}
               </div>
@@ -2548,8 +2576,9 @@ function AppContent() {
           // second, and NarrativeThreads polls every 5 min. They are kept
           // alive DESPITE that, because remounting measured worse — 0.7-1.5s
           // of blank panel and 2-4 re-fired requests on every tap. The
-          // `paused` prop buys the hidden cost back for the field panel; the
-          // read pane's half is the TODO at its call site above.
+          // `paused` prop buys the hidden cost back on both: whichever pane is
+          // hidden idles its timers and keeps its rows, so a tap costs neither
+          // a refetch nor a blank panel.
           //
           // #236 Task 7: <LensPanel/> now owns which slot is showing and wears
           // the scope chrome. The two panels stay exactly where they were —
@@ -2565,7 +2594,14 @@ function AppContent() {
               <LensPanel
                 surface={mobileSurface!}
                 trail={lensTrail}
-                onBack={popPanel}
+                /* Shorten the trail and peel the console in the same handler.
+                   popPanel alone can reveal a scope the trail never visited
+                   (peel a thread, find a country focus set under it) — appended
+                   on top of the thread just closed, the breadcrumb would then
+                   point back at it. Rewinding first lands the revealed scope at
+                   the same depth. popPanel is the same function Escape and the
+                   edge-swipe call, so all three agree. */
+                onBack={() => { rewindLens(); popPanel() }}
                 field={threadsPanel}
                 read={streamPanel}
               />
