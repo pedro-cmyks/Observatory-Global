@@ -53,6 +53,14 @@
   display: none;
 }
 
+/* Task 5 follow-up (#236): two instrument-strip labels carry a scale-or-
+   definition suffix ONLY on mobile, where the "sub" caption line that used
+   to state it is hidden for space. Desktop always shows the plain label
+   (the .k text node itself is never touched by mobile CSS). */
+.brief-vital-k-mobile {
+  display: none;
+}
+
 .brief-eclipse-mark {
   border: none;
   background: #07060a;
@@ -2054,6 +2062,18 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
     }
     .brief-vital .sub {
         display: none;
+    }
+    /* Task 5 follow-up (#236): two tiles (avg sentiment, coverage gaps) swap
+       to a shorter label that folds in the scale/definition the hidden "sub"
+       used to carry — tighter letter-spacing buys back the width a full-size
+       0.18em mono label would need to wrap at a 132px card. The other four
+       tiles keep their plain .k label unchanged; nothing here touches them. */
+    .brief-vital-k-full {
+        display: none;
+    }
+    .brief-vital-k-mobile {
+        display: inline;
+        letter-spacing: 0.06em;
     }
     .brief-band-summary {
         margin: 3px 0;

@@ -1336,7 +1336,20 @@ export function BriefNewspaper() {
                                 <div className="sub">outlet domains · raw 24h feed</div>
                             </div>
                             <div className="brief-vital">
-                                <div className="k">Avg sentiment</div>
+                                {/* Task 5 follow-up (#236): the "sub" caption below states this
+                                    tile's scale (±1) — the ONLY other place on the page that
+                                    restates it is measuredSentimentChip, which renders only when
+                                    the AI insight is present (this project's insight lane has a
+                                    documented multi-day-outage history). Hiding "sub" on mobile
+                                    (below) would leave a bare signed number with no scale
+                                    anywhere on the page, breaking sentimentScale.ts's own rule
+                                    ("every printed value states its scale"). The mobile-only
+                                    label swap keeps that promise without the vertical cost of
+                                    keeping "sub" visible — the desktop .k text node is untouched. */}
+                                <div className="k">
+                                    <span className="brief-vital-k-full">Avg sentiment</span>
+                                    <span className="brief-vital-k-mobile">Sentiment · ±1</span>
+                                </div>
                                 <div className="v">{formatSentimentPm1(data.stats.avg_sentiment)}</div>
                                 <div className="sub">normalized ±1 scale · window aggregate</div>
                             </div>
@@ -1346,7 +1359,14 @@ export function BriefNewspaper() {
                                 <div className="sub">ranked narrative threads served this window</div>
                             </div>
                             <div className="brief-vital">
-                                <div className="k">Coverage gaps</div>
+                                {/* Same rationale as the sentiment tile above: "Coverage gaps"
+                                    alone is cryptic and its definition ("categories with
+                                    attention but zero verified rows") is only reachable via the
+                                    Under-the-Radar tab. */}
+                                <div className="k">
+                                    <span className="brief-vital-k-full">Coverage gaps</span>
+                                    <span className="brief-vital-k-mobile">Gaps · unverified</span>
+                                </div>
                                 <div className="v">{coverageGaps.length}</div>
                                 <div className="sub">categories with attention but zero verified rows</div>
                             </div>
