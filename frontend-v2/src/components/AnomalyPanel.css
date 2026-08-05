@@ -353,9 +353,12 @@
     .anomaly-col > * {
         min-width: 0;
     }
+    /* The real tap targets are `.ap-row.clickable` divs (BRIEF button, wiki/
+       trend/forum/conflict rows) — there is no `<li>` in this component. The
+       original `li` selector was dead; this is what actually needed 44px. */
     .anomaly-col button,
     .anomaly-col a,
-    .anomaly-col li {
+    .anomaly-col .clickable {
         min-height: 44px;
     }
     /* One column buys width, but .ap-country/.ap-keyword/.ap-conflict-loc/
