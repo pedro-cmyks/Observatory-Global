@@ -346,10 +346,20 @@
     .anomaly-body-grid {
         grid-template-columns: 1fr;
     }
+    /* Stacked, the divider between the two columns has to move from the side to
+       the top. `--color-neutral-rgb` at 0.18 is the app-wide divider idiom
+       (ConnectionsSection, ConflictEventPanel, DossierView, WorkbenchPanel all
+       use it) — deliberately the shared token rather than this file's local
+       --color-ink-rgb, since it is a structural seam, not panel chrome. */
     .anomaly-col.col-right-border {
         border-left: 0;
         border-top: 1px solid rgba(var(--color-neutral-rgb), 0.18);
     }
+    /* Load-bearing, do not delete: .anomaly-col scrolls vertically, and a flex/
+       grid child defaults to min-width:auto — so one unbreakable string (a long
+       URL, a CJK run) would refuse to shrink and push a horizontal scrollbar
+       into a column that should only ever scroll down. This lets the wrapping
+       rules below actually take effect. */
     .anomaly-col > * {
         min-width: 0;
     }
