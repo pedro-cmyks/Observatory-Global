@@ -2626,6 +2626,14 @@ function AppContent() {
                    the same depth. popPanel is the same function Escape and the
                    edge-swipe call, so all three agree. */
                 onBack={() => { rewindLens(); popPanel() }}
+                /* #236 Task 8: a country row in `where it lives` re-scopes the
+                   Lens. The console's own opener, not FocusContext.setCountry
+                   — the Lens scope is derived from this component's focus
+                   state (consoleFocus.countryCode), so setting only the shared
+                   filter would move the map while the breadcrumb and the read
+                   kept naming the old scope. It resolves the display name
+                   itself, which is why the section passes just the code. */
+                onOpenCountry={handleCountryClick}
                 field={threadsPanel}
                 read={streamPanel}
               />

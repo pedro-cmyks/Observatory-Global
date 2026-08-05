@@ -73,9 +73,15 @@ const STEPS: TourStep[] = [
 // The card is a bottom sheet (see CSS) so Skip/Next are always reachable — the
 // desktop beside-target positioning clipped off-screen and trapped the user.
 //
-// NEEDS A SECOND PASS IN TASK 8: Map and Pulse return as SECTIONS inside the
-// Lens, and step 2 should name them once they do — right now the Lens is the
-// threads field plus whatever you opened, so the copy describes only that.
+// TASK 8 SECOND PASS (done). The Map tab came back as the Lens's `where it
+// lives` strip, so step 3 now names it — it is the pivot the retired tab used
+// to offer, and it is on every scope. The `connected` section is deliberately
+// NOT taught: it renders an honest absence at every scope today (its only
+// neighbour ranker measured ~60% false and ships dark), and a tour that points
+// at a section which always answers "not measured" teaches a dead end. It gets
+// a line when it has rows. Pulse is likewise unnamed — public attention is
+// carried inside each scope's own panel, not as a section the user navigates
+// to, so there is nothing to point at.
 const MOBILE_STEPS: TourStep[] = [
     {
         selector: '[data-tour="search"]',
@@ -95,7 +101,7 @@ const MOBILE_STEPS: TourStep[] = [
         selector: '',
         eyebrow: 'Pivot, don’t just scroll',
         title: 'Tap anything to drill in',
-        body: 'Tap a thread, a source, or a headline and the Lens re-scopes to it. Anything you open can be pinned in the Workbench.',
+        body: 'Tap a thread, a source, or a headline and the Lens re-scopes to it. The “where it lives” strip lists the countries that signal lands in — tap one to pivot there. Anything you open can be pinned in the Workbench.',
     },
 ]
 

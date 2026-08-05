@@ -18,6 +18,11 @@
      breadcrumb row's own height. */
   --lens-chrome-h: 44px;
   --lens-top-offset: 0px;
+  /* #236 Task 8: the closed sections bar. A THIRD number in the same
+     composition, for the same reason the first two are here — the read's inset
+     is built from these, so a strip that takes vertical space must declare it
+     rather than overlap the read by 44px. */
+  --lens-sections-h: 44px;
 }
 
 /* A fixed element does NOT inherit `body { padding-top }`, so a fixed strip
@@ -47,6 +52,24 @@
    ThemeDetail from the in-slot ThreadFocusPanel. Where `:has()` is not
    supported the chrome just stays in flow behind the read: the breadcrumb is
    unreachable on that scope, and the read itself is untouched. */
+/* Same treatment for the sections bar, one strip lower — it is in flow behind
+   a covering read for exactly the same reason the chrome is, and it composes
+   its own `top` from the two numbers above it rather than hard-coding 44px.
+   Gated identically (`:has(.lens-breadcrumb)`) so the bar and the read's inset
+   agree about whether the offset applies: the inset rule above is gated on the
+   breadcrumb too, and a bar that floated while the read did not move down
+   would cover the top of the read. */
+.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay) .lens-sections-bar {
+  position: fixed;
+  top: calc(var(--lens-top-offset) + var(--lens-chrome-h));
+  left: 0;
+  right: 0;
+  height: var(--lens-sections-h);
+  z-index: 9600;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
+}
+
 .lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay) .lens-chrome {
   position: fixed;
   top: var(--lens-top-offset);
@@ -75,8 +98,8 @@
    `if (isMobile)` branch, so this cannot reach the desktop overlay, which
    stays `position: static` inside the stream panel. */
 .lens-shell:has(.lens-breadcrumb) .terminal-panel.stream .theme-detail-overlay {
-  top: calc(var(--lens-top-offset) + var(--lens-chrome-h));
-  height: calc(100dvh - var(--lens-top-offset) - var(--lens-chrome-h));
+  top: calc(var(--lens-top-offset) + var(--lens-chrome-h) + var(--lens-sections-h));
+  height: calc(100dvh - var(--lens-top-offset) - var(--lens-chrome-h) - var(--lens-sections-h));
 }
 
 /* Beats the Task 6 rule's `height: 100%` on specificity (0,3,0 vs 0,2,1), so
@@ -140,6 +163,168 @@
 
 .lens-breadcrumb:active {
   color: var(--color-accent-highlight);
+}
+
+/* --- #236 Task 8: sections 3 and 4 ---------------------------------------- */
+
+/* The closed bar. `flex: 0 0 auto` keeps it out of the panel's growth the same
+   way the chrome stays out; its height is the variable the read's inset above
+   subtracts, so the two cannot disagree. */
+.lens-sections-bar {
+  flex: 0 0 auto;
+  height: var(--lens-sections-h);
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.14);
+  /* Positioned so the z-index applies: the open sheet is fixed at 9450 and
+     starts at this bar's bottom edge, and without a stacking context of its
+     own the bar loses the paint order to it — measured, the sheet covered its
+     own toggle and the only way to close it was gone. Below the sheet's 9450
+     would not help; it has to be ABOVE, because the bar is what closes it. */
+  position: relative;
+  z-index: 9460;
+  background: var(--color-bg-secondary);
+}
+
+.lens-sections-toggle {
+  /* #236 Task 1 primitive — the iOS 44px touch floor. The bar IS the target. */
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical, monospace);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lens-sections-tally {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The count is the loud part — the label is standing furniture, the number is
+   what changed. `—` for an empty section and `…` for one still measuring are
+   set by sectionTally, so the bar never reads as a zero it did not measure. */
+.lens-sections-tally b {
+  color: rgb(var(--color-accent-deep-rgb));
+  font-weight: 600;
+}
+
+.lens-sections-caret {
+  margin-left: auto;
+  color: rgb(var(--color-accent-deep-rgb));
+}
+
+/* The open sheet. Fixed and over the read, because the read is what it opened
+   on top of. Below the tab bar (9500) so navigation is never trapped, and
+   below the bar's own 9460 — that ordering, NOT this `top`, is what keeps the
+   toggle reachable while the sheet is up.
+   The `top` here is only a FALLBACK. It is right when a covering read is up
+   (the bar is fixed at exactly this offset then) and wrong everywhere else:
+   at field scope the bar sits in flow at ~191px while this composes to 88px,
+   which is how the sheet came to cover its own toggle. The component measures
+   the bar and sets `top` inline; this value applies only if that ref is
+   somehow empty, and the z-order above still leaves a way out. */
+.lens-sections-sheet {
+  position: fixed;
+  top: calc(var(--lens-top-offset) + var(--lens-chrome-h) + var(--lens-sections-h));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9450;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-bg-secondary);
+  border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
+  padding: 8px 12px calc(12px + var(--mobile-bottom-reserve));
+}
+
+.lens-section + .lens-section {
+  margin-top: 18px;
+}
+
+.lens-section-label {
+  margin: 0 0 6px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lens-section-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lens-section-row {
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.10);
+  color: var(--color-text-primary);
+  font-family: var(--font-technical, monospace);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* A connected row is not a tap target yet — it carries a receipt to read, not
+   a destination. Stated in CSS so it does not merely LOOK inert. */
+.lens-section-row--static {
+  cursor: default;
+  flex-wrap: wrap;
+}
+
+.lens-section-row:active {
+  color: var(--color-accent-highlight);
+}
+
+.lens-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lens-row-count {
+  flex: 0 0 auto;
+  color: rgb(var(--color-accent-deep-rgb));
+  font-variant-numeric: tabular-nums;
+}
+
+/* WRAPS, never truncates. A receipt clipped to "..." is a claim whose evidence
+   the reader cannot check — the same rail that keeps tier and court chips from
+   disappearing when they do not fit. */
+.lens-row-receipt {
+  flex: 1 0 100%;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+/* The honest empty. Never a blank section. */
+.lens-section-reason {
+  margin: 0;
+  padding: 6px 4px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical, monospace);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 /* A real heading for the surface, in the a11y tree, out of the layout. Not
