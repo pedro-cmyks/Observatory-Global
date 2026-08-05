@@ -2042,11 +2042,13 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
     /* The instrument strip's own padding (14/15/13px per card × 3 lines of
        content) was still tall enough at 6-up scroll-strip width to keep the
        lead below the fold; the "sub" caption line ("ingested in the last
-       24h") is real but secondary to the number itself, so it degrades to a
-       tooltip on the phone instead of a third visible line. Every block's
-       own top/bottom margin (18-26px each, tuned for a spacious desktop
-       front page) is tightened the same way — the fact stays, the breathing
-       room shrinks. */
+       24h") is real but secondary to the number+label pair above it, so it
+       drops on the phone instead of forcing a third visible line — this is
+       the one place in this pass that loses a (secondary, clarifying, not a
+       standalone fact) piece of text rather than just compressing it; it
+       stays on every viewport above 768px. Every block's own top/bottom
+       margin (18-26px each, tuned for a spacious desktop front page) is
+       tightened the same way — the fact stays, the breathing room shrinks. */
     .brief-vital {
         padding: 6px 8px 5px;
     }
