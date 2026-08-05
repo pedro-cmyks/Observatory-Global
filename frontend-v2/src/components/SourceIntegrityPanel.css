@@ -194,3 +194,13 @@
 [data-theme^='emerald'] .metric-box {
     background: rgba(var(--color-ink-rgb), 0.06);
 }
+
+/* #236 — same reason as AnomalyPanel: the Pulse tab is one column on a phone.
+   `.source-integrity-grid`/`-body`/`-row` don't exist in this file — the only
+   multi-column layout is `.metrics-grid` (3 stat boxes); one column below 768
+   so SOURCE DIVERSITY/QUALITY/TOP SOURCE SHARE stop being squeezed to ~90px. */
+@media (max-width: 768px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}

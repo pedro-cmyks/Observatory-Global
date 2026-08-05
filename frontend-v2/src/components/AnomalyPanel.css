@@ -337,3 +337,37 @@
 [data-theme^='emerald'] .ap-ctry-count {
     color: var(--color-info);
 }
+
+/* #236 — the phone's Public Attention surface had no mobile CSS at all, so the
+   desktop two-column grid survived at 375px: ~185px per column, and every
+   country name truncated ("Camero…", "Guatem…", "Uzbeki…"). One column, and
+   rows big enough to hit. */
+@media (max-width: 768px) {
+    .anomaly-body-grid {
+        grid-template-columns: 1fr;
+    }
+    .anomaly-col.col-right-border {
+        border-left: 0;
+        border-top: 1px solid rgba(var(--color-neutral-rgb), 0.18);
+    }
+    .anomaly-col > * {
+        min-width: 0;
+    }
+    .anomaly-col button,
+    .anomaly-col a,
+    .anomaly-col li {
+        min-height: 44px;
+    }
+    /* One column buys width, but .ap-country/.ap-keyword/.ap-conflict-loc/
+       .ap-conflict-type still force single-line ellipsis (white-space:nowrap
+       + text-overflow:ellipsis, a two-column-era rule) — long forum headlines
+       and multi-part location strings still clip. Let them wrap: no label —
+       country, headline, keyword — should ever be cut off on this surface. */
+    .ap-country,
+    .ap-keyword,
+    .ap-conflict-loc,
+    .ap-conflict-type {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}
