@@ -1174,7 +1174,7 @@ function AppContent() {
   // #236 Task 6: a drill-in (thread, person, source, country, attention) is
   // exactly the thing the Lens exists to re-scope to, so opening one brings
   // the Lens forward — not Live, which is the unfocused firehose. The Lens
-  // then renders the opened item (see `lensPanel` in the shell below).
+  // then renders the opened item (see `lensHasFocus` in the shell below).
   useEffect(() => {
     if (!isMobile) return
     if (
@@ -2462,36 +2462,50 @@ function AppContent() {
         )
 
         // #236 Task 7 seam: the Lens is the surface that re-scopes to whatever
-        // is focused. It does not exist yet, so it stands in — but a plain
-        // `lensPanel = threadsPanel` DEAD-ENDS the phone's core gesture:
-        // tapping a thread sets selectedTheme, and ThemeDetail renders inside
-        // the STREAM panel, which the Lens tab does not mount. Measured at
-        // 375px: the tap changed nothing on screen.
-        //
-        // So the stand-in states the Lens contract in miniature — the focused
-        // thing when there is one, the field when there is not. Same ladder as
+        // is focused. It does not exist yet, so it stands in — but showing the
+        // threads panel alone DEAD-ENDS the phone's core gesture: tapping a
+        // thread sets selectedTheme, and ThemeDetail renders inside the STREAM
+        // panel. Measured at 375px: the tap changed nothing on screen. So the
+        // stand-in states the Lens contract in miniature — the focused thing
+        // when there is one, the field when there is not. Same ladder as
         // streamPanel's own (source profile / country-theme render as overlays
         // outside the layout, so they are not part of it).
-        // REPLACE THIS with <LensPanel/> in Task 7.
+        // TASK 7: this whole pair collapses to one <LensPanel/> in the Lens
+        // slot below, and lensHasFocus moves inside it.
         const lensHasFocus = !!(
           storyQuery || selectedThread || selectedTheme ||
           (focus.type === 'person' && focus.value) ||
           selectedCountryCode || selectedPublicAttention || selectedChokepoint
         )
-        const lensPanel = lensHasFocus ? streamPanel : threadsPanel
 
         if (isMobile) {
           // #236: the phone has two console surfaces. The Lens is whatever is
-          // focused (see LensPanel, Task 7); Live is the raw stream. The map
-          // is no longer a tab — it is a section INSIDE the Lens — so the
-          // radar panel is not mounted here at all and its rAF loop never runs
-          // on a phone. The dock (anomaly/sources/radar/markets) is likewise
-          // absorbed as Lens sections in Task 8, and the correlation matrix
-          // was only ever mounted-and-CSS-hidden here, so neither is mounted.
+          // focused; Live is the raw stream. The map is no longer a tab — it
+          // is a section INSIDE the Lens (Task 8) — so the radar panel is not
+          // mounted here at all and its rAF loop never runs on a phone. The
+          // dock is absorbed the same way, and the correlation matrix was only
+          // ever mounted-and-CSS-hidden here. None of the three is mounted.
+          //
+          // The two that ARE here KEEP ALIVE across tab taps — mounted once,
+          // visibility toggled — exactly as main.tsx's AppBriefKeepAlive does
+          // for the routes (#239 slice 2). Measured at 375px, unmounting them
+          // instead cost 0.7-1.5s of blank panel and re-fired 2-4 requests on
+          // every tap. That trade only pays for panels that cost something
+          // while hidden (the radar's rAF loop, the matrix's fetch-on-mount);
+          // these two are ordinary lists that cost nothing.
+          //
+          // display:contents means the wrapper generates no box, so each panel
+          // lays out exactly as if it were still a direct child of the layout
+          // — and the toggle is deliberately CLASS-AGNOSTIC, so Task 7 can drop
+          // <LensPanel/> into the Lens slot under any class name without a
+          // matching CSS edit. (The old class→panel map could not: it hid
+          // whatever it did not name.)
+          const showStream = consoleTab === 'live' || lensHasFocus
           return (
             <div className={`terminal-layout mobile-tab-${consoleTab}`}>
-              {consoleTab === 'live' && streamPanel}
-              {consoleTab === 'lens' && lensPanel}
+              <div style={{ display: showStream ? 'contents' : 'none' }}>{streamPanel}</div>
+              {/* the Lens slot — Task 7 replaces threadsPanel with <LensPanel/> */}
+              <div style={{ display: showStream ? 'none' : 'contents' }}>{threadsPanel}</div>
             </div>
           )
         }
