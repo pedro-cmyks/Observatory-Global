@@ -61,7 +61,36 @@ interface Props {
     sourceLang?: string | null;
 }
 
-export const TranslatableHeadline: React.FC<Props> = ({ signalId, original, sourceLang }) => {
+/**
+ * All the translate/toggle state for one headline, with nothing about WHERE
+ * it renders. Extracted (#236 follow-up) so a consumer that needs the toggle
+ * to land in a different part of the DOM than the text — SignalStream's
+ * mobile row, which clamps the headline to 2 lines and was silently clipping
+ * the toggle whenever it fell inside that clamped box — can drive both
+ * pieces from ONE hook instance instead of two independent, unsynced copies.
+ * `TranslatableHeadline` below is just this hook + the original inline markup;
+ * every other consumer is untouched.
+ */
+export interface TranslatableHeadlineState {
+    eligible: boolean;
+    original: string;
+    sourceLang?: string | null;
+    translated: string | null;
+    loading: boolean;
+    showOriginal: boolean;
+    /** Text to show right now — mirrors the original `display` computation
+     *  exactly, valid whether or not there is anything to toggle. */
+    display: string;
+    /** True exactly when the original component would render the toggle
+     *  button (i.e. `translated` has arrived). */
+    hasToggle: boolean;
+    toggleLabel: string;
+    toggleTip: string;
+    translatingLabel: string;
+    toggle: () => void;
+}
+
+export function useTranslatableHeadline({ signalId, original, sourceLang }: Props): TranslatableHeadlineState {
     const eligible = shouldTranslate(sourceLang, original);
     const cacheKey = `${signalId}:${TARGET_LANG}`;
     const [translated, setTranslated] = useState<string | null>(() => memo.get(cacheKey) ?? null);
@@ -88,30 +117,58 @@ export const TranslatableHeadline: React.FC<Props> = ({ signalId, original, sour
         return () => controller.abort();
     }, [eligible, cacheKey, signalId, original]);
 
-    // No translation available / not eligible → plain original headline.
-    if (!eligible || (!translated && !loading)) {
-        return <>{original}</>;
-    }
-
     const display = translated && !showOriginal ? translated : original;
     const flag = showOriginal || !translated;
 
+    return {
+        eligible,
+        original,
+        sourceLang,
+        translated,
+        loading,
+        showOriginal,
+        display,
+        hasToggle: !!translated,
+        toggleLabel: showOriginal ? L.translation : L.original,
+        toggleTip: flag ? `Original (${(sourceLang || '').toUpperCase()})` : 'Translated',
+        translatingLabel: L.translating,
+        toggle: () => setShowOriginal(v => !v),
+    };
+}
+
+/**
+ * The exact markup `TranslatableHeadline` has always rendered, pulled out so
+ * a consumer driving the hook directly (SignalStream's mobile row) can reuse
+ * it byte-for-byte for the desktop shape rather than re-deriving it — one
+ * hook instance, no drift between the two render sites.
+ */
+export const TranslatableHeadlineInline: React.FC<{ state: TranslatableHeadlineState }> = ({ state }) => {
+    // No translation available / not eligible → plain original headline.
+    if (!state.eligible || (!state.translated && !state.loading)) {
+        return <>{state.original}</>;
+    }
+
     return (
         <span className="translatable-headline">
-            {display}
-            {translated && (
+            {state.display}
+            {state.hasToggle && (
                 <button
                     type="button"
                     className="th-toggle"
-                    onClick={(e) => { e.stopPropagation(); setShowOriginal(v => !v); }}
-                    data-tip={flag ? `Original (${(sourceLang || '').toUpperCase()})` : 'Translated'}
+                    onClick={(e) => { e.stopPropagation(); state.toggle(); }}
+                    data-tip={state.toggleTip}
                 >
-                    {showOriginal ? L.translation : L.original}
+                    {state.toggleLabel}
                 </button>
             )}
-            {!translated && loading && <span className="th-loading"> · {L.translating}</span>}
+            {!state.translated && state.loading && <span className="th-loading"> · {state.translatingLabel}</span>}
         </span>
     );
+};
+
+export const TranslatableHeadline: React.FC<Props> = (props) => {
+    const state = useTranslatableHeadline(props);
+    return <TranslatableHeadlineInline state={state} />;
 };
 
 export default TranslatableHeadline;

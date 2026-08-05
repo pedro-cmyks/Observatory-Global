@@ -473,6 +473,23 @@
         white-space: normal;
         line-height: 1.3;
     }
+    /* #236 follow-up: the "See original"/"See translation" toggle, rendered
+       as a DOM sibling of the clamped span above (SignalHeadlineRow in
+       SignalStream.tsx), not nested inside it — a clamped box hides any
+       overflowing descendant regardless of its own size, so the toggle can
+       only stay reachable by living outside that box entirely. Its own
+       small line under the headline, not fighting the pin controls for
+       room on the first line. */
+    .headline-toggle-row {
+        margin: 2px 0 0;
+    }
+    .headline-toggle-row .th-toggle {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 4px;
+        margin: 0;
+    }
     .stream-filter-bar {
         overflow-x: auto;
         scroll-snap-type: x proximity;
