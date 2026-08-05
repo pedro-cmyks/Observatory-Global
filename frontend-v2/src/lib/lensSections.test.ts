@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { buildSections, nodesQueryFor, readNodesResponse, type LaneStatuses, type LensPayload } from './lensSections'
+import {
+  buildSections, connectedLane, nodesQueryFor, readNodesResponse, whereItLivesLane,
+  type LaneStatuses, type LensPayload,
+} from './lensSections'
 
 const full: LensPayload = {
   countries: [{ code: 'IL', name: 'Israel', count: 68 }, { code: 'PS', name: 'Gaza Strip', count: 31 }],
@@ -67,7 +70,7 @@ describe('buildSections', () => {
   it('reports a failing lane as degraded even when it returned some rows', () => {
     // Partial data from a broken lane is still partial. Rendering it as `ok`
     // would present an unknown fraction of the neighbourhood as all of it.
-    const s = buildSections(full, { connected: 'timeout' })
+    const s = buildSections(full, { connected: 'db_error' })
     expect(s.connected.state).toBe('degraded')
     expect(s.connected.rows).toHaveLength(1)
   })
@@ -107,9 +110,12 @@ describe('buildSections', () => {
 
   it('gives every section a reason whenever it has no rows to show', () => {
     // The rule that must hold across all of the above: never blank and silent.
+    // Every status in the union, so adding one without copy fails here rather
+    // than shipping a section that is blank and silent.
     const cases: LaneStatuses[] = [
       {}, { connected: 'loading' }, { connected: 'no_anchor' },
-      { connected: 'unavailable' }, { connected: 'db_error' }, { connected: 'timeout' },
+      { connected: 'unavailable' }, { connected: 'db_error' },
+      { connected: 'withheld_by_gate' }, { connected: 'scope_is_self' },
     ]
     for (const lanes of cases) {
       const s = buildSections({ countries: [], connected: [], attention: [] }, lanes)
@@ -211,5 +217,67 @@ describe('readNodesResponse', () => {
       { resolveName: (c) => (c === 'YE' ? 'Yemen' : c), cap: 1 },
     )
     expect(rows).toEqual([{ code: 'IR', name: 'IR', count: 60 }])
+  })
+})
+
+describe('connectedLane', () => {
+  it('separates a REFUSED lane from an absent one', () => {
+    // The distinction this whole module exists to keep. A thread has a live
+    // neighbour endpoint whose output was measured too wrong to show; a country
+    // has no such lane at all. One sentence for both would report a measured
+    // refusal as unfinished plumbing.
+    expect(connectedLane('thread')).toBe('withheld_by_gate')
+    expect(connectedLane('story')).toBe('withheld_by_gate')
+    expect(connectedLane('country')).toBe('unavailable')
+    expect(connectedLane('person')).toBe('unavailable')
+    expect(connectedLane('field')).toBe('no_anchor')
+  })
+
+  it('says the gate refused, not that nothing was measured', () => {
+    const s = buildSections(
+      { countries: [], connected: [], attention: [] },
+      { connected: connectedLane('thread') },
+    )
+    expect(s.connected.state).toBe('empty')
+    expect(s.connected.reason)
+      .toBe('Measured neighbours did not clear their accuracy gate — none are shown rather than false kin.')
+    expect(s.connected.reason).not.toContain('not measured for this scope yet')
+  })
+})
+
+describe('whereItLivesLane', () => {
+  it('refuses to ask a question that restates itself', () => {
+    // /api/v2/nodes filters `country_code = $1` and groups by f.country_code
+    // (workspace.py:202), so a country scope can only ever get itself back —
+    // and tapping that row re-scopes to the scope it is already in.
+    expect(whereItLivesLane({ kind: 'country', id: 'UA' })).toBe('scope_is_self')
+    const s = buildSections(
+      { countries: [], connected: [], attention: [] },
+      { whereItLives: 'scope_is_self' },
+    )
+    expect(s.whereItLives.reason).toBe('This scope is a country — its footprint is itself.')
+  })
+
+  it('defers to the endpoint for the scopes it can answer', () => {
+    expect(whereItLivesLane({ kind: 'field', id: '*' })).toBeNull()
+    expect(whereItLivesLane({ kind: 'thread', id: 'dynamic-topic-1' })).toBeNull()
+    expect(whereItLivesLane({ kind: 'person', id: 'x' })).toBeNull()
+  })
+
+  it('reports the scopes the endpoint has no key for, off ONE list', () => {
+    // Shares nodesQueryFor's answer rather than re-listing the kinds, so the
+    // lane and the query cannot disagree about what is answerable.
+    for (const kind of ['story', 'attention', 'chokepoint', 'signal']) {
+      expect(whereItLivesLane({ kind, id: 'x' })).toBe('unavailable')
+      expect(nodesQueryFor({ kind, id: 'x' })).toBeNull()
+    }
+  })
+
+  it('states a reason at every non-measured whereItLives status', () => {
+    for (const lane of ['unavailable', 'no_anchor', 'scope_is_self'] as const) {
+      const s = buildSections({ countries: [], connected: [], attention: [] }, { whereItLives: lane })
+      expect(s.whereItLives.state).toBe('empty')
+      expect(s.whereItLives.reason && s.whereItLives.reason.length > 0).toBe(true)
+    }
   })
 })

@@ -203,19 +203,15 @@
   cursor: pointer;
 }
 
-.lens-sections-tally {
+/* A section NAME on the closed bar, and only a name. There is deliberately no
+   count here: the sections are measured when opened, so a tally would have to
+   invent one, and "0" or "—" before asking is the absence-claim this surface
+   exists to avoid (LensPanel.tsx makes the same argument at the markup). */
+.lens-sections-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* The count is the loud part — the label is standing furniture, the number is
-   what changed. `—` for an empty section and `…` for one still measuring are
-   set by sectionTally, so the bar never reads as a zero it did not measure. */
-.lens-sections-tally b {
-  color: rgb(var(--color-accent-deep-rgb));
-  font-weight: 600;
 }
 
 .lens-sections-caret {

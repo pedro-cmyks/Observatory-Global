@@ -2627,8 +2627,33 @@ function AppContent() {
                    state (consoleFocus.countryCode), so setting only the shared
                    filter would move the map while the breadcrumb and the read
                    kept naming the old scope. It resolves the display name
-                   itself, which is why the section passes just the code. */
-                onOpenCountry={handleCountryClick}
+                   itself, which is why the section passes just the code.
+
+                   setPerson(null) FIRST, or the tap does nothing at person
+                   scope. handleCountryClick clears the open theme and thread
+                   but not the person: nextFocusDims' `country` case keeps it
+                   (focusReducer.ts:39), FocusContext ranks person above
+                   country when both are set (:236), and so does consoleSlot
+                   (lensScope.ts:170). The panel, the heading and the
+                   breadcrumb would all stay put while a country chip appeared
+                   — the class this file already documents at ~1160 ("the slot
+                   showed the person while Back cleared the attention
+                   underneath it: the screen did not change and the tap did
+                   nothing"), and it would also leave the pivot one Back
+                   gesture behind and fire the first-country walkthrough over
+                   an unchanged screen.
+
+                   Cleared HERE rather than inside handleCountryClick, which
+                   ~24 call sites share: compound person+country is deliberate
+                   (focusReducer keeps it on purpose) and is what the desktop
+                   map is for — "Trump, in Israel" — so clearing it globally
+                   would change every one of those doors to fix one. This file
+                   already composes that way: 2315 clearFocus(), 2813
+                   setComparePerson(null), 2691/2800 clear their own panel,
+                   each before calling. The phone Lens has no map for a
+                   standing person chip to act on, and its whole contract is
+                   that the surface re-scopes to what you tapped. */
+                onOpenCountry={(cc) => { setPerson(null); handleCountryClick(cc) }}
                 field={threadsPanel}
                 read={streamPanel}
               />

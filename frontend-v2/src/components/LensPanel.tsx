@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { fieldVisible, type MobileSurface } from '../lib/mobileNav'
-import { scopeTitle, type LensScope, type LensScopeKind } from '../lib/lensScope'
+import { scopeKey, scopeTitle, type LensScope } from '../lib/lensScope'
 import {
-  buildSections, nodesQueryFor, readNodesResponse, SECTION_LABELS,
+  buildSections, connectedLane, nodesQueryFor, readNodesResponse,
+  SECTION_LABELS, whereItLivesLane,
   type CountryRow, type LaneStatus,
 } from '../lib/lensSections'
 import { resolveCountryName } from '../lib/countryNames'
@@ -10,19 +11,6 @@ import './LensPanel.css'
 
 /** How many country rows the sheet shows before it stops. */
 const WHERE_IT_LIVES_CAP = 12
-
-/**
- * What `connected` can honestly report, per scope.
- *
- * EVERY scope returns a NON-`ok` status today, which is the finding rather than
- * a placeholder — see the section comment on <LensSectionSheet/>. `field` is
- * `no_anchor` because nothing is focused, so there is no subject to measure
- * neighbours against; every other scope is `unavailable` because the neighbour
- * lane this section would draw from has not cleared its own gate.
- */
-function connectedLane(kind: LensScopeKind): LaneStatus {
-  return kind === 'field' ? 'no_anchor' : 'unavailable'
-}
 
 export interface LensPanelProps {
   /** Which of the console's three phone surfaces is showing. */
@@ -66,22 +54,23 @@ export interface LensPanelProps {
  * them is behind it, or below the fold of a panel it does not scroll with. So
  * the sections take the one strip that is theirs — directly under the scope
  * chrome, composed into the same `--lens-*` variables the read's inset is
- * already built from — and open
- * over the read when tapped. It is the top rather than the bottom because both
- * bottom-anchored slots are occupied: the tab bar (z 9500) and FrameSheet
- * (fixed, `bottom: 56px + safe-area`, z 9400).
+ * already built from — and open over the read when tapped. It is the top
+ * rather than the bottom because both bottom-anchored slots are occupied: the
+ * tab bar (z 9500) and FrameSheet (fixed, `bottom: 56px + safe-area`, z 9400).
  *
- * WHY `connected` IS EMPTY AT EVERY SCOPE. Not an unfinished wire — a refusal
- * with a measurement behind it. The one live neighbour ranker,
- * `GET /api/v2/story/{id}/siblings`, was hand-judged at 30 of 50 top-5 rows
- * being an unrelated story presented as kin on random active anchors, a rate
- * inherited from the cosine walk over a field that is 61.25% blob; its own
- * pre-registered gate held NAV-LOSS 6/6 and the story lens ships dark
- * (STORY_LENS_AUTO = false) because of it. The client also cannot tell a fused
- * anchor from a clean one: `anchor.is_blob` is only populated on the umbrella
- * path and is `false` meaning "not evaluated" everywhere else. A phone row has
- * no room for that caveat, so the section states its absence instead of
- * ranking. The honest neighbour relation that DOES exist — the rarity-weighted
+ * WHY `connected` IS EMPTY AT EVERY SCOPE — AND WHY IT SAYS SO IN TWO
+ * DIFFERENT WAYS. Not an unfinished wire. At a thread the neighbour lane
+ * EXISTS and is live (`GET /api/v2/story/{id}/siblings`); it is refused,
+ * because it was hand-judged at 30 of 50 top-5 rows being an unrelated story
+ * presented as kin on random active anchors, over a field that is 61.25% blob,
+ * and the client cannot tell a fused anchor from a clean one — the backend
+ * hard-codes `anchor.is_blob = False` off the umbrella path and says in its own
+ * comment that False there means "not evaluated", not "cleared". A phone row
+ * has no room for that caveat. At a country or a person there is no such lane
+ * at all. `connectedLane` returns `withheld_by_gate` for the first and
+ * `unavailable` for the second, because a measured refusal and missing
+ * plumbing are different facts and one sentence for both hides the stronger
+ * one. The honest neighbour relation that DOES exist — the rarity-weighted
  * distinctive-entity + shared-primary-country siblings — lives inside
  * NarrativeThreads over its own fetched pool; surfacing it here means lifting
  * that rule into a shared module rather than copying it, which is its own task.
@@ -110,7 +99,11 @@ function LensSectionSheet({ scope, onOpenCountry }: {
   // measured zero. Only the second may say "no country resolved".
   const [rows, setRows] = useState<CountryRow[] | null>(null)
   const [lane, setLane] = useState<LaneStatus>('loading')
-  const query = nodesQueryFor(scope)
+  // A scope that answers WITHOUT the endpoint settles here: `country`, whose
+  // footprint is itself, and the kinds the endpoint has no key for. Null means
+  // "go and measure it".
+  const preset = whereItLivesLane(scope)
+  const query = preset === null ? nodesQueryFor(scope) : null
 
   // WHY THIS FETCHES INSTEAD OF READING useFocusData(). The shared context is
   // the obvious source and it is the wrong one: it PRESERVES the previous
@@ -124,7 +117,14 @@ function LensSectionSheet({ scope, onOpenCountry }: {
   // scope's. Lazy, so a section nobody opens costs a phone nothing.
   useEffect(() => {
     if (!open) return
-    if (query === null) { setRows([]); setLane('unavailable'); return }
+    if (query === null) { setRows([]); setLane(preset ?? 'unavailable'); return }
+    // Do not re-ask a question already answered WELL for this scope. The
+    // endpoint is measurably flaky (five identical calls: four failures, one
+    // success), so re-opening the sheet used to be a fresh chance to fail and
+    // replace good rows with an error. A failed or empty lane is NOT cached —
+    // re-opening is how the reader retries. Scope changes reset this by
+    // remounting; see the `key` where this is rendered.
+    if (lane === 'ok' && rows && rows.length > 0) return
     const ac = new AbortController()
     setRows(null)
     setLane('loading')
@@ -153,13 +153,22 @@ function LensSectionSheet({ scope, onOpenCountry }: {
         setLane('db_error')
       })
     return () => ac.abort()
-  }, [open, query])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lane`/`rows` are
+  // READ by the already-answered guard above, not inputs to it: listing them
+  // would re-run this effect on the very writes it makes.
+  }, [open, query, preset])
 
-  const sections = buildSections(
+  // Only the two sections this surface owns are destructured. buildSections
+  // also returns `attention` — section 5 of the Lens — and the Lens does NOT
+  // render it: public attention is already carried inside each scope's own
+  // panel (AnomalyPanel re-scopes itself, ThemeDetail has its DISCUSSION
+  // block), so a second copy here would be duplicate chrome rather than a new
+  // answer. It stays in the pure module, with its states and copy, for the
+  // caller that does render it.
+  const { whereItLives, connected } = buildSections(
     { countries: rows ?? [], connected: [], attention: [] },
     { whereItLives: lane, connected: connectedLane(scope.kind) },
   )
-  const { whereItLives, connected } = sections
 
   return (
     <>
@@ -174,8 +183,8 @@ function LensSectionSheet({ scope, onOpenCountry }: {
               a tally on the closed bar would have to invent one — and "0" or
               "—" before asking is exactly the absence-claim this whole surface
               exists to avoid. */}
-          <span className="lens-sections-tally">{SECTION_LABELS.whereItLives}</span>
-          <span className="lens-sections-tally">{SECTION_LABELS.connected}</span>
+          <span className="lens-sections-name">{SECTION_LABELS.whereItLives}</span>
+          <span className="lens-sections-name">{SECTION_LABELS.connected}</span>
           <span className="lens-sections-caret" aria-hidden="true">{open ? '▾' : '▸'}</span>
         </button>
       </div>
@@ -298,9 +307,14 @@ export function LensPanel({ surface, trail, onBack, onOpenCountry, field, read }
         </div>
       )}
       {/* Same condition as the chrome: Live is the unfocused firehose and wears
-          no scope furniture, so it gets no sections either. */}
+          no scope furniture, so it gets no sections either.
+          KEYED ON THE SCOPE so a pivot REMOUNTS the sheet. Its measured
+          `sheetTop`, its rows and its lane all belong to one scope; carrying
+          them across a pivot shows the previous scope's answer under the new
+          scope's name — the exact confound this section was rebuilt to avoid,
+          arriving by a different door. */}
       {showsChrome && scope && (
-        <LensSectionSheet scope={scope} onOpenCountry={onOpenCountry} />
+        <LensSectionSheet key={scopeKey(scope)} scope={scope} onOpenCountry={onOpenCountry} />
       )}
       <div key="lens-field" style={{ display: showsField ? 'contents' : 'none' }}>{field}</div>
       <div key="lens-read" style={{ display: showsField ? 'none' : 'contents' }}>{read}</div>

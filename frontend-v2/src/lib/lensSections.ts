@@ -68,9 +68,22 @@ export type SectionKey = 'whereItLives' | 'connected' | 'attention'
  * - `loading`  — has not answered yet.
  * - `no_anchor`— nothing is focused, so there was no subject to measure against.
  * - `unavailable` — this scope kind has no such lane; nothing was attempted.
- * - `db_error` / `timeout` — it was attempted and it failed.
+ * - `withheld_by_gate` — a lane EXISTS and was measured, and its output was
+ *   refused for being too wrong to show. Distinct from `unavailable` on
+ *   purpose: "there is no such lane" and "the lane is not accurate enough"
+ *   are different facts, and the second reads as unfinished plumbing if it
+ *   borrows the first's sentence.
+ * - `scope_is_self` — the question is degenerate here; the scope IS the answer.
+ * - `db_error` — it was attempted and it failed.
  */
-export type LaneStatus = 'ok' | 'loading' | 'no_anchor' | 'unavailable' | 'db_error' | 'timeout'
+export type LaneStatus =
+  | 'ok'
+  | 'loading'
+  | 'no_anchor'
+  | 'unavailable'
+  | 'withheld_by_gate'
+  | 'scope_is_self'
+  | 'db_error'
 
 export type LaneStatuses = Partial<Record<SectionKey, LaneStatus>>
 
@@ -115,25 +128,73 @@ const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', str
     loading: 'Measuring where this lives…',
     no_anchor: 'Nothing is focused yet.',
     unavailable: 'Where this lives is not measured for this scope.',
+    withheld_by_gate: 'Measured locations did not clear their accuracy gate — none are shown rather than wrong ones.',
+    scope_is_self: 'This scope is a country — its footprint is itself.',
     db_error: 'Where this lives could not be measured right now.',
-    timeout: 'Where this lives could not be measured right now.',
   },
   connected: {
     none: 'No measured neighbour cleared the bar.',
     loading: 'Measuring the neighbourhood…',
     no_anchor: 'Open a thread, a country or a person — neighbours are measured against a subject.',
     unavailable: 'Neighbours are not measured for this scope yet.',
+    withheld_by_gate: 'Measured neighbours did not clear their accuracy gate — none are shown rather than false kin.',
+    scope_is_self: 'This scope is its own neighbourhood.',
     db_error: 'Neighbours could not be measured right now.',
-    timeout: 'Neighbours could not be measured right now.',
   },
   attention: {
     none: 'No public attention matched this scope.',
     loading: 'Reading public attention…',
     no_anchor: 'Nothing is focused yet.',
     unavailable: 'Public attention is not measured for this scope.',
+    withheld_by_gate: 'Measured attention did not clear its accuracy gate — none is shown rather than wrong items.',
+    scope_is_self: 'This scope is its own attention.',
     db_error: 'Public attention could not be read right now.',
-    timeout: 'Public attention could not be read right now.',
   },
+}
+
+/**
+ * What `connected` can honestly report, per scope.
+ *
+ * EVERY scope returns a NON-`ok` status today, and the two reasons are not the
+ * same fact. At `thread` and `story` a neighbour lane genuinely EXISTS and is
+ * live (`GET /api/v2/story/{id}/siblings`) — it is refused, because it was
+ * hand-judged at 30 of 50 top-5 rows being an unrelated story presented as kin
+ * on random active anchors, over a field that is 61.25% blob, and the client
+ * cannot tell a fused anchor from a clean one (the backend hard-codes
+ * `anchor.is_blob = False` off the umbrella path, and says in its own comment
+ * that False there means "not evaluated", not "cleared"). That is
+ * `withheld_by_gate`. At `country` and `person` there is no such lane at all,
+ * which is `unavailable`. Calling both "not measured yet" would flatten a
+ * measured refusal into missing plumbing.
+ *
+ * Lives here rather than in the component because it is pure, it encodes the
+ * whole of that decision, and components in this repo are never unit-tested.
+ */
+export function connectedLane(kind: string): LaneStatus {
+  if (kind === 'field') return 'no_anchor'
+  if (kind === 'thread' || kind === 'story') return 'withheld_by_gate'
+  return 'unavailable'
+}
+
+/**
+ * The status that settles `where it lives` WITHOUT asking the endpoint, or
+ * `null` when the scope must actually be measured.
+ *
+ * `country` is settled here because the question is degenerate: the endpoint
+ * filters `country_code = $1` and groups by `f.country_code`
+ * (backend/app/routers/workspace.py:202), so one country in the WHERE and a
+ * GROUP BY on it can only return that same country. The section would answer
+ * "where does Ukraine live" with "Ukraine", and tapping the row would re-scope
+ * to the scope it is already in. A real answer needs a co-occurrence key the
+ * endpoint does not expose.
+ *
+ * Everything else defers to `nodesQueryFor`, rather than re-listing which
+ * scope kinds it supports — one list, so the two cannot disagree about which
+ * scopes are answerable.
+ */
+export function whereItLivesLane(scope: { kind: string; id: string }): LaneStatus | null {
+  if (scope.kind === 'country') return 'scope_is_self'
+  return nodesQueryFor(scope) === null ? 'unavailable' : null
 }
 
 /**
@@ -205,8 +266,8 @@ export function readNodesResponse(
  * into the branch — the difference between a failure and an absence is the
  * whole subject of this module, and it should not survive only in prose.
  */
-function isFailure(status: LaneStatus): status is 'db_error' | 'timeout' {
-  return status === 'db_error' || status === 'timeout'
+function isFailure(status: LaneStatus): status is 'db_error' {
+  return status === 'db_error'
 }
 
 function section<T>(key: SectionKey, rows: T[], status: LaneStatus, withheld = 0): Section<T> {

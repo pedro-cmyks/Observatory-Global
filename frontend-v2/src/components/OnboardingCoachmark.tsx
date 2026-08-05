@@ -75,7 +75,11 @@ const STEPS: TourStep[] = [
 //
 // TASK 8 SECOND PASS (done). The Map tab came back as the Lens's `where it
 // lives` strip, so step 3 now names it — it is the pivot the retired tab used
-// to offer, and it is on every scope. The `connected` section is deliberately
+// to offer. The sentence is scoped to "tap a thread, a source, or a headline"
+// and "that story" ON PURPOSE: those are the scopes where the strip has rows
+// to tap. At a country scope it has none and says so instead (its footprint is
+// itself), so the copy must not promise a list there. The `connected` section
+// is deliberately
 // NOT taught: it renders an honest absence at every scope today (its only
 // neighbour ranker measured ~60% false and ships dark), and a tour that points
 // at a section which always answers "not measured" teaches a dead end. It gets
@@ -101,7 +105,7 @@ const MOBILE_STEPS: TourStep[] = [
         selector: '',
         eyebrow: 'Pivot, don’t just scroll',
         title: 'Tap anything to drill in',
-        body: 'Tap a thread, a source, or a headline and the Lens re-scopes to it. The “where it lives” strip lists the countries that signal lands in — tap one to pivot there. Anything you open can be pinned in the Workbench.',
+        body: 'Tap a thread, a source, or a headline and the Lens re-scopes to it. Its “where it lives” strip names the countries that story actually lands in — tap one to pivot there. Anything you open can be pinned in the Workbench.',
     },
 ]
 
