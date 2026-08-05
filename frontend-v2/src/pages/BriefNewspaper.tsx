@@ -803,20 +803,25 @@ export function BriefNewspaper() {
     // Collapsed-band summary for the freshness box (Task 5, mobile IA #236).
     // Derived from data the full markup already renders (staleBanner/editionYield
     // above) — no new fetch. The freshnessSummary() line stays exactly the honest
-    // "sealed Nh ago · full text X/Y" fact; the degraded-lane reason and the next
+    // "sealed <age> · full text X/Y" fact; the degraded-lane reason and the next
     // seal attempt are appended when present so collapsing never drops a fact the
     // expanded box would have shown (the freshness box is an honesty rail, not
     // chrome — never a bare label).
+    //
+    // Follow-up review: this used to recompute the age itself
+    // (Math.floor(ms / 3600000)), which printed "sealed 0h ago" at 20 minutes
+    // and "sealed 87h ago" at 3 days — a second, cruder phrasing of the exact
+    // fact staleBanner.age already states correctly ("sealed just now" /
+    // "sealed 3 days ago") in the expanded box below. Reuse that string
+    // (stripping its own "sealed " prefix, since freshnessSummary adds it
+    // back) instead of a parallel computation, so the two never diverge.
     const freshnessFacts: FreshnessFacts = (() => {
-        const sealedAtRaw = dailyEdition?.sealed_at
-            ?? (dailyEdition?.completion?.generated_at as string | null | undefined)
-            ?? null
-        const sealedHoursAgo = sealedAtRaw
-            ? Math.max(0, Math.floor((now.getTime() - new Date(sealedAtRaw).getTime()) / 3600000))
+        const sealedAge = staleBanner?.age
+            ? staleBanner.age.replace(/^sealed\s+/, '')
             : null
         const hasYield = !!editionYield && editionYield.attempted > 0
         return {
-            sealedHoursAgo,
+            sealedAge,
             fullTextOk: hasYield ? editionYield!.ok : null,
             fullTextTotal: hasYield ? editionYield!.attempted : null,
         }
@@ -1345,7 +1350,9 @@ export function BriefNewspaper() {
                                     anywhere on the page, breaking sentimentScale.ts's own rule
                                     ("every printed value states its scale"). The mobile-only
                                     label swap keeps that promise without the vertical cost of
-                                    keeping "sub" visible — the desktop .k text node is untouched. */}
+                                    keeping "sub" visible — desktop's RENDERED label is unchanged
+                                    (the .k rule itself is never edited by mobile CSS; its child
+                                    is two spans now, one per viewport, not a bare text node). */}
                                 <div className="k">
                                     <span className="brief-vital-k-full">Avg sentiment</span>
                                     <span className="brief-vital-k-mobile">Sentiment · ±1</span>
@@ -1376,18 +1383,21 @@ export function BriefNewspaper() {
                             Global bellwethers — NOT the country's data, so it never swaps on
                             country focus; the country's own instruments live in the country
                             edition below (BriefCountryMarketsCard). Collapses to a one-line
-                            summary on mobile (Task 5) — the summary text itself says
-                            "descriptive", so collapsing it never implies it is part of the
-                            sealed edition (the expanded band carries its own explicit
-                            "live overlay — not part of the sealed edition" divider). */}
+                            summary on mobile (Task 5). Follow-up review: "descriptive" alone
+                            only let the reader INFER not-sealed (the instrument strip above is
+                            equally "descriptive" and IS part of the measured edition) — the
+                            honesty rule here is the disclaimer may never be hidden OR weakened,
+                            so the line now STATES it, echoing BriefMarkets.tsx's own "Live
+                            overlay — not part of the sealed edition" rather than paraphrasing
+                            around it (same fix already applied to the freshness band below). */}
                         {!isBandOpen('markets') ? (
                             <button
                                 type="button"
                                 className="brief-band-summary"
-                                aria-label="World markets — descriptive overlay — tap to expand"
+                                aria-label="World markets — live overlay, not part of the sealed edition — tap to expand"
                                 onClick={() => expandBand('markets')}
                             >
-                                World markets · descriptive · last close ▸
+                                World markets · live overlay, not sealed ▸
                             </button>
                         ) : (
                             <BriefWorldMarketsBand />

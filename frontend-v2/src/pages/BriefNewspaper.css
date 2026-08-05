@@ -55,8 +55,10 @@
 
 /* Task 5 follow-up (#236): two instrument-strip labels carry a scale-or-
    definition suffix ONLY on mobile, where the "sub" caption line that used
-   to state it is hidden for space. Desktop always shows the plain label
-   (the .k text node itself is never touched by mobile CSS). */
+   to state it is hidden for space. Desktop always shows the plain label —
+   its RENDERED text is unchanged, though precisely: the .k rule/selector
+   itself is never edited by mobile CSS; its child is now two spans (one per
+   viewport), not a bare text node, and mobile CSS does target one of them. */
 .brief-vital-k-mobile {
   display: none;
 }
@@ -336,10 +338,14 @@
   .brief-instrument-country { grid-template-columns: repeat(3, 1fr); }
 }
 
-@media (max-width: 420px) {
-  .brief-instrument,
-  .brief-instrument-country { grid-template-columns: 1fr; }
-}
+/* The old @media (max-width: 420px) grid-template-columns:1fr rule (#236
+   follow-up review, free-while-in-file item) was dead: the ≤768px block
+   below sets .brief-instrument to display:flex (a horizontal scroll strip)
+   and is declared LATER in the cascade, so grid-template-columns never
+   painted anything at any width ≤420px. Removed rather than left as a
+   plausible-looking rule nobody would think to question. The 860px rule
+   above stays — it is still live for the 769–860px range the ≤768px block
+   does not reach. */
 
 /* ---------- COUNTRY FILTER ---------- */
 
@@ -1956,7 +1962,14 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
    the instrument strip and section tabs become horizontal-scroll strips; the
    choropleth is skipped outright (see the JSX gate on isMobile — this
    display:none alone would not stop the GeoJSON fetch). Desktop (>768px) is
-   untouched — every rule here is scoped to the phone breakpoint. */
+   untouched — every rule here is scoped to the phone breakpoint.
+   Follow-up review (Important 3): the vertical-rhythm pass below was
+   originally tuned as a disconnected second sweep — each selector's layout
+   rule declared once, then its margin re-declared ~100 lines later once the
+   leadTop budget forced a second tightening pass. Folded into one
+   declaration per selector; the handful of margin values that recur are
+   three custom properties on .brief-page (xs/sm/md) rather than repeated
+   literals, so the next threshold tuning is a token edit, not a re-hunt. */
 @media (max-width: 768px) {
     /* #236 Task 6: the phone's tab bar is fixed over the bottom of this page,
        so the page has to reserve its height — the shared contract every
@@ -1965,6 +1978,13 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
        iPhone (56 + 1 + 34 safe area ~= 91px), swallowing the provenance block
        that names the edition and its measurement window. */
     .brief-page {
+        --brief-mobile-gap-xs: 2px;
+        --brief-mobile-gap-sm: 2px;
+        /* #236 gate re-check: restoring the markets/freshness disclaimers
+           (Important 1/2) and folding the duplicate selectors (Important 3)
+           left leadTop right at the 500px bar again — this token is the
+           lever the token system exists for: one number, not a re-hunt. */
+        --brief-mobile-gap-md: 2px;
         padding-bottom: calc(8px + var(--mobile-bottom-reserve));
     }
 
@@ -1983,13 +2003,14 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
         text-align: left;
         color: var(--r-ink-soft, var(--r-ink));
         cursor: pointer;
-        margin: 10px 0;
+        margin: var(--brief-mobile-gap-sm) 0;
     }
     .brief-instrument {
         display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
         gap: 8px;
+        margin: var(--brief-mobile-gap-sm) 0;
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: x proximity;
         -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
@@ -2005,10 +2026,14 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
         flex-wrap: nowrap;
         overflow-x: auto;
         gap: 6px;
+        margin-bottom: var(--brief-mobile-gap-md);
     }
     .brief-tablist > * {
         flex: 0 0 auto;
         min-height: 44px;
+    }
+    .brief-filter-row {
+        margin: 0 0 var(--brief-mobile-gap-sm);
     }
     /* The literal chrome collapses above (band summaries + scroll strips) cut
        ~1000px but still left leadTop well over the 500px acceptance bar — the
@@ -2064,9 +2089,7 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
        drops on the phone instead of forcing a third visible line — this is
        the one place in this pass that loses a (secondary, clarifying, not a
        standalone fact) piece of text rather than just compressing it; it
-       stays on every viewport above 768px. Every block's own top/bottom
-       margin (18-26px each, tuned for a spacious desktop front page) is
-       tightened the same way — the fact stays, the breathing room shrinks. */
+       stays on every viewport above 768px. */
     .brief-vital {
         padding: 6px 8px 5px;
     }
@@ -2085,25 +2108,13 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
         display: inline;
         letter-spacing: 0.06em;
     }
-    .brief-band-summary {
-        margin: 3px 0;
-    }
-    .brief-instrument {
-        margin: 3px 0;
-    }
-    .brief-filter-row {
-        margin: 0 0 5px;
-    }
-    .brief-tablist {
-        margin-bottom: 6px;
-    }
     .brief-section-title {
         font-size: 1.15rem;
         line-height: 1.1;
-        margin-top: 2px;
+        margin-top: var(--brief-mobile-gap-xs);
     }
     .brief-section-lede {
-        margin: 2px 0 3px;
+        margin: var(--brief-mobile-gap-xs) 0 var(--brief-mobile-gap-sm);
         font-size: 0.76rem;
         line-height: 1.3;
     }
