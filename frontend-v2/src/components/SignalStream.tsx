@@ -237,7 +237,14 @@ function SignalHeadlineRow({
     )
 }
 
-export const SignalStream: React.FC = () => {
+interface SignalStreamProps {
+    /** #236: true while the stream is mounted but hidden (the phone keeps it
+     *  alive behind another tab). Its three timers idle instead of polling,
+     *  dripping and re-rendering a subtree nobody is looking at. */
+    paused?: boolean
+}
+
+export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false }) => {
     const { filter, setTheme, setCountry, setPerson, setStreamLevel } = useFocus()
     // The stream is ambient — the live day (VIEW selector retired 2026-07-15).
     const STREAM_HOURS = 24
@@ -256,6 +263,10 @@ export const SignalStream: React.FC = () => {
     const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const retryAttemptRef = useRef(0)
     const isHoveredRef = useRef(false)
+    // Same shape as isHoveredRef: read inside the timers so a visibility flip
+    // never tears down and rebuilds them.
+    const pausedRef = useRef(paused)
+    pausedRef.current = paused
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
     const dripQueueRef = useRef<StreamItem[]>([])
@@ -472,6 +483,7 @@ export const SignalStream: React.FC = () => {
 
         const pollSignals = async () => {
             if (isHovered) return // Pause on hover
+            if (pausedRef.current) return // #236: hidden behind another phone tab
 
             try {
                 const params = new URLSearchParams()
@@ -527,6 +539,7 @@ export const SignalStream: React.FC = () => {
     useEffect(() => {
         const drip = setInterval(() => {
             if (isHoveredRef.current) return // F2: pause the VISIBLE flow too
+            if (pausedRef.current) return // #236: nobody is watching this arrive
             if (dripQueueRef.current.length === 0) return
             // L6 (Pedro): news must feel like a CONSTANT one-by-one arrival —
             // never a burst that drains the buffer and leaves the stream dead
@@ -548,8 +561,11 @@ export const SignalStream: React.FC = () => {
     }, [])
 
     // Tick once a second so each item's "age since it appeared" counts up.
+    // #236: skipped while hidden — this is a setState, so it re-renders the
+    // whole (invisible) subtree 60x a minute otherwise. Ages are derived from
+    // timestamps, so the first tick after being revealed is already correct.
     useEffect(() => {
-        const t = setInterval(() => setNowTs(Date.now()), 1000)
+        const t = setInterval(() => { if (!pausedRef.current) setNowTs(Date.now()) }, 1000)
         return () => clearInterval(t)
     }, [])
 

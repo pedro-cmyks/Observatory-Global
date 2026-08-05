@@ -2145,6 +2145,7 @@ function AppContent() {
         // field does not, so it is hidden precisely when the field shows.
         // Both are derived from the one exported rule for that reason.
         const fieldHidden = mobileSurface !== null && !fieldVisible(mobileSurface)
+        const readPaneHidden = mobileSurface !== null && fieldVisible(mobileSurface)
 
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         const streamPanel = (() => {
@@ -2386,13 +2387,7 @@ function AppContent() {
                     }}
                   />
                 ) : (
-                  // TODO(#236): pause the read pane when it is hidden — the flag
-                  // is `mobileSurface !== null && fieldVisible(mobileSurface)`,
-                  // the mirror of `fieldHidden` above. Not wired here because
-                  // SignalStream's `paused` prop is another agent's uncommitted
-                  // chip: passing it would not compile for anyone without their
-                  // working tree. Their chip adds this one line.
-                  <SignalStream />
+                  <SignalStream paused={readPaneHidden} />
                 )}
               </div>
             </div>
