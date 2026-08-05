@@ -1958,6 +1958,16 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
    display:none alone would not stop the GeoJSON fetch). Desktop (>768px) is
    untouched — every rule here is scoped to the phone breakpoint. */
 @media (max-width: 768px) {
+    /* #236 Task 6: the phone's tab bar is fixed over the bottom of this page,
+       so the page has to reserve its height — the shared contract every
+       full-screen mobile surface follows. The flat 64px this overrides cleared
+       the 57px bar in a desktop browser by 7px and FAILED on every notched
+       iPhone (56 + 1 + 34 safe area ~= 91px), swallowing the provenance block
+       that names the edition and its measurement window. */
+    .brief-page {
+        padding-bottom: calc(8px + var(--mobile-bottom-reserve));
+    }
+
     .brief-band-summary {
         display: flex;
         align-items: center;

@@ -115,26 +115,26 @@ createRoot(document.getElementById('root')!).render(
                     console reads it. Outside <Routes>, like the panes it
                     drives, so a Brief↔console hop never resets it. */}
                 <MobileNavProvider>
-                <WarmCacheRouteReset />
-                {/* App+Brief live OUTSIDE <Routes> so route switches hide, never
-                    unmount them (#239 slice 2). Their Route entries render null —
-                    they only claim the paths so '*' doesn't send them to Landing. */}
-                <AppBriefKeepAlive />
-                <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/app" element={null} />
-                  <Route path="/brief" element={null} />
-                  <Route path="/docs" element={<Docs />} />
-                  <Route path="/docs/*" element={<Docs />} />
-                  <Route path="*" element={<Landing />} />
-                </Routes>
-                {/* The phone's Brief ◈ · Lens ◎ · Live ≋ bar. One instance for
-                    both keep-alive routes — it navigates and nothing else, so
-                    it carries no state across the hop. */}
-                <MobileTabBar />
-                <InstallPrompt />
-                <EclipseTakeover />
-                <EclipseChrome />
+                  <WarmCacheRouteReset />
+                  {/* App+Brief live OUTSIDE <Routes> so route switches hide, never
+                      unmount them (#239 slice 2). Their Route entries render null —
+                      they only claim the paths so '*' doesn't send them to Landing. */}
+                  <AppBriefKeepAlive />
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/app" element={null} />
+                    <Route path="/brief" element={null} />
+                    <Route path="/docs" element={<Docs />} />
+                    <Route path="/docs/*" element={<Docs />} />
+                    <Route path="*" element={<Landing />} />
+                  </Routes>
+                  {/* The phone's Brief ◈ · Lens ◎ · Live ≋ bar. One instance for
+                      both keep-alive routes — it navigates and nothing else, so
+                      it carries no state across the hop. */}
+                  <MobileTabBar />
+                  <InstallPrompt />
+                  <EclipseTakeover />
+                  <EclipseChrome />
                 </MobileNavProvider>
               </StoryLensProvider>
             </EclipseProvider>

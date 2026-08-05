@@ -6,7 +6,9 @@ interface MobileNavValue {
   setConsoleTab: (t: ConsoleTab) => void
 }
 
-const Ctx = createContext<MobileNavValue>({ consoleTab: 'lens', setConsoleTab: () => {} })
+// No default value on purpose: a silent no-op setter would let a consumer
+// mounted outside the provider look like it works while every tap did nothing.
+const Ctx = createContext<MobileNavValue | null>(null)
 
 export function MobileNavProvider({ children }: { children: ReactNode }) {
   const [consoleTab, setConsoleTab] = useState<ConsoleTab>('lens')
@@ -14,6 +16,8 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
-export function useMobileNav() {
-  return useContext(Ctx)
+export function useMobileNav(): MobileNavValue {
+  const value = useContext(Ctx)
+  if (!value) throw new Error('useMobileNav must be used inside <MobileNavProvider> (see main.tsx)')
+  return value
 }

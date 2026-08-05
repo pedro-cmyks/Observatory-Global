@@ -11,6 +11,14 @@
 export type MobileTab = 'brief' | 'lens' | 'live'
 export type ConsoleTab = 'lens' | 'live'
 
+/**
+ * What the console is actually showing. The console has TWO tabs but THREE
+ * surfaces, because the Lens changes shape with focus — and collapsing that
+ * 2x2 (tab x focus) into a boolean is how Live silently became inert while a
+ * thread was open: the pill moved, the screen did not.
+ */
+export type MobileSurface = 'live' | 'lens-focused' | 'lens-field'
+
 export interface MobileTabDef {
   id: MobileTab
   label: string
@@ -33,6 +41,28 @@ export function tabForRoute(pathname: string, rememberedConsoleTab: ConsoleTab):
   return 'lens'
 }
 
-export function consoleTabFor(tab: MobileTab): ConsoleTab {
-  return tab === 'live' ? 'live' : 'lens'
+/**
+ * The console surface a bar tap selects — or `null` for Brief, which is a
+ * route and selects no console surface at all. Returning null (rather than a
+ * plausible-looking 'lens') is what keeps the caller honest: coming back from
+ * the Brief lands on whichever surface the user last chose.
+ */
+export function consoleTabFor(tab: MobileTab): ConsoleTab | null {
+  if (tab === 'brief') return null
+  return tab
+}
+
+/** The bar belongs to the two keep-alive panes and nowhere else. */
+export function showsMobileTabBar(pathname: string): boolean {
+  return pathname === '/app' || pathname === '/brief'
+}
+
+/**
+ * The console's surface. The TAB decides first and Live short-circuits, so
+ * Live is always the stream; focus steers only the Lens. That ordering is the
+ * invariant: tapping a tab must always change what is on screen.
+ */
+export function surfaceFor(tab: ConsoleTab, lensHasFocus: boolean): MobileSurface {
+  if (tab === 'live') return 'live'
+  return lensHasFocus ? 'lens-focused' : 'lens-field'
 }

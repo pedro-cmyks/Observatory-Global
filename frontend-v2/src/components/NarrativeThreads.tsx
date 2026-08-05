@@ -255,11 +255,15 @@ interface NarrativeThreadsProps {
     onCountrySelect?: (code: string) => void
     onThreadSelect?: (thread: Narrative) => void
     activeThreadId?: string | null
+    /** #236: true while mounted but hidden (the phone keeps this panel alive
+     *  behind another tab). The 5-minute poll idles; the initial fetch still
+     *  runs, so the list is ready the moment the tab reveals it. */
+    paused?: boolean
 }
 
 export type LivingThreadSelection = Narrative
 
-export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect, onThreadSelect, activeThreadId }) => {
+export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect, onThreadSelect, activeThreadId, paused = false }) => {
     const [narratives, setNarratives] = useState<Narrative[]>([])
     // #234: precise person→thread set from the backend (full persons array),
     // replacing the capped top_entities heuristic for the focus highlight.
@@ -358,11 +362,15 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         }
     }, [cappedHours, fetchLimit, filter.country])
 
-    // Initial fetch + 5-minute interval; re-fetch when country changes
+    // Initial fetch + 5-minute interval; re-fetch when country changes.
+    // #236: the interval (not the initial fetch) idles while hidden — read
+    // through a ref so a visibility flip never rebuilds the timer.
+    const pausedRef = useRef(paused)
+    pausedRef.current = paused
     useEffect(() => {
         setLoading(true)
         fetchNarratives()
-        const interval = setInterval(fetchNarratives, 5 * 60 * 1000)
+        const interval = setInterval(() => { if (!pausedRef.current) fetchNarratives() }, 5 * 60 * 1000)
         return () => clearInterval(interval)
     }, [fetchNarratives])
 

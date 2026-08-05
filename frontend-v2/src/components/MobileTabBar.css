@@ -4,6 +4,20 @@
    verbatim; only their home changed. */
 .mobile-tabbar { display: none; }
 
+/* Announces the surface a tab tap revealed. Visually hidden, never clipped
+   out of the a11y tree (display:none would silence the live region). */
+.mobile-tabbar-announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .mobile-tabbar {
     position: fixed;
@@ -39,6 +53,8 @@
        command bar's copy. */
     min-height: 44px;
   }
-  .mobile-tabbar button.active { color: #1D9E75; }
+  /* The accent token, not the literal #1D9E75 it happens to equal in the dark
+     themes — the light theme's deep accent is darker for contrast. */
+  .mobile-tabbar button.active { color: rgb(var(--color-accent-deep-rgb)); }
   .mobile-tab-glyph { font-size: 17px; line-height: 1; }
 }

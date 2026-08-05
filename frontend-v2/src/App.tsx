@@ -95,6 +95,7 @@ import { useUrlSync } from './hooks/useUrlSync'
 import { useSavedWatches } from './hooks/useSavedWatches'
 import { useIsMobile } from './hooks/useIsMobile'
 import { useMobileNav } from './contexts/MobileNavContext'
+import { surfaceFor } from './lib/mobileNav'
 
 
 
@@ -2046,19 +2047,41 @@ function AppContent() {
 
         )
 
+        // #236 Task 6: the phone's console surface. Three surfaces from two
+        // tabs, because the Lens changes shape with focus — see surfaceFor,
+        // where the tab decides FIRST so Live can never resolve to the same
+        // thing as the Lens. Computed only on the phone; the `isMobile &&`
+        // short-circuit means desktop never evaluates the focus ladder.
+        const mobileSurface = isMobile
+          ? surfaceFor(consoleTab, !!(
+              storyQuery || selectedThread || selectedTheme ||
+              (focus.type === 'person' && focus.value) ||
+              selectedCountryCode || selectedPublicAttention || selectedChokepoint
+            ))
+          : null
+        // The two hidden-panel facts the shell and the panels both need.
+        const streamHidden = mobileSurface === 'lens-field'
+        const threadsHidden = mobileSurface !== null && mobileSurface !== 'lens-field'
+
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         const streamPanel = (() => {
-          const isStory = !!storyQuery
+          // Live is the firehose, always. Without this the stream panel's
+          // focus ladder wins and tapping Live with a thread open moved the
+          // active pill while the screen did not change by one pixel — the
+          // Lens-direction dead end, mirrored. Focus is NOT cleared: the open
+          // thread is still there when the user taps back to the Lens.
+          const liveTab = mobileSurface === 'live'
+          const isStory = !liveTab && !!storyQuery
           // Flywheel compound focus: a freshly-opened thread/theme outranks a
           // standing person focus for the middle panel (Pedro's call — "show the
           // thread"); the person stays a scope chip driving the map/list. Person
           // wins the panel only when no thread/theme is open.
-          const isThread = !!selectedThread && !isStory
-          const isTheme = !!selectedTheme && !isThread && !isStory
-          const isPerson = focus.type === 'person' && !!focus.value && !isStory && !isThread && !isTheme
-          const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
-          const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
-          const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
+          const isThread = !liveTab && !!selectedThread && !isStory
+          const isTheme = !liveTab && !!selectedTheme && !isThread && !isStory
+          const isPerson = !liveTab && focus.type === 'person' && !!focus.value && !isStory && !isThread && !isTheme
+          const isCountry = !liveTab && !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
+          const isPublicAttention = !liveTab && !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
+          const isChokepoint = !liveTab && !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
           const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null)
             // Story Lens (Task 10, Step 2): this is the ThemeDetail/EntityPanel/
             // ThreadFocusPanel/PublicAttentionPanel close path — the panel is
@@ -2271,6 +2294,11 @@ function AppContent() {
                     }}
                   />
                 ) : (
+                  // TODO(#236): pass paused={streamHidden}. The guard is written
+                  // and measured (0 polls while hidden, 2 per 20s when shown),
+                  // but SignalStream.tsx is mid-edit by another agent, so it
+                  // lands in its own follow-up rather than sweeping their
+                  // uncommitted work into this commit.
                   <SignalStream />
                 )}
               </div>
@@ -2294,6 +2322,7 @@ function AppContent() {
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
               <NarrativeThreads
+                paused={threadsHidden}
                 activeThreadId={selectedTheme?.thread?.thread_id ?? selectedThread?.thread_id}
                 onThreadSelect={(thread) => {
                   const target = resolveThreadThemeTarget(thread)
@@ -2461,38 +2490,26 @@ function AppContent() {
         </div>
         )
 
-        // #236 Task 7 seam: the Lens is the surface that re-scopes to whatever
-        // is focused. It does not exist yet, so it stands in — but showing the
-        // threads panel alone DEAD-ENDS the phone's core gesture: tapping a
-        // thread sets selectedTheme, and ThemeDetail renders inside the STREAM
-        // panel. Measured at 375px: the tap changed nothing on screen. So the
-        // stand-in states the Lens contract in miniature — the focused thing
-        // when there is one, the field when there is not. Same ladder as
-        // streamPanel's own (source profile / country-theme render as overlays
-        // outside the layout, so they are not part of it).
-        // TASK 7: this whole pair collapses to one <LensPanel/> in the Lens
-        // slot below, and lensHasFocus moves inside it.
-        const lensHasFocus = !!(
-          storyQuery || selectedThread || selectedTheme ||
-          (focus.type === 'person' && focus.value) ||
-          selectedCountryCode || selectedPublicAttention || selectedChokepoint
-        )
-
         if (isMobile) {
-          // #236: the phone has two console surfaces. The Lens is whatever is
-          // focused; Live is the raw stream. The map is no longer a tab — it
-          // is a section INSIDE the Lens (Task 8) — so the radar panel is not
-          // mounted here at all and its rAF loop never runs on a phone. The
-          // dock is absorbed the same way, and the correlation matrix was only
-          // ever mounted-and-CSS-hidden here. None of the three is mounted.
+          // #236: the phone has two console surfaces and three states, named
+          // by `mobileSurface` above. 'live' = the firehose; 'lens-focused' =
+          // the thing you opened; 'lens-field' = the field you open things
+          // from. The map is no longer a tab — it is a section INSIDE the Lens
+          // (Task 8) — so the radar panel is not mounted here at all and its
+          // rAF loop never runs on a phone. The dock is absorbed the same way,
+          // and the correlation matrix was only ever mounted-and-CSS-hidden
+          // here. None of the three is mounted.
           //
           // The two that ARE here KEEP ALIVE across tab taps — mounted once,
-          // visibility toggled — exactly as main.tsx's AppBriefKeepAlive does
-          // for the routes (#239 slice 2). Measured at 375px, unmounting them
-          // instead cost 0.7-1.5s of blank panel and re-fired 2-4 requests on
-          // every tap. That trade only pays for panels that cost something
-          // while hidden (the radar's rAF loop, the matrix's fetch-on-mount);
-          // these two are ordinary lists that cost nothing.
+          // visibility toggled — as main.tsx's AppBriefKeepAlive does for the
+          // routes (#239 slice 2). NOT because they are free while hidden:
+          // SignalStream polls every 15s, drips every 3s and re-renders every
+          // second, and NarrativeThreads polls every 5 min. They are kept
+          // alive DESPITE that, because remounting measured worse — 0.7-1.5s
+          // of blank panel and 2-4 re-fired requests on every tap. The
+          // `paused` prop buys the hidden cost back so we pay neither; it is
+          // wired here for the threads panel, and the stream's half is the
+          // TODO at its call site above.
           //
           // display:contents means the wrapper generates no box, so each panel
           // lays out exactly as if it were still a direct child of the layout
@@ -2500,12 +2517,12 @@ function AppContent() {
           // <LensPanel/> into the Lens slot under any class name without a
           // matching CSS edit. (The old class→panel map could not: it hid
           // whatever it did not name.)
-          const showStream = consoleTab === 'live' || lensHasFocus
           return (
             <div className={`terminal-layout mobile-tab-${consoleTab}`}>
-              <div style={{ display: showStream ? 'contents' : 'none' }}>{streamPanel}</div>
-              {/* the Lens slot — Task 7 replaces threadsPanel with <LensPanel/> */}
-              <div style={{ display: showStream ? 'none' : 'contents' }}>{threadsPanel}</div>
+              <div style={{ display: streamHidden ? 'none' : 'contents' }}>{streamPanel}</div>
+              {/* the Lens field — Task 7 replaces threadsPanel with <LensPanel/>,
+                  which absorbs the 'lens-focused' case too */}
+              <div style={{ display: threadsHidden ? 'none' : 'contents' }}>{threadsPanel}</div>
             </div>
           )
         }

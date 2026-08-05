@@ -1674,21 +1674,16 @@
     /* room for the fixed tab bar + the iOS home-indicator safe area */
     padding: 4px 4px calc(60px + env(safe-area-inset-bottom, 0px));
   }
-  /* #236 Task 6: the SHELL decides what is mounted (one console surface at a
-     time — see App.tsx `if (isMobile)`), so CSS no longer keeps a second copy
-     of that decision as a class→panel map. A panel that is in the DOM here is
-     the one the tab picked; it fills the surface. That way Task 7 can swap in
-     the real Lens under any class name without a matching CSS edit — the old
-     map silently hid whatever it did not list. The correlation matrix is the
-     one panel desktop mounts unconditionally, so it keeps an explicit hide
-     rule in case it ever returns to this shell. */
+  /* #236 Task 6: the SHELL decides what is mounted and what is visible (see
+     App.tsx `if (isMobile)`), so CSS keeps no second copy of that decision.
+     A panel in the DOM here is one the shell put there; it fills the surface.
+     That way Task 7 can swap in the real Lens under any class name without a
+     matching CSS edit — the old class→panel map silently hid whatever it did
+     not list. */
   .terminal-layout[class*="mobile-tab-"] .terminal-panel {
     display: flex;
     height: 100%;
     min-height: 0;
-  }
-  .terminal-layout[class*="mobile-tab-"] .terminal-panel.matrix {
-    display: none;
   }
 
   /* Secondary panels that open inside the stream slot (source profile, entity,

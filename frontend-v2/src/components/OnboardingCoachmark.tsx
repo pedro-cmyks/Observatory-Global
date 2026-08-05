@@ -67,11 +67,15 @@ const STEPS: TourStep[] = [
     },
 ]
 
-// Mobile IA is tabbed (Map / Threads / Stream / Pulse), not the desktop
+// Mobile IA is tabbed (Brief / Lens / Live since #236 Task 6), not the desktop
 // side-by-side panels — so the phone gets its own short tour anchored only to
 // elements that are ALWAYS on screen (the search bar + the bottom tab bar).
 // The card is a bottom sheet (see CSS) so Skip/Next are always reachable — the
 // desktop beside-target positioning clipped off-screen and trapped the user.
+//
+// NEEDS A SECOND PASS IN TASK 8: Map and Pulse return as SECTIONS inside the
+// Lens, and step 2 should name them once they do — right now the Lens is the
+// threads field plus whatever you opened, so the copy describes only that.
 const MOBILE_STEPS: TourStep[] = [
     {
         selector: '[data-tour="search"]',
@@ -83,15 +87,15 @@ const MOBILE_STEPS: TourStep[] = [
     },
     {
         selector: '[data-tour="mobile-tabs"]',
-        eyebrow: 'Four views',
+        eyebrow: 'Three views',
         title: 'Switch with the bottom tabs',
-        body: 'Map = where stories are happening. Threads = what is spreading across countries. Stream = the live signal feed. Pulse = what people are reading and searching.',
+        body: 'Brief = the day, read like a front page. Lens = whatever you are looking at right now. Live = the raw signal feed as it arrives.',
     },
     {
         selector: '',
         eyebrow: 'Pivot, don’t just scroll',
         title: 'Tap anything to drill in',
-        body: 'Tap a country on the map, a thread, a source, or a headline to turn one signal into a focused investigation. Anything you open can be pinned in the Workbench.',
+        body: 'Tap a thread, a source, or a headline and the Lens re-scopes to it. Anything you open can be pinned in the Workbench.',
     },
 ]
 
