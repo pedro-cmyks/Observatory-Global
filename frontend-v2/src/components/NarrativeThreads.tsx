@@ -18,6 +18,8 @@ import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText, type StoryLensSibling } from '../lib/storyLens'
+import { visibleEntities } from '../lib/threadRowMobile'
+import { useIsMobile } from '../hooks/useIsMobile'
 import './NarrativeThreads.css'
 
 interface TimelinePoint {
@@ -271,6 +273,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const { filter, setCountry, setMapFlyCountry, setPerson } = useFocus()
     // W4 (2026-07-05): thread rows are pinnable into the active investigation.
     const { pinItem, unpinItem, isPinned } = useWorkspace()
+    // #236: on a phone the title leads; entity chips collapse to a counted +N.
+    const isMobile = useIsMobile()
 
     /* ECLIPSE LENS: when the reader ENTERED a total eclipse, this panel stops
        being a volume ranking and becomes SHADOW-FIRST — the eclipsing story pins
@@ -867,30 +871,42 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {geography.codes.map((c, index) => (
                                     <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`${geography.label}: ${geography.names[index] || resolveCountryName(c, c)}`}><Flag code={c} /> {c}</button>
                                 ))}
-                                {n.top_entities.slice(0, 4).map(p => {
-                                    const personPinId = `person-${p}`
-                                    const personPinned = isPinned(personPinId)
+                                {(() => {
+                                    const { shown, hiddenCount } = visibleEntities(n.top_entities.slice(0, 4), isMobile)
                                     return (
-                                        <span key={p} className={`person-pip${filter.person === p ? ' person-pip--active' : ''}`}>
-                                            <button
-                                                type="button"
-                                                className="person-pip-focus"
-                                                onClick={e => { e.stopPropagation(); setPerson(p) }}
-                                                data-tip={`Focus on ${p}`}
-                                            >{p}</button>
-                                            <button
-                                                type="button"
-                                                className={`person-pip-pin${personPinned ? ' person-pip-pin--active' : ''}`}
-                                                data-tip={personPinned ? 'Unpin from investigation' : 'Pin person to investigation'}
-                                                onClick={e => {
-                                                    e.stopPropagation()
-                                                    if (personPinned) unpinItem(personPinId)
-                                                    else pinItem(personPin(p))
-                                                }}
-                                            >◆</button>
-                                        </span>
+                                        <>
+                                            {shown.map(p => {
+                                                const personPinId = `person-${p}`
+                                                const personPinned = isPinned(personPinId)
+                                                return (
+                                                    <span key={p} className={`person-pip${filter.person === p ? ' person-pip--active' : ''}`}>
+                                                        <button
+                                                            type="button"
+                                                            className="person-pip-focus"
+                                                            onClick={e => { e.stopPropagation(); setPerson(p) }}
+                                                            data-tip={`Focus on ${p}`}
+                                                        >{p}</button>
+                                                        <button
+                                                            type="button"
+                                                            className={`person-pip-pin${personPinned ? ' person-pip-pin--active' : ''}`}
+                                                            data-tip={personPinned ? 'Unpin from investigation' : 'Pin person to investigation'}
+                                                            onClick={e => {
+                                                                e.stopPropagation()
+                                                                if (personPinned) unpinItem(personPinId)
+                                                                else pinItem(personPin(p))
+                                                            }}
+                                                        >◆</button>
+                                                    </span>
+                                                )
+                                            })}
+                                            {hiddenCount > 0 && (
+                                                <span className="narrative-entity-more" data-tip="More entities in this thread">
+                                                    +{hiddenCount}
+                                                </span>
+                                            )}
+                                        </>
                                     )
-                                })}
+                                })()}
                                 {n.has_public_interest && (
                                     <span className="attention-badge search" data-tip={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
                                         SEARCH
