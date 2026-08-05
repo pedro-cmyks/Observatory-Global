@@ -49,6 +49,16 @@ const ArrowRight = () => (
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
 )
 
+// Same stroke language as ArrowRight (currentColor, 2.2 stroke) so the
+// mobile toggle reads as part of this page's identity, not a bolted-on emoji.
+const NavGlyph = ({ open }: { open: boolean }) => (
+    <svg viewBox="0 0 24 24" width={17} height={17} stroke="currentColor" strokeWidth={2.2} fill="none" aria-hidden="true">
+        {open
+            ? <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+            : <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />}
+    </svg>
+)
+
 /* Ambient constellation field — Atlas's own "universe" of stories, kept faint.
    Deterministic seed per load; reduced-motion draws a single static frame;
    off-screen pauses the loop; the hero box re-syncs the bitmap on resize so
@@ -220,6 +230,15 @@ const PILLARS = [
     },
 ]
 
+// The header's real link set, verified against the JSX below (was Console +
+// Docs; both are in-app routes navigated via react-router, not <a href>
+// anchors, so the mobile copy must reuse navigate() too or it would trigger
+// a full page reload instead of client-side routing).
+const NAV_LINKS: Array<{ label: string; to: string }> = [
+    { label: 'Console', to: '/app' },
+    { label: 'Docs', to: '/docs' },
+]
+
 const DATA_SOURCES: Array<[string, string]> = [
     ['GDELT media graph', 'global multilingual baseline'],
     ['RSS · news APIs', 'regional voice + crisis provenance'],
@@ -242,8 +261,32 @@ export function Landing() {
     // and SAY SO (resolveVoiceStats flags it; a suffix is rendered) so a
     // degraded fetch never asserts month-old numbers as current.
     const [voice, setVoice] = useState<VoiceStats | null>(null)
+    // Mobile nav dropdown (#236): Console/Docs vanish below 560px with
+    // nothing replacing them (`.lp-hidesm`, Landing.css:54) — this is the fix.
+    const [navOpen, setNavOpen] = useState(false)
+    const navWrapRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => { prefetchBriefing(24) }, [])
+
+    // Close on outside tap/click or Escape. No focus trap — four links behind
+    // a marketing hamburger doesn't warrant one, but a menu that only closes
+    // by re-tapping the same button is a real phone annoyance worth the ~10
+    // lines it costs here.
+    useEffect(() => {
+        if (!navOpen) return
+        const onPointerDown = (e: PointerEvent) => {
+            if (navWrapRef.current && e.target instanceof Node && !navWrapRef.current.contains(e.target)) {
+                setNavOpen(false)
+            }
+        }
+        const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setNavOpen(false) }
+        document.addEventListener('pointerdown', onPointerDown)
+        document.addEventListener('keydown', onKeyDown)
+        return () => {
+            document.removeEventListener('pointerdown', onPointerDown)
+            document.removeEventListener('keydown', onKeyDown)
+        }
+    }, [navOpen])
 
     useEffect(() => {
         fetch('/api/v2/voice-mix?hours=168')
@@ -308,10 +351,44 @@ export function Landing() {
                 <header className="lp-nav">
                     <div className="lp-mk"><AtlasMark size={15} />ATLAS<span className="lp-dot">.</span></div>
                     <nav className="lp-navr" aria-label="Primary">
-                        <button className="lp-nlink lp-hidesm" onClick={() => navigate('/app')}>Console</button>
-                        <button className="lp-nlink lp-hidesm" onClick={() => navigate('/docs')}>Docs</button>
+                        {NAV_LINKS.map(l => (
+                            <button key={l.to} className="lp-nlink lp-hidesm" onClick={() => navigate(l.to)}>{l.label}</button>
+                        ))}
                         <button className="lp-npill" onClick={() => navigate('/brief')}>Read the Brief</button>
                         <ReaderThemeToggle theme={theme} onToggle={toggle} />
+                        {/* relative wrapper is scoped to just the toggle+menu, not the
+                            whole header — the dropdown anchors off ITS OWN box
+                            (top-full) instead of a guessed header-height offset. */}
+                        <div className="relative hidden max-[560px]:block" ref={navWrapRef}>
+                            <button
+                                type="button"
+                                className="appearance-none flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full border-0 bg-transparent cursor-pointer text-[color:var(--r-ink-soft)] hover:text-[color:var(--r-ink)]"
+                                aria-expanded={navOpen}
+                                aria-haspopup="menu"
+                                aria-controls="lp-mobile-nav"
+                                aria-label={navOpen ? 'Close menu' : 'Menu'}
+                                onClick={() => setNavOpen(o => !o)}
+                            >
+                                <NavGlyph open={navOpen} />
+                            </button>
+                            {navOpen && (
+                                <nav
+                                    id="lp-mobile-nav"
+                                    aria-label="Mobile"
+                                    className="absolute right-0 top-full mt-2 z-20 flex min-w-[170px] flex-col rounded-[5px] border border-[color:var(--r-line)] bg-[color:var(--r-surface)] p-1.5 shadow-lg"
+                                >
+                                    {NAV_LINKS.map(l => (
+                                        <button
+                                            key={l.to}
+                                            className="appearance-none block w-full min-h-[44px] rounded-[4px] border-0 bg-transparent cursor-pointer px-3 py-2 text-left text-[13px] font-semibold text-[color:var(--r-ink-soft)] hover:bg-[color:var(--r-chip)] hover:text-[color:var(--r-ink)]"
+                                            onClick={() => { setNavOpen(false); navigate(l.to) }}
+                                        >
+                                            {l.label}
+                                        </button>
+                                    ))}
+                                </nav>
+                            )}
+                        </div>
                     </nav>
                 </header>
 
