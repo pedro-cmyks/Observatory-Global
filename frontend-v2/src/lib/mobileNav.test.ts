@@ -6,6 +6,7 @@ import {
   consoleTabFor,
   showsMobileTabBar,
   surfaceFor,
+  fieldVisible,
 } from './mobileNav'
 
 describe('MOBILE_TABS', () => {
@@ -80,5 +81,20 @@ describe('surfaceFor', () => {
     for (const focused of [true, false]) {
       expect(surfaceFor('live', focused)).not.toBe(surfaceFor('lens', focused))
     }
+  })
+})
+
+describe('fieldVisible', () => {
+  it('is the Lens field and nothing else', () => {
+    expect(fieldVisible('lens-field')).toBe(true)
+    expect(fieldVisible('lens-focused')).toBe(false)
+    expect(fieldVisible('live')).toBe(false)
+  })
+  // The read pane serves two surfaces. If it were hidden under either of
+  // them, one tab would go blank — and pausing it on the wrong surface would
+  // freeze the pane the user is looking at.
+  it('leaves the read pane showing under both of its surfaces', () => {
+    expect(fieldVisible('lens-focused')).toBe(false)
+    expect(fieldVisible('live')).toBe(false)
   })
 })

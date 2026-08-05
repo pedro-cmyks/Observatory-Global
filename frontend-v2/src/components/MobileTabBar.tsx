@@ -9,6 +9,7 @@ import {
   showsMobileTabBar,
   type MobileTab,
 } from '../lib/mobileNav'
+import { scopeTitle } from '../lib/lensScope'
 import './MobileTabBar.css'
 
 /**
@@ -20,7 +21,7 @@ export function MobileTabBar() {
   const isMobile = useIsMobile()
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { consoleTab, setConsoleTab } = useMobileNav()
+  const { consoleTab, setConsoleTab, trail } = useMobileNav()
 
   const onTap = (tab: MobileTab) => {
     // null = Brief, which selects no console surface: the console keeps
@@ -36,16 +37,29 @@ export function MobileTabBar() {
 
   const active = tabForRoute(pathname, consoleTab)
   const activeLabel = MOBILE_TABS.find((t) => t.id === active)?.label ?? ''
+  // The Lens is the one tab whose name does not tell you what is on it, so it
+  // announces its scope too. The trail's head is derived from the console's
+  // focus state, so this can never name something the surface is not showing.
+  const announced = active === 'lens' && trail.length > 0
+    ? `${activeLabel} · ${scopeTitle(trail[trail.length - 1])}`
+    : activeLabel
 
   return (
     <>
       {/* Lens<->Live swaps the whole visible surface with no route change, so
           there is nothing for a screen reader to announce on its own. Name the
           surface here rather than stealing focus — the reading cursor stays
-          where the user put it. (Task 7: once <LensPanel/> owns a real
-          heading, moving focus to it becomes the better option.) */}
+          where the user put it.
+          Task 7 weighed moving focus to the Lens heading instead and kept the
+          announcement: the Lens surface also swaps when the SCOPE changes (a
+          Brief deep-link, a thread opened from another panel), and a focus
+          move on those would yank the cursor with no gesture behind it.
+          Distinguishing "tap" from "scope change" needs the bar to tell the
+          Lens a tap happened — plumbing bought for one case. So the Lens got
+          a real <h2> heading to navigate BY, and this region carries what the
+          focus move was going to deliver: the scope's name. */}
       <div className="mobile-tabbar-announce" role="status" aria-live="polite">
-        {activeLabel}
+        {announced}
       </div>
       <nav className="mobile-tabbar" aria-label="Atlas sections" data-tour="mobile-tabs">
         {MOBILE_TABS.map((t) => (

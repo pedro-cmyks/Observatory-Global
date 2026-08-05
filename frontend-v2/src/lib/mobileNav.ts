@@ -66,3 +66,17 @@ export function surfaceFor(tab: ConsoleTab, lensHasFocus: boolean): MobileSurfac
   if (tab === 'live') return 'live'
   return lensHasFocus ? 'lens-focused' : 'lens-field'
 }
+
+/**
+ * Which of the console's two mounted panes is showing.
+ *
+ * The ranked field is the Lens's unfocused state and nothing else; the read
+ * pane serves BOTH remaining surfaces — the opened thing under `lens-focused`,
+ * the firehose under `live`. Exported rather than inlined because two callers
+ * need it (the shell, to pause the pane it is hiding, and <LensPanel/>, to
+ * toggle it) and a second copy of the rule is how the pane and its `paused`
+ * flag would drift apart.
+ */
+export function fieldVisible(surface: MobileSurface): boolean {
+  return surface === 'lens-field'
+}

@@ -95,7 +95,9 @@ import { useUrlSync } from './hooks/useUrlSync'
 import { useSavedWatches } from './hooks/useSavedWatches'
 import { useIsMobile } from './hooks/useIsMobile'
 import { useMobileNav } from './contexts/MobileNavContext'
-import { surfaceFor } from './lib/mobileNav'
+import { surfaceFor, fieldVisible, type MobileSurface } from './lib/mobileNav'
+import { consoleLensScope } from './lib/lensScope'
+import { LensPanel } from './components/LensPanel'
 
 
 
@@ -394,7 +396,7 @@ function AppContent() {
   // because Brief is a route and the console is a surface. App only reads
   // which of its two console surfaces is showing. Desktop ignores this.
   const isMobile = useIsMobile()
-  const { consoleTab, setConsoleTab } = useMobileNav()
+  const { consoleTab, setConsoleTab, trail: lensTrail, focusLens } = useMobileNav()
   // R3 emerald foundation: compact day/night flip in the command bar (full
   // theme selection, incl. Intel Noir, stays in Settings).
   const { theme: consoleTheme, toggleDayNight } = useTheme()
@@ -1175,7 +1177,8 @@ function AppContent() {
   // #236 Task 6: a drill-in (thread, person, source, country, attention) is
   // exactly the thing the Lens exists to re-scope to, so opening one brings
   // the Lens forward — not Live, which is the unfocused firehose. The Lens
-  // then renders the opened item (see `lensHasFocus` in the shell below).
+  // then renders the opened item (the focus argument to `surfaceFor` in the
+  // shell below).
   useEffect(() => {
     if (!isMobile) return
     if (
@@ -1187,6 +1190,35 @@ function AppContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
+
+  // #236 Task 7: the Lens's scope, DERIVED from the console's focus state
+  // rather than pushed by the doors that open things. This is the whole
+  // defence against a second notion of "what am I looking at": the breadcrumb
+  // and the panel read one state, so they cannot disagree. consoleLensScope
+  // mirrors the stream slot's own ladder (see its comment — the two must move
+  // together).
+  const lensScope = useMemo(() => consoleLensScope({
+    storyQuery,
+    threadId: selectedThread?.thread_id ?? null,
+    threadLabel: selectedThread?.label ?? null,
+    themeId: selectedTheme?.theme ?? null,
+    themeLabel: selectedTheme
+      ? resolveThreadLabel(selectedTheme.theme, selectedTheme.thread?.label ?? selectedTheme.labelHint)
+      : null,
+    personName: focus.type === 'person' ? focus.value : null,
+    countryCode: selectedCountryCode,
+    countryName: selectedCountryCode ? resolveCountryName(selectedCountryCode, selectedCountry?.name) : null,
+    attentionTitle: selectedPublicAttention?.title ?? null,
+    chokepointId: selectedChokepoint?.id ?? null,
+    chokepointName: selectedChokepoint?.name ?? null,
+  }), [storyQuery, selectedThread, selectedTheme, focus.type, focus.value, selectedCountryCode, selectedCountry, selectedPublicAttention, selectedChokepoint])
+
+  useEffect(() => {
+    // Phone only: on desktop the Lens does not render and the trail stays at
+    // the field. A desktop->phone resize picks the scope up on the next tick.
+    if (!isMobile) return
+    focusLens(lensScope)
+  }, [isMobile, lensScope, focusLens])
 
 
   // --- Session Trail Tracking ---
@@ -2052,16 +2084,24 @@ function AppContent() {
         // where the tab decides FIRST so Live can never resolve to the same
         // thing as the Lens. Computed only on the phone; the `isMobile &&`
         // short-circuit means desktop never evaluates the focus ladder.
-        const mobileSurface = isMobile
+        const mobileSurface: MobileSurface | null = isMobile
           ? surfaceFor(consoleTab, !!(
               storyQuery || selectedThread || selectedTheme ||
               (focus.type === 'person' && focus.value) ||
               selectedCountryCode || selectedPublicAttention || selectedChokepoint
             ))
           : null
-        // The two hidden-panel facts the shell and the panels both need.
-        const streamHidden = mobileSurface === 'lens-field'
-        const threadsHidden = mobileSurface !== null && mobileSurface !== 'lens-field'
+        // #236 Task 7 rename: `threadsHidden` named the DESKTOP panel it
+        // happened to hide. On the phone that panel is the Lens's FIELD — the
+        // ranked list you open things from — so it is named for the role,
+        // which is what the flag actually decides. Its only consumer is
+        // `paused`; <LensPanel/> owns the visibility toggle off the same
+        // `fieldVisible` rule, so the pane and its paused flag cannot drift.
+        // (`streamHidden`'s other consumer was that same visibility toggle,
+        // which leaves only the read pane's `paused` — still a TODO at its
+        // call site below — so it is gone rather than renamed into a variable
+        // nothing reads.)
+        const fieldHidden = mobileSurface !== null && !fieldVisible(mobileSurface)
 
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         const streamPanel = (() => {
@@ -2294,11 +2334,12 @@ function AppContent() {
                     }}
                   />
                 ) : (
-                  // TODO(#236): pass paused={streamHidden}. The guard is written
-                  // and measured (0 polls while hidden, 2 per 20s when shown),
-                  // but SignalStream.tsx is mid-edit by another agent, so it
-                  // lands in its own follow-up rather than sweeping their
-                  // uncommitted work into this commit.
+                  // TODO(#236): pause the read pane when it is hidden — the
+                  // flag is `mobileSurface !== null && fieldVisible(mobileSurface)`,
+                  // the mirror of `fieldHidden` above. Not wired here because
+                  // SignalStream's `paused` prop is another agent's
+                  // uncommitted chip: passing it would not compile for anyone
+                  // without their working tree. Their chip adds this one line.
                   <SignalStream />
                 )}
               </div>
@@ -2322,7 +2363,7 @@ function AppContent() {
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
               <NarrativeThreads
-                paused={threadsHidden}
+                paused={fieldHidden}
                 activeThreadId={selectedTheme?.thread?.thread_id ?? selectedThread?.thread_id}
                 onThreadSelect={(thread) => {
                   const target = resolveThreadThemeTarget(thread)
@@ -2507,22 +2548,27 @@ function AppContent() {
           // second, and NarrativeThreads polls every 5 min. They are kept
           // alive DESPITE that, because remounting measured worse — 0.7-1.5s
           // of blank panel and 2-4 re-fired requests on every tap. The
-          // `paused` prop buys the hidden cost back so we pay neither; it is
-          // wired here for the threads panel, and the stream's half is the
-          // TODO at its call site above.
+          // `paused` prop buys the hidden cost back for the field panel; the
+          // read pane's half is the TODO at its call site above.
           //
-          // display:contents means the wrapper generates no box, so each panel
-          // lays out exactly as if it were still a direct child of the layout
-          // — and the toggle is deliberately CLASS-AGNOSTIC, so Task 7 can drop
-          // <LensPanel/> into the Lens slot under any class name without a
-          // matching CSS edit. (The old class→panel map could not: it hid
-          // whatever it did not name.)
+          // #236 Task 7: <LensPanel/> now owns which slot is showing and wears
+          // the scope chrome. The two panels stay exactly where they were —
+          // the Lens wraps them in `display: contents`, which generates no
+          // box, so each still lays out as a direct child of this layout and
+          // neither remounts when the scope changes. The read pane is passed
+          // to the Lens but is ALSO the Live surface; that is why the Lens
+          // takes `surface` rather than deciding from focus alone.
+          //
+          // mobileSurface is non-null here by construction — same `isMobile`.
           return (
-            <div className={`terminal-layout mobile-tab-${consoleTab}`}>
-              <div style={{ display: streamHidden ? 'none' : 'contents' }}>{streamPanel}</div>
-              {/* the Lens field — Task 7 replaces threadsPanel with <LensPanel/>,
-                  which absorbs the 'lens-focused' case too */}
-              <div style={{ display: threadsHidden ? 'none' : 'contents' }}>{threadsPanel}</div>
+            <div className={`terminal-layout mobile-tab-${consoleTab} lens-shell`}>
+              <LensPanel
+                surface={mobileSurface!}
+                trail={lensTrail}
+                onBack={popPanel}
+                field={threadsPanel}
+                read={streamPanel}
+              />
             </div>
           )
         }

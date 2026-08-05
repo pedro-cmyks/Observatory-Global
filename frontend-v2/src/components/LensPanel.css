@@ -1,0 +1,120 @@
+/* The Lens — one surface that re-scopes to whatever you are looking at.
+   #236 Task 7. These rules only ever apply on the phone: <LensPanel/> is
+   rendered from App's `if (isMobile)` branch and nowhere else. */
+
+/* The console shell holds the Lens chrome AND one full-height panel. Under the
+   Task 6 shell the layout was `display: block` and every panel took
+   `height: 100%` — with a chrome row above it that is 100% NEXT TO the row, so
+   the panel's last 44px fell under `overflow: hidden`. A flex column hands the
+   panel what is left instead. Applied unconditionally on the phone (not only
+   when the breadcrumb shows) so there is one layout mode, not a second one
+   that appears the moment you open something. */
+.terminal-layout[class*="mobile-tab-"].lens-shell {
+  display: flex;
+  flex-direction: column;
+  /* One number, two rules: the chrome's own height and the inset it costs the
+     full-screen read below. */
+  --lens-chrome-h: 44px;
+}
+
+/* THE READ IS NOT ALWAYS IN THE SLOT. Most reads are (CountryBrief and
+   EntityPanel render `inline`, absolutely positioned inside the panel), but
+   the thread read — ThemeDetail, the Lens's most-travelled scope — goes
+   `position: fixed; inset: 0; z-index: 9000` on phones by its own design, so
+   an in-flow breadcrumb sits BEHIND it. Measured, not assumed: at 375x812 the
+   breadcrumb sat at y=188 and elementFromPoint at its centre returned a node
+   inside the overlay, not the button.
+   When such a read is up the chrome floats above it and the read starts below
+   the chrome. `:has()` states the condition exactly — "the read covers the
+   screen" — instead of guessing it from the scope kind, which cannot tell
+   ThemeDetail from the in-slot ThreadFocusPanel. Where `:has()` is not
+   supported the chrome just stays in flow behind the read: the breadcrumb is
+   unreachable on that scope, and the read itself is untouched. */
+.lens-shell:has(.theme-detail-overlay) .lens-chrome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--lens-chrome-h);
+  /* Over the read (9000) and its country drill-in (9100); the tab bar (9500)
+     is at the other end of the screen, so nothing is covered. */
+  z-index: 9600;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
+}
+
+/* Gated on the chrome EXISTING, not merely on being inside the Lens shell:
+   the Live surface wears no chrome, so an unconditional inset would leave a
+   44px strip of console showing above a read that is supposed to be
+   full-bleed. (Live never renders this overlay today — verified — but the
+   inset would be wrong the day it does.)
+   Unscoped by breakpoint on purpose: `.lens-shell` only exists inside App's
+   `if (isMobile)` branch, so this cannot reach the desktop overlay, which
+   stays `position: static` inside the stream panel. */
+.lens-shell:has(.lens-chrome) .theme-detail-overlay {
+  top: var(--lens-chrome-h);
+  height: calc(100dvh - var(--lens-chrome-h));
+}
+
+/* Beats the Task 6 rule's `height: 100%` on specificity (0,3,0 vs 0,2,1), so
+   it does not depend on stylesheet order. */
+.terminal-layout[class*="mobile-tab-"].lens-shell .terminal-panel {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+/* No bottom reserve here on purpose: the shell already pads
+   `calc(60px + safe-area)` for the tab bar, and the panel below scrolls in its
+   own `.panel-content`. A second reserve would double it to ~117px of dead
+   space above the bar. */
+.lens-chrome {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Zero-height when it carries only the (visually hidden) heading — at field
+     scope there is no previous scope, so there is no breadcrumb to show. */
+  padding: 0;
+}
+
+.lens-breadcrumb {
+  /* #236 Task 1 primitive — the iOS 44px touch floor. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  color: rgb(var(--color-accent-deep-rgb));
+  font-family: var(--font-technical, monospace);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-align: left;
+  cursor: pointer;
+  /* The scope name is never truncated — a long thread title wraps rather than
+     ending in an ellipsis that hides which scope you are returning to. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.lens-breadcrumb:active {
+  color: var(--color-accent-highlight);
+}
+
+/* A real heading for the surface, in the a11y tree, out of the layout. Not
+   `display: none` — that would take it out of the tree along with the box. */
+.lens-scope-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
