@@ -67,6 +67,17 @@ describe('buildSections', () => {
     expect(s.connected.reason).toBe('Neighbours are not measured for this scope yet.')
   })
 
+  it('separates "the subject was not in the pool" from "the pool held no neighbour"', () => {
+    // The #234 relation measures a thread against the ranked pool it is IN. A
+    // thread reached by deep link can be outside that pool, and then nothing
+    // was compared at all — which is not the same claim as "we compared and
+    // found none", the sentence `none` makes.
+    const s = buildSections({ countries: [], connected: [], attention: [] }, { connected: 'no_subject' })
+    expect(s.connected.state).toBe('empty')
+    expect(s.connected.reason).toBe('This story is not in the current ranked field, so no neighbourhood was measured.')
+    expect(s.connected.reason).not.toBe('No measured neighbour cleared the bar.')
+  })
+
   it('reports a failing lane as degraded even when it returned some rows', () => {
     // Partial data from a broken lane is still partial. Rendering it as `ok`
     // would present an unknown fraction of the neighbourhood as all of it.
@@ -115,7 +126,7 @@ describe('buildSections', () => {
     const cases: LaneStatuses[] = [
       {}, { connected: 'loading' }, { connected: 'no_anchor' },
       { connected: 'unavailable' }, { connected: 'db_error' },
-      { connected: 'withheld_by_gate' }, { connected: 'scope_is_self' },
+      { connected: 'no_subject' }, { connected: 'scope_is_self' },
     ]
     for (const lanes of cases) {
       const s = buildSections({ countries: [], connected: [], attention: [] }, lanes)
@@ -221,27 +232,36 @@ describe('readNodesResponse', () => {
 })
 
 describe('connectedLane', () => {
-  it('separates a REFUSED lane from an absent one', () => {
-    // The distinction this whole module exists to keep. A thread has a live
-    // neighbour endpoint whose output was measured too wrong to show; a country
-    // has no such lane at all. One sentence for both would report a measured
-    // refusal as unfinished plumbing.
-    expect(connectedLane('thread')).toBe('withheld_by_gate')
-    expect(connectedLane('story')).toBe('withheld_by_gate')
-    expect(connectedLane('country')).toBe('unavailable')
-    expect(connectedLane('person')).toBe('unavailable')
+  it('sends a thread away to be measured instead of settling it here', () => {
+    // The one scope with a real relation (lib/threadRelation, over the ranked
+    // thread pool). `null` means "go and measure"; any sentence returned here
+    // would be describing an absence while the section renders rows.
+    expect(connectedLane('thread')).toBeNull()
+  })
+
+  it('says nothing was attempted at the scopes that have no relation', () => {
+    // Not "refused": the ranked walk is keyed by a thread_id (story.py:300),
+    // and a `story` scope's id is a free-text research query, so there is no
+    // id to ask with. Nothing is attempted at any of these.
+    for (const kind of ['story', 'country', 'person', 'attention', 'chokepoint', 'signal']) {
+      expect(connectedLane(kind)).toBe('unavailable')
+    }
     expect(connectedLane('field')).toBe('no_anchor')
   })
 
-  it('says the gate refused, not that nothing was measured', () => {
-    const s = buildSections(
-      { countries: [], connected: [], attention: [] },
-      { connected: connectedLane('thread') },
-    )
-    expect(s.connected.state).toBe('empty')
-    expect(s.connected.reason)
-      .toBe('Measured neighbours did not clear their accuracy gate — none are shown rather than false kin.')
-    expect(s.connected.reason).not.toContain('not measured for this scope yet')
+  it('never produces copy claiming a refusal, now that a relation is shown', () => {
+    // The rail this reconciliation exists for: no scope may render a sentence
+    // about neighbours being withheld while another scope renders receipted
+    // neighbour rows. Every settled status here is an "it was not attempted"
+    // statement, and none of them mentions a gate.
+    for (const kind of ['field', 'story', 'country', 'person', 'attention', 'chokepoint', 'signal']) {
+      const lane = connectedLane(kind)
+      expect(lane).not.toBeNull()
+      const s = buildSections({ countries: [], connected: [], attention: [] }, { connected: lane! })
+      expect(s.connected.reason).toBeTruthy()
+      expect(s.connected.reason!.toLowerCase()).not.toContain('gate')
+      expect(s.connected.reason!.toLowerCase()).not.toContain('withheld')
+    }
   })
 })
 

@@ -68,20 +68,28 @@ export type SectionKey = 'whereItLives' | 'connected' | 'attention'
  * - `loading`  — has not answered yet.
  * - `no_anchor`— nothing is focused, so there was no subject to measure against.
  * - `unavailable` — this scope kind has no such lane; nothing was attempted.
- * - `withheld_by_gate` — a lane EXISTS and was measured, and its output was
- *   refused for being too wrong to show. Distinct from `unavailable` on
- *   purpose: "there is no such lane" and "the lane is not accurate enough"
- *   are different facts, and the second reads as unfinished plumbing if it
- *   borrows the first's sentence.
+ * - `no_subject` — a lane EXISTS at this scope and ran, but could not resolve
+ *   the focused thing to a subject it can measure against. Distinct from
+ *   `no_anchor` (the reader has opened nothing) and from a measured zero:
+ *   nothing was compared, so "none matched" would claim a comparison that
+ *   never ran.
  * - `scope_is_self` — the question is degenerate here; the scope IS the answer.
  * - `db_error` — it was attempted and it failed.
+ *
+ * There is no status for "a lane exists and its output was refused as too
+ * wrong to show". There was one — `withheld_by_gate`, for the ranked story
+ * walk — and it is gone because no branch can reach it any more: `connected`
+ * now draws on the receipted #234 relation instead (see `connectedLane`), so
+ * the walk is refused at DESIGN time and never becomes a state the reader
+ * sees. A status no producer emits is copy that cannot be checked against
+ * behaviour, which is the defect this module exists to make unrepresentable.
  */
 export type LaneStatus =
   | 'ok'
   | 'loading'
   | 'no_anchor'
   | 'unavailable'
-  | 'withheld_by_gate'
+  | 'no_subject'
   | 'scope_is_self'
   | 'db_error'
 
@@ -121,6 +129,14 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
  * genuinely differs: "no country resolved" is a fact about geocoding, "no
  * measured neighbour cleared the bar" is a fact about a ranking threshold, and
  * a shared template would blur them into one vague line.
+ *
+ * Every section carries a sentence for every status even where that section
+ * cannot currently produce it — `no_subject` is `connected`'s alone today.
+ * They are written rather than typed as optional because a lane with no
+ * sentence would render blank, which is the one outcome this table exists to
+ * make unrepresentable. (That is a different thing from a STATUS with no
+ * producer at all, which is why `withheld_by_gate` was removed instead: see
+ * the note on LaneStatus.)
  */
 const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', string>> = {
   whereItLives: {
@@ -128,7 +144,7 @@ const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', str
     loading: 'Measuring where this lives…',
     no_anchor: 'Nothing is focused yet.',
     unavailable: 'Where this lives is not measured for this scope.',
-    withheld_by_gate: 'Measured locations did not clear their accuracy gate — none are shown rather than wrong ones.',
+    no_subject: 'This scope could not be resolved to a measurable subject.',
     scope_is_self: 'This scope is a country — its footprint is itself.',
     db_error: 'Where this lives could not be measured right now.',
   },
@@ -137,7 +153,7 @@ const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', str
     loading: 'Measuring the neighbourhood…',
     no_anchor: 'Open a thread, a country or a person — neighbours are measured against a subject.',
     unavailable: 'Neighbours are not measured for this scope yet.',
-    withheld_by_gate: 'Measured neighbours did not clear their accuracy gate — none are shown rather than false kin.',
+    no_subject: 'This story is not in the current ranked field, so no neighbourhood was measured.',
     scope_is_self: 'This scope is its own neighbourhood.',
     db_error: 'Neighbours could not be measured right now.',
   },
@@ -146,33 +162,50 @@ const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', str
     loading: 'Reading public attention…',
     no_anchor: 'Nothing is focused yet.',
     unavailable: 'Public attention is not measured for this scope.',
-    withheld_by_gate: 'Measured attention did not clear its accuracy gate — none is shown rather than wrong items.',
+    no_subject: 'This scope could not be resolved to a measurable subject.',
     scope_is_self: 'This scope is its own attention.',
     db_error: 'Public attention could not be read right now.',
   },
 }
 
 /**
- * What `connected` can honestly report, per scope.
+ * The status that settles `connected` WITHOUT measuring anything, or `null`
+ * when the scope has a real relation to go and measure. Same `null` convention
+ * as `whereItLivesLane` below, for the same reason.
  *
- * EVERY scope returns a NON-`ok` status today, and the two reasons are not the
- * same fact. At `thread` and `story` a neighbour lane genuinely EXISTS and is
- * live (`GET /api/v2/story/{id}/siblings`) — it is refused, because it was
- * hand-judged at 30 of 50 top-5 rows being an unrelated story presented as kin
- * on random active anchors, over a field that is 61.25% blob, and the client
- * cannot tell a fused anchor from a clean one (the backend hard-codes
- * `anchor.is_blob = False` off the umbrella path, and says in its own comment
- * that False there means "not evaluated", not "cleared"). That is
- * `withheld_by_gate`. At `country` and `person` there is no such lane at all,
- * which is `unavailable`. Calling both "not measured yet" would flatten a
- * measured refusal into missing plumbing.
+ * `thread` is the one scope that measures: the #234 sibling relation
+ * (lib/threadRelation) runs over the ranked thread pool, and its lane comes
+ * from that fetch — `loading`, `ok`, `no_subject` or `db_error`. Returning a
+ * settled status here for `thread` would be a trap, because the section shows
+ * ROWS there and any sentence this function produced would be describing an
+ * absence that is not happening.
+ *
+ * WHICH NEIGHBOUR RELATION, AND WHICH ONE IS REFUSED. The relation `connected`
+ * shows is the weaker, checkable one: a shared country in the anchor's primary
+ * geography, or a shared actor few threads in the pool carry. Every receipt is
+ * a country or a name the reader can see on both rows. It is NOT the ranked
+ * walk behind `GET /api/v2/story/{thread_id}/siblings`, which was hand-judged
+ * at 30 of 50 top-5 rows being an unrelated story presented as kin on random
+ * active anchors, over a field that is 61.25% blob — and whose anchor cannot
+ * even be checked for fusion from the client, because the handler leaves
+ * `anchor_is_blob` at `False` off the umbrella path (story.py:475-477) where
+ * `False` means "not evaluated", not "cleared". That refusal stands. It is a
+ * design-time choice about which lane to call, so it never becomes a status
+ * the reader sees — which is why the `withheld_by_gate` status that used to
+ * carry it is gone rather than merely unused.
+ *
+ * `story` is `unavailable` rather than refused, and the difference is
+ * checkable: the Lens's `story` scope carries a free-text research query as
+ * its id (`consoleLensScope`, lensScope.ts), while that endpoint is keyed by a
+ * `thread_id` (story.py:300-301). There is no id to ask with, so nothing is
+ * attempted — as at `country`, `person`, `attention` and `chokepoint`.
  *
  * Lives here rather than in the component because it is pure, it encodes the
  * whole of that decision, and components in this repo are never unit-tested.
  */
-export function connectedLane(kind: string): LaneStatus {
+export function connectedLane(kind: string): LaneStatus | null {
+  if (kind === 'thread') return null
   if (kind === 'field') return 'no_anchor'
-  if (kind === 'thread' || kind === 'story') return 'withheld_by_gate'
   return 'unavailable'
 }
 

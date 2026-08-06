@@ -2680,6 +2680,30 @@ function AppContent() {
                    map for a standing chip to act on, and its whole contract is
                    that the surface re-scopes to what you tapped. */
                 onOpenCountry={(cc) => { resetLens(); setPerson(null); setTheme(null); handleCountryClick(cc) }}
+                /* A `connected` row re-scopes to that thread, through the same
+                   opener every other thread door uses — so the trail, the read
+                   and the story lens all move together. The label rides along
+                   (handleThemeSelect's own `labelHint`) so the breadcrumb never
+                   shows a raw dynamic-topic id while the read loads.
+
+                   resetLens() for the SAME reason the country pivot above needs
+                   it, and it is worth stating because "thread → thread" looks
+                   like a push rather than a pivot: handleThemeSelect REPLACES
+                   the open thread, and popPanel's thread/theme case nulls
+                   selectedTheme outright — it never consumes themeBackStack,
+                   which only the desktop drill-back button reads. So a plain
+                   append would leave [field, thread A, thread B], a breadcrumb
+                   reading "← thread A", and a Back that clears thread B and
+                   lands on The world. Resetting first leaves [field, thread B]:
+                   one honestly reachable step, which is what Back does. */
+                onOpenThread={(id, label) => {
+                  resetLens()
+                  handleThemeSelect(id, undefined, undefined, undefined, label)
+                }}
+                /* The sections measure neighbours over the SAME thread pool the
+                   field panel below them ranks — including its country scoping,
+                   which changes which actors count as rare. */
+                countryScope={filter.country}
                 field={threadsPanel}
                 read={streamPanel}
               />

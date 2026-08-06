@@ -4,8 +4,10 @@ import { scopeKey, scopeTitle, type LensScope } from '../lib/lensScope'
 import {
   buildSections, connectedLane, nodesQueryFor, readNodesResponse,
   SECTION_LABELS, whereItLivesLane,
-  type CountryRow, type LaneStatus,
+  type ConnectedRow, type CountryRow, type LaneStatus,
 } from '../lib/lensSections'
+import { readThreadPool, threadPoolQuery, type PoolThread } from '../lib/narrativeThreadLimits'
+import { buildThreadRelation } from '../lib/threadRelation'
 import { resolveCountryName } from '../lib/countryNames'
 import './LensPanel.css'
 
@@ -30,6 +32,20 @@ export interface LensPanelProps {
    * a name the console already owns.
    */
   onOpenCountry: (code: string) => void
+  /**
+   * Re-scope the Lens to another thread — a `connected` row. The console's own
+   * thread opener, for the same reason as `onOpenCountry`. The label travels so
+   * the breadcrumb names the story immediately instead of showing a raw
+   * `dynamic-topic-N` until the read resolves it.
+   */
+  onOpenThread: (id: string, label?: string) => void
+  /**
+   * The console's country filter, if any. Passed rather than read from
+   * FocusContext so the Lens keeps deriving everything it shows from props —
+   * and because the sections need the same pool the thread list fetched, which
+   * is scoped by this.
+   */
+  countryScope?: string | null
   /** The ranked field — what the Lens shows when nothing is focused. */
   field: ReactNode
   /**
@@ -58,26 +74,35 @@ export interface LensPanelProps {
  * rather than the bottom because both bottom-anchored slots are occupied: the
  * tab bar (z 9500) and FrameSheet (fixed, `bottom: 56px + safe-area`, z 9400).
  *
- * WHY `connected` IS EMPTY AT EVERY SCOPE — AND WHY IT SAYS SO IN TWO
- * DIFFERENT WAYS. Not an unfinished wire. At a thread the neighbour lane
- * EXISTS and is live (`GET /api/v2/story/{id}/siblings`); it is refused,
- * because it was hand-judged at 30 of 50 top-5 rows being an unrelated story
- * presented as kin on random active anchors, over a field that is 61.25% blob,
- * and the client cannot tell a fused anchor from a clean one — the backend
- * hard-codes `anchor.is_blob = False` off the umbrella path and says in its own
- * comment that False there means "not evaluated", not "cleared". A phone row
- * has no room for that caveat. At a country or a person there is no such lane
- * at all. `connectedLane` returns `withheld_by_gate` for the first and
- * `unavailable` for the second, because a measured refusal and missing
- * plumbing are different facts and one sentence for both hides the stronger
- * one. The honest neighbour relation that DOES exist — the rarity-weighted
- * distinctive-entity + shared-primary-country siblings — lives inside
- * NarrativeThreads over its own fetched pool; surfacing it here means lifting
- * that rule into a shared module rather than copying it, which is its own task.
+ * WHICH NEIGHBOUR RELATION `connected` SHOWS, AND WHICH IT REFUSES TO. It shows
+ * the #234 sibling relation (lib/threadRelation) — a shared country in the open
+ * thread's PRIMARY geography, or a shared actor that few threads in the pool
+ * carry — because every one of its receipts is checkable: the basis is a
+ * country or a name the reader can see on both rows. It does NOT show the
+ * ranked walk behind `GET /api/v2/story/{thread_id}/siblings`, which was
+ * hand-judged at 30 of 50 top-5 rows being an unrelated story presented as kin
+ * on random active anchors, over a field that is 61.25% blob; that lens ships
+ * dark (STORY_LENS_AUTO = false) on its own pre-registered gate, and the client
+ * cannot even tell a fused anchor from a clean one (the handler leaves
+ * `anchor_is_blob` at `False` off the umbrella path, story.py:475-477, where
+ * `False` means "not evaluated"). A phone row has no room for that caveat.
+ * Weaker and checkable beats stronger and unfalsifiable.
+ *
+ * That refusal is a choice about which lane to CALL, so it is not a state the
+ * reader is ever shown. `connected` never says "neighbours were withheld": at a
+ * thread it renders what the relation measured, and at every other scope it
+ * says nothing was attempted — see `connectedLane`, which is also the single
+ * place that decides which scope measures.
+ *
+ * THREAD SCOPE ONLY. #234 relates a thread to other THREADS, so that is the one
+ * scope where it can answer; the rest say so rather than borrowing the shape.
  */
-function LensSectionSheet({ scope, onOpenCountry }: {
+function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread }: {
   scope: LensScope
+  /** The console's country filter — see `poolQuery` below for why it matters. */
+  countryScope?: string | null
   onOpenCountry: (code: string) => void
+  onOpenThread: (id: string, label?: string) => void
 }) {
   const [open, setOpen] = useState(false)
   // The sheet is fixed, so it needs an absolute `top` — and the bar it hangs
@@ -158,6 +183,75 @@ function LensSectionSheet({ scope, onOpenCountry }: {
   // would re-run this effect on the very writes it makes.
   }, [open, query, preset])
 
+  // --- the neighbourhood lane ------------------------------------------------
+
+  // The scope `connectedLane` declines to settle is the one with a relation to
+  // measure. Derived from that answer rather than re-testing `scope.kind` here,
+  // so "which scope measures" has exactly one definition.
+  const settledConnected = connectedLane(scope.kind)
+  const measuresConnected = settledConnected === null
+
+  // `null` until measured, exactly as `rows` above.
+  const [pool, setPool] = useState<PoolThread[] | null>(null)
+  const [poolLane, setPoolLane] = useState<LaneStatus>('loading')
+  // The SAME pool the console's thread list ranks over — same hours, same
+  // limit, same country scoping. Not a detail: the relation weights an actor by
+  // how many threads in the pool carry it, so a differently-scoped pool would
+  // honestly produce a different receipt for the same pair, and the phone's two
+  // surfaces would then disagree about why two stories are neighbours.
+  const poolQuery = threadPoolQuery(countryScope)
+
+  useEffect(() => {
+    if (!open || !measuresConnected) return
+    const ac = new AbortController()
+    setPool(null)
+    setPoolLane('loading')
+    fetch(poolQuery, { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j) => {
+        const next = readThreadPool(j)
+        // `null` is an unreadable body, which is a failure — never an empty
+        // pool. The section says degraded, not "no neighbour cleared the bar".
+        if (next === null) { setPool([]); setPoolLane('db_error'); return }
+        setPool(next)
+        setPoolLane('ok')
+      })
+      .catch((e) => {
+        if ((e as Error)?.name === 'AbortError') return
+        // No retry, unlike the thread list's. That one retries because its
+        // failure mode is SILENT — a stale global list left standing under a
+        // "Scoped to X" strip, with nothing on screen saying so. This lane has
+        // no stale rows to leave standing and it states the failure out loud,
+        // so a second immediate request would buy a reader who can already see
+        // what happened nothing, and closing and reopening the sheet asks again.
+        setPool([])
+        setPoolLane('db_error')
+      })
+    return () => ac.abort()
+  }, [open, measuresConnected, poolQuery])
+
+  // The rule itself is lib/threadRelation's, shared with NarrativeThreads —
+  // one function, not a second transcription of the cap and the top-2.
+  //
+  // UNCAPPED, unlike `where it lives` above. That list is a long tail this
+  // scope merely touches, so a cap trims noise; this one is bounded by the
+  // pool already (at most pool size − 1, and measured at 2-7 in practice), and
+  // every row in it cleared a stated basis. Dropping some would be silent
+  // filtering of measured neighbours — the thing `withheld` exists to prevent.
+  const relation = buildThreadRelation(pool ?? [], measuresConnected ? scope.id : null, { resolveCountryName })
+  const connectedRows: ConnectedRow[] = relation.related.map((r) => ({
+    id: r.thread.thread_id,
+    label: r.thread.label,
+    receipt: r.receipt,
+    kind: 'thread',
+  }))
+  // A measured pool that does not contain the open thread measured NOTHING
+  // about it — a different statement from "we compared and found none", which
+  // is what an `ok` lane with zero rows says. Reachable by deep link, and by
+  // any thread that has since fallen out of the ranked field.
+  const connectedStatus: LaneStatus = settledConnected
+    ?? (poolLane === 'ok' && !relation.anchor ? 'no_subject' : poolLane)
+
   // Only the two sections this surface owns are destructured. buildSections
   // also returns `attention` — section 5 of the Lens — and the Lens does NOT
   // render it: public attention is already carried inside each scope's own
@@ -166,8 +260,8 @@ function LensSectionSheet({ scope, onOpenCountry }: {
   // answer. It stays in the pure module, with its states and copy, for the
   // caller that does render it.
   const { whereItLives, connected } = buildSections(
-    { countries: rows ?? [], connected: [], attention: [] },
-    { whereItLives: lane, connected: connectedLane(scope.kind) },
+    { countries: rows ?? [], connected: connectedRows, attention: [] },
+    { whereItLives: lane, connected: connectedStatus },
   )
 
   return (
@@ -226,13 +320,17 @@ function LensSectionSheet({ scope, onOpenCountry }: {
               <ul className="lens-section-rows">
                 {connected.rows.map((r) => (
                   <li key={r.id}>
-                    <div className="lens-section-row lens-section-row--static">
+                    <button
+                      type="button"
+                      className="lens-section-row lens-section-row--stacked"
+                      onClick={() => { setOpen(false); onOpenThread(r.id, r.label) }}
+                    >
                       <span className="lens-row-name">{r.label}</span>
                       {/* Rule 2: the basis rides with the row, always. It wraps
                           rather than truncating — a receipt you cannot read is
                           not a receipt. */}
                       <span className="lens-row-receipt">↔ {r.receipt}</span>
-                    </div>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -274,7 +372,9 @@ function LensSectionSheet({ scope, onOpenCountry }: {
  * contents` means the wrapper generates no box, so each panel lays out as if
  * it were still a direct child of the shell.
  */
-export function LensPanel({ surface, trail, onBack, onOpenCountry, field, read }: LensPanelProps) {
+export function LensPanel({
+  surface, trail, onBack, onOpenCountry, onOpenThread, countryScope, field, read,
+}: LensPanelProps) {
   const showsField = fieldVisible(surface)
   // Live is not a Lens surface: it is the unfocused firehose, and it wears no
   // scope chrome. The read slot is visible under both, which is exactly why
@@ -314,7 +414,13 @@ export function LensPanel({ surface, trail, onBack, onOpenCountry, field, read }
           scope's name — the exact confound this section was rebuilt to avoid,
           arriving by a different door. */}
       {showsChrome && scope && (
-        <LensSectionSheet key={scopeKey(scope)} scope={scope} onOpenCountry={onOpenCountry} />
+        <LensSectionSheet
+          key={scopeKey(scope)}
+          scope={scope}
+          countryScope={countryScope}
+          onOpenCountry={onOpenCountry}
+          onOpenThread={onOpenThread}
+        />
       )}
       <div key="lens-field" style={{ display: showsField ? 'contents' : 'none' }}>{field}</div>
       <div key="lens-read" style={{ display: showsField ? 'none' : 'contents' }}>{read}</div>
