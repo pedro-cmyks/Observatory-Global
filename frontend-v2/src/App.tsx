@@ -397,7 +397,7 @@ function AppContent() {
   // because Brief is a route and the console is a surface. App only reads
   // which of its two console surfaces is showing. Desktop ignores this.
   const isMobile = useIsMobile()
-  const { consoleTab, setConsoleTab, trail: lensTrail, focusLens, rewindLens } = useMobileNav()
+  const { consoleTab, setConsoleTab, trail: lensTrail, focusLens, rewindLens, resetLens } = useMobileNav()
   // R3 emerald foundation: compact day/night flip in the command bar (full
   // theme selection, incl. Intel Noir, stays in Settings).
   const { theme: consoleTheme, toggleDayNight } = useTheme()
@@ -2630,31 +2630,56 @@ function AppContent() {
                    kept naming the old scope. It resolves the display name
                    itself, which is why the section passes just the code.
 
-                   setPerson(null) FIRST, or the tap does nothing at person
-                   scope. handleCountryClick clears the open theme and thread
-                   but not the person: nextFocusDims' `country` case keeps it
-                   (focusReducer.ts:39), FocusContext ranks person above
-                   country when both are set (:236), and so does consoleSlot
-                   (lensScope.ts:170). The panel, the heading and the
-                   breadcrumb would all stay put while a country chip appeared
-                   — the class this file already documents at ~1160 ("the slot
-                   showed the person while Back cleared the attention
+                   setPerson(null) and setTheme(null) FIRST, or the tap does
+                   nothing. Both clear a SHARED FOCUS dimension that
+                   handleCountryClick leaves standing — nextFocusDims' `country`
+                   case keeps person AND theme (focusReducer.ts:39, it nulls
+                   only `thread`) — and each survivor outranks the country that
+                   was just opened, so the panel, the heading and the breadcrumb
+                   would all stay put while a country chip appeared. That is the
+                   class popPanel's own comment above already documents ("the
+                   slot showed the person while Back cleared the attention
                    underneath it: the screen did not change and the tap did
-                   nothing"), and it would also leave the pivot one Back
-                   gesture behind and fire the first-country walkthrough over
-                   an unchanged screen.
+                   nothing").
+
+                   The THEME half is subtler than the person half and was the
+                   gate's measured failure. handleCountryClick DOES clear the
+                   theme — but only `selectedTheme`, the panel, not
+                   `filter.theme`, the focus. The effect above ("Open
+                   ThemeDetail when theme is focused via FocusContext") then
+                   sees filter.theme set and selectedTheme null and re-opens the
+                   panel on the very next commit. A MutationObserver caught all
+                   three frames: CountryBrief mounted, then 140ms later
+                   ThemeDetail was back and the heading had reverted from
+                   "Spain" to "Ceuta Migrant Crisis" while the URL kept
+                   `&country=ES`. So the pivot was not losing a precedence
+                   contest in consoleSlot — consoleSlot named ThemeDetail
+                   because ThemeDetail was genuinely on screen. Clearing the
+                   focus dimension is what stops it coming back.
+
+                   resetLens() because this is a LATERAL PIVOT: it CLOSES the
+                   thread it was measured from rather than opening on top of it,
+                   so a plain append would leave a breadcrumb naming a scope
+                   Back cannot reach. Measured: without it the crumb read
+                   "← Ceuta Migrant Crisis" and the tap landed on The world.
+                   See resetScope in lib/lensScope.ts.
 
                    Cleared HERE rather than inside handleCountryClick, which
                    ~24 call sites share: compound person+country is deliberate
                    (focusReducer keeps it on purpose) and is what the desktop
-                   map is for — "Trump, in Israel" — so clearing it globally
-                   would change every one of those doors to fix one. This file
-                   already composes that way: 2315 clearFocus(), 2813
-                   setComparePerson(null), 2691/2800 clear their own panel,
-                   each before calling. The phone Lens has no map for a
-                   standing person chip to act on, and its whole contract is
+                   map is for — "Trump, in Israel" — and compound theme+country
+                   is deliberate in the same way: it renders the country-scoped
+                   ThemeDetail ("← Global · Spain · 5,618 signals", observed
+                   live), and the effect above re-scopes it on purpose when the
+                   country chip changes under it. Clearing either globally would
+                   change every one of those doors to fix one. This file already
+                   composes that way — the map's onCountrySelect calls
+                   clearFocus() first, the compare panel calls
+                   setComparePerson(null), the source and conflict panels close
+                   their own panel — each before calling. The phone Lens has no
+                   map for a standing chip to act on, and its whole contract is
                    that the surface re-scopes to what you tapped. */
-                onOpenCountry={(cc) => { setPerson(null); handleCountryClick(cc) }}
+                onOpenCountry={(cc) => { resetLens(); setPerson(null); setTheme(null); handleCountryClick(cc) }}
                 field={threadsPanel}
                 read={streamPanel}
               />

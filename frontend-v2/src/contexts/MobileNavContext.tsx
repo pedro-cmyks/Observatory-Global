@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import type { ConsoleTab } from '../lib/mobileNav'
-import { FIELD_SCOPE, popScope, pushScope, trailsEqual, type LensScope } from '../lib/lensScope'
+import { FIELD_SCOPE, popScope, pushScope, resetScope, trailsEqual, type LensScope } from '../lib/lensScope'
 
 interface MobileNavValue {
   consoleTab: ConsoleTab
@@ -26,6 +26,19 @@ interface MobileNavValue {
    * — one tap from a loop.
    */
   rewindLens: () => void
+  /**
+   * Empty the trail back to the field. ONLY valid paired with a console change
+   * in the same handler — and only for a LATERAL PIVOT, a door that re-scopes
+   * by clearing what the console was showing rather than opening something on
+   * top of it. Today that is exactly one door: the Lens's `where it lives`
+   * country row, which closes the thread it was measured from.
+   *
+   * Why the trail cannot just append there: the breadcrumb names
+   * `trail[length - 2]` and Back peels ONE console dimension, so the two agree
+   * only while the entries behind the head are still standing. After a pivot
+   * they are not. See `resetScope` in lib/lensScope.ts for the measured case.
+   */
+  resetLens: () => void
 }
 
 // No default value on purpose: a silent no-op setter would let a consumer
@@ -59,9 +72,13 @@ export function MobileNavProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const resetLens = useCallback(() => {
+    setTrail((prev) => resetScope(prev))
+  }, [])
+
   const value = useMemo(
-    () => ({ consoleTab, setConsoleTab, trail, focusLens, rewindLens }),
-    [consoleTab, trail, focusLens, rewindLens],
+    () => ({ consoleTab, setConsoleTab, trail, focusLens, rewindLens, resetLens }),
+    [consoleTab, trail, focusLens, rewindLens, resetLens],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

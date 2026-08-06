@@ -3,6 +3,7 @@ import {
   FIELD_SCOPE,
   pushScope,
   popScope,
+  resetScope,
   scopeTitle,
   scopeKey,
   trailsEqual,
@@ -43,6 +44,30 @@ describe('popScope', () => {
   it('never pops past the field', () => {
     expect(popScope([FIELD_SCOPE])).toEqual([FIELD_SCOPE])
     expect(popScope([])).toEqual([FIELD_SCOPE])
+  })
+})
+
+describe('resetScope', () => {
+  it('empties any trail back to the field', () => {
+    expect(resetScope([FIELD_SCOPE, thread, country])).toEqual([FIELD_SCOPE])
+    expect(resetScope([FIELD_SCOPE, thread])).toEqual([FIELD_SCOPE])
+    expect(resetScope([])).toEqual([FIELD_SCOPE])
+  })
+  it('returns the same array when already at the bare field', () => {
+    // The context guards identity on this so a no-op reset does not churn
+    // every Lens consumer.
+    const at = [FIELD_SCOPE]
+    expect(resetScope(at)).toBe(at)
+  })
+  it('leaves the pivoted-to scope one honest step from the field', () => {
+    // The whole point. A `where it lives` country row CLOSES the thread it was
+    // measured from, so Back has nothing to peel the country back to except
+    // the field. Reset-then-push says so; a plain append onto [field, thread]
+    // would name the thread in the breadcrumb and still land on the field.
+    const pivoted = pushScope(resetScope([FIELD_SCOPE, thread]), country)
+    expect(pivoted).toEqual([FIELD_SCOPE, country])
+    expect(pivoted[pivoted.length - 2]).toEqual(FIELD_SCOPE)
+    expect(popScope(pivoted)).toEqual([FIELD_SCOPE])
   })
 })
 

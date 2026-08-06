@@ -88,6 +88,39 @@ export function popScope(trail: LensScope[]): LensScope[] {
   return trail.slice(0, -1)
 }
 
+/**
+ * Empty the trail back to the field, for a LATERAL PIVOT — a door that
+ * re-scopes the console by CLEARING what it was showing instead of opening
+ * something on top of it.
+ *
+ * Sibling of `popScope`, and needed for the same reason: the breadcrumb names
+ * `trail[length - 2]`, and Back peels the console by ONE dimension. Those two
+ * agree only while every entry behind the head is still standing in the
+ * console. A pivot breaks that — `where it lives` opening a country closes the
+ * thread it was measured from — so a plain append leaves [field, thread,
+ * country], a breadcrumb reading "← <thread>", and a Back that peels the
+ * country to find nothing underneath and lands on the field. Measured, not
+ * reasoned: the tap said "← Ceuta Migrant Crisis" and arrived at The world.
+ *
+ * After a pivot the console holds exactly one dimension, so exactly one step
+ * is honestly reachable, and the trail has to say so. The history it drops was
+ * already fictional — `popPanel` could not have restored it.
+ *
+ * Called TOGETHER with the console change, like `popScope`: alone it would
+ * shorten the trail without moving the panel. The derivation effect then
+ * pushes the pivoted-to scope, giving [field, country].
+ *
+ * Returns the SAME array when the trail is already the bare field. That is the
+ * identity guard itself — `setTrail` bails out on a reference-equal result — so
+ * a no-op reset does not churn every Lens consumer. `popScope` and `pushScope`
+ * get the same protection from `trailsEqual` at the call site; this one carries
+ * it inline because the answer is a constant and there is nothing to compare.
+ */
+export function resetScope(trail: LensScope[]): LensScope[] {
+  if (trail.length === 1 && scopeKey(trail[0]) === scopeKey(FIELD_SCOPE)) return trail
+  return [FIELD_SCOPE]
+}
+
 export function scopeTitle(s: LensScope): string {
   return s.label
 }
