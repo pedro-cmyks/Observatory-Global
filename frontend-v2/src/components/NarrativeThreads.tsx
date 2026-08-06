@@ -12,7 +12,7 @@ import { decodeEntities } from '../lib/decodeEntities'
 import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
-import { TranslatableText } from './TranslatableText'
+import { TranslatableTextInline, useTranslatableText } from './TranslatableText'
 import { personPin } from '../lib/capturePayloads'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
@@ -249,6 +249,62 @@ function buildSyntheticSiblingRow(s: StoryLensSibling): Narrative {
         synthesized: true,
         lensWeight: s.weight,
     }
+}
+
+/**
+ * The thread title cell: the clamped `.narrative-label-text` span, plus — on
+ * mobile only — TranslatableText's "See original"/"See translation" toggle
+ * rendered as a genuine DOM SIBLING of that span instead of nested inside it.
+ *
+ * Why: under 768px `.narrative-label-text` is a `-webkit-line-clamp: 2` box
+ * (#236). `TranslatableText` renders its text AND its toggle button inside one
+ * wrapping span, so a translated title that alone filled both lines pushed the
+ * toggle past the clamp's visible box — the one control that reaches the
+ * label's source language was there but untappable. A clamped box hides any
+ * overflowing descendant regardless of that descendant's own size, so the
+ * toggle can only stay reachable by living outside the box entirely. This is
+ * the same defect class, and the same remedy, as the ↔ relation-reason chip
+ * hoisted out of this exact span below, and as SignalStream's headline toggle
+ * (`SignalHeadlineRow`).
+ *
+ * `useTranslatableText` is called exactly ONCE here (not once per branch) so
+ * the desktop and mobile renders share one toggle/translated state — two hook
+ * instances would double the /api/v2/translate/text traffic and could desync
+ * (tapping the toggle in one would never update the text rendered by the
+ * other). The desktop branch renders `TranslatableTextInline` fed by that
+ * shared state, which is exactly what every other TranslatableText consumer
+ * renders — desktop output is byte-identical to before, and the two call
+ * sites cannot drift apart later.
+ */
+const ThreadLabelText: React.FC<{ label: string; isMobile: boolean }> = ({ label, isMobile }) => {
+    const state = useTranslatableText(label)
+
+    // Desktop, or nothing to toggle → the shape this row has always had.
+    if (!isMobile || !state.hasToggle) {
+        return (
+            <span className="narrative-label-text" data-tip={label}>
+                <TranslatableTextInline state={state} />
+            </span>
+        )
+    }
+
+    return (
+        <>
+            <span className="narrative-label-text" data-tip={label}>
+                {state.display}
+            </span>
+            <span className="narrative-label-toggle">
+                <button
+                    type="button"
+                    className="th-toggle"
+                    onClick={(e) => { e.stopPropagation(); state.toggle() }}
+                    data-tip={state.toggleTip}
+                >
+                    {state.toggleLabel}
+                </button>
+            </span>
+        </>
+    )
 }
 
 interface NarrativeThreadsProps {
@@ -790,9 +846,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             <div className="narrative-label">
                                 <span className={`sentiment-dot ${n.sentiment_swing_10h && n.sentiment_swing_10h > 0.1 ? 'pos' : n.sentiment_swing_10h && n.sentiment_swing_10h < -0.1 ? 'neg' : 'neu'}`} data-tip={`10h sentiment swing: ${n.sentiment_swing_10h == null ? 'not available' : n.sentiment_swing_10h.toFixed(2)}`} />
                                 {!isSynthRow && <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>}
-                                <span className="narrative-label-text" data-tip={n.label}>
-                                    <TranslatableText text={n.label} />
-                                </span>
+                                <ThreadLabelText label={n.label} isMobile={isMobile} />
                                 {/* #236 review fix: this used to live INSIDE .narrative-label-text,
                                     which on mobile is a -webkit-line-clamp box — a long title could
                                     fill both clamped lines and silently swallow the ↔ relation-reason
