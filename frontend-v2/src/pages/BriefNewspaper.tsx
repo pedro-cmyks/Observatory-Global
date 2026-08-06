@@ -47,6 +47,16 @@ import {
 import '../styles/readerTheme.css'
 import './BriefNewspaper.css'
 
+/**
+ * How long the front page waits for its own data before showing the error card.
+ *
+ * Sized above the measured latency of /api/v2/briefing (17.5s and 16.9s on two
+ * cold production curls, 2026-08-06), not chosen for feel. The two best-effort
+ * fetches below — daily-publication and attention/eclipse — keep their own 12s,
+ * because neither blocks the page and both measured under 2s.
+ */
+const BRIEF_FETCH_TIMEOUT_MS = 25000
+
 // Natural Earth 110m with ISO_A2 country properties
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
 
@@ -403,8 +413,20 @@ export function BriefNewspaper() {
             // NEVER block the front page on it. Fetch it in the background and
             // fill in the standfirst when it arrives. A hard timeout on the brief
             // fetch turns a hang into a visible error instead of an endless spinner.
+            //
+            // #236: that timeout was 12s, and production /api/v2/briefing was
+            // measured at 17.5s and 16.9s on two cold curls — so on a phone the
+            // front page aborted before its own data could arrive and every cold
+            // visit rendered the error card. SPA navigation hid it, because the
+            // keep-alive shell holds the payload in memory; only a true reload
+            // showed it. Raised above the measured latency so the honest failure
+            // state is reserved for an actual failure.
+            //
+            // This is a floor over a symptom, not a fix. The endpoint's latency is
+            // the defect and it is tracked separately; when it comes down, this
+            // number should come down with it rather than quietly ratcheting up.
             const ctrl = new AbortController()
-            const timer = setTimeout(() => ctrl.abort(), 12000)
+            const timer = setTimeout(() => ctrl.abort(), BRIEF_FETCH_TIMEOUT_MS)
             let briefRes: Response
             try {
                 briefRes = await fetch(`/api/v2/briefing?hours=${h}`, { signal: ctrl.signal })
