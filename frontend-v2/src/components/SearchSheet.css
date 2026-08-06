@@ -31,19 +31,30 @@
 }
 
 /* The sheet. Fixed and full-inset like ThemeDetail's own mobile overlay
-   (ThemeDetail.css:1277-1284), but z 9300 — ABOVE every read (9000) so it can
-   open over one, and BELOW FrameSheet (9400) / the tab bar (9500) / the
-   floating focus chip (9550) on purpose: those stay reachable on top of
-   search the same way they stay reachable on top of every other full-screen
-   mobile surface, so a reader can jump to Live/Brief without closing search
-   first. That ordering is exactly why the body below reserves
-   `--mobile-bottom-reserve` — the tab bar sits ON TOP of this sheet's last
-   rows the same way it does over ThemeDetail's (ThemeDetail.css:1289),
-   LensPanel's (LensPanel.css:243) and BriefNewspaper's own bottom padding. */
+   (ThemeDetail.css:1277-1284).
+   z 9700 — a genuine top layer, ABOVE the tab bar (9500), the floating focus
+   chip (9550), FrameSheet (9400) and the Lens's own fixed chrome (9600).
+   MEASURED, not the first choice: a first pass sat this at 9300, reasoning
+   that the tab bar/FrameSheet/focus chip should stay reachable on top the
+   same way they do over every other full-screen mobile surface. Opened in
+   the browser at field scope, that reasoning broke on a rule this file's
+   author had not re-checked: LensPanel.css's `.lens-sections-bar` carries
+   `position: relative; z-index: 9460` UNCONDITIONALLY (the fixed/9600
+   variant is an ADDITIONAL override only `:has()`-gated for a covering read
+   — the base rule applies at field scope too, which is exactly where the
+   sheet is normally opened from). At 9300 that bar painted straight through
+   the sheet's own body, "WHERE IT LIVES  CONNECTED" sitting mid-screen over
+   the honest-empty reason text. A search modal is not the surface to be
+   selectively transparent to unrelated chrome, and the tab-bar-escape-hatch
+   idea does not survive the one place it was tested — closing the sheet is
+   one tap on its own × (search-sheet-close), same cost as switching tabs
+   first. `--mobile-bottom-reserve` stays on the body below regardless: it
+   also covers the bottom safe-area inset, which applies whether or not the
+   tab bar itself is visible on top. */
 .search-sheet {
   position: fixed;
   inset: 0;
-  z-index: 9300;
+  z-index: 9700;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-secondary);

@@ -31,15 +31,23 @@
 // centered, up to 86vw wide) and FrameSheet (z 9400, full-width) already
 // contest that space among themselves.
 //
-// WHY THE SHEET SITS *BELOW* THE TAB BAR/FOCUS CHIP/FRAMESHEET (z 9300, under
-// their 9400-9550) RATHER THAN COVERING THEM. Every other full-screen mobile
-// surface — ThemeDetail, LensPanel's read pane, CountryThemePanel,
-// BriefNewspaper — leaves the tab bar reachable on top of it and reserves
-// `var(--mobile-bottom-reserve)` at the bottom of its own scroll so the tab
-// bar never hides its last row. Search gets the identical treatment instead
-// of inventing a second convention: a search that ALSO shed the tab bar would
-// be its own trap (search TO escape a read, only to be stuck one layer
-// deeper with no way to Live/Brief without closing search first).
+// WHY THE SHEET IS A TRUE TOP LAYER (z 9700 — above the tab bar's 9500, the
+// focus chip's 9550 and the Lens's own fixed chrome at 9600; see
+// SearchSheet.css for the number). The first cut sat this UNDER the tab
+// bar/FrameSheet/focus chip on purpose, reasoning that a reader should be
+// able to jump to Live/Brief without closing search first — the same
+// convention ThemeDetail, LensPanel's read pane and BriefNewspaper all
+// follow. Opened in the browser at field scope, that reasoning did not
+// survive contact: LensPanel.css's closed `where it lives / connected` bar
+// carries `position: relative; z-index: 9460` UNCONDITIONALLY (only its
+// FIXED variant is gated to a covering read), so at 9300 it painted straight
+// through this sheet's own body — "WHERE IT LIVES  CONNECTED" sitting
+// mid-screen over the honest-empty reason text. A search modal being
+// selectively transparent to unrelated chrome is a worse trap than the one
+// the lower z-index was trying to avoid; closing the sheet costs one tap on
+// its own × either way. `--mobile-bottom-reserve` stays on the scroll body
+// regardless (SearchSheet.css) — it also covers the bottom safe-area inset,
+// which applies whether the tab bar is visible on top or not.
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { track } from '../lib/telemetry'
 import { getThemeLabel } from '../lib/themeLabels'
