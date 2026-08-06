@@ -7,11 +7,20 @@
    read/panel this app can put on screen. z-index 9600 matches the Lens's own
    fixed chrome (LensPanel.css:68/81) — the value already established in this
    codebase for "a persistent top-of-screen affordance that must beat a
-   covering read's z-index:9000". Top-left: see SearchSheet.tsx's header
-   comment for the survey that cleared this corner. */
+   covering read's z-index:9000".
+   TWO POSITIONS, MEASURED — not one, because the top-left cell means two
+   different things depending on what else is on screen, and a single fixed
+   spot collides with a real control in one of them. See SearchSheet.tsx's
+   header comment for the geometry (getBoundingClientRect + elementFromPoint,
+   not a grep) that found both collisions and both replacement spots. Field
+   and live scope share the plain command bar, whose brand ("Atlas", a real
+   `navigate('/')` link at App.tsx:1685) occupies {x:8,y:6,w:65,h:26} — this
+   default sits BELOW it, in the icons row's own left-hand gap (that row is
+   right-aligned; CLIPBOARD/MOON/MORE start at x:242, measured, leaving
+   x:0-242 empty at y:40-84). */
 .search-sheet-fab {
   position: fixed;
-  top: 10px;
+  top: 40px;
   left: 10px;
   z-index: 9600;
   width: 40px;
@@ -28,6 +37,40 @@
 }
 .search-sheet-fab:active {
   background: rgba(var(--color-accent-deep-rgb), 0.16);
+}
+
+/* Covering-read scope (a thread open on mobile) replaces that whole gap: the
+   Lens promotes its own chrome to TWO stacked, full-width fixed rows at the
+   very top — `.lens-chrome` (the breadcrumb, itself `flex:1 1 auto` and so a
+   FULL-WIDTH back button, not just its "←" glyph) at y:0-44, then
+   `.lens-sections-bar` (the "where it lives / connected" toggle, also
+   `width:100%`) at y:44-88 — measured via getBoundingClientRect on both.
+   Both are full-width, so there is no horizontal gap to hide in the way the
+   plain command bar has one; the trigger has to clear the whole 88px band
+   instead. 96px = 88 + 8px clearance. Stays left (x:10-50): ThemeDetail's own
+   pin/share/export/close cluster is right-aligned inside the read
+   (`top:16px; right:16px` within a panel that itself starts at y:88, so
+   absolute y≈104) — measured to confirm the two never share an x-range even
+   though their y-ranges overlap.
+   Gated on the SAME TWO CONDITIONS LensPanel.css checks to promote that
+   chrome (:62/:73, `.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay)`)
+   — not the identical selector, because that selector does not work from
+   here. First attempt copied it verbatim as
+   `body:has(.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay))`,
+   which LOOKS like the obvious way to ask the same question from a sibling
+   of `.lens-shell` rather than a descendant of it. It is invalid CSS:
+   `:has()` cannot contain another `:has()` in its argument (CSS Selectors 4)
+   — a nested `:has()` makes the WHOLE rule fail to parse, silently, with no
+   build or lint error, so the rule was simply never applied and the
+   elementFromPoint re-check below caught a still-unmoved FAB. `.lens-shell`
+   is dropped rather than worked around: `.lens-breadcrumb` only ever renders
+   inside it in this codebase, so checking the two conditions LensPanel.css
+   actually gates on (a breadcrumb exists, a covering read exists), flat
+   rather than nested, asks the identical question and IS valid — confirmed
+   directly (`document.querySelector('body:has(.lens-breadcrumb):has(.theme-detail-overlay)')`
+   before committing to it, not assumed a second time). */
+body:has(.lens-breadcrumb):has(.theme-detail-overlay) .search-sheet-fab {
+  top: 96px;
 }
 
 /* The sheet. Fixed and full-inset like ThemeDetail's own mobile overlay
@@ -50,7 +93,15 @@
    one tap on its own × (search-sheet-close), same cost as switching tabs
    first. `--mobile-bottom-reserve` stays on the body below regardless: it
    also covers the bottom safe-area inset, which applies whether or not the
-   tab bar itself is visible on top. */
+   tab bar itself is visible on top.
+   What sits ABOVE 9700, for the record (checked, not assumed): PanelHelpDrawer
+   (`.panel-help-layer`, z 10000) — a deliberately-opened help modal, reachable
+   on mobile via the panel headers' (?) buttons; it covers the sheet while
+   open, which is fine, the reader opened it on purpose. DossierView's
+   `.dossier-overlay` TIES at 9700 — harmless, it never mounts on a phone
+   (`showDossier && !isMobile` gates it), so the tie is never live; noted so
+   the next person reading both files does not mistake the equal number for
+   an accident. */
 .search-sheet {
   position: fixed;
   inset: 0;

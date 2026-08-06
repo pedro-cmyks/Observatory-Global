@@ -20,16 +20,45 @@
 // `connected` for the one section that already carries this refusal, and
 // leave it there.
 //
-// WHY TOP-LEFT. ThemeDetail's own pin/share/export/close cluster occupies
-// top-right on every mobile read (ThemeDetail.tsx:639, `top:16px; right:16px`
-// inside its panel); EntityPanel and CountryBrief both right-align their
-// close button in a `justify-content: space-between` header. No surface in
-// this codebase puts anything at top-left — grep for ArrowLeft/ChevronLeft
-// across components/*.tsx returns nothing; the codebase has no back-arrow
-// affordance to collide with either. Bottom of the screen was ruled out on
-// its own evidence: the tab bar (z 9500), the floating focus chip (z 9550,
+// WHY TOP-LEFT, AND WHY IT IS TWO POSITIONS NOT ONE. ThemeDetail's own
+// pin/share/export/close cluster occupies top-RIGHT on every mobile read
+// (ThemeDetail.tsx:639, `top:16px; right:16px` inside its panel); EntityPanel
+// and CountryBrief both right-align their close button in a
+// `justify-content: space-between` header. Bottom of the screen was ruled out
+// on its own evidence: the tab bar (z 9500), the floating focus chip (z 9550,
 // centered, up to 86vw wide) and FrameSheet (z 9400, full-width) already
 // contest that space among themselves.
+//
+// The first cut of this file asserted top-left was clear because a grep for
+// ArrowLeft/ChevronLeft across components/*.tsx returned nothing. That is a
+// lexical check and it proved only that no component uses those two
+// identifiers — it never asked what is actually PAINTED there. Two things
+// were, and a grep cannot see either: the brand wordmark ("Atlas", a real
+// `navigate('/')` link, App.tsx:1685 — not an icon name, so no identifier
+// grep finds it) at field/live scope, and the Lens's OWN breadcrumb, which
+// renders the literal glyph `←` rather than an ArrowLeft/ChevronLeft import
+// (LensPanel.tsx:293-298) at covering-read scope. A review caught this with
+// `getBoundingClientRect` (brand {x:8,y:6,w:65,h:26} vs the FAB's original
+// {x:10,y:10,w:40,h:40} — near-total overlap) and `elementFromPoint` (both
+// the brand's centre and the FAB's own centre resolved to `.search-sheet-fab`
+// before the fix). The lesson, applied here rather than just noted: an
+// assertion that a screen region is empty is a GEOMETRIC claim, and only a
+// geometric check — hide the element and look, or `elementFromPoint` — can
+// settle it. A grep returning nothing is evidence about grep, not about the
+// screen.
+//
+// Re-measured properly (SearchSheet.css carries the numbers): field and live
+// scope share the plain command bar, which has a genuine gap — the
+// clipboard/moon/more icon row is right-aligned starting at x:242, leaving
+// x:0-242 empty at y:40-84 — below the brand, above the search input row.
+// Covering-read scope replaces that entire area with the Lens's own chrome
+// promoted to two FULL-WIDTH fixed rows (the breadcrumb back button is
+// `flex:1 1 auto`, so it is not just the "←" glyph but the whole 375px-wide
+// row; the sections toggle below it is `width:100%` too) — there is no
+// horizontal gap to hide in there, so the covering-read position clears the
+// full 88px band vertically instead. Both positions, and the exact geometry
+// behind each, are documented at the CSS rules themselves
+// (SearchSheet.css:6-20 and :42-60) rather than re-derived here.
 //
 // WHY THE SHEET IS A TRUE TOP LAYER (z 9700 — above the tab bar's 9500, the
 // focus chip's 9550 and the Lens's own fixed chrome at 9600; see
