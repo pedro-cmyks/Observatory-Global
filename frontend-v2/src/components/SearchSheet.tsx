@@ -1,0 +1,260 @@
+// #236 Task 9 — the mobile search sheet.
+//
+// THE PROBLEM THIS SOLVES (Task 7, measured): elementFromPoint over the
+// desktop command-bar's search input, with a thread read open, returns
+// ThemeDetail's overlay — `position: fixed; inset: 0; z-index: 9000` at
+// <=768px covers the command bar entirely. Search is the single most useful
+// thing to reach mid-read (you found something in the text, you want to look
+// it up) and it was the one surface a read made unreachable. This component
+// is reachable from anywhere: the trigger sits at a fixed viewport corner
+// with a z-index above the read, and the sheet itself opens as a modal over
+// whatever was on screen.
+//
+// THE SCOPE THAT WAS CUT (read before touching this file): the plan's first
+// draft had each result carry its measured constellation neighbours. That is
+// CANCELLED — Task 8 measured the same sibling lane this would have reused
+// and found 30/50 top-5 rows an unrelated story presented as kin, on a field
+// that is 61.25% blob, with no client-side way to tell a fused anchor from a
+// clean one. This sheet renders search RESULTS. It does not call the
+// siblings endpoint and it does not render neighbours — see lensSections.ts's
+// `connected` for the one section that already carries this refusal, and
+// leave it there.
+//
+// WHY TOP-LEFT. ThemeDetail's own pin/share/export/close cluster occupies
+// top-right on every mobile read (ThemeDetail.tsx:639, `top:16px; right:16px`
+// inside its panel); EntityPanel and CountryBrief both right-align their
+// close button in a `justify-content: space-between` header. No surface in
+// this codebase puts anything at top-left — grep for ArrowLeft/ChevronLeft
+// across components/*.tsx returns nothing; the codebase has no back-arrow
+// affordance to collide with either. Bottom of the screen was ruled out on
+// its own evidence: the tab bar (z 9500), the floating focus chip (z 9550,
+// centered, up to 86vw wide) and FrameSheet (z 9400, full-width) already
+// contest that space among themselves.
+//
+// WHY THE SHEET SITS *BELOW* THE TAB BAR/FOCUS CHIP/FRAMESHEET (z 9300, under
+// their 9400-9550) RATHER THAN COVERING THEM. Every other full-screen mobile
+// surface — ThemeDetail, LensPanel's read pane, CountryThemePanel,
+// BriefNewspaper — leaves the tab bar reachable on top of it and reserves
+// `var(--mobile-bottom-reserve)` at the bottom of its own scroll so the tab
+// bar never hides its last row. Search gets the identical treatment instead
+// of inventing a second convention: a search that ALSO shed the tab bar would
+// be its own trap (search TO escape a read, only to be stuck one layer
+// deeper with no way to Live/Brief without closing search first).
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { track } from '../lib/telemetry'
+import { getThemeLabel } from '../lib/themeLabels'
+import { Search } from '../lib/icons'
+import {
+  buildSearchSection, type SearchPhase, type SearchRow, type SearchRowKind,
+} from '../lib/searchSheet'
+import './SearchSheet.css'
+
+export interface SearchSheetDoors {
+  /** The console's own thread opener (App.tsx `handleThemeSelect`) — NOT a
+   *  bespoke call, so a thread tapped here pivots the Lens exactly the way
+   *  every other thread-opening door does (the effects at App.tsx:1245 and
+   *  :1259 read the resulting focus state and push the Lens scope; nothing
+   *  here calls focusLens or setConsoleTab directly — MobileNavContext's own
+   *  doc comment is explicit that focusLens has ONE caller, the console's own
+   *  derivation effect, and this sheet is not it). */
+  onThemeSelect: (theme: string, countryCode?: string, countryName?: string) => void
+  /** The console's own country opener (App.tsx `handleCountryClick`, wrapped
+   *  the same way the desktop SearchBar's onCountrySelect prop is). */
+  onCountrySelect: (code: string) => void
+  /** FocusContext's person setter, inlined at every other person-opening door
+   *  in App.tsx (there is no dedicated handlePersonClick to call instead —
+   *  `setFocus('person', name, name)` recurs verbatim at ~4 call sites). */
+  onPersonSelect: (name: string) => void
+}
+
+const KIND_LABEL: Record<SearchRowKind, string> = {
+  thread: 'Threads', country: 'Countries', person: 'People', signal: 'Signals',
+}
+
+function groupByKind(rows: SearchRow[]): [SearchRowKind, SearchRow[]][] {
+  const order: SearchRowKind[] = ['thread', 'country', 'person', 'signal']
+  return order
+    .map((k): [SearchRowKind, SearchRow[]] => [k, rows.filter((r) => r.kind === k)])
+    .filter(([, group]) => group.length > 0)
+}
+
+function rowMeta(row: SearchRow): string | null {
+  if (row.kind === 'thread') {
+    const parts = [`${(row.totalSignals ?? 0).toLocaleString()} signals`]
+    if (row.category) parts.push(row.category)
+    return parts.join(' · ') + (row.match === 'partial' ? ' · partial match' : '')
+  }
+  if (row.kind === 'person') return `${(row.totalSignals ?? 0).toLocaleString()} signals`
+  if (row.kind === 'signal') return row.source ?? null
+  return null
+}
+
+function SearchSheetModal({ onClose, onThemeSelect, onCountrySelect, onPersonSelect }: SearchSheetDoors & { onClose: () => void }) {
+  const [query, setQuery] = useState('')
+  // What was actually searched — distinct from `query`, which keeps changing
+  // as the reader types. "No results for …" must name the query that was
+  // MEASURED, not whatever is sitting in the input a keystroke later.
+  const [submittedQuery, setSubmittedQuery] = useState('')
+  const [phase, setPhase] = useState<SearchPhase>({ kind: 'idle' })
+  const inputRef = useRef<HTMLInputElement>(null)
+  // Guards a mashed-submit race the same way SearchBar's searchSeqRef does:
+  // only the most recent request may write its outcome.
+  const reqIdRef = useRef(0)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  // A full-screen sheet over content that itself scrolls (the read
+  // underneath) — lock the body so a drag inside the sheet cannot bleed
+  // through to the page behind it. Restored on close/unmount, never left on.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  const runSearch = async (raw: string) => {
+    const trimmed = raw.trim()
+    setSubmittedQuery(trimmed)
+    if (trimmed.length < 2) { setPhase({ kind: 'too_short' }); return }
+    const seq = ++reqIdRef.current
+    setPhase({ kind: 'loading' })
+    track('search_query', { q_len: trimmed.length, via: 'mobile_sheet' })
+    try {
+      const res = await fetch(`/api/v2/search/unified?q=${encodeURIComponent(trimmed)}&hours=168`)
+      if (seq !== reqIdRef.current) return // superseded by a later submit
+      if (!res.ok) { setPhase({ kind: 'http_error', status: res.status }); return }
+      // A 200 with an unparseable body is reduced to `null` here rather than
+      // thrown — buildSearchSection's own guard turns a non-object body into
+      // the same honest "could not be read" degrade a malformed 200 gets.
+      const json = await res.json().catch(() => null)
+      if (seq !== reqIdRef.current) return
+      setPhase({ kind: 'ok', json })
+    } catch {
+      if (seq !== reqIdRef.current) return
+      setPhase({ kind: 'network_error' })
+    }
+  }
+
+  const handleSubmit = (e: FormEvent) => { e.preventDefault(); runSearch(query) }
+
+  // SEARCH ON SUBMIT, NOT AS-YOU-TYPE. `/api/v2/search/unified` is per-IP
+  // rate-limited (the "paid" bucket: 20 requests / 300s — the desktop
+  // SearchBar's own 300ms-debounced typeahead already burns this budget
+  // alone; a second as-you-type consumer on the SAME budget would exhaust it
+  // roughly twice as fast, and this was measured directly while building
+  // this file — a handful of manual dev opens 429'd well inside the budget).
+  // One deliberate action per query also matches how the sheet is entered: a
+  // reader opened it to look ONE thing up, not to browse a live-filtering
+  // list. The 429 case below is a first-class state, not an afterthought,
+  // because it is the one this decision makes likely to be hit in dev.
+  const section = buildSearchSection(submittedQuery, phase, { labelForTheme: getThemeLabel })
+
+  const handleRowTap = (row: SearchRow) => {
+    track('search_result_click', { segment: row.kind, via: 'mobile_sheet' })
+    if (row.kind === 'thread') onThemeSelect(row.id)
+    else if (row.kind === 'country') onCountrySelect(row.id)
+    else if (row.kind === 'person') onPersonSelect(row.label)
+    else if (row.kind === 'signal') {
+      // Mirrors SearchBar's handleSignalMatchClick: a resolved thread wins
+      // over a bare country. parseSearchRows already drops a signal with
+      // neither, so this else-branch is reachable only via a country.
+      if (row.themeId) onThemeSelect(row.themeId, row.countryCode ?? undefined)
+      else if (row.countryCode) onCountrySelect(row.countryCode)
+    }
+    onClose()
+  }
+
+  const groups = groupByKind(section.rows)
+
+  return (
+    <div className="search-sheet" role="dialog" aria-modal="true" aria-label="Search Atlas">
+      <div className="search-sheet-header">
+        <form className="search-sheet-form" onSubmit={handleSubmit}>
+          <span className="search-sheet-icon" aria-hidden="true"><Search size={15} /></span>
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            className="search-sheet-input"
+            placeholder="Threads, countries, people…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button type="submit" className="search-sheet-go" disabled={query.trim().length < 2}>
+            Search
+          </button>
+        </form>
+        <button type="button" className="search-sheet-close" onClick={onClose} aria-label="Close search">
+          ✕
+        </button>
+      </div>
+
+      <div className="search-sheet-body">
+        {section.state === 'ok' ? (
+          <>
+            {section.partialFailure && (
+              <p className="search-sheet-partial">⚠ {section.partialFailure}</p>
+            )}
+            {groups.map(([kind, rows]) => (
+              <section key={kind} className="search-sheet-section">
+                <h3 className="search-sheet-section-label">
+                  {KIND_LABEL[kind]} <span className="search-sheet-section-count">{rows.length}</span>
+                </h3>
+                <ul className="search-sheet-rows">
+                  {rows.map((row) => (
+                    <li key={`${row.kind}-${row.id}`}>
+                      <button type="button" className="search-sheet-row" onClick={() => handleRowTap(row)}>
+                        <span className="search-sheet-row-label">{row.label}</span>
+                        {rowMeta(row) && <span className="search-sheet-row-meta">{rowMeta(row)}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </>
+        ) : (
+          // Rule inherited from lensSections.ts: an empty/degraded/loading
+          // result renders its REASON, never a blank sheet — and the reason
+          // for "nothing matched" reads nothing like the reason for "the
+          // search could not be reached" (see buildSearchSection's REASON
+          // table: 'empty' vs 'degraded' are worded, not merely tagged,
+          // differently).
+          <p className={`search-sheet-reason${section.state === 'degraded' ? ' search-sheet-reason--degraded' : ''}`}>
+            {section.reason}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Self-contained, like FrameSheet: owns its own open/closed state so App.tsx
+ * gains one mount point rather than another slice of local state. Closed =
+ * the floating trigger; open = the modal. The modal is a SEPARATE component
+ * (`SearchSheetModal`) rather than a branch inside this one specifically so
+ * its hooks (the focus effect, the body-scroll lock, the query/phase state)
+ * only exist while open — a conditional return before calling them would
+ * violate the rules of hooks the moment `open` flips.
+ */
+export function SearchSheet(doors: SearchSheetDoors) {
+  const [open, setOpen] = useState(false)
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="search-sheet-fab"
+        onClick={() => setOpen(true)}
+        data-tip="Search Atlas"
+        aria-label="Search"
+      >
+        <Search size={18} />
+      </button>
+    )
+  }
+
+  return <SearchSheetModal {...doors} onClose={() => setOpen(false)} />
+}

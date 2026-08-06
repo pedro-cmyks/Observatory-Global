@@ -39,6 +39,7 @@ import { STORY_LENS_AUTO, isLensAnchor } from './lib/storyLens'
 import { FocusIndicator } from './components/FocusIndicator'
 import { FrameStrip } from './components/FrameStrip'
 import { FrameSheet } from './components/FrameSheet'
+import { SearchSheet } from './components/SearchSheet'
 import { maxReplayDays, farEdgeKind, positionForDaysBack, snapDaysBack, isoDayForDaysBack, REPLAY_ENDPOINT_CAP_DAYS } from './lib/scrubberScale'
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, Sun, Moon } from './lib/icons'
 import { useTheme } from './contexts/ThemeContext'
@@ -2702,6 +2703,32 @@ function AppContent() {
       {/* The mobile tab bar used to live here. It now renders once at the root
           (main.tsx → MobileTabBar) so /app and /brief share one bar — see
           #236 Task 6. */}
+
+      {/* #236 Task 9: the mobile search sheet. Reachable from anywhere in the
+          console — including over a full-screen read, which is the gap this
+          closes (Task 7 measured elementFromPoint over the desktop command
+          bar's search input returning ThemeDetail's z-9000 overlay at this
+          width; the command bar itself is unreachable under a read on the
+          phone). Rendered from App rather than main.tsx (unlike MobileTabBar)
+          because its doors — handleThemeSelect, handleCountryClick, setFocus
+          — all live here; mounting it at the root would mean prop-drilling
+          them out through a second context for no reader-visible benefit,
+          and search has never been a Brief-page affordance on desktop either
+          (BriefNewspaper carries no SearchBar).
+          Doors are wired IDENTICALLY to the desktop SearchBar's own props one
+          screen up (~line 1697): a tapped thread/country/person result calls
+          the exact same openers, which is what makes the Lens pivot "just
+          happen" — the effects at :1245 (consoleTab -> 'lens') and :1259
+          (focusLens(lensScope)) already run off this state, so nothing here
+          calls either directly (MobileNavContext.tsx's own doc comment: only
+          the console's derivation effect may call focusLens). */}
+      {isMobile && (
+        <SearchSheet
+          onThemeSelect={handleThemeSelect}
+          onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+          onPersonSelect={(name) => { setFocus('person', name, name); setMapFlyCountry(null) }}
+        />
+      )}
 
       {/* Hover Tooltip */}
       <MapTooltip tooltip={tooltip} />

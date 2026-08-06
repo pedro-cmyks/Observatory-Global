@@ -1,0 +1,225 @@
+/* #236 Task 9 — the mobile search sheet. Applies only at <=768px: both
+   pieces are mounted from App's `isMobile` branch, same as the rest of the
+   mobile-native IA (LensPanel.css:3 states the identical scoping and does
+   not repeat it in a media query either — this file follows that). */
+
+/* The trigger. Fixed to the viewport, not to any panel, so it survives every
+   read/panel this app can put on screen. z-index 9600 matches the Lens's own
+   fixed chrome (LensPanel.css:68/81) — the value already established in this
+   codebase for "a persistent top-of-screen affordance that must beat a
+   covering read's z-index:9000". Top-left: see SearchSheet.tsx's header
+   comment for the survey that cleared this corner. */
+.search-sheet-fab {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 9600;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.35);
+  border-radius: 50%;
+  color: rgb(var(--color-accent-deep-rgb));
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.search-sheet-fab:active {
+  background: rgba(var(--color-accent-deep-rgb), 0.16);
+}
+
+/* The sheet. Fixed and full-inset like ThemeDetail's own mobile overlay
+   (ThemeDetail.css:1277-1284), but z 9300 — ABOVE every read (9000) so it can
+   open over one, and BELOW FrameSheet (9400) / the tab bar (9500) / the
+   floating focus chip (9550) on purpose: those stay reachable on top of
+   search the same way they stay reachable on top of every other full-screen
+   mobile surface, so a reader can jump to Live/Brief without closing search
+   first. That ordering is exactly why the body below reserves
+   `--mobile-bottom-reserve` — the tab bar sits ON TOP of this sheet's last
+   rows the same way it does over ThemeDetail's (ThemeDetail.css:1289),
+   LensPanel's (LensPanel.css:243) and BriefNewspaper's own bottom padding. */
+.search-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 9300;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary);
+}
+
+.search-sheet-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
+}
+
+.search-sheet-form {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.22);
+  border-radius: 8px;
+  padding: 0 8px;
+}
+
+.search-sheet-icon {
+  flex-shrink: 0;
+  display: flex;
+  color: var(--color-text-muted, #8b97a6);
+}
+
+/* 16px is the iOS Safari floor below which focusing an input zooms the whole
+   page — the plan's own constraint, restated here where it is enforced. */
+.search-sheet-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+  border: none;
+  background: none;
+  outline: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-technical, monospace);
+  font-size: 16px;
+}
+.search-sheet-input::placeholder {
+  color: var(--color-text-muted, #8b97a6);
+}
+
+.search-sheet-go {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  background: rgba(var(--color-accent-deep-rgb), 0.16);
+  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.4);
+  border-radius: 6px;
+  color: rgb(var(--color-accent-deep-rgb));
+  font-family: var(--font-technical, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.search-sheet-go:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.search-sheet-close {
+  flex-shrink: 0;
+  /* #236 Task 1 primitive — the iOS 44px touch floor. */
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.search-sheet-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 14px calc(14px + var(--mobile-bottom-reserve));
+}
+
+.search-sheet-section + .search-sheet-section {
+  margin-top: 18px;
+}
+
+.search-sheet-section-label {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-sheet-section-count {
+  color: rgb(var(--color-accent-deep-rgb));
+  font-variant-numeric: tabular-nums;
+}
+
+.search-sheet-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.search-sheet-row {
+  /* #236 Task 1 primitive — the iOS 44px touch floor. */
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.10);
+  color: var(--color-text-primary);
+  font-family: var(--font-technical, monospace);
+  text-align: left;
+  cursor: pointer;
+}
+.search-sheet-row:active {
+  color: var(--color-accent-highlight);
+}
+
+.search-sheet-row-label {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.search-sheet-row-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+/* The honest empty/degraded/loading line. Never a blank sheet — see
+   lensSections.ts's rule 1, restated at this file's render site. */
+.search-sheet-reason {
+  margin: 24px 8px 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical, monospace);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/* Same literal SearchBar's own degraded states use (SearchBar.css:251,257) —
+   not a token, matching precedent rather than inventing a new one for the
+   identical case on a second surface. */
+.search-sheet-reason--degraded {
+  color: #f59e0b;
+}
+
+/* Rides ABOVE real rows (state stays 'ok'), not instead of them — the
+   partial-degrade case buildSearchSection reports via `partialFailure`. */
+.search-sheet-partial {
+  margin: 0 0 12px;
+  padding: 6px 8px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 6px;
+  color: #f59e0b;
+  font-size: 11px;
+  line-height: 1.4;
+}
