@@ -2046,9 +2046,29 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
        the two purely decorative sentences (eyebrow + italic tagline — brand
        copy, not data) are dropped; the "ATLAS." wordmark alone still carries
        the identity. */
+    /* Padding and row-gap trimmed (was 10px 0 8px / 6px 16px) to pay for the
+       44px touch floor the four masthead chips gained at the bottom of this
+       block. Measured at 375px against a settled page: the floor took the
+       actions row 26.3px -> 44px and the masthead 109px -> 127px, pushing
+       leadTop 547px -> 565px. These three trims give back all 18px — masthead
+       109px and leadTop 547px again, byte-for-byte the pre-floor position.
+       Paid HERE rather than out of --brief-mobile-gap-* because the masthead is
+       where the height was added and this is its own whitespace: the three
+       tokens tune the rhythm BETWEEN the reader's content blocks, and spending
+       them would have charged one element's growth to every gap on the page.
+       They stay at 2px and remain the next lever. Nothing — no fact, no honesty
+       label, no control — was removed to get here.
+
+       ON THE 500px BAR: it is NOT met, and it was not met before this change.
+       The 473px on record was measured while the freshness band ("sealed N
+       hours ago · full text 9/48 · …") had not yet arrived from the
+       daily-publication fetch; that band lands ~1s later, wraps to two lines at
+       375px and costs ~60px. Settled, the page sat at 547px before this rule
+       and sits at 547px after it. The overshoot is a separate finding, not
+       something this touch floor introduced. */
     .brief-masthead {
-        padding: 10px 0 8px;
-        gap: 6px 16px;
+        padding: 6px 0 2px;
+        gap: 2px 16px;
     }
     .brief-masthead .reader-eyebrow,
     .brief-masthead .reader-tagline {
@@ -2065,7 +2085,12 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
         flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
-        gap: 4px 10px;
+        /* Row gap 4px -> 0: part of the same touch-floor budget as the masthead
+           padding above. This box wraps to two rows at 375px — dateline +
+           "Measured · Last 24 hours" on the first, the four action chips on the
+           second — and once those chips carry a 44px floor their own box gives
+           the two rows all the separation they need. */
+        gap: 0 10px;
     }
     .brief-masthead-right .reader-chip {
         padding: 4px 9px;
@@ -2117,5 +2142,46 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
         margin: var(--brief-mobile-gap-xs) 0 var(--brief-mobile-gap-sm);
         font-size: 0.76rem;
         line-height: 1.3;
+    }
+
+    /* #236 gate re-check (criterion 3). Task 1 established the 44px floor for
+       anything that navigates and put the primitive in App.css; the Brief never
+       got it. Measured at 375px before this rule: "Open thread →" 15.0px (x8),
+       five watchlist headlines 20.6px and two more at 41.2px, the four masthead
+       chips 26.3px — the Brief -> Lens door, the phone's most-used tap, at a
+       third of the floor. (The lead headline's own button already measured
+       57.7px and is unaffected; min-height only ever raises.)
+
+       WHY HERE AND NOT IN App.css's shared block. That block is the console's
+       persistent chrome — the command bar, and the 16px input floor that stops
+       iOS zooming. `.brief-theme-link` and `.brief-headline-btn` appear in
+       exactly two files, this one and BriefNewspaper.tsx (grepped, not assumed),
+       so a shared home would only widen their reach for nothing. `.reader-chip`
+       is the one that is genuinely shared: it is defined in
+       styles/readerTheme.css, which Docs.tsx and Landing.tsx both import, and
+       Landing renders one today through <ReaderThemeToggle/>. Docs imports the
+       stylesheet without rendering a chip at present — so an unscoped floor
+       would restyle Landing now and Docs the day it grows a chip, neither of
+       which this task measured. `.brief-page` scopes it to the surface that
+       failed.
+
+       `button.reader-chip`, not `.reader-chip`: the "Measured · Last 24 hours"
+       chip sitting beside them is a <span> — a label, not a door — and a touch
+       floor on it would only cost masthead height. Verified after the change:
+       that span still measures 25.9px while the four buttons measure 44px. */
+    .brief-theme-link,
+    .brief-headline-btn {
+        min-height: 44px;
+        /* inline-flex + centring rather than bare min-height so the text sits in
+           the middle of the taller box instead of hugging its top edge. The
+           headline still wraps: its content is one text node (or one
+           <span class="translatable-headline">), so it forms a single flex item
+           that line-breaks internally exactly as before — verified at 375px
+           against the two-line watchlist headlines. */
+        display: inline-flex;
+        align-items: center;
+    }
+    .brief-page button.reader-chip {
+        min-height: 44px;
     }
 }
