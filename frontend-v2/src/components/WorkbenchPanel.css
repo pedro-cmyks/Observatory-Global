@@ -558,18 +558,28 @@ a.wb-cit-headline:hover { text-decoration: underline; }
 .wb-undo-btn:hover { background: rgba(16, 185, 129, 0.15); }
 
 /* ── Mobile (#236 Task 10): the Workbench is capture-only below 768 — sidebar
-   (investigations) + pin list + export. Two measured defects fixed:
+   (investigations) + pin list + export. One measured defect fixed here:
    - .wb-sidebar was a bare 168px, fixed-width sibling of .wb-main in a
      row-direction .wb-panel; on a 375px phone that leaves .wb-main (the
      pinned-route column the analyst actually reads and writes into) only
      ~180-200px, the "frozen route squeezed to a sliver" complaint. Stacking
-     the panel (.wb-panel column) makes width:100% mean what it says; the
-     sidebar is bounded to a fraction of the viewport with its own scroll so
-     a long investigation list cannot push the pins themselves off-screen.
-   - .wb-pin-note (the per-pin/per-citation note textarea) was 11px, under
-     iOS's 16px auto-zoom floor — focusing it zoomed the whole page in.
-     NOTE the source plan named this class `.wb-note-input`; no such class
-     exists in this file (verified) — the real selector is `.wb-pin-note`. */
+     the panel (.wb-panel column) makes width:100% mean what it says.
+     .wb-sidebar itself stays `overflow: hidden` (unchanged, set at the top
+     of this file) — the scrolling is on the CHILD .wb-list
+     (`overflow-y: auto; flex: 1`, also unchanged); bounding the sidebar's
+     own height with max-height is what gives that child something to
+     scroll within, so a long investigation list cannot push the pins
+     themselves off-screen.
+   - .wb-pin-note (11px, under iOS's 16px auto-zoom floor — the second
+     measured defect the source plan named, calling the class
+     `.wb-note-input`; no such class exists here, verified, the real
+     selector is `.wb-pin-note`) needs NO rule in this file. App.css
+     already carries `input, textarea, select { font-size: 16px !important }`
+     scoped to the same `max-width: 768px` (added in `a629d87f`, an
+     ancestor of Task 10's own commit) — `!important` wins over any
+     specificity or source order a local `.wb-pin-note` rule here could
+     have, so one was written, found to change nothing, and removed rather
+     than kept as a no-op a future reader could mistake for load-bearing. */
 @media (max-width: 768px) {
   .wb-panel { flex-direction: column; }
   .wb-sidebar {
@@ -578,6 +588,5 @@ a.wb-cit-headline:hover { text-decoration: underline; }
     border-right: none;
     border-bottom: 1px solid rgba(var(--color-ink-rgb), 0.07);
   }
-  .wb-pin-note { font-size: 16px; }
   .wb-desktop-only { margin: 12px; font-size: 12px; opacity: 0.75; line-height: 1.5; }
 }

@@ -298,12 +298,25 @@ export default function WorkbenchPanel({
                   </>
                 )}
                 <button className="wb-action" onClick={handleExport} data-tip="Export investigation as JSON (durability)">{exported ? 'DOWNLOADED ✓' : 'EXPORT'}</button>
-                <button
-                  className="wb-action wb-action--airead"
-                  onClick={runAiRead}
-                  disabled={evidenceUrls.length === 0 || aiReading}
-                  data-tip="AI-read the fetched source texts: claims with verbatim quotes (quoteless claims are dropped), plus LEADS — actors the bodies reveal, matched against Atlas threads you haven't pinned. First run pays the model; later runs hit the cache."
-                >{aiReading ? 'READING SOURCES…' : (readings.size > 0 ? 'RE-READ' : 'AI READ')}</button>
+                {/* Task 10 follow-up (#236): AI READ pays a model on first run
+                    and its LEADS FROM THE TEXT section lets the analyst pin
+                    threads it discovers — it grows the investigation exactly
+                    like the research plan does, so it belongs with REPORT/
+                    CORROBORATE on the "worked on the computer" side, not with
+                    EXPORT (which spends nothing and discovers nothing new).
+                    Hidden here; the LEADS section and the per-pin claims
+                    block below are gated the same way, defensively, in case
+                    a desktop session that already ran AI READ gets resized
+                    narrow — the honest line must stay true, not just at the
+                    moment it renders. */}
+                {!isMobile && (
+                  <button
+                    className="wb-action wb-action--airead"
+                    onClick={runAiRead}
+                    disabled={evidenceUrls.length === 0 || aiReading}
+                    data-tip="AI-read the fetched source texts: claims with verbatim quotes (quoteless claims are dropped), plus LEADS — actors the bodies reveal, matched against Atlas threads you haven't pinned. First run pays the model; later runs hit the cache."
+                  >{aiReading ? 'READING SOURCES…' : (readings.size > 0 ? 'RE-READ' : 'AI READ')}</button>
+                )}
                 {otherInvestigations.length > 0 && (
                   <select
                     className="wb-action wb-merge-select"
@@ -450,8 +463,14 @@ export default function WorkbenchPanel({
                         );
                       })()}
                       {/* F2 AI-read: quote-backed claims per pin. Every claim
-                          shows its verbatim quote — verify in one glance. */}
-                      {(() => {
+                          shows its verbatim quote — verify in one glance.
+                          Task 10 follow-up: `readings` only ever populates via
+                          the AI READ button, itself hidden on mobile, so this
+                          is already inert there by construction — the
+                          `!isMobile` here is the same defensive resize-race
+                          match as the button and the LEADS section, not a
+                          second, independent gate. */}
+                      {!isMobile && (() => {
                         const pinReads = extractSnapshotUrls(pin.snapshot)
                           .map(u => readings.get(u))
                           .filter((r): r is Reading => !!r && r.claims.length > 0);
@@ -510,8 +529,14 @@ export default function WorkbenchPanel({
 
             {/* F2.5 LEADS: actors the fetched bodies reveal, matched against
                 Atlas threads not yet pinned. The body queries the substrate —
-                it never writes it. Every lead shows its quote + measured basis. */}
-            {leads && (leads.leads.length > 0 || leads.suppressed.length > 0) && (
+                it never writes it. Every lead shows its quote + measured basis.
+                Task 10 follow-up: `leads` only ever populates via the AI READ
+                button, itself hidden on mobile — `!isMobile` here is the same
+                defensive resize-race match, not an independent gate. A lead's
+                KEEP button pins a brand-new thread into the investigation,
+                which is exactly the kind of discovery the honest line says
+                stays on the computer. */}
+            {leads && !isMobile && (leads.leads.length > 0 || leads.suppressed.length > 0) && (
               <>
                 <div className="wb-section-title" data-tip={leads.basis ?? 'Actors from the fetched article bodies, matched against current Atlas threads.'}>
                   LEADS FROM THE TEXT ({leads.leads.length})
