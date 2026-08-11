@@ -51,6 +51,35 @@ def _empty_focus_payload(focus_type: str, value: str, hours: int) -> dict:
     }
 
 
+def _degraded_focus_payload(focus_type: str, value: str, hours: int,
+                            *, reason: str) -> dict:
+    """We could not measure ANY lane — the pool never gave us a connection.
+
+    Distinct from `_empty_focus_payload`: that one measured and found
+    nothing, this one failed to measure. Counts are therefore null, never 0,
+    and every lane is named degraded so the panel renders grey gaps instead
+    of a confident empty result."""
+    from app.services.focus_lanes import LANE_DEGRADED, LANE_ORDER
+
+    return {
+        "focus": {"type": focus_type, "value": value, "hours": hours},
+        "lanes": {lane: LANE_DEGRADED for lane in LANE_ORDER},
+        "degraded_lanes": list(LANE_ORDER),
+        "degraded_reasons": {lane: reason for lane in LANE_ORDER},
+        "summary": {
+            "total_signals": None,
+            "total_countries": None,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "nodes": [],
+        "related_topics": [],
+        "top_sources": [],
+        "headlines": [],
+        "key_people": [],
+        "key_subjects": [],
+    }
+
+
 @router.get("/api/v2/focus")
 async def get_focus_data(
     focus_type: str = Query(..., description="Type: theme, person, country, source"),
@@ -72,13 +101,38 @@ async def get_focus_data(
     budget table. A degraded lane serves honest absence — never a 500, and
     never a zero presented as a measurement.
     """
+    import asyncio
+    import time as _time
+
     from app.services.focus_lanes import (
+        POOL_ACQUIRE_TIMEOUT_S,
         LaneRunner,
         PERSON_MATCH_EXPR,
         person_like_needle,
     )
 
-    async with db.pool.acquire() as conn:
+    # Clock starts HERE, not after the connection is in hand. Queueing for a
+    # connection is time the user spends looking at a skeleton, so it counts
+    # against the deadline; measured in the browser, an unbounded acquire
+    # under load turned a 9s budget into a 23.4s response.
+    started = _time.monotonic()
+    try:
+        conn_ctx = db.pool.acquire(timeout=POOL_ACQUIRE_TIMEOUT_S)
+    except TypeError:
+        # Test fakes (and any pool implementation without the kwarg) —
+        # correctness of the lane logic must not depend on this bound.
+        conn_ctx = db.pool.acquire()
+
+    try:
+        conn_acquired = await conn_ctx.__aenter__()
+    except (asyncio.TimeoutError, TimeoutError):
+        # Saturated pool: say so in ~3s rather than queueing behind a mute
+        # skeleton. Honest all-degraded 200, never a 500.
+        logger.warning("focus: pool acquire timed out for %s=%s", focus_type, value)
+        return _degraded_focus_payload(focus_type, value, hours, reason="db_busy")
+
+    try:
+        conn = conn_acquired
         # Build WHERE clause based on focus type
         if focus_type == "theme":
             # Thread ids resolve via typed membership (see focus_filters) —
@@ -111,7 +165,7 @@ async def get_focus_data(
         # first because the map, the evidence route and the summary all read
         # it, so if the global deadline bites, what survives is what the
         # panel most needs.
-        runner = LaneRunner(conn)
+        runner = LaneRunner(conn, started_at=started)
 
         # 1. Get nodes (countries) with signal counts
         nodes = await runner.run("nodes", f"""
@@ -302,6 +356,10 @@ async def get_focus_data(
             "key_people": key_people,
             "key_subjects": key_subjects
         }
+    finally:
+        # Mirror of the `async with` this replaced: the connection goes back
+        # to the pool on every path, including the early returns above.
+        await conn_ctx.__aexit__(None, None, None)
 
 @router.get("/api/v2/theme/{theme_code}/deep-history")
 async def get_theme_deep_history(

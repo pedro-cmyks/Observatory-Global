@@ -19,6 +19,7 @@ fake-conn integration tests mirroring `test_edge_diff.py`'s
 from __future__ import annotations
 
 import asyncio
+import time
 
 import asyncpg
 import pytest
@@ -260,10 +261,13 @@ class _AcquireCtx:
     """asyncpg's `pool.acquire()` is an async context manager; the fakes in
     this repo return the conn directly, so wrap it the way themes.py uses."""
 
-    def __init__(self, conn):
+    def __init__(self, conn, *, raises=None):
         self._conn = conn
+        self._raises = raises
 
     async def __aenter__(self):
+        if self._raises is not None:
+            raise self._raises
         return self._conn
 
     async def __aexit__(self, *exc):
@@ -271,11 +275,15 @@ class _AcquireCtx:
 
 
 class _CtxPool:
-    def __init__(self, conn):
-        self._conn = conn
+    """Mirrors asyncpg's real `Pool.acquire(*, timeout=...)` signature so the
+    handler's bounded-acquire path is exercised, not bypassed."""
 
-    def acquire(self):
-        return _AcquireCtx(self._conn)
+    def __init__(self, conn, *, acquire_raises=None):
+        self._conn = conn
+        self._acquire_raises = acquire_raises
+
+    def acquire(self, *, timeout=None):
+        return _AcquireCtx(self._conn, raises=self._acquire_raises)
 
 
 def _call_focus(focus_type="person", value="trump", hours=24):
@@ -327,6 +335,49 @@ class TestFocusEndpointHonesty:
         out = _run(_call_focus())
         assert out["degraded_lanes"] == []
         assert all(v == LANE_LIVE for v in out["lanes"].values())
+
+    def test_saturated_pool_degrades_fast_instead_of_queueing(self, monkeypatch):
+        # Measured in the browser: statement_timeout bounds SQL execution,
+        # but nothing bounded the WAIT for a connection, so a loaded pool
+        # turned the 9s budget into a 23.4s response. A pool that will not
+        # give us a connection is an honest all-degraded 200.
+        conn = _FocusFakeConn()
+        monkeypatch.setattr(db, "pool",
+                            _CtxPool(conn, acquire_raises=asyncio.TimeoutError()))
+        out = _run(_call_focus())
+        assert out["summary"]["total_signals"] is None
+        assert sorted(out["degraded_lanes"]) == sorted(LANE_ORDER)
+        assert set(out["degraded_reasons"].values()) == {"db_busy"}
+        # Never issued a query — it never had a connection to issue one on.
+        assert conn.seen_sql == []
+
+    def test_deadline_clock_includes_time_before_the_connection(self, monkeypatch):
+        # The bound is only real if it counts the queueing. LaneRunner must
+        # accept an externally-started clock.
+        conn = _StubConn()
+        runner = LaneRunner(conn, started_at=time.monotonic() - (GLOBAL_DEADLINE_MS / 1000) - 1)
+        rows = _run(runner.run("nodes", "SELECT 1"))
+        assert rows == []
+        assert runner.reasons["nodes"] == "deadline"
+        assert conn.fetches == []
+
+    def test_connection_is_released_on_the_degraded_path(self, monkeypatch):
+        # The `async with` was replaced by an explicit try/finally; a leaked
+        # connection here would drain the pool and cause the very saturation
+        # this track is bounding.
+        conn = _FocusFakeConn(slow_lanes=set(LANE_ORDER))
+        pool = _CtxPool(conn)
+        released = {"n": 0}
+        orig = _AcquireCtx.__aexit__
+
+        async def counting_exit(self, *exc):
+            released["n"] += 1
+            return await orig(self, *exc)
+
+        monkeypatch.setattr(_AcquireCtx, "__aexit__", counting_exit)
+        monkeypatch.setattr(db, "pool", pool)
+        _run(_call_focus())
+        assert released["n"] == 1
 
     def test_non_person_focus_keeps_its_own_filter(self, monkeypatch):
         conn = _FocusFakeConn()

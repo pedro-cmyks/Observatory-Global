@@ -146,6 +146,18 @@ LANE_BUDGETS_MS: dict[str, int] = {
 # message is followed by a real payload rather than replacing it.
 GLOBAL_DEADLINE_MS = 9000
 
+# Bound on WAITING FOR A CONNECTION, separate from the query budgets above.
+#
+# Measured in the browser against the deployed fix while the pool was under
+# load: the endpoint returned an honest all-degraded 200 — but only after
+# 23.4s, because `statement_timeout` bounds SQL EXECUTION and nothing
+# bounded the wait to get a connection at all. The deadline clock used to
+# start after `pool.acquire()` returned, so that wait was invisible to it.
+# Now the clock starts at request entry and the acquire is itself bounded:
+# on a saturated pool the panel is told so in ~3s instead of holding a
+# skeleton while it queues.
+POOL_ACQUIRE_TIMEOUT_S = 3.0
+
 # Lane order = VALUE order. When the deadline bites, the lanes that survive
 # are the ones the panel most needs: the countries (which the map and the
 # evidence route both read), then the receipts, then the subjects, and only
@@ -174,11 +186,16 @@ class LaneRunner:
     """
 
     def __init__(self, conn: Any, *, deadline_ms: int = GLOBAL_DEADLINE_MS,
-                 clock: Any = time.monotonic):
+                 clock: Any = time.monotonic, started_at: Optional[float] = None):
         self._conn = conn
         self._deadline_ms = deadline_ms
         self._clock = clock
-        self._started = clock()
+        # `started_at` lets the caller start the clock at REQUEST ENTRY
+        # rather than here. That difference is load-bearing: time spent
+        # queueing for a pool connection is time the user is staring at a
+        # skeleton, so the deadline has to include it or the bound is a
+        # fiction under exactly the conditions that make it matter.
+        self._started = started_at if started_at is not None else clock()
         self._status: dict[str, str] = {}
         self._reasons: dict[str, str] = {}
 
