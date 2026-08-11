@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { resolveTierChip } from '../lib/sourceProvenance'
+import { fetchWithTimeout } from '../lib/fetchWithTimeout'
 import './Briefing.css'
 
 interface BriefingData {
@@ -52,13 +53,16 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
     useEffect(() => {
         if (canUsePrefetch) return
         setLoading(true)
-        fetch(`/api/v2/briefing?hours=${hours}`)
+        // N26 class: both fetches were unbounded, so a slow briefing left
+        // "Loading briefing..." up indefinitely. Bounded now — a failure
+        // still lands in the existing !data branch, it just arrives.
+        fetchWithTimeout(`/api/v2/briefing?hours=${hours}`, { timeoutMs: 25000 })
             .then(res => res.json())
             .then(setData)
             .catch(console.error)
             .finally(() => setLoading(false))
 
-        fetch(`/api/v2/briefing/insight?hours=${hours}`)
+        fetchWithTimeout(`/api/v2/briefing/insight?hours=${hours}`, { timeoutMs: 25000 })
             .then(res => res.json())
             .then(d => { if (d.insight) setInsight(d.insight) })
             .catch(() => {})

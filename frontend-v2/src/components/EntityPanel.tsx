@@ -14,6 +14,14 @@ import PinReceiptButton from './PinReceiptButton'
 import { EvidenceRoute } from './EvidenceRoute'
 import { buildPersonEvidenceRoute } from '../lib/evidenceRoute'
 import { receiptFrom } from '../lib/capturePayloads'
+import {
+    FOCUS_SLOW_MESSAGE,
+    FOCUS_TIMEOUT_MS,
+    focusPhase,
+    isLaneUsable,
+    laneGapLabel,
+    measuredTotal,
+} from '../lib/focusLoadingState'
 import './EntityPanel.css'
 
 interface FocusNode {
@@ -74,20 +82,58 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
     const hours = 24
     const { pinItem, unpinItem, isPinned } = useWorkspace()
 
+    // Council R4 DESKTOP-N26. This effect used to be an unbounded fetch with
+    // a swallowed catch: for a ubiquitous name it sat mute behind eight
+    // shimmer bars for 45-120s and no code path could ever say it had
+    // failed. Now it is time-boxed (UniverseView's precedent), it announces
+    // a heavy subject at 8s instead of staying silent, and a failure is a
+    // state the panel can render.
+    const [failed, setFailed] = useState(false)
+    const [elapsedMs, setElapsedMs] = useState(0)
+    const [reloadNonce, setReloadNonce] = useState(0)
+
     useEffect(() => {
+        let cancelled = false
         setLoading(true)
+        setFailed(false)
         setData(null)
+        setElapsedMs(0)
+
+        const startedAt = Date.now()
+        // Drives the loading -> slow transition. 1s tick is enough for a
+        // threshold measured in seconds and costs nothing.
+        const ticker = setInterval(() => {
+            if (!cancelled) setElapsedMs(Date.now() - startedAt)
+        }, 1000)
+
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), FOCUS_TIMEOUT_MS)
+
         const params = new URLSearchParams({
             focus_type: focusType,
             value: focusValue,
             hours: String(hours)
         })
-        fetch(`/api/v2/focus?${params}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(json => { if (json) setData(json) })
-            .catch(() => {})
-            .finally(() => setLoading(false))
-    }, [focusType, focusValue, hours])
+        fetch(`/api/v2/focus?${params}`, { signal: ctrl.signal })
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+            .then(json => { if (!cancelled) { setData(json); setFailed(false) } })
+            .catch(() => { if (!cancelled) setFailed(true) })
+            .finally(() => {
+                if (!cancelled) { clearTimeout(timer); clearInterval(ticker); setLoading(false) }
+            })
+        return () => {
+            cancelled = true
+            clearTimeout(timer)
+            clearInterval(ticker)
+            ctrl.abort()
+        }
+    }, [focusType, focusValue, hours, reloadNonce])
+
+    const phase = focusPhase(elapsedMs, !loading)
+    // An unmeasured lane must never render as zero (the C4a rule).
+    const measuredSignals = measuredTotal(data, 'total_signals')
+    const measuredCountries = measuredTotal(data, 'total_countries')
+    const nodesGap = laneGapLabel(data, 'nodes')
 
     // Truncated-thread connections (spec T3, P-ADD): the living threads this
     // person participates in. Reuses the precise /threads?person= relation (#234).
@@ -181,9 +227,19 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                 {data && (
                     <>
                         <div className="entity-subtitle">
-                            <span>{formatCount(data.summary.total_signals)} signals</span>
+                            {/* Degraded nodes lane => we did not measure zero,
+                                we failed to measure. Say that, never "0". */}
+                            {measuredSignals === null ? (
+                                <span className="entity-gap" title={nodesGap}>signals not measured</span>
+                            ) : (
+                                <span>{formatCount(measuredSignals)} signals</span>
+                            )}
                             <span className="entity-dot">·</span>
-                            <span>{data.summary.total_countries} countries</span>
+                            {measuredCountries === null ? (
+                                <span className="entity-gap" title={nodesGap}>countries not measured</span>
+                            ) : (
+                                <span>{measuredCountries} countries</span>
+                            )}
                             {globalSentiment !== null && (
                                 <>
                                     <span className="entity-dot">·</span>
@@ -202,6 +258,17 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
 
             {loading && (
                 <div className="entity-loading">
+                    {/* The third state the app never had: at 8s the panel
+                        stops pretending this is a normal load and names the
+                        reason. The skeleton stays underneath because the
+                        request IS still running — this is a notice, not a
+                        failure. */}
+                    {phase === 'slow' && (
+                        <div className="entity-slow-notice" role="status" aria-live="polite">
+                            <span className="entity-slow-dot" aria-hidden="true" />
+                            <span>{FOCUS_SLOW_MESSAGE}</span>
+                        </div>
+                    )}
                     {[80, 65, 90, 72, 85, 60, 78, 68].map((w, i) => (
                         <div key={i} className="entity-skeleton" style={{ width: `${w}%` }} />
                     ))}
@@ -246,8 +313,18 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                         </div>
                     </div>
 
-                    {/* Top Countries */}
-                    {topNodes.length > 0 && (
+                    {/* Top Countries. A degraded nodes lane renders a labeled
+                        grey gap (the C4a convention) — an empty country list
+                        would read as "this person is covered nowhere", which
+                        is a claim we did not measure. */}
+                    {!isLaneUsable(data, 'nodes') && (
+                        <div className="entity-section" id="ep-countries">
+                            <div className="entity-section-label">Coverage by Country</div>
+                            <div className="entity-lane-gap">{nodesGap}</div>
+                        </div>
+                    )}
+
+                    {isLaneUsable(data, 'nodes') && topNodes.length > 0 && (
                         <div className="entity-section" id="ep-countries">
                             <div className="entity-section-label">Coverage by Country</div>
                             <div className="entity-country-list">
@@ -490,7 +567,19 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                 </div>
             )}
 
-            {!loading && !data && (
+            {/* A failed request is now a STATE, not a swallowed catch. It is
+                distinct from "this person has no coverage": one is a
+                measurement, the other is our inability to make one. */}
+            {!loading && !data && failed && (
+                <div className="entity-empty entity-empty--failed">
+                    <div>Could not measure this {focusType} right now.</div>
+                    <button className="entity-retry" onClick={() => setReloadNonce(n => n + 1)}>
+                        ↻ Retry
+                    </button>
+                </div>
+            )}
+
+            {!loading && !data && !failed && (
                 <div className="entity-empty">No data available for this {focusType}</div>
             )}
         </div>

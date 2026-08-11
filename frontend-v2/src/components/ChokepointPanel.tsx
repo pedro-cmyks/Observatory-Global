@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { type Chokepoint } from '../lib/chokepoints'
 import { getThemeLabel } from '../lib/themeLabels'
 import { Flag } from './Flag'
+import { fetchJsonWithTimeout } from '../lib/fetchWithTimeout'
 
 interface CountrySignals {
   code: string
@@ -38,13 +39,16 @@ export function ChokepointPanel({ chokepoint, vesselCount, hours, onCountryClick
     setLoading(true)
     const countries = chokepoint.countries.join(',')
 
+    // N26 class: an unbounded Promise.all meant the SLOWER of the two
+    // fetches gated the skeleton with no ceiling. Both bounded now; the
+    // existing empty-payload fallbacks are unchanged.
     Promise.all([
       // Country signal volumes
-      fetch(`/api/v2/nodes?hours=${hours}&countries=${countries}`)
-        .then(r => r.ok ? r.json() : { hotspots: [] }),
+      fetchJsonWithTimeout<{ hotspots?: any[] }>(
+        `/api/v2/nodes?hours=${hours}&countries=${countries}`, { hotspots: [] }),
       // Recent signals from chokepoint countries
-      fetch(`/api/v2/signals?hours=${Math.min(hours, 24)}&countries=${countries}&limit=15`)
-        .then(r => r.ok ? r.json() : { signals: [] }),
+      fetchJsonWithTimeout<{ signals?: any[] }>(
+        `/api/v2/signals?hours=${Math.min(hours, 24)}&countries=${countries}&limit=15`, { signals: [] }),
     ]).then(([nodesData, signalsData]) => {
       const hotspots: CountrySignals[] = (nodesData.hotspots || [])
         .filter((h: any) => chokepoint.countries.includes(h.country_code))
