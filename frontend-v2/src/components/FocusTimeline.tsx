@@ -26,6 +26,7 @@ import {
     subjectLinePoints,
     isChannelUsable,
     channelGapLabel,
+    emptyTimelineCopy,
     summarizeChanges,
     dissolvedLabel,
     isDissolvedType,
@@ -125,7 +126,18 @@ export function FocusTimeline({
         })
         if (focusType) params.set('focus_type', focusType)
         fetch(`/api/v2/focus/${encodeURIComponent(focusRef)}/timeline?${params}`, { signal: ctrl.signal })
-            .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+            // A 400 here is a REASONED refusal (invalid_ref) whose body is a
+            // normal timeline payload. Dropping it into the generic
+            // "unavailable" branch would hide the input error behind the same
+            // blank the N23 defect already produced, so read the body first and
+            // fall through to the error state only when it carries no contract.
+            .then(async r => {
+                const body = await r.json().catch(() => null)
+                if (body && typeof body === 'object' && 'contract' in body) {
+                    return body as FocusTimelineResponse
+                }
+                throw new Error(String(r.status))
+            })
             .then((d: FocusTimelineResponse) => setData(d))
             .catch(e => { if (e.name !== 'AbortError') { setErr(true); setData(null) } })
             .finally(() => setLoading(false))
@@ -245,15 +257,26 @@ export function FocusTimeline({
                 </div>
             </div>
 
-            {nB === 0 ? (
-                <div className="ft-empty">
-                    {data.reason === 'topic_not_found'
-                        ? 'No extended timeline for this thread type.'
-                        : data.reason === 'no_activity_in_window'
-                            ? 'No activity in this window.'
-                            : `No timeline (${data.reason || 'no data'}).`}
-                </div>
-            ) : !barsDrawable && !linesDrawable ? (
+            {nB === 0 ? (() => {
+                // Three different empty states, three different sentences
+                // (N23). "No activity" is reserved for the one case where the
+                // lane was populated and nothing matched; a lane that cannot
+                // see says so, and a bad ref reads as an input error.
+                const copy = emptyTimelineCopy(data.reason, data.reason_detail)
+                const cov = data.lane_coverage
+                return (
+                    <div className={`ft-empty ft-empty--${copy.tone}`}>
+                        <div className="ft-empty-headline">{copy.headline}</div>
+                        {copy.detail && <div className="ft-empty-detail">{copy.detail}</div>}
+                        {cov && cov.sampled ? (
+                            <div className="ft-empty-measure"
+                                data-tip="the coverage probe behind this verdict">
+                                lane {cov.lane}: {cov.covered}/{cov.sampled} sampled source rows carry the field
+                            </div>
+                        ) : null}
+                    </div>
+                )
+            })() : !barsDrawable && !linesDrawable ? (
                 <div className="ft-degraded">
                     <span className="ft-degraded-dot" /> Volume {channelGapLabel(volStatus, data.reason)}
                 </div>

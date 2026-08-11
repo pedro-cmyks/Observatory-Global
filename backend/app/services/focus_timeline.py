@@ -71,6 +71,57 @@ from app.services.voice_mix import UNKNOWN_LANGS, shannon_norm
 
 TIMELINE_CONTRACT = "focus-timeline-v0"
 
+# ---------------------------------------------------------------- reason codes
+# Council R4 N23 (three seats, independently): the endpoint served
+# `buckets: [], reason: 'no_activity_in_window', channels.volume: 'live'` for a
+# person whose stories the SAME front page was serving — a lane that cannot see
+# a name presenting its own blindness as a measured fact about the world. A
+# malformed ref got that identical answer. An empty answer therefore now has to
+# say WHICH of three different things happened, and they are never
+# interchangeable:
+#
+#   measured_zero — the lane looked; its source IS populated for this window;
+#                   nothing matched. This is a claim about the world.
+#   lane_starved  — the source cannot answer for this window (empty, too thin,
+#                   or unverifiable). Absence here was never measured, so it is
+#                   never reported as absence.
+#   invalid_ref   — the ref is structurally unusable (400-class). Never an
+#                   answer about activity, because no question was asked.
+#
+# `db_busy` / `db_error` / `db_unavailable` / `topic_not_found` keep their
+# existing meanings: a channel that timed out already names its own failure and
+# must not be re-labelled by the zero-path classifier.
+REASON_MEASURED_ZERO = "measured_zero"
+REASON_LANE_STARVED = "lane_starved"
+REASON_INVALID_REF = "invalid_ref"
+# Kept on the wire for one cache generation: 5-minute-old Redis payloads
+# written before this change still carry it, and the frontend maps both.
+REASON_NO_ACTIVITY_LEGACY = "no_activity_in_window"
+
+# No focus ref is legitimately longer than this: the longest real ref shape is
+# an `identity_key` (`dyn-<iso8601>-<n>`, ~30 chars) and a person name well
+# under 100. Anything past it is a pasted URL or an injection probe, not a ref.
+MAX_REF_LEN = 128
+
+# The person channel's source is `signals_v2.persons` (GDELT GKG names; the RSS
+# / social / wire / state lanes never populate it — measured 2026-08-11: 0 of
+# 167 non-gdelt rows in a 3,000-row recent sample carry a persons array, vs
+# 1,599 of 2,833 gdelt rows). So "this person has no activity" is only ever a
+# statement about that one lane, and only when that lane is actually writing.
+#
+# Bar (measured, prod 2026-08-11, stratified head/mid/tail sample of the 168h
+# window): 174/600 = 29.0% of in-window signals carry a persons array; a
+# newest-500 sample read 32.4% and a newest-2,000 sample 52.4%. Healthy floor
+# is therefore ~29%. The starvation bar sits at 2% / 10 rows — 14x below the
+# measured floor — deliberately far under it: the rule is tuned for
+# SPECIFICITY, i.e. it should fire only when the lane genuinely stopped
+# writing, never on ordinary ingest fluctuation. A lane carrying fewer than 10
+# names across 600 sampled signals cannot exclude ANY given name from the
+# window.
+PERSON_LANE_SAMPLE_PER_STRATUM = 200
+PERSON_LANE_MIN_ROWS = 10
+PERSON_LANE_MIN_COVERAGE = 0.02
+
 # Top-k curated (spec §3: "top-k curated" trend lines — all channels at once
 # is noise). Matches the existing key_subjects panels' display cut
 # (`build_key_subjects(..., limit=8)`); slightly tighter here (6) because a
@@ -95,6 +146,77 @@ def detect_focus_kind(ref: str) -> FocusKind:
     if len(bare) == 2 and bare.isalpha():
         return "country"
     return "person"
+
+
+# ---------------------------------------------------------------- ref validity
+def classify_ref(ref: str, kind: FocusKind) -> Optional[str]:
+    """Is this ref structurally usable at all? Returns a short detail code for
+    an INVALID ref, or None when the ref is well-formed.
+
+    The distinction that matters (N23): "well-formed" is not "resolvable".
+    `zzz nonexistent person` is a perfectly valid person ref that will match
+    nothing — that outcome is a MEASUREMENT and belongs to
+    `classify_zero_result`, not here. Only refs that cannot pose a question at
+    all are rejected:
+
+      * empty / whitespace-only — there is no subject.
+      * absurdly long — a pasted URL or a probe, never a focus.
+      * a country ref that is not a 2-letter code — auto-detect only ever
+        routes 2-alpha here, but an explicit `?focus_type=country` can carry
+        anything, and a 3-letter "code" would silently match no country row
+        and read as "this country was quiet".
+      * a person ref with no letter or digit anywhere ('!!!', '%%%', '---').
+        This one is load-bearing rather than cosmetic: `normalize_search_text`
+        squashes it to an empty string, and the only LIKE needle left is
+        '%%', which matches the ENTIRE corpus and would serve every signal in
+        the window as that "person's" timeline.
+    """
+    bare = (ref or "").strip()
+    if not bare:
+        return "empty_ref"
+    if len(bare) > MAX_REF_LEN:
+        return "ref_too_long"
+    if kind == "country" and not (len(bare) == 2 and bare.isalpha()):
+        return "country_code_malformed"
+    if kind == "person" and not any(ch.isalnum() for ch in bare):
+        return "person_ref_unmatchable"
+    return None
+
+
+# ---------------------------------------------------------------- zero verdict
+def classify_zero_result(
+    sampled: Optional[int],
+    covered: Optional[int],
+    *,
+    lane: str,
+    min_rows: int,
+    min_ratio: float,
+) -> tuple[str, str]:
+    """ONE shared verdict for "the timeline came back with no buckets" — the
+    same function for every focus kind, so no lane can quietly hold itself to a
+    softer standard than the others (the §8-Q5 "write it as one shared
+    function" discipline, applied to honesty rather than to math).
+
+    ``sampled``/``covered`` come from that lane's bounded coverage probe:
+    how many source rows were sampled in the window, and how many of them
+    actually carry the field the channel filters on. Returns
+    ``(reason, reason_detail)``.
+
+    The asymmetry is deliberate and is the whole point: claiming
+    `measured_zero` requires positive evidence that the lane can answer.
+    Anything else — an empty source, a source below the bar, or a probe we
+    could not run — resolves to `lane_starved`. Not knowing whether we can see
+    is never the same as having looked.
+    """
+    if sampled is None or covered is None:
+        return REASON_LANE_STARVED, f"{lane}_coverage_unverified"
+    sampled_i, covered_i = int(sampled), int(covered)
+    if sampled_i <= 0:
+        return REASON_LANE_STARVED, f"{lane}_no_source_rows_in_window"
+    detail = f"{lane}_coverage_{covered_i}/{sampled_i}"
+    if covered_i < min_rows or (covered_i / sampled_i) < min_ratio:
+        return REASON_LANE_STARVED, detail
+    return REASON_MEASURED_ZERO, detail
 
 
 # ---------------------------------------------------------------- rarity

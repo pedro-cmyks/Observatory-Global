@@ -16,6 +16,9 @@ from __future__ import annotations
 
 import asyncio
 
+import asyncpg
+from fastapi import Response
+
 import app.main_v2  # noqa: F401 — initialize app + routers FIRST. `app.routers.
                      # focus_timeline` does `from app.main_v2 import app` (the
                      # geo.py/threads.py/edges.py cache-access idiom); importing
@@ -40,16 +43,22 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-def _call(ref, *, focus_type=None, hours=168, granularity="day", key_subjects_limit=6):
+def _call(ref, *, focus_type=None, hours=168, granularity="day", key_subjects_limit=6,
+          response=None):
     """Invoke the route function directly (test_edge_diff.py's style) — NOT
     through FastAPI's ASGI cycle, so every `Query(...)`-defaulted parameter
     MUST be passed explicitly here. Outside a real request, an omitted
     parameter resolves to the `Query` sentinel object itself (truthy, not its
     declared default), which silently breaks any code that inspects the
     value before a request ever reaches it — a real footgun this helper
-    exists specifically to avoid reintroducing at every call site."""
+    exists specifically to avoid reintroducing at every call site.
+
+    `response` is FastAPI's injected `Response` (the handler stamps 400 on it
+    for an invalid ref); outside a request there is nobody to inject it, so a
+    throwaway one is created per call unless the test wants to assert on it."""
     return router_mod.focus_timeline(
-        ref=ref, focus_type=focus_type, hours=hours,
+        ref=ref, response=response if response is not None else Response(),
+        focus_type=focus_type, hours=hours,
         granularity=granularity, key_subjects_limit=key_subjects_limit,
     )
 
@@ -382,16 +391,23 @@ class TestFocusTimelineThreadIntegration:
         assert out["reason"] == "topic_not_found"
         assert out["buckets"] == []
 
-    def test_no_activity_in_window_is_honest_empty(self, monkeypatch):
+    def test_empty_window_never_claims_absence_it_cannot_verify(self, monkeypatch):
+        # This test used to assert `volume: live` + `no_activity_in_window` —
+        # it FROZE the N23 defect: an empty result presented as a measured fact
+        # about the world with no check that the lane could see anything. Here
+        # the coverage probe cannot run (this fake answers no probe), so the
+        # only honest verdict is lane_starved. The measured_zero path lives in
+        # TestZeroBucketsAreClassified, where the probe answers.
         conn = _FakeConn(
             resolve_row={"id": 31, "identity_key": "dyn-31", "label": "Quiet Topic"},
             ch1_rows=[],
         )
         monkeypatch.setattr(db, "pool", _FakePool(conn))
         out = _run(_call(ref="dynamic-topic-31"))
-        assert out["channels"]["volume"] == "live"
         assert out["buckets"] == []
-        assert out["reason"] == "no_activity_in_window"
+        assert out["reason"] == "lane_starved"
+        assert out["reason_detail"] == "topic_members_coverage_unverified"
+        assert out["channels"]["volume"] == "unavailable"
 
     def test_thread_with_no_subjects_mentioned_is_honestly_live_and_empty(self, monkeypatch):
         conn = _FakeConn(
@@ -404,3 +420,259 @@ class TestFocusTimelineThreadIntegration:
         assert out["channels"]["key_subjects"] == "live"
         assert out["key_subjects_candidates"] == []
         assert out["buckets"][0]["key_subjects"] == []
+
+
+# ======================================================= N23: reason-code honesty
+# Council R4 N23 (three seats independently): the person timeline served
+# `buckets: [], reason: 'no_activity_in_window', channels.volume: 'live'` while
+# the front page carried that same person's stories — a starved lane presenting
+# its own emptiness as a measured fact about the world. And a malformed ref got
+# the SAME answer instead of an input error. Three reasons now exist and are
+# never interchangeable:
+#   measured_zero — the lane looked, its source is populated, nothing matched
+#   lane_starved  — the source cannot answer for this window (absence unmeasured)
+#   invalid_ref   — the ref is malformed (400-class, never "no activity")
+from app.services.focus_timeline import (  # noqa: E402
+    PERSON_LANE_MIN_COVERAGE,
+    PERSON_LANE_MIN_ROWS,
+    REASON_INVALID_REF,
+    REASON_LANE_STARVED,
+    REASON_MEASURED_ZERO,
+    classify_ref,
+    classify_zero_result,
+)
+
+
+class TestClassifyRef:
+    def test_well_formed_refs_are_valid(self):
+        assert classify_ref("dynamic-topic-31", "thread") is None
+        assert classify_ref("US", "country") is None
+        assert classify_ref("donald trump", "person") is None
+        # a name that will legitimately match nothing is still a VALID ref —
+        # "nothing matched" is a measurement, not an input error.
+        assert classify_ref("zzz nonexistent person", "person") is None
+
+    def test_blank_ref_is_invalid(self):
+        assert classify_ref("   ", "person") == "empty_ref"
+        assert classify_ref("", "thread") == "empty_ref"
+
+    def test_overlong_ref_is_invalid(self):
+        assert classify_ref("x" * 400, "person") == "ref_too_long"
+
+    def test_country_ref_must_be_a_two_letter_code(self):
+        assert classify_ref("USA", "country") == "country_code_malformed"
+        assert classify_ref("1", "country") == "country_code_malformed"
+        # auto-detect only ever routes 2-alpha here, but an explicit
+        # ?focus_type=country can carry anything.
+
+    def test_person_ref_with_no_letters_or_digits_is_invalid(self):
+        # '%%%' / '!!!' fold to an empty needle; the only LIKE pattern left is
+        # '%%', which would silently serve the WHOLE corpus as this "person".
+        assert classify_ref("!!!", "person") == "person_ref_unmatchable"
+        assert classify_ref("%%%", "person") == "person_ref_unmatchable"
+        assert classify_ref("---", "person") == "person_ref_unmatchable"
+
+    def test_non_latin_person_ref_is_valid(self):
+        # f_unaccent is the identity for these scripts; the router's lowercase
+        # fallback needle matches the indexed expression, so this resolves.
+        assert classify_ref("владимир путин", "person") is None
+        assert classify_ref("習近平", "person") is None
+
+
+class TestClassifyZeroResult:
+    def test_populated_source_yields_measured_zero(self):
+        reason, detail = classify_zero_result(
+            600, 174, lane="person_lane",
+            min_rows=PERSON_LANE_MIN_ROWS, min_ratio=PERSON_LANE_MIN_COVERAGE)
+        assert reason == REASON_MEASURED_ZERO
+        assert detail == "person_lane_coverage_174/600"
+
+    def test_empty_source_yields_lane_starved(self):
+        reason, detail = classify_zero_result(
+            600, 0, lane="person_lane",
+            min_rows=PERSON_LANE_MIN_ROWS, min_ratio=PERSON_LANE_MIN_COVERAGE)
+        assert reason == REASON_LANE_STARVED
+        assert detail == "person_lane_coverage_0/600"
+
+    def test_thin_source_below_the_ratio_yields_lane_starved(self):
+        # 5/600 = 0.8% — below the 2% bar AND below the 10-row floor.
+        reason, _ = classify_zero_result(
+            600, 5, lane="person_lane",
+            min_rows=PERSON_LANE_MIN_ROWS, min_ratio=PERSON_LANE_MIN_COVERAGE)
+        assert reason == REASON_LANE_STARVED
+
+    def test_measured_healthy_floor_is_far_above_the_bar(self):
+        # Measured on prod 2026-08-11 (stratified head/mid/tail sample of the
+        # 168h window): 174/600 = 29% of signals carry a persons array. The bar
+        # sits at 2% — 14x below the measured healthy floor — so ordinary
+        # fluctuation can never trip starvation; only a lane that stopped
+        # writing does.
+        reason, _ = classify_zero_result(
+            600, 174, lane="person_lane",
+            min_rows=PERSON_LANE_MIN_ROWS, min_ratio=PERSON_LANE_MIN_COVERAGE)
+        assert reason == REASON_MEASURED_ZERO
+
+    def test_no_source_rows_at_all_is_starved_not_measured(self):
+        reason, detail = classify_zero_result(
+            0, 0, lane="country_hourly", min_rows=1, min_ratio=0.0)
+        assert reason == REASON_LANE_STARVED
+        assert detail == "country_hourly_no_source_rows_in_window"
+
+    def test_unverifiable_coverage_is_starved_not_measured(self):
+        # The probe itself failed. We do not know whether the lane can answer,
+        # so we must not claim it looked and found nothing.
+        reason, detail = classify_zero_result(
+            None, None, lane="person_lane",
+            min_rows=PERSON_LANE_MIN_ROWS, min_ratio=PERSON_LANE_MIN_COVERAGE)
+        assert reason == REASON_LANE_STARVED
+        assert detail == "person_lane_coverage_unverified"
+
+
+class _FakeProbeConn(_FakeConn):
+    """_FakeConn + the zero-path lane-coverage probes (person / country /
+    thread), which only ever run when the endpoint is about to claim zero."""
+
+    def __init__(self, *, probe_sampled=600, probe_covered=174, probe_fails=False,
+                 country_rows=None, **kw):
+        super().__init__(**kw)
+        self.probe_sampled = probe_sampled
+        self.probe_covered = probe_covered
+        self.probe_fails = probe_fails
+        self.country_rows = country_rows or []
+        self.probe_calls = 0
+
+    async def fetch(self, sql, *args):
+        if "lane_coverage_probe" in sql:
+            self.probe_calls += 1
+            if self.probe_fails:
+                raise asyncpg.exceptions.QueryCanceledError("probe timed out")
+            return [{"sampled": self.probe_sampled, "covered": self.probe_covered}]
+        if "FROM country_hourly_v2" in sql:
+            return self.country_rows
+        return await super().fetch(sql, *args)
+
+
+class TestZeroBucketsAreClassified:
+    def test_person_zero_with_healthy_lane_is_measured_zero(self, monkeypatch):
+        conn = _FakeProbeConn(ch1_rows=[], probe_sampled=600, probe_covered=174)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="zzz nonexistent person"))
+        assert out["channels"]["volume"] == "live"
+        assert out["buckets"] == []
+        assert out["reason"] == REASON_MEASURED_ZERO
+        assert out["reason_detail"] == "person_lane_coverage_174/600"
+        assert out["lane_coverage"] == {"sampled": 600, "covered": 174, "lane": "person_lane"}
+        assert conn.probe_calls == 1
+
+    def test_person_zero_with_starved_lane_is_lane_starved(self, monkeypatch):
+        conn = _FakeProbeConn(ch1_rows=[], probe_sampled=600, probe_covered=0)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="trump"))
+        assert out["buckets"] == []
+        assert out["reason"] == REASON_LANE_STARVED
+        assert out["reason_detail"] == "person_lane_coverage_0/600"
+        # The channel must NOT read 'live': a lane that cannot answer has not
+        # measured anything, whatever the query's exit status was.
+        assert out["channels"]["volume"] == "unavailable"
+
+    def test_person_zero_with_unverifiable_probe_is_lane_starved(self, monkeypatch):
+        conn = _FakeProbeConn(ch1_rows=[], probe_fails=True)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="trump"))
+        assert out["reason"] == REASON_LANE_STARVED
+        assert out["reason_detail"] == "person_lane_coverage_unverified"
+
+    def test_thread_zero_with_healthy_projection_is_measured_zero(self, monkeypatch):
+        conn = _FakeProbeConn(
+            resolve_row={"id": 31, "identity_key": "dyn-31", "label": "Quiet Topic"},
+            ch1_rows=[], probe_sampled=50, probe_covered=50)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="dynamic-topic-31"))
+        assert out["reason"] == REASON_MEASURED_ZERO
+        assert out["channels"]["volume"] == "live"
+
+    def test_thread_zero_with_empty_projection_is_lane_starved(self, monkeypatch):
+        # The topic_members projection wrote nothing for this window (it has
+        # died before — the 44-clusters-with-no-membership-row incident), so
+        # "this thread had no activity" is not something we measured.
+        conn = _FakeProbeConn(
+            resolve_row={"id": 31, "identity_key": "dyn-31", "label": "Quiet Topic"},
+            ch1_rows=[], probe_sampled=0, probe_covered=0)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="dynamic-topic-31"))
+        assert out["reason"] == REASON_LANE_STARVED
+        assert out["reason_detail"] == "topic_members_no_source_rows_in_window"
+
+    def test_country_zero_with_stale_matview_is_lane_starved(self, monkeypatch):
+        # country_hourly_v2 has gone stale in production before (2026-07-01,
+        # the refresh outgrew its statement_timeout and served 13 missing
+        # hours as fact). An empty matview can never prove a country was quiet.
+        conn = _FakeProbeConn(country_rows=[], probe_sampled=0, probe_covered=0)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="CO"))
+        assert out["reason"] == REASON_LANE_STARVED
+        assert out["reason_detail"] == "country_hourly_no_source_rows_in_window"
+
+    def test_country_zero_with_live_matview_is_measured_zero(self, monkeypatch):
+        conn = _FakeProbeConn(country_rows=[], probe_sampled=50, probe_covered=50)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="CO"))
+        assert out["reason"] == REASON_MEASURED_ZERO
+
+    def test_degraded_volume_still_reports_its_own_reason(self, monkeypatch):
+        # A timed-out channel already says db_busy — the zero-path classifier
+        # must not overwrite it (and must not run its probe).
+        class _BusyConn(_FakeProbeConn):
+            async def fetch(self, sql, *args):
+                if "lane_coverage_probe" in sql:
+                    return await super().fetch(sql, *args)
+                raise asyncpg.exceptions.QueryCanceledError("timeout")
+
+        conn = _BusyConn()
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        out = _run(_call(ref="trump"))
+        assert out["reason"] == "db_busy"
+        assert out["channels"]["volume"] == "degraded"
+        assert conn.probe_calls == 0
+
+
+class TestInvalidRefIsNeverNoActivity:
+    def test_punctuation_only_person_ref_is_invalid_ref_400(self, monkeypatch):
+        conn = _FakeProbeConn()
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        resp = Response()
+        out = _run(_call(ref="!!!", response=resp))
+        assert out["reason"] == REASON_INVALID_REF
+        assert out["reason_detail"] == "person_ref_unmatchable"
+        assert resp.status_code == 400
+        assert out["buckets"] == []
+        # never the measured-zero vocabulary
+        assert out["reason"] != REASON_MEASURED_ZERO
+
+    def test_malformed_country_ref_is_invalid_ref_400(self, monkeypatch):
+        conn = _FakeProbeConn()
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        resp = Response()
+        out = _run(_call(ref="USAA", focus_type="country", response=resp))
+        assert out["reason"] == REASON_INVALID_REF
+        assert out["reason_detail"] == "country_code_malformed"
+        assert resp.status_code == 400
+
+    def test_invalid_ref_never_touches_the_database(self, monkeypatch):
+        class _NoDbConn(_FakeProbeConn):
+            async def fetch(self, sql, *args):
+                raise AssertionError("invalid ref must be rejected before any query")
+
+        monkeypatch.setattr(db, "pool", _FakePool(_NoDbConn()))
+        out = _run(_call(ref="   ", response=Response()))
+        assert out["reason"] == REASON_INVALID_REF
+        assert out["reason_detail"] == "empty_ref"
+
+    def test_valid_person_ref_is_not_rejected(self, monkeypatch):
+        conn = _FakeProbeConn(ch1_rows=[{"bucket": _dt(2026, 8, 10), "n": 4, "avg_sent": 0.5}])
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        resp = Response()
+        out = _run(_call(ref="maduro", response=resp))
+        assert out.get("reason") is None
+        assert resp.status_code is None or resp.status_code == 200
+        assert len(out["buckets"]) == 1

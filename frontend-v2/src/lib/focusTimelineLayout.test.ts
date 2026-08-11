@@ -12,6 +12,7 @@ import {
     maxPresence,
     isChannelUsable,
     channelGapLabel,
+    emptyTimelineCopy,
     dissolvedKind,
     dissolvedLabel,
     isDissolvedType,
@@ -432,3 +433,60 @@ function mkChange(type: string, reason: string | null): EdgeChange {
         weight_t0: 1, weight_t1: 0, delta: -1, reason, basis: 'entity',
     }
 }
+
+// ------------------------------------------------- N23: empty-state honesty
+// Council R4 N23: the person timeline rendered "No activity in this window."
+// over a starved lane — the UI repeating, as a fact about the world, a claim
+// the backend had never measured. And a malformed ref produced the identical
+// sentence. The three backend reasons must reach the screen as three
+// different statements.
+describe('emptyTimelineCopy — three empty states, never one sentence', () => {
+    it('measured_zero is the only wording that claims the world was quiet', () => {
+        const c = emptyTimelineCopy('measured_zero', 'person_lane_coverage_174/600')
+        expect(c.tone).toBe('measured')
+        expect(c.headline).toMatch(/no measured activity/i)
+        // it may say how it knows, but it must not hedge into "cannot answer"
+        expect(c.headline).not.toMatch(/cannot answer/i)
+    })
+
+    it('the legacy no_activity_in_window reason still renders (cached payloads)', () => {
+        // Redis holds 5-minute-old payloads written before the rename.
+        expect(emptyTimelineCopy('no_activity_in_window').tone).toBe('measured')
+    })
+
+    it('lane_starved says the channel cannot answer — never that nothing happened', () => {
+        const c = emptyTimelineCopy('lane_starved', 'person_lane_coverage_0/600')
+        expect(c.tone).toBe('gap')
+        expect(c.headline).toMatch(/cannot answer/i)
+        expect(c.headline).not.toMatch(/no activity|nothing happened/i)
+        expect(c.detail).toMatch(/person/i)
+        // the measurement that produced the verdict stays visible
+        expect(c.detail).toMatch(/not (a )?measured|absence/i)
+    })
+
+    it('names the starved lane per source, so the gap is attributable', () => {
+        expect(emptyTimelineCopy('lane_starved', 'country_hourly_no_source_rows_in_window').detail)
+            .toMatch(/hourly/i)
+        expect(emptyTimelineCopy('lane_starved', 'topic_members_no_source_rows_in_window').detail)
+            .toMatch(/membership/i)
+        expect(emptyTimelineCopy('lane_starved', 'person_lane_coverage_unverified').detail)
+            .toMatch(/could not be verified|unverified/i)
+    })
+
+    it('invalid_ref reads as an input error, never as an observation', () => {
+        const c = emptyTimelineCopy('invalid_ref', 'country_code_malformed')
+        expect(c.tone).toBe('error')
+        expect(c.headline).not.toMatch(/activity|quiet|cannot answer/i)
+        expect(c.detail).toMatch(/2-letter/i)
+        expect(emptyTimelineCopy('invalid_ref', 'person_ref_unmatchable').detail)
+            .toMatch(/letter|digit/i)
+        expect(emptyTimelineCopy('invalid_ref', 'empty_ref').detail).toMatch(/empty/i)
+        expect(emptyTimelineCopy('invalid_ref', 'ref_too_long').detail).toMatch(/long/i)
+    })
+
+    it('keeps the existing thread + fallback reasons intact', () => {
+        expect(emptyTimelineCopy('topic_not_found').headline).toMatch(/thread type/i)
+        expect(emptyTimelineCopy('db_unavailable').tone).toBe('gap')
+        expect(emptyTimelineCopy(undefined).headline).toMatch(/no data|no timeline/i)
+    })
+})
