@@ -53,6 +53,39 @@ describe('extractFigure', () => {
     expect(extractFigure('Rescue operations continue in the capital')).toBeNull()
     expect(extractFigure('')).toBeNull()
   })
+
+  // corroborate-v2 F1 — the locale mirror of the backend's _parse_figure_token
+  // (corroboration.py). Council C-N17: Indonesian "1.700" read as 1.7 made the
+  // best match the top contradiction. Both ends must parse a toll identically.
+  it('parses dot-grouped thousands under a comma-decimal source language', () => {
+    expect(extractFigure('1.700 orang tewas', 'id')).toBe(1700)
+    expect(extractFigure('1.700 muertos', 'es')).toBe(1700)
+    expect(extractFigure('magnitud 7,6', 'es')).toBeCloseTo(7.6)
+  })
+
+  it('keeps en-default behavior without a lang', () => {
+    expect(extractFigure('1,700 dead')).toBe(1700)
+    expect(extractFigure('magnitude 7.6')).toBeCloseTo(7.6)
+    expect(extractFigure('1.700 dead')).toBeCloseTo(1.7) // unknown lang: conservative
+  })
+
+  it('parses unambiguous multi-group numbers in any lang', () => {
+    expect(extractFigure('1.234.567 affected')).toBe(1234567)
+    expect(extractFigure('1.234.567,89', 'de')).toBeCloseTo(1234567.89)
+    expect(extractFigure('1,234,567.89 total')).toBeCloseTo(1234567.89)
+    expect(extractFigure('1,234,567 affected')).toBe(1234567)
+  })
+
+  it('normalizes the lang tag (case + region subtag) like the backend', () => {
+    expect(extractFigure('1.700 mortos', 'PT-BR')).toBe(1700)
+    expect(extractFigure('1.700 dead', 'EN-GB')).toBeCloseTo(1.7)
+  })
+
+  it('is unchanged for a 1-arg call — every existing call site keeps its result', () => {
+    expect(extractFigure('Venezuela quake toll rises to 4,734 dead')).toBe(4734)
+    expect(extractFigure('At least 312 killed in the floods')).toBe(312)
+    expect(extractFigure('4,734 dead and 12,000 displaced')).toBe(4734)
+  })
 })
 
 describe('formatFigure', () => {
@@ -132,6 +165,33 @@ describe('buildClaimTable', () => {
     // No wire/official outlet backs either contested figure.
     expect(rows.every(r => r.officialSourcePresent === false)).toBe(true)
     expect(rows.every(r => r.official === false)).toBe(true)
+  })
+
+  it("reads each receipt's figure in ITS OWN source language (corroborate-v2 F1)", () => {
+    // Same toll, two locales. Before the mirror, the Indonesian receipt read
+    // 1.7 and the pair looked like a contradiction of three orders of magnitude.
+    const idCite = cite({
+      id: 'cite:id', headline: '1.700 orang tewas akibat gempa',
+      source: 'Kompas', sourceLang: 'id',
+    })
+    const enCite = cite({
+      id: 'cite:en', headline: '1,700 dead in Sulawesi quake',
+      source: 'Reuters', sourceLang: 'en',
+    })
+    const claims: Claim[] = [
+      makeClaim({ investigationId: 'inv-1', citationIdA: 'cite:id', citationIdB: 'cite:en', relation: 'CORROBORATES' }, 'x'),
+    ]
+    const rows = buildClaimTable([idCite, enCite], claims)
+    expect(rows.map(r => r.figure)).toEqual([1700, 1700])
+  })
+
+  it('falls back to the conservative parse when a receipt carries no source language', () => {
+    const noLang = cite({ id: 'cite:nl', headline: '1.700 dead', source: 'Unknown Outlet' })
+    const claims: Claim[] = [
+      makeClaim({ investigationId: 'inv-1', citationIdA: 'cite:nl', citationIdB: null, relation: 'CONTEXT', typedValue: { figure: 1700, label: 'official' } }, 'x'),
+    ]
+    const rows = buildClaimTable([noLang], claims)
+    expect(rows.find(r => r.outlet === 'Unknown Outlet')!.figure).toBeCloseTo(1.7)
   })
 
   it('marks official source present once a wire outlet is in the claim', () => {
