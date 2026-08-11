@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { getPageLanguage, usePageLanguage } from '../lib/pageLanguage';
 
 /**
  * Instagram-style headline translation. A signal is stored in its ORIGINAL
@@ -9,12 +10,11 @@ import React, { useEffect, useRef, useState } from 'react';
  *
  * Translation is fetched lazily from /api/v2/translate (DeepSeek-backed,
  * cached server-side in signal_translations) and memoized per (id, lang) here.
+ *
+ * Target language = the page-language setting (Settings → Page Language;
+ * defaults to the browser language) via usePageLanguage() — changing it in
+ * Settings re-targets every mounted headline without a reload.
  */
-
-// Viewer's target language (ISO 639-1 base). Browser language, default 'en'.
-const TARGET_LANG = (typeof navigator !== 'undefined'
-    ? (navigator.language || 'en')
-    : 'en').slice(0, 2).toLowerCase();
 
 const LABELS: Record<string, { original: string; translation: string; translating: string }> = {
     es: { original: 'Ver original', translation: 'Ver traducción', translating: 'Traduciendo…' },
@@ -22,7 +22,7 @@ const LABELS: Record<string, { original: string; translation: string; translatin
     pt: { original: 'Ver original', translation: 'Ver tradução', translating: 'Traduzindo…' },
     fr: { original: "Voir l'original", translation: 'Voir la traduction', translating: 'Traduction…' },
 };
-const L = LABELS[TARGET_LANG] || LABELS.en;
+const labelsFor = (lang: string) => LABELS[lang] || LABELS.en;
 
 // Process-lifetime memo so repeat renders / re-opens don't re-fetch.
 const memo = new Map<string, string>();
@@ -40,7 +40,11 @@ function isClearlyNonEnglish(text: string): boolean {
     return stripped.length > 0 && !/^[\x00-\x7F]*$/.test(stripped);
 }
 
-export function shouldTranslate(sourceLang: string | null | undefined, original: string): boolean {
+export function shouldTranslate(
+    sourceLang: string | null | undefined,
+    original: string,
+    targetLang: string = getPageLanguage(),
+): boolean {
     const s = (sourceLang || '').slice(0, 2).toLowerCase();
     // 'xx'/'un'/'und'/empty = unknown source (GDELT feed). We used to bail here,
     // which silently broke the "translated into your language" promise for the
@@ -52,7 +56,7 @@ export function shouldTranslate(sourceLang: string | null | undefined, original:
     // English-ASCII text stays plain (no wasted call, no loop).
     const unknown = !s || s === 'xx' || s === 'un' || s === 'und';
     if (unknown) return isClearlyNonEnglish(original);
-    return s !== TARGET_LANG;
+    return s !== (targetLang || '').slice(0, 2).toLowerCase();
 }
 
 interface Props {
@@ -91,19 +95,26 @@ export interface TranslatableHeadlineState {
 }
 
 export function useTranslatableHeadline({ signalId, original, sourceLang }: Props): TranslatableHeadlineState {
-    const eligible = shouldTranslate(sourceLang, original);
-    const cacheKey = `${signalId}:${TARGET_LANG}`;
+    const targetLang = usePageLanguage();
+    const L = labelsFor(targetLang);
+    const eligible = shouldTranslate(sourceLang, original, targetLang);
+    const cacheKey = `${signalId}:${targetLang}`;
     const [translated, setTranslated] = useState<string | null>(() => memo.get(cacheKey) ?? null);
     const [showOriginal, setShowOriginal] = useState(false);
     const [loading, setLoading] = useState(false);
     const abortRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        if (!eligible || memo.has(cacheKey)) return;
+        // cacheKey changes in place when the page language changes (Settings):
+        // adopt the new language's cached translation, or clear and re-fetch.
+        const cached = memo.get(cacheKey);
+        if (cached !== undefined) { setTranslated(cached); return; }
+        setTranslated(null);
+        if (!eligible) return;
         const controller = new AbortController();
         abortRef.current = controller;
         setLoading(true);
-        fetch(`/api/v2/translate?signal_id=${signalId}&to=${TARGET_LANG}`, { signal: controller.signal })
+        fetch(`/api/v2/translate?signal_id=${signalId}&to=${targetLang}`, { signal: controller.signal })
             .then(r => (r.ok ? r.json() : null))
             .then((d: { translated?: string } | null) => {
                 const t = d?.translated?.trim();
@@ -115,7 +126,7 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
             .catch(() => { /* silent — fall back to original */ })
             .finally(() => setLoading(false));
         return () => controller.abort();
-    }, [eligible, cacheKey, signalId, original]);
+    }, [eligible, cacheKey, signalId, original, targetLang]);
 
     const display = translated && !showOriginal ? translated : original;
     const flag = showOriginal || !translated;
