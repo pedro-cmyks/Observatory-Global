@@ -37,6 +37,8 @@ import {
     type TimelineBucket,
     type SubjectSeries,
 } from '../lib/focusTimelineLayout'
+import { fetchWithTimeout } from '../lib/fetchWithTimeout'
+import { FOCUS_TIMEOUT_MS } from '../lib/focusLoadingState'
 import './FocusTimeline.css'
 
 // avg_sentiment arrives on roughly the ±1 scale the rest of the panel uses
@@ -125,7 +127,12 @@ export function FocusTimeline({
             hours: String(hours), granularity,
         })
         if (focusType) params.set('focus_type', focusType)
-        fetch(`/api/v2/focus/${encodeURIComponent(focusRef)}/timeline?${params}`, { signal: ctrl.signal })
+        // N26: cleanup-only controller bounded nothing — it cancels a STALE
+        // request on focus change but leaves a HUNG one holding the skeleton.
+        // The backend bounds each CHANNEL (C4a statement_timeouts); this
+        // bounds the request.
+        fetchWithTimeout(`/api/v2/focus/${encodeURIComponent(focusRef)}/timeline?${params}`,
+            { timeoutMs: FOCUS_TIMEOUT_MS, parentSignal: ctrl.signal })
             // A 400 here is a REASONED refusal (invalid_ref) whose body is a
             // normal timeline payload. Dropping it into the generic
             // "unavailable" branch would hide the input error behind the same
@@ -152,8 +159,8 @@ export function FocusTimeline({
         const since = data.buckets[0]?.bucket_start
         if (!since) return
         const ctrl = new AbortController()
-        fetch(`/api/v2/focus/${encodeURIComponent(focusRef)}/edge-diff?since=${encodeURIComponent(since)}`,
-            { signal: ctrl.signal })
+        fetchWithTimeout(`/api/v2/focus/${encodeURIComponent(focusRef)}/edge-diff?since=${encodeURIComponent(since)}`,
+            { timeoutMs: FOCUS_TIMEOUT_MS, parentSignal: ctrl.signal })
             .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
             .then((d: EdgeDiffResponse) => setDiff(d))
             .catch(() => { /* diff is enrichment; its absence is not an error */ })
