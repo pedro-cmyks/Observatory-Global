@@ -63,20 +63,25 @@ from app.services.country_edition import (
 # widens — see app/services/thread_intelligence.query_timeout.
 DEFAULT_QUERY_TIMEOUT_S = 120
 
-# Wall clock for the whole run. MEASURED 2026-08-11 from the M1: 65s per door
-# sequential (CO 65.7 / JP 61.8 / US 67.5) — the scoped query is only ~20s of
-# that; the rest is per-topic round-trips over the WAN. At concurrency 3 the
-# same doors cost 28.3s each of wall clock (6 doors in 169.9s), so today's
-# ~66-door selection lands near 31 min and 40 min leaves real headroom for a
-# slower night. When a night is slower STILL, the run stops ON the budget with
-# the head already warm, and every skipped door is named in the receipt.
+# Wall clock for the whole run. MEASURED on the first full seed (2026-08-11,
+# M1 -> prod, daytime with an autovacuum ANALYZE on signals_v2 running, ingest
+# writing and the NLP fleet draining): 66 doors in 976s = 14.8s/door at
+# concurrency 3, 0 failed, 0 skipped.
+#
+# The cost is wildly UNEVEN, which is why this is a clock and not a count. The
+# head is expensive and gets more so under contention (IT 288.9s / TR 283.0s /
+# CO 264.2s / RU 171.5s), while the tail is nearly free (HR 1.1s, XK 1.0s,
+# AT 1.7s — small countries with few scoped topics). Head-first ordering plus
+# this budget is what makes a bad night degrade gracefully: 40 minutes is ~2.5x
+# the measured full run, and a night slow enough to exhaust it stops with the
+# HEAD already warm and every skipped door named in the receipt.
 DEFAULT_MAX_SECONDS = 2400
 
 # Doors composed in parallel. This overlaps LATENCY, not work: most of a door's
-# 65s is round-trip time on per-topic fetches, not database CPU. Kept low
-# because the step shares the nightly mutex with the rest of the chain and the
-# Supabase instance is the same one whose pressure caused N26 in the first
-# place.
+# cost is round-trip time on per-topic fetches, not database CPU (measured
+# 2.3x throughput at 3). Kept low because the step shares the nightly mutex
+# with the rest of the chain and the Supabase instance is the same one whose
+# pressure caused N26 in the first place.
 DEFAULT_CONCURRENCY = 3
 
 

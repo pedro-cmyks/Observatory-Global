@@ -32,6 +32,21 @@ export interface CountryEditionEnrichment {
   note?: string
 }
 
+/** Provenance of a PRECOMPUTED edition (council R4 N26). Present only when the
+ *  door was served from the nightly artifact rather than built in-request. */
+export interface CountryEditionArtifact {
+  contract?: string
+  source?: string
+  generated_at?: string
+  age_hours?: number
+  stale?: boolean
+  max_age_hours?: number
+  build_seconds?: number | null
+  selection_reason?: string | null
+  degraded?: boolean
+  degraded_reason?: string
+}
+
 export interface CountryEdition {
   contract: 'country-edition-v0'
   country: string
@@ -43,6 +58,30 @@ export interface CountryEdition {
   threads: Array<Record<string, unknown>>
   coverage_gaps: CountryGap[]
   article_enrichment: CountryEditionEnrichment | null
+  artifact?: CountryEditionArtifact | null
+}
+
+/** The one line that keeps a precomputed door honest: how old the edition on
+ *  screen actually is. Returns null for a live build (nothing to disclose) and
+ *  for an artifact under an hour old (the vitals beside it say "last 24h";
+ *  a 12-minute-old build does not contradict that).
+ *
+ *  A STALE artifact always speaks, whatever the age reads: it means the live
+ *  rebuild could not answer, so the reader is looking at the last build Atlas
+ *  managed — not at today. */
+export function editionAgeNote(artifact?: CountryEditionArtifact | null): string | null {
+  if (!artifact || typeof artifact.age_hours !== 'number') return null
+  const hours = artifact.age_hours
+  const stale = artifact.stale === true || artifact.degraded === true
+  if (!stale && hours < 1) return null
+  const when = hours < 1
+    ? 'less than an hour ago'
+    : hours < 24
+      ? `${Math.round(hours)}h ago`
+      : `${Math.round(hours / 24)}d ago`
+  return stale
+    ? `Assembled ${when} — serving the last edition Atlas could build`
+    : `Assembled ${when}`
 }
 
 export type CountrySectionKind =
