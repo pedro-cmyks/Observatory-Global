@@ -70,6 +70,42 @@ FLAGGED = {
     "naturalnews.com": "documented health-misinformation network",
 }
 
+# Council R4 N18 (P0, filed three times — R3-1, chip 5560dc0d review, R4):
+# the SEALED edition stamped SANA/Xinhua/1tv.ru `tier:"mainstream",
+# is_state_media:false` because tier-5 only fired on the ingest flag, which
+# the GDELT lane never carries — an asserted False where R3-1 had an honest
+# null. This list is the frontend sourceTiers.ts STATE_DOMAINS ported (the
+# two lists must not drift: screen and sealed payload DISAGREED live), plus
+# 1tv.ru which even the frontend list missed. State = PERSPECTIVE label,
+# never a falsity claim (same rule as the flag path below).
+STATE = {
+    "rt.com": "Russian state broadcaster",
+    "sputniknews.com": "Russian state media network",
+    "sputnikglobe.com": "Russian state media network",
+    "tass.com": "Russian state wire",
+    "tass.ru": "Russian state wire",
+    "ria.ru": "Russian state wire",
+    "1tv.ru": "Russian state Channel One",
+    "xinhuanet.com": "Chinese state wire",
+    "news.cn": "Chinese state wire (Xinhua)",
+    "cgtn.com": "Chinese state broadcaster",
+    "globaltimes.cn": "Chinese state tabloid",
+    "people.com.cn": "Chinese party organ",
+    "chinadaily.com.cn": "Chinese state daily",
+    "cctv.com": "Chinese state broadcaster",
+    "presstv.ir": "Iranian state broadcaster",
+    "irna.ir": "Iranian state wire",
+    "tasnimnews.com": "Iranian state-affiliated agency",
+    "mehrnews.com": "Iranian state-affiliated agency",
+    "trtworld.com": "Turkish state broadcaster",
+    "aa.com.tr": "Turkish state wire (Anadolu)",
+    "kcna.kp": "North Korean state agency",
+    "granma.cu": "Cuban party organ",
+    "prensa-latina.cu": "Cuban state wire",
+    "telesurtv.net": "Venezuelan-led state network",
+    "sana.sy": "Syrian state wire",
+}
+
 TIER_LABELS = {
     1: "reference", 2: "wire", 3: "mainstream",
     4: "unknown", 5: "state", 6: "flagged",
@@ -112,6 +148,9 @@ def classify_source_tier(
     for d, why in WIRE.items():
         if dom == d or dom.endswith("." + d):
             return SourceTier(2, TIER_LABELS[2], why)
+    for d, why in STATE.items():
+        if dom == d or dom.endswith("." + d):
+            return SourceTier(5, TIER_LABELS[5], why)
     if is_state_media or (source_family or "") == "state":
         return SourceTier(5, TIER_LABELS[5],
                           "state-controlled or state-affiliated outlet "

@@ -586,6 +586,14 @@ async def fetch_daily_publication(
                     is_state_media=row["is_state_media"],
                     source_family=row.get("source_family"),
                 ).label
+                # R4 N18: the GDELT lane carries no ingest flag, so SANA sealed
+                # `tier:"mainstream", is_state_media:false` while the article
+                # prose said "Syrian state media". The classifier now carries
+                # the domain list; the boolean must AGREE with the tier it
+                # rides next to — one payload, one truth. Upgrade-only (a
+                # true ingest flag is never un-set).
+                if row["credibility_tier"] == "state":
+                    row["is_state_media"] = True
                 evidence_counts[topic_id] = evidence_counts.get(topic_id, 0) + 1
                 source = row.get("source_name")
                 if source:
