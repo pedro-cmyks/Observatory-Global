@@ -274,7 +274,13 @@ def _text_cache_key(text: str, target_lang: str) -> str:
 
 
 class TranslateTextRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=300)
+    # 600, not 300: the FROM THE SOURCE excerpts are capped at
+    # EXCERPT_MAX_CHARS=420 (article_fetch.py) and the 300 bound silently
+    # 422'd every excerpt over it — the client renders the original on any
+    # non-200, so long Russian/Arabic quotes never translated (Pedro's
+    # 2026-08-11 prod walk). 600 covers the excerpt cap with margin while
+    # still refusing article-length payloads.
+    text: str = Field(..., min_length=1, max_length=600)
     target_lang: str = Field(..., min_length=2, max_length=2)
 
 

@@ -2,7 +2,8 @@
 
 Thread/topic LABELS have no signal_id, so the signal-bound
 GET /api/v2/translate cache can't serve them. This endpoint translates a
-short free text (<=300 chars) with a Redis cache keyed by
+short free text (<=600 chars — sized to clear the 420-char FROM THE SOURCE
+excerpt cap) with a Redis cache keyed by
 sha1(text + "|" + target_lang) and NEVER 500s: on provider failure it
 degrades to the original text with `degraded: true`.
 
@@ -148,9 +149,32 @@ def test_translation_result_html_unescaped(monkeypatch):
     assert r.json()["same"] is False
 
 
-def test_422_on_text_over_300_chars():
-    r = client.post(URL, json={"text": "x" * 301, "target_lang": "en"})
+def test_422_on_text_over_600_chars():
+    r = client.post(URL, json={"text": "x" * 601, "target_lang": "en"})
     assert r.status_code == 422
+
+
+def test_accepts_full_length_excerpt(monkeypatch):
+    # EXCERPT_MAX_CHARS=420 (article_fetch.py): a max-length FROM THE SOURCE
+    # excerpt must clear validation — the old 300 bound 422'd every excerpt
+    # over it and the client silently kept the original (untranslated quotes).
+    fake = FakeRedis()
+    monkeypatch.setattr(translate_mod, "_redis", lambda: fake)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+
+    captured: dict[str, str] = {}
+
+    async def _translator(client_, text_, target_lang_, api_key_):
+        captured["input"] = text_
+        return "translated excerpt"
+
+    monkeypatch.setattr(translate_mod, "_deepseek_translate", _translator)
+
+    r = client.post(URL, json={"text": "и" * 420, "target_lang": "en"})
+
+    assert r.status_code == 200
+    assert r.json()["translated"] == "translated excerpt"
+    assert len(captured["input"]) == 420
 
 
 def test_422_on_bad_target_lang():
