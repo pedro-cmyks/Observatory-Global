@@ -48,3 +48,24 @@ def test_family_fallbacks():
 def test_payload_shape():
     p = tier_payload("reuters.com")
     assert set(p) == {"tier", "label", "provenance"} and p["tier"] == 2
+
+
+def test_ownership_group_state_outlets_share_group():
+    from app.services.source_tiers import ownership_group
+    assert ownership_group("ria.ru") == "state:ru"
+    assert ownership_group("tass.com") == "state:ru"
+    assert ownership_group("https://www.rt.com/news/x") == "state:ru"
+    assert ownership_group("xinhuanet.com") == "state:cn"
+    assert ownership_group("presstv.ir") == "state:ir"
+
+
+def test_ownership_group_none_for_independent_press():
+    from app.services.source_tiers import ownership_group
+    assert ownership_group("cnn.com") is None
+    assert ownership_group("reuters.com") is None
+    assert ownership_group(None) is None
+
+
+def test_state_groups_cover_exactly_the_state_dict():
+    from app.services.source_tiers import STATE, STATE_GROUPS
+    assert set(STATE_GROUPS) == set(STATE)
