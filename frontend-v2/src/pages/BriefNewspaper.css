@@ -973,6 +973,33 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
 
 .brief-theme-link:hover { text-decoration: underline; }
 
+/* Section-level Translate-all / Show-originals control (below the headline /
+   court-chip row of a thread section). Drives every translatable child in the
+   section; per-item "See original" toggles still override it. */
+.brief-translate-row {
+  margin: 2px 0 8px;
+}
+
+.brief-translate-all {
+  appearance: none;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--r-line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: var(--r-sans);
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--r-muted);
+}
+
+.brief-translate-all:hover {
+  color: var(--r-sec);
+  border-color: var(--r-sec);
+}
+
 /* ---------- SPARKLINE ---------- */
 
 .brief-spark {
@@ -2183,5 +2210,13 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
     }
     .brief-page button.reader-chip {
         min-height: 44px;
+    }
+    /* Section translate control joins the 44px tap floor (same rationale as
+       .brief-theme-link above — a phone-first affordance, Pedro 2026-08-11). */
+    .brief-translate-all {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 14px;
     }
 }

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getPageLanguage, usePageLanguage } from '../lib/pageLanguage';
+import { resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
+import { useSectionTranslation } from './TranslatedSection';
 
 /**
  * Instagram-style headline translation. A signal is stored in its ORIGINAL
@@ -26,6 +28,29 @@ const labelsFor = (lang: string) => LABELS[lang] || LABELS.en;
 
 // Process-lifetime memo so repeat renders / re-opens don't re-fetch.
 const memo = new Map<string, string>();
+
+// One fetch shape for the initial lane and the section-Translate retry lane —
+// resolves the translation (memoized) or null; echoes of the original are
+// dropped so a no-op never shows a toggle.
+function fetchSignalTranslation(
+    signalId: number,
+    targetLang: string,
+    original: string,
+    cacheKey: string,
+    signal: AbortSignal,
+): Promise<string | null> {
+    return fetch(`/api/v2/translate?signal_id=${signalId}&to=${targetLang}`, { signal })
+        .then(r => (r.ok ? r.json() : null))
+        .then((d: { translated?: string } | null) => {
+            const t = d?.translated?.trim();
+            if (t && t.toLowerCase() !== original.trim().toLowerCase()) {
+                memo.set(cacheKey, t);
+                return t;
+            }
+            return null;
+        })
+        .catch(() => null); // silent — fall back to original
+}
 
 // Typographic punctuation that is technically non-ASCII but says nothing about
 // the language (curly quotes, dashes, ellipsis, the middot separator).
@@ -100,9 +125,16 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
     const eligible = shouldTranslate(sourceLang, original, targetLang);
     const cacheKey = `${signalId}:${targetLang}`;
     const [translated, setTranslated] = useState<string | null>(() => memo.get(cacheKey) ?? null);
-    const [showOriginal, setShowOriginal] = useState(false);
     const [loading, setLoading] = useState(false);
     const abortRef = useRef<AbortController | null>(null);
+
+    // Per-item toggle rides ON TOP of the enclosing section's mode (default
+    // context when no <TranslatedSection> above — behavior unchanged). null =
+    // follow the section; a click overrides until the next section action.
+    const { mode, epoch } = useSectionTranslation();
+    const [localOriginal, setLocalOriginal] = useState<boolean | null>(null);
+    useEffect(() => { setLocalOriginal(null); }, [mode, epoch]);
+    const showOriginal = resolveShowOriginal(localOriginal, mode);
 
     useEffect(() => {
         // cacheKey changes in place when the page language changes (Settings):
@@ -114,19 +146,23 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
         const controller = new AbortController();
         abortRef.current = controller;
         setLoading(true);
-        fetch(`/api/v2/translate?signal_id=${signalId}&to=${targetLang}`, { signal: controller.signal })
-            .then(r => (r.ok ? r.json() : null))
-            .then((d: { translated?: string } | null) => {
-                const t = d?.translated?.trim();
-                if (t && t.toLowerCase() !== original.trim().toLowerCase()) {
-                    memo.set(cacheKey, t);
-                    setTranslated(t);
-                }
-            })
-            .catch(() => { /* silent — fall back to original */ })
+        fetchSignalTranslation(signalId, targetLang, original, cacheKey, controller.signal)
+            .then(t => { if (t) setTranslated(t); })
             .finally(() => setLoading(false));
         return () => controller.abort();
     }, [eligible, cacheKey, signalId, original, targetLang]);
+
+    // Explicit section Translate: retry a fetch that failed or was aborted
+    // (failures are never memoized here, so this is a plain re-ask).
+    useEffect(() => {
+        if (!shouldRetryFetch({ mode, epoch }) || !eligible || translated) return;
+        const controller = new AbortController();
+        setLoading(true);
+        fetchSignalTranslation(signalId, targetLang, original, cacheKey, controller.signal)
+            .then(t => { if (t) setTranslated(t); })
+            .finally(() => setLoading(false));
+        return () => controller.abort();
+    }, [mode, epoch, eligible, cacheKey, signalId, original, targetLang, translated]);
 
     const display = translated && !showOriginal ? translated : original;
     const flag = showOriginal || !translated;
@@ -143,7 +179,7 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
         toggleLabel: showOriginal ? L.translation : L.original,
         toggleTip: flag ? `Original (${(sourceLang || '').toUpperCase()})` : 'Translated',
         translatingLabel: L.translating,
-        toggle: () => setShowOriginal(v => !v),
+        toggle: () => setLocalOriginal(!showOriginal),
     };
 }
 

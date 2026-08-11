@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { shouldTranslate } from '../lib/translatableText';
 import { usePageLanguage } from '../lib/pageLanguage';
+import { resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
+import { useSectionTranslation } from './TranslatedSection';
 import './TranslatableText.css';
 
 /**
@@ -130,7 +132,23 @@ export function useTranslatableText(text: string): TranslatableTextState {
         if (s !== undefined) { memo.set(cacheKey, s); return s; }
         return null;
     });
-    const [showOriginal, setShowOriginal] = useState(false);
+    // Per-item toggle rides ON TOP of the enclosing section's mode (default
+    // context when no <TranslatedSection> above — behavior unchanged). null =
+    // follow the section; a click overrides until the next section action.
+    const { mode, epoch } = useSectionTranslation();
+    const [localOriginal, setLocalOriginal] = useState<boolean | null>(null);
+    useEffect(() => { setLocalOriginal(null); }, [mode, epoch]);
+    const showOriginal = resolveShowOriginal(localOriginal, mode);
+
+    // Explicit section Translate: retry even a memoized failure/no-op (the
+    // degraded pin) — the server Redis cache answers genuine no-ops cheaply.
+    useEffect(() => {
+        if (!shouldRetryFetch({ mode, epoch }) || !eligible || translated) return;
+        memo.delete(cacheKey);
+        let alive = true;
+        fetchTranslation(text, cacheKey, targetLang).then(t => { if (alive && t) setTranslated(t); });
+        return () => { alive = false; };
+    }, [mode, epoch, eligible, cacheKey, text, targetLang, translated]);
 
     useEffect(() => {
         // cacheKey changes in place when the page language changes (Settings):
@@ -157,7 +175,7 @@ export function useTranslatableText(text: string): TranslatableTextState {
         hasToggle: eligible && !!translated,
         toggleLabel: showOriginal ? L.translation : L.original,
         toggleTip: showOriginal ? 'Translated' : 'Original',
-        toggle: () => setShowOriginal(v => !v),
+        toggle: () => setLocalOriginal(!showOriginal),
     };
 }
 
