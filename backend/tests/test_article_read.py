@@ -268,6 +268,131 @@ async def test_cross_read_gates_syndication_end_to_end(monkeypatch):
     assert out["findings"][0]["kind"] == "shared_source"
 
 
+# ── attribution + quote overlap (corroborate-v2 R2, G-HAARETZ) ───────────────
+# Byte-identity catches SYNDICATION. This catches DERIVATION: three rewrites of
+# one Haaretz report have different bodies, headlines and mastheads — every
+# existing check passes them — while their own quotes say "according to
+# Haaretz". They are one voice, not "2 independent sources".
+
+def test_attributed_outlet_detects_media_attribution():
+    from app.services.article_read import attributed_outlet
+    quotes = [
+        "According to Haaretz, the meeting took place on Sunday.",
+        "The plan was first drafted in May, according to Haaretz.",
+    ]
+    assert attributed_outlet(quotes) == "haaretz"
+
+
+def test_attributed_outlet_ignores_non_media():
+    from app.services.article_read import attributed_outlet
+    assert attributed_outlet(["According to officials, the toll rose."]) is None
+    assert attributed_outlet(["según las autoridades, hubo daños"]) is None
+    assert attributed_outlet([]) is None
+
+
+def test_attributed_outlet_spanish_and_german():
+    from app.services.article_read import attributed_outlet
+    assert attributed_outlet(["Según Haaretz, la reunión ocurrió el domingo."]) == "haaretz"
+    assert attributed_outlet(["Wie Bild berichtete, begann der Einsatz früh."]) == "bild"
+
+
+def test_g_haaretz_three_rewrites_one_primary_source():
+    """G-HAARETZ (spec pre-registered): three rewrites of one Haaretz report,
+    each attributing to Haaretz, are ONE voice — not '2 independent sources'."""
+    from app.services.article_read import articles_independent
+    a = {"outlet_root": "sitea.com", "wire_sig": "meeting plan drafted may",
+         "content_hash": "h1", "derivative_of": "haaretz"}
+    b = {"outlet_root": "siteb.net", "wire_sig": "secret plan meeting sunday",
+         "content_hash": "h2", "derivative_of": "haaretz"}
+    indep, reason = articles_independent(a, b)
+    assert indep is False and reason == "same_primary_source"
+
+
+def test_derivative_of_the_other_articles_masthead():
+    from app.services.article_read import articles_independent
+    a = {"outlet_root": "haaretz.com", "wire_sig": "x", "content_hash": "h1",
+         "derivative_of": None}
+    b = {"outlet_root": "siteb.net", "wire_sig": "y", "content_hash": "h2",
+         "derivative_of": "haaretz"}
+    indep, reason = articles_independent(a, b)
+    assert indep is False and reason == "same_primary_source"
+
+
+def test_quote_overlap_same_primary():
+    from app.services.article_read import quote_overlap
+    q1 = ["The strike was carried out at dawn near the northern crossing point",
+          "We had no warning whatsoever before the explosions began that morning"]
+    q2 = ["Officials said the strike was carried out at dawn near the northern crossing point",
+          "A resident said: We had no warning whatsoever before the explosions began that morning"]
+    assert quote_overlap(q1, q2) >= 0.6
+
+
+def test_quote_overlap_distinct_reporting():
+    from app.services.article_read import quote_overlap
+    q1 = ["The strike was carried out at dawn near the northern crossing point"]
+    q2 = ["Hospitals reported forty arrivals within the first hour of the incident"]
+    assert quote_overlap(q1, q2) == 0.0
+
+
+def _haaretz_rewrites():
+    """Two derivative rewrites: distinct outlets, distinct headlines, distinct
+    bodies — only their own quotes name the primary source."""
+    readings = {
+        "https://sitea.com/x": {"claims": [
+            {"text": "The meeting happened on Sunday.",
+             "quote": "The meeting took place on Sunday, according to Haaretz.",
+             "attribution": "attributed"}]},
+        "https://siteb.net/y": {"claims": [
+            {"text": "The plan was drafted in May.",
+             "quote": "The plan was first drafted in May, according to Haaretz.",
+             "attribution": "attributed"}]},
+    }
+    sources = {
+        "https://sitea.com/x": {"outlet": "sitea.com", "title": "Sunday meeting revealed",
+                                "content_hash": "h1"},
+        "https://siteb.net/y": {"outlet": "siteb.net", "title": "Secret plan drafted in May",
+                                "content_hash": "h2"},
+    }
+    return readings, sources
+
+
+def test_validate_cross_downgrades_attributed_rewrites():
+    """The gate reads the claims' own quotes off the cross-read table, so every
+    caller of validate_cross gets the attribution check without new plumbing."""
+    readings, sources = _haaretz_rewrites()
+    _, table = ar.build_cross_input(readings, sources)
+    sigs = {u: ar.source_signature(u, sources[u]) for u in sources}
+    parsed = {"findings": [{"kind": "corroboration", "a": "c1", "b": "c2", "note": "both agree"}]}
+    out = ar.validate_cross(parsed, table, sigs)
+    assert len(out) == 1
+    assert out[0]["kind"] == "shared_source"                  # NOT corroboration
+    assert out[0]["independence"]["independent"] is False
+    assert out[0]["independence"]["reason"] == "same_primary_source"
+    assert out[0]["independence"]["label"] == "2 outlets, 1 primary source (attributed)"
+
+
+async def test_cross_read_gates_attributed_rewrites_end_to_end(monkeypatch):
+    readings, sources = _haaretz_rewrites()
+
+    async def fake_read(urls):
+        return readings
+
+    async def fake_sources(urls):
+        return sources
+
+    async def fake_insight(*a, **k):
+        return ('{"findings":[{"kind":"corroboration","a":"c1","b":"c2","note":"agree"}]}',
+                "deepseek", None, {"model": "deepseek-chat"})
+    monkeypatch.setattr(ar, "read_articles", fake_read)
+    monkeypatch.setattr(ar, "article_sources", fake_sources)
+    monkeypatch.setattr(ar, "generate_insight", fake_insight)
+    ar._CROSS_CACHE.clear()
+    out = await ar.cross_read(list(readings.keys()))
+    assert out["independent_corroborations"] == 0
+    assert out["shared_source_findings"] == 1
+    assert out["findings"][0]["independence"]["reason"] == "same_primary_source"
+
+
 # ── leads: entity gates ──────────────────────────────────────────────────────
 
 def test_gather_entities_gates_states_and_invalid_persons():

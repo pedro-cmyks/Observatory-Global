@@ -299,13 +299,16 @@ _INDEPENDENCE_LABEL = {
     "independent": "2 independent sources",
     "same_outlet": "same outlet — not independent",
     "same_wire": "2 outlets, 1 wire source",
+    "same_primary_source": "2 outlets, 1 primary source (attributed)",
+    "shared_quotes": "2 outlets, same underlying quotes",
 }
 
 
 def articles_independent(a: dict, b: dict) -> tuple[bool, str]:
     """Are two source articles independent for corroboration? Returns
     (independent, reason). Byte-identical body OR identical masthead-stripped
-    headline = one wire copy; same registrable outlet = one source; otherwise
+    headline = one wire copy; same registrable outlet = one source; a shared
+    ATTRIBUTED primary or a shared quote set = one voice rewritten; otherwise
     cross-origin = independent."""
     ah, bh = a.get("content_hash"), b.get("content_hash")
     if ah and bh and ah == bh:
@@ -316,7 +319,122 @@ def articles_independent(a: dict, b: dict) -> tuple[bool, str]:
     aw, bw = a.get("wire_sig") or "", b.get("wire_sig") or ""
     if aw and aw == bw:
         return False, "same_wire"          # syndicated: headline identical bar the masthead stamp
+    if same_primary_source(a, b):
+        return False, "same_primary_source"
+    if quote_overlap(a.get("quotes") or [], b.get("quotes") or []) \
+            >= QUOTE_OVERLAP_SAME_PRIMARY:
+        return False, "shared_quotes"
     return True, "independent"
+
+
+# ── Corroborate-v2 R2: paraphrase/attribution independence ───────────────────
+# The C-N18 witness: three REWRITES of one Haaretz report — different bodies,
+# different headlines, so content_hash/wire_sig/outlet_root all pass — whose
+# own quotes say "According to Haaretz". Byte-identity catches syndication;
+# this catches DERIVATION. Layer 1 is regex over the claims' verbatim quotes
+# (cheap, pre-embedding); layer 2 is quote-text overlap. Precision-first:
+# attribution to non-media actors (officials, police, ministries) never fires.
+
+_ATTRIBUTION_RES = [
+    re.compile(r"\b[Aa]ccording to (?:the )?([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,3})"),
+    re.compile(r"\b(?:[Ff]irst )?[Rr]eported by (?:the )?([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,3})"),
+    re.compile(r"\b(?:as )?([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,3}) (?:first )?reported\b"),
+    re.compile(r"\b[Cc]it(?:ing|ed by) ([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,3})"),
+    # es
+    re.compile(r"\b[Ss]egún (?:el diario |la agencia |el portal )?([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,2})"),
+    re.compile(r"\b[Ii]nformó ([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,2})"),
+    re.compile(r"\bcitando a ([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,2})"),
+    # de / fr
+    re.compile(r"\b[Ww]ie ([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,2}) berichtet"),
+    re.compile(r"\b[Ss]elon (?:le |la |l')?([A-Z][\w'’.-]+(?: [A-Z][\w'’.-]+){0,2})"),
+]
+
+# Attributed names that are NOT a press outlet — attribution to these is
+# normal sourcing, not derivation. Lowercased containment check.
+_NON_MEDIA_ATTRIBUTION = frozenset({
+    "officials", "official", "authorities", "police", "army", "military",
+    "government", "ministry", "witnesses", "residents", "sources", "experts",
+    "analysts", "doctors", "hospital", "hospitals", "un", "united nations",
+    "who", "spokesperson", "spokesman", "spokeswoman", "president",
+    "prime minister", "el gobierno", "las autoridades", "la policía",
+    "testigos", "fuentes",
+})
+
+
+def attributed_outlet(quotes: list[str]) -> str | None:
+    """Most-frequent MEDIA name the quotes attribute their content to, or
+    None. Normalized lowercase (matches against outlet_root by containment)."""
+    from collections import Counter
+    names: Counter[str] = Counter()
+    for q in quotes or []:
+        for rx in _ATTRIBUTION_RES:
+            for m in rx.finditer(q or ""):
+                name = re.sub(r"\s+", " ", m.group(1)).strip(" .,'’-").lower()
+                if not name or len(name) < 3:
+                    continue
+                if any(nm in name or name in nm for nm in _NON_MEDIA_ATTRIBUTION):
+                    continue
+                names[name] += 1
+    if not names:
+        return None
+    return names.most_common(1)[0][0]
+
+
+QUOTE_OVERLAP_SAME_PRIMARY = 0.6
+_MIN_QUOTE_CHARS = 40   # short quotes collide by chance
+
+
+def _norm_quote(q: str) -> str:
+    return re.sub(r"[^\w\s]", "", re.sub(r"\s+", " ", (q or "").lower())).strip()
+
+
+def quote_overlap(quotes_a: list[str], quotes_b: list[str]) -> float:
+    """Share of one article's substantial quotes contained in the other's
+    (normalized substring, either direction, over the smaller set). Two
+    'independent' accounts built from the same quote set = one primary."""
+    na = [_norm_quote(q) for q in quotes_a or [] if len(_norm_quote(q)) >= _MIN_QUOTE_CHARS]
+    nb = [_norm_quote(q) for q in quotes_b or [] if len(_norm_quote(q)) >= _MIN_QUOTE_CHARS]
+    if not na or not nb:
+        return 0.0
+    small, big = (na, nb) if len(na) <= len(nb) else (nb, na)
+    hits = sum(1 for q in small if any(q in o or o in q for o in big))
+    return hits / len(small)
+
+
+def same_primary_source(a: dict, b: dict) -> bool:
+    """Both derive from the same named outlet, or one derives from the
+    OTHER's masthead (site B attributing to Haaretz vs haaretz.com itself)."""
+    da, db_ = a.get("derivative_of"), b.get("derivative_of")
+    if da and db_ and da == db_:
+        return True
+    if da and da in (b.get("outlet_root") or ""):
+        return True
+    if db_ and db_ in (a.get("outlet_root") or ""):
+        return True
+    return False
+
+
+def _quotes_by_url(table: dict[str, dict]) -> dict[str, list[str]]:
+    """Every claim's verbatim quote, grouped by article. The cross-read table
+    already carries the quote-gated text, so the attribution/overlap signals
+    read it there — no caller has to plumb quotes into the signatures."""
+    by_url: dict[str, list[str]] = {}
+    for c in table.values():
+        url = c.get("url")
+        if url:
+            by_url.setdefault(url, []).append(str(c.get("quote") or ""))
+    return by_url
+
+
+def _with_quotes(sig: dict, quotes: list[str] | None) -> dict:
+    """Signature + the article's own quotes and the outlet they attribute to.
+    Kept out of source_signature because attribution is a property of the READ
+    (the claims), not of the fetched page metadata. Never mutates the caller's
+    signature; a signature that already carries quotes is left alone."""
+    if sig.get("quotes") is not None:
+        return sig
+    qs = list(quotes or [])
+    return {**sig, "quotes": qs, "derivative_of": attributed_outlet(qs)}
 
 
 # ── Cross-read ───────────────────────────────────────────────────────────────
@@ -367,8 +485,14 @@ def validate_cross(
     that is one source echoing itself, not two sources converging. Every
     corroboration/shared_source finding carries an `independence` block so the
     distinction is honest ('2 independent sources' vs '2 outlets, 1 wire
-    source'). Tensions are left untouched."""
+    source'). Tensions are left untouched.
+
+    R2 extends the gate past byte-identity to DERIVATION: each signature is
+    enriched with its article's own quotes (off `table`) and the media outlet
+    those quotes attribute to, so three rewrites of one report read as one
+    voice instead of independent corroboration."""
     sigs = sigs or {}
+    quotes_by_url = _quotes_by_url(table)
     out = []
     for f in (parsed.get("findings") or [])[:8]:
         if not isinstance(f, dict):
@@ -386,8 +510,9 @@ def validate_cross(
             "note": str(f.get("note") or "")[:400],
         }
         if kind == "corroboration":
-            sa = sigs.get(table[a]["url"]) or source_signature(table[a]["url"], None)
-            sb = sigs.get(table[b]["url"]) or source_signature(table[b]["url"], None)
+            ua, ub = table[a]["url"], table[b]["url"]
+            sa = _with_quotes(sigs.get(ua) or source_signature(ua, None), quotes_by_url.get(ua))
+            sb = _with_quotes(sigs.get(ub) or source_signature(ub, None), quotes_by_url.get(ub))
             indep, reason = articles_independent(sa, sb)
             finding["independence"] = {
                 "independent": indep,
