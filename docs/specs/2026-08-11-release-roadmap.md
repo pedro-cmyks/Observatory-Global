@@ -66,7 +66,7 @@ landing→lens (reloj de condenación) · relabel-de-stock (baseline 65.4%).
 de UI). Ninguna bloquea release técnico; #262 sí bloquea cuentas-para-todos.
 
 ## 3 · Los relojes (corren solos)
-Condenación cada 3 noches (próx. ~08-09… atrasada: correr YA y re-agendar) ·
+Condenación cada 3 noches (run-3 HOY 08-11: 33.3%; próx. ~08-14) ·
 re-censo cohorte fresca (leones activos) · sello nocturno con N18+conjunct ·
 gold día-7 (persistencia-como-estado, 3er par).
 
