@@ -36,14 +36,27 @@ medida ±1 nivel. Wedge (dossier): "casi pasa el test de Frank" (NIVELES).
 
 ## 2 · La definición de release (lo que falta, TODO enumerado)
 
-### 2a · Confiabilidad (el bloque real restante — R4 P1s de fiabilidad)
-1. **N26 — la puerta país 503ea fría en día de noticia** (2×/3 en CO el día
-   del terremoto). Warm-build como la daily edition (el patrón universe/091).
-2. **N19 — "24h" estampado sobre conteos lifetime** (88→3,659 un click
-   adentro; la clase N8 residual). Una decisión de contrato + render.
-3. **Lanes que cuelgan sin degradar**: /focus persona 45-120s skeleton mudo;
-   corroborate doc20 throttled 3 rondas; research-plan caído-honesto.
-4. **N23 — timeline fabrica ausencia** ('no_activity' de un lane hambreado).
+### 2a · Confiabilidad — ✅ CERRADO 2026-08-11 (Tren A, 4 agentes, mismo día)
+1. ~~**N26** puerta país fría 503~~ → warm-build mig 098: 66 puertas (top-50
+   volumen + 16 por anomalía vía country_heat_v2), CO/JP/US fríos 503→1.3-2.2s,
+   orden de verdad artefacto-fresco→vivo→viejo-ETIQUETADO, slot-guard
+   obligatorio en el artefacto, "Assembled Nh ago" (`99113658`+`5b685854`).
+2. ~~**N19** "24h" sobre lifetime~~ → el hallazgo reencuadró el bug: la
+   ventana real era 7d en TODAS partes (snapshot_window_h=168). Contrato:
+   `total` lifetime nombrado + `currentTotal`/`countWindowHours` medidos,
+   fila↔detalle acuerdan por construcción; 3ª superficie (threads/{id})
+   cazada de paso (`d822ae17`). Residual → chip timeout-as-zero en themes.
+3. ~~**Lanes colgados**~~ → causa raíz: /focus con la ortografía vieja del
+   predicado (mig 090 indexó otra) = seq scan. Re-spelled + deadline desde
+   la entrada del request (el acquire cuenta); trump 503@38.7s→200@1-8s;
+   frontend loading→slow→settled, TODOS los callers /focus acotados
+   (`c630e12d`..`eb1b8091`).
+4. ~~**N23** timeline fabrica ausencia~~ → `measured_zero` (con cobertura
+   que licencia el claim) ≠ `lane_starved` (canal a `unavailable`) ≠
+   `invalid_ref` (400); umbral de hambruna 14× bajo el piso medido
+   (`1770c961`+`9e7d1277`).
+Prod: Fly v502 + Vercel (push v3-intel-layer eb1b8091). 2,833 backend +
+1,310 vitest verdes en el gate de integración.
 
 ### 2b · Precisión del corroborate (el "file no" del R3, ahora nombrado)
 Independencia medible: ownership (tiers en citations — N18 backend ya da la
