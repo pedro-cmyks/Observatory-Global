@@ -24,6 +24,33 @@ import httpx
 
 router = APIRouter()
 
+
+def _empty_focus_payload(focus_type: str, value: str, hours: int) -> dict:
+    """A focus ref that cannot produce a needle (an empty/whitespace person)
+    is an honest EMPTY, not a degradation: nothing failed, there is simply
+    nothing to match. Lanes are reported live with zero rows so the frontend
+    renders "no data" rather than a grey "could not measure" gap."""
+    from app.services.focus_lanes import LANE_LIVE, LANE_ORDER
+
+    return {
+        "focus": {"type": focus_type, "value": value, "hours": hours},
+        "lanes": {lane: LANE_LIVE for lane in LANE_ORDER},
+        "degraded_lanes": [],
+        "degraded_reasons": {},
+        "summary": {
+            "total_signals": 0,
+            "total_countries": 0,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "nodes": [],
+        "related_topics": [],
+        "top_sources": [],
+        "headlines": [],
+        "key_people": [],
+        "key_subjects": [],
+    }
+
+
 @router.get("/api/v2/focus")
 async def get_focus_data(
     focus_type: str = Query(..., description="Type: theme, person, country, source"),
@@ -33,7 +60,24 @@ async def get_focus_data(
     """
     Get filtered data for Focus Mode.
     Returns nodes, related topics, and top sources matching the focus.
+
+    Council R4 DESKTOP-N26: every lane is BOUNDED. This handler used to run
+    six unbounded queries sequentially, each carrying an unindexable person
+    predicate, and held the request open for 45-120s on a ubiquitous name
+    while the frontend showed a skeleton with no time bound. Now the person
+    filter is spelled the way migration 090 indexed it (measured: the nodes
+    lane goes seq-scan -> BitmapAnd, 576ms warm for `%trump%`) and each lane
+    runs under its own statement_timeout inside a global deadline, degrading
+    to a NAMED reason. See `app/services/focus_lanes.py` for the measured
+    budget table. A degraded lane serves honest absence — never a 500, and
+    never a zero presented as a measurement.
     """
+    from app.services.focus_lanes import (
+        LaneRunner,
+        PERSON_MATCH_EXPR,
+        person_like_needle,
+    )
+
     async with db.pool.acquire() as conn:
         # Build WHERE clause based on focus type
         if focus_type == "theme":
@@ -47,8 +91,13 @@ async def get_focus_data(
                 focus_filter = "$1 = ANY(themes)"
                 filter_value = value.upper()
         elif focus_type == "person":
-            focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
-            filter_value = f"%{value}%"
+            # The mig-090 spelling — load-bearing. `unnest(persons) +
+            # LOWER(p) LIKE` is unindexable and was the N26 hang.
+            needle = person_like_needle(value)
+            if needle is None:
+                return _empty_focus_payload(focus_type, value, hours)
+            focus_filter = f"{PERSON_MATCH_EXPR} $1"
+            filter_value = needle
         elif focus_type == "country":
             focus_filter = "country_code = $1"
             filter_value = value.upper()
@@ -58,9 +107,15 @@ async def get_focus_data(
         else:
             return {"error": f"Unknown focus type: {focus_type}"}
         
+        # Lanes run in VALUE order under one bounded runner (N26): nodes
+        # first because the map, the evidence route and the summary all read
+        # it, so if the global deadline bites, what survives is what the
+        # panel most needs.
+        runner = LaneRunner(conn)
+
         # 1. Get nodes (countries) with signal counts
-        nodes = await conn.fetch(f"""
-            SELECT 
+        nodes = await runner.run("nodes", f"""
+            SELECT
                 country_code,
                 COUNT(*) as signal_count,
                 ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment,
@@ -71,44 +126,9 @@ async def get_focus_data(
             GROUP BY country_code
             ORDER BY signal_count DESC
         """, filter_value)
-        
-        # 2. Get related topics (co-occurring themes)
-        related = await conn.fetch(f"""
-            SELECT 
-                unnest(themes) as topic,
-                COUNT(*) as count
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-              AND {focus_filter}
-            GROUP BY topic
-            ORDER BY count DESC
-            LIMIT 15
-        """, filter_value)
-        
-        # Filter out the focus value itself if it's a theme
-        related_topics = [
-            {"topic": r['topic'], "count": int(r['count'])}
-            for r in related
-            if r['topic'].upper() != value.upper()
-        ][:10]
-        
-        # 3. Get top sources
-        sources = await conn.fetch(f"""
-            SELECT 
-                source_name,
-                COUNT(*) as count,
-                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-              AND {focus_filter}
-              AND source_name IS NOT NULL
-            GROUP BY source_name
-            ORDER BY count DESC
-            LIMIT 10
-        """, filter_value)
-        
-        # 4. Get recent headlines (deduped by title prefix)
-        headlines = await conn.fetch(f"""
+
+        # 2. Get recent headlines (deduped by title prefix)
+        headlines = await runner.run("headlines", f"""
             SELECT DISTINCT ON (LEFT(source_url, 100))
                 source_url,
                 source_name,
@@ -122,11 +142,11 @@ async def get_focus_data(
             LIMIT 10
         """, filter_value)
 
-        # 5. Get key people mentioned in matching signals. distinct_outlets /
+        # 3. Get key people mentioned in matching signals. distinct_outlets /
         # distinct_headlines feed the syndication-resistant ranking (#176): a
         # wire story republished by many outlets must not outrank local actors.
         # Pull a wide pool (40) so the corroboration floor still leaves results.
-        persons_rows = await conn.fetch(f"""
+        persons_rows = await runner.run("persons", f"""
             SELECT
                 p AS person,
                 COUNT(*) AS signal_count,
@@ -158,8 +178,9 @@ async def get_focus_data(
         # posing as people. NER (spaCy) gives real verified types; the untyped
         # GDELT pool fills names NER missed, flagged unverified. NER query
         # degrades to GDELT-only on error (e.g. malformed nlp_persons jsonb).
-        try:
-            ner_rows = await conn.fetch(f"""
+        # The runner already swallows a malformed-jsonb failure into a named
+        # `db_error` lane, so the old bare try/except is no longer needed.
+        ner_rows = await runner.run("ner", f"""
                 SELECT e->>'name' AS name, e->>'type' AS ner_type,
                        COUNT(*) AS signal_count,
                        COUNT(DISTINCT source_name) AS distinct_outlets,
@@ -176,10 +197,7 @@ async def get_focus_data(
                 GROUP BY e->>'name', e->>'type'
                 ORDER BY signal_count DESC
                 LIMIT 40
-            """, filter_value)
-        except Exception as exc:
-            logger.warning("NER subjects degraded: %s", exc)
-            ner_rows = []
+        """, filter_value)
         key_subjects = build_key_subjects(
             merge_entity_rows(
                 [dict(r) for r in ner_rows],
@@ -194,9 +212,51 @@ async def get_focus_data(
             limit=8,
         )
 
-        # Calculate totals
-        total_signals = sum(int(n['signal_count']) for n in nodes)
-        total_countries = len(nodes)
+        # 5. Get top sources
+        sources = await runner.run("sources", f"""
+            SELECT
+                source_name,
+                COUNT(*) as count,
+                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+              AND source_name IS NOT NULL
+            GROUP BY source_name
+            ORDER BY count DESC
+            LIMIT 10
+        """, filter_value)
+
+        # 6. Get related topics (co-occurring themes)
+        related = await runner.run("related", f"""
+            SELECT
+                unnest(themes) as topic,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+            GROUP BY topic
+            ORDER BY count DESC
+            LIMIT 15
+        """, filter_value)
+
+        # Filter out the focus value itself if it's a theme
+        related_topics = [
+            {"topic": r['topic'], "count": int(r['count'])}
+            for r in related
+            if r['topic'].upper() != value.upper()
+        ][:10]
+
+        # Totals are a MEASUREMENT of the nodes lane. When that lane degraded
+        # we did not measure zero — we failed to measure at all, so the
+        # summary reports null and the panel renders an honest gap. Serving 0
+        # here is the zero-as-fact trap this whole track exists to close.
+        if runner.is_live("nodes"):
+            total_signals = sum(int(n['signal_count']) for n in nodes)
+            total_countries = len(nodes)
+        else:
+            total_signals = None
+            total_countries = None
 
         return {
             "focus": {
@@ -204,6 +264,9 @@ async def get_focus_data(
                 "value": value,
                 "hours": hours
             },
+            "lanes": runner.statuses,
+            "degraded_lanes": runner.degraded_lanes,
+            "degraded_reasons": runner.reasons,
             "summary": {
                 "total_signals": total_signals,
                 "total_countries": total_countries,
