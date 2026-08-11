@@ -14,7 +14,7 @@ import { splitEditionThreads, buildShareCaption } from '../lib/briefEdition'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { track, trackOnce } from '../lib/telemetry'
-import { TranslatableHeadline } from '../components/TranslatableHeadline'
+import { TranslatableHeadline, shouldTranslate as shouldTranslateSignal } from '../components/TranslatableHeadline'
 import PinReceiptButton from '../components/PinReceiptButton'
 import type { CitationGateStatus } from '../lib/workbench'
 import { resolveOriginChip, resolveTierChip } from '../lib/sourceProvenance'
@@ -22,6 +22,9 @@ import { TranslatableText } from '../components/TranslatableText'
 import { addPin, createInvestigation, describePinTarget, getActiveInvestigationId, getInvestigation, movePin, removePin } from '../lib/workbench'
 import { saveTargetTip, saveTargetToast } from '../lib/pinTarget'
 import { flashPinToast } from '../lib/pinToast'
+import { TranslatedSection } from '../components/TranslatedSection'
+import { shouldTranslate as shouldTranslateFree } from '../lib/translatableText'
+import { usePageLanguage } from '../lib/pageLanguage'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
@@ -918,6 +921,11 @@ export function BriefNewspaper() {
     const editionArticles = countryFilter ? countryEditionArticles : dailyEditionArticles
     const liveArticleStates = countryFilter ? countryLiveStates : globalLiveArticleStates
 
+    // Page language (translation target, Settings → Page Language). Only used
+    // here to GATE the section Translate-all control — the translatable
+    // children subscribe to the store on their own.
+    const pageLang = usePageLanguage()
+
     // Receipts: REAL LINKS. Evidence urls render as <a href> (the whole point
     // of a receipt); rows without a url degrade to a plain row.
     const renderReceipt = (
@@ -1018,6 +1026,25 @@ export function BriefNewspaper() {
         return receiptEl
     }
 
+    // Gate for the section Translate-all control: does this thread block hold
+    // ANYTHING the translate lanes could act on (label, receipt headline, or a
+    // fetched excerpt)? All-native sections render no dead button. Checks the
+    // full evidence list, not the rendered slice — a cheap over-approximation.
+    const threadHasTranslatable = (t: { label: string; evidence_samples?: ThreadEvidence[] | null }): boolean => {
+        if (shouldTranslateFree(decodeEntities(t.label), pageLang)) return true
+        for (const ev of t.evidence_samples ?? []) {
+            if (shouldTranslateSignal(ev.source_lang, decodeEntities(ev.headline), pageLang)) return true
+            if (ev.url) {
+                const seed = editionArticles?.[ev.url] ?? null
+                const live = liveArticleStates.get(ev.url) ?? null
+                const enriched = seed?.status === 'ok' ? seed : (live ?? seed)
+                if (enriched?.status === 'ok' && enriched.excerpt
+                    && shouldTranslateFree(enriched.excerpt, pageLang)) return true
+            }
+        }
+        return false
+    }
+
     const renderSaveChip = (t: TopThread) => {
         const theme = resolveThreadThemeTarget(t)?.theme
         const saved = savedIds.has(`theme-${theme}`)
@@ -1057,7 +1084,9 @@ export function BriefNewspaper() {
         const receipts = (t.evidence_samples ?? []).slice(0, opts?.wide ? 3 : 2)
         const category = t.category ?? t.parent_domain
         return (
-            <article key={t.thread_id} className={`brief-card${opts?.wide ? ' wide' : ''}`}>
+            <TranslatedSection key={t.thread_id} active={threadHasTranslatable(t)}>
+                {(translateControl) => (
+            <article className={`brief-card${opts?.wide ? ' wide' : ''}`}>
                 <div className="reader-kicker">
                     <span>{category || 'Narrative thread'}</span>
                     <span className="cat">{t.signal_count.toLocaleString()} signals</span>
@@ -1068,6 +1097,7 @@ export function BriefNewspaper() {
                     </button>
                     <LabelReviewChip {...labelReviewChipProps(t)} />
                 </h3>
+                {translateControl && <div className="brief-translate-row">{translateControl}</div>}
                 <div className="brief-vitals-line">
                     {t.source_count != null && <span><b>{t.source_count}</b> sources</span>}
                     {arrow && (
@@ -1091,6 +1121,8 @@ export function BriefNewspaper() {
                     </span>
                 </div>
             </article>
+                )}
+            </TranslatedSection>
         )
     }
 
@@ -1116,7 +1148,9 @@ export function BriefNewspaper() {
         }
         const groupList = [...groups.entries()]
         return (
-            <div key={t.thread_id} className="brief-unassembled-cell">
+            <TranslatedSection key={t.thread_id} active={threadHasTranslatable(t)}>
+                {(translateControl) => (
+            <div className="brief-unassembled-cell">
                 <div className="brief-unassembled-head">
                     <span
                         className="brief-unassembled-label"
@@ -1137,6 +1171,7 @@ export function BriefNewspaper() {
                         labelProposed={t.label_proposed ?? null}
                     />
                 </div>
+                {translateControl && <div className="brief-translate-row">{translateControl}</div>}
                 {t.label_proposed && (
                     <div className="brief-unassembled-proposed">
                         <span className="lab">receipt-derived</span>
@@ -1169,6 +1204,8 @@ export function BriefNewspaper() {
                     <p className="brief-unassembled-noreceipts">No sample receipts carried for this cluster this window.</p>
                 )}
             </div>
+                )}
+            </TranslatedSection>
         )
     }
 
@@ -1585,6 +1622,8 @@ export function BriefNewspaper() {
 
                                     {/* LEAD */}
                                     {leadThread ? (
+                                        <TranslatedSection active={threadHasTranslatable(leadThread)}>
+                                            {(translateControl) => (
                                         <article className="brief-lead">
                                             <div className="reader-kicker">
                                                 <span>Lead{(leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}</span>
@@ -1601,6 +1640,7 @@ export function BriefNewspaper() {
                                                     LabelTrustRow shape (missing fields → no chip). */}
                                                 <LabelReviewChip {...labelReviewChipProps(leadThread as LabelTrustRow)} />
                                             </h3>
+                                            {translateControl && <div className="brief-translate-row">{translateControl}</div>}
                                             <div className="brief-metarow">
                                                 {(() => {
                                                     const arrow = trendArrow(leadThread.trend, leadThread.changed_10h)
@@ -1644,6 +1684,8 @@ export function BriefNewspaper() {
                                                 </span>
                                             </div>
                                         </article>
+                                            )}
+                                        </TranslatedSection>
                                     ) : leadUnavailable ? (
                                         // Two DIFFERENT truths (lead-eligibility v2): "awaiting
                                         // verification" = timing (stories would lead once the 30-min

@@ -7,6 +7,7 @@ import {
   type InstallEnv,
 } from '../lib/installPrompt'
 import { isMobileWidth } from '../hooks/useIsMobile'
+import { getPageLanguage } from '../lib/pageLanguage'
 import { track, trackOnce } from '../lib/telemetry'
 
 /** iOS Safari share glyph — a small inline SVG so the hint is unambiguous. */
@@ -39,7 +40,9 @@ const SCROLL_TRIGGER_PX = 400
 
 function isSpanish(): boolean {
   try {
-    return (navigator.language || 'en').toLowerCase().startsWith('es')
+    // Page-language setting (Settings → Page Language), browser fallback —
+    // the one place the app derives a viewer language (never raw navigator).
+    return getPageLanguage() === 'es'
   } catch {
     return false
   }

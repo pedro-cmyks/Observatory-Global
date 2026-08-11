@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { shouldTranslate } from '../lib/translatableText';
+import { usePageLanguage } from '../lib/pageLanguage';
+import { resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
+import { useSectionTranslation } from './TranslatedSection';
 import './TranslatableText.css';
 
 /**
@@ -12,12 +15,11 @@ import './TranslatableText.css';
  * Backed by POST /api/v2/translate/text (Redis-cached server-side); memoized
  * per (text, lang) in a module Map + sessionStorage so repeat renders and
  * route round-trips don't re-fetch.
+ *
+ * Target language = the page-language setting (Settings → Page Language;
+ * defaults to the browser language) via usePageLanguage() — changing it in
+ * Settings re-targets every mounted label without a reload.
  */
-
-// Viewer's target language (ISO 639-1 base). Browser language, default 'en'.
-const TARGET_LANG = (typeof navigator !== 'undefined'
-    ? (navigator.language || 'en')
-    : 'en').slice(0, 2).toLowerCase();
 
 const LABELS: Record<string, { original: string; translation: string }> = {
     es: { original: 'Ver original', translation: 'Ver traducción' },
@@ -25,7 +27,7 @@ const LABELS: Record<string, { original: string; translation: string }> = {
     pt: { original: 'Ver original', translation: 'Ver tradução' },
     fr: { original: "Voir l'original", translation: 'Voir la traduction' },
 };
-const L = LABELS[TARGET_LANG] || LABELS.en;
+const labelsFor = (lang: string) => LABELS[lang] || LABELS.en;
 
 // Process-lifetime memo: string = translation, null = "no translation needed"
 // (same:true or degraded — don't re-ask this session).
@@ -51,13 +53,13 @@ function ssSet(key: string, value: string | null): void {
     } catch { /* quota / privacy mode — memo Map still covers the session */ }
 }
 
-function fetchTranslation(text: string, cacheKey: string): Promise<string | null> {
+function fetchTranslation(text: string, cacheKey: string, targetLang: string): Promise<string | null> {
     const existing = inflight.get(cacheKey);
     if (existing) return existing;
     const p = fetch('/api/v2/translate/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, target_lang: TARGET_LANG }),
+        body: JSON.stringify({ text, target_lang: targetLang }),
     })
         .then(r => (r.ok ? r.json() : null))
         .then((d: { translated?: string; same?: boolean; degraded?: boolean } | null) => {
@@ -118,8 +120,10 @@ export interface TranslatableTextState {
 }
 
 export function useTranslatableText(text: string): TranslatableTextState {
-    const eligible = shouldTranslate(text, TARGET_LANG);
-    const cacheKey = `${text}:${TARGET_LANG}`;
+    const targetLang = usePageLanguage();
+    const L = labelsFor(targetLang);
+    const eligible = shouldTranslate(text, targetLang);
+    const cacheKey = `${text}:${targetLang}`;
     const [translated, setTranslated] = useState<string | null>(() => {
         if (!eligible) return null;
         const m = memo.get(cacheKey);
@@ -128,14 +132,37 @@ export function useTranslatableText(text: string): TranslatableTextState {
         if (s !== undefined) { memo.set(cacheKey, s); return s; }
         return null;
     });
-    const [showOriginal, setShowOriginal] = useState(false);
+    // Per-item toggle rides ON TOP of the enclosing section's mode (default
+    // context when no <TranslatedSection> above — behavior unchanged). null =
+    // follow the section; a click overrides until the next section action.
+    const { mode, epoch } = useSectionTranslation();
+    const [localOriginal, setLocalOriginal] = useState<boolean | null>(null);
+    useEffect(() => { setLocalOriginal(null); }, [mode, epoch]);
+    const showOriginal = resolveShowOriginal(localOriginal, mode);
+
+    // Explicit section Translate: retry even a memoized failure/no-op (the
+    // degraded pin) — the server Redis cache answers genuine no-ops cheaply.
+    useEffect(() => {
+        if (!shouldRetryFetch({ mode, epoch }) || !eligible || translated) return;
+        memo.delete(cacheKey);
+        let alive = true;
+        fetchTranslation(text, cacheKey, targetLang).then(t => { if (alive && t) setTranslated(t); });
+        return () => { alive = false; };
+    }, [mode, epoch, eligible, cacheKey, text, targetLang, translated]);
 
     useEffect(() => {
-        if (!eligible || memo.has(cacheKey)) return;
+        // cacheKey changes in place when the page language changes (Settings):
+        // adopt the new language's cached value, or clear and re-fetch.
+        if (!eligible) { setTranslated(null); return; }
+        const m = memo.get(cacheKey);
+        if (m !== undefined) { setTranslated(m); return; }
+        const s = ssGet(cacheKey);
+        if (s !== undefined) { memo.set(cacheKey, s); setTranslated(s); return; }
+        setTranslated(null);
         let alive = true;
-        fetchTranslation(text, cacheKey).then(t => { if (alive && t) setTranslated(t); });
+        fetchTranslation(text, cacheKey, targetLang).then(t => { if (alive && t) setTranslated(t); });
         return () => { alive = false; };
-    }, [eligible, cacheKey, text]);
+    }, [eligible, cacheKey, text, targetLang]);
 
     return {
         eligible,
@@ -148,7 +175,7 @@ export function useTranslatableText(text: string): TranslatableTextState {
         hasToggle: eligible && !!translated,
         toggleLabel: showOriginal ? L.translation : L.original,
         toggleTip: showOriginal ? 'Translated' : 'Original',
-        toggle: () => setShowOriginal(v => !v),
+        toggle: () => setLocalOriginal(!showOriginal),
     };
 }
 
