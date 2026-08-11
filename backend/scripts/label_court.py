@@ -196,6 +196,10 @@ import asyncpg
 # as scripts/measure_court_enforcement.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.services.subject_geography import (  # noqa: E402
+    label_geography_conflict,
+    label_subject_country,
+)
 from app.services.thread_intelligence import topic_members_engine_version  # noqa: E402
 
 _DS_URL = "https://api.deepseek.com/chat/completions"
@@ -600,6 +604,69 @@ def _rule4_named_children_verified(reason: str, n_children_total: int) -> bool |
     return len(indices) == n
 
 
+# GEOGRAPHY CONJUNCT (2026-08-11, council R4 N17 — the round's P0). The court
+# asks "does this label describe the majority of these receipts?" and the judge
+# answers on subject and vibe; nothing ever checked the label's OWN country
+# claim against the receipts' geography. dt-8597 "Japan Earthquake Traps
+# Shoppers" was stamped `entailed` over 29 receipts whose every geo-bearing
+# member reads "terremoto 7,4 sacude Colombia", and led Colombia's country
+# edition on quake day — with the court stamp vouching for it. Sibling dt-3963
+# ("Japan Earthquake Tsunami Alert", same CO receipts) was `entailed` too.
+#
+# The conjunct is a VETO on `entailed`, never a promotion of anything: a label
+# whose named country appears in NONE of its receipts while another country
+# dominates them cannot earn a clean bill of health. It is applied AFTER the
+# judge call (never instead of it) so the ledger keeps the judge's own verdict
+# and reason — the same auditability discipline the withhold detectors follow.
+# `failed` (not `too_broad`) is the right stamp by construction: the receipts
+# DO belong to one story that a better label could describe, which is exactly
+# the class relabel_court_failed.py is built to repair.
+#
+# All the precision guards live in `label_geography_conflict`
+# (app/services/subject_geography.py — one detector, shared with the
+# country-edition slot guard so the two can never drift): subject geography
+# only (never the coverage `country_code`), single-country labels only, person
+# proxies excluded, a dominance floor and a minimum receipt count, abstain on
+# every ambiguity. Non-entailed verdicts are untouched: `partial`/`failed`/
+# `too_broad` already withhold the clean bill this veto exists to block.
+def geo_conjunct_enabled() -> bool:
+    """Kill-switch, read at call time. Default ON — the veto can only ever
+    turn an `entailed` into a `failed`, and it fires only on a measured,
+    receipt-grounded mismatch. `ATLAS_COURT_GEO_CONJUNCT=off` restores the
+    pre-fix behavior exactly."""
+    return os.environ.get("ATLAS_COURT_GEO_CONJUNCT", "on").lower() == "on"
+
+
+# The judged window is 8 receipts; "the label's country is named NOWHERE" is
+# an absence claim and needs more evidence than that (measured: on the 8-row
+# window the check ran ~50% precise, false-positive on ACTOR-vs-target war
+# labels; widening the absence pool to 40 removed them — see the measurement
+# note in app/services/subject_geography.py). Fetched LAZILY, only for a row
+# that is already `entailed` AND carries a single-country label AND already
+# conflicts on the narrow window — ~0 extra queries in steady state.
+GEO_ABSENCE_RECEIPTS = 40
+
+
+def apply_geo_conjunct(verdict: str, reason: str, label: str,
+                       receipts: list[dict],
+                       absence_receipts: list[dict] | None = None,
+                       ) -> tuple[str, str, dict | None]:
+    """(verdict, reason, conflict|None) after the geography conjunct.
+
+    Only an `entailed` verdict can be flipped, and only when the conflict is
+    measurable from the receipts the judge itself was shown AND survives the
+    wider `absence_receipts` pool. The returned reason LEADS with the named
+    mismatch and keeps the judge's own words after it, so the ledger records
+    both halves of the disagreement."""
+    if verdict != "entailed" or not geo_conjunct_enabled():
+        return verdict, reason, None
+    conflict = label_geography_conflict(label, receipts,
+                                        absence_receipts=absence_receipts)
+    if not conflict:
+        return verdict, reason, None
+    return "failed", f"[geo-conjunct] {conflict['summary']} — {reason}", conflict
+
+
 def _dominant_geo(country_codes: list[str]) -> str:
     codes = [c for c in country_codes if c and c.upper() != "XX"]
     if not codes:
@@ -914,6 +981,23 @@ async def _umbrella_family_for(conn, umbrella_id: int,
     return family
 
 
+async def _geo_absence_receipts(conn, topic_id: str, dyn_id: int, *,
+                                is_umbrella: bool,
+                                revived_after: datetime | None) -> list[dict]:
+    """The WIDER pool the geography conjunct's absence claim must survive.
+
+    Story lane: the same served-evidence query, opened to
+    `GEO_ABSENCE_RECEIPTS` (every lane filter — engine_version, quarantined,
+    post-revival scoping — carried over verbatim, so the wide pool can never
+    see evidence the narrow trial could not). Family lane: the same children,
+    with a bigger per-child receipt budget."""
+    if is_umbrella:
+        return _flatten_family_receipts(
+            await _umbrella_family_for(conn, dyn_id, per_child=8))
+    return await _receipts_for(conn, topic_id, dyn_id, GEO_ABSENCE_RECEIPTS,
+                               revived_after=revived_after)
+
+
 def _flatten_family_receipts(family: list[dict]) -> list[dict]:
     """Union of every child's receipts, deduped by headline prefix — the flat
     list the neutral-label proposal and the failure ledger both expect."""
@@ -1085,6 +1169,7 @@ async def main() -> None:
         tok_in = tok_out = 0
         ledger_entries = []  # GB4: every graded verdict AND every withhold, not just failures
         withheld = 0
+        geo_vetoed = 0  # N17: entailed verdicts flipped by the geography conjunct
         for r in rows:
             dyn_id = r["id"]
             topic_id = f"dynamic-topic-{dyn_id}"
@@ -1196,6 +1281,32 @@ async def main() -> None:
                                        _WITHHELD_COURT_MODEL)
                 continue
 
+            # GEOGRAPHY CONJUNCT (council R4 N17): an `entailed` verdict whose
+            # label names a country its own receipts never mention — while
+            # another country dominates them — is vetoed to `failed`. Runs on
+            # BOTH lanes (the umbrella family judge is just as blind to the
+            # label's country claim: dt-11581 carried the same Japan label
+            # over the same Colombia receipts) and only AFTER the withhold
+            # detectors, which write no label_status at all and so leave
+            # nothing to override.
+            judge_verdict = verdict
+            geo_conflict = None
+            if (verdict == "entailed" and geo_conjunct_enabled()
+                    and label_subject_country(label)):
+                # lazy: the wide absence pool is only fetched for a row that
+                # already conflicts on the judged window (see the measurement
+                # note on GEO_ABSENCE_RECEIPTS)
+                wide = (
+                    await _geo_absence_receipts(
+                        conn, topic_id, dyn_id, is_umbrella=is_umbrella,
+                        revived_after=revived_after)
+                    if label_geography_conflict(label, receipts) else None
+                )
+                verdict, reason, geo_conflict = apply_geo_conjunct(
+                    verdict, reason, label, receipts, absence_receipts=wide)
+            if geo_conflict:
+                geo_vetoed += 1
+
             dist[verdict] += 1
             # `too_broad` gets NO proposal: by definition no single label fits
             # a fusion — the structural fix is the over-merge lane, and
@@ -1204,13 +1315,17 @@ async def main() -> None:
             proposed = build_neutral_label(receipts) if verdict == "failed" else None
             mark = _MARKS[verdict]
             tag = " [umbrella]" if is_umbrella else ""
+            geo_tag = " [geo-conjunct]" if geo_conflict else ""
             extra = f"  ->PROPOSE: {proposed}" if proposed else ""
-            print(f"  {mark} dt-{dyn_id}{tag} [{verdict}] {label[:46]}{extra}")
+            print(f"  {mark} dt-{dyn_id}{tag}{geo_tag} [{verdict}] {label[:46]}{extra}")
             # GB4: every graded verdict is ledgered now, not just `failed` —
             # GB4 could not retrieve the court's own reasoning for a
             # `partial` row (5549, 8168) at all, the two rows most needing
             # diagnosis since rule 4 was the new suspect.
-            ledger_entries.append(_ledger_entry(verdict, proposed=proposed))
+            ledger_entries.append(_ledger_entry(
+                verdict, proposed=proposed,
+                **({"geo_conjunct": geo_conflict, "judge_verdict": judge_verdict}
+                   if geo_conflict else {})))
             if args.write:
                 new_label = label
                 if proposed and apply_proposals:
@@ -1242,7 +1357,7 @@ async def main() -> None:
         print(f"\nLABEL COURT DONE: {total} tried · "
               f"entailed {dist['entailed']} · partial {dist['partial']} · failed {dist['failed']} · "
               f"too_broad {dist['too_broad']} · "
-              f"withheld {withheld} · "
+              f"withheld {withheld} · geo-vetoed {geo_vetoed} · "
               f"tokens in/out {tok_in}/{tok_out}{' · WRITTEN' if args.write else ' · DRY'}"
               f"{' · PROPOSALS APPLIED' if apply_proposals else ''}")
     finally:

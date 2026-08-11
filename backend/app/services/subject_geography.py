@@ -149,6 +149,14 @@ def _alias(code: Any) -> str:
     return _SUBJECT_COUNTRY_ALIASES.get(str(code).upper(), str(code).upper())
 
 
+def normalize_subject_country(code: Any) -> str:
+    """Public name for the subject-country alias fold (GZ/WE→PS, KU→KW,
+    BX→BN). Serving surfaces compare their own country code on the SAME basis
+    the detectors below emit — otherwise a 'Gaza …' label (GZ→PS) would read
+    as contradicting the PS edition it belongs to."""
+    return _alias(code)
+
+
 def resolve_place_to_country(place: Any) -> str | None:
     """Resolve a NER-extracted place name to an ISO subject country.
 
@@ -184,6 +192,177 @@ def resolve_place_to_country(place: Any) -> str | None:
         if pattern.search(text):
             return _alias(code)
     return None
+
+
+# ── Label ↔ receipt geography conjunct (council R4 N17, 2026-08-11) ──────────
+# The label court entails a label against its receipts but never checks the
+# label's OWN geography claim, and the country-edition slotter admits a thread
+# whose subject countries contradict its label text. Both blind spots met on
+# one front door: dt-8597 "Japan Earthquake Traps Shoppers" was stamped court
+# `entailed` + subject-geo VERIFIED ['CO'] and led Colombia's edition on quake
+# day, while every geo-bearing receipt under it read "terremoto 7,4 sacude
+# Colombia".
+#
+# This is the ONE detector both guards ride. Deliberately narrow — a wrong
+# `failed` (or a wrongly-emptied country door) is a regression, while a missed
+# check is only the status quo — so it abstains on every ambiguity:
+#
+#   * ONE basis for both sides. Label and receipts are read with
+#     `headline_country_evidence` above, the same function that already
+#     decides subject geography. No new gazetteer enters the system, and the
+#     two sides are always comparable.
+#   * SUBJECT geography only — NEVER `signals_v2.country_code`. The stored
+#     code is COVERAGE geography: dt-9434 "Japan Earthquake Casualties"
+#     carries ten RU-tagged receipts that are literally about Japan
+#     ("землетрясения в Японии"). Comparing a label against coverage codes
+#     would have failed that correct label. Those Cyrillic forms resolve to
+#     nothing in the shared lexicons, so they contribute no geography at all
+#     and the check simply abstains — the safe direction, measured.
+#   * A label naming ZERO or MORE THAN ONE country is skipped: it makes no
+#     single falsifiable geography claim ("Russia Sanctions and Ukraine War
+#     Updates" names two; "Global Markets Rally" names none).
+#   * A person token is not a geography claim. `headline_country_evidence`
+#     already demotes person proxies to `person_proxy` (#238); a label that
+#     matches a country ONLY through a leader's name ("Trump Tariffs
+#     Escalate" → US) is skipped here for the same reason.
+#   * The named country must appear in ZERO receipts, AND one other country
+#     must dominate the geo-bearing receipts, AND there must be enough of
+#     them to mean something. Anything short of all three abstains.
+#   * ABSENCE IS CHECKED WIDER THAN DOMINANCE (measured, see below). An
+#     absence claim needs more evidence than a presence claim — the same
+#     lesson label_court.py's own GB4/GB5 absence-contradiction detectors
+#     learned — so callers may pass a larger `absence_receipts` pool while
+#     dominance stays measured on the sample actually being judged.
+#
+# MEASURED before shipping (2026-08-11, read-only sweep over the 400 largest
+# active+`entailed` story rows in prod; 137 of them carry a single-country
+# label). On the judged 8-receipt window alone the check fired 6 times and
+# hand-check put precision at ~50%: the false positives were all ACTOR-vs-
+# TARGET labels in the Russia-Ukraine war ("Russian Drone Attacks on Emergency
+# Workers" over Ukrainian receipts, "Ukraine Strikes Wildberries Warehouses"
+# over Russian ones) — honest labels naming the actor country while the
+# receipts name where it landed. Widening the ABSENCE pool to 40 receipts
+# removed them (RU present 8×, UA present 1× once the window opened) along
+# with a fusion case whose Gaza receipts simply sat outside the newest window
+# (dt-817), and left the real mislabels standing (dt-8597 and dt-3963 — the
+# N17 witness and its sibling — keep JP at 0 across 120 receipts).
+#
+# RESIDUAL, named not hidden: an actor country that the lexicons cannot read
+# in the receipts' language still reads as absent (dt-3623 "Russia Strikes US
+# UAV Factory" over Vietnamese/Ukrainian receipts where Russia appears only as
+# "Nga"/"РФ"). One survivor in that sweep, and only ever reachable when the
+# judge independently answers `entailed` — this veto never promotes anything.
+#
+# Honest limit (pinned in tests/test_label_geo_conjunct.py): a place the
+# shared lexicons and the GeoNames gazetteer do not carry resolves to nothing,
+# so the Syros≈Syria case (a Greek island whose largest town is under the
+# gazetteer's 15k floor, serving on the SY edition because its signals are
+# country-tagged SY) is NOT caught here. Closing that needs a fuller geocoder,
+# not a guess.
+LABEL_GEO_DOMINANCE_FLOOR = 0.70
+LABEL_GEO_MIN_RECEIPTS = 3
+
+
+def _non_proxy_countries(text: Any) -> set[str]:
+    """Countries a text names as PLACES — person-proxy-only matches dropped."""
+    return {
+        code
+        for code, methods in headline_country_evidence(text).items()
+        if methods - {"person_proxy"}
+    }
+
+
+def label_subject_country(label: Any) -> str | None:
+    """The single country a label explicitly names, or None.
+
+    None means "no falsifiable geography claim" and is returned for a label
+    naming nothing, a label naming two or more countries, and a label whose
+    only country evidence is a person token. Callers treat None as SKIP.
+    """
+    codes = _non_proxy_countries(label)
+    return next(iter(codes)) if len(codes) == 1 else None
+
+
+def receipt_subject_country_counts(
+    receipts: Sequence[dict[str, Any]] | None,
+) -> tuple[dict[str, int], int]:
+    """(country -> how many RECEIPTS name it, number of geo-bearing receipts).
+
+    Counted per receipt, never per mention, so one headline repeating a
+    country name cannot manufacture dominance.
+    """
+    counts: dict[str, int] = {}
+    carrying = 0
+    for row in receipts or []:
+        codes = _non_proxy_countries((row or {}).get("headline"))
+        if not codes:
+            continue
+        carrying += 1
+        for code in codes:
+            counts[code] = counts.get(code, 0) + 1
+    return counts, carrying
+
+
+def label_geography_conflict(
+    label: Any,
+    receipts: Sequence[dict[str, Any]] | None,
+    *,
+    absence_receipts: Sequence[dict[str, Any]] | None = None,
+    dominance_floor: float = LABEL_GEO_DOMINANCE_FLOOR,
+    min_geo_receipts: int = LABEL_GEO_MIN_RECEIPTS,
+) -> dict[str, Any] | None:
+    """The label's own country claim vs its receipts' subject geography.
+
+    `receipts` is the sample the judgment is about — dominance is measured
+    there. `absence_receipts`, when given, is the WIDER pool the "the label's
+    country is named nowhere" claim must survive (defaults to `receipts`).
+
+    Returns None (no measurable conflict — the overwhelmingly common case) or
+    a receipt-grounded conflict block whose ``summary`` NAMES the mismatch
+    ("label says Japan (JP); receipts 19/19 CO") so no caller has to assert a
+    conflict it cannot show.
+    """
+    named = label_subject_country(label)
+    if not named:
+        return None
+    counts, carrying = receipt_subject_country_counts(receipts)
+    if carrying < min_geo_receipts:
+        return None
+    if counts.get(named, 0) > 0:
+        # the label's claim is supported somewhere in its own receipts
+        return None
+    wide = absence_receipts if absence_receipts is not None else receipts
+    wide_counts, wide_carrying = (
+        receipt_subject_country_counts(wide) if wide is not receipts
+        else (counts, carrying)
+    )
+    if wide_counts.get(named, 0) > 0:
+        # present once the window opens: an ACTOR country the judged sample
+        # happened not to name, not a label lying about its geography
+        return None
+    # count desc, code asc — deterministic on ties
+    dominant, dominant_count = sorted(
+        counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+    if dominant_count < dominance_floor * carrying:
+        return None
+    label_name = ISO_COUNTRY_NAMES.get(named, named)
+    return {
+        "contract": "atlas-label-geo-conflict-v1",
+        "label_country": named,
+        "label_country_name": label_name,
+        "dominant_country": dominant,
+        "dominant_receipts": dominant_count,
+        "geo_receipts": carrying,
+        "total_receipts": len(receipts or []),
+        "absence_geo_receipts": wide_carrying,
+        "absence_pool": len(wide or []),
+        "dominance_floor": dominance_floor,
+        "reason_code": "label_country_absent_from_receipts",
+        "summary": (
+            f"label says {label_name} ({named}); "
+            f"receipts {dominant_count}/{carrying} {dominant}"
+        ),
+    }
 
 
 def infer_receipt_subject_geography(

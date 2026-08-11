@@ -9,6 +9,7 @@ from scripts.label_court import (
     _SINGLE_CHILD_SKIP_SQL, _SINGLE_CHILD_CLEANUP_SQL, _reason_quotes_a_receipt,
     _WITHHOLD_MARK_SQL, _WITHHELD_COURT_MODEL, _absence_claim_contradicted,
     _rule4_majority_satisfied, _COURT_MODEL, _rule4_named_children_verified,
+    apply_geo_conjunct, geo_conjunct_enabled,
 )
 
 
@@ -952,3 +953,140 @@ def test_main_starved_withhold_branch_precedes_the_plain_skip():
     src = inspect.getsource(lc.main)
     lt2 = src.index("if len(receipts) < 2:")
     assert lt2 < src.index("no-post-revival-receipts") < src.index("SKIP (only")
+
+
+# ── geography conjunct (council R4 N17, 2026-08-11) ───────────────────────────
+# The court entails a label against its receipts but never checked the label's
+# OWN country claim: dt-8597 "Japan Earthquake Traps Shoppers" was stamped
+# `entailed` while every geo-bearing receipt read "terremoto 7,4 sacude
+# Colombia", and that stamp is what the country edition, the chips and the
+# Brief all inherit their trust from.
+_N17_LABEL = "Japan Earthquake Traps Shoppers"
+_N17_RECEIPTS = [
+    {"headline": "Terremoto de magnitud 7.4 sacudió gran parte de Colombia", "country_code": "CO"},
+    {"headline": "Potente sismo de 7,4 sacude a Colombia (VER IMÁGENES)", "country_code": "CO"},
+    {"headline": "Sismo de 7.4 sacude Colombia", "country_code": "JP"},
+    {"headline": "Colombia fue sacudida por un terremoto de magnitud 7,4", "country_code": "JP"},
+]
+
+
+def test_geo_conjunct_turns_the_n17_witness_entailed_into_failed():
+    verdict, reason, conflict = apply_geo_conjunct(
+        "entailed", "The label fits most headlines.", _N17_LABEL, _N17_RECEIPTS)
+    assert verdict == "failed"
+    assert conflict is not None
+    # the stamp must NAME the mismatch, not merely assert one
+    assert "label says Japan (JP); receipts 4/4 CO" in reason
+    assert reason.startswith("[geo-conjunct]")
+    # the judge's own words survive in the ledgered reason
+    assert "The label fits most headlines." in reason
+
+
+def test_geo_conjunct_never_touches_a_non_entailed_verdict():
+    # partial/failed/too_broad already withhold the clean bill of health the
+    # conjunct exists to block; overriding them would be collateral, not a fix
+    for v in ("partial", "failed", "too_broad"):
+        verdict, reason, conflict = apply_geo_conjunct(v, "r", _N17_LABEL, _N17_RECEIPTS)
+        assert (verdict, reason, conflict) == (v, "r", None)
+
+
+def test_geo_conjunct_is_inert_on_an_honest_entailed_verdict():
+    receipts = [
+        {"headline": "7.1-Magnitude Earthquake Strikes Japan, 50 Injured", "country_code": "JP"},
+        {"headline": "Earthquake in Japan injures at least 50 and disrupts travel", "country_code": "JP"},
+        {"headline": "At Least 50 Injured In Powerful Earthquake In Japan", "country_code": "JP"},
+    ]
+    assert apply_geo_conjunct("entailed", "fits", "Japan Earthquake", receipts) == (
+        "entailed", "fits", None)
+
+
+def test_geo_conjunct_abstains_on_coverage_language_it_cannot_read():
+    # dt-9434 'Japan Earthquake Casualties': RU-tagged receipts literally
+    # ABOUT Japan. Nothing resolves, so nothing is claimed — the class that a
+    # country_code-based conjunct would have wrongly failed.
+    receipts = [
+        {"headline": "Число погибших при землетрясении в Японии выросло до 34", "country_code": "RU"},
+        {"headline": "Число жертв землетрясения в Японии выросло до 38 человек", "country_code": "RU"},
+        {"headline": "Понад 100 афтершоків сколихнули Японію", "country_code": "RU"},
+    ]
+    assert apply_geo_conjunct(
+        "entailed", "fits", "Japan Earthquake Casualties", receipts)[0] == "entailed"
+
+
+def test_geo_conjunct_abstains_on_multi_country_and_geoless_labels():
+    for label in ("Russia Sanctions and Ukraine War Updates",
+                  "Global Markets Rally on Rate Cut Hopes",
+                  "Trump Tariffs Escalate"):
+        assert apply_geo_conjunct("entailed", "fits", label, _N17_RECEIPTS)[2] is None
+
+
+def test_geo_conjunct_kill_switch_off_restores_the_prior_behavior(monkeypatch):
+    monkeypatch.setenv("ATLAS_COURT_GEO_CONJUNCT", "off")
+    assert geo_conjunct_enabled() is False
+    assert apply_geo_conjunct("entailed", "fits", _N17_LABEL, _N17_RECEIPTS) == (
+        "entailed", "fits", None)
+
+
+def test_geo_conjunct_defaults_on(monkeypatch):
+    monkeypatch.delenv("ATLAS_COURT_GEO_CONJUNCT", raising=False)
+    assert geo_conjunct_enabled() is True
+
+
+def test_main_applies_the_conjunct_and_ledgers_the_judge_s_own_verdict():
+    import inspect
+
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    assert "apply_geo_conjunct(" in src
+    # a conjunct-flipped row is ledgered with the mismatch AND the judge's
+    # original call — the stamp must stay auditable, like every withhold
+    assert "geo_conjunct" in src
+    # the conjunct runs AFTER the umbrella withhold detectors (a withheld
+    # verdict writes no label_status at all, so there is nothing to override)
+    assert src.index("withhold_reason:") < src.index("apply_geo_conjunct(")
+    # failed => the neutral-label proposal + the relabel lane pick it up
+    assert src.index("apply_geo_conjunct(") < src.index("proposed = build_neutral_label")
+
+
+def test_main_fetches_the_wide_absence_pool_lazily():
+    import inspect
+
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    # gated on a single-country label AND an entailed verdict — most rows
+    # never pay for the wider fetch at all
+    assert 'verdict == "entailed" and geo_conjunct_enabled()' in src
+    assert "label_subject_country(label)" in src
+    assert "_geo_absence_receipts(" in src
+    assert "absence_receipts=wide" in src
+
+
+def test_geo_absence_receipts_carries_every_serving_lane_filter():
+    import inspect
+
+    import scripts.label_court as lc
+    src = inspect.getsource(lc._geo_absence_receipts)
+    # story lane reuses the SAME query (engine_version / quarantined /
+    # post-revival scoping) — the wide pool can never see evidence the
+    # narrow trial could not
+    assert "_receipts_for(" in src and "revived_after=revived_after" in src
+    assert "GEO_ABSENCE_RECEIPTS" in src
+    # family lane widens the per-child budget on the same children
+    assert "_umbrella_family_for(" in src
+
+
+def test_apply_geo_conjunct_absence_pool_clears_an_actor_label():
+    # the measured false-positive class: the actor country IS named once the
+    # receipt window opens
+    judged = [
+        {"headline": "На Дніпропетровщині внаслідок атаки загинула дитина"},
+        {"headline": "У Запоріжжі внаслідок повторного удару загинув рятувальник"},
+        {"headline": "Рятувальники в Україні гинуть під повторними ударами"},
+    ]
+    wide = judged + [{"headline": "Россия нанесла удар по Днепропетровщине"}]
+    assert apply_geo_conjunct(
+        "entailed", "fits", "Russian Drone Attacks on Emergency Workers",
+        judged)[0] == "failed"
+    assert apply_geo_conjunct(
+        "entailed", "fits", "Russian Drone Attacks on Emergency Workers",
+        judged, absence_receipts=wide) == ("entailed", "fits", None)

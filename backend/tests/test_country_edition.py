@@ -2,9 +2,12 @@ from datetime import datetime, timezone
 
 from app.services.country_edition import (
     CONTRACT,
+    SLOT_GUARD_CONTRACT,
     build_article_enrichment,
     build_country_edition_payload,
+    filter_edition_slots,
     gather_receipt_urls,
+    slot_guard_enabled,
 )
 
 
@@ -189,3 +192,213 @@ async def test_country_edition_handler_rejects_bad_cc(monkeypatch):
     for bad in ("usa", "u", "1o", "co "):
         with pytest.raises(HTTPException):
             await geo.get_country_edition(cc=bad)
+
+
+# ── slot guard (council R4 N17, 2026-08-11) ───────────────────────────────────
+# Colombia's edition led with 'Japan Earthquake Traps Shoppers' — court
+# ENTAILED, subject-geo VERIFIED ['CO'], 95 signals — while all of its receipts
+# read 'terremoto 7,4 sacude Colombia'. The slotter admitted a thread whose own
+# receipts contradict its label text, on the country door where the lie is
+# loudest. The guard excludes it from THIS country's sections only; the thread
+# is never demoted globally.
+_N17_THREAD = {
+    "thread_id": "dynamic-topic-8597",
+    "label": "Japan Earthquake Traps Shoppers",
+    "evidence_samples": [
+        {"headline": "Terremoto de magnitud 7.4 sacudió gran parte de Colombia",
+         "url": "http://a"},
+        {"headline": "Potente sismo de 7,4 sacude a Colombia (VER IMÁGENES)",
+         "url": "http://b"},
+        {"headline": "Sismo de 7.4 sacude Colombia", "url": "http://c"},
+    ],
+}
+_HONEST_CO_THREAD = {
+    "thread_id": "dynamic-topic-1",
+    "label": "Colombia Earthquake Rescue Effort",
+    "evidence_samples": [
+        {"headline": "Sismo de 7.4 sacude Colombia", "url": "http://d"},
+        {"headline": "Rescatistas trabajan en Colombia tras el terremoto", "url": "http://e"},
+        {"headline": "Colombia: al menos 22 muertos por el terremoto", "url": "http://f"},
+    ],
+}
+
+
+def test_slot_guard_excludes_the_n17_witness_from_the_co_edition():
+    kept, guard = filter_edition_slots([_N17_THREAD, _HONEST_CO_THREAD], "CO")
+    assert [t["thread_id"] for t in kept] == ["dynamic-topic-1"]
+    assert guard["excluded"] == 1
+    assert guard["contract"] == SLOT_GUARD_CONTRACT
+    (row,) = guard["exclusions"]
+    assert row["thread_id"] == "dynamic-topic-8597"
+    assert row["label_country"] == "JP"
+    assert row["edition_country"] == "CO"
+    assert row["reason_code"] == "label_country_contradicts_edition_slot"
+    # counted AND named — the payload can show why the row is missing
+    assert "label says Japan (JP); receipts 3/3 CO" in row["reason"]
+
+
+def test_slot_guard_keeps_a_thread_whose_label_matches_the_edition():
+    kept, guard = filter_edition_slots([_HONEST_CO_THREAD], "CO")
+    assert kept == [_HONEST_CO_THREAD]
+    assert guard["excluded"] == 0
+    assert guard["exclusions"] == []
+
+
+def test_slot_guard_keeps_a_foreign_label_whose_own_receipts_support_it():
+    # a genuine Venezuela story carried by Colombian press: the label is not
+    # lying about its receipts, so this is an editorial question, not a defect
+    # — the guard must not empty the door of real foreign coverage.
+    thread = {
+        "thread_id": "dynamic-topic-2",
+        "label": "Venezuela Border Crossing Closure",
+        "evidence_samples": [
+            {"headline": "Venezuela cierra el paso fronterizo de Cucuta"},
+            {"headline": "Caracas anuncia el cierre de la frontera con Colombia"},
+            {"headline": "Venezuela mantiene cerrada la frontera"},
+        ],
+    }
+    kept, guard = filter_edition_slots([thread], "CO")
+    assert kept == [thread]
+    assert guard["excluded"] == 0
+
+
+def test_slot_guard_skips_multi_country_and_geoless_labels():
+    threads = [
+        {"thread_id": "a", "label": "Russia Sanctions and Ukraine War Updates",
+         "evidence_samples": [{"headline": "Sismo de 7.4 sacude Colombia"},
+                              {"headline": "Terremoto en Colombia deja heridos"},
+                              {"headline": "Colombia: sismo de 7,4"}]},
+        {"thread_id": "b", "label": "Global Markets Rally",
+         "evidence_samples": [{"headline": "Sismo de 7.4 sacude Colombia"},
+                              {"headline": "Terremoto en Colombia deja heridos"},
+                              {"headline": "Colombia: sismo de 7,4"}]},
+        {"thread_id": "c", "label": "Trump Tariffs Escalate",
+         "evidence_samples": [{"headline": "Sismo de 7.4 sacude Colombia"},
+                              {"headline": "Terremoto en Colombia deja heridos"},
+                              {"headline": "Colombia: sismo de 7,4"}]},
+    ]
+    kept, guard = filter_edition_slots(threads, "CO")
+    assert len(kept) == 3
+    assert guard["excluded"] == 0
+
+
+def test_slot_guard_abstains_on_the_syros_case_and_says_so():
+    # dt-4071 'Syros Rescuer Murder Suspect Remanded' serves on the SY edition
+    # because its signals are country-tagged SY. Neither the label nor its
+    # Greek receipts resolve to a country in the shared lexicons/gazetteer, so
+    # the guard ABSTAINS rather than guessing — pinned as the honest limit,
+    # not a silent gap.
+    thread = {
+        "thread_id": "dynamic-topic-4071",
+        "label": "Syros Rescuer Murder Suspect Remanded",
+        "evidence_samples": [
+            {"headline": "Σύρος: Προσωρινά κρατούμενος στις φυλακές Χίου ο 41χρονος"},
+            {"headline": "Σύρος: Προφυλακίστηκε ο δράστης της ανθρωποκτονίας"},
+            {"headline": "Σύρος: Ενώπιον του Συμβουλίου Πλημμελειοδικών σήμερα"},
+        ],
+    }
+    kept, guard = filter_edition_slots([thread], "SY")
+    assert kept == [thread]
+    assert guard["excluded"] == 0
+
+
+def test_slot_guard_catches_the_syros_class_when_geography_is_detectable():
+    thread = {
+        "thread_id": "dynamic-topic-9",
+        "label": "Greek Island Rescuer Murder Trial",
+        "evidence_samples": [
+            {"headline": "Damascus court remands suspect over Syria paramedic killing"},
+            {"headline": "Syria paramedic murder: suspect appears before Damascus judges"},
+            {"headline": "Syrian rescuer killing — Damascus prosecutors seek detention"},
+        ],
+    }
+    kept, guard = filter_edition_slots([thread], "SY")
+    assert kept == []
+    assert guard["exclusions"][0]["label_country"] == "GR"
+
+
+def test_slot_guard_folds_subject_country_aliases_for_the_edition_code():
+    # GZ/WE fold to PS in the shared detector; a 'Gaza …' label on the PS
+    # edition is the SAME country, never a contradiction
+    thread = {
+        "thread_id": "dynamic-topic-3",
+        "label": "Gaza Aid Convoy Blocked",
+        "evidence_samples": [
+            {"headline": "Sismo de 7.4 sacude Colombia"},
+            {"headline": "Terremoto en Colombia deja heridos"},
+            {"headline": "Colombia: sismo de 7,4 deja daños"},
+        ],
+    }
+    kept, guard = filter_edition_slots([thread], "PS")
+    assert kept == [thread] and guard["excluded"] == 0
+    # ...and the same label on an unrelated edition, contradicted by its own
+    # receipts, is excluded
+    assert filter_edition_slots([thread], "CO")[1]["excluded"] == 1
+
+
+def test_slot_guard_kill_switch_off_keeps_every_thread(monkeypatch):
+    monkeypatch.setenv("ATLAS_COUNTRY_EDITION_SLOT_GUARD", "off")
+    assert slot_guard_enabled() is False
+    kept, guard = filter_edition_slots([_N17_THREAD, _HONEST_CO_THREAD], "CO")
+    assert len(kept) == 2
+    assert guard["enabled"] is False
+    assert guard["excluded"] == 0
+
+
+def test_slot_guard_defaults_on(monkeypatch):
+    monkeypatch.delenv("ATLAS_COUNTRY_EDITION_SLOT_GUARD", raising=False)
+    assert slot_guard_enabled() is True
+
+
+def test_slot_guard_handles_empty_and_malformed_threads():
+    kept, guard = filter_edition_slots([], "CO")
+    assert kept == [] and guard["excluded"] == 0
+    kept, _ = filter_edition_slots([{"thread_id": "x"}, {}], "CO")
+    assert len(kept) == 2
+
+
+def test_payload_carries_the_slot_guard_block():
+    gen = datetime(2026, 8, 11, tzinfo=timezone.utc)
+    _, guard = filter_edition_slots([_N17_THREAD], "CO")
+    payload = build_country_edition_payload(
+        country="CO", country_name="Colombia", ranked_threads=[],
+        enrichment=build_article_enrichment([], []), coverage_gaps=[],
+        generated_at=gen, window_hours=24, slot_guard=guard,
+    )
+    assert payload["slot_guard"]["excluded"] == 1
+    assert payload["slot_guard"]["exclusions"][0]["thread_id"] == "dynamic-topic-8597"
+
+
+def test_payload_slot_guard_defaults_to_an_honest_empty_block():
+    gen = datetime(2026, 8, 11, tzinfo=timezone.utc)
+    payload = build_country_edition_payload(
+        country="CO", country_name="Colombia", ranked_threads=[],
+        enrichment=build_article_enrichment([], []), coverage_gaps=[],
+        generated_at=gen, window_hours=24,
+    )
+    assert payload["slot_guard"]["excluded"] == 0
+    assert payload["slot_guard"]["exclusions"] == []
+
+
+def test_slot_guard_residual_actor_label_is_excluded_and_named():
+    # KNOWN RESIDUAL, pinned so it is never a silent gap: dt-3469 'Ukraine
+    # Strikes Wildberries Warehouses' names the ACTOR country while its
+    # receipts name where the drones landed. The court clears this class by
+    # widening its absence pool to 40 receipts; this door has only the
+    # receipts in its payload and must not grow queries (it already 503s on
+    # cold open, council R4 N26). The row is withheld from ONE door, counted
+    # and NAMED — never silently dropped, and one env var reverts it.
+    thread = {
+        "thread_id": "dynamic-topic-3469",
+        "label": "Ukraine Strikes Wildberries Warehouses",
+        "evidence_samples": [
+            {"headline": "На порятунок Wildberries Росії може знадобитися трильйон"},
+            {"headline": "Wildberries у Росії — удари дронів змушують Кремль шукати план"},
+            {"headline": "Склади Wildberries у Росії горять після атаки дронів"},
+        ],
+    }
+    kept, guard = filter_edition_slots([thread], "RU")
+    assert kept == []
+    (row,) = guard["exclusions"]
+    assert row["label_country"] == "UA" and row["dominant_receipt_country"] == "RU"
+    assert "label says Ukraine (UA); receipts 3/3 RU" in row["reason"]
