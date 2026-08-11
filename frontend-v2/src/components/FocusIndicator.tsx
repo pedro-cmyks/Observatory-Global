@@ -51,7 +51,11 @@ export function FocusIndicator({ onClear, onRemoveTheme }: { onClear?: () => voi
     if (filter.theme) {
         chips.push({
             key: 'theme',
-            typeLabel: 'Theme',
+            // R4 vocabulary fix (Pedro): the chip said THEME while the story
+            // lens banner said STORY over the SAME dynamic topic — two words,
+            // one object, reads as nesting that doesn't exist. A dynamic
+            // topic IS a story; "Theme" stays only for atlas categories.
+            typeLabel: filter.theme.startsWith('dynamic-topic-') ? 'Story' : 'Theme',
             value: resolveThreadLabel(filter.theme, filter.themeLabel),
             // The theme lives in filter.theme AND in App's local selectedTheme
             // (the open ThemeDetail panel). setTheme(null) alone leaves the panel

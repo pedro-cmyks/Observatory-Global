@@ -126,9 +126,16 @@
 }
 
 .narrative-label-text {
+    /* R4 fix (Pedro): single-line nowrap starved the label to "US Bom…" —
+       the label is the payload, the chips are metadata. Wrap to two lines
+       (his pick over smaller type / marquee), ellipsis only past line 2. */
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
     min-width: 0;
 }
 

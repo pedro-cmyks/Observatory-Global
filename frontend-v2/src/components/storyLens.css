@@ -14,6 +14,13 @@ body.story-lensed { padding-top: 28px; }
    imported relative to this file. */
 body.eclipsed.story-lensed { padding-top: 56px; }
 body.eclipsed.story-lensed .sl-banner { top: 28px; }
+/* R4 fix (Pedro, live prod screenshot): the command bar is
+   `position:absolute; top:0` inside the app shell — body padding moves FLOW
+   content, not an absolutely-positioned bar whose offset chain doesn't reach
+   the padded box, so the fixed banner sat ON TOP of the bar. Give the bar
+   its offset explicitly; stacking mirrors the body padding tiers above. */
+body.story-lensed .command-bar { top: 28px; }
+body.eclipsed.story-lensed .command-bar { top: 56px; }
 
 .sl-banner {
   position: fixed; top: 0; left: 0; right: 0; height: 28px;
