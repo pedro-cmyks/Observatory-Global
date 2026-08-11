@@ -39,6 +39,7 @@ import { STORY_LENS_AUTO, isLensAnchor } from './lib/storyLens'
 import { FocusIndicator } from './components/FocusIndicator'
 import { FrameStrip } from './components/FrameStrip'
 import { FrameSheet } from './components/FrameSheet'
+import { SearchSheet } from './components/SearchSheet'
 import { maxReplayDays, farEdgeKind, positionForDaysBack, snapDaysBack, isoDayForDaysBack, REPLAY_ENDPOINT_CAP_DAYS } from './lib/scrubberScale'
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, Sun, Moon } from './lib/icons'
 import { useTheme } from './contexts/ThemeContext'
@@ -52,7 +53,7 @@ import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
-import { resolveThreadLabel } from './lib/themeLabels'
+import { resolveThreadLabel, resolveThreadTitle } from './lib/themeLabels'
 import { createInvestigation, getActiveInvestigationId, getInvestigation, investigationQuery, addCitation } from './lib/workbench'
 import { countryPin, receiptFrom } from './lib/capturePayloads'
 import { buildBriefParams, parseConsoleDeepLink } from './lib/navParams'
@@ -94,6 +95,10 @@ import { Legend } from './components/Legend'
 import { useUrlSync } from './hooks/useUrlSync'
 import { useSavedWatches } from './hooks/useSavedWatches'
 import { useIsMobile } from './hooks/useIsMobile'
+import { useMobileNav } from './contexts/MobileNavContext'
+import { surfaceFor, fieldVisible, type MobileSurface } from './lib/mobileNav'
+import { consoleLensScope, consoleSlot } from './lib/lensScope'
+import { LensPanel } from './components/LensPanel'
 
 
 
@@ -387,11 +392,12 @@ function AppContent() {
   // X0 (L2 review 2026-07-05): the stream slot is L2's core state machine and
   // it was invisible to telemetry — panel_swap makes the middle of the
   // L0→L3 funnel readable.
-  // Mobile L2 IA: instead of a long scroll of the desktop cockpit, show one
-  // full-screen surface at a time via a bottom tab bar. Default to the live
-  // stream (the L2 value). Desktop ignores this.
+  // Mobile IA (#236 Task 6): the phone has THREE tabs — Brief ◈ · Lens ◎ ·
+  // Live ≋ — and the bar that switches them lives at the root (MobileTabBar),
+  // because Brief is a route and the console is a surface. App only reads
+  // which of its two console surfaces is showing. Desktop ignores this.
   const isMobile = useIsMobile()
-  const [mobileTab, setMobileTab] = useState<'map' | 'stream' | 'threads' | 'pulse'>('stream')
+  const { consoleTab, setConsoleTab, trail: lensTrail, focusLens, rewindLens, resetLens } = useMobileNav()
   // R3 emerald foundation: compact day/night flip in the command bar (full
   // theme selection, incl. Intel Noir, stays in Settings).
   const { theme: consoleTheme, toggleDayNight } = useTheme()
@@ -1103,28 +1109,91 @@ function AppContent() {
     }
   }, [filter.country])
 
-  // Back navigation: pop the topmost open panel. Used by Escape (desktop) and
-  // by swipe-right-from-the-edge (mobile, like a native app). Order = most
-  // recently opened first.
+  // #236 Task 7: the console's focus, read ONCE and handed to the ladder that
+  // the stream slot (which panel to render), the Lens (what to name) and Back
+  // (what to peel) all decide from. Declared above popPanel because that
+  // callback depends on it.
+  const consoleFocus = useMemo(() => ({
+    storyQuery,
+    threadId: selectedThread?.thread_id ?? null,
+    threadLabel: selectedThread?.label ?? null,
+    themeId: selectedTheme?.theme ?? null,
+    // resolveThreadTitle, not resolveThreadLabel: for an opaque numeric id with
+    // no label yet the latter returns the literal "Narrative Thread", which
+    // reads as if the thread were nameless rather than still loading — and it
+    // would be the breadcrumb's permanent text if the fetch never lands.
+    // `loading` = we have no label from any opener yet; ThemeDetail's
+    // onLabelResolved fills it in and pushScope swaps the trail entry.
+    themeLabel: selectedTheme
+      ? resolveThreadTitle(
+          selectedTheme.theme,
+          selectedTheme.thread?.label ?? selectedTheme.labelHint,
+          !(selectedTheme.thread?.label ?? selectedTheme.labelHint),
+        )
+      : null,
+    personName: focus.type === 'person' ? focus.value : null,
+    countryCode: selectedCountryCode,
+    countryName: selectedCountryCode ? resolveCountryName(selectedCountryCode, selectedCountry?.name) : null,
+    attentionTitle: selectedPublicAttention?.title ?? null,
+    chokepointId: selectedChokepoint?.id ?? null,
+    chokepointName: selectedChokepoint?.name ?? null,
+  }), [storyQuery, selectedThread, selectedTheme, focus.type, focus.value, selectedCountryCode, selectedCountry, selectedPublicAttention, selectedChokepoint])
+
+  // Back navigation: pop the topmost open panel. Used by Escape (desktop), by
+  // swipe-right-from-the-edge (mobile) and by the Lens breadcrumb.
   const popPanel = useCallback((): boolean => {
+    // LAYERS ABOVE THE SLOT, peeled first because they are literally drawn on
+    // top of it — a modal, the source profile, the theme's country drill-in.
+    // They are deliberately NOT in consoleSlot: none of them is a Lens scope,
+    // and peeling what sits underneath while one covers the screen would move
+    // nothing the reader can see.
     if (showBriefing) { setShowBriefing(false); return true }
     if (selectedSourceProfile) { setSelectedSourceProfile(null); return true }
     if (rightPanelThemeCountry) { setRightPanelThemeCountry(null); return true }
-    // Flywheel compound focus: peel ONE dimension per Back. Close an open
-    // thread/theme first (revealing a standing person/country), then peel the
-    // person, then the country — per-dimension (setPerson/setCountry null),
-    // never clearFocus() which would wipe the whole compound frame at once.
-    if (selectedTheme || selectedThread) {
-      setSelectedTheme(null); setSelectedThread(null); setTheme(null)
-      // Story Lens (Task 10, spec-review fix): Escape / mobile swipe-back
-      // closing the thread panel must exit the lens the same way every other
-      // close path does. stripLensParam (issue 4) prevents resurrection.
-      // Inline exit, not syncLensToThreadOpen(null) — see clearAll's comment
-      // above (the helper's !STORY_LENS_AUTO early-return must not apply here).
-      if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
-      return true
+
+    // THE SLOT ITSELF — ask the ladder, do not re-guess its order.
+    //
+    // This was a FOURTH hand-written copy of that ordering, and it disagreed
+    // with the other three: it peeled thread/theme before story and attention
+    // before person, where consoleSlot ranks story first and person above
+    // attention. The disagreement was reachable, not theoretical —
+    // FrameSheet's onOpenPin sets a person focus WITHOUT clearing an open
+    // attention item (unlike handleThemeSelect and handleCountryClick, which
+    // both null it), so the slot showed the person while Back cleared the
+    // attention underneath it: the screen did not change and the tap did
+    // nothing. Same shape for story-under-thread via SearchBar's onOpenStory.
+    // Peel exactly the dimension that is SHOWING, and the three affordances
+    // that share this function can no longer disagree with what is on screen.
+    // Still one dimension per Back (never clearFocus, which would wipe the
+    // whole compound frame at once).
+    switch (consoleSlot(consoleFocus, false)) {
+      case 'story': setStoryQuery(null); return true
+      case 'person': setPerson(null); return true
+      case 'attention': setSelectedPublicAttention(null); return true
+      case 'thread':
+      case 'theme':
+        setSelectedTheme(null); setSelectedThread(null); setTheme(null)
+        // Story Lens (Task 10, spec-review fix): Escape / mobile swipe-back
+        // closing the thread panel must exit the lens the same way every other
+        // close path does. stripLensParam (issue 4) prevents resurrection.
+        // Inline exit, not syncLensToThreadOpen(null) — see clearAll's comment
+        // above (the helper's !STORY_LENS_AUTO early-return must not apply here).
+        if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
+        return true
+      case 'country':
+        setSelectedCountry(null)
+        setSelectedCountryCode(null)
+        setShowFlows(false)
+        setCountry(null)
+        return true
+      case 'chokepoint': setSelectedChokepoint(null); return true
     }
-    if (focus.type === 'person') { setPerson(null); return true }
+
+    // Nothing is IN the slot, but a compound-focus COUNTRY CHIP can still be
+    // standing: filter.country outlives the CountryBrief that set it, and the
+    // ladder does not model it (the Lens never scopes to a chip alone). Kept
+    // so Escape still clears a country focus set from the map without opening
+    // a panel — the one peel the slot cannot see.
     if (selectedCountry || selectedCountryCode || filter.country) {
       setSelectedCountry(null)
       setSelectedCountryCode(null)
@@ -1138,7 +1207,7 @@ function AppContent() {
     if (isMobile && entrySource === 'brief') { navigate('/brief'); return true }
     return false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, focus.type, selectedTheme, selectedThread, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate, storyLens.state.active, storyLens.exit, stripLensParam])
+  }, [showBriefing, selectedSourceProfile, rightPanelThemeCountry, consoleFocus, selectedCountry, selectedCountryCode, filter.country, isMobile, entrySource, navigate, storyLens.state.active, storyLens.exit, stripLensParam])
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') popPanel() }
@@ -1169,9 +1238,11 @@ function AppContent() {
     }
   }, [popPanel])
 
-  // On mobile, secondary panels (thread detail, person, source, country drill-in)
-  // render inside the Stream slot. Opening one from the Map/Threads tab would
-  // leave it on a hidden tab — so bring the Stream tab forward automatically.
+  // #236 Task 6: a drill-in (thread, person, source, country, attention) is
+  // exactly the thing the Lens exists to re-scope to, so opening one brings
+  // the Lens forward — not Live, which is the unfocused firehose. The Lens
+  // then renders the opened item (the focus argument to `surfaceFor` in the
+  // shell below).
   useEffect(() => {
     if (!isMobile) return
     if (
@@ -1179,10 +1250,19 @@ function AppContent() {
       rightPanelThemeCountry || selectedCountry || selectedCountryCode ||
       selectedPublicAttention
     ) {
-      setMobileTab('stream')
+      setConsoleTab('lens')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
+
+  const lensScope = useMemo(() => consoleLensScope(consoleFocus), [consoleFocus])
+
+  useEffect(() => {
+    // Phone only: on desktop the Lens does not render and the trail stays at
+    // the field. A desktop->phone resize picks the scope up on the next tick.
+    if (!isMobile) return
+    focusLens(lensScope)
+  }, [isMobile, lensScope, focusLens])
 
 
   // --- Session Trail Tracking ---
@@ -2043,19 +2123,59 @@ function AppContent() {
 
         )
 
+        // #236 Task 6: the phone's console surface. Three surfaces from two
+        // tabs, because the Lens changes shape with focus — see surfaceFor,
+        // where the tab decides FIRST so Live can never resolve to the same
+        // thing as the Lens. Computed only on the phone; the `isMobile &&`
+        // short-circuit means desktop never evaluates the ladder.
+        // Task 7 review: "is anything focused" was a THIRD hand-listing of the
+        // focus states, free to drift from the two that decide what renders.
+        // It is the same question consoleSlot already answers — anything but
+        // `blank` — so it asks that instead. liveTab is false here on purpose:
+        // this argument is about FOCUS, and surfaceFor applies the tab itself.
+        const mobileSurface: MobileSurface | null = isMobile
+          ? surfaceFor(consoleTab, consoleSlot(consoleFocus, false) !== 'blank')
+          : null
+        // #236 Task 7 rename: `threadsHidden` named the DESKTOP panel it
+        // happened to hide. On the phone that panel is the Lens's FIELD — the
+        // ranked list you open things from — so it is named for the role,
+        // which is what the flag actually decides. Its only consumer is
+        // `paused`; <LensPanel/> owns the visibility toggle off the same
+        // `fieldVisible` rule, so the pane and its paused flag cannot drift.
+        // The read pane is the exact mirror: it serves the two surfaces the
+        // field does not, so it is hidden precisely when the field shows.
+        // Both are derived from the one exported rule for that reason.
+        const fieldHidden = mobileSurface !== null && !fieldVisible(mobileSurface)
+        const readPaneHidden = mobileSurface !== null && fieldVisible(mobileSurface)
+
         {/* Panel 2: SIGNAL STREAM — the intel hub, swaps based on active context */}
         const streamPanel = (() => {
-          const isStory = !!storyQuery
-          // Flywheel compound focus: a freshly-opened thread/theme outranks a
-          // standing person focus for the middle panel (Pedro's call — "show the
-          // thread"); the person stays a scope chip driving the map/list. Person
-          // wins the panel only when no thread/theme is open.
-          const isThread = !!selectedThread && !isStory
-          const isTheme = !!selectedTheme && !isThread && !isStory
-          const isPerson = focus.type === 'person' && !!focus.value && !isStory && !isThread && !isTheme
-          const isCountry = !!selectedCountryCode && !isPerson && !isTheme && !isThread && !isStory
-          const isPublicAttention = !!selectedPublicAttention && !isPerson && !isCountry && !isTheme && !isStory
-          const isChokepoint = !!selectedChokepoint && !isPerson && !isCountry && !isTheme && !isPublicAttention && !isStory
+          // Live is the firehose, always. Without this the stream panel's
+          // focus ladder wins and tapping Live with a thread open moved the
+          // active pill while the screen did not change by one pixel — the
+          // Lens-direction dead end, mirrored. Focus is NOT cleared: the open
+          // thread is still there when the user taps back to the Lens.
+          const liveTab = mobileSurface === 'live'
+          // #236 Task 7 review: the ladder that used to live here — seven
+          // guarded booleans plus the JSX chain that ranked them — now lives in
+          // lib/lensScope `consoleSlot`, because the Lens needs the SAME answer
+          // to name what this renders. It was transcribed there before; a
+          // transcription is a copy, and a copy drifts. These booleans are now
+          // views of one decision, kept so the ~40 call sites below read the
+          // same as they always did.
+          // Flywheel compound focus is IN that ladder: a freshly-opened
+          // thread/theme outranks a standing person focus for the middle panel
+          // (Pedro's call — "show the thread"); the person stays a scope chip
+          // driving the map/list. Person wins the panel only when no
+          // thread/theme is open. lensScope.test.ts pins that ordering.
+          const slot = consoleSlot(consoleFocus, liveTab)
+          const isStory = slot === 'story'
+          const isThread = slot === 'thread'
+          const isTheme = slot === 'theme'
+          const isPerson = slot === 'person'
+          const isCountry = slot === 'country'
+          const isPublicAttention = slot === 'attention'
+          const isChokepoint = slot === 'chokepoint'
           const closeAll = () => { setStoryQuery(null); setSelectedTheme(null); setSelectedThread(null); setThemeBackStack([]); setSelectedPublicAttention(null); setRightPanelThemeCountry(null); setSelectedCountry(null); setSelectedCountryCode(null); setShowFlows(false); setSelectedChokepoint(null); setSelectedConflictEvent(null); clearFocus(); setPrevStreamCtx(null); if (filter.theme) setTheme(null)
             // Story Lens (Task 10, Step 2): this is the ThemeDetail/EntityPanel/
             // ThreadFocusPanel/PublicAttentionPanel close path — the panel is
@@ -2268,7 +2388,7 @@ function AppContent() {
                     }}
                   />
                 ) : (
-                  <SignalStream />
+                  <SignalStream paused={readPaneHidden} />
                 )}
               </div>
             </div>
@@ -2291,6 +2411,7 @@ function AppContent() {
           <div className="panel-content">
             <PanelErrorBoundary panelName="NARRATIVE THREADS">
               <NarrativeThreads
+                paused={fieldHidden}
                 activeThreadId={selectedTheme?.thread?.thread_id ?? selectedThread?.thread_id}
                 onThreadSelect={(thread) => {
                   const target = resolveThreadThemeTarget(thread)
@@ -2459,20 +2580,133 @@ function AppContent() {
         )
 
         if (isMobile) {
-          // Mobile keeps the proven tab IA untouched: one CSS class swap shows
-          // one full-screen panel at a time (display-toggle, no unmounts) —
-          // EXCEPT the radar (6.3b): the map's 2D-canvas rAF loop keeps running
-          // while CSS-hidden, burning the phone's battery/main thread during a
-          // read. Mount it only on the map tab so it unmounts (rAF stops) on
-          // stream/threads/pulse. Re-mount re-applies its live props from App
-          // state (flyCountry/resetNonce) — see note in the handoff.
+          // #236: the phone has two console surfaces and three states, named
+          // by `mobileSurface` above. 'live' = the firehose; 'lens-focused' =
+          // the thing you opened; 'lens-field' = the field you open things
+          // from. The map is no longer a tab — it is a section INSIDE the Lens
+          // (Task 8) — so the radar panel is not mounted here at all and its
+          // rAF loop never runs on a phone. The dock is absorbed the same way,
+          // and the correlation matrix was only ever mounted-and-CSS-hidden
+          // here. None of the three is mounted.
+          //
+          // The two that ARE here KEEP ALIVE across tab taps — mounted once,
+          // visibility toggled — as main.tsx's AppBriefKeepAlive does for the
+          // routes (#239 slice 2). NOT because they are free while hidden:
+          // SignalStream polls every 15s, drips every 3s and re-renders every
+          // second, and NarrativeThreads polls every 5 min. They are kept
+          // alive DESPITE that, because remounting measured worse — 0.7-1.5s
+          // of blank panel and 2-4 re-fired requests on every tap. The
+          // `paused` prop buys the hidden cost back on both: whichever pane is
+          // hidden idles its timers and keeps its rows, so a tap costs neither
+          // a refetch nor a blank panel.
+          //
+          // #236 Task 7: <LensPanel/> now owns which slot is showing and wears
+          // the scope chrome. The two panels stay exactly where they were —
+          // the Lens wraps them in `display: contents`, which generates no
+          // box, so each still lays out as a direct child of this layout and
+          // neither remounts when the scope changes. The read pane is passed
+          // to the Lens but is ALSO the Live surface; that is why the Lens
+          // takes `surface` rather than deciding from focus alone.
+          //
+          // mobileSurface is non-null here by construction — same `isMobile`.
           return (
-            <div className={`terminal-layout mobile-tab-${mobileTab}`}>
-              {mobileTab === 'map' && radarPanel}
-              {streamPanel}
-              {threadsPanel}
-              {matrixPanel}
-              {dockPanel}
+            <div className={`terminal-layout mobile-tab-${consoleTab} lens-shell`}>
+              <LensPanel
+                surface={mobileSurface!}
+                trail={lensTrail}
+                /* Shorten the trail and peel the console in the same handler.
+                   popPanel alone can reveal a scope the trail never visited
+                   (peel a thread, find a country focus set under it) — appended
+                   on top of the thread just closed, the breadcrumb would then
+                   point back at it. Rewinding first lands the revealed scope at
+                   the same depth. popPanel is the same function Escape and the
+                   edge-swipe call, so all three agree. */
+                onBack={() => { rewindLens(); popPanel() }}
+                /* #236 Task 8: a country row in `where it lives` re-scopes the
+                   Lens. The console's own opener, not FocusContext.setCountry
+                   — the Lens scope is derived from this component's focus
+                   state (consoleFocus.countryCode), so setting only the shared
+                   filter would move the map while the breadcrumb and the read
+                   kept naming the old scope. It resolves the display name
+                   itself, which is why the section passes just the code.
+
+                   setPerson(null) and setTheme(null) FIRST, or the tap does
+                   nothing. Both clear a SHARED FOCUS dimension that
+                   handleCountryClick leaves standing — nextFocusDims' `country`
+                   case keeps person AND theme (focusReducer.ts:39, it nulls
+                   only `thread`) — and each survivor outranks the country that
+                   was just opened, so the panel, the heading and the breadcrumb
+                   would all stay put while a country chip appeared. That is the
+                   class popPanel's own comment above already documents ("the
+                   slot showed the person while Back cleared the attention
+                   underneath it: the screen did not change and the tap did
+                   nothing").
+
+                   The THEME half is subtler than the person half and was the
+                   gate's measured failure. handleCountryClick DOES clear the
+                   theme — but only `selectedTheme`, the panel, not
+                   `filter.theme`, the focus. The effect above ("Open
+                   ThemeDetail when theme is focused via FocusContext") then
+                   sees filter.theme set and selectedTheme null and re-opens the
+                   panel on the very next commit. A MutationObserver caught all
+                   three frames: CountryBrief mounted, then 140ms later
+                   ThemeDetail was back and the heading had reverted from
+                   "Spain" to "Ceuta Migrant Crisis" while the URL kept
+                   `&country=ES`. So the pivot was not losing a precedence
+                   contest in consoleSlot — consoleSlot named ThemeDetail
+                   because ThemeDetail was genuinely on screen. Clearing the
+                   focus dimension is what stops it coming back.
+
+                   resetLens() because this is a LATERAL PIVOT: it CLOSES the
+                   thread it was measured from rather than opening on top of it,
+                   so a plain append would leave a breadcrumb naming a scope
+                   Back cannot reach. Measured: without it the crumb read
+                   "← Ceuta Migrant Crisis" and the tap landed on The world.
+                   See resetScope in lib/lensScope.ts.
+
+                   Cleared HERE rather than inside handleCountryClick, which
+                   ~24 call sites share: compound person+country is deliberate
+                   (focusReducer keeps it on purpose) and is what the desktop
+                   map is for — "Trump, in Israel" — and compound theme+country
+                   is deliberate in the same way: it renders the country-scoped
+                   ThemeDetail ("← Global · Spain · 5,618 signals", observed
+                   live), and the effect above re-scopes it on purpose when the
+                   country chip changes under it. Clearing either globally would
+                   change every one of those doors to fix one. This file already
+                   composes that way — the map's onCountrySelect calls
+                   clearFocus() first, the compare panel calls
+                   setComparePerson(null), the source and conflict panels close
+                   their own panel — each before calling. The phone Lens has no
+                   map for a standing chip to act on, and its whole contract is
+                   that the surface re-scopes to what you tapped. */
+                onOpenCountry={(cc) => { resetLens(); setPerson(null); setTheme(null); handleCountryClick(cc) }}
+                /* A `connected` row re-scopes to that thread, through the same
+                   opener every other thread door uses — so the trail, the read
+                   and the story lens all move together. The label rides along
+                   (handleThemeSelect's own `labelHint`) so the breadcrumb never
+                   shows a raw dynamic-topic id while the read loads.
+
+                   resetLens() for the SAME reason the country pivot above needs
+                   it, and it is worth stating because "thread → thread" looks
+                   like a push rather than a pivot: handleThemeSelect REPLACES
+                   the open thread, and popPanel's thread/theme case nulls
+                   selectedTheme outright — it never consumes themeBackStack,
+                   which only the desktop drill-back button reads. So a plain
+                   append would leave [field, thread A, thread B], a breadcrumb
+                   reading "← thread A", and a Back that clears thread B and
+                   lands on The world. Resetting first leaves [field, thread B]:
+                   one honestly reachable step, which is what Back does. */
+                onOpenThread={(id, label) => {
+                  resetLens()
+                  handleThemeSelect(id, undefined, undefined, undefined, label)
+                }}
+                /* The sections measure neighbours over the SAME thread pool the
+                   field panel below them ranks — including its country scoping,
+                   which changes which actors count as rare. */
+                countryScope={filter.country}
+                field={threadsPanel}
+                read={streamPanel}
+              />
             </div>
           )
         }
@@ -2515,22 +2749,34 @@ function AppContent() {
         />
       )}
 
-      {/* Mobile L2 bottom navigation — one full-screen surface at a time */}
+      {/* The mobile tab bar used to live here. It now renders once at the root
+          (main.tsx → MobileTabBar) so /app and /brief share one bar — see
+          #236 Task 6. */}
+
+      {/* #236 Task 9: the mobile search sheet. Reachable from anywhere in the
+          console — including over a full-screen read, which is the gap this
+          closes (Task 7 measured elementFromPoint over the desktop command
+          bar's search input returning ThemeDetail's z-9000 overlay at this
+          width; the command bar itself is unreachable under a read on the
+          phone). Rendered from App rather than main.tsx (unlike MobileTabBar)
+          because its doors — handleThemeSelect, handleCountryClick, setFocus
+          — all live here; mounting it at the root would mean prop-drilling
+          them out through a second context for no reader-visible benefit,
+          and search has never been a Brief-page affordance on desktop either
+          (BriefNewspaper carries no SearchBar).
+          Doors are wired IDENTICALLY to the desktop SearchBar's own props one
+          screen up (~line 1697): a tapped thread/country/person result calls
+          the exact same openers, which is what makes the Lens pivot "just
+          happen" — the effects at :1245 (consoleTab -> 'lens') and :1259
+          (focusLens(lensScope)) already run off this state, so nothing here
+          calls either directly (MobileNavContext.tsx's own doc comment: only
+          the console's derivation effect may call focusLens). */}
       {isMobile && (
-        <nav className="mobile-tabbar" aria-label="Console sections" data-tour="mobile-tabs">
-          <button className={mobileTab === 'map' ? 'active' : ''} onClick={() => setMobileTab('map')}>
-            <span className="mobile-tab-glyph">◍</span>Map
-          </button>
-          <button className={mobileTab === 'threads' ? 'active' : ''} onClick={() => setMobileTab('threads')}>
-            <span className="mobile-tab-glyph">⌗</span>Threads
-          </button>
-          <button className={mobileTab === 'stream' ? 'active' : ''} onClick={() => setMobileTab('stream')}>
-            <span className="mobile-tab-glyph">≋</span>Stream
-          </button>
-          <button className={mobileTab === 'pulse' ? 'active' : ''} onClick={() => setMobileTab('pulse')}>
-            <span className="mobile-tab-glyph">◎</span>Pulse
-          </button>
-        </nav>
+        <SearchSheet
+          onThemeSelect={handleThemeSelect}
+          onCountrySelect={(code) => { handleCountryClick(code); setMapFlyCountry(code) }}
+          onPersonSelect={(name) => { setFocus('person', name, name); setMapFlyCountry(null) }}
+        />
       )}
 
       {/* Hover Tooltip */}
@@ -2597,29 +2843,39 @@ function AppContent() {
                 onClose={() => setWorkbenchOpen(false)}
               />
             </div>
-            <div className="workbench-overlay-right">
-              {researchQuery ? (
-                <>
-                  <div className="workbench-suggest-head" data-tip="Live anchors from the research plan for this investigation's query — re-ranked on every open, never frozen. Pin one to capture it into the route.">
-                    <span className="workbench-suggest-label">ATLAS SUGGESTS</span>
-                    <span className="workbench-suggest-query">{researchQuery}</span>
+            {/* Task 10 (#236): the research plan ("Atlas suggests") is a
+                second, search-driven column — genuinely a desktop working
+                surface, not a capture list. WorkbenchPanel tells a mobile
+                analyst it lives on the computer; that claim would be false
+                the moment this column rendered beside it on the same phone
+                screen, so it does not mount at all below 768. Nothing moves
+                to an overflow menu — it is simply absent, matching the
+                honest line. */}
+            {!isMobile && (
+              <div className="workbench-overlay-right">
+                {researchQuery ? (
+                  <>
+                    <div className="workbench-suggest-head" data-tip="Live anchors from the research plan for this investigation's query — re-ranked on every open, never frozen. Pin one to capture it into the route.">
+                      <span className="workbench-suggest-label">ATLAS SUGGESTS</span>
+                      <span className="workbench-suggest-query">{researchQuery}</span>
+                    </div>
+                    <ResearchPlanPanel
+                      query={researchQuery}
+                      hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
+                      onOpenThread={handleResearchOpenThread}
+                      onOpenCountry={handleResearchOpenCountry}
+                      onBranchQuery={(q) => setResearchQuery(q)}
+                      onPinsChanged={() => setWbRefresh(t => t + 1)}
+                    />
+                  </>
+                ) : (
+                  <div className="workbench-overlay-hint">
+                    Create or select an investigation, then its research plan appears here.
+                    Anchors open real Atlas surfaces; pin the useful ones.
                   </div>
-                  <ResearchPlanPanel
-                    query={researchQuery}
-                    hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
-                    onOpenThread={handleResearchOpenThread}
-                    onOpenCountry={handleResearchOpenCountry}
-                    onBranchQuery={(q) => setResearchQuery(q)}
-                    onPinsChanged={() => setWbRefresh(t => t + 1)}
-                  />
-                </>
-              ) : (
-                <div className="workbench-overlay-hint">
-                  Create or select an investigation, then its research plan appears here.
-                  Anchors open real Atlas surfaces; pin the useful ones.
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

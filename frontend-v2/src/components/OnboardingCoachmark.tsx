@@ -67,11 +67,25 @@ const STEPS: TourStep[] = [
     },
 ]
 
-// Mobile IA is tabbed (Map / Threads / Stream / Pulse), not the desktop
+// Mobile IA is tabbed (Brief / Lens / Live since #236 Task 6), not the desktop
 // side-by-side panels — so the phone gets its own short tour anchored only to
 // elements that are ALWAYS on screen (the search bar + the bottom tab bar).
 // The card is a bottom sheet (see CSS) so Skip/Next are always reachable — the
 // desktop beside-target positioning clipped off-screen and trapped the user.
+//
+// TASK 8 SECOND PASS (done). The Map tab came back as the Lens's `where it
+// lives` strip, so step 3 now names it — it is the pivot the retired tab used
+// to offer. The sentence is scoped to "tap a thread, a source, or a headline"
+// and "that story" ON PURPOSE: those are the scopes where the strip has rows
+// to tap. At a country scope it has none and says so instead (its footprint is
+// itself), so the copy must not promise a list there. The `connected` section
+// is deliberately
+// NOT taught: it renders an honest absence at every scope today (its only
+// neighbour ranker measured ~60% false and ships dark), and a tour that points
+// at a section which always answers "not measured" teaches a dead end. It gets
+// a line when it has rows. Pulse is likewise unnamed — public attention is
+// carried inside each scope's own panel, not as a section the user navigates
+// to, so there is nothing to point at.
 const MOBILE_STEPS: TourStep[] = [
     {
         selector: '[data-tour="search"]',
@@ -83,15 +97,15 @@ const MOBILE_STEPS: TourStep[] = [
     },
     {
         selector: '[data-tour="mobile-tabs"]',
-        eyebrow: 'Four views',
+        eyebrow: 'Three views',
         title: 'Switch with the bottom tabs',
-        body: 'Map = where stories are happening. Threads = what is spreading across countries. Stream = the live signal feed. Pulse = what people are reading and searching.',
+        body: 'Brief = the day, read like a front page. Lens = whatever you are looking at right now. Live = the raw signal feed as it arrives.',
     },
     {
         selector: '',
         eyebrow: 'Pivot, don’t just scroll',
         title: 'Tap anything to drill in',
-        body: 'Tap a country on the map, a thread, a source, or a headline to turn one signal into a focused investigation. Anything you open can be pinned in the Workbench.',
+        body: 'Tap a thread, a source, or a headline and the Lens re-scopes to it. Its “where it lives” strip names the countries that story actually lands in — tap one to pivot there. Anything you open can be pinned in the Workbench.',
     },
 ]
 

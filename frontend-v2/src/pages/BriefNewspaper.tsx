@@ -36,6 +36,8 @@ import {
 } from '../lib/dailyPublication'
 import { buildStaleBanner } from '../lib/staleBanner'
 import { AtlasMark } from '../components/AtlasMark'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { bandStartsCollapsed, freshnessSummary, type BriefBand, type FreshnessFacts } from '../lib/briefMobileBands'
 import {
     composeCountrySections,
     fetchCountryEdition,
@@ -44,6 +46,16 @@ import {
 } from '../lib/countryEdition'
 import '../styles/readerTheme.css'
 import './BriefNewspaper.css'
+
+/**
+ * How long the front page waits for its own data before showing the error card.
+ *
+ * Sized above the measured latency of /api/v2/briefing (17.5s and 16.9s on two
+ * cold production curls, 2026-08-06), not chosen for feel. The two best-effort
+ * fetches below — daily-publication and attention/eclipse — keep their own 12s,
+ * because neither blocks the page and both measured under 2s.
+ */
+const BRIEF_FETCH_TIMEOUT_MS = 25000
 
 // Natural Earth 110m with ISO_A2 country properties
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
@@ -318,6 +330,21 @@ export function BriefNewspaper() {
     const [dailyEdition, setDailyEdition] = useState<DailyPublicationArtifact | null>(null)
     const [eclipse, setEclipse] = useState<EclipseData | null>(null)
 
+    // Task 5 (mobile IA #236): the Brief buried its news under ~1707px of
+    // chrome — the freshness box and the markets band are honesty surfaces
+    // (staleness truth / "not part of the sealed edition"), not chrome to
+    // delete, so they collapse to an expandable one-line summary on a phone
+    // instead. `userExpandedBands` tracks ONLY what the reader tapped open —
+    // never a useState initializer keyed on isMobile, which would freeze the
+    // wrong answer across a resize/orientation change (see bandStartsCollapsed).
+    const isMobile = useIsMobile()
+    const [userExpandedBands, setUserExpandedBands] = useState<Record<BriefBand, boolean>>({
+        freshness: false,
+        markets: false,
+    })
+    const isBandOpen = (band: BriefBand) => !bandStartsCollapsed(band, isMobile) || userExpandedBands[band]
+    const expandBand = (band: BriefBand) => setUserExpandedBands(b => ({ ...b, [band]: true }))
+
     // Reader identity: SCOPED theme on the page wrapper (never :root — the
     // keep-alive shell shares the document with the console's Intel-Noir).
     const { theme: readerTheme, toggle: toggleReaderTheme } = useReaderTheme()
@@ -386,8 +413,20 @@ export function BriefNewspaper() {
             // NEVER block the front page on it. Fetch it in the background and
             // fill in the standfirst when it arrives. A hard timeout on the brief
             // fetch turns a hang into a visible error instead of an endless spinner.
+            //
+            // #236: that timeout was 12s, and production /api/v2/briefing was
+            // measured at 17.5s and 16.9s on two cold curls — so on a phone the
+            // front page aborted before its own data could arrive and every cold
+            // visit rendered the error card. SPA navigation hid it, because the
+            // keep-alive shell holds the payload in memory; only a true reload
+            // showed it. Raised above the measured latency so the honest failure
+            // state is reserved for an actual failure.
+            //
+            // This is a floor over a symptom, not a fix. The endpoint's latency is
+            // the defect and it is tracked separately; when it comes down, this
+            // number should come down with it rather than quietly ratcheting up.
             const ctrl = new AbortController()
-            const timer = setTimeout(() => ctrl.abort(), 12000)
+            const timer = setTimeout(() => ctrl.abort(), BRIEF_FETCH_TIMEOUT_MS)
             let briefRes: Response
             try {
                 briefRes = await fetch(`/api/v2/briefing?hours=${h}`, { signal: ctrl.signal })
@@ -619,6 +658,11 @@ export function BriefNewspaper() {
 
     const weekday = now.toLocaleDateString('en-US', { weekday: 'long' })
     const dayLine = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    // Task 5 (mobile IA #236): the weekday-name dateline was one more masthead
+    // row on a phone. Same fact (the date), shorter form — CSS swaps which
+    // span renders at the mobile breakpoint, no lost information (share-card
+    // copy below keeps the full weekday form; that is a modal, not the door).
+    const dayLineShort = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
     const dailyGate = assessDailyPublication(dailyEdition)
     // Staleness truth: what edition is served, how old, and when the next seal is.
@@ -777,6 +821,38 @@ export function BriefNewspaper() {
     const dailyEditionArticles = dailyEdition?.package?.article_enrichment?.articles ?? null
     const editionYield = dailyEdition?.package?.article_enrichment?.yield ?? null
     const coverageCheck = dailyEdition?.package?.coverage_check ?? null
+
+    // Collapsed-band summary for the freshness box (Task 5, mobile IA #236).
+    // Derived from data the full markup already renders (staleBanner/editionYield
+    // above) — no new fetch. The freshnessSummary() line stays exactly the honest
+    // "sealed <age> · full text X/Y" fact; the degraded-lane reason and the next
+    // seal attempt are appended when present so collapsing never drops a fact the
+    // expanded box would have shown (the freshness box is an honesty rail, not
+    // chrome — never a bare label).
+    //
+    // Follow-up review: this used to recompute the age itself
+    // (Math.floor(ms / 3600000)), which printed "sealed 0h ago" at 20 minutes
+    // and "sealed 87h ago" at 3 days — a second, cruder phrasing of the exact
+    // fact staleBanner.age already states correctly ("sealed just now" /
+    // "sealed 3 days ago") in the expanded box below. Reuse that string
+    // (stripping its own "sealed " prefix, since freshnessSummary adds it
+    // back) instead of a parallel computation, so the two never diverge.
+    const freshnessFacts: FreshnessFacts = (() => {
+        const sealedAge = staleBanner?.age
+            ? staleBanner.age.replace(/^sealed\s+/, '')
+            : null
+        const hasYield = !!editionYield && editionYield.attempted > 0
+        return {
+            sealedAge,
+            fullTextOk: hasYield ? editionYield!.ok : null,
+            fullTextTotal: hasYield ? editionYield!.attempted : null,
+        }
+    })()
+    const freshnessCollapsedLine = [
+        freshnessSummary(freshnessFacts),
+        staleBanner && staleBanner.tone === 'stale' ? staleBanner.why : null,
+        staleBanner?.nextAttempt ?? null,
+    ].filter(Boolean).join(' · ')
 
     // LIVE-view enrichment: when the sealed edition is degraded the Brief
     // serves live threads whose receipt URLs differ from the sealed set — so
@@ -1140,7 +1216,10 @@ export function BriefNewspaper() {
                         <p className="reader-tagline">Narrative intelligence — measured from coverage, not editorialized.</p>
                     </div>
                     <div className="brief-masthead-right">
-                        <div className="reader-dateline">{weekday}, <b>{dayLine}</b></div>
+                        <div className="reader-dateline">
+                            <span className="brief-dateline-full">{weekday}, <b>{dayLine}</b></span>
+                            <span className="brief-dateline-short"><b>{dayLineShort}</b></span>
+                        </div>
                         <span
                             className="reader-chip"
                             data-tip="The Brief is the day's edition — always the last 24 hours. For other time windows, open the console."
@@ -1200,29 +1279,40 @@ export function BriefNewspaper() {
                         )}
 
                         {dailyEdition && staleBanner && (
-                            <section
-                                className={`brief-publication-state ${staleBanner.served === 'sealed' ? 'is-ready' : 'is-rebuilding'}`}
-                                aria-label="Daily edition freshness"
-                                data-tone={staleBanner.tone}
-                            >
-                                <div>
-                                    <span className="brief-publication-kicker">
-                                        {staleBanner.served === 'sealed' ? 'SEALED DAILY EDITION' : 'LIVE VIEW'}
+                            !isBandOpen('freshness') ? (
+                                <button
+                                    type="button"
+                                    className="brief-band-summary"
+                                    aria-label="Daily edition freshness — tap to expand"
+                                    onClick={() => expandBand('freshness')}
+                                >
+                                    {freshnessCollapsedLine} ▸
+                                </button>
+                            ) : (
+                                <section
+                                    className={`brief-publication-state ${staleBanner.served === 'sealed' ? 'is-ready' : 'is-rebuilding'}`}
+                                    aria-label="Daily edition freshness"
+                                    data-tone={staleBanner.tone}
+                                >
+                                    <div>
+                                        <span className="brief-publication-kicker">
+                                            {staleBanner.served === 'sealed' ? 'SEALED DAILY EDITION' : 'LIVE VIEW'}
+                                        </span>
+                                        <strong>{staleBanner.edition}</strong>
+                                    </div>
+                                    <span className="brief-publication-cutoff">
+                                        {[
+                                            staleBanner.age,
+                                            staleBanner.tone === 'stale' ? staleBanner.why : null,
+                                            staleBanner.served === 'live' ? staleBanner.liveNote : null,
+                                            staleBanner.nextAttempt,
+                                            editionYield && editionYield.attempted > 0
+                                                ? `full text ${editionYield.ok}/${editionYield.attempted} receipts`
+                                                : null,
+                                        ].filter(Boolean).join(' · ')}
                                     </span>
-                                    <strong>{staleBanner.edition}</strong>
-                                </div>
-                                <span className="brief-publication-cutoff">
-                                    {[
-                                        staleBanner.age,
-                                        staleBanner.tone === 'stale' ? staleBanner.why : null,
-                                        staleBanner.served === 'live' ? staleBanner.liveNote : null,
-                                        staleBanner.nextAttempt,
-                                        editionYield && editionYield.attempted > 0
-                                            ? `full text ${editionYield.ok}/${editionYield.attempted} receipts`
-                                            : null,
-                                    ].filter(Boolean).join(' · ')}
-                                </span>
-                            </section>
+                                </section>
+                            )
                         )}
 
                         {dailyGate.useSharedPackage && dailyEdition && (
@@ -1273,7 +1363,22 @@ export function BriefNewspaper() {
                                 <div className="sub">outlet domains · raw 24h feed</div>
                             </div>
                             <div className="brief-vital">
-                                <div className="k">Avg sentiment</div>
+                                {/* Task 5 follow-up (#236): the "sub" caption below states this
+                                    tile's scale (±1) — the ONLY other place on the page that
+                                    restates it is measuredSentimentChip, which renders only when
+                                    the AI insight is present (this project's insight lane has a
+                                    documented multi-day-outage history). Hiding "sub" on mobile
+                                    (below) would leave a bare signed number with no scale
+                                    anywhere on the page, breaking sentimentScale.ts's own rule
+                                    ("every printed value states its scale"). The mobile-only
+                                    label swap keeps that promise without the vertical cost of
+                                    keeping "sub" visible — desktop's RENDERED label is unchanged
+                                    (the .k rule itself is never edited by mobile CSS; its child
+                                    is two spans now, one per viewport, not a bare text node). */}
+                                <div className="k">
+                                    <span className="brief-vital-k-full">Avg sentiment</span>
+                                    <span className="brief-vital-k-mobile">Sentiment · ±1</span>
+                                </div>
                                 <div className="v">{formatSentimentPm1(data.stats.avg_sentiment)}</div>
                                 <div className="sub">normalized ±1 scale · window aggregate</div>
                             </div>
@@ -1283,7 +1388,14 @@ export function BriefNewspaper() {
                                 <div className="sub">ranked narrative threads served this window</div>
                             </div>
                             <div className="brief-vital">
-                                <div className="k">Coverage gaps</div>
+                                {/* Same rationale as the sentiment tile above: "Coverage gaps"
+                                    alone is cryptic and its definition ("categories with
+                                    attention but zero verified rows") is only reachable via the
+                                    Under-the-Radar tab. */}
+                                <div className="k">
+                                    <span className="brief-vital-k-full">Coverage gaps</span>
+                                    <span className="brief-vital-k-mobile">Gaps · unverified</span>
+                                </div>
                                 <div className="v">{coverageGaps.length}</div>
                                 <div className="sub">categories with attention but zero verified rows</div>
                             </div>
@@ -1292,8 +1404,26 @@ export function BriefNewspaper() {
                         {/* ============ WORLD MARKETS BAND (full-width franja, top) ============
                             Global bellwethers — NOT the country's data, so it never swaps on
                             country focus; the country's own instruments live in the country
-                            edition below (BriefCountryMarketsCard). */}
-                        <BriefWorldMarketsBand />
+                            edition below (BriefCountryMarketsCard). Collapses to a one-line
+                            summary on mobile (Task 5). Follow-up review: "descriptive" alone
+                            only let the reader INFER not-sealed (the instrument strip above is
+                            equally "descriptive" and IS part of the measured edition) — the
+                            honesty rule here is the disclaimer may never be hidden OR weakened,
+                            so the line now STATES it, echoing BriefMarkets.tsx's own "Live
+                            overlay — not part of the sealed edition" rather than paraphrasing
+                            around it (same fix already applied to the freshness band below). */}
+                        {!isBandOpen('markets') ? (
+                            <button
+                                type="button"
+                                className="brief-band-summary"
+                                aria-label="World markets — live overlay, not part of the sealed edition — tap to expand"
+                                onClick={() => expandBand('markets')}
+                            >
+                                World markets · live overlay, not sealed ▸
+                            </button>
+                        ) : (
+                            <BriefWorldMarketsBand />
+                        )}
 
                         {/* ============ COUNTRY FILTER ============ */}
                         {(() => {
@@ -1796,41 +1926,50 @@ export function BriefNewspaper() {
                                 >
                                     Signal density — last 24h
                                 </div>
-                                <ComposableMap
-                                    projection="geoEqualEarth"
-                                    projectionConfig={{ scale: 150, center: [0, 5] }}
-                                    width={800}
-                                    height={400}
-                                >
-                                    <Geographies geography={GEO_URL}>
-                                        {({ geographies }) =>
-                                            geographies.map(geo => {
-                                                const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
-                                                const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
-                                                // B6 (dataviz audit): linear normalize over a heavy-tailed
-                                                // distribution saturated the US and left ~90% of countries in
-                                                // the bottom 10% of the ramp reading as "no data" — sqrt spreads
-                                                // the mid-range without lying about rank order.
-                                                const intensity = Math.sqrt(count / maxSignals)
-                                                return (
-                                                    <Geography
-                                                        key={geo.rsmKey}
-                                                        geography={geo}
-                                                        fill={count > 0 ? lerpHex(mapRamp.low, mapRamp.high, intensity) : mapRamp.zero}
-                                                        stroke={mapRamp.stroke}
-                                                        strokeWidth={0.5}
-                                                        onClick={() => iso2 && selectCountry(iso2)}
-                                                        style={{
-                                                            default: { outline: 'none' },
-                                                            hover: { outline: 'none' },
-                                                            pressed: { outline: 'none' },
-                                                        }}
-                                                    />
-                                                )
-                                            })
-                                        }
-                                    </Geographies>
-                                </ComposableMap>
+                                {/* Task 5 (mobile IA #236): skip the choropleth on a phone — it
+                                    was the 4th-heaviest block on the page and react-simple-maps
+                                    fetches the world GeoJSON (GEO_URL) as soon as ComposableMap
+                                    mounts, so this must be a conditional RENDER, not just CSS
+                                    display:none, or the download still happens. The "Most Active"
+                                    list beside it (a sibling column, not inside .brief-minimap)
+                                    stays — it is real content, not a map render. */}
+                                {!isMobile && (
+                                    <ComposableMap
+                                        projection="geoEqualEarth"
+                                        projectionConfig={{ scale: 150, center: [0, 5] }}
+                                        width={800}
+                                        height={400}
+                                    >
+                                        <Geographies geography={GEO_URL}>
+                                            {({ geographies }) =>
+                                                geographies.map(geo => {
+                                                    const iso2 = NUMERIC_TO_ISO2[String(geo.id)]
+                                                    const count = iso2 ? (signalMap.get(iso2) ?? 0) : 0
+                                                    // B6 (dataviz audit): linear normalize over a heavy-tailed
+                                                    // distribution saturated the US and left ~90% of countries in
+                                                    // the bottom 10% of the ramp reading as "no data" — sqrt spreads
+                                                    // the mid-range without lying about rank order.
+                                                    const intensity = Math.sqrt(count / maxSignals)
+                                                    return (
+                                                        <Geography
+                                                            key={geo.rsmKey}
+                                                            geography={geo}
+                                                            fill={count > 0 ? lerpHex(mapRamp.low, mapRamp.high, intensity) : mapRamp.zero}
+                                                            stroke={mapRamp.stroke}
+                                                            strokeWidth={0.5}
+                                                            onClick={() => iso2 && selectCountry(iso2)}
+                                                            style={{
+                                                                default: { outline: 'none' },
+                                                                hover: { outline: 'none' },
+                                                                pressed: { outline: 'none' },
+                                                            }}
+                                                        />
+                                                    )
+                                                })
+                                            }
+                                        </Geographies>
+                                    </ComposableMap>
+                                )}
                             </div>
                             <div className="brief-bottom-col brief-map-side">
                                 <h3 className="brief-bottom-heading">Most Active</h3>

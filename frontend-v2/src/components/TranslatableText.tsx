@@ -88,7 +88,36 @@ interface Props {
     className?: string;
 }
 
-export const TranslatableText: React.FC<Props> = ({ text, className }) => {
+/**
+ * All the translate/toggle state for one free-text label, with nothing about
+ * WHERE it renders. Extracted (#236 follow-up) as the exact mirror of
+ * `useTranslatableHeadline`, and for the same reason: a consumer that needs
+ * the toggle to land in a different part of the DOM than the text —
+ * NarrativeThreads' mobile row, whose `.narrative-label-text` is a
+ * `-webkit-line-clamp: 2` box that silently swallowed the toggle whenever a
+ * long title filled both lines — can drive both pieces from ONE hook instance
+ * instead of two independent, unsynced copies. `TranslatableText` below is
+ * just this hook + the original inline markup; every other consumer
+ * (BriefNewspaper's four sites) is untouched.
+ */
+export interface TranslatableTextState {
+    eligible: boolean;
+    text: string;
+    translated: string | null;
+    showOriginal: boolean;
+    /** Text to show right now — mirrors the original `display` computation
+     *  exactly, and falls back to the original while the fetch is in flight
+     *  so this is never blank. */
+    display: string;
+    /** True exactly when the original component would render the toggle
+     *  button (i.e. eligible AND a translation has arrived). */
+    hasToggle: boolean;
+    toggleLabel: string;
+    toggleTip: string;
+    toggle: () => void;
+}
+
+export function useTranslatableText(text: string): TranslatableTextState {
     const eligible = shouldTranslate(text, TARGET_LANG);
     const cacheKey = `${text}:${TARGET_LANG}`;
     const [translated, setTranslated] = useState<string | null>(() => {
@@ -108,27 +137,52 @@ export const TranslatableText: React.FC<Props> = ({ text, className }) => {
         return () => { alive = false; };
     }, [eligible, cacheKey, text]);
 
+    return {
+        eligible,
+        text,
+        translated,
+        showOriginal,
+        // While the fetch is in flight (translated === null) this is the
+        // original — never blank, exactly as before.
+        display: translated && !showOriginal ? translated : text,
+        hasToggle: eligible && !!translated,
+        toggleLabel: showOriginal ? L.translation : L.original,
+        toggleTip: showOriginal ? 'Translated' : 'Original',
+        toggle: () => setShowOriginal(v => !v),
+    };
+}
+
+/**
+ * The exact markup `TranslatableText` has always rendered, pulled out so a
+ * consumer driving the hook directly (NarrativeThreads' mobile row) can reuse
+ * it byte-for-byte for the desktop shape rather than re-deriving it — one
+ * hook instance, no drift between the two render sites.
+ */
+export const TranslatableTextInline: React.FC<{ state: TranslatableTextState; className?: string }> = ({ state, className }) => {
     // Not eligible / no translation (yet) → the original text, plain. While
     // the fetch is in flight this branch shows the original — never blank.
-    if (!eligible || !translated) {
-        return className ? <span className={className}>{text}</span> : <>{text}</>;
+    if (!state.hasToggle) {
+        return className ? <span className={className}>{state.text}</span> : <>{state.text}</>;
     }
-
-    const display = showOriginal ? text : translated;
 
     return (
         <span className={`translatable-headline${className ? ` ${className}` : ''}`}>
-            {display}
+            {state.display}
             <button
                 type="button"
                 className="th-toggle"
-                onClick={(e) => { e.stopPropagation(); setShowOriginal(v => !v); }}
-                data-tip={showOriginal ? 'Translated' : 'Original'}
+                onClick={(e) => { e.stopPropagation(); state.toggle(); }}
+                data-tip={state.toggleTip}
             >
-                {showOriginal ? L.translation : L.original}
+                {state.toggleLabel}
             </button>
         </span>
     );
+};
+
+export const TranslatableText: React.FC<Props> = ({ text, className }) => {
+    const state = useTranslatableText(text);
+    return <TranslatableTextInline state={state} className={className} />;
 };
 
 export default TranslatableText;

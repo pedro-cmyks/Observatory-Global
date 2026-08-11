@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
-import { TranslatableHeadline } from './TranslatableHeadline'
+import { TranslatableHeadlineInline, useTranslatableHeadline } from './TranslatableHeadline'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { mergeStreamItems, splitInitialStreamBatch } from '../lib/signalStreamQueue'
@@ -18,6 +18,7 @@ import PinReceiptButton from './PinReceiptButton'
 import { SignalDetailPanel } from './SignalDetailPanel'
 import type { Signal } from './SignalDetailPanel'
 import { TierChip } from './TierChip'
+import { useIsMobile } from '../hooks/useIsMobile'
 import './SignalStream.css'
 
 type StreamItem = Signal & { type: 'signal'; addedAt?: number }
@@ -139,7 +140,111 @@ const getSignalPriority = (signal: Signal): number => {
 const isNoiseLane = (signal: Signal): boolean =>
     signal.lane === 'sports' || signal.lane === 'entertainment'
 
-export const SignalStream: React.FC = () => {
+/**
+ * The `.headline` row for one signal: clamped headline text + pin controls,
+ * plus — on mobile only — the "See original"/"See translation" toggle
+ * rendered as a genuine DOM SIBLING of the clamped span instead of nested
+ * inside it.
+ *
+ * Why: `.headline > span:first-child` gets `-webkit-line-clamp: 2` under
+ * 768px (#236). The old markup nested TranslatableHeadline's whole output —
+ * text AND its toggle button — inside that clamped span, so a translated
+ * headline that alone filled both lines silently pushed the toggle past the
+ * clamp's visible box (measured live: 7/8 sampled rows clipped, 13-153px
+ * past the bottom edge) — the one control that reaches the source language
+ * was there but untappable. NarrativeThreads hit the identical class of bug
+ * for a different chip and fixed it the same way (see the "#236 review fix"
+ * comment in NarrativeThreads.tsx): hoist the thing that must never be
+ * clamped into a sibling.
+ *
+ * `useTranslatableHeadline` is called exactly ONCE here (not once per branch)
+ * so the desktop and mobile renders share one toggle/translated state — two
+ * independent hook instances would double the /api/v2/translate calls and
+ * could desync (tapping a toggle in one instance would never update the text
+ * rendered by the other). The desktop branch renders `TranslatableHeadlineInline`
+ * fed by that shared state, which is the exact function every other
+ * TranslatableHeadline consumer renders — so desktop output here is
+ * byte-identical to before, and there is zero risk of the two call sites
+ * drifting apart later.
+ */
+function SignalHeadlineRow({
+    sig, isMobile, onOpen, pinBtn, pinReceipt,
+}: {
+    sig: StreamItem
+    isMobile: boolean
+    onOpen: (e: React.MouseEvent) => void
+    pinBtn: React.ReactNode
+    pinReceipt: React.ReactNode
+}) {
+    const headline = sig.headline ? decodeEntities(sig.headline) : null
+    const state = useTranslatableHeadline({
+        signalId: sig.id,
+        original: headline ?? '',
+        sourceLang: sig.source_lang,
+    })
+
+    if (!headline) {
+        return (
+            <div className="headline" style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                <span style={{ flex: 1, cursor: 'pointer' }} onClick={onOpen}>
+                    {`Signal from ${sig.source}`}
+                </span>
+                {pinBtn}
+                {pinReceipt}
+            </div>
+        )
+    }
+
+    if (!isMobile) {
+        // Untouched desktop shape: TranslatableHeadline's own markup, nested
+        // inside the clamped span exactly as it has always been.
+        return (
+            <div className="headline" style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                <span style={{ flex: 1, cursor: 'pointer' }} onClick={onOpen}>
+                    <TranslatableHeadlineInline state={state} />
+                </span>
+                {pinBtn}
+                {pinReceipt}
+            </div>
+        )
+    }
+
+    return (
+        <>
+            <div className="headline" style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                <span style={{ flex: 1, cursor: 'pointer' }} onClick={onOpen}>
+                    {state.display}
+                    {!state.translated && state.loading && (
+                        <span className="th-loading"> · {state.translatingLabel}</span>
+                    )}
+                </span>
+                {pinBtn}
+                {pinReceipt}
+            </div>
+            {state.hasToggle && (
+                <div className="headline-toggle-row">
+                    <button
+                        type="button"
+                        className="th-toggle th-toggle--detached"
+                        onClick={(e) => { e.stopPropagation(); state.toggle() }}
+                        data-tip={state.toggleTip}
+                    >
+                        {state.toggleLabel}
+                    </button>
+                </div>
+            )}
+        </>
+    )
+}
+
+interface SignalStreamProps {
+    /** #236: true while the stream is mounted but hidden (the phone keeps it
+     *  alive behind another tab). Its three timers idle instead of polling,
+     *  dripping and re-rendering a subtree nobody is looking at. */
+    paused?: boolean
+}
+
+export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false }) => {
     const { filter, setTheme, setCountry, setPerson, setStreamLevel } = useFocus()
     // The stream is ambient — the live day (VIEW selector retired 2026-07-15).
     const STREAM_HOURS = 24
@@ -158,11 +263,17 @@ export const SignalStream: React.FC = () => {
     const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const retryAttemptRef = useRef(0)
     const isHoveredRef = useRef(false)
+    // Same shape as isHoveredRef: read inside the timers so a visibility flip
+    // never tears down and rebuilds them.
+    const pausedRef = useRef(paused)
+    pausedRef.current = paused
     const listRef = useRef<HTMLDivElement>(null)
     const latestTimestampRef = useRef<string | null>(null)
     const dripQueueRef = useRef<StreamItem[]>([])
     const seenIdsRef = useRef<Set<number>>(new Set())
     const { pinItem, unpinItem, isPinned } = useWorkspace()
+    // Drives the headline-toggle DOM split in SignalHeadlineRow (#236 follow-up).
+    const isMobile = useIsMobile()
 
     /* ECLIPSE LENS (spec §6.4, Phase 4): inside the lens the category tabs
        collapse to ECLIPSE / SHADOW / ALL and stop being a theme filter — they
@@ -372,6 +483,7 @@ export const SignalStream: React.FC = () => {
 
         const pollSignals = async () => {
             if (isHovered) return // Pause on hover
+            if (pausedRef.current) return // #236: hidden behind another phone tab
 
             try {
                 const params = new URLSearchParams()
@@ -427,6 +539,7 @@ export const SignalStream: React.FC = () => {
     useEffect(() => {
         const drip = setInterval(() => {
             if (isHoveredRef.current) return // F2: pause the VISIBLE flow too
+            if (pausedRef.current) return // #236: nobody is watching this arrive
             if (dripQueueRef.current.length === 0) return
             // L6 (Pedro): news must feel like a CONSTANT one-by-one arrival —
             // never a burst that drains the buffer and leaves the stream dead
@@ -448,8 +561,11 @@ export const SignalStream: React.FC = () => {
     }, [])
 
     // Tick once a second so each item's "age since it appeared" counts up.
+    // #236: skipped while hidden — this is a setState, so it re-renders the
+    // whole (invisible) subtree 60x a minute otherwise. Ages are derived from
+    // timestamps, so the first tick after being revealed is already correct.
     useEffect(() => {
-        const t = setInterval(() => setNowTs(Date.now()), 1000)
+        const t = setInterval(() => { if (!pausedRef.current) setNowTs(Date.now()) }, 1000)
         return () => clearInterval(t)
     }, [])
 
@@ -631,49 +747,48 @@ export const SignalStream: React.FC = () => {
                                     </div>
                                     
                                     <div className="signal-main">
-                                        <div className="headline" style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                            <span
-                                                style={{ flex: 1, cursor: 'pointer' }}
-                                                onClick={(e) => { e.stopPropagation(); setSelectedSignal(sig); }}
-                                            >
-                                                {sig.headline
-                                                    ? <TranslatableHeadline signalId={sig.id} original={decodeEntities(sig.headline)} sourceLang={sig.source_lang} />
-                                                    : `Signal from ${sig.source}`}
-                                            </span>
-                                            <button
-                                                className="pin-btn"
-                                                onClick={() => {
-                                                    const pinnedId = `signal-${sig.id}`
-                                                    if (isPinned(pinnedId)) {
-                                                        unpinItem(pinnedId)
-                                                    } else {
-                                                        pinItem({
-                                                            id: pinnedId,
-                                                            type: 'signal',
-                                                            title: sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`,
-                                                            urlParams: `?${new URLSearchParams(window.location.search).toString()}`
-                                                        })
-                                                    }
-                                                }}
-                                                data-tip={isPinned(`signal-${sig.id}`) ? "Unpin Signal" : "Pin Signal to Workspace"}
-                                                style={{ background: 'transparent', border: 'none', color: isPinned(`signal-${sig.id}`) ? '#10b981' : '#64748b', cursor: 'pointer', padding: '2px' }}
-                                            >
-                                                {isPinned(`signal-${sig.id}`) ? <PinOff size={12} /> : <Pin size={12} />}
-                                            </button>
-                                            <PinReceiptButton
-                                                contextLabel={sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`}
-                                                citation={{
-                                                    headline: sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`,
-                                                    source: sig.source || undefined,
-                                                    url: sig.url || undefined,
-                                                    // N1: sig.country = SUBJECT country, never an
-                                                    // origin assertion; no origin in this payload.
-                                                    sourceLang: sig.source_lang || undefined,
-                                                    gateStatus: 'unknown',
-                                                    publishedDate: sig.timestamp ? new Date(sig.timestamp).toISOString().slice(0, 10) : undefined,
-                                                }}
-                                            />
-                                        </div>
+                                        <SignalHeadlineRow
+                                            sig={sig}
+                                            isMobile={isMobile}
+                                            onOpen={(e) => { e.stopPropagation(); setSelectedSignal(sig); }}
+                                            pinBtn={(
+                                                <button
+                                                    className="pin-btn"
+                                                    onClick={() => {
+                                                        const pinnedId = `signal-${sig.id}`
+                                                        if (isPinned(pinnedId)) {
+                                                            unpinItem(pinnedId)
+                                                        } else {
+                                                            pinItem({
+                                                                id: pinnedId,
+                                                                type: 'signal',
+                                                                title: sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`,
+                                                                urlParams: `?${new URLSearchParams(window.location.search).toString()}`
+                                                            })
+                                                        }
+                                                    }}
+                                                    data-tip={isPinned(`signal-${sig.id}`) ? "Unpin Signal" : "Pin Signal to Workspace"}
+                                                    style={{ background: 'transparent', border: 'none', color: isPinned(`signal-${sig.id}`) ? '#10b981' : '#64748b', cursor: 'pointer', padding: '2px' }}
+                                                >
+                                                    {isPinned(`signal-${sig.id}`) ? <PinOff size={12} /> : <Pin size={12} />}
+                                                </button>
+                                            )}
+                                            pinReceipt={(
+                                                <PinReceiptButton
+                                                    contextLabel={sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`}
+                                                    citation={{
+                                                        headline: sig.headline ? decodeEntities(sig.headline) : `Signal from ${sig.source}`,
+                                                        source: sig.source || undefined,
+                                                        url: sig.url || undefined,
+                                                        // N1: sig.country = SUBJECT country, never an
+                                                        // origin assertion; no origin in this payload.
+                                                        sourceLang: sig.source_lang || undefined,
+                                                        gateStatus: 'unknown',
+                                                        publishedDate: sig.timestamp ? new Date(sig.timestamp).toISOString().slice(0, 10) : undefined,
+                                                    }}
+                                                />
+                                            )}
+                                        />
                                         <div className="signal-footer">
                                             <span className={`source ${getSourceClass(sig.source)}`}>{sig.source}</span>
                                             <TierChip source={sig.source} />

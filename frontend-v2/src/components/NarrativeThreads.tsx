@@ -4,7 +4,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { resolveCountryName } from '../lib/countryNames'
 import { Flag } from './Flag'
-import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
+import { buildCountryThreadEmptyState, getNarrativesForDisplay, THREAD_POOL_HOURS, threadPoolQuery } from '../lib/narrativeThreadLimits'
 import { threadConfidencePresentation } from '../lib/threadConfidence'
 import { threadCountryPresentation } from '../lib/threadGeography'
 import { familyColor, familyGradient } from '../lib/categoryFamily'
@@ -12,7 +12,7 @@ import { decodeEntities } from '../lib/decodeEntities'
 import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
-import { TranslatableText } from './TranslatableText'
+import { TranslatableTextInline, useTranslatableText } from './TranslatableText'
 import { RelationshipChip } from './RelationshipChip'
 import { fetchTopicRelationship, type TopicRelationship } from '../lib/topicRelationship'
 import { canHaveThreadVoice } from '../lib/threadVoice'
@@ -21,6 +21,9 @@ import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText, type StoryLensSibling } from '../lib/storyLens'
+import { buildThreadRelation } from '../lib/threadRelation'
+import { visibleEntities } from '../lib/threadRowMobile'
+import { useIsMobile } from '../hooks/useIsMobile'
 import './NarrativeThreads.css'
 
 interface TimelinePoint {
@@ -252,15 +255,75 @@ function buildSyntheticSiblingRow(s: StoryLensSibling): Narrative {
     }
 }
 
+/**
+ * The thread title cell: the clamped `.narrative-label-text` span, plus — on
+ * mobile only — TranslatableText's "See original"/"See translation" toggle
+ * rendered as a genuine DOM SIBLING of that span instead of nested inside it.
+ *
+ * Why: under 768px `.narrative-label-text` is a `-webkit-line-clamp: 2` box
+ * (#236). `TranslatableText` renders its text AND its toggle button inside one
+ * wrapping span, so a translated title that alone filled both lines pushed the
+ * toggle past the clamp's visible box — the one control that reaches the
+ * label's source language was there but untappable. A clamped box hides any
+ * overflowing descendant regardless of that descendant's own size, so the
+ * toggle can only stay reachable by living outside the box entirely. This is
+ * the same defect class, and the same remedy, as the ↔ relation-reason chip
+ * hoisted out of this exact span below, and as SignalStream's headline toggle
+ * (`SignalHeadlineRow`).
+ *
+ * `useTranslatableText` is called exactly ONCE here (not once per branch) so
+ * the desktop and mobile renders share one toggle/translated state — two hook
+ * instances would double the /api/v2/translate/text traffic and could desync
+ * (tapping the toggle in one would never update the text rendered by the
+ * other). The desktop branch renders `TranslatableTextInline` fed by that
+ * shared state, which is exactly what every other TranslatableText consumer
+ * renders — desktop output is byte-identical to before, and the two call
+ * sites cannot drift apart later.
+ */
+const ThreadLabelText: React.FC<{ label: string; isMobile: boolean }> = ({ label, isMobile }) => {
+    const state = useTranslatableText(label)
+
+    // Desktop, or nothing to toggle → the shape this row has always had.
+    if (!isMobile || !state.hasToggle) {
+        return (
+            <span className="narrative-label-text" data-tip={label}>
+                <TranslatableTextInline state={state} />
+            </span>
+        )
+    }
+
+    return (
+        <>
+            <span className="narrative-label-text" data-tip={label}>
+                {state.display}
+            </span>
+            <span className="narrative-label-toggle">
+                <button
+                    type="button"
+                    className="th-toggle"
+                    onClick={(e) => { e.stopPropagation(); state.toggle() }}
+                    data-tip={state.toggleTip}
+                >
+                    {state.toggleLabel}
+                </button>
+            </span>
+        </>
+    )
+}
+
 interface NarrativeThreadsProps {
     onCountrySelect?: (code: string) => void
     onThreadSelect?: (thread: Narrative) => void
     activeThreadId?: string | null
+    /** #236: true while mounted but hidden (the phone keeps this panel alive
+     *  behind another tab). The 5-minute poll idles; the initial fetch still
+     *  runs, so the list is ready the moment the tab reveals it. */
+    paused?: boolean
 }
 
 export type LivingThreadSelection = Narrative
 
-export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect, onThreadSelect, activeThreadId }) => {
+export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySelect, onThreadSelect, activeThreadId, paused = false }) => {
     const [narratives, setNarratives] = useState<Narrative[]>([])
     // #234: precise person→thread set from the backend (full persons array),
     // replacing the capped top_entities heuristic for the focus highlight.
@@ -274,6 +337,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     const { filter, setCountry, setMapFlyCountry, setPerson } = useFocus()
     // W4 (2026-07-05): thread rows are pinnable into the active investigation.
     const { pinItem, unpinItem, isPinned } = useWorkspace()
+    // #236: on a phone the title leads; entity chips collapse to a counted +N.
+    const isMobile = useIsMobile()
 
     /* ECLIPSE LENS: when the reader ENTERED a total eclipse, this panel stops
        being a volume ranking and becomes SHADOW-FIRST — the eclipsing story pins
@@ -324,25 +389,22 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // 2026-07-15; the global list was already capped to 24h because
     // spread_pct is meaningless at wider windows). Looking back = the map
     // scrubber / deep-history, not a re-windowed list.
-    const cappedHours = 24
+    const cappedHours = THREAD_POOL_HOURS
 
-    // Fetch enough rows for the panel to use the available vertical space.
-    const fetchLimit = getNarrativeFetchLimit(!!filter.country)
+    // The pool this panel ranks over — and the SAME pool the phone's Lens
+    // measures its `connected` section against, which is why the query is a
+    // shared definition rather than one built here (see threadPoolQuery).
+    const poolQuery = threadPoolQuery(filter.country, cappedHours)
 
     const fetchNarratives = useCallback(async () => {
         try {
-            const params = new URLSearchParams({
-                hours: String(cappedHours),
-                limit: String(fetchLimit),
-            })
-            if (filter.country) params.set('country_code', filter.country)
-            let res = await fetch(`/api/v2/threads?${params.toString()}`)
+            let res = await fetch(poolQuery)
             if (!res.ok) {
                 // One quick retry: a cold country-scoped query can 500 once,
                 // which silently left the GLOBAL list under a "Scoped to X"
                 // strip until the 5-min interval (capture-doc §B, live-seen).
                 await new Promise(r => setTimeout(r, 2500))
-                res = await fetch(`/api/v2/threads?${params.toString()}`)
+                res = await fetch(poolQuery)
                 if (!res.ok) { setFeedError(true); return }   // service failure, not empty
             }
             const data = await res.json()
@@ -355,13 +417,17 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         } finally {
             setLoading(false)
         }
-    }, [cappedHours, fetchLimit, filter.country])
+    }, [poolQuery])
 
-    // Initial fetch + 5-minute interval; re-fetch when country changes
+    // Initial fetch + 5-minute interval; re-fetch when country changes.
+    // #236: the interval (not the initial fetch) idles while hidden — read
+    // through a ref so a visibility flip never rebuilds the timer.
+    const pausedRef = useRef(paused)
+    pausedRef.current = paused
     useEffect(() => {
         setLoading(true)
         fetchNarratives()
-        const interval = setInterval(fetchNarratives, 5 * 60 * 1000)
+        const interval = setInterval(() => { if (!pausedRef.current) fetchNarratives() }, 5 * 60 * 1000)
         return () => clearInterval(interval)
     }, [fetchNarratives])
 
@@ -454,53 +520,24 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     }
     const anyPersonMatch = !!focusPerson && displayedNarratives.some(threadMatchesPerson)
 
-    // #234: when a thread is open, surface its SIBLING threads — those sharing a
-    // top country with it — and dim the rest. No focus-model change (thread-open
-    // clears focus by design); reuses the activeThreadId prop. Guarded: only
-    // when the open thread is in this list, has countries, and at least one
-    // OTHER thread relates — otherwise the list stays as-is.
-    const activeThread = activeThreadId
-        ? displayedNarratives.find(n => n.thread_id === activeThreadId)
-        : null
-    // Relate by the open thread's PRIMARY geography (top-2 countries), not all 5:
-    // sharing the dominant country (often US) is too broad to be a real sibling.
-    const activeCountries = new Set((activeThread?.top_countries || []).slice(0, 2))
-    // #234 upgrade: ALSO relate by shared DISTINCTIVE ENTITY (rarity-weighted) —
-    // sharper than geography alone. Naive entity overlap is HARMFUL: a single
-    // common GDELT entity (measured: "donald trump" in 14/30 threads) links every
-    // unrelated thread. So only entities shared by FEW threads count — a common
-    // actor is noise, a rare shared actor is a real sibling signal (e.g. opening a
-    // Russia–Ukraine thread surfaces another thread sharing Zelensky, not every
-    // US thread sharing Trump). Cap = min(3, 25% of the list).
-    const norm = (e: string) => e.toLowerCase().trim()
-    const entityDF = new Map<string, number>()
-    for (const n of displayedNarratives)
-        for (const e of new Set((n.top_entities || []).map(norm).filter(Boolean)))
-            entityDF.set(e, (entityDF.get(e) || 0) + 1)
-    const distinctiveCap = Math.max(2, Math.min(3, Math.floor(displayedNarratives.length * 0.25)))
-    const isDistinctive = (e: string) => (entityDF.get(e) || 0) <= distinctiveCap
-    const activeEntities = new Set(
-        (activeThread?.top_entities || []).map(norm).filter(e => e && isDistinctive(e))
-    )
-    const threadRelated = (n: Narrative): boolean =>
-        !!activeThread && (
-            n.thread_id === activeThreadId ||
-            n.top_countries.some(c => activeCountries.has(c)) ||
-            (n.top_entities || []).some(e => activeEntities.has(norm(e)))
-        )
-    const anyThreadRelation = !!activeThread && (activeCountries.size > 0 || activeEntities.size > 0) &&
-        displayedNarratives.some(n => n.thread_id !== activeThreadId && threadRelated(n))
+    // #234: when a thread is open, surface its SIBLING threads — those sharing
+    // the open thread's primary geography or one of its rare actors — and dim
+    // the rest. No focus-model change (thread-open clears focus by design);
+    // reuses the activeThreadId prop.
+    //
+    // The rule itself lives in lib/threadRelation: it has a second caller (the
+    // phone's Lens `connected` section), and a hand-transcribed second copy is
+    // this repo's most-repeated defect. `relation.active` carries the same
+    // guard this block always had — an anchor in this list, at least one basis,
+    // and at least one OTHER row sharing it, or the list stays as it was.
+    const relation = buildThreadRelation(displayedNarratives, activeThreadId, { resolveCountryName })
+    const threadRelated = (n: Narrative): boolean => relation.isRelated(n)
+    const anyThreadRelation = relation.active
 
     // #234 legibility (Paper 7 / reason-codes guardrail): expose WHY a sibling
     // relates — the shared distinctive entity (preferred, more specific) or the
     // shared primary country — so the re-scope is never a silent dim.
-    const relationReason = (n: Narrative): string | null => {
-        if (!activeThread || n.thread_id === activeThreadId) return null
-        const sharedEntity = (n.top_entities || []).find(e => activeEntities.has(norm(e)))
-        if (sharedEntity) return sharedEntity
-        const sharedCountry = n.top_countries.find(c => activeCountries.has(c))
-        return sharedCountry ? resolveCountryName(sharedCountry) : null
-    }
+    const relationReason = (n: Narrative): string | null => relation.reason(n)
 
     // person focus takes precedence; else thread-sibling relation
     const relate = anyPersonMatch ? threadMatchesPerson : (anyThreadRelation ? threadRelated : null)
@@ -776,6 +813,19 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // changes. The visible domain label is the secondary encoding.
                 const threadAccent = familyColor(n.parent_domain)
                 const threadGradient = familyGradient(n.parent_domain)
+                // #236: on a phone, cap the entity chips and count what's
+                // genuinely hidden. n.top_entities is NOT bounded by the
+                // backend; the .slice(0, 4) below is a separate, pre-existing
+                // desktop ceiling. If we counted the mobile remainder against
+                // that already-sliced array, a thread with (say) 10 entities
+                // would read "+2" while 8 are actually not shown — a silent
+                // drop moved one truncation earlier than the one being
+                // counted. Count against the TRUE total instead so "+N" is
+                // honest. Desktop keeps its own separate, pre-existing silent
+                // 4-cap unchanged (out of scope here — see task report).
+                const cappedEntities = n.top_entities.slice(0, 4)
+                const { shown: shownEntities } = visibleEntities(cappedEntities, isMobile)
+                const hiddenEntityCount = isMobile ? n.top_entities.length - shownEntities.length : 0
                 return (
                     <React.Fragment key={n.thread_id}>
                     {sectionLabel && (
@@ -800,25 +850,30 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             <div className="narrative-label">
                                 <span className={`sentiment-dot ${n.sentiment_swing_10h && n.sentiment_swing_10h > 0.1 ? 'pos' : n.sentiment_swing_10h && n.sentiment_swing_10h < -0.1 ? 'neg' : 'neu'}`} data-tip={`10h sentiment swing: ${n.sentiment_swing_10h == null ? 'not available' : n.sentiment_swing_10h.toFixed(2)}`} />
                                 {!isSynthRow && <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>}
-                                <span className="narrative-label-text" data-tip={n.label}>
-                                    <TranslatableText text={n.label} />
-                                    <span className="narrative-cluster-label">
-                                        {domainLabel}
-                                        {lensReason ? (
-                                            <span
-                                                className="narrative-sibling-reason"
-                                                data-tip={lensReason.isBlob
-                                                    ? `Measured relation: ${lensReason.text} — flagged as a possible multi-story blob; relation may be inflated`
-                                                    : `Measured relation: ${lensReason.text}`}
-                                            >
-                                                ↔ {lensReason.text}
-                                            </span>
-                                        ) : siblingReason && (
-                                            <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
-                                                ↔ {siblingReason}
-                                            </span>
-                                        )}
-                                    </span>
+                                <ThreadLabelText label={n.label} isMobile={isMobile} />
+                                {/* #236 review fix: this used to live INSIDE .narrative-label-text,
+                                    which on mobile is a -webkit-line-clamp box — a long title could
+                                    fill both clamped lines and silently swallow the ↔ relation-reason
+                                    chip with no indication, defeating the no-silent-filtering rail it
+                                    exists to satisfy. Hoisted to a sibling of .narrative-label-text so
+                                    it gets the same treatment as LabelReviewChip/TemporalSignatureChip
+                                    below: never inside the clamp, always wraps onto its own line. */}
+                                <span className="narrative-cluster-label">
+                                    {domainLabel}
+                                    {lensReason ? (
+                                        <span
+                                            className="narrative-sibling-reason"
+                                            data-tip={lensReason.isBlob
+                                                ? `Measured relation: ${lensReason.text} — flagged as a possible multi-story blob; relation may be inflated`
+                                                : `Measured relation: ${lensReason.text}`}
+                                        >
+                                            ↔ {lensReason.text}
+                                        </span>
+                                    ) : siblingReason && (
+                                        <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
+                                            ↔ {siblingReason}
+                                        </span>
+                                    )}
                                 </span>
                                 <LabelReviewChip
                                     labelStatus={n.label_status}
@@ -902,7 +957,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 {geography.codes.map((c, index) => (
                                     <button key={c} className={`country-pip country-pip--btn${filter.country === c ? ' country-pip--active' : ''}`} onClick={e => handleCountryPipClick(e, c)} data-tip={`${geography.label}: ${geography.names[index] || resolveCountryName(c, c)}`}><Flag code={c} /> {c}</button>
                                 ))}
-                                {n.top_entities.slice(0, 4).map(p => {
+                                {shownEntities.map(p => {
                                     const personPinId = `person-${p}`
                                     const personPinned = isPinned(personPinId)
                                     return (
@@ -926,6 +981,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                         </span>
                                     )
                                 })}
+                                {/* Deliberate v1 trade-off: the entities folded into +N lose
+                                    their individual focus/pin affordances on mobile — the count
+                                    is honest, but it offers no way to act on any one of them.
+                                    Not a bug; do not "fix" by expanding the cap without deciding
+                                    that trade-off on purpose. */}
+                                {hiddenEntityCount > 0 && (
+                                    <span className="narrative-entity-more" data-tip="More entities in this thread">
+                                        +{hiddenEntityCount}
+                                    </span>
+                                )}
                                 {n.has_public_interest && (
                                     <span className="attention-badge search" data-tip={`Trending searches: ${(n.trending_keywords || []).join(', ')}`}>
                                         SEARCH

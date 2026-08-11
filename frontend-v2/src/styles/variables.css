@@ -1,6 +1,11 @@
 /* Observatory Global Design System */
 
 :root {
+    /* #236 — every full-screen mobile surface reserves the tab bar's height so
+       its last lines are never covered. The bar is 57px; the safe-area inset
+       covers the iOS home indicator. Desktop never reads this. */
+    --mobile-bottom-reserve: calc(57px + env(safe-area-inset-bottom, 0px));
+
     /* Atlas / Stitch intelligence-console baseline */
     --color-bg-primary: #070d17;
     --color-bg-secondary: #0a1220;

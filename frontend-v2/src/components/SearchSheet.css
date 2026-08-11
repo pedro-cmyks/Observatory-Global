@@ -1,0 +1,287 @@
+/* #236 Task 9 — the mobile search sheet. Applies only at <=768px: both
+   pieces are mounted from App's `isMobile` branch, same as the rest of the
+   mobile-native IA (LensPanel.css:3 states the identical scoping and does
+   not repeat it in a media query either — this file follows that). */
+
+/* The trigger. Fixed to the viewport, not to any panel, so it survives every
+   read/panel this app can put on screen. z-index 9600 matches the Lens's own
+   fixed chrome (LensPanel.css:68/81) — the value already established in this
+   codebase for "a persistent top-of-screen affordance that must beat a
+   covering read's z-index:9000".
+   TWO POSITIONS, MEASURED — not one, because the top-left cell means two
+   different things depending on what else is on screen, and a single fixed
+   spot collides with a real control in one of them. See SearchSheet.tsx's
+   header comment for the geometry (getBoundingClientRect + elementFromPoint,
+   not a grep) that found both collisions and both replacement spots. Field
+   and live scope share the plain command bar, whose brand ("Atlas", a real
+   `navigate('/')` link at App.tsx:1685) occupies {x:8,y:6,w:65,h:26} — this
+   default sits BELOW it, in the icons row's own left-hand gap (that row is
+   right-aligned; CLIPBOARD/MOON/MORE start at x:242, measured, leaving
+   x:0-242 empty at y:40-84). */
+.search-sheet-fab {
+  position: fixed;
+  top: 40px;
+  left: 10px;
+  z-index: 9600;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.35);
+  border-radius: 50%;
+  color: rgb(var(--color-accent-deep-rgb));
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.search-sheet-fab:active {
+  background: rgba(var(--color-accent-deep-rgb), 0.16);
+}
+
+/* Covering-read scope (a thread open on mobile) replaces that whole gap: the
+   Lens promotes its own chrome to TWO stacked, full-width fixed rows at the
+   very top — `.lens-chrome` (the breadcrumb, itself `flex:1 1 auto` and so a
+   FULL-WIDTH back button, not just its "←" glyph) at y:0-44, then
+   `.lens-sections-bar` (the "where it lives / connected" toggle, also
+   `width:100%`) at y:44-88 — measured via getBoundingClientRect on both.
+   Both are full-width, so there is no horizontal gap to hide in the way the
+   plain command bar has one; the trigger has to clear the whole 88px band
+   instead. 96px = 88 + 8px clearance. Stays left (x:10-50): ThemeDetail's own
+   pin/share/export/close cluster is right-aligned inside the read
+   (`top:16px; right:16px` within a panel that itself starts at y:88, so
+   absolute y≈104) — measured to confirm the two never share an x-range even
+   though their y-ranges overlap.
+   Gated on the SAME TWO CONDITIONS LensPanel.css checks to promote that
+   chrome (:62/:73, `.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay)`)
+   — not the identical selector, because that selector does not work from
+   here. First attempt copied it verbatim as
+   `body:has(.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay))`,
+   which LOOKS like the obvious way to ask the same question from a sibling
+   of `.lens-shell` rather than a descendant of it. It is invalid CSS:
+   `:has()` cannot contain another `:has()` in its argument (CSS Selectors 4)
+   — a nested `:has()` makes the WHOLE rule fail to parse, silently, with no
+   build or lint error, so the rule was simply never applied and the
+   elementFromPoint re-check below caught a still-unmoved FAB. `.lens-shell`
+   is dropped rather than worked around: `.lens-breadcrumb` only ever renders
+   inside it in this codebase, so checking the two conditions LensPanel.css
+   actually gates on (a breadcrumb exists, a covering read exists), flat
+   rather than nested, asks the identical question and IS valid — confirmed
+   directly (`document.querySelector('body:has(.lens-breadcrumb):has(.theme-detail-overlay)')`
+   before committing to it, not assumed a second time). */
+body:has(.lens-breadcrumb):has(.theme-detail-overlay) .search-sheet-fab {
+  top: 96px;
+}
+
+/* The sheet. Fixed and full-inset like ThemeDetail's own mobile overlay
+   (ThemeDetail.css:1277-1284).
+   z 9700 — a genuine top layer, ABOVE the tab bar (9500), the floating focus
+   chip (9550), FrameSheet (9400) and the Lens's own fixed chrome (9600).
+   MEASURED, not the first choice: a first pass sat this at 9300, reasoning
+   that the tab bar/FrameSheet/focus chip should stay reachable on top the
+   same way they do over every other full-screen mobile surface. Opened in
+   the browser at field scope, that reasoning broke on a rule this file's
+   author had not re-checked: LensPanel.css's `.lens-sections-bar` carries
+   `position: relative; z-index: 9460` UNCONDITIONALLY (the fixed/9600
+   variant is an ADDITIONAL override only `:has()`-gated for a covering read
+   — the base rule applies at field scope too, which is exactly where the
+   sheet is normally opened from). At 9300 that bar painted straight through
+   the sheet's own body, "WHERE IT LIVES  CONNECTED" sitting mid-screen over
+   the honest-empty reason text. A search modal is not the surface to be
+   selectively transparent to unrelated chrome, and the tab-bar-escape-hatch
+   idea does not survive the one place it was tested — closing the sheet is
+   one tap on its own × (search-sheet-close), same cost as switching tabs
+   first. `--mobile-bottom-reserve` stays on the body below regardless: it
+   also covers the bottom safe-area inset, which applies whether or not the
+   tab bar itself is visible on top.
+   What sits ABOVE 9700, for the record (checked, not assumed): PanelHelpDrawer
+   (`.panel-help-layer`, z 10000) — a deliberately-opened help modal, reachable
+   on mobile via the panel headers' (?) buttons; it covers the sheet while
+   open, which is fine, the reader opened it on purpose. DossierView's
+   `.dossier-overlay` TIES at 9700 — harmless, it never mounts on a phone
+   (`showDossier && !isMobile` gates it), so the tie is never live; noted so
+   the next person reading both files does not mistake the equal number for
+   an accident. */
+.search-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 9700;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary);
+}
+
+.search-sheet-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
+}
+
+.search-sheet-form {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.22);
+  border-radius: 8px;
+  padding: 0 8px;
+}
+
+.search-sheet-icon {
+  flex-shrink: 0;
+  display: flex;
+  color: var(--color-text-muted, #8b97a6);
+}
+
+/* 16px is the iOS Safari floor below which focusing an input zooms the whole
+   page — the plan's own constraint, restated here where it is enforced. */
+.search-sheet-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+  border: none;
+  background: none;
+  outline: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-technical, monospace);
+  font-size: 16px;
+}
+.search-sheet-input::placeholder {
+  color: var(--color-text-muted, #8b97a6);
+}
+
+.search-sheet-go {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  background: rgba(var(--color-accent-deep-rgb), 0.16);
+  border: 1px solid rgba(var(--color-accent-deep-rgb), 0.4);
+  border-radius: 6px;
+  color: rgb(var(--color-accent-deep-rgb));
+  font-family: var(--font-technical, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.search-sheet-go:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.search-sheet-close {
+  flex-shrink: 0;
+  /* #236 Task 1 primitive — the iOS 44px touch floor. */
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.search-sheet-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 14px calc(14px + var(--mobile-bottom-reserve));
+}
+
+.search-sheet-section + .search-sheet-section {
+  margin-top: 18px;
+}
+
+.search-sheet-section-label {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-sheet-section-count {
+  color: rgb(var(--color-accent-deep-rgb));
+  font-variant-numeric: tabular-nums;
+}
+
+.search-sheet-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.search-sheet-row {
+  /* #236 Task 1 primitive — the iOS 44px touch floor. */
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.10);
+  color: var(--color-text-primary);
+  font-family: var(--font-technical, monospace);
+  text-align: left;
+  cursor: pointer;
+}
+.search-sheet-row:active {
+  color: var(--color-accent-highlight);
+}
+
+.search-sheet-row-label {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.search-sheet-row-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+/* The honest empty/degraded/loading line. Never a blank sheet — see
+   lensSections.ts's rule 1, restated at this file's render site. */
+.search-sheet-reason {
+  margin: 24px 8px 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical, monospace);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/* Same literal SearchBar's own degraded states use (SearchBar.css:251,257) —
+   not a token, matching precedent rather than inventing a new one for the
+   identical case on a second surface. */
+.search-sheet-reason--degraded {
+  color: #f59e0b;
+}
+
+/* Rides ABOVE real rows (state stays 'ok'), not instead of them — the
+   partial-degrade case buildSearchSection reports via `partialFailure`. */
+.search-sheet-partial {
+  margin: 0 0 12px;
+  padding: 6px 8px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 6px;
+  color: #f59e0b;
+  font-size: 11px;
+  line-height: 1.4;
+}

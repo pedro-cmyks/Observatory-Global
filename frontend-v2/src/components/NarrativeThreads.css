@@ -664,3 +664,85 @@
     white-space: nowrap;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
+
+/* #236 — on a phone the title is the content. The mobile audit measured a
+   ~290px row where the title truncated to nothing while five entity chips,
+   the sparkline, "peak N/h" and "Started Nd ago" all survived at full size.
+   Give the title the full row width and its own line before anything else,
+   clamp it to two lines instead of ellipsizing to a fragment, and demote the
+   instrumentation (sparkline, peak annotation) to a quieter second tier.
+   .narrative-label-text now wraps ONLY the <TranslatableText> title node
+   (review fix — it used to also wrap .narrative-cluster-label, so a
+   two-line title could silently swallow the ↔ relation-reason chip inside
+   the clamp with no indication). Every honesty chip — .narrative-cluster-label
+   (domain + the ↔ relation-reason chip), LabelReviewChip, TemporalSignatureChip
+   — is a sibling of .narrative-label-text inside .narrative-label, NOT inside
+   the clamped span: never hidden, only wrapped onto their own line via
+   .narrative-label's own flex-wrap. On mobile the clamped span now holds ONLY
+   the title text: TranslatableText's toggle is a sibling too
+   (.narrative-label-toggle below) for the same reason. */
+@media (max-width: 768px) {
+    .narrative-row {
+        min-height: 44px;
+    }
+    .narrative-header {
+        flex-wrap: wrap;
+    }
+    .narrative-label {
+        flex: 1 1 100%;
+        min-width: 0;
+        order: -1;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        row-gap: 2px;
+    }
+    .narrative-label-text {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 15px;
+        line-height: 1.25;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    /* #236 follow-up: TranslatableText's "See original"/"See translation"
+       toggle, rendered as a DOM sibling of the clamped span above
+       (ThreadLabelText in NarrativeThreads.tsx), not nested inside it — a
+       clamped box hides any overflowing descendant regardless of its own
+       size, so the toggle can only stay reachable by living outside that box
+       entirely. flex-basis 100% puts it on its own line rather than competing
+       with the domain/court/signature chips for room.
+
+       Deliberately declares ONLY the geometry that detaching costs — the tap
+       target, the box, and the fixed size it can no longer inherit from the
+       label's em context. Colour, background, border, cursor and opacity are
+       left to the global `.th-toggle` base (SignalStream.css, 0-1-0), which
+       still matches: re-declaring `color` here would sit at 0-2-0 and tie with
+       `[data-theme^='emerald'] .th-toggle`, decided by import order. That is
+       R3c defect 11 verbatim — see the post-mortem above that rule in
+       oceanConsole.css, where the same tie leaked #60a5fa onto white. The
+       0-3-0 compound that fixed it keys on `.translatable-headline`, which
+       this toggle is no longer inside, so it cannot rescue us a second time. */
+    .narrative-label-toggle {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+    .narrative-label-toggle .th-toggle {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 4px;
+        font-size: 11px;
+    }
+    .narrative-sparkline-wrap,
+    .narrative-spark-peak {
+        opacity: 0.6;
+    }
+    .narrative-entity-more {
+        font-size: 11px;
+        opacity: 0.7;
+        padding: 0 4px;
+    }
+}

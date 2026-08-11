@@ -441,6 +441,81 @@
 @media (max-width: 768px) {
     .signal-stream-container { height: auto; max-height: 72vh; }
     .signal-list { max-height: 60vh; }
+
+    /* #236 — the stream is the phone's default surface. 39px rows with a
+       headline truncated mid-word is a desktop density on a touch screen.
+       Two lines of headline, 48px minimum, and a fade on the lane strip so
+       the lanes that scroll off the edge announce themselves instead of
+       vanishing. No lane is removed — dropping one to fit would be silent
+       filtering. */
+    .signal-row {
+        min-height: 48px;
+        /* DECIDED, not inherited: measured live at 375px on two independent
+           samples (25 rows, then 35 rows) — 34/35 headlines wrap to 2 lines;
+           single-line is the ~3% case, not the majority the base `center`
+           rule was tuned for. flex-start keeps the time/country/dot cluster
+           flush with the headline's FIRST line in both cases; `center` looks
+           right on the rare 1-line row but floats the meta cluster in the
+           gap between line 1 and line 2 on the common 2-line row — verified
+           with a same-CSS iframe fixture (real box model, box-sizing:border-
+           box): meta lands at offset 16px of 48px, straddling the two lines,
+           vs. flex-start's offset 6px matching the first line exactly. */
+        align-items: flex-start;
+    }
+    /* .headline > span:first-child is the actual truncating element (see
+       the note above it) — .headline itself never sets a fixed height, so
+       clamping the span is enough for the row to grow around it. */
+    .headline > span:first-child {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        white-space: normal;
+        line-height: 1.3;
+    }
+    /* #236 follow-up: the "See original"/"See translation" toggle, rendered
+       as a DOM sibling of the clamped span above (SignalHeadlineRow in
+       SignalStream.tsx), not nested inside it — a clamped box hides any
+       overflowing descendant regardless of its own size, so the toggle can
+       only stay reachable by living outside that box entirely. Its own
+       small line under the headline, not fighting the pin controls for
+       room on the first line. */
+    .headline-toggle-row {
+        margin: 2px 0 0;
+    }
+    .headline-toggle-row .th-toggle {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 4px;
+        margin: 0;
+    }
+    .stream-filter-bar {
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+        mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+        /* The mask permanently fades the last 28px — without this, scrolling
+           a keyboard-focused tab into view via Tab can land its focus ring
+           under that fade. Guarantee focus-driven scroll always clears it. */
+        scroll-padding-inline-end: 28px;
+    }
+    /* Deliberately .stream-filter-tab, not `.stream-filter-bar > *` — the
+       strip also holds `.stream-filter-sep` (SignalStream.tsx:558), a
+       non-interactive 12px divider (line 93 above). The wildcard's
+       min-height:44px was winning over that divider's own height and
+       stretching it into a 44px bar.
+       This 44px floor duplicates the one shared rule in
+       App.css (search "#236 mobile primitives") on purpose: that block is
+       for persistent app chrome (command bar, tab bar); this strip is
+       panel-internal to SignalStream, and a component reaching into the
+       global sheet would stop being portable. Two floors, same number,
+       different owners. */
+    .stream-filter-tab {
+        scroll-snap-align: start;
+        min-height: 44px;
+    }
 }
 
 /* ── ECLIPSE LENS tabs (spec §6.4, Phase 4) ─────────────────────────────

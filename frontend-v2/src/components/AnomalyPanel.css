@@ -337,3 +337,50 @@
 [data-theme^='emerald'] .ap-ctry-count {
     color: var(--color-info);
 }
+
+/* #236 — the phone's Public Attention surface had no mobile CSS at all, so the
+   desktop two-column grid survived at 375px: ~185px per column, and every
+   country name truncated ("Camero…", "Guatem…", "Uzbeki…"). One column, and
+   rows big enough to hit. */
+@media (max-width: 768px) {
+    .anomaly-body-grid {
+        grid-template-columns: 1fr;
+    }
+    /* Stacked, the divider between the two columns has to move from the side to
+       the top. `--color-neutral-rgb` at 0.18 is the app-wide divider idiom
+       (ConnectionsSection, ConflictEventPanel, DossierView, WorkbenchPanel all
+       use it) — deliberately the shared token rather than this file's local
+       --color-ink-rgb, since it is a structural seam, not panel chrome. */
+    .anomaly-col.col-right-border {
+        border-left: 0;
+        border-top: 1px solid rgba(var(--color-neutral-rgb), 0.18);
+    }
+    /* Load-bearing, do not delete: .anomaly-col scrolls vertically, and a flex/
+       grid child defaults to min-width:auto — so one unbreakable string (a long
+       URL, a CJK run) would refuse to shrink and push a horizontal scrollbar
+       into a column that should only ever scroll down. This lets the wrapping
+       rules below actually take effect. */
+    .anomaly-col > * {
+        min-width: 0;
+    }
+    /* The real tap targets are `.ap-row.clickable` divs (BRIEF button, wiki/
+       trend/forum/conflict rows) — there is no `<li>` in this component. The
+       original `li` selector was dead; this is what actually needed 44px. */
+    .anomaly-col button,
+    .anomaly-col a,
+    .anomaly-col .clickable {
+        min-height: 44px;
+    }
+    /* One column buys width, but .ap-country/.ap-keyword/.ap-conflict-loc/
+       .ap-conflict-type still force single-line ellipsis (white-space:nowrap
+       + text-overflow:ellipsis, a two-column-era rule) — long forum headlines
+       and multi-part location strings still clip. Let them wrap: no label —
+       country, headline, keyword — should ever be cut off on this surface. */
+    .ap-country,
+    .ap-keyword,
+    .ap-conflict-loc,
+    .ap-conflict-type {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}

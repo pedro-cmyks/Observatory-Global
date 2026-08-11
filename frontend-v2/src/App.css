@@ -1650,8 +1650,10 @@
   border-bottom-color: var(--color-accent-primary);
 }
 
-/* ── Mobile L2 tabbed IA (2026-06-25): one full-screen surface at a time ── */
-.mobile-tabbar { display: none; }
+/* ── Mobile IA (2026-06-25; three tabs since #236 Task 6) ──
+   The bar itself now lives in components/MobileTabBar.css — it is a root
+   component shared by /app and /brief, not an App-only surface. What stays
+   here is the console LAYOUT it drives. */
 
 @media (max-width: 768px) {
   /* Verbose desktop disclaimer — drop it on phones (the legend + heat tooltip
@@ -1672,51 +1674,17 @@
     /* room for the fixed tab bar + the iOS home-indicator safe area */
     padding: 4px 4px calc(60px + env(safe-area-inset-bottom, 0px));
   }
+  /* #236 Task 6: the SHELL decides what is mounted and what is visible (see
+     App.tsx `if (isMobile)`), so CSS keeps no second copy of that decision.
+     A panel in the DOM here is one the shell put there; it fills the surface.
+     That way Task 7 can swap in the real Lens under any class name without a
+     matching CSS edit — the old class→panel map silently hid whatever it did
+     not list. */
   .terminal-layout[class*="mobile-tab-"] .terminal-panel {
-    display: none;
+    display: flex;
     height: 100%;
     min-height: 0;
   }
-  .terminal-layout.mobile-tab-map .terminal-panel.radar,
-  .terminal-layout.mobile-tab-stream .terminal-panel.stream,
-  .terminal-layout.mobile-tab-threads .terminal-panel.threads,
-  .terminal-layout.mobile-tab-pulse .terminal-panel.dock {
-    display: flex;
-  }
-
-  /* Bottom tab bar */
-  .mobile-tabbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 9500;
-    display: flex;
-    height: 56px;
-    /* sit above the iOS home indicator so the nav is never clipped */
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    box-sizing: content-box;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.22);
-    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.4);
-  }
-  .mobile-tabbar button {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    background: transparent;
-    border: none;
-    color: rgba(var(--color-ink-rgb), 0.55);
-    font-family: 'SF Mono', 'Fira Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-  }
-  .mobile-tabbar button.active { color: #1D9E75; }
-  .mobile-tab-glyph { font-size: 17px; line-height: 1; }
 
   /* Secondary panels that open inside the stream slot (source profile, entity,
      country drill-in) must not spill content sideways on phones. */
@@ -1957,4 +1925,26 @@
 [data-theme^='emerald'] .globe-scrubber {
   background: rgba(var(--color-raise-rgb), 0.92);
   border-color: var(--color-border-medium);
+}
+
+/* #236 mobile primitives — one place, applies to every surface.
+   44px is the iOS minimum; the audit measured command-bar buttons at 23-25px
+   and signal rows at 39px. */
+@media (max-width: 768px) {
+    /* The tab bar's copy of this floor moved with it into
+       components/MobileTabBar.css (#236 Task 6). */
+    .command-bar button,
+    .command-bar a {
+        min-height: 44px;
+    }
+    /* iOS zooms the whole page when a focused input is under 16px. Component
+       stylesheets set their own `font-size` with class selectors, which beat a
+       bare type selector regardless of the media query — so this one shared
+       floor is the exception that earns `!important`. It applies only under
+       768px and only to the font-size. */
+    input,
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
 }

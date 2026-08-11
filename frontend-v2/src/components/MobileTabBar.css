@@ -1,0 +1,60 @@
+/* The phone's bottom navigation — Brief ◈ · Lens ◎ · Live ≋.
+   Moved out of App.css (#236 Task 6) when the bar left App and became a root
+   component shared by both keep-alive routes. Rules are the 2026-06-25 ones
+   verbatim; only their home changed. */
+.mobile-tabbar { display: none; }
+
+/* Announces the surface a tab tap revealed. Visually hidden, never clipped
+   out of the a11y tree (display:none would silence the live region). */
+.mobile-tabbar-announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .mobile-tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9500;
+    display: flex;
+    height: 56px;
+    /* sit above the iOS home indicator so the nav is never clipped */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: content-box;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.22);
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.4);
+  }
+  .mobile-tabbar button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    color: rgba(var(--color-ink-rgb), 0.55);
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    /* #236 Task 1 primitive — the iOS 44px touch floor. It travelled here with
+       the rest of the bar; App.css's shared primitives block still owns the
+       command bar's copy. */
+    min-height: 44px;
+  }
+  /* The accent token, not the literal #1D9E75 it happens to equal in the dark
+     themes — the light theme's deep accent is darker for contrast. */
+  .mobile-tabbar button.active { color: rgb(var(--color-accent-deep-rgb)); }
+  .mobile-tab-glyph { font-size: 17px; line-height: 1; }
+}
