@@ -21,7 +21,11 @@ import {
     updatePinNote,
     type PinSnapshot,
 } from '../lib/workbench'
-import { extractSnapshotEvidence } from '../lib/pinEvidence'
+import {
+    enrichmentWithoutEvidence,
+    extractSnapshotEvidence,
+    freezeVisibleEvidence,
+} from '../lib/pinEvidence'
 import { recordTrailStep } from '../lib/ambientTrail'
 
 export type PinnedItemType = 'theme' | 'person' | 'country' | 'signal' | 'source' | 'chokepoint' | 'public_attention' | 'temporal_snapshot' | 'event' | 'anomaly'
@@ -37,6 +41,13 @@ export interface PinnedItem {
     notes: string
     timestamp: number
     meta?: Record<string, unknown>
+    /** Council R4 N25 — CAPTURE-TIME ONLY: the evidence rows the panel was
+     *  DISPLAYING at the moment of the pin. Frozen into the pin snapshot by
+     *  {@link freezeVisibleEvidence} (display order, capped); never read back
+     *  out of the store into this shape, so `items` below never populates it.
+     *  A panel that holds no rows omits it and the async fetch below stays the
+     *  (best-effort) evidence source, exactly as before. */
+    evidence?: unknown[]
 }
 
 interface WorkspaceContextType {
@@ -116,6 +127,12 @@ async function fetchPanelSnapshot(item: Omit<PinnedItem, 'notes' | 'timestamp'>)
 }
 
 function toWorkbenchPin(item: Omit<PinnedItem, 'notes' | 'timestamp'>) {
+    // N25: freeze the panel's VISIBLE rows synchronously, in the same write that
+    // creates the pin. Before this, evidence arrived only through the async
+    // re-fetch below — so any miss (different window, dropped country scope,
+    // query-thread id, 429, offline) left the pin metadata-only and the dossier
+    // declared an evidence gap on a thread that was showing its receipts.
+    const visible = freezeVisibleEvidence(item.evidence)
     return {
         anchorId: item.id,
         anchorType: item.type,
@@ -127,6 +144,7 @@ function toWorkbenchPin(item: Omit<PinnedItem, 'notes' | 'timestamp'>) {
             // Metadata-only pins (event/anomaly) carry their country so the typed
             // graph can join them to same-country stories as coverage context.
             ...(typeof item.meta?.countryCode === 'string' ? { countryCode: item.meta.countryCode } : {}),
+            ...(visible.length > 0 ? { evidence: visible } : {}),
         },
     }
 }
@@ -177,15 +195,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     const pinItem = useCallback((item: Omit<PinnedItem, 'notes' | 'timestamp'>) => {
         const invId = ensureInvestigation(item.title)
-        wbAddPin(invId, toWorkbenchPin(item))
+        const pin = toWorkbenchPin(item)
+        const frozeVisible = (pin.snapshot.evidence?.length ?? 0) > 0
+        wbAddPin(invId, pin)
         bump()
         // Enrich the frozen snapshot asynchronously; the pin never waits.
         // MERGE, not replace (Story Lens Task 9): the lens banner's "Pin
         // story" button can write a sibling-neighborhood freeze onto this
         // same pin around the same time, in either order — a wholesale
         // replace here would erase that write if this fetch lands second.
+        //
+        // N25 precedence: when the panel already froze the rows on screen, this
+        // late re-fetch still enriches counts/label-court/summary but must NOT
+        // replace the evidence — the analyst's screen wins over a re-fetch that
+        // may have narrowed (24h vs the panel's window), lost the country scope
+        // or simply missed.
         fetchPanelSnapshot(item)
-            .then(snap => { if (snap) { mergePinSnapshot(invId, item.id, snap); bump() } })
+            .then(snap => {
+                if (!snap) return
+                mergePinSnapshot(invId, item.id, frozeVisible ? enrichmentWithoutEvidence(snap) : snap)
+                bump()
+            })
             .catch(() => { /* minimal snapshot stays */ })
     }, [bump, ensureInvestigation])
 

@@ -19,6 +19,7 @@ import {
   addPin,
   citationId,
   createInvestigation,
+  describePinTarget,
   deleteInvestigation,
   exportInvestigationJSON,
   getActiveInvestigationId,
@@ -457,5 +458,48 @@ describe('onWorkbenchChange (accounts-v1 sync hook)', () => {
     expect(() => createInvestigation('still works')).not.toThrow()
     expect(listInvestigations()).toHaveLength(1)
     off()
+  })
+})
+
+// ── Council R4 N37: pins never land somewhere silently ─────────────────────
+describe('describePinTarget (N37 consent)', () => {
+  it('reports a NEW investigation when none is active (the first-pin ramp)', () => {
+    expect(describePinTarget()).toEqual({ kind: 'new', id: null, title: null, pinCount: 0 })
+  })
+
+  it('names the investigation a save would land in, with its pin count', () => {
+    const inv = createInvestigation('Ukraine drone strikes')
+    addPin(inv.id, PIN)
+    addPin(inv.id, { ...PIN, anchorId: 'second' })
+    expect(describePinTarget()).toEqual({
+      kind: 'existing', id: inv.id, title: 'Ukraine drone strikes', pinCount: 2,
+    })
+  })
+
+  it('falls back to NEW when the active id points at a deleted investigation', () => {
+    const inv = createInvestigation('Gone')
+    deleteInvestigation(inv.id)
+    setActiveInvestigation(inv.id) // stale pointer
+    expect(describePinTarget().kind).toBe('new')
+  })
+})
+
+// ── Council R4 N25: a pin's frozen evidence is never lost to a late merge ───
+describe('frozen evidence survives async enrichment (N25)', () => {
+  it('keeps the evidence frozen at pin time when a later merge omits it', () => {
+    const inv = createInvestigation('Berlin Pride')
+    addPin(inv.id, {
+      ...PIN,
+      snapshot: {
+        capturedAt: '2026-08-11T09:00:00.000Z',
+        evidence: [{ headline: 'what the analyst saw', source: 'BBC' }],
+      },
+    })
+    // The async panel re-fetch lands later carrying metrics but NO evidence.
+    mergePinSnapshot(inv.id, PIN.anchorId, { summary: 'thread · 35 signals', metrics: { total: 35 } })
+    const snap = getInvestigation(inv.id)!.pins[0].snapshot!
+    expect(snap.evidence).toEqual([{ headline: 'what the analyst saw', source: 'BBC' }])
+    expect(snap.metrics).toEqual({ total: 35 })
+    expect(snap.capturedAt).toBe('2026-08-11T09:00:00.000Z') // incumbent wins
   })
 })

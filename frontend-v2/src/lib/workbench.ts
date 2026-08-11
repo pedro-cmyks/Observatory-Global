@@ -32,6 +32,15 @@ export interface PinSnapshot {
  *  as one LWW unit (investigationSync.ts); keep the freeze near O(1KB). */
 export const PIN_SIBLING_FREEZE_CAP = 8
 
+/** Council R4 N25: cap on {@link PinSnapshot.evidence} frozen from the rows a
+ *  panel was DISPLAYING at pin time. Same budget reasoning as
+ *  {@link PIN_SIBLING_FREEZE_CAP} — the whole Investigation is one localStorage
+ *  blob (5MB ceiling) and one LWW sync unit — so a pin freezes a SAMPLE of what
+ *  was on screen, never the whole list. The count the panel showed lives in
+ *  `metrics`; the surfaces label the frozen rows as frozen, so a capped sample
+ *  is honest, not a silent truncation. */
+export const PIN_EVIDENCE_FREEZE_CAP = 8
+
 /** A gate tier as it reaches the UI. `verified` cleared the strict quality gate
  *  (~90% precision), `extended` the ~75% threshold, `below_gate` neither, and
  *  `unknown` = the row carried no gate signal (dynamic/social/archive rows). */
@@ -236,6 +245,27 @@ export function setActiveInvestigation(id: string | null): void {
 
 export function getInvestigation(id: string): Investigation | null {
   return readStore().investigations.find(inv => inv.id === id) ?? null
+}
+
+/** Where a save/pin WOULD land right now (council R4 N37). The guardrail is
+ *  "pins from unrelated sessions should not silently mix": a surface that saves
+ *  into whatever investigation happens to be active must be able to SAY so
+ *  before and after the click. `new` = no active investigation, so the save
+ *  starts one (the first-pin ramp); `existing` names the open one and how many
+ *  pins it already holds. A stale active pointer (deleted investigation) reads
+ *  as `new` — the same thing the save path itself does. */
+export interface PinTarget {
+  kind: 'existing' | 'new'
+  id: string | null
+  title: string | null
+  pinCount: number
+}
+
+export function describePinTarget(): PinTarget {
+  const id = getActiveInvestigationId()
+  const inv = id ? getInvestigation(id) : null
+  if (!inv) return { kind: 'new', id: null, title: null, pinCount: 0 }
+  return { kind: 'existing', id: inv.id, title: inv.title, pinCount: inv.pins.length }
 }
 
 /** The research-plan query for an investigation. Falls back to the most recent

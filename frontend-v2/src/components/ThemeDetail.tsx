@@ -662,7 +662,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 id: pinnedId,
                 type: 'theme',
                 title: `${displayLabel}${originCountryName ? ` in ${originCountryName}` : ''}`,
-                urlParams: `?${params.toString()}`
+                urlParams: `?${params.toString()}`,
+                // Council R4 N25 (the wedge-killer): freeze the evidence THIS
+                // PANEL IS SHOWING. The pin used to carry metadata only and
+                // wait on an async re-fetch at a different window/scope — when
+                // that missed, the dossier reported an evidence gap on a thread
+                // that had its receipts on screen. These rows are the ones the
+                // analyst saw (display order; capped in freezeVisibleEvidence).
+                evidence: data?.signals ?? [],
             })
         }
     }

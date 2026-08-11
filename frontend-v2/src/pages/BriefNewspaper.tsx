@@ -9,6 +9,7 @@ import { Flag } from '../components/Flag'
 import { readBriefingCache, writeBriefingCache } from '../lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { isLeadEligible, leadBlockReason, selectLiveLead, LEAD_CONFIDENCE_FLOOR } from '../lib/leadConfidence'
+import { confidenceBucketLabel, confidenceBucketTip, resolveConfidenceBucket } from '../lib/threadConfidence'
 import { splitEditionThreads, buildShareCaption } from '../lib/briefEdition'
 import { coverageChipTip, COVERAGE_CHIP_LABEL } from '../lib/countryChips'
 import { LabelReviewChip } from '../lib/labelReviewChip'
@@ -18,7 +19,9 @@ import PinReceiptButton from '../components/PinReceiptButton'
 import type { CitationGateStatus } from '../lib/workbench'
 import { resolveOriginChip, resolveTierChip } from '../lib/sourceProvenance'
 import { TranslatableText } from '../components/TranslatableText'
-import { addPin, createInvestigation, getActiveInvestigationId, getInvestigation, removePin } from '../lib/workbench'
+import { addPin, createInvestigation, describePinTarget, getActiveInvestigationId, getInvestigation, movePin, removePin } from '../lib/workbench'
+import { saveTargetTip, saveTargetToast } from '../lib/pinTarget'
+import { flashPinToast } from '../lib/pinToast'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
@@ -592,15 +595,26 @@ export function BriefNewspaper() {
         return new Set((inv?.pins ?? []).map(pin => pin.anchorId))
     })()
 
+    // N37 (council R4, NIVELES seat): ◇ Save used to append into whatever
+    // investigation happened to be active — unrelated stories mixed with no
+    // signal. The destination is now stated BEFORE the click (tooltip) and
+    // NAMED after it, with a one-click correction. Recomputed per render via
+    // wbTick so it tracks the active investigation.
+    const pinTarget = (() => { void wbTick; return describePinTarget() })()
+
     const toggleSaveThread = (t: TopThread, e?: React.MouseEvent) => {
         e?.stopPropagation()
         const target = resolveThreadThemeTarget(t)
         if (!target) return
         const anchorId = `theme-${target.theme}`
+        // Snapshot the destination BEFORE the save so the confirmation can name
+        // the investigation the pin actually joined (and whether it existed).
+        const before = describePinTarget()
         let invId = getActiveInvestigationId()
         if (!invId || !getInvestigation(invId)) invId = createInvestigation(t.label).id
         if (savedIds.has(anchorId)) {
             removePin(invId, anchorId)
+            flashPinToast('Removed from investigation')
         } else {
             track('brief_section_click', { section: 'save_thread' })
             addPin(invId, {
@@ -625,6 +639,24 @@ export function BriefNewspaper() {
                     })),
                 },
             })
+            // Name the destination, and offer the correction the guardrail
+            // ("pins from unrelated sessions should not silently mix") asks
+            // for: move this one pin into its own investigation. One click,
+            // no modal — the friction stays proportional to the mistake.
+            const landedIn = invId
+            flashPinToast(
+                saveTargetToast(before, t.label),
+                before.kind === 'existing'
+                    ? {
+                        label: 'Move to its own',
+                        run: () => {
+                            const fresh = createInvestigation(t.label)
+                            movePin(anchorId, landedIn, fresh.id)
+                            setWbTick(x => x + 1)
+                        },
+                    }
+                    : undefined,
+            )
         }
         setWbTick(x => x + 1)
     }
@@ -994,7 +1026,8 @@ export function BriefNewspaper() {
                 role="button"
                 tabIndex={0}
                 className={`brief-save-btn ${saved ? 'saved' : ''}`}
-                data-tip={saved ? 'Remove from investigation' : 'Save to investigation (Workbench)'}
+                // N37: the destination is legible BEFORE the click.
+                data-tip={saved ? 'Remove from investigation' : saveTargetTip(pinTarget)}
                 onClick={e => toggleSaveThread(t, e)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); toggleSaveThread(t) } }}
             >
@@ -1070,6 +1103,9 @@ export function BriefNewspaper() {
     const renderUnassembledEntry = (t: TopThread) => {
         const reason = leadBlockReason(t)
         const conf = typeof t.avg_confidence === 'number' ? t.avg_confidence : null
+        // N14 (council R4): the desk row prints the served BAND, never the raw
+        // number — top_threads buckets correctly, the render was ignoring it.
+        const confBucket = resolveConfidenceBucket({ band: t.confidence ?? null, avgConfidence: conf })
         const receipts = t.evidence_samples ?? []
         const groups = new Map<string, ThreadEvidence[]>()
         for (const ev of receipts) {
@@ -1108,7 +1144,11 @@ export function BriefNewspaper() {
                     </div>
                 )}
                 <div className="brief-unassembled-meta">
-                    {conf != null && <span>{Math.round(conf * 100)}% confidence</span>}
+                    {confBucket.bucket != null && (
+                        <span data-tip={confidenceBucketTip(confBucket.bucket, confBucket.source)}>
+                            {confidenceBucketLabel(confBucket.bucket)}
+                        </span>
+                    )}
                     <span>{t.signal_count.toLocaleString()} raw signals</span>
                     {t.source_count != null && <span>{t.source_count} sources</span>}
                 </div>

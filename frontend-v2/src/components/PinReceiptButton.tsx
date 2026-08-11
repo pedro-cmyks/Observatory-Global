@@ -17,29 +17,8 @@ import {
   removeCitation,
   type CitationInput,
 } from '../lib/workbench'
+import { flashPinToast } from '../lib/pinToast'
 import './PinReceiptButton.css'
-
-// A body-level, layout-decoupled toast so the button can live inside an <a>/row
-// without disturbing its geometry. Best-effort — never throws.
-let toastEl: HTMLDivElement | null = null
-let toastTimer: number | null = null
-function flashToast(message: string) {
-  try {
-    if (!toastEl) {
-      toastEl = document.createElement('div')
-      toastEl.className = 'pin-receipt-toast'
-      document.body.appendChild(toastEl)
-    }
-    toastEl.textContent = message
-    toastEl.classList.add('pin-receipt-toast--show')
-    if (toastTimer) window.clearTimeout(toastTimer)
-    toastTimer = window.setTimeout(() => {
-      toastEl?.classList.remove('pin-receipt-toast--show')
-    }, 1800)
-  } catch {
-    /* toast is non-essential */
-  }
-}
 
 interface PinReceiptButtonProps {
   /** Frozen provenance read off the row (id/capturedAt/investigationId stamped
@@ -73,12 +52,12 @@ export default function PinReceiptButton({
     if (isCitationPinned(invId, id)) {
       removeCitation(invId, id)
       setPinned(false)
-      flashToast('Receipt unpinned')
+      flashPinToast('Receipt unpinned')
     } else {
       addCitation(invId, { ...citation, id })
       setPinned(true)
       const inv = getInvestigation(invId)
-      flashToast(`Pinned to ${inv?.title ?? 'investigation'}`)
+      flashPinToast(`Pinned to ${inv?.title ?? 'investigation'}`)
     }
     onChange?.()
   }, [id, citation, contextLabel, onChange])

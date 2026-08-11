@@ -10,6 +10,9 @@
 // order). Pure + unit-testable; the fetch wrapper degrades to null so a pin
 // never blocks on evidence.
 
+import { decodeEntities } from './decodeEntities'
+import { PIN_EVIDENCE_FREEZE_CAP } from './workbench'
+
 export interface FrozenEvidence {
   headline: string
   source?: string
@@ -68,6 +71,63 @@ export function extractSnapshotEvidence(
     })
   }
   return []
+}
+
+/** Council R4 N25 — freeze the rows the panel was DISPLAYING at pin time.
+ *
+ *  `extractSnapshotEvidence` above works on a payload the pin path RE-FETCHES;
+ *  that re-fetch is a second network call with its own window, its own scope
+ *  and its own failure modes, so a thread showing 35 signals on screen could
+ *  land in the dossier as "metadata only — no frozen evidence" (the DESKTOP
+ *  seat's wedge-killer). This one takes the rows already in the panel's hands.
+ *  No network, no ranking: DISPLAY ORDER is preserved because the claim being
+ *  frozen is "this is what the analyst saw", not "these are the best rows".
+ *
+ *  Tolerant like its sibling (headline|title|label, source|domain, url|link,
+ *  timestamp|time|date|published_at), de-duplicated by url (syndication repeats
+ *  one receipt) then by headline, and capped at {@link PIN_EVIDENCE_FREEZE_CAP}.
+ *  Any non-array input returns [] — a pin never blocks or throws on evidence. */
+export function freezeVisibleEvidence(
+  rows: unknown, cap = PIN_EVIDENCE_FREEZE_CAP,
+): FrozenEvidence[] {
+  if (!Array.isArray(rows)) return []
+  const out: FrozenEvidence[] = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    if (out.length >= cap) break
+    if (!row || typeof row !== 'object') continue
+    const r = row as Record<string, unknown>
+    const rawHeadline = r.headline ?? r.title ?? r.label
+    if (typeof rawHeadline !== 'string') continue
+    const headline = decodeEntities(rawHeadline).trim()
+    if (!headline) continue
+    const rawUrl = r.url ?? r.link
+    const url = typeof rawUrl === 'string' && rawUrl.trim() ? rawUrl.trim() : undefined
+    const key = url ? `u:${url}` : `h:${headline.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const src = r.source ?? r.domain
+    const ts = r.timestamp ?? r.time ?? r.date ?? r.published_at
+    out.push({
+      headline,
+      source: typeof src === 'string' ? src : undefined,
+      url,
+      date: typeof ts === 'string' && ts.length >= 10 ? ts.slice(0, 10) : undefined,
+    })
+  }
+  return out
+}
+
+/** N25 precedence rule: when a pin already froze the VISIBLE rows, a later
+ *  async panel re-fetch may still enrich the snapshot (counts, label-court
+ *  verdict, summary) but must NOT replace the evidence — the analyst's screen
+ *  wins over a re-fetch that may have drifted, narrowed or failed. */
+export function enrichmentWithoutEvidence<T extends { evidence?: unknown }>(
+  snapshot: T,
+): Omit<T, 'evidence'> {
+  const { evidence: _dropped, ...rest } = snapshot
+  void _dropped
+  return rest
 }
 
 /** Fetch a thread's detail and extract frozen evidence for a pin snapshot.
