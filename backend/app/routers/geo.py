@@ -1262,8 +1262,24 @@ async def evidence_for_day(
 @router.get("/api/v2/country-edition")
 async def get_country_edition(cc: str, hours: int = Query(24, ge=1, le=24)):
     """L1 country edition — country-scoped threads + coverage-gaps band +
-    cache-first article enrichment. Live/on-demand (unsealed). 120s cache."""
-    from app.services.country_edition import fetch_country_edition
+    cache-first article enrichment.
+
+    ORDER OF TRUTH (council R4 N26, 2026-08-11). The live composition MEASURES
+    12-23s of scoped queries per country and answered 503 db_busy on cold open
+    on the day Colombia was the story (CO 110.8s, JP 21.7s, US 19.2s — all
+    503). So the door reads a nightly artifact first and only builds when it
+    has to:
+
+      1. Redis (120s), unchanged;
+      2. a FRESH artifact from `country_edition_artifacts` (mig 098) — one
+         indexed read, and it carries the build-time slot guard;
+      3. the live build (the pre-N26 path, byte-identical);
+      4. the STALE artifact, labeled stale + degraded, when the live build
+         cannot answer. A day-old edition that SAYS it is a day old beats
+         "database is busy"; only a door with no artifact at all still 503s.
+    """
+    from app.services import country_edition as ce
+    from app.services.thread_intelligence import DatabaseBusyError
 
     cc = cc.upper()
     if len(cc) != 2 or not cc.isalpha():
@@ -1280,11 +1296,52 @@ async def get_country_edition(cc: str, hours: int = Query(24, ge=1, le=24)):
         except Exception:
             pass
 
-    result = await fetch_country_edition(cc, hours=hours)
+    async def _cache(payload):
+        if hasattr(app.state, "redis") and app.state.redis:
+            try:
+                await app.state.redis.setex(
+                    cache_key, 120, json.dumps(payload, default=str)
+                )
+            except Exception:
+                pass
+        return payload
 
-    if hasattr(app.state, "redis") and app.state.redis:
-        try:
-            await app.state.redis.setex(cache_key, 120, json.dumps(result, default=str))
-        except Exception:
-            pass
-    return result
+    # (2) the precomputed door. Best-effort by construction: this read sits in
+    # FRONT of the slow path, so any failure here must fall through to the live
+    # build rather than become a new way for the door to break.
+    stored = None
+    try:
+        stored = await ce.fetch_stored_country_edition(cc, hours=hours)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "country-edition artifact lookup failed cc=%s: %s: %s",
+            cc, type(exc).__name__, str(exc)[:200],
+        )
+    if stored is not None and not stored.get("artifact", {}).get("stale"):
+        return await _cache(stored)
+
+    # (3) live build.
+    try:
+        result = await ce.fetch_country_edition(cc, hours=hours)
+    except DatabaseBusyError:
+        # (4) N26 itself: the build died under load. Serve the stale artifact,
+        # labeled — but do NOT cache it for the full 120s window, so the next
+        # reader after the pressure lifts gets a real build.
+        if stored is not None:
+            logger.warning(
+                "country-edition live build db_busy cc=%s — serving the stale "
+                "artifact (age %.1fh) instead of 503",
+                cc, stored.get("artifact", {}).get("age_hours", -1.0),
+            )
+            return ce.stamp_artifact(
+                {k: v for k, v in stored.items() if k != "artifact"},
+                generated_at=datetime.fromisoformat(
+                    stored["artifact"]["generated_at"]
+                ),
+                build_seconds=stored["artifact"].get("build_seconds"),
+                selection_reason=stored["artifact"].get("selection_reason"),
+                degraded_reason="live_build_db_busy",
+            )
+        raise
+
+    return await _cache(result)
