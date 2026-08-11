@@ -46,6 +46,28 @@ const BASE_LABEL: Record<CountBase, string> = {
   gated: 'gated',
 }
 
+/**
+ * Turn a MEASURED window in hours into the printed word.
+ *
+ * Council R4 N19: both the thread row and the theme detail hardcoded '24h'.
+ * Measured 2026-08-11, the dynamic engine clusters over `snapshot_window_h`
+ * = 168h (3,080/3,080 clusters at the latest snapshot), so a dynamic row's
+ * number was never a 24h count. The backend now serves the window it actually
+ * counted over; this is the single place that renders it.
+ *
+ * Absence returns null rather than a default: silently printing '24h' over an
+ * unknown window is precisely the bug being fixed. Callers pick their own
+ * fallback explicitly (atlas rows genuinely are filtered to the request).
+ */
+export function formatCountWindow(hours: number | null | undefined): string | null {
+  if (hours == null || !Number.isFinite(hours) || hours <= 0) return null
+  // 24 stays '24h': it is the established wording for the day window and is
+  // correct for the hours-filtered atlas path — churning it to '1d' would
+  // rename a right label for nothing.
+  if (hours < 48) return `${hours}h`
+  return hours % 24 === 0 ? `${hours / 24}d` : `${hours}h`
+}
+
 export function countQualifier(
   count: number,
   windowLabel: string | null,

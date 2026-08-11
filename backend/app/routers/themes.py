@@ -729,6 +729,21 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     }
 
 
+def _opt_int(value) -> Optional[int]:
+    """int() that preserves absence.
+
+    A missing/NULL count must serve None, never 0 — a 0 on a count surface
+    reads as the measured claim "nothing here", which is exactly the class of
+    silent fabrication the count-basis contract exists to kill.
+    """
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 async def _dynamic_topic_detail(
     conn,
     *,
@@ -773,6 +788,31 @@ async def _dynamic_topic_detail(
         "total": gated_total,
         "rawTotal": gated_total,
         "gated": gated_total,
+        # ------------------------------------------------------------------
+        # Count basis (council R4 N19, the N8 residual): `total` is
+        # `agg_n_signals` — a LIFETIME aggregate — and the header used to
+        # stamp it with the requested window ("3,659 signals · Last 24h")
+        # while the thread row one click up showed 88 for the same story.
+        # Measured 2026-08-11: the row's number is `recent_n_signals` (the
+        # latest snapshot's kept count) and every cluster at that snapshot
+        # carries snapshot_window_h=168 — so NEITHER number was ever a 24h
+        # count and both surfaces' window word was false.
+        #
+        # A truly window-scoped total was measured and rejected: the
+        # signals_v2 join exceeded 120s and the assigned_at variant ran 19.4s
+        # cold against this handler's 15s statement_timeout, and
+        # `topic_members` is only a PROJECTION for dynamic topics (dt-11810:
+        # 125 rows vs 3,659 lifetime), so its count would have been a third
+        # number contradicting both. Instead the detail carries THE ROW'S OWN
+        # number (1.1s cold / ~101ms warm on the heaviest active topic) so the
+        # two surfaces agree by construction, and each number states its base.
+        #
+        # Absence stays honest — None, never 0: a 0 reads as a measured
+        # "nothing in the window", which is a claim we have not made.
+        # ------------------------------------------------------------------
+        "countBasis": "lifetime",
+        "currentTotal": _opt_int(_rec.get("recent_n_signals")),
+        "countWindowHours": _opt_int(_rec.get("count_window_hours")),
         "snapshotAt": topic_row["last_seen"].isoformat()
             if topic_row["last_seen"] else None,
         # X2/S2 (time-as-dimension): AGE is first-class — "active since".
@@ -1498,6 +1538,42 @@ async def get_theme_details(
                             dt.signature_meta,
                             dt.label_status,
                             dt.label_proposed,
+                            -- Council R4 N19: the number the THREAD ROW shows,
+                            -- served here so row and detail cannot contradict.
+                            -- Mirrors thread_intelligence._DYNAMIC_TOPICS_SELECT's
+                            -- recent_n_signals exactly (same latest-snapshot SUM);
+                            -- measured 1.09s cold / ~101ms warm on dt-3433, the
+                            -- heaviest active topic, inside a 15s budget.
+                            -- Deliberately NOT coalesced to 0: no snapshot must
+                            -- serve absence, not a measured "nothing".
+                            (
+                                SELECT SUM(ec4.n_signals)::int
+                                FROM dynamic_topic_members dtm4
+                                JOIN emergent_clusters ec4
+                                  ON ec4.id = dtm4.emergent_cluster_id
+                                WHERE dtm4.dynamic_topic_id = dt.id
+                                  AND dtm4.snapshot_at = (
+                                      SELECT MAX(snapshot_at)
+                                      FROM dynamic_topic_members
+                                      WHERE dynamic_topic_id = dt.id
+                                  )
+                            ) AS recent_n_signals,
+                            -- The window those members were actually clustered
+                            -- over. Measured uniformly 168h (3,080/3,080 clusters
+                            -- at the latest snapshot) — read, never hardcoded, so
+                            -- the label follows the engine if the window changes.
+                            (
+                                SELECT MAX(ec6.snapshot_window_h)::int
+                                FROM dynamic_topic_members dtm6
+                                JOIN emergent_clusters ec6
+                                  ON ec6.id = dtm6.emergent_cluster_id
+                                WHERE dtm6.dynamic_topic_id = dt.id
+                                  AND dtm6.snapshot_at = (
+                                      SELECT MAX(snapshot_at)
+                                      FROM dynamic_topic_members
+                                      WHERE dynamic_topic_id = dt.id
+                                  )
+                            ) AS count_window_hours,
                             COALESCE((
                                 SELECT array_agg(DISTINCT sid.signal_id)
                                 FROM dynamic_topic_members dtm

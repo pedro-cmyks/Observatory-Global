@@ -14,7 +14,7 @@ import {
 import { threadCountryPresentation } from '../lib/threadGeography'
 import { familyColor, familyGradient } from '../lib/categoryFamily'
 import { decodeEntities } from '../lib/decodeEntities'
-import { CountQualifierChip, countQualifier } from '../lib/countQualifier'
+import { CountQualifierChip, countQualifier, formatCountWindow } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { TranslatableTextInline, useTranslatableText } from './TranslatableText'
@@ -46,6 +46,14 @@ interface Narrative {
     // carry both; dynamic/emergent threads may not (undefined → plain count).
     gated_signal_count?: number
     gate_scored_count?: number
+    /**
+     * Council R4 N19: the window `signal_count` was actually counted over.
+     * Dynamic rows count the latest SNAPSHOT, whose clustering window measured
+     * 168h in production — so this row's chip stamping a hardcoded '24h' was
+     * false. Absent for atlas rows, which genuinely are filtered to the
+     * requested hours; the chip falls back to the request only there.
+     */
+    count_window_hours?: number | null
     discussion_count?: number
     forum_sentiment?: number | null
     country_count: number
@@ -185,6 +193,7 @@ const normalizeThread = (thread: any): Narrative => {
     signal_count: thread.signal_count || 0,
     gated_signal_count: thread.gated_signal_count,
     gate_scored_count: thread.gate_scored_count,
+    count_window_hours: thread.count_window_hours ?? null,
     discussion_count: thread.discussion_count || 0,
     forum_sentiment: thread.forum_sentiment ?? null,
     country_count: thread.country_count || 0,
@@ -930,17 +939,24 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 </span>
                             ) : (() => {
                                 const rowBase = n.gated_signal_count != null ? 'raw' as const : 'gated' as const
+                                /* N19: the window word must follow the row's engine path the
+                                   same way `rowBase` already does. Dynamic rows count the
+                                   latest snapshot (measured 168h → "7d"); atlas rows really
+                                   are filtered to the request, so they keep "24h". Hardcoding
+                                   '24h' for both made the row contradict the detail on the
+                                   window as well as the number. */
+                                const rowWindow = formatCountWindow(n.count_window_hours) ?? '24h'
                                 return (
                             <span
                                 className="narrative-count"
                                 data-tip={n.gate_scored_count && n.gated_signal_count != null && n.gated_signal_count !== n.signal_count
-                                    ? `${countQualifier(n.signal_count, '24h', 'raw').tip} ${(n.gated_signal_count ?? 0).toLocaleString()} verified by the relevance gate — the detail view shows the verified set.`
-                                    : countQualifier(n.signal_count, '24h', rowBase).tip}
+                                    ? `${countQualifier(n.signal_count, rowWindow, 'raw').tip} ${(n.gated_signal_count ?? 0).toLocaleString()} verified by the relevance gate — the detail view shows the verified set.`
+                                    : countQualifier(n.signal_count, rowWindow, rowBase).tip}
                             >
                                 {n.signal_count > 999 ? `${(n.signal_count / 1000).toFixed(1)}k` : n.signal_count}
-                                <CountQualifierChip count={n.signal_count} windowLabel="24h" base={rowBase} />
+                                <CountQualifierChip count={n.signal_count} windowLabel={rowWindow} base={rowBase} />
                                 {!!n.gate_scored_count && n.gated_signal_count != null && n.gated_signal_count !== n.signal_count && (
-                                    <span className="narrative-count-lineage" data-tip={countQualifier(n.gated_signal_count, '24h', 'verified').tip}>
+                                    <span className="narrative-count-lineage" data-tip={countQualifier(n.gated_signal_count, rowWindow, 'verified').tip}>
                                         {n.gated_signal_count.toLocaleString()} verified
                                     </span>
                                 )}

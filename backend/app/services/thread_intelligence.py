@@ -1210,6 +1210,22 @@ SELECT
               SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
           )
     ), 0)::int AS recent_n_signals,
+    -- N19: the window recent_n_signals was counted over. NOT the requested
+    -- hours — the snapshot's own clustering window (measured 168h uniformly,
+    -- 3,080/3,080 clusters). Read rather than assumed so the label follows the
+    -- engine. NULL (no snapshot) = honest absence, never a fabricated 24.
+    -- Measured cost on the live list query: no detectable delta (base
+    -- 684-817ms vs 669-736ms, interleaved runs) — it rides the same
+    -- latest-snapshot join the aggregates above already pay for.
+    (
+        SELECT MAX(ec6.snapshot_window_h)::int
+        FROM dynamic_topic_members dtm6
+        JOIN emergent_clusters ec6 ON ec6.id = dtm6.emergent_cluster_id
+        WHERE dtm6.dynamic_topic_id = dt.id
+          AND dtm6.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ) AS count_window_hours,
     COALESCE((
         -- movement = velocity at the topic's LATEST snapshot only. The old
         -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
@@ -1352,6 +1368,30 @@ SELECT
     dt.label_checked_at,
     dt.temporal_signature,  -- mig 085: new/continuous/recurrent/resurrected (NULL=unclassified)
     dt.signature_meta,      -- {eras, gap_weeks, first_seen_week, returned_week, ...}
+    -- N19 (found while fixing the theme detail): this SQL carried NO
+    -- recent_n_signals, so assemble_dynamic_thread's
+    -- `recent_n_signals or agg_n_signals` fallback made /threads/{id} serve the
+    -- LIFETIME aggregate as `signal_count` — the same contradiction the theme
+    -- detail had, on a third surface. Both columns mirror
+    -- _DYNAMIC_TOPICS_SELECT exactly so every surface counts the same thing.
+    COALESCE((
+        SELECT SUM(ec4.n_signals)
+        FROM dynamic_topic_members dtm4
+        JOIN emergent_clusters ec4 ON ec4.id = dtm4.emergent_cluster_id
+        WHERE dtm4.dynamic_topic_id = dt.id
+          AND dtm4.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ), 0)::int AS recent_n_signals,
+    (
+        SELECT MAX(ec6.snapshot_window_h)::int
+        FROM dynamic_topic_members dtm6
+        JOIN emergent_clusters ec6 ON ec6.id = dtm6.emergent_cluster_id
+        WHERE dtm6.dynamic_topic_id = dt.id
+          AND dtm6.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ) AS count_window_hours,
     COALESCE((
         -- movement = velocity at the topic's LATEST snapshot only. The old
         -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
@@ -1564,6 +1604,13 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         or 0
     )
     lifetime_signals = int(_record_get(topic_row, "agg_n_signals") or 0)
+    # Council R4 N19: `signal_count` above counts the LATEST SNAPSHOT, whose
+    # clustering window is snapshot_window_h (measured 168h uniformly), NOT the
+    # requested hours — so the row's window label cannot be the request's. Serve
+    # the window this number actually belongs to; None (never a fabricated 24)
+    # when the column is absent, leaving the caller to fall back honestly.
+    _window_h = _record_get(topic_row, "count_window_hours")
+    count_window_hours = int(_window_h) if _window_h is not None else None
     changed_10h = int(_record_get(topic_row, "changed_10h") or 0)
     noise_rate = _record_get(topic_row, "noise_rate")
     avg_conf = 1.0 - float(noise_rate) if noise_rate is not None else None
@@ -1635,6 +1682,9 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "crisis_relevant": bool(crisis_relevant) if crisis_relevant is not None else None,
         "signal_count": signal_count,
         "lifetime_signal_count": lifetime_signals,
+        # The window `signal_count` belongs to (N19) — the row chip stops
+        # hardcoding '24h' over a number counted across 168h.
+        "count_window_hours": count_window_hours,
         "source_count": source_count,
         "country_count": country_count,
         "avg_confidence": (
