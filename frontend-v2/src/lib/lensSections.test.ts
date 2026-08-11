@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildSections, connectedLane, nodesQueryFor, readNodesResponse, whereItLivesLane,
+  SECTION_LABELS, SHEET_SECTION_NAMES, SOURCES_SECTION_LABEL,
   type LaneStatuses, type LensPayload,
 } from './lensSections'
 
@@ -299,5 +300,38 @@ describe('whereItLivesLane', () => {
       expect(s.whereItLives.state).toBe('empty')
       expect(s.whereItLives.reason && s.whereItLives.reason.length > 0).toBe(true)
     }
+  })
+})
+
+describe('SHEET_SECTION_NAMES', () => {
+  it('names every section the sheet holds, in anatomy order', () => {
+    // The bar is the only promise the reader gets before opening the sheet, so
+    // it has to list what is inside — this is the list both of them read.
+    // Order is the Lens anatomy's (identity, what it says, where it lives,
+    // connected, attention) with `sources` last, since it has no slot in the
+    // five and is not going to borrow one.
+    expect(SHEET_SECTION_NAMES).toEqual([
+      SECTION_LABELS.whereItLives,
+      SECTION_LABELS.connected,
+      SECTION_LABELS.attention,
+      SOURCES_SECTION_LABEL,
+    ])
+  })
+
+  it('carries the intel organ R4-N29 found missing', () => {
+    // Public attention and source health had ZERO mobile surface after the
+    // Brief|Lens|Live IA retired the Pulse tab. Both are named here now, which
+    // is what makes them reachable — a section absent from this list is a
+    // section with no door.
+    expect(SHEET_SECTION_NAMES).toContain('attention')
+    expect(SHEET_SECTION_NAMES).toContain('sources')
+  })
+
+  it('keeps `sources` distinct from `attention`', () => {
+    // Source diversity is a fact about the PRESS; attention is a fact about
+    // what the public searches and reads. Folding one under the other's
+    // heading would mislabel the only number on the surface about outlets.
+    expect(SOURCES_SECTION_LABEL).not.toBe(SECTION_LABELS.attention)
+    expect(new Set(SHEET_SECTION_NAMES).size).toBe(SHEET_SECTION_NAMES.length)
   })
 })

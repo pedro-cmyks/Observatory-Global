@@ -1947,4 +1947,62 @@
     select {
         font-size: 16px !important;
     }
+
+    /* --- the capture controls (council R4 N29, second half) ------------------
+       Measured at 375x812 before this block, on the Lens field:
+         .person-pip-pin    x36   6.5 x 9.0 px
+         .narrative-pin     x20  15.2 x 14.0 px
+         .person-pip-focus  x36   ...  x 13.5 px
+         .country-pip       x37  38.2 x 15.5 px
+       Pinning is the phone's ONE capture gesture — the Workbench is
+       capture-only there by deliberate design (a8d4c3da), so ◆ is the whole
+       ramp into L3 — and it was the smallest target in the app, an eighth of
+       the floor the tab bar three inches below it honors.
+
+       They live in this shared block rather than in NarrativeThreads.css /
+       PinReceiptButton.css for the reason the block's own header gives: the
+       floor is a property of the phone, not of a panel, and one list is what
+       makes it auditable. Nothing here is a font or a colour — the glyphs stay
+       the size the desktop drew them; only the HIT AREA grows.
+
+       Hit area via min-width/min-height on the button itself, not a stretched
+       ::after: two of these sit inside a wrapping chip row, and an invisible
+       overhang would put one chip's tap zone on top of the next chip's text —
+       trading a target too small to hit for a target that hits the wrong
+       thing. Growing the real box makes the rows taller and honest. */
+    .narrative-pin,
+    .person-pip-pin,
+    .pin-receipt-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* The chip is a two-control unit: a name that focuses and a ◆ that
+       captures. Both need the floor, and the ◆ half already has it above, so
+       this is the name half plus the box that has to grow to hold them. */
+    .person-pip {
+        min-height: 44px;
+    }
+    .person-pip-focus,
+    .country-pip {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+    /* A country pip is a one-tap pivot of the whole surface; at 38px wide it
+       was under the floor on the axis that matters least to read and most to
+       hit. */
+    .country-pip {
+        min-width: 44px;
+        justify-content: center;
+        /* Load-bearing, and a bug the floor itself introduced: the pip's markup
+           is `<Flag/> {code}`, and that separating space is a whitespace-only
+           text node. In normal flow it renders; inside a flex container the
+           spec drops it ("any such flex item that contains only white space is
+           not rendered"), so switching the pip to inline-flex above glued the
+           flag to its code — 🇲🇽MX. The gap puts the space back as layout. */
+        gap: 4px;
+    }
 }

@@ -3,7 +3,7 @@ import { fieldVisible, type MobileSurface } from '../lib/mobileNav'
 import { scopeKey, scopeTitle, type LensScope } from '../lib/lensScope'
 import {
   buildSections, connectedLane, nodesQueryFor, readNodesResponse,
-  SECTION_LABELS, whereItLivesLane,
+  SECTION_LABELS, SHEET_SECTION_NAMES, SOURCES_SECTION_LABEL, whereItLivesLane,
   type ConnectedRow, type CountryRow, type LaneStatus,
 } from '../lib/lensSections'
 import { readThreadPool, threadPoolQuery, type PoolThread } from '../lib/narrativeThreadLimits'
@@ -55,11 +55,65 @@ export interface LensPanelProps {
    * both the Lens and Live surfaces show; see the note on `slots` below.
    */
   read: ReactNode
+  /**
+   * Section 5 of the Lens — the intel organ: geo alerts, conflict events,
+   * theme spikes, the ATTENTION ECLIPSE row, and public attention (wiki /
+   * trends / forum). `<AnomalyPanel/>`, which re-scopes ITSELF off the shared
+   * focus relation, so it needs no scope prop from here.
+   *
+   * A node rather than a component, for the same reason `read` is one: its
+   * doors (open a country, open an attention item, search) all live in App,
+   * and threading five callbacks through the Lens to reach them would put a
+   * second copy of App's navigation contract in a component whose whole job
+   * is naming what is on screen. It is only ever CREATED here — React does
+   * not mount an element until it is rendered, and this one renders only
+   * inside the opened sheet.
+   */
+  attention: ReactNode
+  /**
+   * The sheet's sixth section — `<SourceIntegrityPanel/>`, which likewise
+   * scopes itself off the shared filter. See SOURCES_SECTION_LABEL for why it
+   * is named separately rather than folded into `attention`.
+   */
+  sources: ReactNode
 }
 
 /**
- * Sections 3 and 4 of the Lens — `where it lives` and `connected` — as a bar
- * that opens into a sheet.
+ * The Lens's lower sections — `where it lives`, `connected`, `attention` and
+ * `sources` — as a bar that opens into a sheet.
+ *
+ * WHERE THE INTEL ORGAN LIVES, AND WHY HERE. Council R4 N29: the Brief|Lens|
+ * Live shell retired the Pulse tab and nothing took its place, so Public
+ * Attention, the AnomalyPanel (including the ATTENTION ECLIPSE row) and Source
+ * Integrity had ZERO mobile surface — a DOM scan across all three tabs
+ * returned 0 for `.anomaly-panel-container` and `.source-panel-container`.
+ * They come back HERE, as sections of this sheet, rather than as a fourth tab,
+ * because that is what the arc's own design says they are: the mobile IA spec
+ * (docs/superpowers/specs/2026-08-04-mobile-native-ia-design.md §3) lists the
+ * absorption "Pulse tab → §5 `attention`, always scoped" in the same table
+ * that sends the Map tab to §3 and the Universe to §4 — the two sections
+ * already in this sheet. Two more pieces of evidence that this was the
+ * intended home and only the last wire was missing: `lensSections.ts` already
+ * defines the `attention` section with a full set of states and copy, and
+ * BOTH panels already carry a `#236` phone stylesheet (AnomalyPanel.css:345,
+ * SourceIntegrityPanel.css:202) written for a surface that then stopped
+ * existing. A fourth tab would also have to be paid for structurally: the
+ * shell keeps exactly TWO mounted console panes and `MobileSurface` has three
+ * values covering them, and the arc deliberately spent a commit teaching the
+ * tour to stop saying four tabs.
+ *
+ * WHY THE REAL PANELS AND NOT ROWS BUILT FROM `buildSections`. Same reason the
+ * Lens mounts ThemeDetail and CountryBrief for the read instead of
+ * re-rendering their receipts: those panels already own the honest empty and
+ * degraded states for their own lanes ("No anomalies", "Wikipedia data
+ * unavailable", "No source data available"), and they already re-scope
+ * themselves — AnomalyPanel off `useFocusRelation`, SourceIntegrityPanel off
+ * the shared filter — so the organ follows the Lens's scope with no scope
+ * prop. A hand-built copy would be a second transcription of both, free to
+ * drift, and it is the drift between two copies of a lane's copy and its
+ * behaviour that `lensSections.ts` exists to prevent. The pure `attention`
+ * model stays in that module for a caller that renders ROWS; this one renders
+ * the panel.
  *
  * WHY A BAR AND NOT A THIRD BLOCK IN THE SCROLL. The design puts these sections
  * below the scope's read, and on the phone that position does not exist: the
@@ -97,12 +151,14 @@ export interface LensPanelProps {
  * THREAD SCOPE ONLY. #234 relates a thread to other THREADS, so that is the one
  * scope where it can answer; the rest say so rather than borrowing the shape.
  */
-function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread }: {
+function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread, attention, sources }: {
   scope: LensScope
   /** The console's country filter — see `poolQuery` below for why it matters. */
   countryScope?: string | null
   onOpenCountry: (code: string) => void
   onOpenThread: (id: string, label?: string) => void
+  attention: ReactNode
+  sources: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   // The sheet is fixed, so it needs an absolute `top` — and the bar it hangs
@@ -252,13 +308,18 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread }: 
   const connectedStatus: LaneStatus = settledConnected
     ?? (poolLane === 'ok' && !relation.anchor ? 'no_subject' : poolLane)
 
-  // Only the two sections this surface owns are destructured. buildSections
-  // also returns `attention` — section 5 of the Lens — and the Lens does NOT
-  // render it: public attention is already carried inside each scope's own
-  // panel (AnomalyPanel re-scopes itself, ThemeDetail has its DISCUSSION
-  // block), so a second copy here would be duplicate chrome rather than a new
-  // answer. It stays in the pure module, with its states and copy, for the
-  // caller that does render it.
+  // Only the two ROW-BUILT sections are destructured. buildSections also
+  // returns `attention`, and this surface fills that section by mounting
+  // <AnomalyPanel/> instead (see the header note) — so the pure model's
+  // attention rows are unused here and the empty payload below is honest
+  // rather than lazy.
+  //
+  // The superseded reason is worth recording because it was WRONG in exactly
+  // the way N29 describes: this section used to be skipped on the grounds that
+  // "public attention is already carried inside each scope's own panel —
+  // AnomalyPanel re-scopes itself". True on the desktop, where the dock mounts
+  // it. On the phone the dock is not mounted at all, so the argument justified
+  // an absence by pointing at a panel that was not there.
   const { whereItLives, connected } = buildSections(
     { countries: rows ?? [], connected: connectedRows, attention: [] },
     { whereItLives: lane, connected: connectedStatus },
@@ -276,9 +337,13 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread }: 
           {/* Names only, no counts. The sections are measured when opened, so
               a tally on the closed bar would have to invent one — and "0" or
               "—" before asking is exactly the absence-claim this whole surface
-              exists to avoid. */}
-          <span className="lens-sections-name">{SECTION_LABELS.whereItLives}</span>
-          <span className="lens-sections-name">{SECTION_LABELS.connected}</span>
+              exists to avoid.
+              Mapped from the shared list rather than written out, so a section
+              added to the sheet cannot go unannounced on the bar that is the
+              only way in. */}
+          {SHEET_SECTION_NAMES.map((name) => (
+            <span key={name} className="lens-sections-name">{name}</span>
+          ))}
           <span className="lens-sections-caret" aria-hidden="true">{open ? '▾' : '▸'}</span>
         </button>
       </div>
@@ -343,6 +408,27 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread }: 
               </p>
             ) : null}
           </section>
+
+          {/* Sections 5 and 6 — the intel organ, mounted rather than rebuilt.
+              Both panels scope THEMSELVES, so neither takes a scope prop; both
+              are only constructed here because the sheet is `open`, which is
+              what keeps a section nobody opens free on a phone.
+
+              No `onClose` is threaded into either. Every door they carry —
+              a geo alert, a conflict, a theme spike, a wiki/trend/forum row —
+              changes the console's focus, which changes this sheet's `key`
+              (scopeKey, at the render site below) and remounts it closed. One
+              mechanism, already load-bearing for the two sections above, and a
+              second one would only be free to disagree with it. */}
+          <section className="lens-section">
+            <h3 className="lens-section-label">{SECTION_LABELS.attention}</h3>
+            <div className="lens-section-panel">{attention}</div>
+          </section>
+
+          <section className="lens-section">
+            <h3 className="lens-section-label">{SOURCES_SECTION_LABEL}</h3>
+            <div className="lens-section-panel">{sources}</div>
+          </section>
         </div>
       )}
     </>
@@ -374,6 +460,7 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread }: 
  */
 export function LensPanel({
   surface, trail, onBack, onOpenCountry, onOpenThread, countryScope, field, read,
+  attention, sources,
 }: LensPanelProps) {
   const showsField = fieldVisible(surface)
   // Live is not a Lens surface: it is the unfocused firehose, and it wears no
@@ -420,6 +507,8 @@ export function LensPanel({
           countryScope={countryScope}
           onOpenCountry={onOpenCountry}
           onOpenThread={onOpenThread}
+          attention={attention}
+          sources={sources}
         />
       )}
       <div key="lens-field" style={{ display: showsField ? 'contents' : 'none' }}>{field}</div>

@@ -123,6 +123,43 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
 }
 
 /**
+ * The one section in the sheet that has NO slot in the five-section anatomy.
+ *
+ * Source integrity measures the aggregate of §2 (`what it says`) — how many
+ * outlets carry this scope and how concentrated they are. It is not `where it
+ * lives`, and it is emphatically not `attention`: folding a source-diversity
+ * readout under a heading that means "what the public is searching and
+ * reading" would mislabel the one number on the surface that is about the
+ * PRESS. So it gets its own name rather than a borrowed one.
+ *
+ * It is a label and nothing else — no `LaneStatus`, no `REASONS` row. The
+ * section is filled by mounting `<SourceIntegrityPanel/>`, which owns its own
+ * empty and degraded states; inventing a second set here would be exactly the
+ * "copy that cannot be checked against behaviour" this module refuses to
+ * carry (see the note on LaneStatus).
+ */
+export const SOURCES_SECTION_LABEL = 'sources'
+
+/**
+ * Every section the phone's sheet contains, in anatomy order, as the names the
+ * closed bar prints.
+ *
+ * Exists so the BAR and the SHEET cannot disagree about what is inside. The
+ * bar is the only promise a reader has before opening — a name on it that no
+ * section answers to is a door to nowhere, and a section the bar omits is the
+ * amputation this whole surface exists to undo, one layer down.
+ *
+ * Names only, and deliberately no counts: the sections are measured when
+ * opened, so a tally on the closed bar would have to invent one.
+ */
+export const SHEET_SECTION_NAMES: string[] = [
+  SECTION_LABELS.whereItLives,
+  SECTION_LABELS.connected,
+  SECTION_LABELS.attention,
+  SOURCES_SECTION_LABEL,
+]
+
+/**
  * The copy for every state a lane can be in, per section.
  *
  * Written out per section rather than templated, because the honest sentence

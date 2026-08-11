@@ -190,7 +190,13 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 14px;
+  /* 10px, not the original 14px: the bar names FOUR sections since R4-N29 put
+     the intel organ back (where it lives · connected · attention · sources).
+     Measured in the rendered font (11px Geist Mono, 0.66px tracking) the four
+     names come to 283px and the toggle's inner width is 343px — at 14px gaps
+     the caret pushed the last name into its own ellipsis, and a bar that
+     truncates a section's name is the closed-state promise breaking. */
+  gap: 10px;
   padding: 0 12px;
   background: none;
   border: none;
@@ -311,6 +317,52 @@
   color: var(--color-text-secondary);
   font-size: 11px;
   overflow-wrap: anywhere;
+}
+
+/* --- R4 N29: the two sections filled by MOUNTING a panel ------------------- */
+
+/* A mounted panel is a whole desktop surface dropped into a phone sheet, and
+   its own stylesheet assumes it owns a fixed-height pane: .anomaly-panel-
+   container and .source-panel-container are `height: 100%`, and inside them
+   .anomaly-body-grid / .anomaly-col / .col-scroll / .ap-sub each claim a
+   scroll of their own. Left alone in an auto-height sheet, `height: 100%`
+   resolves against a parent that has no height and the panel collapses to its
+   flex minimum — the organ would be "reachable" and show nothing.
+
+   So the sheet takes the scroll back. Every inner scroller is unwound into
+   flow and the panels grow to their content; the sheet, which is already
+   `overflow-y: auto`, carries all of it in ONE gesture. That is also the
+   better phone behaviour on its own merits — a stack of four nested scroll
+   containers under a thumb is how a section becomes unreachable by accident.
+
+   Phone-only by construction, not by media query: `.lens-shell` exists solely
+   inside App's `if (isMobile)` branch, so none of this can reach the desktop
+   dock. */
+.lens-section-panel {
+  /* Nothing here may clip: the panels below are unwound into this box, and a
+     stray `overflow: hidden` would re-create the very cut-off content the
+     unwinding exists to prevent. */
+  margin-top: 4px;
+}
+
+.lens-section-panel .anomaly-panel-container,
+.lens-section-panel .source-panel-container {
+  height: auto;
+  /* The dock gives these a translucent shell over the panel behind them; the
+     sheet is already an opaque surface, so a second wash only dims the text. */
+  background: none;
+}
+
+.lens-section-panel .anomaly-body-grid,
+.lens-section-panel .anomaly-col,
+.lens-section-panel .ap-geo-section,
+.lens-section-panel .col-scroll,
+.lens-section-panel .col-scroll-short,
+.lens-section-panel .ap-sub {
+  overflow: visible;
+  max-height: none;
+  min-height: 0;
+  flex: none;
 }
 
 /* The honest empty. Never a blank section. */

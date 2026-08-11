@@ -2585,9 +2585,18 @@ function AppContent() {
           // the thing you opened; 'lens-field' = the field you open things
           // from. The map is no longer a tab — it is a section INSIDE the Lens
           // (Task 8) — so the radar panel is not mounted here at all and its
-          // rAF loop never runs on a phone. The dock is absorbed the same way,
-          // and the correlation matrix was only ever mounted-and-CSS-hidden
-          // here. None of the three is mounted.
+          // rAF loop never runs on a phone. The correlation matrix was only
+          // ever mounted-and-CSS-hidden here, so it is gone too.
+          //
+          // The DOCK is absorbed the same way, but "absorbed" has to mean the
+          // sections exist: this comment used to say the dock was absorbed
+          // while nothing rendered its panels, which is council R4 N29 — the
+          // phone shipped with no Public Attention, no anomaly alerts, no
+          // eclipse row and no source health at any tab. The dock PANEL
+          // (`dockPanel`, with its four tabs and the radar/markets lanes it
+          // also carries) is still not mounted on a phone; its two intel
+          // panels are, as `attention` and `sources` sections of the Lens
+          // sheet below.
           //
           // The two that ARE here KEEP ALIVE across tab taps — mounted once,
           // visibility toggled — as main.tsx's AppBriefKeepAlive does for the
@@ -2609,6 +2618,17 @@ function AppContent() {
           // takes `surface` rather than deciding from focus alone.
           //
           // mobileSurface is non-null here by construction — same `isMobile`.
+
+          // The name of whatever thread is open, resolved once for BOTH intel
+          // sections below. `thread.label` is only filled after the read lands;
+          // `labelHint` is what a row/search/deep-link opener passes ahead of
+          // it; `filter.themeLabel` covers a focus set from another surface.
+          // Taking them in that order is what stops a section from printing a
+          // raw `dynamic-topic-N` while the read is still in flight.
+          const openThreadLabel =
+            selectedTheme?.thread?.label ?? selectedTheme?.labelHint
+            ?? filter.themeLabel ?? selectedThread?.label ?? null
+
           return (
             <div className={`terminal-layout mobile-tab-${consoleTab} lens-shell`}>
               <LensPanel
@@ -2706,6 +2726,67 @@ function AppContent() {
                 countryScope={filter.country}
                 field={threadsPanel}
                 read={streamPanel}
+                /* Council R4 N29: the intel organ, back on the phone. The dock
+                   panel above is NOT mounted here (see the note at the top of
+                   this branch), so these two were unreachable at every tab —
+                   a DOM scan returned zero `.anomaly-panel-container` and zero
+                   `.source-panel-container` across Brief, Lens and Live. They
+                   ride in as sections of the Lens's own sheet rather than as a
+                   restored fourth tab, because that is what the arc's design
+                   already says they are (mobile-native-ia-design.md §3: "Pulse
+                   tab → §5 attention, always scoped"), and because both
+                   panels already carry the phone stylesheet that surface was
+                   going to use.
+
+                   Passed as NODES, like `field` and `read`, so their doors keep
+                   pointing at this component's openers instead of being
+                   re-declared inside the Lens. Elements, not mounts: the sheet
+                   renders them only while it is open.
+
+                   Boundaried individually, exactly as the dock does — one lane
+                   failing must cost its own section, never the sheet that is
+                   now the only way to any of them.
+
+                   Both read the SAME `openThreadLabel` chain (declared just
+                   above this branch) rather than the dock's two different
+                   expressions for the same fact — a thread opened from a phone
+                   row has not resolved `thread.label` yet, and only the longer
+                   chain finds its name meanwhile.
+
+                   HONEST RESIDUAL, unchanged here on purpose: while a theme
+                   filter is set, SourceIntegrityPanel does not consult
+                   `viewingLabel` at all — buildSourceIntegrityScopeLabel takes
+                   the `theme` branch and prints `getThemeLabel(id)`, which for
+                   a dynamic topic is the prettified raw id ("Dynamic Topic
+                   11877"). That is a leak in the shared scope-label lib, it
+                   renders identically on the desktop dock today, and fixing it
+                   there would change the desktop — out of scope for a mobile
+                   reachability pass. Filed, not smuggled. */
+                attention={
+                  <PanelErrorBoundary panelName="ANOMALY ALERT">
+                    <AnomalyPanel
+                      onWikiClick={(q) => setExternalSearchQuery({ q, id: Date.now() })}
+                      onPublicAttentionSelect={handlePublicAttentionSelect}
+                      activeThemeLabel={openThreadLabel}
+                    />
+                  </PanelErrorBoundary>
+                }
+                sources={
+                  <PanelErrorBoundary
+                    key={`integrity-${filter.country ?? ''}-${filter.theme ?? ''}-${filter.person ?? ''}-${filter.entity ?? ''}`}
+                    panelName="SOURCE INTEGRITY"
+                  >
+                    <SourceIntegrityPanel
+                      viewingLabel={
+                        (selectedTheme ? resolveThreadLabel(selectedTheme.theme, openThreadLabel ?? undefined) : null)
+                        ?? selectedThread?.label
+                        ?? selectedPublicAttention?.title
+                        ?? selectedChokepoint?.name
+                        ?? null
+                      }
+                    />
+                  </PanelErrorBoundary>
+                }
               />
             </div>
           )
