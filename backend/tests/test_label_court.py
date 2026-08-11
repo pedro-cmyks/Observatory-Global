@@ -930,7 +930,7 @@ def test_main_scopes_revived_candidates_and_withholds_when_starved():
     import scripts.label_court as lc
     src = inspect.getsource(lc.main)
     # the trial selection carries the columns the scoping decision needs
-    assert "SELECT id, label, is_umbrella, state, revived_at FROM dynamic_topics" in src
+    assert "SELECT id, label, is_umbrella, state, revived_at, created_at FROM dynamic_topics" in src
     # revived-candidate detection: story lane only, env kill-switch honored
     assert 'r["state"] == "candidate"' in src
     assert 'r["revived_at"] is not None' in src
@@ -953,6 +953,47 @@ def test_main_starved_withhold_branch_precedes_the_plain_skip():
     src = inspect.getsource(lc.main)
     lt2 = src.index("if len(receipts) < 2:")
     assert lt2 < src.index("no-post-revival-receipts") < src.index("SKIP (only")
+
+
+# ── aged receipt-starved rows (2026-08-11, #261 coverage census) ──────────────
+# The 08-11 census found 7 rows (dt-6837 back to 07-25) re-selected EVERY
+# 33-min cycle by --only-unchecked, hitting the bare `SKIP (only N receipts)`
+# `continue` forever — label_checked_at never written, indistinguishable from
+# "never reached", burning a selection slot each cycle. The revived class got
+# the withhold fix (no-post-revival-receipts); the plain aged class did not.
+
+
+def test_main_aged_receipt_starved_rows_ride_withhold_machinery():
+    import inspect
+
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    # the age decision needs created_at in the trial selection
+    assert "SELECT id, label, is_umbrella, state, revived_at, created_at FROM dynamic_topics" in src
+    # aged starvation is ledgered with its own reason and rides the SAME
+    # mark (never erases a valid stamp) + 6h backoff machinery
+    assert "receipt-starved" in src
+    # umbrella withhold branch + revived branch + aged-starved branch
+    assert src.count("_WITHHOLD_MARK_SQL") >= 3
+
+
+def test_main_fresh_rows_keep_the_bare_skip_cadence():
+    # A FRESH row short on receipts is member-projection lag, not starvation —
+    # marking it withheld would impose the 6h backoff on a topic that serves
+    # NOW (council R2 N2: the stamp must land on promotion cadence). The age
+    # gate must guard the mark, and the plain SKIP must survive as the
+    # fallthrough for young rows.
+    import inspect
+
+    import scripts.label_court as lc
+    src = inspect.getsource(lc.main)
+    assert "_STARVED_MARK_AGE" in src
+    lt2 = src.index("if len(receipts) < 2:")
+    aged = src.index("receipt-starved")
+    skip = src.index("SKIP (only")
+    assert lt2 < src.index("no-post-revival-receipts") < aged < skip
+    # the gate compares topic age against the threshold constant
+    assert lc._STARVED_MARK_AGE.total_seconds() == 24 * 3600
 
 
 # ── geography conjunct (council R4 N17, 2026-08-11) ───────────────────────────
