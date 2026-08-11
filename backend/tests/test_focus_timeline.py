@@ -575,6 +575,29 @@ class TestZeroBucketsAreClassified:
         # measured anything, whatever the query's exit status was.
         assert out["channels"]["volume"] == "unavailable"
 
+    def test_probe_runs_under_its_own_budget_not_the_raw_scan_budget(self, monkeypatch):
+        # Measured live after the first deploy: sharing `_SCAN_TIMEOUT_MS`
+        # (3000ms, sized for UNBOUNDED raw signals_v2 scans) made the probe
+        # time out intermittently — hours=4 answered 187/600 while hours=3 and
+        # hours=6 came back 'coverage_unverified' minutes apart. A probe that
+        # flips at random turns the honest "cannot answer" into noise, which is
+        # its own dishonesty. The probe is bounded to 600 rows by construction
+        # (measured 110-505ms, 4s worst cold), so it gets a budget sized for
+        # ITS cost and cannot run away.
+        seen: list[str] = []
+
+        class _RecordingConn(_FakeProbeConn):
+            async def execute(self, sql, *a, **k):
+                seen.append(sql)
+                return None
+
+        conn = _RecordingConn(ch1_rows=[], probe_sampled=600, probe_covered=174)
+        monkeypatch.setattr(db, "pool", _FakePool(conn))
+        _run(_call(ref="zzz nonexistent person"))
+        assert seen, "expected statement_timeout to be set per query"
+        assert f"SET statement_timeout = {router_mod._PROBE_TIMEOUT_MS}" in seen
+        assert router_mod._PROBE_TIMEOUT_MS > router_mod._SCAN_TIMEOUT_MS
+
     def test_person_zero_with_unverifiable_probe_is_lane_starved(self, monkeypatch):
         conn = _FakeProbeConn(ch1_rows=[], probe_fails=True)
         monkeypatch.setattr(db, "pool", _FakePool(conn))

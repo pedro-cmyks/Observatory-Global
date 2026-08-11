@@ -368,11 +368,23 @@ _THREAD_LANE_PROBE_SQL = """
 """
 
 
+# Coverage probes get their OWN budget, not the raw-scan one. Measured live
+# after the first deploy: on `_SCAN_TIMEOUT_MS` (3000ms, sized for UNBOUNDED
+# signals_v2 scans) the probe answered at hours=4 (187/600) but timed out at
+# hours=3 and hours=6 minutes apart — a verdict flipping on connection weather
+# rather than on lane health, which turns the honest "cannot answer" into
+# noise the reader learns to ignore. Every probe is bounded to at most 600
+# rows by construction (measured 110-505ms warm, ~4s worst cold page-in), so a
+# larger budget cannot make it expensive — it can only stop it lying about its
+# own failure.
+_PROBE_TIMEOUT_MS = 6000
+
+
 async def _probe_lane(sql: str, params: list) -> tuple[Optional[int], Optional[int]]:
     """Run a coverage probe. Returns (sampled, covered), or (None, None) when
     the probe itself could not run — which `classify_zero_result` reads as
     "coverage unverified", i.e. still not licence to claim absence."""
-    rows, reason = await _try_query(sql, params, _SCAN_TIMEOUT_MS)
+    rows, reason = await _try_query(sql, params, _PROBE_TIMEOUT_MS)
     if reason or not rows:
         return None, None
     row = rows[0]
