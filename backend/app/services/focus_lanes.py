@@ -146,17 +146,27 @@ LANE_BUDGETS_MS: dict[str, int] = {
 # message is followed by a real payload rather than replacing it.
 GLOBAL_DEADLINE_MS = 9000
 
-# Bound on WAITING FOR A CONNECTION, separate from the query budgets above.
+# Bound on WAITING FOR A CONNECTION.
 #
-# Measured in the browser against the deployed fix while the pool was under
-# load: the endpoint returned an honest all-degraded 200 — but only after
-# 23.4s, because `statement_timeout` bounds SQL EXECUTION and nothing
-# bounded the wait to get a connection at all. The deadline clock used to
-# start after `pool.acquire()` returned, so that wait was invisible to it.
-# Now the clock starts at request entry and the acquire is itself bounded:
-# on a saturated pool the panel is told so in ~3s instead of holding a
-# skeleton while it queues.
-POOL_ACQUIRE_TIMEOUT_S = 3.0
+# Measured in the browser against the deployed fix: under load the endpoint
+# returned an honest all-degraded 200 but took 23.4s to say it, because
+# `statement_timeout` bounds SQL EXECUTION and nothing bounded the wait to
+# GET a connection. The deadline clock also started after `pool.acquire()`
+# returned, so that wait was invisible to the mechanism meant to bound it.
+#
+# The first attempt gave the acquire its own 3s budget. Deployed, that
+# degraded EVERY request (8/8 runs at a flat 3.34s, all six lanes db_busy) —
+# a fast wrong answer is still a wrong answer. On this deployment a real
+# acquire (Fly -> Supabase pooler, TLS, possibly opening a new connection)
+# routinely costs more than 3s, so the separate budget was simply set below
+# the true cost.
+#
+# So there is ONE budget, not two competing ones: the acquire is bounded by
+# whatever remains of the global deadline, and time it consumes is charged
+# to the lanes that follow. Total wall time stays bounded by
+# GLOBAL_DEADLINE_MS either way, which is the property that matters — and a
+# genuinely saturated pool still degrades honestly instead of hanging.
+POOL_ACQUIRE_TIMEOUT_S = GLOBAL_DEADLINE_MS / 1000.0
 
 # Lane order = VALUE order. When the deadline bites, the lanes that survive
 # are the ones the panel most needs: the countries (which the map and the
