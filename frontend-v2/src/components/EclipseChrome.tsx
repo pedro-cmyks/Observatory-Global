@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
-import { decodeEntities } from '../lib/attentionEclipse'
+import { decodeEntities, eclipseDominantLabel } from '../lib/attentionEclipse'
 
 /** Portaled eclipse chrome (ambient ribbon + muted sigil), rendered to
  * document.body so it sits ABOVE the absolutely-positioned command bar and
@@ -8,7 +8,8 @@ import { decodeEntities } from '../lib/attentionEclipse'
 export function EclipseChrome() {
   const { data, mode, act } = useEclipseMode()
   if (mode === 'ambient' && data) {
-    const label = decodeEntities(data.dominant?.label ?? 'one story')
+    // N28: resolved label — a raw slug must never reach the ribbon copy.
+    const label = decodeEntities(eclipseDominantLabel(data))
     return createPortal(
       <div className="eclipse-ribbon">
         ◑ Eclipsed · <b>{`“${label}”`}</b> is eclipsing the world

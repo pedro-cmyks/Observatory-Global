@@ -283,6 +283,40 @@ export function resolveThreadLabel(themeId: string | null | undefined, knownLabe
 }
 
 /**
+ * True when a served "label" is really a MACHINE SLUG — one token, no spaces,
+ * lowercase words joined by - or _ ("earthquake-volcano-disaster",
+ * "dynamic-topic-8072"). Council R4 N28: the attention-eclipse dominant can be
+ * an atlas CATEGORY BUCKET whose label field IS its own id, so any surface that
+ * prints a served label verbatim will headline a machine string.
+ */
+export function isMachineSlug(value: string | null | undefined): boolean {
+    if (!value) return false
+    const v = value.trim()
+    if (!v || /\s/.test(v)) return false
+    // Require a separator: a single bare word ("Gaza", "trump") is a name, not a slug.
+    return /^[a-z0-9]+(?:[-_]+[a-z0-9]+)+$/.test(v)
+}
+
+/**
+ * Human label for a served (label, id) pair — the one resolver for any payload
+ * whose `label` may be a slug rather than a name. A genuine human label passes
+ * through untouched; a slug-shaped label (or a missing one) is resolved through
+ * resolveThreadLabel, so a category bucket reads "Earthquake Volcano Disaster"
+ * and an opaque thread id reads "Narrative Thread". NEVER returns a raw slug.
+ */
+export function resolveDisplayLabel(
+    label: string | null | undefined,
+    id?: string | null,
+    fallback = 'Unknown',
+): string {
+    const trimmed = label?.trim()
+    if (trimmed && !isMachineSlug(trimmed)) return trimmed
+    const source = trimmed || id?.trim()
+    if (!source) return fallback
+    return resolveThreadLabel(source)
+}
+
+/**
  * Title for a thread surface (council STILL-BROKEN, deep-link cold open):
  * while the FIRST fetch of an opaque numeric thread id is in flight, the
  * title is an explicit neutral loading state — never the raw id, and never

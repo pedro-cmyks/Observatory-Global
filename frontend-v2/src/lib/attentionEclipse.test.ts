@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   shouldShowEclipse,
   eclipseDominantLine,
+  eclipseDominantLabel,
   formatEclipseItem,
   buildEclipsePin,
   eclipseTier,
@@ -45,6 +46,42 @@ describe('eclipseDominantLine', () => {
     const line = eclipseDominantLine(eclipseOn)
     expect(line).toContain('World Cup Final')
     expect(line).toContain('45%')
+  })
+  it('names a category-bucket dominant in human copy, never its slug (N28)', () => {
+    const line = eclipseDominantLine(eclipseCategoryDominant)
+    expect(line).toContain('Earthquake Volcano Disaster')
+    expect(line).not.toContain('earthquake-volcano-disaster')
+  })
+})
+
+// Council R4 N28 (T-N17 / D-N19 / P-N24, three seats independently): today's
+// dominant is `earthquake-volcano-disaster` — an atlas CATEGORY BUCKET whose
+// served label IS its raw slug. The once-in-weeks takeover, the ambient ribbon
+// and the AnomalyPanel row all read this one resolver.
+const eclipseCategoryDominant: EclipseData = {
+  ...eclipseOn,
+  tier: 'total',
+  dominant: { topic_id: 'earthquake-volcano-disaster', label: 'earthquake-volcano-disaster',
+              attention: 12000, share: 0.31, lane: 'general', identity_key: undefined },
+  window: { top1_share: 0.31, hhi: 0.4 },
+}
+
+describe('eclipseDominantLabel (N28: never headline a raw slug)', () => {
+  it('resolves a category-bucket slug into human copy', () => {
+    expect(eclipseDominantLabel(eclipseCategoryDominant)).toBe('Earthquake Volcano Disaster')
+  })
+  it('passes a real story label through untouched', () => {
+    expect(eclipseDominantLabel(eclipseOn)).toBe('World Cup Final')
+  })
+  it('never returns an opaque topic id', () => {
+    expect(eclipseDominantLabel({
+      ...eclipseOn,
+      dominant: { topic_id: 'dynamic-topic-8072', label: 'dynamic-topic-8072', share: 0.3 },
+    })).toBe('Narrative Thread')
+  })
+  it('degrades to the honest generic on an empty dominant', () => {
+    expect(eclipseDominantLabel({ ...eclipseOn, dominant: {} })).toBe('one story')
+    expect(eclipseDominantLabel(null)).toBe('one story')
   })
 })
 

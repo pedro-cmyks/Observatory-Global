@@ -1,12 +1,14 @@
 import { createPortal } from 'react-dom'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
-import { decodeEntities } from '../lib/attentionEclipse'
+import { decodeEntities, eclipseDominantLabel } from '../lib/attentionEclipse'
 import './EclipseTakeover.css'
 
 export function EclipseTakeover() {
   const { data, mode, act } = useEclipseMode()
   if (mode !== 'takeover' || !data) return null
-  const label = decodeEntities(data.dominant?.label ?? 'one story')
+  // N28: resolved, never the raw `dominant.label` — the dominant can be a
+  // category bucket whose label is its own slug.
+  const label = decodeEntities(eclipseDominantLabel(data))
   const share = Math.round((data.dominant?.share ?? data.window?.top1_share ?? 0) * 100)
   const cd = data.axes?.country_dominance
   const nCountries = cd != null ? Math.round(cd * 100) : null

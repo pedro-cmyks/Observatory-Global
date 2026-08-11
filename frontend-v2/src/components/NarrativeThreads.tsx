@@ -5,7 +5,12 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { resolveCountryName } from '../lib/countryNames'
 import { Flag } from './Flag'
 import { buildCountryThreadEmptyState, getNarrativesForDisplay, THREAD_POOL_HOURS, threadPoolQuery } from '../lib/narrativeThreadLimits'
-import { threadConfidencePresentation } from '../lib/threadConfidence'
+import {
+    threadConfidencePresentation,
+    confidenceBucketTip,
+    type ConfidenceBucket,
+    type ConfidenceBucketSource,
+} from '../lib/threadConfidence'
 import { threadCountryPresentation } from '../lib/threadGeography'
 import { familyColor, familyGradient } from '../lib/categoryFamily'
 import { decodeEntities } from '../lib/decodeEntities'
@@ -49,7 +54,14 @@ interface Narrative {
     first_seen: string | null
     changed_10h: number
     trend: 'accelerating' | 'stable' | 'fading'
-    confidence_pct: number | null
+    // N14 (council R4): confidence renders as a BAND, never a raw percent.
+    // `confidence_band` is the served field; `confidence_bucket` is the
+    // three-tier fold every surface reads; `confidence_bar_pct` sizes the bar
+    // from that bucket and is NEVER printed. See lib/threadConfidence.ts.
+    confidence_band: string | null
+    confidence_bucket: ConfidenceBucket | null
+    confidence_bucket_source: ConfidenceBucketSource | null
+    confidence_bar_pct: number | null
     confidence_label: string
     show_confidence_bar: boolean
     confidence_trend_color: string
@@ -161,6 +173,9 @@ const normalizeThread = (thread: any): Narrative => {
         confidenceMeasured: thread.confidence_measured === true,
         trend,
         crisisRelevant,
+        // The served band (thread_intelligence.confidence_band) — authoritative
+        // over the raw number it deliberately does not track (N14).
+        band: typeof thread.confidence === 'string' ? thread.confidence : null,
     })
     return {
     thread_id: thread.thread_id,
@@ -178,7 +193,10 @@ const normalizeThread = (thread: any): Narrative => {
     first_seen: thread.first_seen || null,
     changed_10h: thread.changed_10h || 0,
     trend,
-    confidence_pct: confidence.confidencePct,
+    confidence_band: typeof thread.confidence === 'string' ? thread.confidence : null,
+    confidence_bucket: confidence.bucket,
+    confidence_bucket_source: confidence.bucketSource,
+    confidence_bar_pct: confidence.barPct,
     confidence_label: confidence.confidenceLabel,
     show_confidence_bar: confidence.showConfidenceBar,
     confidence_trend_color: confidence.trendColor,
@@ -228,7 +246,10 @@ function buildSyntheticSiblingRow(s: StoryLensSibling): Narrative {
         first_seen: null,
         changed_10h: 0,
         trend: 'stable',
-        confidence_pct: null,
+        confidence_band: null,
+        confidence_bucket: null,
+        confidence_bucket_source: null,
+        confidence_bar_pct: null,
         confidence_label: '',
         show_confidence_bar: false,
         confidence_trend_color: '#8892a0',
@@ -1017,18 +1038,21 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             placeholder defaults ('' / 'stable') as if they were measured. */}
                         {!isSynthRow && (
                         <div className="spread-row">
-                            {n.show_confidence_bar && n.confidence_pct != null && (
-                                <div className="narrative-grad-bar-track" data-tip="Measured Atlas confidence from the living-thread contract.">
+                            {n.show_confidence_bar && n.confidence_bar_pct != null && (
+                                <div className="narrative-grad-bar-track"
+                                     data-tip={confidenceBucketTip(n.confidence_bucket, n.confidence_bucket_source)}>
                                     <div
                                         className="narrative-grad-bar-fill"
                                         style={{
-                                            width: `${Math.min(n.confidence_pct, 100)}%`,
+                                            // Bucket level, not the raw assignment number: the bar
+                                            // must not paint a full track under a "medium" word.
+                                            width: `${Math.min(n.confidence_bar_pct, 100)}%`,
                                             background: threadGradient,
                                         }}
                                     />
                                 </div>
                             )}
-                            <span className="spread-label spread-label--confidence" data-tip={n.show_confidence_bar ? 'Measured Atlas confidence for this living thread' : 'No calibrated confidence measurement is available'}>{n.confidence_label}</span>
+                            <span className="spread-label spread-label--confidence" data-tip={confidenceBucketTip(n.confidence_bucket, n.confidence_bucket_source)}>{n.confidence_label}</span>
                             <span className={`trend-label ${n.trend}`} data-tip="Trend: Accelerating = volume growing, Fading = volume declining, Stable = consistent">
                                 {n.trend === 'accelerating' ? '▲ Accelerating' : n.trend === 'fading' ? '▼ Fading' : '→ Stable'}
                             </span>

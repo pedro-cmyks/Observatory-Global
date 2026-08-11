@@ -5,6 +5,11 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { getSourceFamilyMeta } from '../lib/sourceFamily'
 import { threadCountryPresentation } from '../lib/threadGeography'
+import {
+    confidenceBucketTip,
+    confidenceBucketWord,
+    resolveConfidenceBucket,
+} from '../lib/threadConfidence'
 import './ThreadFocusPanel.css'
 
 interface ThreadPacket {
@@ -41,6 +46,8 @@ interface NarrativeNote {
 
 type ThreadDetail = LivingThreadSelection & {
     avg_confidence?: number
+    /** Served coarse band (thread_intelligence.confidence_band) on the detail payload. */
+    confidence?: string
     why_now?: string
     narrative_note?: NarrativeNote | null
     source_mix?: { top_sources?: string[]; source_count?: number }
@@ -144,7 +151,13 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
 
     const active: ThreadDetail = detail || thread
     const displayTrend = (active as any).trend === 'surging' ? 'accelerating' : active.trend
-    const confidencePct = Math.round(((active.confidence_pct ?? ((active as ThreadDetail).avg_confidence || 0) * 100)) * 10) / 10
+    // N14 (council R4): the stat tile reads the served BAND, never a raw
+    // percent — the detail payload carries `confidence` (confidence_band) and
+    // the row carries the bucket already folded by the threads panel.
+    const confidenceBucket = resolveConfidenceBucket({
+        band: (active as ThreadDetail).confidence ?? active.confidence_band ?? null,
+        avgConfidence: (active as ThreadDetail).avg_confidence ?? null,
+    })
     const lexPct = active.quality?.lex_pct != null ? Math.round(active.quality.lex_pct * 1000) / 10 : null
     const topSources = active.source_mix?.top_sources || active.top_sources || []
     const geography = threadCountryPresentation(active)
@@ -185,7 +198,9 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                         <div><strong>{formatCount(active.signal_count)}</strong><span>signals</span></div>
                         <div><strong>{active.country_count}</strong><span>countries</span></div>
                         <div><strong>{active.source_count}</strong><span>sources</span></div>
-                        <div><strong>{confidencePct}%</strong><span>confidence</span></div>
+                        <div data-tip={confidenceBucketTip(confidenceBucket.bucket, confidenceBucket.source)}>
+                            <strong>{confidenceBucketWord(confidenceBucket.bucket)}</strong><span>confidence</span>
+                        </div>
                     </div>
 
                     <div className="thread-focus-section">

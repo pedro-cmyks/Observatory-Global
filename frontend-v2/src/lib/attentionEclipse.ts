@@ -7,6 +7,8 @@
 // concentration is a PROXY for attention, not audience eyeballs; the strip ranks
 // candidates, it does not certify them.
 
+import { resolveDisplayLabel } from './themeLabels'
+
 export interface EclipseItem {
   topic_id: string
   label: string
@@ -49,8 +51,27 @@ export function shouldShowEclipse(data: EclipseData | null | undefined): boolean
 // so every surface shares ONE decoder; re-exported here for existing imports.
 export { decodeEntities } from './decodeEntities'
 
+/**
+ * The dominant's HUMAN label — the single resolution point for every eclipse
+ * surface (takeover, ambient ribbon, AnomalyPanel row, Brief strip, lens
+ * banner).
+ *
+ * Council R4 N28 (three seats independently): the dominance population mixes
+ * atlas CATEGORY BUCKETS with stories, and a bucket's served `label` IS its raw
+ * slug (`earthquake-volcano-disaster`, identity_key null) — so rendering
+ * `dominant.label` verbatim would headline a hyphenated machine string on the
+ * once-in-weeks full-screen moment. Everything routes through the shared
+ * resolver instead; a real story label passes through untouched.
+ */
+export function eclipseDominantLabel(
+  data: EclipseData | null | undefined,
+  fallback = 'one story',
+): string {
+  return resolveDisplayLabel(data?.dominant?.label, data?.dominant?.topic_id, fallback)
+}
+
 export function eclipseDominantLine(data: EclipseData): string {
-  const label = data.dominant?.label ?? 'one story'
+  const label = eclipseDominantLabel(data)
   const pct = Math.round((data.dominant?.share ?? data.window?.top1_share ?? 0) * 100)
   return `While “${label}” holds ${pct}% of today’s coverage, these consequential stories are running quiet:`
 }

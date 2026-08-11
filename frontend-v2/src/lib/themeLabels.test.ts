@@ -67,3 +67,50 @@ describe('resolveThreadTitle (council STILL-BROKEN: deep-link cold title)', () =
     expect(resolveThreadTitle('ARMEDCONFLICT', null, true)).toBe('Armed Conflict')
   })
 })
+
+// Council R4 N28 (T-N17 / D-N19 / P-N24, three seats): the eclipse dominant is
+// a category BUCKET whose served "label" IS its raw slug
+// (`earthquake-volcano-disaster`) — a machine string must never reach user copy.
+describe('isMachineSlug', () => {
+  it('detects a hyphenated machine slug', async () => {
+    const { isMachineSlug } = await import('./themeLabels')
+    expect(isMachineSlug('earthquake-volcano-disaster')).toBe(true)
+    expect(isMachineSlug('dynamic-topic-8072')).toBe(true)
+    expect(isMachineSlug('election-legitimacy--co')).toBe(true)
+    expect(isMachineSlug('fuel_subsidy_unrest')).toBe(true)
+  })
+  it('leaves genuine human labels alone', async () => {
+    const { isMachineSlug } = await import('./themeLabels')
+    expect(isMachineSlug('World Cup Final')).toBe(false)
+    expect(isMachineSlug('Gaza')).toBe(false)
+    expect(isMachineSlug('US Bombards Iran')).toBe(false)
+    expect(isMachineSlug('Trump Ultimatum to Iran')).toBe(false)
+    expect(isMachineSlug('')).toBe(false)
+    expect(isMachineSlug(null)).toBe(false)
+  })
+})
+
+describe('resolveDisplayLabel', () => {
+  it('resolves a category bucket whose label is its own slug', async () => {
+    const { resolveDisplayLabel } = await import('./themeLabels')
+    expect(resolveDisplayLabel('earthquake-volcano-disaster', 'earthquake-volcano-disaster'))
+      .toBe('Earthquake Volcano Disaster')
+  })
+  it('passes a real human label through untouched', async () => {
+    const { resolveDisplayLabel } = await import('./themeLabels')
+    expect(resolveDisplayLabel('World Cup Final', 'dynamic-topic-8072')).toBe('World Cup Final')
+  })
+  it('falls back to the id when no label was served', async () => {
+    const { resolveDisplayLabel } = await import('./themeLabels')
+    expect(resolveDisplayLabel(null, 'earthquake-volcano-disaster')).toBe('Earthquake Volcano Disaster')
+  })
+  it('never renders a raw opaque topic id', async () => {
+    const { resolveDisplayLabel } = await import('./themeLabels')
+    expect(resolveDisplayLabel('dynamic-topic-8072', 'dynamic-topic-8072')).toBe('Narrative Thread')
+  })
+  it('uses the caller fallback when there is nothing to resolve', async () => {
+    const { resolveDisplayLabel } = await import('./themeLabels')
+    expect(resolveDisplayLabel(null, null, 'one story')).toBe('one story')
+    expect(resolveDisplayLabel('  ', undefined, 'one story')).toBe('one story')
+  })
+})

@@ -4,6 +4,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
+import { decodeEntities, eclipseDominantLabel } from '../lib/attentionEclipse'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { hasLensContent } from '../lib/storyLens'
 import { resolveCountryName, isKnownCountry } from '../lib/countryNames'
@@ -274,7 +275,9 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                             <div className="col-label">ATTENTION ECLIPSE · {eclipseTierNow === 'total' ? 'TOTAL' : 'PARTIAL'}</div>
                             <div className="ap-row ap-row--trend">
                                 <span className="ap-src-tag">◑</span>
-                                <span className="ap-keyword">{eclipseData.dominant.label}</span>
+                                {/* N28: resolved label — the dominant may be a
+                                    category bucket whose label is its raw slug. */}
+                                <span className="ap-keyword">{decodeEntities(eclipseDominantLabel(eclipseData))}</span>
                                 <span className="ap-mult">{Math.round((eclipseData.dominant.share ?? 0) * 100)}% of coverage</span>
                             </div>
                         </>
