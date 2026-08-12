@@ -17,6 +17,7 @@ from app.services.subject_geography import infer_receipt_subject_geography
 from app.services.thread_packet import build_thread_packet
 from app.services.thread_ranking import rank_threads
 from app.services.topic_relationship import classify_relationship
+from app.utils import _is_valid_person
 
 logger = logging.getLogger(__name__)
 
@@ -814,6 +815,15 @@ def _quality_metadata(
     }
 
 
+def _filter_entity_chips(names: list[str]) -> list[str]:
+    # #248: `signals_v2.persons` carries GDELT scrape junk — photo/stock
+    # credits ("canva unsplash acton crawford"), glued bylines, tech tokens.
+    # The People panel gates these via _is_valid_person; the thread-row
+    # entity chips were served ungated by all three lanes (atlas SQL
+    # ARRAY_AGG, dynamic/emergent Python counters).
+    return [n for n in names if _is_valid_person(n)]
+
+
 def _with_narrative_note(thread: dict[str, Any]) -> dict[str, Any]:
     thread["narrative_note"] = build_thread_narrative_note(thread)
     return thread
@@ -840,7 +850,11 @@ def assemble_thread(
     raw_avg_confidence = _record_get(row, "avg_confidence")
     avg_confidence = float(raw_avg_confidence or 0)
     first_seen = _record_get(row, "first_seen")
-    top_entities = [str(person) for person in _as_list(_record_get(row, "top_entities"))]
+    # SQL caps the raw list at 5 before this gate runs, so junk can shrink the
+    # chip row below 5 — acceptable (filter semantics, #248).
+    top_entities = _filter_entity_chips(
+        [str(person) for person in _as_list(_record_get(row, "top_entities"))]
+    )
     top_sources = [str(source) for source in _as_list(_record_get(row, "top_sources"))]
     hourly_timeline = _as_list(_record_get(row, "hourly_timeline"))
     label = build_thread_label(
@@ -1065,7 +1079,9 @@ def assemble_emergent_thread(
             )
 
     top_sources = sorted(sources, key=lambda k: sources[k], reverse=True)[:5]
-    top_entities = sorted(persons, key=lambda k: persons[k], reverse=True)[:10]
+    top_entities = _filter_entity_chips(
+        sorted(persons, key=lambda k: persons[k], reverse=True)
+    )[:10]
     hourly_timeline = [
         {
             "hour": hour,
@@ -1646,7 +1662,9 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
             )
 
     top_sources = sorted(sources, key=lambda k: sources[k], reverse=True)[:5]
-    top_entities = sorted(persons, key=lambda k: persons[k], reverse=True)[:10]
+    top_entities = _filter_entity_chips(
+        sorted(persons, key=lambda k: persons[k], reverse=True)
+    )[:10]
     hourly_timeline = [
         {
             "hour": hour,
