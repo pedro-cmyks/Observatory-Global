@@ -549,3 +549,149 @@ under `taskpolicy -b`.
    ever be validated (§b.1).
 5. **G-SELLO should include "the seal reaches `ready`"** — 25 of 25 editions are
    `degraded`, which is why the seal's own correct selection never reaches a reader.
+
+---
+
+## ADDENDUM (T3.1, 2026-08-12) — the repaired signal, and why 25/25 seal `degraded`
+
+Appended by T3.1 after the (i) `headline_diversity` and (ii) `corroboration`
+repairs. Read-only for §D; §A–C record the re-measurement that froze X.
+
+### A · The histogram, re-measured on the repaired signal
+
+Same universe (950 dynamic topics, ≥8 raw 24h members), same metric (largest
+Jaccard@0.5 family ÷ n), now with the script-safe tokenizer, the
+deterministic content-ordered best-fit clusterer, and the dash-repaired
+`_norm_headline`. Fresh 24h window (~5 h after M0).
+
+```
+bin          REPAIRED    M0
+[0.0,0.1)       492     489
+[0.1,0.2)       300     286
+[0.2,0.3)       105     110
+[0.3,0.4)        29      33
+[0.4,0.5)         9      10
+[0.5,0.6)         5      11     <-- the fabricated families are gone
+[0.6,0.7)         4       3
+[0.7,0.8)         0       0     <-- STILL EMPTY
+[0.8,0.9)         2       2
+[0.9,1.0]         4       6
+```
+
+min 0.004 · p50 **0.091** · p75 0.143 · p90 0.222 · p95 0.300 · p99 0.600 · max 1.000
+(M0: p90 0.250 · p95 0.333 · p99 0.645 — the tail thinned, the body did not move.)
+
+| bar | repaired | % | M0 |
+|---|---|---|---|
+| 0.40 | 24 | 2.53% | 32 |
+| 0.50 | 15 | 1.58% | 22 |
+| 0.60 | 10 | 1.05% | 11 |
+| **0.70** | **6** | **0.63%** | 8 |
+| 0.80 | 6 | 0.63% | 8 |
+
+**X = 0.70 FROZEN**, on the largest Jaccard@0.5 family over raw 24h
+membership, with a minimum **family** size of 8 (the parent task's stricter
+form of M0's n≥8; on this universe both guards select the same 6 topics).
+
+The bar still falls inside natural separation: nothing scores between **0.667**
+(dt-4585, Urban One radio network — a real arrest story) and **0.846** (the
+witness). All 6 topics at or above the bar are amplification, hand-checked:
+
+| topic | share | family | mechanism |
+|---|---|---|---|
+| dt-12302 | 1.000 | 10/10 | nrhz.de single-outlet self-listing |
+| dt-12309 | 1.000 | 8/8 | se933.com radio-station listing junk |
+| dt-3895 | 1.000 | 9/9 | tribunnews.com regional-budget template |
+| dt-8607 | 0.923 | 12/13 | AU Community Media wire × 12 mastheads |
+| dt-10814 | 0.865 | 32/37 | AU Community Media wire × 32 mastheads |
+| **dt-11877** | **0.846** | **22/26** | **the witness** |
+
+### B · What the repairs changed, measured
+
+- **The three Cyrillic artifacts collapsed**: dt-2746 0.552 → **0.035**,
+  dt-450 0.533 → **0.067**, dt-6184 0.529 → **0.118**. The fabricated
+  "families" built on the bare token `"2026"` no longer exist.
+- **Two of M0's eight vetoed topics were artifacts of the same defect**:
+  dt-1706 0.909 → **0.045** and dt-7962 0.900 → **0.100**, both
+  `sponichi.co.jp` Japanese single-outlet feeds, same member count. M0's
+  *label* was right (a single-outlet feed IS amplification) but the evidence
+  was a digit artifact. After the repair the headline-family signal honestly
+  reports that it cannot see that class — **single-outlet non-Latin feeds need
+  an OUTLET-concentration signal, which this one is not.**
+- **The exact-key matcher now sees the witness as well as the clusterer does**:
+  `top_normkey` 0.077 → **0.846**, identical to `top_jac0.5`. The dash strip
+  alone recovers the whole wire family. Template families (dt-12302 0.100,
+  dt-3895 0.111) still need Jaccard, so both repairs are load-bearing.
+- **The negative fixture moved further to safety**: dt-1619 (NK missile,
+  4 languages) 0.419 → **0.161**.
+- **Live**: the witness's served `headline_diversity` went **1.000 → 0.917**.
+
+### C · Where the veto had to land, and what it costs
+
+The raw-membership join is not reachable on the request path — measured on
+prod under nightly load: **72 s cold / 5.7 s warm for 41 topics**, against a
+15 s serving budget. But the veto only decides slot 1, so only the threads
+that could take it are queried: a LATERAL over the **top 4** costs **2.0 s
+cold / 0.1 s warm** (26–107 rows). Everything below the lead is judged by the
+served receipts alone, expanded by `syndication_count`.
+
+Honest residual: for dynamic topics `topic_members` is itself a projected
+sample (~24–26 rows per topic in this window), not full membership — so the
+share is measured over the ETL's sample, not the whole story. The witness's
+amplification is visible in that sample (22 of 26) and was hand-checked, but a
+story whose reprints fall outside the sample would be invisible to the veto.
+
+### D · Why all 25 sealed editions carry `status='degraded'` — the standing condition
+
+**Named: `_edition_status` demands UNANIMOUS per-story-node attribution, and
+only about half of story nodes ever have it.**
+
+`build_daily_publication._edition_status` returns `ready` only when all five
+readiness dimensions are `ready`. Two of them are computed as an *all-nodes*
+conjunction (`investigation_graph.py:672-702`):
+
+- `who` is `ready` only when **every** story node carries a verified subject or
+  verified subject country (`story_nodes_with_actor == len(story_nodes)`);
+- `where` is `ready` only when **every** story node carries verified subject
+  geography.
+
+Measured over the 25 sealed editions (read-only, from the stored artifacts,
+using the production helpers):
+
+| | count |
+|---|---|
+| editions failing on readiness | **24 of 25** |
+| …with `who:actor_attribution_incomplete_for_story_nodes` + `where:subject_geography_incomplete_for_story_nodes` | 19 |
+| …structurally empty (0 story nodes → who/what/when/where/how all missing) | 4 (2026-07-21/28/29/30) |
+| editions failing the completion arm (`receipt_fetch_error` or `cursor_exhausted=false`) | **0 of 25** |
+| editions exceeding the 6 h `data_lag_hours` bar | 6 of 25 |
+
+Per-node coverage across the 21 non-empty editions — **252 story nodes**
+(12 per edition, every edition):
+
+- **130 carry an actor (51.6%)**
+- **118 carry verified subject geography (46.8%)**
+- exactly **1 edition of 21** reached unanimity on actor, and **1** on geography
+
+**The decisive row: 2026-07-13 is the one edition in 25 that reached all five
+dimensions `ready` (12/12 actors, 12/12 geography). It still sealed
+`degraded`, because its `data_lag_hours` was 8.455 > 6.** So on the
+only night the readiness conjunction was satisfiable, the freshness arm failed
+it. No edition has ever cleared both.
+
+The arithmetic is the finding: an all-or-nothing conjunction over 12 nodes
+turns ~50% per-node attribution into a ~0% edition pass rate
+(0.5¹² ≈ 0.02%). The two dimensions that fail are exactly the two standing
+enrichment gaps — verified subjects come from NER (`nlp_persons`, the #184
+throughput backlog) and verified subject countries from subject geography
+(#238). The seal is not lying: `who`/`where` are `partial`, not `missing`, and
+the union of names is served. It simply can never say `ready`.
+
+**Not fixed here** (it is a policy decision, not a one-liner): whether a
+`partial` on `who`/`where` should degrade a whole edition, or whether the bar
+should be a *fraction* of story nodes (e.g. ≥⅔ attributed) with the shortfall
+named in the payload. Both readiness computation and `_edition_status` would
+have to move together, and G-SELLO would need to state which of the two it is
+asserting. Filed as the named condition behind M0 §0 and residual 4: **the
+seal's correct Pareto selection never reaches a reader because the edition can
+never leave `degraded`.**
