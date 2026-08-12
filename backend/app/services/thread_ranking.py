@@ -25,6 +25,7 @@ import os
 import re
 import unicodedata
 
+from app.services.corroboration import cluster_syndicated
 from app.services.daily_edition import global_breadth_signal
 from app.services.stream_relevance import classify_stream_lane
 
@@ -275,6 +276,126 @@ def headline_diversity(thread: dict) -> float:
     return max(_DIVERSITY_FLOOR, min(1.0, diversity))
 
 
+# --------------------------------------------------------------------------
+# LEAD-SLOT SYNDICATION VETO (T3.1 iii, 2026-08-12).
+#
+# `headline_diversity` damps the VOLUME term; it cannot stop a story whose
+# other components (movement, breadth, coherence) carry it to the front page
+# anyway. The measured witness did exactly that: `dynamic-topic-11877`
+# "Jalapeño Salmonella Outbreak" held live `top_threads[0]` while 22 of its 26
+# raw 24h members were ONE wire piece across 22 US mastheads.
+#
+# The bar was proposed in M0 §a.5 and RE-MEASURED after the (i)+(ii) repairs
+# over the same 950-topic universe (docs/research/brief-daily/
+# 2026-08-12-m0-measurement.md):
+#
+#   bin      repaired   M0        p50 0.091 · p90 0.222 · p95 0.300 · p99 0.600
+#   [0.5,0.6)      5     11       ≥0.70 fires on 6 topics = 0.63% of the universe
+#   [0.6,0.7)      4      3       all 6 hand-checked: template spam, single-
+#   [0.7,0.8)      0      0  <--  outlet feeds, or one wire piece × N mastheads
+#   [0.8,0.9)      2      2       nearest real story: 0.667 (Urban One arrest)
+#   [0.9,1.0]      4      6       witness: 0.846 — clears by +0.146
+#
+# The empty [0.70,0.80) bin survived the repair: no topic in the universe
+# scores between 0.667 and 0.846, so the bar falls in natural separation
+# rather than through a cluster. The repair moved the tail the right way —
+# the three fabricated Cyrillic families M0 warned about collapsed from
+# 0.529-0.552 to 0.035-0.118, and two Japanese single-outlet feeds fell from
+# ~0.90 to ~0.05 (their "family" was a digit artifact of the Latin-only
+# tokenizer; that class needs an OUTLET-concentration signal, which this one
+# honestly is not).
+#
+# It is a VETO OF THE SLOT, never a filter: the story keeps its place in the
+# list one rank below, and `quality.lead_veto` says why.
+# --------------------------------------------------------------------------
+
+SYNDICATION_VETO_SHARE = 0.70
+SYNDICATION_VETO_MIN_FAMILY = 8
+# M0 hand-checked the family bar at Jaccard 0.5 over 950 topics; the
+# corroboration lane keeps its own measured 0.6 for a different question.
+SYNDICATION_VETO_TAU = 0.5
+# Clustering is O(n·families); the population is capped so a 4,000-member
+# topic cannot cost the front page a second. The share is a ratio, so a
+# capped prefix still measures it.
+_SYNDICATION_POPULATION_CAP = 400
+
+
+def _syndication_population(thread: dict) -> list[dict]:
+    """The headline population to judge, best available first.
+
+    `raw_headline_sample` is the honest denominator (raw 24h membership,
+    attached off the request path). Without it, the served receipts are
+    expanded by their `syndication_count` so the reprints the evidence SQL
+    de-duplicated still count as the raw signals they were."""
+    raw = thread.get("raw_headline_sample")
+    if isinstance(raw, list) and raw:
+        titles = [str(h) for h in raw if h][:_SYNDICATION_POPULATION_CAP]
+        return [{"title": title} for title in titles]
+    population: list[dict] = []
+    for sample in thread.get("evidence_samples") or []:
+        if not isinstance(sample, dict):
+            continue
+        headline = str(sample.get("headline") or "")
+        if not headline:
+            continue
+        for _ in range(_reprint_weight(sample)):
+            population.append({"title": headline})
+            if len(population) >= _SYNDICATION_POPULATION_CAP:
+                return population
+    return population
+
+
+def syndication_family_share(thread: dict) -> tuple[float, int, int]:
+    """(share, largest family size, population size) for one thread.
+
+    A "family" is a Jaccard@0.5 cluster of headline token sets — the matcher
+    M0 hand-checked, script-safe and deterministic since the corroborate-v2
+    repair. A population we cannot judge returns (0.0, 0, n): no signal, and
+    therefore no veto."""
+    population = _syndication_population(thread)
+    if len(population) < SYNDICATION_VETO_MIN_FAMILY:
+        return 0.0, 0, len(population)
+    families = cluster_syndicated(population, tau=SYNDICATION_VETO_TAU)
+    largest = max((len(f) for f in families), default=0)
+    return largest / len(population), largest, len(population)
+
+
+def lead_syndication_veto(thread: dict) -> bool:
+    """True when this story's coverage is one amplified family and it must not
+    hold the lead slot. Both bars are required: the SHARE (is the coverage
+    mostly one text?) and the absolute FAMILY SIZE (is there enough of it to
+    call amplification?). A 7-member topic that is 100% one wire copy is a
+    thin story, not a front-page distortion — and staying silent on what we
+    cannot judge is the safe error for a demotion."""
+    share, family_n, _ = syndication_family_share(thread)
+    return share >= SYNDICATION_VETO_SHARE and family_n >= SYNDICATION_VETO_MIN_FAMILY
+
+
+def _apply_lead_syndication_veto(ranked: list[dict]) -> list[dict]:
+    """Move a vetoed leader to just below the best story that is not vetoed.
+    Every other position is preserved, and nothing is ever removed. If the
+    whole field is syndicated there is no honest lead to promote, so the
+    order stands rather than inventing one."""
+    if len(ranked) < 2:
+        return ranked
+    lead = ranked[0]
+    share, family_n, _ = syndication_family_share(lead)
+    quality = lead.get("quality")
+    if isinstance(quality, dict):
+        quality["syndication_family_share"] = round(share, 3)
+    if not (share >= SYNDICATION_VETO_SHARE
+            and family_n >= SYNDICATION_VETO_MIN_FAMILY):
+        return ranked
+    for idx, candidate in enumerate(ranked[1:], start=1):
+        if lead_syndication_veto(candidate):
+            continue
+        if isinstance(quality, dict):
+            quality["lead_veto"] = "syndicated_family"
+            quality["lead_veto_family_size"] = family_n
+        return [*ranked[1:idx + 1], lead, *ranked[idx + 1:]]
+    return ranked
+
+
 def court_rank_multiplier(thread: dict) -> float:
     """Label Court damp: failed 0.5, partial 0.85, entailed/NULL 1.0."""
     status = str(thread.get("label_status") or "").strip().lower()
@@ -358,4 +479,9 @@ def rank_threads(threads: list[dict]) -> list[dict]:
         # deterministic tie-break: score, then raw volume, then label
         scored.append((score, comps[idx][0], str(t.get("label") or ""), t))
     scored.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
-    return [t for _, _, _, t in scored]
+    ranked = [t for _, _, _, t in scored]
+    if v2:
+        # LEAD-SLOT VETO: an amplified single wire family may rank, but it may
+        # not be the front page's lead. Runs last, on the final order.
+        ranked = _apply_lead_syndication_veto(ranked)
+    return ranked

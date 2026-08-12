@@ -134,10 +134,16 @@ def _jaccard(a: frozenset, b: frozenset) -> float:
     return len(a & b) / len(a | b)
 
 
-def cluster_syndicated(articles: list[dict]) -> list[list[dict]]:
+def cluster_syndicated(
+    articles: list[dict], *, tau: float = SYNDICATION_JACCARD,
+) -> list[list[dict]]:
     """Greedy near-identical-title clustering. Each cluster ≈ one wire story
     (or one genuinely distinct account). Input dicts need `title`; the input
     order is preserved in the output (first member = representative).
+
+    `tau` is the title-overlap bar. The corroboration lane keeps its measured
+    0.6; the Brief's lead veto passes 0.5, the value M0 hand-checked over 950
+    topics (docs/research/brief-daily/2026-08-12-m0-measurement.md §a).
 
     DETERMINISM (repaired 2026-08-12, M0 §a.1): the old first-fit walked the
     input order, so the partition depended on which row the database happened
@@ -170,7 +176,7 @@ def cluster_syndicated(articles: list[dict]) -> list[list[dict]]:
                 if not _clusterable(cset):
                     continue
                 sim = _jaccard(tset, cset)
-                if sim >= SYNDICATION_JACCARD and sim > best_sim:
+                if sim >= tau and sim > best_sim:
                     best, best_sim = members, sim
         if best is None:
             clusters.append((tset, [idx]))

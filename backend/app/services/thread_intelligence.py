@@ -15,7 +15,7 @@ from app.services.narrative_note import build_thread_narrative_note
 from app.services.stream_relevance import classify_stream_lane
 from app.services.subject_geography import infer_receipt_subject_geography
 from app.services.thread_packet import build_thread_packet
-from app.services.thread_ranking import rank_threads
+from app.services.thread_ranking import rank_threads, rank_v2_enabled
 from app.services.topic_relationship import classify_relationship
 from app.utils import _is_valid_person
 
@@ -2649,6 +2649,9 @@ async def fetch_threads(
                 t for t in threads
                 if thread_matches_person(t, matching_slugs, person_lower)
             ]
+        threads = await _apply_lead_syndication_veto_with_members(
+            active_conn, threads, hours=hours,
+        )
         if attach_evidence and threads:
             await _attach_atlas_evidence(active_conn, threads, hours=hours)
         if threads:
@@ -2669,6 +2672,83 @@ async def fetch_threads(
             return await _run(own_conn)
     except TimeoutError as exc:
         raise DatabaseBusyError("database command timed out") from exc
+
+
+# The lead-slot syndication veto (T3.1 iii) needs the RAW membership, not the
+# served receipts: the dynamic sample is already headline-deduplicated by the
+# clustering snapshot, so the witness arrived at the front page looking like 24
+# independent outlets while 22 of its 26 raw members were one wire piece.
+#
+# Measured 2026-08-12 on prod under nightly load: this LATERAL costs ~1.0 s for
+# 3 topics, while the same join across 41 topics cost 72 s cold. So it is asked
+# ONLY of the handful of threads that could actually take the lead — the veto
+# changes nothing further down the list, so nothing further down is queried.
+_LEAD_VETO_TOP_N = 4
+_LEAD_VETO_MEMBER_CAP = 150
+
+_LEAD_VETO_MEMBERS_SQL = """
+SELECT t.topic_id, m.headline
+FROM unnest($1::text[]) AS t(topic_id)
+CROSS JOIN LATERAL (
+    SELECT s.headline
+    FROM topic_members tm
+    JOIN signals_v2 s ON s.id = tm.signal_id
+    WHERE tm.topic_id = t.topic_id
+      AND tm.role = 'evidence'
+      AND COALESCE(tm.quarantined, false) = false
+      AND tm.assigned_at >= NOW() - ($2::int * INTERVAL '1 hour')
+    ORDER BY tm.assigned_at DESC
+    LIMIT $3::int
+) m
+"""
+
+
+def lead_veto_members_enabled() -> bool:
+    """ATLAS_LEAD_VETO_MEMBERS kill-switch — independent of ATLAS_RANK_V2 so
+    the extra query can be dropped without reverting the whole ranking."""
+    return os.getenv("ATLAS_LEAD_VETO_MEMBERS", "on").strip().lower() not in {
+        "off", "false", "0", "no",
+    }
+
+
+async def _apply_lead_syndication_veto_with_members(
+    conn: Any, threads: list[dict[str, Any]], *, hours: int,
+) -> list[dict[str, Any]]:
+    """Attach the raw 24h membership of the top candidates, then re-rank.
+
+    Degrades to the incoming order on any failure — a demotion we cannot
+    measure must never happen, and the front page must never 500 over it. The
+    bulky sample is dropped again before serving; only the explainable numbers
+    (`quality.syndication_family_share`, `quality.lead_veto`) ride the payload.
+    """
+    if not threads or not lead_veto_members_enabled() or not rank_v2_enabled():
+        return threads
+    head = [t for t in threads[:_LEAD_VETO_TOP_N] if t.get("thread_id")]
+    topic_ids = [str(t["thread_id"]) for t in head]
+    if not topic_ids:
+        return threads
+    try:
+        rows = await conn.fetch(
+            _LEAD_VETO_MEMBERS_SQL, topic_ids, hours, _LEAD_VETO_MEMBER_CAP,
+            timeout=query_timeout(8),
+        )
+    except Exception as exc:  # noqa: BLE001 - degrade, never 500
+        logger.warning("lead syndication population degraded: %s", exc)
+        return threads
+    by_topic: dict[str, list[str]] = {}
+    for row in rows:
+        by_topic.setdefault(str(row["topic_id"]), []).append(row["headline"] or "")
+    if not by_topic:
+        return threads
+    for thread in head:
+        sample = by_topic.get(str(thread.get("thread_id")))
+        if sample:
+            thread["raw_headline_sample"] = sample
+    try:
+        return rank_threads(threads)
+    finally:
+        for thread in head:
+            thread.pop("raw_headline_sample", None)
 
 
 async def fetch_thread_detail(

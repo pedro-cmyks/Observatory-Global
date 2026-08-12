@@ -13,6 +13,8 @@ coherence, with no source bias:
 """
 from __future__ import annotations
 
+import pytest
+
 from app.services.thread_ranking import rank_threads
 
 
@@ -412,3 +414,151 @@ def test_headline_diversity_denominator_counts_the_deduped_reprints():
     plain = [{"headline": f"Angle {i}", "source": f"s{i}.com",
               "syndication_count": 1} for i in range(6)]
     assert headline_diversity({"evidence_samples": plain}) == 1.0
+
+
+# ── T3.1 (iii): the lead-slot veto on the repaired syndication signal ────────
+#
+# M0 §a.5 proposed the bar; it was RE-MEASURED on 2026-08-12 after the (i)+(ii)
+# repairs over the same 950-topic universe. The bar holds: [0.70, 0.80) is
+# still an EMPTY bin (nothing scores between 0.667 and 0.846), the 6 topics at
+# or above 0.70 are all template spam, single-outlet feeds or one wire piece
+# across mastheads, and the nearest real story sits at 0.667.
+
+def _raw(headlines):
+    """A thread carrying its raw (pre-dedup) 24h membership sample."""
+    return {"raw_headline_sample": list(headlines)}
+
+
+def _jalapeno_thread():
+    """G-JALAPEÑO, frozen from the live measurement: 26 raw members, 22 of
+    them one wire piece stamped per masthead. Its served metrics are strong —
+    67 signals, surging, outlet_diversity 1.00 — which is exactly why it held
+    slot 1 on the live front page."""
+    story = ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+             "– {}")
+    mastheads = [
+        "The Fort Morgan Times", "The Morning Call", "Hazleton Standard Speaker",
+        "The Press Democrat", "Sun Sentinel", "Orlando Sentinel",
+        "The Times Herald", "The Mendocino Beacon", "Longmont Times-Call",
+        "Broomfield Enterprise", "San Diego Union-Tribune", "Lowell Sun",
+        "Daily News", "The Mercury", "Mainline Media News",
+        "Canon City Daily Record", "Colorado Hometown Weekly",
+        "Oroville Mercury-Register", "Scranton Times-Tribune",
+        "Orange County Register", "Boulder Daily Camera",
+        "Wilkes-Barre Citizens' Voice",
+    ]
+    thread = {
+        "thread_id": "dynamic-topic-11877", "label": "Jalapeño Salmonella Outbreak",
+        "signal_count": 67, "changed_10h": 26, "avg_confidence": 0.9,
+        "language_count": 1, "country_count": 2, "crisis_relevant": True,
+        "quality": {},
+    }
+    thread.update(_raw(
+        [story.format(m) for m in mastheads]
+        + ["Polish eggs linked to 4 French Salmonella outbreaks",
+           "Mexico clears 100,000 tons of sargassum as seaweed crisis hits tourism",
+           "Major US supplier recalls jalapenos amid Salmonella outbreak",
+           "Major US supplier recalls jalapenos amid Salmonella outbreak"]))
+    return thread
+
+
+def _nk_missile_thread():
+    """The negative fixture: dynamic-topic-1619, a real multi-source story
+    across 4 languages. Re-measured share 0.161 — it must still be able to
+    lead."""
+    thread = {
+        "thread_id": "dynamic-topic-1619", "label": "North Korea Missile Launch",
+        "signal_count": 120, "changed_10h": 40, "avg_confidence": 0.9,
+        "language_count": 4, "country_count": 9, "crisis_relevant": True,
+        "quality": {},
+    }
+    thread.update(_raw([
+        "North Korea fires ballistic missile into the Sea of Japan",
+        "Corea del Norte lanza un misil balístico hacia el mar de Japón",
+        "Nordkorea feuert ballistische Rakete ab",
+        "La Corée du Nord tire un missile balistique",
+        "Seoul says the launch flew 600km before splashdown",
+        "Japan protests latest Pyongyang launch",
+        "US condemns North Korean missile test",
+        "UN Security Council to meet over missile launch",
+        "Kim oversees test of new hypersonic warhead, KCNA says",
+        "Pyongyang test draws condemnation from Tokyo and Seoul",
+        "Analysts say the trajectory suggests a new solid-fuel stage",
+        "South Korea raises alert after ballistic launch",
+    ]))
+    return thread
+
+
+def test_syndication_family_share_measures_the_frozen_witness():
+    from app.services.thread_ranking import syndication_family_share
+    share, family_n, population = syndication_family_share(_jalapeno_thread())
+    assert population == 26
+    assert family_n == 22
+    assert share == pytest.approx(0.8462, abs=0.001)
+    share, family_n, _ = syndication_family_share(_nk_missile_thread())
+    assert family_n < 8 and share < 0.70
+
+
+def test_lead_veto_fires_on_the_witness_and_spares_the_real_story():
+    from app.services.thread_ranking import lead_syndication_veto
+    assert lead_syndication_veto(_jalapeno_thread()) is True
+    assert lead_syndication_veto(_nk_missile_thread()) is False
+
+
+def test_lead_veto_needs_a_family_of_at_least_eight():
+    # A tiny topic scores 1.000 by construction — the guard is load-bearing
+    # (M0 observed "Syria Russia Bases Deal" at n=1).
+    from app.services.thread_ranking import lead_syndication_veto
+    assert lead_syndication_veto(_raw(["Same wire copy exactly here"] * 7)) is False
+    assert lead_syndication_veto(_raw(["Same wire copy exactly here"] * 8)) is True
+
+
+def test_a_thread_we_cannot_measure_is_never_vetoed():
+    from app.services.thread_ranking import lead_syndication_veto
+    assert lead_syndication_veto({}) is False
+    assert lead_syndication_veto({"raw_headline_sample": []}) is False
+    assert lead_syndication_veto({"evidence_samples": []}) is False
+
+
+def test_g_jalapeno_the_wire_burst_never_holds_slot_one(monkeypatch):
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
+    jalapeno, nk = _jalapeno_thread(), _nk_missile_thread()
+    # Give the witness the winning score outright — the veto, not the score,
+    # must be what keeps it out of the lead.
+    jalapeno["signal_count"] = 5000
+    jalapeno["changed_10h"] = 4000
+    ranked = rank_threads([nk, jalapeno])
+    labels = [t["label"] for t in ranked]
+    assert labels[0] == "North Korea Missile Launch"
+    assert labels[1] == "Jalapeño Salmonella Outbreak"   # demoted, NEVER hidden
+    assert jalapeno["quality"]["lead_veto"] == "syndicated_family"
+    assert jalapeno["quality"]["syndication_family_share"] == pytest.approx(0.846, abs=0.001)
+
+
+def test_the_veto_moves_the_lead_one_slot_and_keeps_every_other_position(monkeypatch):
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
+    jalapeno = _jalapeno_thread()
+    jalapeno["signal_count"], jalapeno["changed_10h"] = 5000, 4000
+    others = [_t(f"story-{i}", sc=400 - i, ch=100 - i, conf=0.9) for i in range(4)]
+    ranked = [t["label"] for t in rank_threads([jalapeno, *others])]
+    assert ranked[0] == "story-0"
+    assert ranked[1] == "Jalapeño Salmonella Outbreak"
+    assert ranked[2:] == ["story-1", "story-2", "story-3"]
+
+
+def test_the_veto_never_empties_the_field(monkeypatch):
+    # If every candidate is syndicated there is nothing honest to promote —
+    # the order stands rather than inventing a lead.
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
+    a, b = _jalapeno_thread(), _jalapeno_thread()
+    a["label"], b["label"] = "wire-a", "wire-b"
+    a["signal_count"], b["signal_count"] = 900, 400
+    assert [t["label"] for t in rank_threads([a, b])] == ["wire-a", "wire-b"]
+
+
+def test_rank_v2_off_disables_the_lead_veto(monkeypatch):
+    monkeypatch.setenv("ATLAS_RANK_V2", "off")
+    jalapeno, nk = _jalapeno_thread(), _nk_missile_thread()
+    jalapeno["signal_count"], jalapeno["changed_10h"] = 5000, 4000
+    assert [t["label"] for t in rank_threads([nk, jalapeno])][0] == \
+        "Jalapeño Salmonella Outbreak"

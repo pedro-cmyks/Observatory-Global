@@ -1215,3 +1215,86 @@ def test_dedupe_is_order_stable_and_pure_on_no_duplicates():
     out = dedupe_same_event_threads([a, b])
     assert [t["thread_id"] for t in out] == ["a", "b"]
     assert a["signal_count"] == 200 and b["signal_count"] == 90
+
+
+# ── T3.1 (iii): the lead-veto membership attachment ─────────────────────────
+
+def _veto_threads():
+    wire = ["'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+            f"– Masthead {i}" for i in range(10)]
+    return (
+        [{"thread_id": "dynamic-topic-11877", "label": "Jalapeño Recall",
+          "signal_count": 9000, "changed_10h": 7000, "avg_confidence": 0.9,
+          "quality": {}},
+         {"thread_id": "dynamic-topic-1619", "label": "North Korea Missile",
+          "signal_count": 400, "changed_10h": 100, "avg_confidence": 0.9,
+          "quality": {}}],
+        wire,
+    )
+
+
+class _MembersConn:
+    """Returns raw membership rows for the lead-veto LATERAL only."""
+
+    def __init__(self, rows, *, fail=False):
+        self.rows = rows
+        self.fail = fail
+        self.calls = 0
+
+    async def fetch(self, query, *args, **kwargs):
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("pooler said no")
+        return self.rows
+
+
+def test_lead_veto_membership_demotes_the_wire_lead_and_leaves_no_payload_bloat():
+    from app.services.thread_intelligence import (
+        _apply_lead_syndication_veto_with_members,
+    )
+    threads, wire = _veto_threads()
+    rows = ([{"topic_id": "dynamic-topic-11877", "headline": h} for h in wire]
+            + [{"topic_id": "dynamic-topic-1619", "headline": h} for h in (
+                "North Korea fires ballistic missile into the Sea of Japan",
+                "Corea del Norte lanza un misil balistico hacia el mar",
+                "Nordkorea feuert ballistische Rakete ab",
+                "Seoul says the launch flew 600km before splashdown",
+                "Japan protests latest Pyongyang launch",
+                "US condemns North Korean weapons test",
+                "UN Security Council to meet over the launch",
+                "Kim oversees test of new hypersonic warhead",
+                "Analysts read a new solid fuel stage in the trajectory",
+                "South Korea raises its alert level after the launch",
+            )])
+    conn = _MembersConn(rows)
+    ranked = asyncio.run(
+        _apply_lead_syndication_veto_with_members(conn, threads, hours=24)
+    )
+    assert [t["label"] for t in ranked] == ["North Korea Missile", "Jalapeño Recall"]
+    assert ranked[1]["quality"]["lead_veto"] == "syndicated_family"
+    # the bulky raw sample must never ride the served payload
+    assert all("raw_headline_sample" not in t for t in ranked)
+
+
+def test_lead_veto_membership_degrades_to_the_incoming_order():
+    # A demotion we cannot measure must not happen, and must never 500.
+    from app.services.thread_intelligence import (
+        _apply_lead_syndication_veto_with_members,
+    )
+    threads, _ = _veto_threads()
+    conn = _MembersConn([], fail=True)
+    ranked = asyncio.run(
+        _apply_lead_syndication_veto_with_members(conn, threads, hours=24)
+    )
+    assert [t["label"] for t in ranked] == ["Jalapeño Recall", "North Korea Missile"]
+
+
+def test_lead_veto_membership_kill_switch_skips_the_query(monkeypatch):
+    from app.services.thread_intelligence import (
+        _apply_lead_syndication_veto_with_members,
+    )
+    monkeypatch.setenv("ATLAS_LEAD_VETO_MEMBERS", "off")
+    threads, _ = _veto_threads()
+    conn = _MembersConn([])
+    asyncio.run(_apply_lead_syndication_veto_with_members(conn, threads, hours=24))
+    assert conn.calls == 0
