@@ -696,6 +696,16 @@
   font-weight: 600;
 }
 
+/* A row whose outlet count could not be measured (cold-user probe 2026-08-12:
+   "116 SIGNALS · 0 sources"). Reads as an absence, not as a quantity — italic,
+   muted, never bold, never a number. Kept legible: it is a disclosure, not a
+   whisper. */
+.brief-sources-unmeasured {
+  font-style: italic;
+  color: var(--r-muted);
+  opacity: 0.92;
+}
+
 .brief-standfirst-box {
   font-family: var(--r-sans);
   font-size: 0.84rem;

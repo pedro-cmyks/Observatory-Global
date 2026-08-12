@@ -41,6 +41,12 @@ import {
     type DailyPublicationArtifact,
 } from '../lib/dailyPublication'
 import { buildStaleBanner } from '../lib/staleBanner'
+import {
+    resolveSourceCount,
+    sourceCountTip,
+    logUnmeasuredSourceCount,
+    UNMEASURED_SOURCES_LABEL,
+} from '../lib/briefSourceCount'
 import { AtlasMark } from '../components/AtlasMark'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { bandStartsCollapsed, freshnessSummary, type BriefBand, type FreshnessFacts } from '../lib/briefMobileBands'
@@ -208,6 +214,38 @@ interface CountryBriefData {
     totalSignals: number
     sentiment: number
     sources: number
+}
+
+/**
+ * The "N sources" segment of a row's vitals — the ONE place the Brief prints an
+ * outlet count.
+ *
+ * Cold-user probe 2026-08-12: a row served "116 SIGNALS · 0 sources" with no
+ * receipts. The two numbers ride different lineages (see lib/briefSourceCount),
+ * so a zero there is the receipt lane failing to answer, never a measured
+ * "published by nobody". Zero now renders as the degraded state it is, and the
+ * empty upstream field is logged once per thread.
+ */
+function SourceCountSegment({ row, className, bold }: {
+    row: { thread_id?: string; signal_count?: number; source_count?: number | null; evidence_samples?: readonly unknown[] | null }
+    className?: string
+    bold?: boolean
+}) {
+    const basis = resolveSourceCount(row)
+    if (!basis) return null
+    if (basis.kind === 'unmeasured') {
+        logUnmeasuredSourceCount(row.thread_id ?? '(unknown thread)', basis)
+        return (
+            <span className={[className, 'brief-sources-unmeasured'].filter(Boolean).join(' ')} data-tip={sourceCountTip(basis)}>
+                {UNMEASURED_SOURCES_LABEL}
+            </span>
+        )
+    }
+    return (
+        <span className={className} data-tip={sourceCountTip(basis)}>
+            {bold ? <b>{basis.count.toLocaleString()}</b> : basis.count.toLocaleString()} sources
+        </span>
+    )
 }
 
 // Heat components a reader can act on. geo_confidence and duplication are
@@ -1100,7 +1138,7 @@ export function BriefNewspaper() {
                 </h3>
                 {translateControl && <div className="brief-translate-row">{translateControl}</div>}
                 <div className="brief-vitals-line">
-                    {t.source_count != null && <span><b>{t.source_count}</b> sources</span>}
+                    <SourceCountSegment row={t} bold />
                     {arrow && (
                         <span className={`brief-thread-trend brief-thread-trend-${arrow.cls}`} data-tip={arrow.tip}>
                             {arrow.glyph} {arrow.label}
@@ -1186,7 +1224,7 @@ export function BriefNewspaper() {
                         </span>
                     )}
                     <span>{t.signal_count.toLocaleString()} raw signals</span>
-                    {t.source_count != null && <span>{t.source_count} sources</span>}
+                    <SourceCountSegment row={t} />
                 </div>
                 {groupList.length > 0 ? (
                     <div className="brief-unassembled-groups">
@@ -1653,9 +1691,7 @@ export function BriefNewspaper() {
                                                 })()}
                                                 <span className="reader-pill measured">Measured · last 24h</span>
                                                 <span className="reader-pill">{leadThread.signal_count.toLocaleString()} signals</span>
-                                                {leadThread.source_count != null && (
-                                                    <span className="reader-pill">{leadThread.source_count} sources</span>
-                                                )}
+                                                <SourceCountSegment row={leadThread} className="reader-pill" />
                                             </div>
                                             {leadThread.why_now && (
                                                 <p className="brief-whynow">

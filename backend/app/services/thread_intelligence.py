@@ -879,6 +879,10 @@ def assemble_thread(
         "gated_signal_count": gated_signal_count,
         "gate_scored_count": gate_scored_count,
         "source_count": source_count,
+        # Atlas counts sources with the SAME aggregate that counts signals
+        # (one SQL pass over one row set), so its zero — unlike the
+        # sample-derived paths below — is a real measurement.
+        "source_count_measured": True,
         "country_count": country_count,
         "avg_confidence": round(avg_confidence, 3),
         "confidence_measured": raw_avg_confidence is not None,
@@ -1092,6 +1096,13 @@ def assemble_emergent_thread(
     ]
 
     source_count = len(sources)
+    # Did the source lane ANSWER? `source_count` is derived from the resolved
+    # receipt sample, while `signal_count` comes from the persisted snapshot —
+    # different lineages, so an empty sample yields 0 sources next to a live
+    # count. That zero is a degraded state, never a measurement (cold-user
+    # probe 2026-08-12, "116 SIGNALS · 0 sources"); surfaces read this flag
+    # instead of printing the zero.
+    source_count_measured = bool(sample_signals)
     country_count = len(country_codes)
     # `gate_threshold` is a cutoff applied to members, not a calibrated
     # confidence estimate for the cluster. Keep it for the internal quality
@@ -1109,6 +1120,7 @@ def assemble_emergent_thread(
         "gated_signal_count": signal_count,
         "gate_scored_count": signal_count,
         "source_count": source_count,
+        "source_count_measured": source_count_measured,
         "country_count": country_count,
         "avg_confidence": None,
         "confidence_measured": False,
@@ -1291,6 +1303,17 @@ SELECT
               SELECT MAX(snapshot_at) FROM dynamic_topic_members
               WHERE dynamic_topic_id = dt.id
           )
+        -- NEWEST FIRST, then cut. Unordered, `DISTINCT sid ... LIMIT` returns
+        -- an ARBITRARY slice of the topic's sample ids — and the 7-day hot
+        -- retention has already deleted the oldest of them. Measured on prod
+        -- 2026-08-12 (dynamic-topic-12138): 80 of 111 sample ids were still
+        -- live, yet all 24 the unordered slice picked were dead, so the row
+        -- served 116 signals with ZERO receipts ("116 SIGNALS · 0 sources",
+        -- cold-user probe). `signals_v2.id` is monotonic and retention deletes
+        -- from the old end, so DESC prefers rows that still exist by
+        -- construction — and freshest-first is the right receipt sample for a
+        -- 24h front page anyway.
+        ORDER BY sid DESC
         LIMIT 24
     ) AS sample_signal_ids
 FROM candidate_topics dt
@@ -1453,6 +1476,9 @@ SELECT
               SELECT MAX(snapshot_at) FROM dynamic_topic_members
               WHERE dynamic_topic_id = dt.id
           )
+        -- Same starvation guard as the list SELECT above: order before cutting
+        -- so the slice prefers ids the retention has not deleted.
+        ORDER BY sid DESC
         LIMIT 32
     ) AS sample_signal_ids
 FROM dynamic_topics dt
@@ -1674,6 +1700,10 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         for hour, vs in sorted(timeline.items())
     ]
     source_count = len(sources)
+    # See assemble_emergent_thread: an EMPTY receipt sample makes this zero next
+    # to a live `signal_count` from the snapshot lineage. Flag it so no surface
+    # can print that zero as "0 sources" (cold-user probe 2026-08-12).
+    source_count_measured = bool(sample_signals)
     country_count = len(country_codes)
     subject_geography = infer_receipt_subject_geography([
         {
@@ -1704,6 +1734,7 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         # hardcoding '24h' over a number counted across 168h.
         "count_window_hours": count_window_hours,
         "source_count": source_count,
+        "source_count_measured": source_count_measured,
         "country_count": country_count,
         "avg_confidence": (
             round(max(min(avg_conf, 1.0), 0.0), 3) if avg_conf is not None else None

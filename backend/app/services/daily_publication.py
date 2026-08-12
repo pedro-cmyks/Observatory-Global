@@ -634,6 +634,14 @@ async def fetch_daily_publication(
         },
         label_receipts_by_topic,
     )
+    # The seal's receipt-less guard: selection SKIPS anything outside this set
+    # (daily_edition.select_daily_edition), so a story with no resolved receipt
+    # can never enter the edition — the "116 SIGNALS · 0 sources" state the
+    # 2026-08-12 cold-user probe hit is structurally impossible here, and was
+    # served by the LIVE fallback path instead (thread_intelligence.py, fixed
+    # there). Verified against the 2026-08-11 artifact: 12/12 sealed story
+    # nodes carried >= 4 receipts. Frozen by
+    # tests/test_thread_source_count_starvation.py and test_daily_edition.py.
     receipt_eligible_ids = set(by_topic) & fit_accepted_ids
     enriched_candidates = apply_sample_coverage(
         current_labeled_candidates,
