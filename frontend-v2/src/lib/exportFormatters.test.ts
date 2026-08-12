@@ -31,6 +31,29 @@ describe('exportFormatters', () => {
     expect(md).toContain('- Protests & Unrest: 7 co-occurrences')
   })
 
+  it('renders a degraded (null) total as not measured, never 0', () => {
+    // Timeout-as-absence: a degraded theme payload carries total: null.
+    // The export must not launder that into a measured "0".
+    const md = buildThemeBriefingMarkdown({
+      themeName: 'Armed Conflict',
+      generatedAt,
+      insight: null,
+      data: {
+        total: null,
+        avgSentiment: null,
+        topSources: [],
+        countryBreakdown: [],
+        relatedThemes: [],
+        signals: [],
+      },
+    })
+
+    expect(md).toContain('- **Total Signals:** not measured')
+    expect(md).not.toContain('- **Total Signals:** 0')
+    expect(md).toContain('- **Average Sentiment:** not measured')
+    expect(md).not.toContain('- **Average Sentiment:** 0.00')
+  })
+
   it('escapes theme signal CSV fields with commas and quotes', () => {
     const csv = buildThemeSignalsCsv([
       {

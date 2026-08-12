@@ -2071,23 +2071,37 @@ async def get_theme_details(
                 "relatedConcepts": get_concepts_for_theme(theme_code)
             }
     except Exception as e:
-        print(f"Error in theme endpoint: {e}")
-        import traceback
-        traceback.print_exc()
+        # Timeout-as-absence (the cc0bf804 class): a saturated DB used to come
+        # back as `total: 0` — a timeout rendered as the measured claim
+        # "0 signals". A count that was not measured is null + a degraded flag
+        # (the /api/v2/stats contract), and the raw exception never reaches the
+        # client (lensErrorCopy rule).
+        import asyncio as _asyncio
+        import asyncpg as _asyncpg
+        _timeout_classes = (
+            _asyncio.TimeoutError,
+            TimeoutError,
+            _asyncpg.exceptions.QueryCanceledError,
+        )
+        reason = "db_timeout" if isinstance(e, _timeout_classes) else "db_error"
+        logger.error("theme detail degraded (%s) for %s: %s", reason, theme_code, e,
+                     exc_info=True)
         return {
             "theme": theme_code,
             "country": country_code,
             "hours": hours,
-            "total": 0,
-            "avgSentiment": 0,
+            "total": None,
+            "avgSentiment": None,
             "signals": [],
+            "graphSignals": [],
             "countryBreakdown": [],
             "relatedThemes": [],
             "topSources": [],
             "topPersons": [],
             "timeline": [],
             "countryFraming": [],
-            "error": str(e)
+            "degraded": True,
+            "degraded_reason": reason,
         }
 
 

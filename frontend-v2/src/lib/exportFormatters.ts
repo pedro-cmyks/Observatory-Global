@@ -10,8 +10,10 @@ export interface ThemeSignalExport {
 
 export interface ThemeExportData {
   theme?: string
-  total?: number
-  avgSentiment?: number
+  /** null = degraded payload (query timeout/error) — the count was NOT
+   *  measured. Exports must say so, never write a fabricated 0. */
+  total?: number | null
+  avgSentiment?: number | null
   signals?: ThemeSignalExport[]
   topSources?: Array<{ name: string; count: number; sentiment?: number; family?: string | null }>
   countryBreakdown?: Array<{ code?: string; country_code?: string; country_name?: string; count: number; sentiment?: number }>
@@ -93,8 +95,8 @@ export function buildThemeBriefingMarkdown({
   }
 
   md += `## Metrics\n`
-  md += `- **Total Signals:** ${data.total ?? 0}\n`
-  md += `- **Average Sentiment:** ${(data.avgSentiment ?? 0).toFixed(2)}\n\n`
+  md += `- **Total Signals:** ${data.total ?? 'not measured'}\n`
+  md += `- **Average Sentiment:** ${data.avgSentiment != null ? data.avgSentiment.toFixed(2) : 'not measured'}\n\n`
 
   if (data.topSources?.length) {
     md += `## Top Sources\n`
