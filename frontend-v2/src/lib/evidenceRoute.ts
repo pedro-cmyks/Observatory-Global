@@ -130,6 +130,31 @@ export function buildSignalEvidenceRoute(input: SignalEvidenceRouteInput): Evide
   ]
 }
 
+export interface SourceEvidenceRouteInput {
+  domain: string
+  /** Coarse tier label (classifyOutlet -> coarseTierLabel): WIRE/STATE/MAJOR/
+   *  LOCAL/UNKNOWN — the head chip's source-class fact, the acceptance's
+   *  "distinguish reporting / wire / state" requirement. */
+  tierLabel?: string | null
+  /** Signals from this outlet in the window (summary.total_signals). */
+  signalCount?: number | null
+  /** Countries this outlet covers (summary.total_countries). */
+  countryCount?: number | null
+  /** Distinct themes in the outlet's coverage (top_themes.length). */
+  themeCount?: number | null
+}
+
+/** SourceProfile: Source (tier) -> Signals -> Countries -> Thematic Focus.
+ *  The fifth acceptance context (#173) — why am I seeing this outlet's rows. */
+export function buildSourceEvidenceRoute(input: SourceEvidenceRouteInput): EvidenceRouteStep[] {
+  return [
+    { key: 'source', label: input.domain, count: null, detail: input.tierLabel ?? null, targetId: 'sp-header' },
+    { key: 'signals', label: 'Signals', count: asCount(input.signalCount), detail: null, targetId: 'sp-footprint' },
+    { key: 'countries', label: 'Countries', count: asCount(input.countryCount), detail: null, targetId: 'sp-countries' },
+    { key: 'themes', label: 'Thematic Focus', count: asCount(input.themeCount), detail: null, targetId: 'sp-themes' },
+  ]
+}
+
 export function buildEvidenceRoute(input: EvidenceRouteInput): EvidenceRouteStep[] {
   const foreignPct = asCount(input.foreignSourcePct)
 

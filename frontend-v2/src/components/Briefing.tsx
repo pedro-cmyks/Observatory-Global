@@ -262,7 +262,7 @@ export function Briefing({ hours, onClose, onCountrySelect, onThemeSelect, prefe
                                 <span key={s.source} className="source-tag">
                                     {s.source} ({s.count})
                                     <span
-                                        className={`source-tier-chip source-tier-chip--${tc.tier}`}
+                                        className={`badge source-tier-chip source-tier-chip--${tc.tier}`}
                                         data-tip={tc.tip}
                                     >{tc.label}</span>
                                 </span>

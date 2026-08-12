@@ -271,13 +271,10 @@
 
 /* Type badge (#176 typed subjects) */
 .brief-subject-badge {
+    /* #247 C2: shared anatomy from the .badge base */
     font-size: 0.5rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     padding: 0.1rem 0.3rem;
     border-radius: 4px;
-    font-family: var(--font-mono, 'Geist Mono Variable', monospace);
     background: rgba(var(--color-ink-rgb), 0.1);
     color: var(--color-text-secondary);
 }
@@ -525,9 +522,7 @@
 }
 /* Anomaly badge */
 .anomaly-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    /* #247 C2: shared anatomy from the .badge base */
     margin: 0 0 12px 0;
     padding: 6px 10px;
     background: rgba(239, 68, 68, 0.12);
@@ -535,7 +530,6 @@
     border-radius: 4px;
     font-size: 11px;
     color: var(--color-severity-critical);
-    font-family: var(--font-mono, monospace);
 }
 .anomaly-badge-icon {
     animation: pulse-icon 1.2s ease-in-out infinite;
@@ -649,11 +643,7 @@
 }
 
 .cb-section-label {
-    font-family: 'SF Mono', 'Fira Mono', monospace;
-    font-size: 9px;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
+    /* #247 C1: typography from the shared .section-label base */
     margin-bottom: 8px;
 }
 

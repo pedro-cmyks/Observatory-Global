@@ -251,7 +251,7 @@ export function PublicAttentionPanel({ item, onClose, onThemeSelect, onCountrySe
             {!loading && (
                 <div className="pap-body">
                     <section className="pap-section pap-summary">
-                        <div className="pap-section-label">What is it?</div>
+                        <div className="section-label pap-section-label">What is it?</div>
                         {wikiSummary?.extract ? (
                             <>
                                 {wikiSummary.description && <div className="pap-description">{wikiSummary.description}</div>}
@@ -268,7 +268,7 @@ export function PublicAttentionPanel({ item, onClose, onThemeSelect, onCountrySe
                     </section>
 
                     <section className="pap-section">
-                        <div className="pap-section-label">Countries talking about it</div>
+                        <div className="section-label pap-section-label">Countries talking about it</div>
                         {countries.length > 0 ? (
                             <div className="pap-country-list">
                                 {countries.map(country => (
@@ -284,7 +284,7 @@ export function PublicAttentionPanel({ item, onClose, onThemeSelect, onCountrySe
                     </section>
 
                     <section className="pap-section">
-                        <div className="pap-section-label">Why these signals connect</div>
+                        <div className="section-label pap-section-label">Why these signals connect</div>
                         <p className="pap-connection-note">{connectionNote}</p>
                         <p className="pap-contrast-note">{contrastNote}</p>
                         {themes.length > 0 && (
@@ -305,7 +305,7 @@ export function PublicAttentionPanel({ item, onClose, onThemeSelect, onCountrySe
                     </section>
 
                     <section className="pap-section">
-                        <div className="pap-section-label">What they are saying</div>
+                        <div className="section-label pap-section-label">What they are saying</div>
                         {signalMatches.length > 0 ? (
                             <div className="pap-signal-list">
                                 {signalMatches.slice(0, 10).map(signal => (

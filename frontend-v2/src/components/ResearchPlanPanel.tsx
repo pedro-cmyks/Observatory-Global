@@ -322,7 +322,7 @@ export default function ResearchPlanPanel({
 
       {plan.suggested_next_steps.length > 0 && (
         <div className="rp-next">
-          <div className="rp-section-title">NEXT STEPS</div>
+          <div className="section-label rp-section-title">NEXT STEPS</div>
           {plan.suggested_next_steps.map((step, i) => (
             <div key={i} className="rp-next-step">{step}</div>
           ))}
@@ -331,7 +331,7 @@ export default function ResearchPlanPanel({
 
       {(plan.semantic_evidence?.length ?? 0) > 0 && (
         <div className="rp-evidence">
-          <div className="rp-section-title" data-tip="Cross-language semantic matches over the full signal corpus — labeled by quality-gate status, never presented as verified coverage">
+          <div className="section-label rp-section-title" data-tip="Cross-language semantic matches over the full signal corpus — labeled by quality-gate status, never presented as verified coverage">
             SEMANTIC EVIDENCE ({plan.semantic_evidence!.length})
           </div>
           {plan.semantic_evidence!.map(item => (

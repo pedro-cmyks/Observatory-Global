@@ -15,11 +15,9 @@
 
 .thread-focus-kicker,
 .thread-focus-section-title {
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
-    letter-spacing: 0.12em;
+    /* #247 C1: base typography shared; accent color is the panel's
+       deliberate identity, kept */
     color: var(--color-accent-primary);
-    text-transform: uppercase;
 }
 
 .thread-focus-header h2 {

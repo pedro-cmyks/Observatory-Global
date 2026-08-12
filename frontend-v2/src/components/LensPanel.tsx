@@ -356,7 +356,7 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread, at
           style={sheetTop != null ? { top: sheetTop } : undefined}
         >
           <section className="lens-section">
-            <h3 className="lens-section-label">{SECTION_LABELS.whereItLives}</h3>
+            <h3 className="section-label lens-section-label">{SECTION_LABELS.whereItLives}</h3>
             {whereItLives.state === 'ok' ? (
               <ul className="lens-section-rows">
                 {whereItLives.rows.map((c) => (
@@ -380,7 +380,7 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread, at
           </section>
 
           <section className="lens-section">
-            <h3 className="lens-section-label">{SECTION_LABELS.connected}</h3>
+            <h3 className="section-label lens-section-label">{SECTION_LABELS.connected}</h3>
             {connected.state === 'ok' ? (
               <ul className="lens-section-rows">
                 {connected.rows.map((r) => (
@@ -421,12 +421,12 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread, at
               mechanism, already load-bearing for the two sections above, and a
               second one would only be free to disagree with it. */}
           <section className="lens-section">
-            <h3 className="lens-section-label">{SECTION_LABELS.attention}</h3>
+            <h3 className="section-label lens-section-label">{SECTION_LABELS.attention}</h3>
             <div className="lens-section-panel">{attention}</div>
           </section>
 
           <section className="lens-section">
-            <h3 className="lens-section-label">{SOURCES_SECTION_LABEL}</h3>
+            <h3 className="section-label lens-section-label">{SOURCES_SECTION_LABEL}</h3>
             <div className="lens-section-panel">{sources}</div>
           </section>
         </div>

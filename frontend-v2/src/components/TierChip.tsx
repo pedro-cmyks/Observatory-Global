@@ -13,7 +13,7 @@ export function TierChip({ source }: { source: string | null | undefined }) {
   const tc = resolveTierChip(source, undefined)
   if (tc.tier === 'unknown') return null
   return (
-    <span className={`l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>
+    <span className={`badge l2-tier-chip l2-tier-chip--${tc.tier}`} data-tip={tc.tip}>
       {tc.label}
     </span>
   )

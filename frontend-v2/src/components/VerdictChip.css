@@ -2,13 +2,10 @@
    system as .label-review-chip); the action button is the affordance. Theme vars
    only. */
 .verdict-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+    /* #247 C2: shared anatomy from the .badge base */
   flex-wrap: wrap;
   margin-top: 6px;
   font-size: 11px;
-  line-height: 1.4;
   color: var(--color-severity-notable, #f59e0b);
   background: rgba(251, 191, 36, 0.08);
   border: 1px solid rgba(251, 191, 36, 0.24);

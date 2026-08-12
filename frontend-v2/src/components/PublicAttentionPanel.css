@@ -181,8 +181,7 @@
 }
 
 .pap-section-label {
-    color: var(--color-sentiment-neutral);
-    font-size: 10px;
+    /* #247 C1: typography from the shared .section-label base */
     margin-bottom: 8px;
 }
 

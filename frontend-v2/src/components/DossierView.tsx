@@ -947,7 +947,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                 {corrob.pins.map(p => (
                                     <div key={p.id} className="dossier-pin">
                                         <div className="dossier-pin-head">
-                                            <span className={`dossier-corrob-chip dossier-corrob-chip--${p.status}`}>{statusChip(p.status)}</span>
+                                            <span className={`badge dossier-corrob-chip dossier-corrob-chip--${p.status}`}>{statusChip(p.status)}</span>
                                             <span className="dossier-pin-label">{p.label}</span>
                                         </div>
                                         {/* The note is the backend's OWN sentence — in v2 it already

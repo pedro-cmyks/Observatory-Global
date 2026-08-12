@@ -383,7 +383,7 @@ export default function WorkbenchPanel({
               </>
             )}
 
-            <div className="wb-section-title">PINNED ROUTE ({active.pins.length})</div>
+            <div className="section-label wb-section-title">PINNED ROUTE ({active.pins.length})</div>
             <div className="wb-pins">
               {active.pins.map(pin => (
                 <div key={pin.anchorId} className="wb-pin">
@@ -538,7 +538,7 @@ export default function WorkbenchPanel({
                 stays on the computer. */}
             {leads && !isMobile && (leads.leads.length > 0 || leads.suppressed.length > 0) && (
               <>
-                <div className="wb-section-title" data-tip={leads.basis ?? 'Actors from the fetched article bodies, matched against current Atlas threads.'}>
+                <div className="section-label wb-section-title" data-tip={leads.basis ?? 'Actors from the fetched article bodies, matched against current Atlas threads.'}>
                   LEADS FROM THE TEXT ({leads.leads.length})
                 </div>
                 <div className="wb-leads">
@@ -622,7 +622,7 @@ export default function WorkbenchPanel({
                 pins: each is one headline pinned with frozen provenance. */}
             {active.citations.length > 0 && (
               <>
-                <div className="wb-section-title" data-tip="Single receipts pinned from evidence rows — provenance frozen at pin time. Select two to mark how they relate.">CITATIONS ({active.citations.length})</div>
+                <div className="section-label wb-section-title" data-tip="Single receipts pinned from evidence rows — provenance frozen at pin time. Select two to mark how they relate.">CITATIONS ({active.citations.length})</div>
                 {/* Mark-relation affordance (Carolina's claim ledger): pick two
                     receipts, then say how they relate → a Claim the dossier reads. */}
                 {active.citations.length >= 2 && (
@@ -721,7 +721,7 @@ export default function WorkbenchPanel({
               </>
             )}
 
-            <div className="wb-section-title">TRAIL</div>
+            <div className="section-label wb-section-title">TRAIL</div>
             <div className="wb-trail">
               {active.trail.slice(-20).reverse().map((step, i) => (
                 <div key={i} className="wb-trail-step">

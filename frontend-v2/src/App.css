@@ -1869,15 +1869,12 @@
    emerald-light with independently-verified light-tuned hexes (state reuses
    themes.ts's own emerald-light accentSecondary #8f5b0a). */
 .l2-tier-chip {
-  display: inline-block;
-  vertical-align: middle;
-  font-size: 9px;
+    /* #247 C2: shared anatomy from the .badge base */
   letter-spacing: 0.08em;
   padding: 0 4px;
   border-radius: 3px;
   border: 1px solid currentColor;
   margin-left: 6px;
-  white-space: nowrap;
 }
 .l2-tier-chip--wire { color: #60a5fa; }
 .l2-tier-chip--state { color: #f59e0b; }

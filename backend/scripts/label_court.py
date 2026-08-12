@@ -183,7 +183,7 @@ import os
 import re
 import sys
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import asyncpg
@@ -1080,6 +1080,16 @@ _WITHHOLD_MARK_SQL = (
     "WHERE id=$1 AND label_status IS NULL"
 )
 
+# 2026-08-11 (#261 coverage census): a row short on receipts is only
+# transiently so while its members are still projecting (ETL lag, minutes) —
+# but past this age the starvation is structural (sample ghosts / retention),
+# and the bare skip re-selected it every 33-min cycle forever with nothing
+# durable written (dt-6837 sat unmarked 17 days, censused as "never
+# reached"). Older than this ⇒ the skip becomes a WITHHOLD (marked, 6h
+# backoff, ledgered). Younger ⇒ the bare skip stays, so a freshly-promoted
+# serving topic keeps its next-cycle stamp cadence (council R2 N2).
+_STARVED_MARK_AGE = timedelta(hours=24)
+
 # Withhold backoff (2026-07-30): a withheld row keeps label_status NULL by
 # design, so bare `label_status IS NULL` re-selected it EVERY 33-min cycle —
 # dt-8258/8228 burned 23 identical `ungrounded` trials in one day. Fresh
@@ -1154,7 +1164,7 @@ async def main() -> None:
         order = ("(state='active') DESC, id DESC" if args.only_unchecked
                  else "(state='active') DESC, agg_n_signals DESC")
         rows = await conn.fetch(
-            "SELECT id, label, is_umbrella, state, revived_at FROM dynamic_topics "
+            "SELECT id, label, is_umbrella, state, revived_at, created_at FROM dynamic_topics "
             "WHERE (state='active' OR (state='candidate' AND revived_at IS NOT NULL "
             "AND label_status IS NULL)) "
             "AND label IS NOT NULL "
@@ -1214,6 +1224,30 @@ async def main() -> None:
                         "withhold_reason": "no-post-revival-receipts",
                         "judge_verdict": None,
                         "revived_at": r["revived_at"].isoformat(),
+                    })
+                    if args.write:
+                        await conn.execute(_WITHHOLD_MARK_SQL, dyn_id, checked_at,
+                                           _WITHHELD_COURT_MODEL)
+                    continue
+                # 2026-08-11 (#261): AGED receipt starvation is structural,
+                # not projection lag — ride the withhold machinery so the
+                # state is durable/queryable and the 6h backoff stops the
+                # every-cycle reselect. Fresh rows fall through to the bare
+                # skip and retry next cycle (stamp on promotion cadence).
+                created = r["created_at"]
+                if created is not None and created <= checked_at - _STARVED_MARK_AGE:
+                    withheld += 1
+                    print(f"  ? dt-{dyn_id} "
+                          f"[WITHHELD:receipt-starved n={len(receipts)}] "
+                          f"{label[:46]}")
+                    ledger_entries.append({
+                        "topic_id": topic_id, "served_label": label,
+                        "verdict": "withheld", "reason": "",
+                        "receipts": [x["headline"] for x in receipts],
+                        "checked_at": checked_at.isoformat(),
+                        "lane": "umbrella" if is_umbrella else "story",
+                        "withhold_reason": "receipt-starved",
+                        "judge_verdict": None,
                     })
                     if args.write:
                         await conn.execute(_WITHHOLD_MARK_SQL, dyn_id, checked_at,

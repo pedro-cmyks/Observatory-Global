@@ -527,6 +527,22 @@ else
   echo "[scoped-snapshot] skip sample-receipt prune (ATLAS_RECEIPT_PRUNE=off)" >&2
 fi
 
+# Step 9 (2026-08-11, #235): PER-FEED FRESHNESS WATCHDOG — a stuck-cache feed
+# is silent by construction (SANA's WordPress cache froze /en/feed/ on 07-28
+# and yielded zero signals for six days with every layer reading healthy).
+# Fetches each curated feed exactly as the ingestor would, reads the NEWEST
+# item's own timestamp, ledgers one atlas_alert-format line per defective
+# feed (FEED_STALE >7d / FEED_UNREACHABLE / FEED_UNPARSEABLE / FEED_EMPTY /
+# FEED_UNDATED) to ATLAS_RELIABILITY_ALERTS_LOG. First live run 2026-08-11:
+# 219 feeds -> 8 stale (chinadaily_cn 8.7 YEARS) · 11 unreachable · 5 undated.
+# Network-bound ~1min, exit 0 always — the ledger is the alert channel.
+if [[ "${ATLAS_FEED_WATCHDOG:-on}" == "on" ]]; then
+  atlas_step "feed freshness watchdog" "$ROOT_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.rss_feed_freshness_watchdog
+else
+  echo "[scoped-snapshot] skip feed freshness watchdog (ATLAS_FEED_WATCHDOG=off)" >&2
+fi
+
 # The run's verdict. A provider outage or a majority-failed run now exits
 # non-zero — launchd records the failure instead of a plausible success. The
 # heavy-lock EXIT trap still fires on this exit, so the mutex is released.

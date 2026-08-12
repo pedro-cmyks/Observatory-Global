@@ -545,7 +545,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             </div>
 
             {anomaly && (
-                <div className="anomaly-badge">
+                <div className="badge anomaly-badge">
                     <span className="anomaly-badge-icon">▲</span>
                     <span>{anomaly.multiplier.toFixed(0)}× above 7-day baseline</span>
                     <span className="anomaly-badge-level">{anomaly.level?.toUpperCase()}</span>
@@ -577,7 +577,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Narrative Threads */}
             <section className="brief-section" id="cb-threads">
-                <div className="cb-section-label">Narrative Threads</div>
+                <div className="section-label cb-section-label">Narrative Threads</div>
                 <div className="theme-list">
                     {/* B1: no positional "critical" marker — a country volume spike
                         doesn't make the first thread critical. B2 (#214): show the
@@ -644,7 +644,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 GDELT CAMEO is machine-coded and geo is approximate. */}
             {countryConflicts.length > 0 && (
                 <section className="brief-section">
-                    <div className="cb-section-label">
+                    <div className="section-label cb-section-label">
                         Conflict Events <span className="cb-section-subcopy">related by country, not by story</span>
                     </div>
                     <p className="cb-conflict-note"
@@ -685,7 +685,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Public Attention */}
             <section className="brief-section">
-                <div className="cb-section-label">Public Attention <span className="cb-section-subcopy">people-side proxy</span></div>
+                <div className="section-label cb-section-label">Public Attention <span className="cb-section-subcopy">people-side proxy</span></div>
                 <p className="cb-public-attention-note">
                     Google searches and Wikipedia pageviews are country/language-edition proxies. They enrich the media picture, but they are not a population-normalized opinion poll.
                 </p>
@@ -752,7 +752,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             {/* Key Subjects — typed: person is one type, not the only one (#176) */}
             {data.keySubjects.length > 0 && (
                 <section className="brief-section">
-                    <div className="cb-section-label">Key Subjects <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>people, places &amp; topics in the coverage</span></div>
+                    <div className="section-label cb-section-label">Key Subjects <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>people, places &amp; topics in the coverage</span></div>
                     <div className="brief-person-list">
                         {data.keySubjects.map(subject => {
                             const clickable = subject.type === 'person';
@@ -766,7 +766,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                         ? `${subject.count} mentions — open person focus`
                                         : `${subject.type} · ${subject.count} mentions`}
                                 >
-                                    <span className="brief-subject-badge" data-type={subject.type}>{SUBJECT_BADGE[subject.type]}</span>
+                                    <span className="badge brief-subject-badge" data-type={subject.type}>{SUBJECT_BADGE[subject.type]}</span>
                                     <span className="brief-person-name">{subject.name}</span>
                                     <span className="brief-person-count">{subject.count}</span>
                                 </button>
@@ -779,7 +779,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             {/* Trust Indicators */}
             {indicators && !(indicators as Indicators & { error?: string }).error && (
                 <section className="brief-section">
-                    <div className="cb-section-label">Trust Indicators</div>
+                    <div className="section-label cb-section-label">Trust Indicators</div>
                     <div className="indicators-stack">
                         <IndicatorTooltip
                             score={indicators.diversity?.score || 0}
@@ -810,7 +810,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     : 'var(--accent-red, #f87171)';
                 return (
                     <section className="brief-section">
-                        <div className="cb-section-label">
+                        <div className="section-label cb-section-label">
                             Voice Mix
                             <span className="sentiment-info-icon" data-tip="Self-coverage is defined by outlet OWNERSHIP, not language: a domestic outlet covering its own country. Foreign outlets in the local language (e.g. BBC Persian) count as soft power, not self-coverage. Ratios are over signals whose outlet origin is known.">?</span>
                         </div>
@@ -835,7 +835,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Sentiment */}
             <section className="brief-section">
-                <div className="cb-section-label">Sentiment Overview <span className="sentiment-info-icon" data-tip="Scores range from −10 to +10. Negative = reporting is alarming, critical, or conflict-focused. Positive = coverage is favorable or optimistic. This reflects media tone, not whether the news is objectively good or bad.">?</span></div>
+                <div className="section-label cb-section-label">Sentiment Overview <span className="sentiment-info-icon" data-tip="Scores range from −10 to +10. Negative = reporting is alarming, critical, or conflict-focused. Positive = coverage is favorable or optimistic. This reflects media tone, not whether the news is objectively good or bad.">?</span></div>
                 <div className="sentiment-display">
                     <span
                         className="sentiment-value"
@@ -847,12 +847,12 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         {getSentimentLabel(data.avg_sentiment * 10)}
                     </span>
                     {data.signal_count < 10 && (
-                        <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${data.signal_count} signals in this window — treat as indicative only`}>
+                        <span className="badge coverage-badge coverage-badge--thin" data-tip={`Only ${data.signal_count} signals in this window — treat as indicative only`}>
                             thin coverage
                         </span>
                     )}
                     {data.signal_count >= 10 && data.signal_count < 50 && (
-                        <span className="coverage-badge coverage-badge--limited" data-tip={`${data.signal_count} signals — limited data, interpret with caution`}>
+                        <span className="badge coverage-badge coverage-badge--limited" data-tip={`${data.signal_count} signals — limited data, interpret with caution`}>
                             limited
                         </span>
                     )}
@@ -874,7 +874,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Top Sources */}
             <section className="brief-section" id="cb-sources">
-                <div className="cb-section-label">Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>who's covering this country</span></div>
+                <div className="section-label cb-section-label">Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>who's covering this country</span></div>
                 <div className="source-list">
                     {(showAllSources ? data.top_sources : data.top_sources.slice(0, 5)).map((source, i) => {
                         // Expand-in-place pattern (mirrors ThemeDetail): click a
@@ -968,7 +968,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             {/* Recent Signals — actual articles detected, not synthetic titles */}
             {data.top_stories && data.top_stories.length > 0 && (
                 <section className="brief-section" id="cb-signals">
-                    <div className="cb-section-label">Recent Signals <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>articles detected in last {timeWindow}h</span></div>
+                    <div className="section-label cb-section-label">Recent Signals <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>articles detected in last {timeWindow}h</span></div>
                     <div className="story-list">
                         {data.top_stories.slice(0, 6).map((story, i) => (
                             <a

@@ -62,7 +62,7 @@ export function VerdictChip({ descriptor, investigationId, perform, onChange }: 
 
   if (resolved) {
     return (
-      <span className="verdict-chip verdict-chip--resolved" data-action={action.kind}>
+      <span className="badge verdict-chip verdict-chip--resolved" data-action={action.kind}>
         ✓ {RESOLVED_LABEL[action.kind] ?? 'Resolved'}
         <button className="verdict-chip-undo" onClick={undo} data-tip="Undo this resolution — the chip will re-offer the action.">Undo</button>
       </span>
@@ -70,7 +70,7 @@ export function VerdictChip({ descriptor, investigationId, perform, onChange }: 
   }
 
   return (
-    <span className="verdict-chip" data-kind={descriptor.kind}>
+    <span className="badge verdict-chip" data-kind={descriptor.kind}>
       <span className="verdict-chip-critique">{descriptor.critique}</span>
       <button
         className={`verdict-chip-action${action.destructive ? ' verdict-chip-action--danger' : ''}`}

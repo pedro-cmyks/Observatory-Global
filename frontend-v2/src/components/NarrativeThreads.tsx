@@ -860,11 +860,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     <React.Fragment key={n.thread_id}>
                     {sectionLabel && (
                         rowIdx === firstEclipseIdx || rowIdx === firstShadowIdx ? (
-                            <div className={`ecl-section-label ecl-section-label--${rowIdx === firstEclipseIdx ? 'eclipse' : 'shadow'}`}>
+                            <div className={`section-label ecl-section-label ecl-section-label--${rowIdx === firstEclipseIdx ? 'eclipse' : 'shadow'}`}>
                                 {sectionLabel}
                             </div>
                         ) : (
-                            <div className="sl-section-label">
+                            <div className="section-label sl-section-label">
                                 {sectionLabel}
                             </div>
                         )
@@ -961,10 +961,10 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     </span>
                                 )}
                                 {n.signal_count < 10 && (
-                                    <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${n.signal_count} signals — treat as indicative only`}>thin</span>
+                                    <span className="badge coverage-badge coverage-badge--thin" data-tip={`Only ${n.signal_count} signals — treat as indicative only`}>thin</span>
                                 )}
                                 {n.signal_count >= 10 && n.signal_count < 50 && (
-                                    <span className="coverage-badge coverage-badge--limited" data-tip={`${n.signal_count} signals — limited coverage`}>~</span>
+                                    <span className="badge coverage-badge coverage-badge--limited" data-tip={`${n.signal_count} signals — limited coverage`}>~</span>
                                 )}
                                 {/* Eclipse lens: the relation made physical — this story's sliver
                                     of coverage next to the share the eclipse is holding. */}

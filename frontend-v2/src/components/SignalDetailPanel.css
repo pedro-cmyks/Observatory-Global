@@ -166,11 +166,7 @@
 }
 
 .sdp-section-label {
-    font-size: 9px;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
+    /* #247 C1: typography from the shared .section-label base */
     margin-bottom: 6px;
 }
 

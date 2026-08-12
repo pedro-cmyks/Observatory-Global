@@ -210,7 +210,7 @@ export function LabelReviewChip(props: LabelReviewChipProps): React.ReactElement
     // rides on the tip + accessible name. Same class family = same colors.
     return (
       <span
-        className={`label-review-chip label-review-chip--dot${props.className ? ` ${props.className}` : ''}`}
+        className={`badge label-review-chip label-review-chip--dot${props.className ? ` ${props.className}` : ''}`}
         data-reason={reason}
         data-tip={tip}
         aria-label="Label under review"
@@ -220,7 +220,7 @@ export function LabelReviewChip(props: LabelReviewChipProps): React.ReactElement
   }
   return (
     <span
-      className={`label-review-chip${props.className ? ` ${props.className}` : ''}`}
+      className={`badge label-review-chip${props.className ? ` ${props.className}` : ''}`}
       data-reason={reason}
       data-tip={tip}
     >

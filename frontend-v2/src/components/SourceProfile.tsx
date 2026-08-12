@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { getThemeLabel } from '../lib/themeLabels'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff } from '../lib/icons'
+import { EvidenceRoute } from './EvidenceRoute'
+import { buildSourceEvidenceRoute } from '../lib/evidenceRoute'
+import { classifyOutlet, coarseTierLabel } from '../lib/sourceTiers'
 import './SourceProfile.css'
 
 interface SourceProfileData {
@@ -88,7 +91,7 @@ export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountry
 
     return (
         <div className="source-profile">
-            <div className="source-profile-header">
+            <div className="source-profile-header" id="sp-header">
                 <div className="source-profile-title">
                     <h2>{domain}</h2>
                 </div>
@@ -120,7 +123,21 @@ export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountry
 
             {!loading && !error && data && (
                 <>
-                    <div className="source-profile-section">
+                    {/* #173 Evidence Route — the source funnel: outlet (tier) ->
+                        signals -> countries -> thematic focus. Real counts from
+                        the profile payload this panel already fetched; the tier
+                        is the head chip's source-class fact. */}
+                    <EvidenceRoute
+                        steps={buildSourceEvidenceRoute({
+                            domain,
+                            tierLabel: coarseTierLabel(classifyOutlet(domain).tier),
+                            signalCount: data.summary.total_signals,
+                            countryCount: data.summary.total_countries,
+                            themeCount: data.top_themes.length,
+                        })}
+                        onStepClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    />
+                    <div className="source-profile-section" id="sp-footprint">
                         <h3>Source Footprint</h3>
                         <div className="source-metrics-grid">
                             <div className="source-metric">
@@ -141,7 +158,7 @@ export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountry
                     </div>
 
                     {data.top_themes.length > 0 && (
-                        <div className="source-profile-section">
+                        <div className="source-profile-section" id="sp-themes">
                             <h3>Thematic Focus</h3>
                             <div className="source-theme-list">
                                 {data.top_themes.map(t => (
@@ -169,7 +186,7 @@ export function SourceProfile({ domain, hours, onClose, onThemeSelect, onCountry
                     )}
 
                     {data.top_countries.length > 0 && (
-                        <div className="source-profile-section">
+                        <div className="source-profile-section" id="sp-countries">
                             <h3>Geographic Focus</h3>
                             <div className="source-country-list">
                                 {data.top_countries.map(c => (

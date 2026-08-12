@@ -143,10 +143,7 @@
 }
 
 .entity-section-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-secondary);
+    /* #247 C1: typography from the shared .section-label base */
     margin-bottom: 10px;
 }
 
@@ -652,13 +649,10 @@
 
 /* Typed subject badge (#176) */
 .entity-subject-badge {
+    /* #247 C2: shared anatomy from the .badge base */
     font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     padding: 1px 4px;
     border-radius: 3px;
-    font-family: var(--font-mono);
     background: rgba(var(--color-ink-rgb), 0.1);
     color: var(--color-text-secondary);
 }

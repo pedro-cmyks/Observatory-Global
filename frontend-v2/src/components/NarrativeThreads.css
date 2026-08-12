@@ -627,14 +627,12 @@
 .sl-row-synth-weight { color: var(--story-cyan, #2aa7ad); font-size: 12px; }
 
 .sl-section-label {
+    /* #247 C1: base typography shared; story-lens cyan + 700 weight are
+       the lens's deliberate identity, kept */
     flex: 0 0 auto;
     color: var(--story-cyan, #2aa7ad);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    padding: 6px 8px 2px;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-weight: 700;
-    text-transform: uppercase;
+    padding: 6px 8px 2px;
 }
 
 /* ---- ECLIPSE LENS (ambient mode only) --------------------------------------
@@ -650,13 +648,10 @@
 .narrative-row.ecl-row-shadow { border-left-color: var(--eclipse-cyan, #2aa7ad) !important; }
 
 .ecl-section-label {
+    /* #247 C1: base typography shared; eclipse-lane weight kept */
     flex: 0 0 auto;
-    padding: 8px 14px 4px;
-    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    padding: 8px 14px 4px;
 }
 .ecl-section-label--eclipse { color: var(--eclipse-red, #e23a1a); }
 .ecl-section-label--shadow { color: #39d0d8; }

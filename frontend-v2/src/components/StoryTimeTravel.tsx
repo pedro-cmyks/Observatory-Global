@@ -111,7 +111,7 @@ export default function StoryTimeTravel({ query }: Props) {
   return (
     <div className="sh-wrap">
       <div className="sh-head">
-        <span className="rp-section-title">ARCHIVE ACTIVITY</span>
+        <span className="section-label rp-section-title">ARCHIVE ACTIVITY</span>
         {horizon && (
           <span className="sh-horizon" data-tip="The processed archive is the only window reachable past ~7 days of live detail. Older is not queryable.">
             {fmtDay(horizon.min_day)} – {fmtDay(horizon.max_day)} · {horizon.days}d
@@ -157,7 +157,7 @@ export default function StoryTimeTravel({ query }: Props) {
       {selectedDay && (
         <div className="sh-day">
           <div className="sh-day-head">
-            <span className="rp-section-title">{fmtDay(selectedDay)} · FROM THE ARCHIVE</span>
+            <span className="section-label rp-section-title">{fmtDay(selectedDay)} · FROM THE ARCHIVE</span>
             <button type="button" className="sh-day-close" onClick={() => { setSelectedDay(null); setDayData(null); }} aria-label="Close day">✕</button>
           </div>
           {dayLoading && <div className="rp-status">LOADING RECEIPTS…</div>}
