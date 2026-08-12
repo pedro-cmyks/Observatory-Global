@@ -3,6 +3,7 @@ import { useCrisis } from '../contexts/CrisisContext'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusData } from '../contexts/FocusDataContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
+import { relationBasisLabel } from '../lib/focusRelation'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { decodeEntities, eclipseDominantLabel } from '../lib/attentionEclipse'
 import { useStoryLens } from '../contexts/StoryLensContext'
@@ -62,6 +63,12 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
     const relationCountry = !activeCountry && !lensCountry && relation.relationActive && relation.kind !== 'country'
         ? relation.dominantCountry : null
     const scopeCountry = activeCountry ?? lensCountry ?? relationCountry
+    // A discovered scope must name the measurement that produced it ("US leads
+    // this thread with 7 of 12 signals"). Without it a re-scope reads as an
+    // unexplained fact — which is exactly how a ghost country went unnoticed.
+    const relationBasis = relationCountry
+        ? relationBasisLabel(relation, resolveCountryName(relationCountry))
+        : null
     const activeTheme = filter.theme
     const streamLevel = filter.streamLevel
     const [wikiArticles, setWikiArticles] = useState<{ title: string; views: number; country_count?: number; top_country?: string | null }[]>([])
@@ -160,9 +167,14 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                     </span>
                 )}
                 {relationCountry && (
-                    <span className="ap-focus-badge ap-focus-theme"
-                        data-tip={`Re-scoped to the focus's dominant country: ${resolveCountryName(relationCountry)}`}>
+                    <span className="ap-focus-badge ap-focus-theme ap-focus-relation"
+                        data-tip={relationBasis
+                            ? `${relationBasis} — that lead is the only reason this panel re-scoped. Coverage volume, not a claim that the story is about ${resolveCountryName(relationCountry)}.`
+                            : `Re-scoped to the focus's dominant country: ${resolveCountryName(relationCountry)}`}>
                         {(relation.value || '').toUpperCase().slice(0, 14)} → {relationCountry}
+                        {relation.leaderSignals != null && relation.totalSignals > 0 && (
+                            <span className="ap-focus-basis"> · {relation.leaderSignals}/{relation.totalSignals} sig</span>
+                        )}
                     </span>
                 )}
                 {meta && (

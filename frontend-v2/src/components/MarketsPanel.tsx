@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react'
 import { useFocus } from '../contexts/FocusContext'
 import { useFocusRelation } from '../hooks/useFocusRelation'
+import { relationBasisLabel } from '../lib/focusRelation'
 import { resolveCountryName } from '../lib/countryNames'
 import { useMarkets, type MarketInstrument } from '../lib/markets'
 import {
@@ -48,6 +49,12 @@ export function MarketsPanel() {
       ? relation.dominantCountry
       : null
   const scopeCountry = activeCountry ?? relationCountry
+  // The re-scope must state the measurement it rests on ("Slovenia leads this
+  // thread with 7 of 12 signals"). A dock that just announces a country reads
+  // as a fact about the world; the count makes it a reading you can judge.
+  const relationBasis = relationCountry
+    ? relationBasisLabel(relation, resolveCountryName(relationCountry, undefined))
+    : null
 
   // Drop any open drill-chart when the scope changes (the selected symbol may not
   // be in the new set).
@@ -131,8 +138,11 @@ export function MarketsPanel() {
                 </button>
               </div>
               {relationCountry && (
-                <p className="markets-rescope" data-tip="Re-scoped to the focus's dominant country by coverage — these are that country's OWN instruments, not a measured link to why it surfaced.">
-                  this country's own instruments — not linked to why it surfaced
+                <p className="markets-rescope"
+                  data-tip="Re-scoped to the focus's dominant country by coverage volume — the count beside it is the whole basis. These are that country's OWN instruments, not a measured link to why it surfaced.">
+                  {relationBasis
+                    ? `${relationBasis} — its own instruments, not linked to why it surfaced`
+                    : "this country's own instruments — not linked to why it surfaced"}
                 </p>
               )}
               <div className="markets-grid">

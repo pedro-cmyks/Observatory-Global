@@ -63,6 +63,9 @@
   font-family: var(--font-mono, monospace);
   font-size: 9px;
   letter-spacing: 0.02em;
+  /* Now carries the measured basis as well as the caveat, so it can run to a
+     second line — never clamp it: a truncated basis is an unexplained scope. */
+  line-height: 1.45;
   color: var(--color-text-muted, #8b93a7);
   opacity: 0.85;
 }
