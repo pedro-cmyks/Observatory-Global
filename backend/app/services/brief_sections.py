@@ -32,7 +32,6 @@ Two honesty rules are structural here, not decorative:
 from __future__ import annotations
 
 import logging
-import math
 import os
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable, Sequence
@@ -78,6 +77,9 @@ GAP_BAR: dict[str, Any] = {
     "known_origin_min": 50,
     "baseline": "leave-one-out mean of the country's other retained days (>= 3)",
     "self_voice": "outlet OWNERSHIP: source_origin_country == subject country",
+    # Not part of the frozen bar — a cost guard carried over from the M0 probe,
+    # published here because a threshold nobody can see is a silent filter.
+    "prefilter_max_daily_volume": None,   # filled at import from the env knob
     "frozen_by": f"{_M0} §b.4",
     "confidence": "provisional",
     "confidence_note": (
@@ -93,6 +95,7 @@ GAP_RECEIPTS = 3
 # the giants (US/GB/RU) out of the voice query — EL VACÍO is about a country
 # surging above ITS OWN baseline, not about the loudest field.
 GAP_PREFILTER_MAX_VOLUME = int(os.getenv("ATLAS_GAP_MAX_VOLUME", "3000"))
+GAP_BAR["prefilter_max_daily_volume"] = GAP_PREFILTER_MAX_VOLUME
 
 
 # ── shared helpers ─────────────────────────────────────────────────────────

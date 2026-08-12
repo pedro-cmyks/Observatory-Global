@@ -254,6 +254,9 @@ def test_gap_bar_is_the_frozen_m0_bar_and_declares_low_confidence():
     assert GAP_BAR["volume_min"] == 20
     assert GAP_BAR["known_origin_min"] == 50
     assert GAP_BAR["confidence"] == "provisional"
+    # The cost guard is published, not hidden — a threshold nobody can see is a
+    # silent filter.
+    assert GAP_BAR["prefilter_max_daily_volume"] == 3000
 
 
 def test_gap_picks_the_east_timor_witness():
