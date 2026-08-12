@@ -177,7 +177,9 @@ def test_assemble_thread_exposes_quality_metadata_and_raw_entity_guardrails():
     thread = assemble_thread(row)
 
     assert thread["top_people"] == []
-    assert thread["top_entities"] == ["Pacific Ocean", "El Niño"]
+    # #248: "El Niño" is a _NON_PERSON_PHRASES entry — the same _is_valid_person
+    # gate the People panel applies now guards the thread-row entity chips.
+    assert thread["top_entities"] == ["Pacific Ocean"]
     assert thread["quality"] == {
         "lex_pct": 0.24,
         "method_mix": {"lex": 6, "theme": 19},
@@ -185,6 +187,104 @@ def test_assemble_thread_exposes_quality_metadata_and_raw_entity_guardrails():
         "geo_flags": {"unresolved_country_code": True},
         "entity_flags": {"raw_entity_field_untyped": True},
     }
+
+
+def test_assemble_thread_filters_photo_credit_entities():
+    """#248: GDELT persons arrays carry scraped photo/stock credits — the
+    live leak was "canva unsplash acton crawford" served as a subject chip on
+    the Jalapeño Salmonella thread (2026-08-11). The atlas lane's SQL
+    ARRAY_AGG bypassed _is_valid_person; the assembler must apply it."""
+    row = {
+        "topic_slug": "disease-outbreak",
+        "topic_label": "Disease outbreak",
+        "signal_count": 40,
+        "source_count": 6,
+        "country_count": 2,
+        "avg_confidence": 0.7,
+        "changed_10h": 3,
+        "top_countries": ["US"],
+        "top_country_names": ["United States"],
+        "top_sources": ["reuters.com"],
+        "top_entities": [
+            "canva unsplash acton crawford",
+            "peter hansen unsplash",
+            "bysarah falson",
+            "Bola Tinubu",
+        ],
+        "hourly_timeline": [],
+        "related_topics": [],
+    }
+
+    thread = assemble_thread(row)
+
+    assert thread["top_entities"] == ["Bola Tinubu"]
+
+
+def test_assemble_dynamic_thread_filters_photo_credit_entities():
+    """#248: the dynamic lane counts persons from sample signals in Python and
+    served them ungated — the exact lane behind the live Jalapeño leak."""
+    row = {
+        "id": 21,
+        "identity_key": "dyn-21",
+        "label": "Jalapeño Salmonella Outbreak",
+        "agg_n_signals": 30,
+        "changed_10h": 5,
+        "noise_rate": 0.1,
+        "mean_cohesion": 0.9,
+        "first_seen": None,
+        "top_country_codes": ["US"],
+    }
+    samples = [
+        {
+            "id": 1,
+            "headline": "Salmonella outbreak traced to jalapeños",
+            "source_name": "Outlet A",
+            "source_url": "https://a.example/1",
+            "country_code": "US",
+            "persons": ["canva unsplash acton crawford", "robert califf"],
+        },
+        {
+            "id": 2,
+            "headline": "FDA expands jalapeño recall",
+            "source_name": "Outlet B",
+            "source_url": "https://b.example/2",
+            "country_code": "US",
+            "persons": ["canva unsplash acton crawford", "robert califf"],
+        },
+    ]
+
+    thread = assemble_dynamic_thread(row, samples)
+
+    assert thread["top_entities"] == ["robert califf"]
+
+
+def test_assemble_emergent_thread_filters_photo_credit_entities():
+    """#248: the emergent lane shares the dynamic lane's ungated Python
+    persons counter — same gate applies."""
+    cluster_row = {
+        "id": 7,
+        "label": "Storm damage in coastal towns",
+        "description": None,
+        "n_signals": 12,
+        "velocity": 2,
+        "cohesion": 0.8,
+        "snapshot_at": None,
+        "top_country_codes": ["US"],
+    }
+    samples = [
+        {
+            "id": 1,
+            "headline": "Storm floods coastal towns",
+            "source_name": "Outlet A",
+            "source_url": "https://a.example/1",
+            "country_code": "US",
+            "persons": ["nvidia gpus", "jane goodall"],
+        },
+    ]
+
+    thread = thread_intelligence.assemble_emergent_thread(cluster_row, samples)
+
+    assert thread["top_entities"] == ["jane goodall"]
 
 
 def test_assemble_thread_quality_metadata_handles_zero_counts_and_clean_rows():
