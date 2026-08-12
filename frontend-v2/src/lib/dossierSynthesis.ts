@@ -6,6 +6,7 @@
 // verdict → {headline, synthesis, gap}. Measured at generation time, labeled as
 // such; degrades to null so the frozen report always stands on its own.
 import type { DossierModel } from './dossier'
+import type { CrossRead } from './aiRead'
 import {
   connectionState, edgeReason, edgeStrength, coverageLensNote, buildFrozenCrossRefs,
   type ConnectionsData, type ClusterResult,
@@ -63,6 +64,7 @@ export function splitCitations(text: string): CitationPart[] {
 export function buildSynthesisRequest(
   dossier: DossierModel,
   conn: { data: ConnectionsData; cluster: ClusterResult } | null,
+  crossRead?: CrossRead | null,
 ): Record<string, unknown> & { pins: Array<Record<string, unknown>> } {
   const pins = dossier.pins.map(p => ({
     label: p.label,
@@ -166,7 +168,23 @@ export function buildSynthesisRequest(
     }
   }
 
-  return { title: dossier.title, pins, connection, gaps: dossier.gaps }
+  // MEASURED cross-read tensions ride into the synthesis (Frank 2026-08-12: the
+  // cross-read flagged "Russia has yet to officially comment" against "Russia's
+  // Foreign Ministry said … would boost ties" and the prose asserted the second
+  // side flatly). The backend both prompts on them and enforces the downgrade
+  // deterministically. Absent on a first report run — present once cross-read ran.
+  const tensions = (crossRead?.findings ?? [])
+    .filter(f => f.kind === 'tension' && f.a.quote && f.b.quote)
+    .slice(0, 6)
+    .map(f => ({
+      a_quote: f.a.quote,
+      a_outlet: f.a.outlet ?? null,
+      b_quote: f.b.quote,
+      b_outlet: f.b.outlet ?? null,
+      note: f.note || null,
+    }))
+
+  return { title: dossier.title, pins, connection, gaps: dossier.gaps, tensions }
 }
 
 /** Build the request from the frozen dossier + the measured connection data,
@@ -174,8 +192,9 @@ export function buildSynthesisRequest(
 export async function synthesizeDossier(
   dossier: DossierModel,
   conn: { data: ConnectionsData; cluster: ClusterResult } | null,
+  crossRead?: CrossRead | null,
 ): Promise<DossierSynthesis | null> {
-  const body = buildSynthesisRequest(dossier, conn)
+  const body = buildSynthesisRequest(dossier, conn, crossRead)
   if (body.pins.length === 0) return null
   try {
     const res = await fetch('/api/v2/dossier/synthesize', {

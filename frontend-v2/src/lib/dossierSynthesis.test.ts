@@ -87,4 +87,50 @@ describe('buildSynthesisRequest', () => {
     expect(request.pins[0].evidence_items).toHaveLength(9)
     expect(request.pins[0].evidence).toHaveLength(9)
   })
+
+  // Frank 2026-08-12: the cross-read measured a tension the synthesis then
+  // contradicted. The measured tensions must REACH the synthesis request —
+  // the backend guard is unreachable otherwise.
+  const onePin = {
+    title: 'Syria Russia bases deal', queries: [], generatedAt: '2026-08-12T12:00:00Z',
+    pinCount: 1, summary: '', timeline: [], gaps: [], categoryGroups: [],
+    pins: [{
+      anchorId: 'dynamic-topic-12280', anchorType: 'thread', label: 'Syria Russia Bases Deal',
+      pinnedAt: '2026-08-12T12:00:00Z',
+      snapshot: { capturedAt: '2026-08-12T12:00:00Z', evidence: [{ headline: 'Deal reached' }] },
+    }],
+  } as DossierModel
+
+  it('carries measured cross-read TENSIONS (and only tensions) into the request', () => {
+    const crossRead = {
+      articles_read: 3, articles_with_claims: 3,
+      findings: [
+        {
+          kind: 'tension' as const,
+          a: { id: 'c10', url: 'https://naharnet/1', outlet: 'naharnet.com', text: '', quote: 'Russia has yet to officially comment on the agreement.' },
+          b: { id: 'c1', url: 'https://algemeiner/1', outlet: 'algemeiner.com', text: '', quote: "Russia's Foreign Ministry said on Tuesday that a deal would boost ties" },
+          note: 'c10 asserts Russia has not commented, while c1 attributes a statement to it.',
+        },
+        {
+          kind: 'corroboration' as const,
+          a: { id: 'c5', url: 'https://a/1', outlet: 'a.com', text: '', quote: 'three months' },
+          b: { id: 'c8', url: 'https://b/1', outlet: 'b.com', text: '', quote: 'no more than three months' },
+          note: 'both name the same window',
+        },
+      ],
+    }
+
+    const request = buildSynthesisRequest(onePin, null, crossRead)
+    const tensions = request.tensions as Array<Record<string, string | null>>
+
+    expect(tensions).toHaveLength(1)
+    expect(tensions[0].a_quote).toContain('yet to officially comment')
+    expect(tensions[0].a_outlet).toBe('naharnet.com')
+    expect(tensions[0].b_outlet).toBe('algemeiner.com')
+  })
+
+  it('sends an empty tension list when no cross-read has been run', () => {
+    expect(buildSynthesisRequest(onePin, null).tensions).toEqual([])
+    expect(buildSynthesisRequest(onePin, null, null).tensions).toEqual([])
+  })
 })

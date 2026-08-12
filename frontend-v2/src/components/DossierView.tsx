@@ -234,6 +234,9 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
     dossierRef.current = dossier
     const connRef = useRef(conn)
     connRef.current = conn
+    // Declared with the other synthesis refs (the crossRead STATE is set up
+    // below) so the synthesis closure can read the freshest cross-read.
+    const crossReadRef = useRef<CrossRead | null>(null)
     const mounted = useRef(true)
     // StrictMode's simulated unmount sets this false — reset on (re)mount or
     // the synthesis result is silently swallowed in dev.
@@ -245,7 +248,10 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
         const run = () => {
             if (synthStarted.current) return
             synthStarted.current = true
-            synthesizeDossier(dossierRef.current, connRef.current)
+            // crossReadRef: a cross-read already measured for this investigation
+            // hands its TENSIONS to the synthesis, so the prose can never settle
+            // a point two read sources disagree on (Frank 2026-08-12).
+            synthesizeDossier(dossierRef.current, connRef.current, crossReadRef.current)
                 .then(s => { if (mounted.current) setSynth(s) })
         }
         // 1 pin → no connection to wait for; 2+ → fire as soon as the verdict is
@@ -271,6 +277,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
     // the fetched bodies. Button-triggered (first run pays the read pass per
     // uncached article; findings cached server-side 15 min).
     const [crossRead, setCrossRead] = useState<CrossRead | null>(null)
+    crossReadRef.current = crossRead
     const [crossRunning, setCrossRunning] = useState(false)
     const [crossFailed, setCrossFailed] = useState(false)
     const runCrossRead = useCallback(async () => {
