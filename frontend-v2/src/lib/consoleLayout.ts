@@ -256,3 +256,51 @@ export function rowHeightFor(availableHeightPx: number, marginY: number, padding
   const usable = availableHeightPx - 2 * paddingY - (GRID_ROWS - 1) * marginY
   return Math.max(ROW_HEIGHT_FLOOR, Math.floor(usable / GRID_ROWS))
 }
+
+// --- Shell measurement ------------------------------------------------------
+// The grid is NOT self-sizing: its pixel math is driven by a measured width and
+// a measured available height. Both come from one observation of the shell, so
+// they are resolved together and either accepted or rejected together.
+//
+// THE FREEZE (fixed 2026-08-12): the Brief↔console keep-alive shell (#239
+// slice 2) keeps the console MOUNTED under `display:none` while the reader is
+// on another route. A window resize fired in that state measured a 0-wide,
+// top:0 box — the grid clamped to its 320px minimum and stayed there, because
+// nothing re-measured when the console was shown again. Four panels then
+// rendered as small boxes in the left ~310px of a wide viewport, and only a
+// full reload recovered. A hidden box is an ABSENT measurement, not a small
+// one: reject it and keep the last good metrics.
+
+export const MIN_SHELL_WIDTH = 320
+export const MIN_SHELL_HEIGHT = 320
+
+export interface ShellMetrics {
+  width: number
+  height: number
+}
+
+export interface ShellBox {
+  /** clientWidth — excludes the vertical scrollbar, so the grid never provokes a horizontal one. */
+  clientWidth: number
+  /** getBoundingClientRect().top — how far below the command bar + disclaimer strip the shell starts. */
+  top: number
+}
+
+export function isMeasurableShell(box: ShellBox): boolean {
+  return Number.isFinite(box.clientWidth) && box.clientWidth > 0 && Number.isFinite(box.top)
+}
+
+// Returns the metrics to apply. Returns `previous` BY REFERENCE when the
+// observation is unusable (hidden/detached pane) or identical — callers can
+// pass the result straight to setState without churning a render.
+export function shellMetricsFrom(
+  box: ShellBox,
+  viewportHeight: number,
+  previous: ShellMetrics,
+): ShellMetrics {
+  if (!isMeasurableShell(box) || !Number.isFinite(viewportHeight)) return previous
+  const width = Math.max(MIN_SHELL_WIDTH, Math.round(box.clientWidth))
+  const height = Math.max(MIN_SHELL_HEIGHT, Math.round(viewportHeight - box.top))
+  if (width === previous.width && height === previous.height) return previous
+  return { width, height }
+}

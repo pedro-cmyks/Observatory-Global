@@ -13,6 +13,9 @@ import {
   loadSavedLayouts,
   rowHeightFor,
   saveLayout,
+  shellMetricsFrom,
+  MIN_SHELL_WIDTH,
+  MIN_SHELL_HEIGHT,
   snapResizedItem,
 } from './consoleLayout'
 import type { LayoutBucket } from './consoleLayout'
@@ -263,5 +266,75 @@ describe('rowHeightFor', () => {
   })
   it('never returns below the 16px floor', () => {
     expect(rowHeightFor(100, 6, 6)).toBe(16)
+  })
+})
+
+describe('shellMetricsFrom (hidden-pane freeze guard)', () => {
+  const prev = { width: 1440, height: 857 }
+
+  it('measures width and viewport-fit height from a visible shell', () => {
+    expect(shellMetricsFrom({ clientWidth: 2200, top: 43 }, 1200, prev))
+      .toEqual({ width: 2200, height: 1157 })
+  })
+
+  // THE BUG: the Brief↔console keep-alive shell hides the console with
+  // display:none, so a resize fired while the console is hidden measured a
+  // 0-wide box, clamped the grid to its 320px minimum, and FROZE there —
+  // nothing re-measured on re-show, so only a reload recovered.
+  it('REJECTS a zero-width measurement (hidden pane) and keeps the last good one', () => {
+    expect(shellMetricsFrom({ clientWidth: 0, top: 0 }, 1000, prev)).toBe(prev)
+  })
+
+  it('rejects negative / non-finite boxes too', () => {
+    expect(shellMetricsFrom({ clientWidth: -5, top: 0 }, 1000, prev)).toBe(prev)
+    expect(shellMetricsFrom({ clientWidth: NaN, top: 43 }, 1000, prev)).toBe(prev)
+    expect(shellMetricsFrom({ clientWidth: 1440, top: NaN }, 1000, prev)).toBe(prev)
+  })
+
+  it('returns the SAME object when nothing changed (no re-render churn)', () => {
+    const same = shellMetricsFrom({ clientWidth: 1440, top: 43 }, 900, prev)
+    expect(same).toBe(prev)
+  })
+
+  it('floors width and height at their minimums for degenerate-but-real boxes', () => {
+    const out = shellMetricsFrom({ clientWidth: 100, top: 500 }, 520, prev)
+    expect(out).toEqual({ width: MIN_SHELL_WIDTH, height: MIN_SHELL_HEIGHT })
+  })
+
+  it('a hidden resize followed by a re-show recovers the true width', () => {
+    // hidden resize 1440 -> 2500: measurement rejected, previous kept
+    const whileHidden = shellMetricsFrom({ clientWidth: 0, top: 0 }, 1300, prev)
+    expect(whileHidden).toEqual(prev)
+    // re-show re-measures: the grid lands on the real viewport, no reload
+    const onShow = shellMetricsFrom({ clientWidth: 2500, top: 43 }, 1300, whileHidden)
+    expect(onShow).toEqual({ width: 2500, height: 1257 })
+    expect(bucketForWidth(onShow.width)).toBe('big')
+  })
+})
+
+describe('bucket re-resolution after a resize', () => {
+  it('crossing a bucket edge serves that bucket layout, preset when none saved', () => {
+    const saved = { laptop: defaultLayoutFor('laptop') }
+    expect(bucketForWidth(1440)).toBe('laptop')
+    expect(bucketForWidth(2500)).toBe('big')
+    expect(layoutForBucket('big', saved)).toEqual(defaultLayoutFor('big'))
+  })
+
+  it('falls back to the preset when the persisted layout for the new bucket is invalid', () => {
+    const saved = { big: [{ i: 'radar', x: 0, y: 0, w: 9 }] as unknown as LayoutItem[] }
+    expect(isValidLayout(saved.big)).toBe(false)
+    expect(layoutForBucket('big', saved)).toEqual(defaultLayoutFor('big'))
+  })
+
+  it('falls back to the preset when the persisted layout no longer fills the grid width', () => {
+    // Shrink every panel that touches the right edge, so the layout leaves a
+    // dead strip at columns 20-24 — the stale-preset shape layoutFillsWidth
+    // exists to catch.
+    const narrow = defaultLayoutFor('desktop').map(l =>
+      l.i === 'threads' ? { ...l, w: 5 } : l.i === 'dock' ? { ...l, w: 10 } : l,
+    )
+    expect(isValidLayout(narrow)).toBe(true)
+    expect(layoutFillsWidth(narrow)).toBe(false)
+    expect(layoutForBucket('desktop', { desktop: narrow })).toEqual(defaultLayoutFor('desktop'))
   })
 })

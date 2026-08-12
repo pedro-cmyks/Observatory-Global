@@ -71,8 +71,12 @@ import {
   loadSavedLayouts,
   rowHeightFor,
   saveLayout,
+  shellMetricsFrom,
   snapResizedItem,
+  MIN_SHELL_HEIGHT,
+  MIN_SHELL_WIDTH,
   type LayoutBucket,
+  type ShellMetrics,
 } from './lib/consoleLayout'
 
 // Terminal Panels
@@ -1625,29 +1629,50 @@ function AppContent() {
   // to a laptop and vice versa; each bucket persists independently.
   const gridShellRef = useRef<HTMLDivElement | null>(null)
   const [savedGridLayouts, setSavedGridLayouts] = useState<Partial<Record<LayoutBucket, LayoutItem[]>>>(() => loadSavedLayouts())
-  // The grid width drives BOTH the bucket and RGL's column pixel math, so it
-  // must track the real container — not a fixed seed. (react-grid-layout's
-  // useContainerWidth froze at its initialWidth here, leaving the cockpit
-  // rendered at ~1280px inside a much wider viewport; measured off the shell
-  // instead.) clientWidth excludes the vertical scrollbar so the grid never
-  // provokes a horizontal one.
-  const [gridWidth, setGridWidth] = useState(() => (typeof window === 'undefined' ? 1280 : Math.max(320, window.innerWidth)))
+  // The grid width drives BOTH the bucket and RGL's column pixel math, and the
+  // shell height drives rowHeight — so both must track the real container, not
+  // a fixed seed. (react-grid-layout's useContainerWidth froze at its
+  // initialWidth here, leaving the cockpit rendered at ~1280px inside a much
+  // wider viewport; measured off the shell instead.) One state, because a
+  // single observation resolves both and they must never disagree.
+  const [gridShell, setGridShell] = useState<ShellMetrics>(() =>
+    typeof window === 'undefined'
+      ? { width: 1280, height: 800 }
+      : { width: Math.max(MIN_SHELL_WIDTH, window.innerWidth), height: Math.max(MIN_SHELL_HEIGHT, window.innerHeight - 96) },
+  )
+  const gridWidth = gridShell.width
+  const gridShellH = gridShell.height
   const gridBucket = bucketForWidth(gridWidth)
+  // Re-resolves on every width change, so crossing a bucket edge serves that
+  // bucket's layout — its persisted one when it still validates and fills the
+  // grid, otherwise the preset.
   const gridLayout = useMemo(() => layoutForBucket(gridBucket, savedGridLayouts), [gridBucket, savedGridLayouts])
-  // The shell sits below the command bar AND the in-flow disclaimer strip, so
-  // its available height is measured, not assumed.
-  const [gridShellH, setGridShellH] = useState(() => (typeof window === 'undefined' ? 800 : Math.max(320, window.innerHeight - 96)))
   useEffect(() => {
     if (isMobile) return
+    // shellMetricsFrom REJECTS an unmeasurable box instead of clamping to the
+    // minimum: the Brief↔console keep-alive shell (#239 slice 2) keeps this
+    // pane mounted under display:none, where a resize would otherwise freeze
+    // the grid at 320px wide with no way back but a reload.
     const measure = () => {
       const el = gridShellRef.current
       if (!el) return
-      setGridShellH(Math.max(320, window.innerHeight - el.getBoundingClientRect().top))
-      setGridWidth(Math.max(320, el.clientWidth))
+      setGridShell(prev =>
+        shellMetricsFrom({ clientWidth: el.clientWidth, top: el.getBoundingClientRect().top }, window.innerHeight, prev),
+      )
     }
     measure()
     window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
+    // The window `resize` event does NOT fire when this pane is re-shown after
+    // a route hop, so a resize taken while hidden would never be corrected.
+    // ResizeObserver does fire on the display:none → visible transition — it is
+    // what makes the recovery automatic instead of reload-only. It also covers
+    // container changes no window event reports (overlays, scrollbar swings).
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    if (ro && gridShellRef.current) ro.observe(gridShellRef.current)
+    return () => {
+      window.removeEventListener('resize', measure)
+      ro?.disconnect()
+    }
   }, [isMobile])
   const gridRowHeight = rowHeightFor(gridShellH, GRID_GAP, GRID_GAP)
   const handleGridLayoutChange = (layout: Layout) => {
