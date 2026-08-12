@@ -311,3 +311,64 @@ def test_no_db_payload_still_carries_seal_schedule(monkeypatch):
     monkeypatch.setattr(db, "pool", None)
     payload = asyncio.run(fetch_stored_daily_publication())
     assert payload["seal_schedule"]["next_attempt_local"] == "02:30"
+
+
+def _stored_edition_reader(row, monkeypatch):
+    class Conn:
+        async def fetchrow(self, query, *, timeout):
+            return row
+
+    class Acquire:
+        async def __aenter__(self):
+            return Conn()
+
+        async def __aexit__(self, *args):
+            return False
+
+    class Pool:
+        def acquire(self):
+            return Acquire()
+
+    monkeypatch.setattr(db, "pool", Pool())
+    return asyncio.run(fetch_stored_daily_publication())
+
+
+def _edition_row(status: str):
+    now = datetime(2026, 8, 11, tzinfo=timezone.utc)
+    return {
+        "edition_date": date(2026, 8, 11),
+        "edition_start": now,
+        "edition_end": now,
+        "generated_at": now,
+        "contract": "atlas-daily-publication-v1",
+        "status": status,
+        "package": json.dumps({"receipts": []}),
+        "graph": json.dumps({"edges": []}),
+        "selection": json.dumps({"selected_ids": []}),
+        "completion": json.dumps({"cursor_exhausted": True}),
+        "updated_at": now,
+    }
+
+
+def test_stored_daily_reader_remaps_legacy_status_without_claiming_a_grade(monkeypatch):
+    # 25 sealed rows predate the graded vocabulary. Serving must not break on
+    # them and must never present the remap as a measurement.
+    payload = _stored_edition_reader(_edition_row("degraded"), monkeypatch)
+
+    assert payload["status"] == "sealed_partial"
+    assert payload["stored_status"] == "degraded"
+    assert payload["status_reasons"] == ["legacy_status_not_graded"]
+
+
+def test_stored_daily_reader_passes_a_graded_status_through(monkeypatch):
+    row = _edition_row("sealed_full")
+    row["completion"] = json.dumps({
+        "cursor_exhausted": True,
+        "status_reasons": ["data_lag"],
+    })
+
+    payload = _stored_edition_reader(row, monkeypatch)
+
+    assert payload["status"] == "sealed_full"
+    assert payload["stored_status"] == "sealed_full"
+    assert payload["status_reasons"] == ["data_lag"]

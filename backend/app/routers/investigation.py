@@ -21,6 +21,7 @@ from app.services.investigation_graph import (
     assemble_investigation_graph,
     build_publication_package,
 )
+from app.services.edition_status import normalize_stored_status
 from app.services.seal_schedule import build_seal_schedule
 from app.services.thread_intelligence import fetch_thread_detail
 from app.routers.dossier import ConnectionsRequest, dossier_connections
@@ -190,7 +191,34 @@ async def publication_package(body: PublicationPackageRequest):
 
 
 async def fetch_stored_daily_publication() -> dict[str, Any]:
-    """Serving path: one compact row, never builds the edition in-request."""
+    """Serving path: one compact row, never builds the edition in-request.
+
+    CONTRACT (`atlas-daily-publication-v1`; seal grading is
+    `atlas-edition-status-v1`, T3.2):
+
+        status          'sealed_full' | 'sealed_partial' | 'sealed_thin'
+                        Graded from the edition's MEASURED readiness fractions
+                        — never the old unreachable ready/degraded binary.
+                        Legacy rows are remapped ('ready'->sealed_full,
+                        'degraded'->sealed_partial).
+        stored_status   what the row literally holds, for provenance.
+        status_reasons  named shortfalls, e.g. ['who_below_bar','data_lag'].
+                        `<dim>_below_bar` (under the partial bar 0.40),
+                        `<dim>_below_full_bar` (under the full bar 0.55),
+                        `<dim>_missing`, `receipts_incomplete`, `data_lag`,
+                        `legacy_status_not_graded` (remap, not a measurement).
+        completion.status_facts / .status_dimensions
+                        the bars, the lag, and the per-dimension fractions the
+                        grade was computed from (graded seals only).
+        package.readiness[dim].measured
+                        {ready, total, fraction, basis} — the number behind the
+                        row, so a reader can be told "6 of 12 stories carry
+                        verified subjects" instead of a bare 'partial'.
+                        `basis` is 'story_nodes' | 'nodes' | 'receipts'.
+
+    A thin edition is still a SEALED edition: nothing here voids a night —
+    `SEAL_FAILED` in the reliability ledger remains the only such marker.
+    """
     if db.pool is None:
         return {
             "contract": "atlas-daily-publication-v1",
@@ -237,6 +265,14 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
     # The staleness banner reads WHAT edition + HOW OLD off the top level.
     # generated_at is the seal moment; it remains in completion for compat.
     sealed_at = payload["generated_at"]
+    completion = _json_value(payload.pop("completion")) or {}
+    # Graded seal (atlas-edition-status-v1). Rows sealed before the graded
+    # vocabulary are remapped readably and carry `legacy_status_not_graded` —
+    # the remap is never presented as a measurement. Reasons come from the seal
+    # itself when it graded, from the remap when it did not.
+    seal = normalize_stored_status(payload.pop("status"))
+    stored_reasons = completion.get("status_reasons")
+    reasons = stored_reasons if isinstance(stored_reasons, list) else seal["reasons"]
     return {
         "contract": payload.pop("contract"),
         "edition_date": payload.pop("edition_date"),
@@ -245,12 +281,14 @@ async def fetch_stored_daily_publication() -> dict[str, Any]:
         # constant (+ in-flight window inference) — the staleness banner
         # consumes this instead of promising a hardcoded "02:30".
         "seal_schedule": build_seal_schedule(last_sealed_at=sealed_at),
-        "status": payload.pop("status"),
+        "status": seal["status"],
+        "stored_status": seal["stored_status"],
+        "status_reasons": reasons,
         "package": _json_value(payload.pop("package")),
         "graph": _json_value(payload.pop("graph")),
         "selection": _json_value(payload.pop("selection")),
         "completion": {
-            **_json_value(payload.pop("completion")),
+            **completion,
             "stored": True,
             "edition_start": payload.pop("edition_start"),
             "edition_end": payload.pop("edition_end"),

@@ -164,7 +164,11 @@ def main() -> int:
         item = readiness.get(dim, {})
         st = item.get("status", "missing")
         rc = item.get("reason_codes", [])
-        print(f"   {dim:5} -> {st}"
+        # The fraction IS the row now (T3.2): a bare 'partial' hides whether
+        # the dimension covered 1 story node or 11.
+        m = item.get("measured") or {}
+        frac = f"  {m['ready']}/{m['total']} {m.get('basis', '')}" if m.get("total") else ""
+        print(f"   {dim:5} -> {st}{frac}"
               + (f"  ({', '.join(rc)})" if rc else ""))
     print(f"   receipts: {len(receipts)}   spine_nodes: {len(pkg.get('narrative_spine', []))}")
     print(f"   gaps: {gaps}")

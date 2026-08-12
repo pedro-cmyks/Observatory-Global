@@ -5,7 +5,12 @@ import numpy as np
 
 from datetime import datetime, timezone
 
-from app.services.investigation_graph import ReadinessItem, _receipt_rows
+from app.services.edition_status import SEALED_FULL, SEALED_PARTIAL, SEALED_THIN
+from app.services.investigation_graph import (
+    ReadinessFraction,
+    ReadinessItem,
+    _receipt_rows,
+)
 from app.services.investigation_nodes import (
     InvestigationNode,
     ObservationWindow,
@@ -21,33 +26,66 @@ from app.services.daily_publication import (
     verified_subjects_from_receipts,
 )
 from app.services.subject_geography import infer_receipt_subject_geography
-from scripts.build_daily_publication import _edition_status
+from scripts.build_daily_publication import _edition_grade, _edition_status
 
 
 class Package:
-    def __init__(self, status: str = "ready"):
+    def __init__(self, ready: int = 12, total: int = 12):
         self.readiness = {
-            key: ReadinessItem(status=status)
+            key: ReadinessItem(
+                status="ready",
+                measured=ReadinessFraction(ready=ready, total=total, basis="story_nodes"),
+            )
             for key in ("who", "what", "when", "where", "how")
         }
 
 
-def test_edition_status_requires_fresh_complete_receipted_readiness():
-    ready = {
-        "package": Package(),
+def _result(ready: int = 12, **completion):
+    return {
+        "package": Package(ready),
         "completion": {
             "cursor_exhausted": True,
             "data_lag_hours": 2,
             "receipt_fetch_error": None,
+            **completion,
         },
     }
-    assert _edition_status(ready) == "ready"
 
-    ready["completion"]["data_lag_hours"] = 8
-    assert _edition_status(ready) == "degraded"
-    ready["completion"]["data_lag_hours"] = 2
-    ready["package"].readiness["who"] = ReadinessItem(status="missing")
-    assert _edition_status(ready) == "degraded"
+
+def test_edition_status_grades_the_seal_instead_of_voiding_it():
+    # The seal's status is no longer an unreachable binary: it grades on the
+    # MEASURED readiness fractions (T3.2, policy a+b).
+    assert _edition_status(_result(12)) == SEALED_FULL
+    assert _edition_status(_result(7)) == SEALED_FULL
+    assert _edition_status(_result(6)) == SEALED_PARTIAL
+    assert _edition_status(_result(4)) == SEALED_THIN
+
+
+def test_edition_status_never_lets_data_lag_alone_void_a_seal():
+    # 2026-07-13 reached 12/12 on both who and where and still sealed
+    # `degraded`, solely because data_lag_hours was 8.455 > 6.
+    grade = _edition_grade(_result(12, data_lag_hours=8.455))
+    assert grade.status == SEALED_FULL
+    assert grade.reasons == ["data_lag"]
+
+
+def test_edition_grade_reasons_are_stored_with_the_edition():
+    source = (Path(__file__).parents[1] / "scripts/build_daily_publication.py").read_text()
+    # The reasons ride the completion jsonb the router already serves, so a
+    # reader never has to guess WHY an edition graded the way it did.
+    assert "status_reasons" in source
+    assert "status_facts" in source
+
+
+def test_daily_editions_migration_widens_status_to_the_graded_vocabulary():
+    sql = (
+        Path(__file__).parents[1]
+        / "migrations/100_atlas_daily_editions_graded_status.sql"
+    ).read_text()
+    for value in ("sealed_full", "sealed_partial", "sealed_thin"):
+        assert value in sql
+    # legacy rows must survive: the widened CHECK still admits what is stored
+    assert "'ready'" in sql and "'degraded'" in sql
 
 
 def test_daily_artifact_migration_is_compact_json_not_per_story_vectors():
@@ -489,3 +527,29 @@ def test_resolve_edition_end_both_none_falls_to_now():
 def test_resolve_edition_end_uses_last_seen_when_signal_missing():
     ls = datetime(2026, 7, 22, 8, 0, tzinfo=timezone.utc)
     assert resolve_edition_end(ls, None, _NOW) == ls
+
+
+def test_seal_failed_remains_the_only_night_voiding_marker():
+    # The graded status never voids a night: SEAL_FAILED fires on the seal
+    # STEP's exit code, never on how the edition graded. A thin edition is a
+    # sealed edition.
+    runner = (Path(__file__).parents[2] / "scripts/run-scoped-snapshot.sh").read_text()
+    seal_at = runner.index("scripts.build_daily_publication --execute")
+    alert_at = runner.index('atlas_alert "SEAL_FAILED', seal_at)
+    guard = runner[seal_at:alert_at]
+
+    assert '_ATLAS_LAST_STEP_RC" -ne 0' in guard
+    for graded in ("sealed_full", "sealed_partial", "sealed_thin"):
+        assert graded not in runner
+
+    script = (Path(__file__).parents[1] / "scripts/build_daily_publication.py").read_text()
+    assert "sys.exit" not in script
+    assert "raise" not in script
+
+
+def test_thin_grade_still_seals_and_stores_the_edition():
+    grade = _edition_grade(_result(0, data_lag_hours=21.5))
+    assert grade.status == SEALED_THIN
+    assert "data_lag" in grade.reasons
+    # never a void: the row is still written under a graded status
+    assert grade.status in ("sealed_full", "sealed_partial", "sealed_thin")

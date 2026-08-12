@@ -19,23 +19,30 @@ from pydantic import TypeAdapter
 
 from app import db
 from app.services.daily_publication import fetch_daily_publication
+from app.services.edition_status import EditionGrade, grade_edition
 
 
 _JSON_ADAPTER = TypeAdapter(Any)
 
 
-def _edition_status(result: dict[str, Any]) -> str:
+def _edition_grade(result: dict[str, Any]) -> EditionGrade:
+    """Grade the seal from its MEASURED readiness fractions.
+
+    The old rule demanded every readiness dimension be `ready`, and two of them
+    (`who`, `where`) were unanimity conjunctions over 12 story nodes at ~50%
+    per-node attribution — so all 25 sealed editions read `degraded` and the
+    Brief never served the seal's Pareto selection. Grading policy, bars and
+    the measured histogram live in `app.services.edition_status`; data_lag and
+    an unfinished receipt scan are named there as reasons, and `SEAL_FAILED`
+    (the runner's reliability line) stays the only night-voiding marker.
+    """
     package = result.get("package")
     readiness = package.readiness if hasattr(package, "readiness") else {}
-    required = ("who", "what", "when", "where", "how")
-    if not all(readiness.get(key) and readiness[key].status == "ready" for key in required):
-        return "degraded"
-    completion = result.get("completion") or {}
-    if completion.get("receipt_fetch_error") or not completion.get("cursor_exhausted"):
-        return "degraded"
-    if float(completion.get("data_lag_hours") or 0) > 6:
-        return "degraded"
-    return "ready"
+    return grade_edition(readiness, result.get("completion") or {})
+
+
+def _edition_status(result: dict[str, Any]) -> str:
+    return _edition_grade(result).status
 
 
 async def _run(*, execute: bool) -> dict[str, Any]:
@@ -51,7 +58,14 @@ async def _run(*, execute: bool) -> dict[str, Any]:
         completion = encoded["completion"]
         edition_end = datetime.fromisoformat(completion["edition_end"])
         edition_start = edition_end - timedelta(hours=24)
-        status = _edition_status(result)
+        grade = _edition_grade(result)
+        status = grade.status
+        # The grade's reasons + bars ride the completion jsonb the serving path
+        # already returns, so a reader never has to guess WHY it graded so.
+        completion["status_contract"] = grade.contract
+        completion["status_reasons"] = grade.reasons
+        completion["status_facts"] = grade.facts
+        completion["status_dimensions"] = grade.dimensions
         if execute:
             async with db.pool.acquire() as conn:
                 await conn.execute(
@@ -84,6 +98,7 @@ async def _run(*, execute: bool) -> dict[str, Any]:
         return {
             "execute": execute,
             "status": status,
+            "status_reasons": grade.reasons,
             "edition_end": completion["edition_end"],
             "candidate_count": completion.get("candidate_count"),
             "selected_count": len(encoded.get("selection", {}).get("selected_ids", [])),
