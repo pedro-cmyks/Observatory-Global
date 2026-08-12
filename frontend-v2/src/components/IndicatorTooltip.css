@@ -31,6 +31,31 @@
   font-family: var(--font-mono, 'Geist Mono Variable', monospace);
   font-size: 0.75rem;
   color: var(--color-text-muted);
+  cursor: help;
+}
+
+/* A z-score we refused to print precisely (thin baseline). Set in prose, not
+   mono: it is a direction, not a measurement, and it should not look like one. */
+.indicator-zscore--degraded {
+  font-family: inherit;
+  font-style: italic;
+}
+
+/* The composite's inputs, rendered inline so the score is auditable:
+   "48 outlets · top tribunnews.com 11%" / "0 of 48 outlets recognized". */
+.indicator-inputs {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted, #9ca3af);
+  letter-spacing: 0.01em;
+  cursor: help;
+  border-bottom: 1px dotted currentColor;
+}
+
+.tooltip-basis {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #374151;
+  color: #9ca3af;
 }
 
 .indicator-help {

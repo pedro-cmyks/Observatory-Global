@@ -6,7 +6,7 @@
 import React from 'react'
 import './countQualifier.css'
 
-export type CountBase = 'raw' | 'verified' | 'sourced' | 'lifetime' | 'frozen' | 'gated'
+export type CountBase = 'raw' | 'verified' | 'sourced' | 'lifetime' | 'frozen' | 'gated' | 'rollup'
 
 export interface CountQualifierResult {
   /** Full "N · <window> · <base>" line. */
@@ -35,6 +35,14 @@ const BASE_TIPS: Record<CountBase, (n: string, w: string | null) => string> = {
   // there, identical tooltip" contradiction.
   gated: (n, w) =>
     `${n} signals in this thread's curated serving membership${w ? ` for the last ${w}` : ''} — the set the engine serves after relevance gating. The detail view counts every raw assignment, which can be larger.`,
+  // Fix round 2026-08-12 pair (a): Germany read 4,840 on the country card (a
+  // live raw scan) and 3,836 in the density list (the hourly rollup). Same
+  // quantity, two freshness levels — and the card called itself 'raw', which
+  // this file defines as "before the relevance gate", implying a gating
+  // difference that does not exist. Naming the rollup lane lets the reader
+  // reconcile the two instead of reading a contradiction.
+  rollup: (n, w) =>
+    `${n} signals counted from the hourly aggregate${w ? ` over the last ${w}` : ''} — the same roll-up the map and the country density list read, so these numbers agree. It refreshes on a cycle, so it can trail the live count by up to an hour.`,
 }
 
 const BASE_LABEL: Record<CountBase, string> = {
@@ -44,6 +52,7 @@ const BASE_LABEL: Record<CountBase, string> = {
   lifetime: 'lifetime',
   frozen: 'frozen',
   gated: 'gated',
+  rollup: 'rollup',
 }
 
 /**

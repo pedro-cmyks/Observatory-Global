@@ -530,6 +530,10 @@
     border-radius: 4px;
     font-size: 11px;
     color: var(--color-severity-critical);
+    /* Fix round 2026-08-12 pair (c): the badge now carries a data-tip naming its
+       basis (a ratio on a fixed 24h window vs the served baseline length) and
+       distinguishing it from the z-score below — so it must invite the hover. */
+    cursor: help;
 }
 .anomaly-badge-icon {
     animation: pulse-icon 1.2s ease-in-out infinite;

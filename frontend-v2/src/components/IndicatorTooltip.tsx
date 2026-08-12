@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './IndicatorTooltip.css';
+import { volumeZBasis } from '../lib/volumeBasis';
 
 interface IndicatorProps {
     score: number;
@@ -7,6 +8,21 @@ interface IndicatorProps {
     tooltip: string;
     colorScale?: 'green-red' | 'blue' | 'neutral';
     showScore?: boolean;
+    /**
+     * Fix round 2026-08-12 pair (e): the composite's INPUTS, rendered inline so
+     * the score is auditable at a glance ("48 outlets · top tribunnews.com 11%")
+     * instead of an unexplained 99 sitting next to an unexplained 30.
+     */
+    inlineNote?: string | null;
+    inlineTip?: string;
+    /**
+     * Overrides the score band word. Used when the band would be an unearned
+     * verdict — a quality score held down purely by outlets missing from our
+     * allowlist is "unclassified", never "Poor".
+     */
+    verdictLabel?: string | null;
+    /** Paints that unearned-verdict case neutral instead of danger red. */
+    neutralVerdict?: boolean;
 }
 
 /**
@@ -20,11 +36,21 @@ export const IndicatorTooltip: React.FC<IndicatorProps> = ({
     label,
     tooltip,
     colorScale = 'green-red',
-    showScore = true
+    showScore = true,
+    inlineNote,
+    inlineTip,
+    verdictLabel,
+    neutralVerdict
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
 
     const getColor = (): string => {
+        // An unearned verdict never gets a judgement colour: danger red on a
+        // score that only means "we have not catalogued this country's press"
+        // reads as an accusation we cannot support.
+        if (neutralVerdict) {
+            return 'var(--indicator-neutral)';
+        }
         if (colorScale === 'blue') {
             return 'var(--indicator-blue)';
         }
@@ -42,6 +68,7 @@ export const IndicatorTooltip: React.FC<IndicatorProps> = ({
     };
 
     const getScoreLabel = (): string => {
+        if (verdictLabel) return verdictLabel;
         if (score >= 80) return 'Excellent';
         if (score >= 60) return 'Good';
         if (score >= 40) return 'Moderate';
@@ -58,6 +85,11 @@ export const IndicatorTooltip: React.FC<IndicatorProps> = ({
                     style={{ color: getColor() }}
                 >
                     {score}
+                </span>
+            )}
+            {inlineNote && (
+                <span className="indicator-inputs" data-tip={inlineTip}>
+                    {inlineNote}
                 </span>
             )}
             <button
@@ -83,6 +115,7 @@ export const IndicatorTooltip: React.FC<IndicatorProps> = ({
                         {tooltip.split('\n').map((line, i) => (
                             <p key={i}>{line}</p>
                         ))}
+                        {inlineTip && <p className="tooltip-basis">{inlineTip}</p>}
                     </div>
                 </div>
             )}
@@ -95,6 +128,12 @@ interface VolumeIndicatorProps {
     zScore: number | null;
     level: string;
     tooltip: string;
+    /** Printed window the CURRENT half of the z-score covers, e.g. '24h'. */
+    windowLabel?: string | null;
+    baselineDays?: number | null;
+    daysObserved?: number | null;
+    /** Baseline too sparse for a meaningful sigma — show direction, not a number. */
+    thinBaseline?: boolean | null;
 }
 
 /**
@@ -104,9 +143,18 @@ export const VolumeIndicator: React.FC<VolumeIndicatorProps> = ({
     multiplier,
     zScore,
     level,
-    tooltip
+    tooltip,
+    windowLabel,
+    baselineDays,
+    daysObserved,
+    thinBaseline
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
+    // Fix round 2026-08-12 pair (c): the z-score is a DIFFERENT statistic on a
+    // DIFFERENT window from the × badge above it, and on a thin baseline its
+    // sigma is meaningless — printing "z: 71.2" there is fabricated precision.
+    // The pure decision lives in lib/volumeBasis (tested); this only renders it.
+    const zBasis = volumeZBasis({ zScore, windowLabel, baselineDays, daysObserved, thinBaseline });
 
     const getLevelColor = (): string => {
         switch (level) {
@@ -140,12 +188,16 @@ export const VolumeIndicator: React.FC<VolumeIndicatorProps> = ({
             <span
                 className="indicator-score"
                 style={{ color: getLevelColor() }}
+                data-tip={`Signal volume for this window as a share of this country's normal day. ${zBasis.tip}`}
             >
                 {multiplier.toFixed(1)}x normal
             </span>
-            {zScore !== null && (
-                <span className="indicator-zscore">
-                    (z: {zScore.toFixed(1)})
+            {zBasis.text && (
+                <span
+                    className={`indicator-zscore${zBasis.precise ? '' : ' indicator-zscore--degraded'}`}
+                    data-tip={zBasis.tip}
+                >
+                    ({zBasis.text})
                 </span>
             )}
             <button

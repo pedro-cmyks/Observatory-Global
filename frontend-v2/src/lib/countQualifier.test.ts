@@ -57,6 +57,39 @@ describe('countQualifier', () => {
     expect(q.tip).toMatch(/larger|bigger|higher/i)
   })
 
+  it('rollup base (fix round 2026-08-12 pair a): tip names the hourly aggregate and its lag', () => {
+    // Germany showed 4,840 on the country card (a LIVE raw signals_v2 scan) and
+    // 3,836 in the density list (the country_hourly_v2 rollup, refreshed on a
+    // ~30min cron behind a 15min cache). Same quantity, two freshness levels.
+    // The card was labeled "raw", which countQualifier defines as "before the
+    // relevance gate" — a gating difference that does not exist here. The
+    // mislabel foreclosed the reconciliation; "rollup" invites it.
+    const q = countQualifier(3836, '24h', 'rollup')
+    expect(q.label).toBe('3,836 · 24h · rollup')
+    expect(q.suffix).toBe('24h · rollup')
+    expect(q.tip).toMatch(/3,836/)
+    expect(q.tip).toMatch(/hourly/i)
+    expect(q.tip).toMatch(/aggregate|roll-?up|materiali[sz]ed/i)
+    // The lag must be stated — that IS the divergence the reader is seeing.
+    expect(q.tip).toMatch(/trail|behind|lag/i)
+    expect(q.tip).toMatch(/live|raw/i)
+    // It must NOT claim a gate ran, which is what 'raw' implied.
+    expect(q.tip).not.toMatch(/relevance gate/i)
+  })
+
+  it('rollup is the base the map and density list share — not a per-object base', () => {
+    // The point of the base is that the SAME number appears elsewhere: the card
+    // now reads the same lane the rest of the product shows.
+    const q = countQualifier(3836, '24h', 'rollup')
+    expect(q.tip).toMatch(/map|density|elsewhere|same/i)
+  })
+
+  it('the existing bases keep their exact meaning — rollup is additive', () => {
+    // Guard against redefining 'raw' while adding a neighbour to it.
+    expect(countQualifier(347, '24h', 'raw').tip).toMatch(/before the relevance gate/i)
+    expect(countQualifier(42, '24h', 'verified').tip).toMatch(/relevance gate/i)
+  })
+
   it('formats thousands with separators, never rescales the value', () => {
     expect(countQualifier(141841, '24h', 'raw').label).toBe('141,841 · 24h · raw')
   })

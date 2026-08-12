@@ -33,7 +33,9 @@ import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters';
 import { optionalFetchResponse } from '../lib/countryBriefFetch';
 import { decodeEntities } from '../lib/decodeEntities';
 import { humanizeCameoEvent } from '../lib/humanizeInternals';
-import { CountQualifierChip, countQualifier } from '../lib/countQualifier';
+import { CountQualifierChip, countQualifier, type CountBase } from '../lib/countQualifier';
+import { anomalyMultiplierBasis } from '../lib/volumeBasis';
+import { describeDiversity, describeQuality } from '../lib/sourceIndicators';
 import { LabelReviewChip } from '../lib/labelReviewChip';
 import { EvidenceRoute } from './EvidenceRoute';
 import { buildEvidenceRoute } from '../lib/evidenceRoute';
@@ -69,22 +71,37 @@ function timeAgo(iso: string): string {
     return `${Math.floor(h / 24)}d ago`;
 }
 
+// Fix round 2026-08-12 pair (e): the endpoint ALREADY returns every input to
+// both composites — this interface simply dropped them, so "Diversity 99" sat
+// next to "Quality 30" with no way for a reader to reconcile the two. All the
+// added fields are optional: an older payload must degrade to less text.
 interface Indicators {
     diversity: {
         score: number;
         tooltip: string;
         unique_count: number;
+        total_signals?: number | null;
+        /** Top outlets as [domain, count] tuples. */
+        top_domains?: Array<[string, number]> | null;
+        breakdown?: { unique_score?: number | null; entropy_score?: number | null } | null;
     };
     quality: {
         score: number;
         tooltip: string;
         allowlisted_count: number;
+        denylisted_count?: number | null;
+        unknown_count?: number | null;
+        allowlisted_sources?: string[] | null;
     };
     volume: {
         multiplier: number | null;
         z_score: number | null;
         level: string;
         tooltip: string;
+        /** Baseline too sparse for a meaningful sigma — degrade, never fake precision. */
+        thin_baseline?: boolean | null;
+        days_observed?: number | null;
+        baseline_days?: number | null;
     };
     error?: string;
 }
@@ -93,6 +110,8 @@ interface BriefData {
     country_code: string;
     hours: number;
     signal_count: number;
+    /** Which lane produced signal_count — the card states its base, never guesses. */
+    signal_count_base: CountBase;
     top_themes: Array<{ name: string; count: number }>;
     narrative_threads: CountryBriefThreadInput[];
     top_sources: Array<{ name: string; count: number }>;
@@ -114,6 +133,9 @@ interface CountryAnomaly {
     country_code: string;
     multiplier: number;
     level?: string;
+    /** Real span of the baseline SQL, served so the copy stops guessing "7-day". */
+    baseline_days?: number | null;
+    days_observed?: number | null;
 }
 
 interface SignalResponseItem {
@@ -139,6 +161,9 @@ interface NodesResponse {
         signalCount?: number;
         sentiment?: number;
     }>;
+    /** 'hourly_rollup' once the backend serves the same base as the density list. */
+    source?: string | null;
+    coverage?: { window_hours?: number | null; refreshed_at?: string | null } | null;
 }
 
 interface TrendsResponse {
@@ -376,11 +401,30 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 if (sentiment > 0.5) sentimentTrend = 'improving';
                 else if (sentiment < -0.5) sentimentTrend = 'declining';
 
+                // Fix round 2026-08-12 pair (a): the card read 4,840 for Germany
+                // while the density list read 3,836. Both are pre-gate counts of
+                // the same rows — /api/v2/focus is a LIVE raw signals_v2 scan,
+                // /api/v2/nodes is the hourly rollup the map and density list
+                // share (cron ~30min + 15min cache), so the raw scan runs ahead.
+                // Prefer the lane the rest of the product shows, and state which
+                // lane the number came from. The chain still degrades: rollup →
+                // live scan → the fetched sample.
+                const rollupCount = node?.signalCount;
+                const liveCount = focusSummary?.summary.total_signals;
+                const signalCount = rollupCount ?? liveCount ?? signals.length;
+                const signalCountBase: CountBase =
+                    rollupCount != null ? 'rollup'
+                        : liveCount != null ? 'raw'
+                            // Last resort is the capped 500-signal fetch, which is a
+                            // sample and must never claim to be a full count.
+                            : 'sourced';
+
                 if (controller.signal.aborted) return;
                 setData({
                     country_code: countryCode,
                     hours: timeWindow,
-                    signal_count: focusSummary?.summary.total_signals ?? node?.signalCount ?? signals.length,
+                    signal_count: signalCount,
+                    signal_count_base: signalCountBase,
                     top_themes: topCounts(themeCounts, 12),
                     narrative_threads: threadsPayload?.threads ?? [],
                     top_sources: summarySources.length > 0 ? summarySources : topCounts(sourceCounts, 15),
@@ -526,7 +570,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 <div>
                     <span className="cb-metric-value">
                         {data.signal_count.toLocaleString()}
-                        <CountQualifierChip count={data.signal_count} windowLabel={`${timeWindow}h`} base="raw" />
+                        <CountQualifierChip count={data.signal_count} windowLabel={`${timeWindow}h`} base={data.signal_count_base} />
                     </span>
                     <span className="cb-metric-label">signals</span>
                 </div>
@@ -544,13 +588,26 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             </div>
 
-            {anomaly && (
-                <div className="badge anomaly-badge">
-                    <span className="anomaly-badge-icon">▲</span>
-                    <span>{anomaly.multiplier.toFixed(0)}× above 7-day baseline</span>
-                    <span className="anomaly-badge-level">{anomaly.level?.toUpperCase()}</span>
-                </div>
-            )}
+            {/* Fix round 2026-08-12 pair (c): this badge is a RATIO over a fixed
+                24h window; the z-score in Trust Indicators is a different
+                statistic on a different window. The copy also claimed a "7-day"
+                baseline while the SQL spans 8 days — the length is now served,
+                and absent it we say "recent" rather than invent a number. */}
+            {anomaly && (() => {
+                const basis = anomalyMultiplierBasis({
+                    multiplier: anomaly.multiplier,
+                    baselineDays: anomaly.baseline_days,
+                    daysObserved: anomaly.days_observed,
+                });
+                if (!basis.text) return null;
+                return (
+                    <div className="badge anomaly-badge" data-tip={basis.tip}>
+                        <span className="anomaly-badge-icon">▲</span>
+                        <span>{basis.text}</span>
+                        <span className="anomaly-badge-level">{anomaly.level?.toUpperCase()}</span>
+                    </div>
+                );
+            })()}
 
             <p className="cb-connection-note cb-connection-note--analysis">
                 {buildCountryPublicAttentionNarrative({
@@ -777,29 +834,63 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
             )}
 
             {/* Trust Indicators */}
-            {indicators && !(indicators as Indicators & { error?: string }).error && (
-                <section className="brief-section">
-                    <div className="section-label cb-section-label">Trust Indicators</div>
-                    <div className="indicators-stack">
-                        <IndicatorTooltip
-                            score={indicators.diversity?.score || 0}
-                            label="Source Diversity"
-                            tooltip={indicators.diversity?.tooltip || 'No data available'}
-                        />
-                        <IndicatorTooltip
-                            score={indicators.quality?.score || 0}
-                            label="Source Quality"
-                            tooltip={indicators.quality?.tooltip || 'No data available'}
-                        />
-                        <VolumeIndicator
-                            multiplier={indicators.volume?.multiplier || null}
-                            zScore={indicators.volume?.z_score || null}
-                            level={indicators.volume?.level || 'unknown'}
-                            tooltip={indicators.volume?.tooltip || 'No data available'}
-                        />
-                    </div>
-                </section>
-            )}
+            {indicators && !(indicators as Indicators & { error?: string }).error && (() => {
+                // Fix round 2026-08-12 pair (e): show each composite's INPUTS so
+                // "Diversity 99" beside "Quality 30" reads as one coherent story
+                // (many outlets, none on our allowlist) instead of a
+                // contradiction. Every input below already came down the wire.
+                const diversity = describeDiversity({
+                    score: indicators.diversity?.score,
+                    unique_count: indicators.diversity?.unique_count,
+                    total_signals: indicators.diversity?.total_signals,
+                    top_domains: indicators.diversity?.top_domains,
+                    breakdown: indicators.diversity?.breakdown,
+                });
+                const quality = describeQuality({
+                    score: indicators.quality?.score,
+                    allowlisted_count: indicators.quality?.allowlisted_count,
+                    denylisted_count: indicators.quality?.denylisted_count,
+                    unknown_count: indicators.quality?.unknown_count,
+                });
+                return (
+                    <section className="brief-section">
+                        <div className="section-label cb-section-label">Trust Indicators</div>
+                        <div className="indicators-stack">
+                            <IndicatorTooltip
+                                score={indicators.diversity?.score || 0}
+                                label="Source Diversity"
+                                tooltip={indicators.diversity?.tooltip || 'No data available'}
+                                inlineNote={diversity.inline}
+                                inlineTip={diversity.tip}
+                            />
+                            <IndicatorTooltip
+                                score={indicators.quality?.score || 0}
+                                label="Source Quality"
+                                tooltip={indicators.quality?.tooltip || 'No data available'}
+                                inlineNote={quality.inline}
+                                inlineTip={quality.tip}
+                                // A score held down purely by outlets we never
+                                // catalogued is an allowlist gap, not a verdict —
+                                // it must not read "Poor" in danger red.
+                                verdictLabel={quality.verdict}
+                                neutralVerdict={quality.unclassified}
+                            />
+                            <VolumeIndicator
+                                // `||` turned a legitimate 0 into null and the chip
+                                // silently vanished. `??` keeps measured zeros.
+                                multiplier={indicators.volume?.multiplier ?? null}
+                                zScore={indicators.volume?.z_score ?? null}
+                                level={indicators.volume?.level || 'unknown'}
+                                tooltip={indicators.volume?.tooltip || 'No data available'}
+                                windowLabel={`${timeWindow}h`}
+                                baselineDays={indicators.volume?.baseline_days ?? null}
+                                daysObserved={indicators.volume?.days_observed ?? null}
+                                thinBaseline={indicators.volume?.thin_baseline ?? null}
+                            />
+                        </div>
+                    </section>
+                );
+            })()}
 
             {/* Voice Mix — self-coverage vs outside voices (#235) */}
             {voiceMix && voiceMix.attributable_voices > 0 && (() => {
