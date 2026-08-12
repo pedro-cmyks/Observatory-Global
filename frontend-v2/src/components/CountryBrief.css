@@ -739,6 +739,16 @@
     line-height: 1.4;
 }
 
+/* T2.2 anatomy: a question this scope cannot answer. Same voice as the lane
+   gaps the person folder already prints (`.entity-lane-gap`) — a stated
+   absence, never a blank. */
+.cb-lane-gap {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
 /* #214 below-gate (UNVERIFIED) tray — raw coverage that cleared no gate. */
 .cb-belowgate-tray {
     margin-top: 10px;

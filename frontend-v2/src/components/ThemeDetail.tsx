@@ -1100,7 +1100,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
                         {originAttention?.title && (
                             <div className="theme-section public-attention-origin">
-                                <div className="theme-section-title">PUBLIC ATTENTION CONTEXT</div>
+                                <div className="section-label theme-section-title">OPENED FROM PUBLIC ATTENTION</div>
                                 <div className="public-attention-origin-card">
                                     <div>
                                         <span className="attention-signal-icon">PUBLIC</span>
@@ -1156,118 +1156,136 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             signatureMeta={data?.signatureMeta}
                         />
 
-                        {/* R3 spine drill-down: the SPECIFIC living stories under
-                            this atlas topic (category) — big topics open into their
-                            small stories (Pedro 2026-07-02). */}
-                        {data.memberStories && data.memberStories.length > 0 && (
+
+                        {/* Combined activity timeline (Track C4b — spec §3): diverging
+                            volume bars (tone by position) + rarity-normalized key-subject
+                            trend lines + voice-mix band + edge-diff overlay. Replaces the
+                            old red/green sentiment bars; the legacy hourly series is passed
+                            as a fallback so atlas-category threads (which don't resolve to a
+                            dynamic topic in the timeline endpoint) never regress. */}
+                        {(data.timeline.length > 0 || theme.startsWith('dynamic-topic-')) && (
                             <div className="theme-section">
-                                <div className="theme-section-title" style={{ color: '#34d399' }}>
-                                    STORIES INSIDE THIS TOPIC · {data.memberStories.length}
-                                </div>
-                                <div className="member-stories">
-                                    {data.memberStories.map(story => (
-                                        <button
-                                            key={story.id}
-                                            className="member-story-row"
-                                            onClick={() => onThemeSelect?.(story.id)}
-                                            data-tip={`Open this specific story (${story.n} signals)`}
-                                        >
-                                            <span className="member-story-label">
-                                                {story.crisis_relevant ? <span className="member-story-crisis">●</span> : null}
-                                                {decodeEntities(story.label)}
-                                            </span>
-                                            <span className="member-story-meta">{story.n} sig</span>
-                                        </button>
-                                    ))}
-                                </div>
+                                <FocusTimeline
+                                    focusRef={theme}
+                                    hours={hours}
+                                    granularity="day"
+                                    label={data.label || getThemeLabel(theme)}
+                                    fallbackTimeline={data.timeline}
+                                />
                             </div>
                         )}
 
-                        {/* RELATED INVESTIGATIONS (Concepts) */}
-                        {data.relatedConcepts && data.relatedConcepts.length > 0 && (
-                            <div className="theme-section">
-                                <div className="theme-section-title" style={{ color: '#10b981' }}>RELATED INVESTIGATIONS</div>
-                                <div className="concepts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', marginTop: '12px' }}>
-                                    {data.relatedConcepts.map(c => (
-                                        <button 
-                                            key={c.slug}
-                                            className="concept-card"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onThemeSelect?.(c.slug, originAttention) }}
-                                            style={{ textAlign: 'left', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
-                                        >
-                                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#10b981', marginBottom: '4px' }}>{c.label}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-sentiment-neutral)', lineHeight: 1.4 }}>{c.description}</div>
-                                        </button>
-                                    ))}
+
+                        {/* Related Topics (GDELT co-occurring themes) removed: raw GDELT
+                            theme codes are not the user-facing topic model (product
+                            guardrail) and the click resolved to an unroutable code.
+                            Narrative threads + semantic neighbors are the related model. */}
+
+                        {/* Key Subjects — typed: person is one type (#176) */}
+                        {data.topPersons.length > 0 && (() => {
+                            const keySubjects = buildKeySubjects(
+                                data.topPersons.map(p => ({ name: p.name, count: p.count })), 8,
+                            )
+                            if (keySubjects.length === 0) return null
+                            return (
+                                <div className="theme-section">
+                                    <h3 className="section-label">Key Subjects</h3>
+                                    <div className="person-pills">
+                                        {keySubjects.map(s => {
+                                            const clickable = s.type === 'person'
+                                            return (
+                                                <span
+                                                    key={`${s.type}:${s.name}`}
+                                                    className={`person-pill${clickable ? '' : ' person-pill--static'}`}
+                                                    data-tip={clickable
+                                                        ? `${s.count} mentions — click to filter signals`
+                                                        : `${s.type} · ${s.count} mentions`}
+                                                    onClick={clickable ? () => onPersonClick?.(s.name) : undefined}
+                                                >
+                                                    <span className="subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
+                                                    {s.name}
+                                                    <span className="person-pill-count">{s.count}</span>
+                                                </span>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
+                            )
+                        })()}
+
+
+                        {/* All coverage — collapsed by default. Replaces the old
+                            always-on "Recent Coverage" list (metadata-only, no
+                            headlines). Now shows real headlines linking to the
+                            original article. Per-source coverage lives in the
+                            expand under each Top Source above. */}
+                        {data.signals.length > 0 && (
+                            <div className="theme-section" id="td-signals">
+                                <button
+                                    className="all-coverage-toggle"
+                                    onClick={() => setShowAllCoverage(v => !v)}
+                                    data-tip="Every recent article in this story, newest first"
+                                >
+                                    {showAllCoverage ? '▴ Hide' : '▾ Show'} all coverage ({data.signals.length})
+                                </button>
+                                {showAllCoverage && (
+                                    <div className="coverage-articles coverage-articles--all">
+                                        {data.signals.slice(0, 30).map((sig, i) => (
+                                            <div key={i}>{renderArticle(sig, { showSource: true })}</div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* PUBLIC ATTENTION — Trends & Wiki cross-reference */}
-                        {(trendMatch?.has_public_interest || wikiMatch?.has_wiki_activity) && (
-                            <div className="theme-section">
-                                <div className="theme-section-title">PUBLIC ATTENTION</div>
-                                <div className="attention-signals-row">
-                                    {trendMatch?.has_public_interest && (
-                                        <div className="attention-signal-card">
-                                            <span className="attention-signal-icon">SEARCH</span>
-                                            <div>
-                                                <div className="attention-signal-label">People are searching for this</div>
-                                                <div className="attention-signal-detail">
-                                                    {trendMatch.matches.slice(0, 3).map((m, i) => (
-                                                        <span key={i} className="trending-keyword">{m.keyword}</span>
-                                                    ))}
-                                                </div>
+
+                        {/* #161 external-depth lane — offered when the topic is THIN
+                            (few gate-verified receipts). On-demand, never automatic:
+                            latency is 15-30s and the source is external/unverified. */}
+                        {((data.verified ?? data.total ?? 0) < 10) && (
+                            <div className="theme-section external-depth-section">
+                                <div className="section-label theme-section-title">EXTERNAL DEPTH</div>
+                                {externalDepth === null && (
+                                    <button
+                                        className="external-depth-btn"
+                                        onClick={fetchExternalDepth}
+                                        data-tip="Search GDELT DOC 2.0 full-text index for additional coverage of this thin topic. External source — results are unverified and carry credibility tiers. Takes 15-30s."
+                                    >
+                                        ⊕ Search external coverage (GDELT DOC 2.0)
+                                    </button>
+                                )}
+                                {externalDepth === 'loading' && (
+                                    <p className="external-depth-status">Querying external index… (15-30s, external source)</p>
+                                )}
+                                {externalDepth && externalDepth !== 'loading' && !externalDepth.available && (
+                                    <p className="external-depth-status">
+                                        External lane unavailable: {externalDepth.reason}
+                                    </p>
+                                )}
+                                {externalDepth && externalDepth !== 'loading' && externalDepth.available && (
+                                    <div className="external-depth-results">
+                                        <p className="external-depth-caveat">
+                                            EXTERNAL · UNVERIFIED — {externalDepth.items?.length ?? 0} articles from the DOC 2.0 index
+                                            (query: {externalDepth.query}). Not Atlas evidence; tiers shown per source.
+                                        </p>
+                                        {(externalDepth.items ?? []).slice(0, 12).map((it, i) => (
+                                            <div key={i} className="external-depth-item">
+                                                <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.title)}</a>
+                                                <span className="external-depth-meta">
+                                                    {it.domain}{it.language ? ` · ${it.language}` : ''}
+                                                    {it.credibility && !['unknown', 'mainstream'].includes(it.credibility.label) && (
+                                                        <span
+                                                            className={`source-tier-badge source-tier-${it.credibility.label}`}
+                                                            data-tip={`Credibility tier: ${it.credibility.label} — ${it.credibility.provenance}`}
+                                                        >
+                                                            {it.credibility.label}
+                                                        </span>
+                                                    )}
+                                                </span>
                                             </div>
-                                        </div>
-                                    )}
-                                    {wikiMatch?.has_wiki_activity && (
-                                        <div className="attention-signal-card">
-                                            <span className="attention-signal-icon">WIKI</span>
-                                            <div>
-                                                <div className="attention-signal-label">
-                                                    Wikipedia spike — {(wikiMatch.total_views || 0).toLocaleString()} views
-                                                </div>
-                                                <div className="attention-signal-detail">
-                                                    {wikiMatch.matches.slice(0, 3).map((m, i) => (
-                                                        <span key={i} className="wiki-article">{m.title}</span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* PUBLIC ATTENTION FOR THIS THREAD — forum discussion (L2 C3) */}
-                        {threadForum.length > 0 && (
-                            <div className="theme-section">
-                                <div className="theme-section-title">
-                                    PUBLIC ATTENTION · THIS THREAD
-                                    <span className="forum-lane-badge" data-tip="Forum discussion semantically related to this story. Discussion only — never counted as verified evidence.">DISCUSSION · UNVERIFIED</span>
-                                </div>
-                                <div className="thread-forum-list">
-                                    {threadForum.slice(0, 6).map(item => (
-                                        <a
-                                            key={item.signal_id}
-                                            className="thread-forum-row"
-                                            href={item.source_url || undefined}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <span className="thread-forum-meta">
-                                                {item.subreddit && <span className="thread-forum-sub">{item.subreddit}</span>}
-                                                <span className="thread-forum-sim" data-tip="Semantic similarity to this story">{Math.round(item.similarity * 100)}%</span>
-                                            </span>
-                                            <span className="thread-forum-headline">
-                                                <TranslatableHeadline signalId={item.signal_id} original={decodeEntities(item.headline)} sourceLang={item.source_lang} />
-                                            </span>
-                                        </a>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -1304,7 +1322,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             return (
                                 <div className="theme-section framing-section" id="td-coverage">
                                     <div className="framing-header-row">
-                                        <h3 data-help="Each card shows how a country's media frames this topic. Tone ranges from −10 (critical) to +10 (supportive). Click any card to see country-specific signals.">How It's Covered</h3>
+                                        <h3 className="section-label" data-help="Each card shows how a country's media frames this topic. Tone ranges from −10 (critical) to +10 (supportive). Click any card to see country-specific signals.">How It's Covered</h3>
                                         <span className="framing-scope">
                                             top {countryFramingRows.length} of {data.countryBreakdown.length} countries by volume
                                         </span>
@@ -1426,65 +1444,166 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             )
                         })()}
 
-                        {/* Combined activity timeline (Track C4b — spec §3): diverging
-                            volume bars (tone by position) + rarity-normalized key-subject
-                            trend lines + voice-mix band + edge-diff overlay. Replaces the
-                            old red/green sentiment bars; the legacy hourly series is passed
-                            as a fallback so atlas-category threads (which don't resolve to a
-                            dynamic topic in the timeline endpoint) never regress. */}
-                        {(data.timeline.length > 0 || theme.startsWith('dynamic-topic-')) && (
+
+                        {/* R3 spine drill-down: the SPECIFIC living stories under
+                            this atlas topic (category) — big topics open into their
+                            small stories (Pedro 2026-07-02). */}
+                        {data.memberStories && data.memberStories.length > 0 && (
                             <div className="theme-section">
-                                <FocusTimeline
-                                    focusRef={theme}
-                                    hours={hours}
-                                    granularity="day"
-                                    label={data.label || getThemeLabel(theme)}
-                                    fallbackTimeline={data.timeline}
-                                />
+                                <div className="section-label theme-section-title">
+                                    STORIES INSIDE THIS TOPIC · {data.memberStories.length}
+                                </div>
+                                <div className="member-stories">
+                                    {data.memberStories.map(story => (
+                                        <button
+                                            key={story.id}
+                                            className="member-story-row"
+                                            onClick={() => onThemeSelect?.(story.id)}
+                                            data-tip={`Open this specific story (${story.n} signals)`}
+                                        >
+                                            <span className="member-story-label">
+                                                {story.crisis_relevant ? <span className="member-story-crisis">●</span> : null}
+                                                {decodeEntities(story.label)}
+                                            </span>
+                                            <span className="member-story-meta">{story.n} sig</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
-                        {/* Related Topics (GDELT co-occurring themes) removed: raw GDELT
-                            theme codes are not the user-facing topic model (product
-                            guardrail) and the click resolved to an unroutable code.
-                            Narrative threads + semantic neighbors are the related model. */}
 
-                        {/* Key Subjects — typed: person is one type (#176) */}
-                        {data.topPersons.length > 0 && (() => {
-                            const keySubjects = buildKeySubjects(
-                                data.topPersons.map(p => ({ name: p.name, count: p.count })), 8,
-                            )
-                            if (keySubjects.length === 0) return null
-                            return (
-                                <div className="theme-section">
-                                    <h3>Key Subjects</h3>
-                                    <div className="person-pills">
-                                        {keySubjects.map(s => {
-                                            const clickable = s.type === 'person'
-                                            return (
-                                                <span
-                                                    key={`${s.type}:${s.name}`}
-                                                    className={`person-pill${clickable ? '' : ' person-pill--static'}`}
-                                                    data-tip={clickable
-                                                        ? `${s.count} mentions — click to filter signals`
-                                                        : `${s.type} · ${s.count} mentions`}
-                                                    onClick={clickable ? () => onPersonClick?.(s.name) : undefined}
-                                                >
-                                                    <span className="subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
-                                                    {s.name}
-                                                    <span className="person-pill-count">{s.count}</span>
-                                                </span>
-                                            )
-                                        })}
-                                    </div>
+                        {/* RELATED INVESTIGATIONS (Concepts) */}
+                        {data.relatedConcepts && data.relatedConcepts.length > 0 && (
+                            <div className="theme-section">
+                                <div className="section-label theme-section-title">RELATED INVESTIGATIONS</div>
+                                <div className="concepts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                                    {data.relatedConcepts.map(c => (
+                                        <button 
+                                            key={c.slug}
+                                            className="concept-card"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onThemeSelect?.(c.slug, originAttention) }}
+                                            style={{ textAlign: 'left', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
+                                        >
+                                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#10b981', marginBottom: '4px' }}>{c.label}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--color-sentiment-neutral)', lineHeight: 1.4 }}>{c.description}</div>
+                                        </button>
+                                    ))}
                                 </div>
-                            )
-                        })()}
+                            </div>
+                        )}
+
+
+                        {/* PUBLIC ATTENTION — Trends & Wiki cross-reference */}
+                        {(trendMatch?.has_public_interest || wikiMatch?.has_wiki_activity) && (
+                            <div className="theme-section">
+                                <div className="section-label theme-section-title">PUBLIC ATTENTION</div>
+                                <div className="attention-signals-row">
+                                    {trendMatch?.has_public_interest && (
+                                        <div className="attention-signal-card">
+                                            <span className="attention-signal-icon">SEARCH</span>
+                                            <div>
+                                                <div className="attention-signal-label">People are searching for this</div>
+                                                <div className="attention-signal-detail">
+                                                    {trendMatch.matches.slice(0, 3).map((m, i) => (
+                                                        <span key={i} className="trending-keyword">{m.keyword}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {wikiMatch?.has_wiki_activity && (
+                                        <div className="attention-signal-card">
+                                            <span className="attention-signal-icon">WIKI</span>
+                                            <div>
+                                                <div className="attention-signal-label">
+                                                    Wikipedia spike — {(wikiMatch.total_views || 0).toLocaleString()} views
+                                                </div>
+                                                <div className="attention-signal-detail">
+                                                    {wikiMatch.matches.slice(0, 3).map((m, i) => (
+                                                        <span key={i} className="wiki-article">{m.title}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+
+                        {/* PUBLIC ATTENTION FOR THIS THREAD — forum discussion (L2 C3) */}
+                        {threadForum.length > 0 && (
+                            <div className="theme-section">
+                                <div className="section-label theme-section-title">
+                                    PUBLIC ATTENTION · THIS THREAD
+                                    <span className="forum-lane-badge" data-tip="Forum discussion semantically related to this story. Discussion only — never counted as verified evidence.">DISCUSSION · UNVERIFIED</span>
+                                </div>
+                                <div className="thread-forum-list">
+                                    {threadForum.slice(0, 6).map(item => (
+                                        <a
+                                            key={item.signal_id}
+                                            className="thread-forum-row"
+                                            href={item.source_url || undefined}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <span className="thread-forum-meta">
+                                                {item.subreddit && <span className="thread-forum-sub">{item.subreddit}</span>}
+                                                <span className="thread-forum-sim" data-tip="Semantic similarity to this story">{Math.round(item.similarity * 100)}%</span>
+                                            </span>
+                                            <span className="thread-forum-headline">
+                                                <TranslatableHeadline signalId={item.signal_id} original={decodeEntities(item.headline)} sourceLang={item.source_lang} />
+                                            </span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+
+                        {/* #237 community discussion — the forum/social posts behind
+                            the thread. PUBLIC DISCUSSION, never evidence: the
+                            claim-origin layer, verified=false always. */}
+                        {discussion && discussion.count > 0 && (
+                            <div className="theme-section community-discussion-section">
+                                <div className="section-label theme-section-title">PUBLIC DISCUSSION · UNVERIFIED</div>
+                                <p className="external-depth-caveat" data-tip="Non-traditional / forum / social sources (Bluesky, Lemmy). Shows emergence and claim origin — never evidence, never corroboration.">
+                                    {discussion.count} posts from forum/social — claim-origin layer, not evidence
+                                    {truncationNote(Math.min(discussion.items.length, 10), discussion.count) && (
+                                        <> · {truncationNote(Math.min(discussion.items.length, 10), discussion.count)}</>
+                                    )}
+                                </p>
+                                {discussion.items.slice(0, 10).map((it, i) => (
+                                    <div key={i} className="community-discussion-item">
+                                        <span className="cd-platform">
+                                            {it.platform?.replace(/^lemmy\//, '')}{it.origin ? ` · ${it.origin}` : ''}
+                                            {/* #248 relevance honesty: MEASURED attach similarity —
+                                                absent when the engine recorded none (never faked). */}
+                                            {formatAttachSimilarity(it.similarity) && (
+                                                <span className="thread-forum-sim" data-tip="Measured semantic similarity between this post and the story — how confidently it was attached. Not verification.">
+                                                    {formatAttachSimilarity(it.similarity)}
+                                                </span>
+                                            )}
+                                            {laneTag(it.lane) && (
+                                                <span className="cd-noise-lane" data-tip="This post reads as hobby/sports/entertainment/lifestyle rather than news discussion. It sorts below news-y posts but is never hidden.">
+                                                    {laneTag(it.lane)}
+                                                </span>
+                                            )}
+                                        </span>
+                                        <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.headline)}</a>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
 
                         {/* Top Sources */}
                         {data.topSources.length > 0 && (
                             <div className="theme-section" id="td-sources">
-                                <h3>Top Sources</h3>
+                                <h3 className="section-label">Top Sources</h3>
                                 <div className="source-list">
                                     {data.topSources.map(s => {
                                         const family = getSourceFamilyMeta(s.family)
@@ -1550,29 +1669,6 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
                         )}
 
-                        {/* All coverage — collapsed by default. Replaces the old
-                            always-on "Recent Coverage" list (metadata-only, no
-                            headlines). Now shows real headlines linking to the
-                            original article. Per-source coverage lives in the
-                            expand under each Top Source above. */}
-                        {data.signals.length > 0 && (
-                            <div className="theme-section" id="td-signals">
-                                <button
-                                    className="all-coverage-toggle"
-                                    onClick={() => setShowAllCoverage(v => !v)}
-                                    data-tip="Every recent article in this story, newest first"
-                                >
-                                    {showAllCoverage ? '▴ Hide' : '▾ Show'} all coverage ({data.signals.length})
-                                </button>
-                                {showAllCoverage && (
-                                    <div className="coverage-articles coverage-articles--all">
-                                        {data.signals.slice(0, 30).map((sig, i) => (
-                                            <div key={i}>{renderArticle(sig, { showSource: true })}</div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
 
                         {/* VOICE MIX · WHO SPEAKS (council wish 18) — language +
                             outlet-origin distribution over this thread's typed
@@ -1581,7 +1677,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             the country Voice Mix). */}
                         {threadVoice?.kind === 'unavailable' && (
                             <div className="theme-section thread-voice-section">
-                                <div className="theme-section-title">VOICE MIX · WHO SPEAKS</div>
+                                <div className="section-label theme-section-title">VOICE MIX · WHO SPEAKS</div>
                                 <p className="external-depth-status">Voice mix unavailable: {threadVoice.reason}</p>
                             </div>
                         )}
@@ -1593,7 +1689,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 : 'var(--accent-red, #f87171)')
                             return (
                                 <div className="theme-section thread-voice-section">
-                                    <div className="theme-section-title">
+                                    <div className="section-label theme-section-title">
                                         VOICE MIX · WHO SPEAKS
                                         <span className="sentiment-info-icon" data-tip="Who carries this story: languages and outlet home countries over the story's typed evidence members (a projection of the engine's member record, not all coverage). Self-voice is outlet OWNERSHIP, not language — a foreign outlet in the local language counts as soft power, never as a local voice.">?</span>
                                     </div>
@@ -1646,46 +1742,12 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             )
                         })()}
 
-                        {/* #237 community discussion — the forum/social posts behind
-                            the thread. PUBLIC DISCUSSION, never evidence: the
-                            claim-origin layer, verified=false always. */}
-                        {discussion && discussion.count > 0 && (
-                            <div className="theme-section community-discussion-section">
-                                <div className="theme-section-title">PUBLIC DISCUSSION · UNVERIFIED</div>
-                                <p className="external-depth-caveat" data-tip="Non-traditional / forum / social sources (Bluesky, Lemmy). Shows emergence and claim origin — never evidence, never corroboration.">
-                                    {discussion.count} posts from forum/social — claim-origin layer, not evidence
-                                    {truncationNote(Math.min(discussion.items.length, 10), discussion.count) && (
-                                        <> · {truncationNote(Math.min(discussion.items.length, 10), discussion.count)}</>
-                                    )}
-                                </p>
-                                {discussion.items.slice(0, 10).map((it, i) => (
-                                    <div key={i} className="community-discussion-item">
-                                        <span className="cd-platform">
-                                            {it.platform?.replace(/^lemmy\//, '')}{it.origin ? ` · ${it.origin}` : ''}
-                                            {/* #248 relevance honesty: MEASURED attach similarity —
-                                                absent when the engine recorded none (never faked). */}
-                                            {formatAttachSimilarity(it.similarity) && (
-                                                <span className="thread-forum-sim" data-tip="Measured semantic similarity between this post and the story — how confidently it was attached. Not verification.">
-                                                    {formatAttachSimilarity(it.similarity)}
-                                                </span>
-                                            )}
-                                            {laneTag(it.lane) && (
-                                                <span className="cd-noise-lane" data-tip="This post reads as hobby/sports/entertainment/lifestyle rather than news discussion. It sorts below news-y posts but is never hidden.">
-                                                    {laneTag(it.lane)}
-                                                </span>
-                                            )}
-                                        </span>
-                                        <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.headline)}</a>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
 
                         {/* Deep history (time-as-dimension, thread level): the story's
                             archive-era series back to May-03 + click-a-day receipts.
                             On-demand — embeds the label + scans archive units. */}
                         <div className="theme-section deep-history-section">
-                            <div className="theme-section-title">DEEP HISTORY</div>
+                            <div className="section-label theme-section-title">DEEP HISTORY</div>
                             {deepHistory === null && (
                                 <button
                                     className="external-depth-btn"
@@ -1749,55 +1811,6 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             )}
                         </div>
 
-                        {/* #161 external-depth lane — offered when the topic is THIN
-                            (few gate-verified receipts). On-demand, never automatic:
-                            latency is 15-30s and the source is external/unverified. */}
-                        {((data.verified ?? data.total ?? 0) < 10) && (
-                            <div className="theme-section external-depth-section">
-                                <div className="theme-section-title">EXTERNAL DEPTH</div>
-                                {externalDepth === null && (
-                                    <button
-                                        className="external-depth-btn"
-                                        onClick={fetchExternalDepth}
-                                        data-tip="Search GDELT DOC 2.0 full-text index for additional coverage of this thin topic. External source — results are unverified and carry credibility tiers. Takes 15-30s."
-                                    >
-                                        ⊕ Search external coverage (GDELT DOC 2.0)
-                                    </button>
-                                )}
-                                {externalDepth === 'loading' && (
-                                    <p className="external-depth-status">Querying external index… (15-30s, external source)</p>
-                                )}
-                                {externalDepth && externalDepth !== 'loading' && !externalDepth.available && (
-                                    <p className="external-depth-status">
-                                        External lane unavailable: {externalDepth.reason}
-                                    </p>
-                                )}
-                                {externalDepth && externalDepth !== 'loading' && externalDepth.available && (
-                                    <div className="external-depth-results">
-                                        <p className="external-depth-caveat">
-                                            EXTERNAL · UNVERIFIED — {externalDepth.items?.length ?? 0} articles from the DOC 2.0 index
-                                            (query: {externalDepth.query}). Not Atlas evidence; tiers shown per source.
-                                        </p>
-                                        {(externalDepth.items ?? []).slice(0, 12).map((it, i) => (
-                                            <div key={i} className="external-depth-item">
-                                                <a href={it.url} target="_blank" rel="noopener noreferrer">{decodeEntities(it.title)}</a>
-                                                <span className="external-depth-meta">
-                                                    {it.domain}{it.language ? ` · ${it.language}` : ''}
-                                                    {it.credibility && !['unknown', 'mainstream'].includes(it.credibility.label) && (
-                                                        <span
-                                                            className={`source-tier-badge source-tier-${it.credibility.label}`}
-                                                            data-tip={`Credibility tier: ${it.credibility.label} — ${it.credibility.provenance}`}
-                                                        >
-                                                            {it.credibility.label}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
 
                     </>
                 )}

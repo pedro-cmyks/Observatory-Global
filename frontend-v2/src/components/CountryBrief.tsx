@@ -632,6 +632,66 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 })()}
             </p>
 
+            {/* Trust Indicators */}
+            {indicators && !(indicators as Indicators & { error?: string }).error && (() => {
+                // Fix round 2026-08-12 pair (e): show each composite's INPUTS so
+                // "Diversity 99" beside "Quality 30" reads as one coherent story
+                // (many outlets, none on our allowlist) instead of a
+                // contradiction. Every input below already came down the wire.
+                const diversity = describeDiversity({
+                    score: indicators.diversity?.score,
+                    unique_count: indicators.diversity?.unique_count,
+                    total_signals: indicators.diversity?.total_signals,
+                    top_domains: indicators.diversity?.top_domains,
+                    breakdown: indicators.diversity?.breakdown,
+                });
+                const quality = describeQuality({
+                    score: indicators.quality?.score,
+                    allowlisted_count: indicators.quality?.allowlisted_count,
+                    denylisted_count: indicators.quality?.denylisted_count,
+                    unknown_count: indicators.quality?.unknown_count,
+                });
+                return (
+                    <section className="brief-section">
+                        <div className="section-label cb-section-label">Trust Indicators</div>
+                        <div className="indicators-stack">
+                            <IndicatorTooltip
+                                score={indicators.diversity?.score || 0}
+                                label="Source Diversity"
+                                tooltip={indicators.diversity?.tooltip || 'No data available'}
+                                inlineNote={diversity.inline}
+                                inlineTip={diversity.tip}
+                            />
+                            <IndicatorTooltip
+                                score={indicators.quality?.score || 0}
+                                label="Source Quality"
+                                tooltip={indicators.quality?.tooltip || 'No data available'}
+                                inlineNote={quality.inline}
+                                inlineTip={quality.tip}
+                                // A score held down purely by outlets we never
+                                // catalogued is an allowlist gap, not a verdict —
+                                // it must not read "Poor" in danger red.
+                                verdictLabel={quality.verdict}
+                                neutralVerdict={quality.unclassified}
+                            />
+                            <VolumeIndicator
+                                // `||` turned a legitimate 0 into null and the chip
+                                // silently vanished. `??` keeps measured zeros.
+                                multiplier={indicators.volume?.multiplier ?? null}
+                                zScore={indicators.volume?.z_score ?? null}
+                                level={indicators.volume?.level || 'unknown'}
+                                tooltip={indicators.volume?.tooltip || 'No data available'}
+                                windowLabel={`${timeWindow}h`}
+                                baselineDays={indicators.volume?.baseline_days ?? null}
+                                daysObserved={indicators.volume?.days_observed ?? null}
+                                thinBaseline={indicators.volume?.thin_baseline ?? null}
+                            />
+                        </div>
+                    </section>
+                );
+            })()}
+
+
             {/* Narrative Threads */}
             <section className="brief-section" id="cb-threads">
                 <div className="section-label cb-section-label">Stories</div>
@@ -696,6 +756,132 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 )}
             </section>
 
+            {/* Key Subjects — typed: person is one type, not the only one (#176) */}
+            {data.keySubjects.length > 0 && (
+                <section className="brief-section">
+                    <div className="section-label cb-section-label">Key Subjects <span className="cb-section-subcopy">people, places &amp; topics in the coverage</span></div>
+                    <div className="brief-person-list">
+                        {data.keySubjects.map(subject => {
+                            const clickable = subject.type === 'person';
+                            return (
+                                <button
+                                    key={`${subject.type}:${subject.name}`}
+                                    className="brief-person-chip"
+                                    onClick={clickable ? () => setPerson(subject.name) : undefined}
+                                    disabled={!clickable}
+                                    data-tip={clickable
+                                        ? `${subject.count} mentions — open person focus`
+                                        : `${subject.type} · ${subject.count} mentions`}
+                                >
+                                    <span className="badge brief-subject-badge" data-type={subject.type}>{SUBJECT_BADGE[subject.type]}</span>
+                                    <span className="brief-person-name">{subject.name}</span>
+                                    <span className="brief-person-count">{subject.count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
+
+            {/* Sentiment */}
+            <section className="brief-section">
+                <div className="section-label cb-section-label">Sentiment Overview <span className="sentiment-info-icon" data-tip="Scores range from −10 to +10. Negative = reporting is alarming, critical, or conflict-focused. Positive = coverage is favorable or optimistic. This reflects media tone, not whether the news is objectively good or bad.">?</span></div>
+                <div className="sentiment-display">
+                    <span
+                        className="sentiment-value"
+                        style={{ color: getSentimentColor(data.avg_sentiment * 10) }}
+                    >
+                        {data.avg_sentiment >= 0 ? '+' : ''}{(data.avg_sentiment * 10).toFixed(1)}
+                    </span>
+                    <span className="sentiment-label">
+                        {getSentimentLabel(data.avg_sentiment * 10)}
+                    </span>
+                    {data.signal_count < 10 && (
+                        <span className="badge coverage-badge coverage-badge--thin" data-tip={`Only ${data.signal_count} signals in this window — treat as indicative only`}>
+                            thin coverage
+                        </span>
+                    )}
+                    {data.signal_count >= 10 && data.signal_count < 50 && (
+                        <span className="badge coverage-badge coverage-badge--limited" data-tip={`${data.signal_count} signals — limited data, interpret with caution`}>
+                            limited
+                        </span>
+                    )}
+                    <span className="sentiment-trend">
+                        {data.sentiment_trend === 'improving' && '↑ Improving'}
+                        {data.sentiment_trend === 'declining' && '↓ Declining'}
+                        {data.sentiment_trend === 'stable' && '→ Stable'}
+                    </span>
+                </div>
+                <p className="sentiment-warning">
+                    Sentiment analysis is noisy and should be interpreted cautiously.
+                </p>
+                {data.foreignSourcePct !== null && data.foreignSourcePct !== undefined && data.foreignSourcePct > 60 && (
+                    <p className="geo-provenance-warning" data-tip="Most coverage comes from media outlets based outside this country. Signals reflect how foreign media covers this country, not necessarily local events.">
+                        {data.foreignSourcePct}% foreign-sourced coverage
+                    </p>
+                )}
+            </section>
+
+            {/* Recent Signals — actual articles detected, not synthetic titles */}
+            {data.top_stories && data.top_stories.length > 0 && (
+                <section className="brief-section" id="cb-signals">
+                    <div className="section-label cb-section-label">Recent Signals <span className="cb-section-subcopy">articles detected in last {timeWindow}h</span></div>
+                    <div className="story-list">
+                        {data.top_stories.slice(0, 6).map((story, i) => (
+                            <a
+                                key={i}
+                                href={story.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="story-item"
+                                data-tip="Open article in new tab"
+                            >
+                                <p className="story-source-line" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span className="story-domain">{extractDomain(story.url)}</span>
+                                    <span className="story-age">{timeAgo(story.timestamp)}</span>
+                                    <span style={{ marginLeft: 'auto' }}>
+                                        <PinReceiptButton
+                                            contextLabel={displayCountryName}
+                                            citation={{
+                                                headline: story.headline || extractDomain(story.url),
+                                                source: extractDomain(story.url) || undefined,
+                                                url: story.url || undefined,
+                                                // N1: countryCode is the BRIEF's country (story
+                                                // subject scope), not the outlet's origin — never
+                                                // stored as an origin assertion.
+                                                sourceLang: story.source_lang || undefined,
+                                                gateStatus: 'unknown',
+                                                publishedDate: story.timestamp ? String(story.timestamp).slice(0, 10) : undefined,
+                                            }}
+                                        />
+                                    </span>
+                                </p>
+                                {story.headline && (
+                                    <p className="story-headline" style={{ margin: '2px 0 4px', fontSize: '0.85rem', lineHeight: 1.35 }}>
+                                        {typeof story.id === 'number'
+                                            ? <TranslatableHeadline signalId={story.id} original={story.headline} sourceLang={story.source_lang} />
+                                            : story.headline}
+                                    </p>
+                                )}
+                                {story.themeCode && (
+                                    <span
+                                        className="story-theme-badge"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onThemeSelect?.(story.themeCode);
+                                        }}
+                                        data-tip={`Open story: ${getThemeLabel(story.themeCode)}`}
+                                    >
+                                        {getThemeLabel(story.themeCode)}
+                                    </span>
+                                )}
+                            </a>
+                        ))}
+                    </div>
+                </section>
+            )}
+
             {/* Conflict events (#232 UX slice) — the same markers the map/dock
                 show, joined to this country by GEOGRAPHY only. Honest framing:
                 GDELT CAMEO is machine-coded and geo is approximate. */}
@@ -739,6 +925,23 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     )}
                 </section>
             )}
+
+            {/* ANATOMY · what it connects to. The one question of the five this
+                folder cannot answer: the measured neighbour relation runs over
+                the ranked STORY pool (lib/threadRelation, #234) and has no
+                country-to-country form — the endpoint that would answer it
+                groups on the very country in its WHERE clause, so it can only
+                return the scope back. Stated rather than omitted, because a
+                reader who learned the anatomy on a story folder (which shows
+                the stories inside it and its related investigations) would read
+                the silence as "this country connects to nothing". */}
+            <section className="brief-section">
+                <div className="section-label cb-section-label">Connected</div>
+                <p className="cb-lane-gap">
+                    Not measured for a country. Neighbours are measured story-to-story —
+                    open a story below to see the ones it is measured against.
+                </p>
+            </section>
 
             {/* Public Attention */}
             <section className="brief-section">
@@ -806,92 +1009,6 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 </div>
             </section>
 
-            {/* Key Subjects — typed: person is one type, not the only one (#176) */}
-            {data.keySubjects.length > 0 && (
-                <section className="brief-section">
-                    <div className="section-label cb-section-label">Key Subjects <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>people, places &amp; topics in the coverage</span></div>
-                    <div className="brief-person-list">
-                        {data.keySubjects.map(subject => {
-                            const clickable = subject.type === 'person';
-                            return (
-                                <button
-                                    key={`${subject.type}:${subject.name}`}
-                                    className="brief-person-chip"
-                                    onClick={clickable ? () => setPerson(subject.name) : undefined}
-                                    disabled={!clickable}
-                                    data-tip={clickable
-                                        ? `${subject.count} mentions — open person focus`
-                                        : `${subject.type} · ${subject.count} mentions`}
-                                >
-                                    <span className="badge brief-subject-badge" data-type={subject.type}>{SUBJECT_BADGE[subject.type]}</span>
-                                    <span className="brief-person-name">{subject.name}</span>
-                                    <span className="brief-person-count">{subject.count}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
-
-            {/* Trust Indicators */}
-            {indicators && !(indicators as Indicators & { error?: string }).error && (() => {
-                // Fix round 2026-08-12 pair (e): show each composite's INPUTS so
-                // "Diversity 99" beside "Quality 30" reads as one coherent story
-                // (many outlets, none on our allowlist) instead of a
-                // contradiction. Every input below already came down the wire.
-                const diversity = describeDiversity({
-                    score: indicators.diversity?.score,
-                    unique_count: indicators.diversity?.unique_count,
-                    total_signals: indicators.diversity?.total_signals,
-                    top_domains: indicators.diversity?.top_domains,
-                    breakdown: indicators.diversity?.breakdown,
-                });
-                const quality = describeQuality({
-                    score: indicators.quality?.score,
-                    allowlisted_count: indicators.quality?.allowlisted_count,
-                    denylisted_count: indicators.quality?.denylisted_count,
-                    unknown_count: indicators.quality?.unknown_count,
-                });
-                return (
-                    <section className="brief-section">
-                        <div className="section-label cb-section-label">Trust Indicators</div>
-                        <div className="indicators-stack">
-                            <IndicatorTooltip
-                                score={indicators.diversity?.score || 0}
-                                label="Source Diversity"
-                                tooltip={indicators.diversity?.tooltip || 'No data available'}
-                                inlineNote={diversity.inline}
-                                inlineTip={diversity.tip}
-                            />
-                            <IndicatorTooltip
-                                score={indicators.quality?.score || 0}
-                                label="Source Quality"
-                                tooltip={indicators.quality?.tooltip || 'No data available'}
-                                inlineNote={quality.inline}
-                                inlineTip={quality.tip}
-                                // A score held down purely by outlets we never
-                                // catalogued is an allowlist gap, not a verdict —
-                                // it must not read "Poor" in danger red.
-                                verdictLabel={quality.verdict}
-                                neutralVerdict={quality.unclassified}
-                            />
-                            <VolumeIndicator
-                                // `||` turned a legitimate 0 into null and the chip
-                                // silently vanished. `??` keeps measured zeros.
-                                multiplier={indicators.volume?.multiplier ?? null}
-                                zScore={indicators.volume?.z_score ?? null}
-                                level={indicators.volume?.level || 'unknown'}
-                                tooltip={indicators.volume?.tooltip || 'No data available'}
-                                windowLabel={`${timeWindow}h`}
-                                baselineDays={indicators.volume?.baseline_days ?? null}
-                                daysObserved={indicators.volume?.days_observed ?? null}
-                                thinBaseline={indicators.volume?.thin_baseline ?? null}
-                            />
-                        </div>
-                    </section>
-                );
-            })()}
-
             {/* Voice Mix — self-coverage vs outside voices (#235) */}
             {voiceMix && voiceMix.attributable_voices > 0 && (() => {
                 const selfPct = Math.round(voiceMix.self_voice_ratio * 100);
@@ -924,48 +1041,9 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                 );
             })()}
 
-            {/* Sentiment */}
-            <section className="brief-section">
-                <div className="section-label cb-section-label">Sentiment Overview <span className="sentiment-info-icon" data-tip="Scores range from −10 to +10. Negative = reporting is alarming, critical, or conflict-focused. Positive = coverage is favorable or optimistic. This reflects media tone, not whether the news is objectively good or bad.">?</span></div>
-                <div className="sentiment-display">
-                    <span
-                        className="sentiment-value"
-                        style={{ color: getSentimentColor(data.avg_sentiment * 10) }}
-                    >
-                        {data.avg_sentiment >= 0 ? '+' : ''}{(data.avg_sentiment * 10).toFixed(1)}
-                    </span>
-                    <span className="sentiment-label">
-                        {getSentimentLabel(data.avg_sentiment * 10)}
-                    </span>
-                    {data.signal_count < 10 && (
-                        <span className="badge coverage-badge coverage-badge--thin" data-tip={`Only ${data.signal_count} signals in this window — treat as indicative only`}>
-                            thin coverage
-                        </span>
-                    )}
-                    {data.signal_count >= 10 && data.signal_count < 50 && (
-                        <span className="badge coverage-badge coverage-badge--limited" data-tip={`${data.signal_count} signals — limited data, interpret with caution`}>
-                            limited
-                        </span>
-                    )}
-                    <span className="sentiment-trend">
-                        {data.sentiment_trend === 'improving' && '↑ Improving'}
-                        {data.sentiment_trend === 'declining' && '↓ Declining'}
-                        {data.sentiment_trend === 'stable' && '→ Stable'}
-                    </span>
-                </div>
-                <p className="sentiment-warning">
-                    Sentiment analysis is noisy and should be interpreted cautiously.
-                </p>
-                {data.foreignSourcePct !== null && data.foreignSourcePct !== undefined && data.foreignSourcePct > 60 && (
-                    <p className="geo-provenance-warning" data-tip="Most coverage comes from media outlets based outside this country. Signals reflect how foreign media covers this country, not necessarily local events.">
-                        {data.foreignSourcePct}% foreign-sourced coverage
-                    </p>
-                )}
-            </section>
-
             {/* Top Sources */}
             <section className="brief-section" id="cb-sources">
-                <div className="section-label cb-section-label">Top Publishers <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>who's covering this country</span></div>
+                <div className="section-label cb-section-label">Top Publishers <span className="cb-section-subcopy">who's covering this country</span></div>
                 <div className="source-list">
                     {(showAllSources ? data.top_sources : data.top_sources.slice(0, 5)).map((source, i) => {
                         // Expand-in-place pattern (mirrors ThemeDetail): click a
@@ -1055,66 +1133,6 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     )}
                 </div>
             </section>
-
-            {/* Recent Signals — actual articles detected, not synthetic titles */}
-            {data.top_stories && data.top_stories.length > 0 && (
-                <section className="brief-section" id="cb-signals">
-                    <div className="section-label cb-section-label">Recent Signals <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>articles detected in last {timeWindow}h</span></div>
-                    <div className="story-list">
-                        {data.top_stories.slice(0, 6).map((story, i) => (
-                            <a
-                                key={i}
-                                href={story.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="story-item"
-                                data-tip="Open article in new tab"
-                            >
-                                <p className="story-source-line" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span className="story-domain">{extractDomain(story.url)}</span>
-                                    <span className="story-age">{timeAgo(story.timestamp)}</span>
-                                    <span style={{ marginLeft: 'auto' }}>
-                                        <PinReceiptButton
-                                            contextLabel={displayCountryName}
-                                            citation={{
-                                                headline: story.headline || extractDomain(story.url),
-                                                source: extractDomain(story.url) || undefined,
-                                                url: story.url || undefined,
-                                                // N1: countryCode is the BRIEF's country (story
-                                                // subject scope), not the outlet's origin — never
-                                                // stored as an origin assertion.
-                                                sourceLang: story.source_lang || undefined,
-                                                gateStatus: 'unknown',
-                                                publishedDate: story.timestamp ? String(story.timestamp).slice(0, 10) : undefined,
-                                            }}
-                                        />
-                                    </span>
-                                </p>
-                                {story.headline && (
-                                    <p className="story-headline" style={{ margin: '2px 0 4px', fontSize: '0.85rem', lineHeight: 1.35 }}>
-                                        {typeof story.id === 'number'
-                                            ? <TranslatableHeadline signalId={story.id} original={story.headline} sourceLang={story.source_lang} />
-                                            : story.headline}
-                                    </p>
-                                )}
-                                {story.themeCode && (
-                                    <span
-                                        className="story-theme-badge"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            onThemeSelect?.(story.themeCode);
-                                        }}
-                                        data-tip={`Open story: ${getThemeLabel(story.themeCode)}`}
-                                    >
-                                        {getThemeLabel(story.themeCode)}
-                                    </span>
-                                )}
-                            </a>
-                        ))}
-                    </div>
-                </section>
-            )}
         </div>
     );
 };

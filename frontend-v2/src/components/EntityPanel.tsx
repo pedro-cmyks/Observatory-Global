@@ -313,13 +313,84 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                         </div>
                     </div>
 
+                    {/* Key Subjects — typed: person is one type (#176) */}
+                    {keySubjects.length > 0 && (
+                        <div className="entity-section" id="ep-subjects">
+                            <div className="section-label entity-section-label">Key Subjects</div>
+                            <div className="entity-people">
+                                {keySubjects.map(s => {
+                                    const fullData = data.key_people.find(k => k.person === s.name)
+                                    const clickable = s.type === 'person' && !!onPersonSelect
+                                    return (
+                                        <div
+                                            key={`${s.type}:${s.name}`}
+                                            className={`entity-person-row${clickable ? '' : ' entity-person-row--static'}`}
+                                            onClick={clickable ? () => onPersonSelect?.(s.name) : undefined}
+                                        >
+                                            <span className="badge entity-subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
+                                            <span className="entity-person-name">{s.name}</span>
+                                            <span className="entity-person-count">{formatCount(s.count)}</span>
+                                            {fullData && fullData.country_count > 1 && (
+                                                <span className="entity-person-countries">{fullData.country_count} ctrs</span>
+                                            )}
+                                            {fullData && (
+                                                <span
+                                                    className="entity-person-dot"
+                                                    style={{ background: sentimentColor(fullData.avg_sentiment) }}
+                                                />
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Recent Coverage */}
+                    {data.headlines.length > 0 && (
+                        <div className="entity-section" id="ep-coverage">
+                            <div className="section-label entity-section-label">Recent Coverage</div>
+                            <div className="entity-headlines">
+                                {data.headlines.slice(0, 8).map((h, i) => {
+                                    const displayText = h.headline
+                                        ? h.headline.replace(/^\d{6,}\./, '').trim().slice(0, 90)
+                                        : h.url.replace(/^https?:\/\/[^/]+/, '').replace(/[-_]/g, ' ').slice(0, 70)
+                                    return (
+                                        <a
+                                            key={i}
+                                            href={h.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="entity-headline"
+                                        >
+                                            <div className="entity-headline-row">
+                                                <span className="entity-headline-source">{h.source}</span>
+                                                <PinReceiptButton
+                                                    className="entity-headline-pin"
+                                                    citation={receiptFrom({
+                                                        headline: h.headline ?? '',
+                                                        source: h.source,
+                                                        url: h.url,
+                                                        publishedDate: h.time?.slice(0, 10),
+                                                    })}
+                                                    contextLabel={displayName}
+                                                />
+                                            </div>
+                                            <span className="entity-headline-title" data-tip={displayText}>{displayText}</span>
+                                        </a>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Top Countries. A degraded nodes lane renders a labeled
                         grey gap (the C4a convention) — an empty country list
                         would read as "this person is covered nowhere", which
                         is a claim we did not measure. */}
                     {!isLaneUsable(data, 'nodes') && (
                         <div className="entity-section" id="ep-countries">
-                            <div className="entity-section-label">Coverage by Country</div>
+                            <div className="section-label entity-section-label">Coverage by Country</div>
                             <div className="entity-lane-gap">{nodesGap}</div>
                         </div>
                     )}
@@ -407,38 +478,21 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                         </div>
                     )}
 
-                    {/* Key Subjects — typed: person is one type (#176) */}
-                    {keySubjects.length > 0 && (
-                        <div className="entity-section" id="ep-subjects">
-                            <div className="section-label entity-section-label">Key Subjects</div>
-                            <div className="entity-people">
-                                {keySubjects.map(s => {
-                                    const fullData = data.key_people.find(k => k.person === s.name)
-                                    const clickable = s.type === 'person' && !!onPersonSelect
-                                    return (
-                                        <div
-                                            key={`${s.type}:${s.name}`}
-                                            className={`entity-person-row${clickable ? '' : ' entity-person-row--static'}`}
-                                            onClick={clickable ? () => onPersonSelect?.(s.name) : undefined}
-                                        >
-                                            <span className="badge entity-subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
-                                            <span className="entity-person-name">{s.name}</span>
-                                            <span className="entity-person-count">{formatCount(s.count)}</span>
-                                            {fullData && fullData.country_count > 1 && (
-                                                <span className="entity-person-countries">{fullData.country_count} ctrs</span>
-                                            )}
-                                            {fullData && (
-                                                <span
-                                                    className="entity-person-dot"
-                                                    style={{ background: sentimentColor(fullData.avg_sentiment) }}
-                                                />
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
+                    {/* ANATOMY · who is paying attention. The one question of
+                        the five this folder cannot answer for itself: public
+                        attention is measured per COUNTRY (trends / wiki / forum
+                        are country-and-language-edition feeds), so a person or a
+                        theme has no attention lane of its own here. Said out loud
+                        rather than omitted, because a reader who has learned the
+                        anatomy on the country folder would otherwise read the
+                        silence as "nobody is searching for this". */}
+                    <div className="entity-section">
+                        <div className="section-label entity-section-label">Public Attention</div>
+                        <div className="entity-lane-gap">
+                            Not measured for a {focusType} — attention feeds are country-scoped.
+                            The dock reads them for this {focusType}&rsquo;s dominant country.
                         </div>
-                    )}
+                    </div>
 
                     {/* Source Framing Split */}
                     {data.top_sources.length > 0 && (() => {
@@ -526,44 +580,6 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                             </div>
                         )
                     })()}
-
-                    {/* Recent Coverage */}
-                    {data.headlines.length > 0 && (
-                        <div className="entity-section" id="ep-coverage">
-                            <div className="section-label entity-section-label">Recent Coverage</div>
-                            <div className="entity-headlines">
-                                {data.headlines.slice(0, 8).map((h, i) => {
-                                    const displayText = h.headline
-                                        ? h.headline.replace(/^\d{6,}\./, '').trim().slice(0, 90)
-                                        : h.url.replace(/^https?:\/\/[^/]+/, '').replace(/[-_]/g, ' ').slice(0, 70)
-                                    return (
-                                        <a
-                                            key={i}
-                                            href={h.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="entity-headline"
-                                        >
-                                            <div className="entity-headline-row">
-                                                <span className="entity-headline-source">{h.source}</span>
-                                                <PinReceiptButton
-                                                    className="entity-headline-pin"
-                                                    citation={receiptFrom({
-                                                        headline: h.headline ?? '',
-                                                        source: h.source,
-                                                        url: h.url,
-                                                        publishedDate: h.time?.slice(0, 10),
-                                                    })}
-                                                    contextLabel={displayName}
-                                                />
-                                            </div>
-                                            <span className="entity-headline-title" data-tip={displayText}>{displayText}</span>
-                                        </a>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 
