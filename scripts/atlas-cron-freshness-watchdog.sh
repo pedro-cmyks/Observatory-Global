@@ -123,4 +123,39 @@ if [ "$CLUSTER_AGE" -gt 30 ] && [ "$HOUR" -ge 0 ] && [ "$HOUR" -le 6 ]; then
   exit 0
 fi
 
-echo "$(ts) ok (embed_age=${EMBED_AGE}h cluster_age=${CLUSTER_AGE}h hour=${HOUR})" >>"$LOG"
+# SEAL freshness (2026-08-12): watch the PRODUCT, not the process. Five
+# distinct causes have killed the nightly seal (unapplied migration, null
+# label, missing trafilatura, provider exhaustion, lost executable bit) and
+# every one converged on the same symptom nobody probed: a stale sealed
+# edition. One detector catches all future causes. The seal-only retry is
+# LIGHT (one artifact build, minutes, mindful) so unlike clustering it may
+# run in daytime; the cluster leg above stays night-gated.
+SEAL_AGE=$(age_h "SELECT max(generated_at) FROM atlas_daily_editions")
+SEAL_MARKER=$ALW/logs/.seal-retry-stamp
+if [ -n "$SEAL_AGE" ] && [ "$SEAL_AGE" -gt 26 ] && [ "$HOUR" -ge 4 ]; then
+  LOCK_STATE=$(heavy_lock_state)
+  case "$LOCK_STATE" in
+    FREE)
+      # Once per 6h — a failing seal must alert every tick but retry slowly.
+      if [ -n "$(find "$SEAL_MARKER" -mmin -360 2>/dev/null)" ]; then
+        alert "SEAL STALE ${SEAL_AGE}h — retry already attempted <6h ago; investigate logs/seal-retry.log"
+      else
+        touch "$SEAL_MARKER"
+        alert "SEAL STALE ${SEAL_AGE}h — heavy lock free, retrying seal-only build_daily_publication"
+        ( cd "$ALW/backend" && nohup taskpolicy -b "$ALW/mlvenv/bin/python" \
+            -m scripts.build_daily_publication --execute \
+            >>"$ALW/logs/seal-retry.log" 2>&1 & )
+      fi
+      ;;
+    OVERDUE*)
+      alert "SEAL STALE ${SEAL_AGE}h + OVERDUE_ACTIVE heavy lock (${LOCK_STATE#OVERDUE }) — NOT killing a live owner; investigate"
+      ;;
+    HELD*)
+      # A legitimate holder (tonight's runner mid-chain) will seal itself.
+      echo "$(ts) seal stale ${SEAL_AGE}h but heavy lock held in-TTL (${LOCK_STATE#HELD }); the running chain should seal" >>"$LOG"
+      ;;
+  esac
+  exit 0
+fi
+
+echo "$(ts) ok (embed_age=${EMBED_AGE}h cluster_age=${CLUSTER_AGE}h seal_age=${SEAL_AGE:-?}h hour=${HOUR})" >>"$LOG"
