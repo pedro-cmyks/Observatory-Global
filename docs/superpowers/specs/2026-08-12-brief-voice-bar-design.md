@@ -1,4 +1,4 @@
-# Brief "measured Ground News" — barra de voces + blindspot medido — DRAFT
+# Brief voice-bar — ABSORBIDO por 2026-08-12-puerta-y-carpetas-design.md
 
 **Status: DRAFT para el ojo de Pedro. Nada se construye sin su aprobación.**
 
