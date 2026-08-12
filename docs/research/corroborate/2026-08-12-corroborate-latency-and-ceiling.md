@@ -164,6 +164,16 @@ start call fails, so a proxy blip degrades instead of ending the run.
   the integrator's** (plan: one Fly+Vercel deploy at integration). Until it
   lands, the browser still calls the synchronous endpoint — which is now budgeted,
   so it degrades to an honest partial instead of a 502.
+* **Browser check is partial.** Driving the real UI (seeded 3-pin investigation →
+  REPORT → CORROBORATE) confirmed the new bundle loads and the UI calls
+  `POST /api/v2/dossier/corroborate/start`, and the running-state copy renders.
+  The section never resolved because **every** `/api/v2/dossier/*` POST hung
+  through the shared local dev proxy — `connections`, `walk` and `synthesize`
+  included, none of which V5 touches — a local artifact of stale keep-alive
+  sockets after four Fly redeploys. The shared dev server was left running
+  rather than restarted (a peer agent was using it). The visual gate belongs to
+  the integrator's browser pass on the deployed build; the payload itself is
+  verified live in §6.
 * In-process job registry (one uvicorn worker, matching `_CORROB_CACHE`): a
   machine restart loses in-flight jobs and the poll answers `unknown`. Correct,
   visible, and cheap to survive (re-run). A DB-backed job table would remove it.
