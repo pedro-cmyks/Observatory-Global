@@ -87,6 +87,18 @@ function whyPhrase(reasonCodes: string[]): string {
     if (reasonCodes.includes('contract_mismatch')) {
         return 'the sealed edition could not be read'
     }
+    // T3.3 serving policy: a fresh seal is served whatever its status, so the
+    // live view now means the seal is too OLD (or structurally empty) — never
+    // just "degraded". These phrases name that difference.
+    if (reasonCodes.includes('no_story_nodes')) {
+        return 'the sealed edition carried no stories'
+    }
+    if (reasonCodes.includes('seal_stale')) {
+        return 'no edition has sealed within the last day'
+    }
+    if (reasonCodes.includes('seal_time_unknown')) {
+        return 'the sealed edition carries no seal time'
+    }
     if (reasonCodes.includes('edition_degraded')) {
         return 'the last nightly publication did not complete'
     }

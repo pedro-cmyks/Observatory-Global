@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 import {
-  assessDailyPublication,
+  editionDegradationLabels,
   publicationThreads,
+  resolveEditionServing,
+  SEAL_FRESH_MAX_HOURS,
   type DailyPublicationArtifact,
 } from './dailyPublication'
 
@@ -11,6 +13,7 @@ function artifact(status: 'ready' | 'degraded' = 'ready'): DailyPublicationArtif
   return {
     contract: 'atlas-daily-publication-v1',
     edition_date: '2026-07-13',
+    sealed_at: '2026-07-13T02:00:00Z',
     status,
     graph: {
       contract: 'atlas-investigation-graph-v1',
@@ -73,21 +76,7 @@ function artifact(status: 'ready' | 'degraded' = 'ready'): DailyPublicationArtif
   }
 }
 
-describe('daily publication compatibility gate', () => {
-  it('uses the shared package only when the sealed artifact is ready and complete', () => {
-    expect(assessDailyPublication(artifact())).toEqual({
-      useSharedPackage: true,
-      reasonCodes: [],
-    })
-
-    const degraded = artifact('degraded')
-    degraded.completion.cursor_exhausted = false
-    expect(assessDailyPublication(degraded)).toEqual({
-      useSharedPackage: false,
-      reasonCodes: ['edition_degraded', 'candidate_universe_incomplete'],
-    })
-  })
-
+describe('daily publication mapping', () => {
   it('maps every story node into the existing newspaper thread contract', () => {
     expect(publicationThreads(artifact())).toEqual([expect.objectContaining({
       thread_id: 'dynamic-topic-1',
@@ -105,13 +94,103 @@ describe('daily publication compatibility gate', () => {
     })])
   })
 
-  it('keeps the legacy Brief as an explicit fallback until the shared edition passes', () => {
+  it('keeps the sealed edition wired to the Brief, with the live view as the fallback', () => {
     const source = readFileSync(new URL('../pages/BriefNewspaper.tsx', import.meta.url), 'utf8')
     expect(source).toContain('/api/v2/investigation/daily-publication')
-    expect(source).toContain('assessDailyPublication(dailyEdition)')
-    expect(source).toContain('dailyGate.useSharedPackage ? publicationThreads(dailyEdition)')
+    // T3.3: freshness, not status, decides what is served.
+    expect(source).toContain('resolveEditionServing(dailyEdition, now)')
+    expect(source).toContain("serving.serve === 'sealed' ? publicationThreads(dailyEdition)")
     // The staleness banner announces the live fallback honestly (sealed/live split).
     expect(source).toContain('buildStaleBanner')
     expect(source).toContain('LIVE VIEW')
+  })
+})
+
+describe('serving policy — a fresh seal is served, its degradation is labelled', () => {
+  const now = new Date('2026-07-13T08:00:00Z')
+
+  it('serves a fresh sealed edition even when it sealed degraded', () => {
+    const degraded = artifact('degraded')
+    degraded.completion.cursor_exhausted = false
+    const serving = resolveEditionServing(degraded, now)
+    expect(serving.serve).toBe('sealed')
+    expect(serving.fresh).toBe(true)
+    expect(serving.ageHours).toBe(6)
+    // Nothing is hidden: the reasons it sealed degraded become visible labels.
+    expect(serving.degradation).toEqual([
+      'partial edition · 6 of 6 answered',
+      'candidate scan did not finish',
+    ])
+  })
+
+  it('falls back to live only when no fresh seal exists', () => {
+    const stale = artifact()
+    stale.sealed_at = '2026-07-11T02:00:00Z'
+    const serving = resolveEditionServing(stale, now)
+    expect(serving.serve).toBe('live')
+    expect(serving.fresh).toBe(false)
+    expect(serving.reasonCodes).toContain('seal_stale')
+
+    expect(resolveEditionServing(null, now)).toEqual(expect.objectContaining({
+      serve: 'live',
+      ageHours: null,
+      fresh: false,
+      reasonCodes: ['edition_unavailable'],
+    }))
+  })
+
+  it('holds the freshness window at 26h — an edition sealed 25h ago still serves', () => {
+    expect(SEAL_FRESH_MAX_HOURS).toBe(26)
+    const almost = artifact()
+    almost.sealed_at = new Date(now.getTime() - 25 * 3600_000).toISOString()
+    expect(resolveEditionServing(almost, now).serve).toBe('sealed')
+    const past = artifact()
+    past.sealed_at = new Date(now.getTime() - 26.5 * 3600_000).toISOString()
+    expect(resolveEditionServing(past, now).serve).toBe('live')
+  })
+
+  it('still refuses an edition it cannot read — freshness never overrides unreadable', () => {
+    const broken = artifact()
+    broken.graph.nodes = []
+    expect(resolveEditionServing(broken, now)).toEqual(expect.objectContaining({
+      serve: 'live',
+      reasonCodes: ['no_story_nodes'],
+    }))
+
+    const mismatch = artifact()
+    mismatch.contract = 'atlas-daily-publication-v2' as DailyPublicationArtifact['contract']
+    expect(resolveEditionServing(mismatch, now).reasonCodes).toContain('contract_mismatch')
+
+    const undated = artifact()
+    undated.sealed_at = null
+    expect(resolveEditionServing(undated, now).reasonCodes).toContain('seal_time_unknown')
+  })
+
+  it('labels a ready, complete edition with nothing at all', () => {
+    expect(resolveEditionServing(artifact(), now).degradation).toEqual([])
+  })
+
+  it('reads the readiness fraction from whatever the payload carries', () => {
+    const partial = artifact('degraded')
+    partial.package.readiness.who = { status: 'missing', values: [], reason_codes: ['no_subject'] }
+    partial.package.readiness.why = { status: 'partial', values: [], reason_codes: [] }
+    expect(editionDegradationLabels(partial)).toContain('partial edition · 4 of 6 answered, 1 partial')
+
+    // No readiness map at all (an older or future shape) — still labelled, never silent.
+    const bare = artifact('degraded')
+    bare.package.readiness = undefined as unknown as DailyPublicationArtifact['package']['readiness']
+    expect(editionDegradationLabels(bare)).toContain('partial edition')
+  })
+
+  it('passes through a backend-served status reason without needing to know it', () => {
+    const graded = artifact('degraded')
+    graded.status_reasons = ['lead synthesis unavailable']
+    expect(editionDegradationLabels(graded)).toContain('lead synthesis unavailable')
+  })
+
+  it('names a truncated candidate universe', () => {
+    const truncated = artifact()
+    truncated.graph.completion.truncated = true
+    expect(editionDegradationLabels(truncated)).toEqual(['candidate universe truncated'])
   })
 })

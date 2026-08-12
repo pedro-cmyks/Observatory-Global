@@ -2230,3 +2230,182 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
         padding: 3px 14px;
     }
 }
+
+/* ============================================================================
+   T3.3 — THE COVERAGE DIARY: woven voices, THE GAP, WHAT IS RISING
+   ==========================================================================*/
+
+/* --- the lead's voices, as prose (spec §3b.1) --- */
+
+/* Same shape as .brief-whynow (both are measured prose under the lead) so the
+   lead reads as one block with two labelled lines, not two competing boxes.
+   The accent border is the neutral rule rather than --r-sec: the why-now is the
+   story's movement, this is its coverage — giving both the same accent made the
+   eye read them as one repeated element. */
+.brief-lead-voices {
+    font-family: var(--r-sans);
+    font-size: 0.84rem;
+    color: var(--r-ink-soft);
+    border-left: 2px solid var(--r-line);
+    padding: 3px 0 3px 13px;
+    margin: 0 0 16px;
+    max-width: 70ch;
+    line-height: 1.5;
+}
+
+.brief-lead-voices .lab {
+    font-family: var(--r-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--r-muted);
+    display: block;
+    margin-bottom: 3px;
+}
+
+.brief-voices-sentence {
+    display: block;
+}
+
+/* The basis line is the honesty rail: which lineage each number came from. It
+   is quieter than the sentence but NEVER hidden — a count with no stated basis
+   is exactly what this section exists to stop. */
+.brief-voices-basis {
+    display: block;
+    margin-top: 5px;
+    font-family: var(--r-mono);
+    font-size: 0.64rem;
+    line-height: 1.45;
+    color: var(--r-muted);
+}
+
+/* --- served-but-degraded edition labels (serving policy b) --- */
+
+.brief-publication-degraded {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.brief-degrade-chip {
+    font-family: var(--r-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--r-ink-soft);
+    background: var(--r-chip);
+    border: 1px solid var(--r-line);
+    border-radius: 3px;
+    padding: 2px 7px;
+}
+
+/* --- shared frame for the two measured sections --- */
+
+.brief-gap-section,
+.brief-rising-section {
+    background: var(--r-surface);
+    border: 1px solid var(--r-line);
+    border-left: 3px solid var(--r-sec);
+    border-radius: 4px;
+    padding: clamp(16px, 2.4vw, 26px);
+    margin: 0 0 24px;
+}
+
+.brief-section-subtitle {
+    font-family: var(--r-serif);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    line-height: 1.1;
+    margin: 0 0 12px;
+    color: var(--r-ink);
+}
+
+.brief-gap-section .brief-metarow,
+.brief-rising-section .brief-metarow {
+    margin-bottom: 12px;
+}
+
+/* --- THE GAP --- */
+
+.brief-gap-prose {
+    font-family: var(--r-serif);
+    font-size: clamp(1rem, 2.2vw, 1.14rem);
+    line-height: 1.55;
+    color: var(--r-ink);
+    max-width: 66ch;
+    margin: 4px 0 12px;
+}
+
+/* The reprint caveat is served verbatim and rendered as prose, not as a
+   footnote: it is the sentence that keeps the finding from selling syndication
+   as coverage. Same size as the finding it qualifies. */
+.brief-gap-caveat {
+    font-family: var(--r-sans);
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: var(--r-ink-soft);
+    background: var(--r-chip);
+    border-left: 2px solid var(--r-line);
+    border-radius: 0 3px 3px 0;
+    padding: 9px 12px;
+    max-width: 68ch;
+    margin: 0 0 14px;
+}
+
+.brief-gap-confidence {
+    color: var(--r-muted);
+}
+
+/* --- WHAT IS RISING --- */
+
+.brief-rising-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.brief-rising-item + .brief-rising-item {
+    border-top: 1px solid var(--r-line);
+    padding-top: 18px;
+}
+
+.brief-rising-headline {
+    font-family: var(--r-serif);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+    line-height: 1.16;
+    margin: 0 0 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.brief-rising-item .brief-whynow {
+    margin-bottom: 12px;
+}
+
+.brief-rising-item .brief-card-foot,
+.brief-gap-section .brief-card-foot {
+    margin-top: 10px;
+}
+
+@media (max-width: 720px) {
+    /* The phone reads these two sections as the body of the page, so they lose
+       the card inset rather than the content (Task 5's rule: collapse chrome,
+       never facts). */
+    .brief-gap-section,
+    .brief-rising-section {
+        padding: 14px;
+    }
+    .brief-lead-voices {
+        max-width: none;
+    }
+    .brief-gap-prose,
+    .brief-gap-caveat {
+        max-width: none;
+    }
+}

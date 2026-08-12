@@ -36,10 +36,20 @@ import { formatSentimentPm1, formatTone10, measuredSentimentChip } from '../lib/
 import { reconcileSentimentProse } from '../lib/reconcileSentimentProse'
 import { useReaderTheme, ReaderThemeToggle } from '../lib/readerTheme'
 import {
-    assessDailyPublication,
     publicationThreads,
+    resolveEditionServing,
     type DailyPublicationArtifact,
 } from '../lib/dailyPublication'
+import { weaveVoices } from '../lib/briefVoices'
+import {
+    excludedAfterBarNote,
+    gapConfidenceChip,
+    gapEmptyCopy,
+    risingEmptyCopy,
+    sectionReceipts,
+    type GapSection,
+    type RisingSection,
+} from '../lib/briefSections'
 import { buildStaleBanner } from '../lib/staleBanner'
 import {
     resolveSourceCount,
@@ -155,6 +165,13 @@ interface TopThread {
     // neutral receipt-derived label. NULL until the nightly court runs.
     label_status?: 'entailed' | 'partial' | 'failed' | null
     label_proposed?: string | null
+    // Subject geography (#238): the countries the story is ABOUT, with the
+    // status of that derivation. The lead's woven standfirst only makes an
+    // own-press claim when this says `verified` — coverage volume is not
+    // subjecthood, and a guessed subject would make the claim a lie.
+    subject_countries?: string[]
+    subject_country_names?: string[]
+    subject_geography_status?: string | null
     // 2026-07-30 (gb5-blind-check "cron-safety item 2"): the court tried this
     // row (umbrella lane) and could not ground a verdict — a live TopThread
     // carries this from fetch_threads; a sealed DailyPublicationThread never
@@ -198,6 +215,10 @@ interface BriefingData {
         sentiment_coverage?: number | null
     }[]
     top_threads?: TopThread[]
+    // The Brief's two measured sections (T3.2). The SAME shapes ride inside the
+    // sealed package, so the front page reads one contract either way.
+    rising?: RisingSection
+    gap?: GapSection
     heat_countries?: HeatCountry[]
     historical_coverage?: {
         source: 'hot' | 'historical_processed'
@@ -727,6 +748,18 @@ export function BriefNewspaper() {
         goToAtlas(params.toString())
     }
 
+    // Deep-link into a STORY folder from a row that is not a full thread object
+    // (the rising items carry only an id + label). Same door as openThread —
+    // resolveThreadThemeTarget → ?theme=, so the console's breadcrumb lands
+    // `World ▸ Story` exactly as it does from the desk.
+    const openStoryById = (threadId: string, label: string, sectionName: string) => {
+        const target = resolveThreadThemeTarget({ thread_id: threadId, label })
+        if (!target) return
+        track('brief_thread_open', { thread: target.theme })
+        trackOnce('first_value_moment', { kind: 'brief_thread' })
+        goToAtlas(`theme=${encodeURIComponent(target.theme)}`, sectionName)
+    }
+
     const moodLabel = (s: number) => s > 0.15 ? 'POSITIVE' : s < -0.15 ? 'NEGATIVE' : 'NEUTRAL'
     const moodClass = (s: number) => s > 0.15 ? 'mood-positive' : s < -0.15 ? 'mood-negative' : 'mood-neutral'
 
@@ -738,16 +771,21 @@ export function BriefNewspaper() {
     // copy below keeps the full weekday form; that is a modal, not the door).
     const dayLineShort = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-    const dailyGate = assessDailyPublication(dailyEdition)
+    // SERVING POLICY (T3.3, approved option b): FRESHNESS decides, not status.
+    // A sealed edition under 26h old is served whatever it graded, with its
+    // degradation rendered as visible labels; the live view is the fallback only
+    // when no fresh seal exists (or the artifact is structurally unreadable).
+    // The old all-or-nothing gate had, measured, become "never serve the
+    // edition" — 25 of 25 consecutive seals graded degraded.
+    const serving = resolveEditionServing(dailyEdition, now)
+    const servedFromSeal = serving.serve === 'sealed'
     // Staleness truth: what edition is served, how old, and when the next seal is.
-    // Honest sealed/live split — the sealed package is only "served" when the gate
-    // passes; otherwise the always-current live view below is what the reader sees.
     const staleBanner = dailyEdition
         ? buildStaleBanner({
             sealedAt: dailyEdition.sealed_at ?? dailyEdition.completion?.generated_at as string | null ?? null,
             editionDate: dailyEdition.edition_date ?? null,
-            servedFromSeal: dailyGate.useSharedPackage,
-            reasonCodes: dailyGate.reasonCodes,
+            servedFromSeal,
+            reasonCodes: serving.reasonCodes,
             now,
             // N10: honest next-attempt from the backend's schedule truth
             // (02:30 constant remains the no-schedule fallback inside).
@@ -756,7 +794,7 @@ export function BriefNewspaper() {
             nextSealLocal: dailyEdition.seal_schedule?.next_attempt_local,
         })
         : null
-    const allThreads = dailyGate.useSharedPackage ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
+    const allThreads = serving.serve === 'sealed' ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
 
     // Council Phase 1 (+ R2 N2, lead-eligibility v2): on the LIVE brief the front
     // page may only present a thread as an assembled story (label-as-fact: lead
@@ -784,7 +822,7 @@ export function BriefNewspaper() {
     // the first thread that merely carries evidence (broke after unified ranking
     // 2026-06-24), and never a below-floor blob (broke the front page's trust:
     // the 0.214 Greek "Teen Fall" led while real stories scored 0.9+).
-    const gateActive = !countryFilter && !dailyGate.useSharedPackage
+    const gateActive = !countryFilter && !servedFromSeal
     // gateActive implies the legacy live path, so the gate operates on the
     // concrete TopThread rows (which carry avg_confidence/label_status) — the
     // sealed-package union type has no confidence columns to gate on.
@@ -796,7 +834,7 @@ export function BriefNewspaper() {
     const liveLead = gateActive ? selectLiveLead(liveThreads) : null
     const eligiblePool = countryFilter ? [] : (gateActive ? liveLead!.eligible : allThreads)
     const unassembledThreads: TopThread[] = gateActive ? liveThreads.filter(t => !isLeadEligible(t)) : []
-    const preferredLead = dailyGate.useSharedPackage
+    const preferredLead = servedFromSeal
         ? allThreads.find(thread => thread.edition_role === 'lead') ?? null
         : null
     const leadThread = countryFilter ? null : (preferredLead ?? liveLead?.lead ?? eligiblePool[0] ?? null)
@@ -812,8 +850,8 @@ export function BriefNewspaper() {
     // Edition sections: culture/sport/lifestyle threads get their OWN section
     // (nothing dropped); the ranked lead stays the lead regardless of lane.
     const { world: worldRest, culture: cultureRest } = splitEditionThreads(restThreads)
-    const worldCards = dailyGate.useSharedPackage ? worldRest : worldRest.slice(0, 8)
-    const cultureCards = dailyGate.useSharedPackage ? cultureRest : cultureRest.slice(0, 6)
+    const worldCards = servedFromSeal ? worldRest : worldRest.slice(0, 8)
+    const cultureCards = servedFromSeal ? cultureRest : cultureRest.slice(0, 6)
 
     const heatStrip = (data?.heat_countries ?? []).slice(0, 4)
     const coverageGaps = data?.coverage_gaps ?? []
@@ -822,8 +860,8 @@ export function BriefNewspaper() {
     // Honest standfirst: AI insight when the service produced one; otherwise a
     // single factual line. No template essay variants — an editorial that
     // pretends to judge is worse than no editorial (surfaces review §1.4).
-    const displayInsight = dailyGate.useSharedPackage ? null : insight
-    const standfirstFallback = dailyGate.useSharedPackage && dailyEdition
+    const displayInsight = servedFromSeal ? null : insight
+    const standfirstFallback = servedFromSeal && dailyEdition
         ? `${dailyEdition.package.title}. ${allThreads.length} measured story nodes, ${dailyEdition.package.receipts.length} frozen receipts; no LLM selected or ranked the edition.`
         : data
         ? `${data.stats.total_signals.toLocaleString()} signals across ${data.stats.countries} countries from ${data.stats.sources} sources${leadThread ? ` · lead: ${decodeEntities(leadThread.label)}` : ''}.`
@@ -896,6 +934,47 @@ export function BriefNewspaper() {
     const editionYield = dailyEdition?.package?.article_enrichment?.yield ?? null
     const coverageCheck = dailyEdition?.package?.coverage_check ?? null
 
+    // ---- the coverage diary's two measured sections (T3.2 → T3.3) ----
+    //
+    // ONE contract, two carriers: the sealed package holds the copies computed
+    // inside the seal, the live briefing holds today's. Serve the sealed ones
+    // when the sealed edition is what the page is built from, so the sections and
+    // the stories around them describe the same moment; a seal built before T3.2
+    // carries neither, and falls back to the live copies rather than to silence.
+    const risingSection = (servedFromSeal
+        ? (dailyEdition?.package?.rising as RisingSection | undefined) ?? data?.rising
+        : data?.rising) ?? null
+    const gapSection = (servedFromSeal
+        ? (dailyEdition?.package?.gap as GapSection | undefined) ?? data?.gap
+        : data?.gap) ?? null
+    const risingItems = risingSection?.items ?? []
+    const risingEmpty = risingEmptyCopy(risingSection)
+    const risingExcluded = excludedAfterBarNote(risingSection?.excluded_after_bar)
+    const gapEmpty = gapEmptyCopy(gapSection)
+    const gapCountry = gapSection?.country ?? null
+    const gapMeasured = gapSection?.measured ?? null
+    const gapConfidence = gapConfidenceChip(gapSection)
+    const gapReceipts = sectionReceipts(gapSection?.receipts)
+
+    // THE LEAD'S VOICES, as prose (spec §3b.1). Every clause is measured or
+    // absent — see lib/briefVoices.ts. The subject-country clause is gated on
+    // VERIFIED subject geography: coverage volume is not subjecthood, and an
+    // own-press sentence built on a guessed subject would be a false claim.
+    const leadSourceBasis = leadThread ? resolveSourceCount(leadThread) : null
+    const leadSubjectVerified = (leadThread as TopThread | null)?.subject_geography_status === 'verified'
+    const leadVoices = leadThread
+        ? weaveVoices({
+            outlets: leadSourceBasis?.kind === 'measured' ? leadSourceBasis.count : null,
+            receipts: leadThread.evidence_samples ?? [],
+            subjectCountries: leadSubjectVerified ? (leadThread as TopThread).subject_countries : null,
+            subjectCountryNames: leadSubjectVerified ? (leadThread as TopThread).subject_country_names : null,
+            // V2's tension guard already attributes the divergence backend-side;
+            // the standfirst re-states it, the coverage-check block below keeps
+            // both verbatim quotes.
+            tension: coverageCheck?.findings?.find(f => f.kind === 'tension') ?? null,
+        })
+        : null
+
     // Collapsed-band summary for the freshness box (Task 5, mobile IA #236).
     // Derived from data the full markup already renders (staleBanner/editionYield
     // above) — no new fetch. The freshnessSummary() line stays exactly the honest
@@ -925,6 +1004,10 @@ export function BriefNewspaper() {
     const freshnessCollapsedLine = [
         freshnessSummary(freshnessFacts),
         staleBanner && staleBanner.tone === 'stale' ? staleBanner.why : null,
+        // T3.3: a degraded edition is now PUBLISHED, so how it is incomplete has
+        // to travel with it — including into the collapsed phone line, which is
+        // all a mobile reader sees until they tap.
+        ...serving.degradation,
         staleBanner?.nextAttempt ?? null,
     ].filter(Boolean).join(' · ')
 
@@ -1427,11 +1510,26 @@ export function BriefNewspaper() {
                                                 : null,
                                         ].filter(Boolean).join(' · ')}
                                     </span>
+                                    {/* T3.3 serving policy: the edition is served
+                                        even when it graded degraded, so every way
+                                        it is incomplete is stated ON it — the
+                                        degradation is a label, never a silent
+                                        fallback to a different newspaper. */}
+                                    {serving.degradation.length > 0 && (
+                                        <span
+                                            className="brief-publication-degraded"
+                                            data-tip="This edition sealed incomplete and is served anyway, labelled. Nothing here was invented to fill the gaps."
+                                        >
+                                            {serving.degradation.map(label => (
+                                                <span key={label} className="brief-degrade-chip">{label}</span>
+                                            ))}
+                                        </span>
+                                    )}
                                 </section>
                             )
                         )}
 
-                        {dailyGate.useSharedPackage && dailyEdition && (
+                        {servedFromSeal && dailyEdition && (
                             <section className="brief-readiness-rail" aria-label="Editorial readiness">
                                 {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
                                     const item = dailyEdition.package.readiness[key]
@@ -1693,6 +1791,19 @@ export function BriefNewspaper() {
                                                 <span className="reader-pill">{leadThread.signal_count.toLocaleString()} signals</span>
                                                 <SourceCountSegment row={leadThread} className="reader-pill" />
                                             </div>
+                                            {/* THE VOICES, AS PROSE (spec §3b.1) — who is telling
+                                                this story and who is not. The absorbed voice-bar
+                                                design lives here as a sentence rather than a chart;
+                                                every clause is measured or absent (lib/briefVoices),
+                                                and the basis line names which lineage each number
+                                                came from. */}
+                                            {leadVoices && (
+                                                <p className="brief-lead-voices">
+                                                    <span className="lab">Who is telling it</span>
+                                                    <span className="brief-voices-sentence">{leadVoices.sentence}</span>
+                                                    <span className="brief-voices-basis">{leadVoices.basis}</span>
+                                                </p>
+                                            )}
                                             {leadThread.why_now && (
                                                 <p className="brief-whynow">
                                                     <span className="lab">Why now</span>
@@ -1838,6 +1949,175 @@ export function BriefNewspaper() {
                                                 </div>
                                             ))}
                                         </div>
+                                    )}
+
+                                    {/* ============ EL VACÍO · THE GAP ============
+                                        The day's best blindspot, written as a story (spec §3b.2):
+                                        the country whose coverage diverged furthest from its own
+                                        press. Bar and prose are the backend's (brief-gap-v1) —
+                                        this renders them, adds nothing, and when the day has no
+                                        finding it SAYS which of the two silences it is
+                                        (G-VACÍO-HONESTO). */}
+                                    {gapSection && (
+                                        <section className="brief-gap-section" aria-label="The Gap — today's measured blindspot">
+                                            <span className="reader-section-kicker brief-sub-kicker">The coverage nobody wrote</span>
+                                            <h3 className="brief-section-subtitle">The Gap</h3>
+                                            {gapCountry && gapMeasured ? (
+                                                <>
+                                                    <div className="reader-kicker">
+                                                        <span>
+                                                            <Flag code={gapCountry.code} /> {gapCountry.name}
+                                                        </span>
+                                                        {gapConfidence && (
+                                                            <span className="cat brief-gap-confidence" data-tip={gapConfidence.tip}>
+                                                                {gapConfidence.label}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="brief-gap-prose">{gapSection.prose}</p>
+                                                    {/* Load-bearing honesty: the caveat is served
+                                                        verbatim, never trimmed or paraphrased. */}
+                                                    {gapSection.caveat && (
+                                                        <p className="brief-gap-caveat">{gapSection.caveat}</p>
+                                                    )}
+                                                    <div className="brief-metarow">
+                                                        {typeof gapMeasured.multiplier === 'number' && (
+                                                            <span
+                                                                className="reader-pill measured"
+                                                                data-tip="Today's volume against the mean of this country's other retained days — its OWN baseline, not the field's."
+                                                            >
+                                                                {gapMeasured.multiplier}× its own baseline
+                                                            </span>
+                                                        )}
+                                                        {typeof gapMeasured.volume === 'number' && (
+                                                            <span className="reader-pill">{gapMeasured.volume.toLocaleString()} signals today</span>
+                                                        )}
+                                                        {typeof gapMeasured.baseline === 'number' && (
+                                                            <span className="reader-pill">
+                                                                baseline {gapMeasured.baseline}/day
+                                                                {typeof gapMeasured.baseline_days === 'number' ? ` · ${gapMeasured.baseline_days} days` : ''}
+                                                            </span>
+                                                        )}
+                                                        {/* The 0.5 sentinel never becomes a fact: an
+                                                            unjudgeable country prints its ignorance. */}
+                                                        {gapMeasured.self_voice_status === 'measured'
+                                                            && typeof gapMeasured.self_voice_ratio === 'number' ? (
+                                                            <span
+                                                                className="reader-pill"
+                                                                data-tip={`Outlet OWNERSHIP, not language: ${gapMeasured.domestic_n ?? 0} of the ${gapMeasured.known_origin_n ?? 0} signals whose outlet home country is known are domestic${typeof gapMeasured.unattributed_n === 'number' ? `; ${gapMeasured.unattributed_n} carry no known origin` : ''}.`}
+                                                            >
+                                                                own press {Math.round(gapMeasured.self_voice_ratio * 100)}%
+                                                            </span>
+                                                        ) : (
+                                                            <span
+                                                                className="reader-pill brief-sources-unmeasured"
+                                                                data-tip="Too few signals carry an attributable outlet home country to judge this country's own voice."
+                                                            >
+                                                                own press not measurable
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {gapSection.day_complete === false && (
+                                                        <p className="brief-footref">
+                                                            Measured on a UTC day that is not finished yet — against full-day
+                                                            baselines, this multiplier is a floor.
+                                                        </p>
+                                                    )}
+                                                    {gapReceipts.length > 0 && (
+                                                        <>
+                                                            <div className="brief-rc-lab">Receipts — real source · outlet origin when known</div>
+                                                            <div className="brief-receipts">
+                                                                {gapReceipts.map((ev, i) => renderReceipt(ev, i, { contextLabel: gapCountry.name }))}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    <div className="brief-card-foot">
+                                                        <span className="brief-card-actions">
+                                                            <button
+                                                                className="brief-theme-link"
+                                                                onClick={() => goToAtlas(`country=${gapCountry.code}`, 'gap')}
+                                                            >
+                                                                Open {gapCountry.name} →
+                                                            </button>
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <p className="brief-empty-note">{gapEmpty}</p>
+                                            )}
+                                        </section>
+                                    )}
+
+                                    {/* ============ LO QUE SUBE · WHAT IS RISING ============
+                                        Measured acceleration over each story's OWN Kalman baseline
+                                        (brief-rising-v1), with its why-now. Nothing here is a
+                                        forecast, and a story that cleared the bar but could not be
+                                        printed is COUNTED below rather than dropped. */}
+                                    {risingSection && (
+                                        <section className="brief-rising-section" aria-label="What is rising — measured acceleration">
+                                            <span className="reader-section-kicker brief-sub-kicker">Measured acceleration</span>
+                                            <h3 className="brief-section-subtitle">What Is Rising</h3>
+                                            {risingItems.length > 0 ? (
+                                                <div className="brief-rising-list">
+                                                    {risingItems.map(item => {
+                                                        const receipts = sectionReceipts(item.receipts)
+                                                        return (
+                                                            <article key={item.thread_id} className="brief-rising-item">
+                                                                <h4 className="brief-rising-headline">
+                                                                    <button
+                                                                        className="brief-headline-btn"
+                                                                        onClick={() => openStoryById(item.thread_id, item.label, 'rising')}
+                                                                    >
+                                                                        <TranslatableText text={decodeEntities(item.label)} />
+                                                                    </button>
+                                                                    {/* failed / partial / too_broad are MARKED, not hidden
+                                                                        — the backend passes the court's verdict through
+                                                                        for exactly this chip. */}
+                                                                    <LabelReviewChip labelStatus={item.label_status ?? null} confidenceMeasured={false} />
+                                                                </h4>
+                                                                {item.why_now && (
+                                                                    <p className="brief-whynow">
+                                                                        <span className="lab">Why now</span>
+                                                                        {item.why_now}
+                                                                    </p>
+                                                                )}
+                                                                {receipts.length > 0 ? (
+                                                                    <div className="brief-receipts">
+                                                                        {receipts.map((ev, i) => renderReceipt(ev, i, { contextLabel: item.label }))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="brief-footref">
+                                                                        No receipt resolved for this story — the acceleration is measured,
+                                                                        the evidence lane came back empty.
+                                                                    </p>
+                                                                )}
+                                                                <div className="brief-card-foot">
+                                                                    <span className="brief-card-actions">
+                                                                        <button
+                                                                            className="brief-theme-link"
+                                                                            onClick={() => openStoryById(item.thread_id, item.label, 'rising')}
+                                                                        >
+                                                                            Open story →
+                                                                        </button>
+                                                                    </span>
+                                                                </div>
+                                                            </article>
+                                                        )
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="brief-empty-note">{risingEmpty}</p>
+                                            )}
+                                            {risingSection.status === 'partial' && risingItems.length > 0 && (
+                                                <p className="brief-footref">
+                                                    Only {risingItems.length === 1 ? 'one story' : `${risingItems.length} stories`} cleared
+                                                    the bar in this window.
+                                                </p>
+                                            )}
+                                            {risingExcluded && (
+                                                <p className="brief-footref">{risingExcluded}</p>
+                                            )}
+                                        </section>
                                     )}
 
                                     {/* THE REST OF THE DESK */}

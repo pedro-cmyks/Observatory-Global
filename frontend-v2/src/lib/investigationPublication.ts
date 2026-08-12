@@ -118,6 +118,12 @@ export interface PublicationPackage {
     note?: string
     story_id?: string
   } | null
+  /** The Brief's two measured sections (T3.2, `brief-rising-v1`/`brief-gap-v1`),
+   *  computed by the SAME functions the live briefing calls so the sealed
+   *  edition and the front page cannot say different things. Absent on a seal
+   *  built before T3.2 — the page then reads the live briefing's copies. */
+  rising?: Record<string, unknown> | null
+  gap?: Record<string, unknown> | null
 }
 
 export interface InvestigationPublicationResult {
