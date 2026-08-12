@@ -1276,6 +1276,43 @@ def test_lead_veto_membership_demotes_the_wire_lead_and_leaves_no_payload_bloat(
     assert all("raw_headline_sample" not in t for t in ranked)
 
 
+def test_lead_veto_membership_stamps_a_wire_that_ranks_second_natively():
+    # G-JALAPEÑO frontend path, live 2026-08-12: the wire ranked #2 on its own
+    # score while #1 carried no court stamp — the front page's eligibility
+    # fallback promoted #2 to the lead because its serving row carried no
+    # veto. The stamp must ride every measured candidate, not only a demoted
+    # ex-leader.
+    from app.services.thread_intelligence import (
+        _apply_lead_syndication_veto_with_members,
+    )
+    threads, wire = _veto_threads()
+    # invert the scores: the real story leads natively, the wire sits at #2
+    threads[0]["signal_count"], threads[0]["changed_10h"] = 300, 50
+    threads[1]["signal_count"], threads[1]["changed_10h"] = 9000, 7000
+    rows = ([{"topic_id": "dynamic-topic-11877", "headline": h} for h in wire]
+            + [{"topic_id": "dynamic-topic-1619", "headline": h} for h in (
+                "North Korea fires ballistic missile into the Sea of Japan",
+                "Corea del Norte lanza un misil balistico hacia el mar",
+                "Nordkorea feuert ballistische Rakete ab",
+                "Seoul says the launch flew 600km before splashdown",
+                "Japan protests latest Pyongyang launch",
+                "US condemns North Korean weapons test",
+                "UN Security Council to meet over the launch",
+                "Kim oversees test of new hypersonic warhead",
+                "Analysts read a new solid fuel stage in the trajectory",
+                "South Korea raises its alert level after the launch",
+            )])
+    conn = _MembersConn(rows)
+    ranked = asyncio.run(
+        _apply_lead_syndication_veto_with_members(conn, threads, hours=24)
+    )
+    assert [t["label"] for t in ranked] == ["North Korea Missile", "Jalapeño Recall"]
+    assert ranked[1]["quality"]["lead_veto"] == "syndicated_family"
+    assert ranked[1]["quality"]["syndication_family_share"] >= 0.70
+    assert "lead_veto" not in ranked[0]["quality"]
+    assert all("raw_headline_sample" not in t for t in ranked)
+
+
 def test_lead_veto_membership_degrades_to_the_incoming_order():
     # A demotion we cannot measure must not happen, and must never 500.
     from app.services.thread_intelligence import (

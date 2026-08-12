@@ -548,12 +548,37 @@ def test_the_veto_moves_the_lead_one_slot_and_keeps_every_other_position(monkeyp
 
 def test_the_veto_never_empties_the_field(monkeypatch):
     # If every candidate is syndicated there is nothing honest to promote —
-    # the order stands rather than inventing a lead.
+    # the order stands rather than inventing a lead. But the stamps still ride
+    # the rows: the serving gate renders its honest empty-lead state instead
+    # of leading with a wire family the backend measured and stayed quiet about.
     monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
     a, b = _jalapeno_thread(), _jalapeno_thread()
     a["label"], b["label"] = "wire-a", "wire-b"
     a["signal_count"], b["signal_count"] = 900, 400
     assert [t["label"] for t in rank_threads([a, b])] == ["wire-a", "wire-b"]
+    assert a["quality"]["lead_veto"] == "syndicated_family"
+    assert b["quality"]["lead_veto"] == "syndicated_family"
+
+
+def test_g_jalapeno_the_veto_travels_to_a_wire_that_ranks_second_natively(monkeypatch):
+    # The live 2026-08-12 payload (prod briefing, 20:37Z): the witness ranked
+    # #2 on its own score under an unstamped #1, so the old veto — which
+    # measured only ranked[0] — never touched it, syndication_family_share
+    # served null, and the front page's eligibility fallback promoted it back
+    # to the lead. Every measurable lead candidate must carry its stamp,
+    # wherever it ranks.
+    monkeypatch.delenv("ATLAS_RANK_V2", raising=False)
+    jalapeno, nk = _jalapeno_thread(), _nk_missile_thread()
+    ranked = rank_threads([jalapeno, nk])
+    assert [t["label"] for t in ranked] == [
+        "North Korea Missile Launch", "Jalapeño Salmonella Outbreak"]
+    # never held slot 1, still stamped — the frontend gate reads the ROW
+    assert jalapeno["quality"]["lead_veto"] == "syndicated_family"
+    assert jalapeno["quality"]["syndication_family_share"] == \
+        pytest.approx(0.846, abs=0.001)
+    # and the honest lead is measured CLEAN, not merely unmeasured
+    assert nk["quality"]["syndication_family_share"] < 0.70
+    assert "lead_veto" not in nk["quality"]
 
 
 def test_rank_v2_off_disables_the_lead_veto(monkeypatch):

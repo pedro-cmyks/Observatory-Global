@@ -371,28 +371,53 @@ def lead_syndication_veto(thread: dict) -> bool:
     return share >= SYNDICATION_VETO_SHARE and family_n >= SYNDICATION_VETO_MIN_FAMILY
 
 
-def _apply_lead_syndication_veto(ranked: list[dict]) -> list[dict]:
-    """Move a vetoed leader to just below the best story that is not vetoed.
-    Every other position is preserved, and nothing is ever removed. If the
-    whole field is syndicated there is no honest lead to promote, so the
-    order stands rather than inventing one."""
-    if len(ranked) < 2:
-        return ranked
-    lead = ranked[0]
-    share, family_n, _ = syndication_family_share(lead)
-    quality = lead.get("quality")
+def _measure_lead_syndication(thread: dict) -> bool:
+    """Measure one lead candidate and stamp the verdict on its serving row.
+
+    The stamp must ride EVERY measured candidate, not only a demoted
+    ex-leader: the front page's eligibility gate falls back to the best
+    eligible row when the ranks above it lack a court stamp, so a wire
+    family that natively ranks #2 re-takes the lead through that fallback
+    unless its own row carries the veto (G-JALAPEÑO live regression,
+    2026-08-12: dt-11877 served at #2 with syndication_family_share null
+    and led the page under an unstamped #1)."""
+    share, family_n, _ = syndication_family_share(thread)
+    is_veto = (share >= SYNDICATION_VETO_SHARE
+               and family_n >= SYNDICATION_VETO_MIN_FAMILY)
+    quality = thread.get("quality")
     if isinstance(quality, dict):
         quality["syndication_family_share"] = round(share, 3)
-    if not (share >= SYNDICATION_VETO_SHARE
-            and family_n >= SYNDICATION_VETO_MIN_FAMILY):
-        return ranked
-    for idx, candidate in enumerate(ranked[1:], start=1):
-        if lead_syndication_veto(candidate):
-            continue
-        if isinstance(quality, dict):
+        if is_veto:
             quality["lead_veto"] = "syndicated_family"
             quality["lead_veto_family_size"] = family_n
-        return [*ranked[1:idx + 1], lead, *ranked[idx + 1:]]
+    return is_veto
+
+
+def _apply_lead_syndication_veto(ranked: list[dict]) -> list[dict]:
+    """Stamp every measurable lead candidate, then move a vetoed leader to
+    just below the best story that is not vetoed. Every other position is
+    preserved, and nothing is ever removed. If the whole field is syndicated
+    there is no honest lead to promote, so the ORDER stands — but the stamps
+    still ride the rows, so the serving gate renders its honest empty-lead
+    state instead of promoting a wire family the backend measured."""
+    if not ranked:
+        return ranked
+    vetoed: dict[int, bool] = {}
+    for idx, thread in enumerate(ranked):
+        # Rows carrying a raw membership sample are the serving layer's
+        # lead-candidate window (top-N, attached off the request path); the
+        # leader is measured regardless, via the evidence-sample fallback,
+        # exactly as before. Cost: ≤ top-N clusterings of ≤150 titles.
+        if idx == 0 or thread.get("raw_headline_sample"):
+            vetoed[idx] = _measure_lead_syndication(thread)
+    if len(ranked) < 2 or not vetoed[0]:
+        return ranked
+    for idx in range(1, len(ranked)):
+        if idx not in vetoed:
+            vetoed[idx] = _measure_lead_syndication(ranked[idx])
+        if vetoed[idx]:
+            continue
+        return [*ranked[1:idx + 1], ranked[0], *ranked[idx + 1:]]
     return ranked
 
 
