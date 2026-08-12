@@ -194,3 +194,104 @@ def test_template_matches_visible_in_payload():
     assert all(m["relation"] != "template_match"
                for lst in ("corroborating", "contradicting", "context")
                for m in res[lst])
+
+
+# ── T3.1 (ii): the two measurement bugs M0 found in this module ──────────────
+#
+# docs/research/brief-daily/2026-08-12-m0-measurement.md §a.1 measured
+# `cluster_syndicated` while choosing the syndication signal for the Brief's
+# lead veto and found two defects that make it fabricate/miscount families.
+
+def test_tokens_are_script_safe_not_latin_only():
+    """`[a-zà-ÿ0-9]` reduced a Cyrillic headline to its DIGITS — the same
+    defect class `_norm_headline` fixed on 2026-07-30."""
+    from app.services.corroboration import _tokens
+    toks = _tokens("Атака РФ по АТБ у Чернігові 26 липня 2026")
+    assert "2026" in toks
+    assert any(t == "чернігові" for t in toks), toks
+    # Greek / Arabic / Devanagari must survive too
+    assert _tokens("Φωτιά στη Χαλκιδική") == ["φωτιά", "στη", "χαλκιδική"]
+    assert "الزلزال" in _tokens("الزلزال في سوريا")
+    assert "भूकंप" in _tokens("भूकंप से तबाही")
+
+
+def test_cluster_does_not_fabricate_a_family_from_a_bare_year():
+    """M0's measured artifact: three unrelated Russian/Ukrainian headlines
+    clustered on the bare token '2026' (password advice + a flood + a cruise
+    ad). A token set with no letters cannot identify a story."""
+    from app.services.corroboration import cluster_syndicated
+    arts = [
+        {"title": "2026", "outlet": "a.ru"},
+        {"title": "2026", "outlet": "b.ru"},
+        {"title": "2026", "outlet": "c.ru"},
+    ]
+    clusters = cluster_syndicated(arts)
+    assert len(clusters) == 3, clusters       # unclusterable, never one family
+    # ...while real Cyrillic reprints of ONE story still collapse
+    same = [
+        {"title": "Атака РФ по АТБ у Чернігові, є загиблі", "outlet": "a.ua"},
+        {"title": "Атака РФ по АТБ у Чернігові, є загиблі", "outlet": "b.ua"},
+        {"title": "Атака РФ по АТБ у Чернігові, є загиблі", "outlet": "c.ua"},
+    ]
+    assert len(cluster_syndicated(same)) == 1
+
+
+def test_cluster_syndicated_is_order_independent():
+    """M0 §a.1: the SAME 26 members returned in two row orders scored
+    top-family 0.538 and 0.731. A greedy first-fit clusterer must not let the
+    database's row order decide the measurement."""
+    import random
+    from app.services.corroboration import cluster_syndicated
+    story = "Guac signal sparked Chipotle frantic bid to recall jalapenos"
+    arts = [{"title": f"{story} {m}", "outlet": f"{m}.com"}
+            for m in ("fortmorgan", "morningcall", "standardspeaker",
+                      "pressdemocrat", "sunsentinel", "orlandosentinel")]
+    arts += [
+        {"title": "Polish eggs linked to four French Salmonella outbreaks",
+         "outlet": "foodsafetynews.com"},
+        {"title": "Mexico clears sargassum as seaweed crisis hits tourism",
+         "outlet": "timesofindia.com"},
+        {"title": "Major US supplier recalls jalapenos amid Salmonella outbreak",
+         "outlet": "haitisun.com"},
+    ]
+
+    def signature(rows):
+        return sorted(
+            tuple(sorted(a["outlet"] for a in members))
+            for members in cluster_syndicated(rows)
+        )
+
+    baseline = signature(arts)
+    rng = random.Random(11877)
+    for _ in range(25):
+        shuffled = arts[:]
+        rng.shuffle(shuffled)
+        assert signature(shuffled) == baseline
+    # and the wire family is found, not split
+    assert max(len(c) for c in baseline) == 6
+
+    # The chain that made the greedy first-fit order-sensitive in the first
+    # place: A~B and B~C clear the bar but A~C does not, so whether B or A
+    # seeds decides whether the answer is one family of three or two families.
+    chain = [
+        {"title": "alpha bravo charlie delta echo", "outlet": "a.com"},
+        {"title": "alpha bravo charlie delta foxtrot", "outlet": "b.com"},
+        {"title": "alpha bravo charlie foxtrot golf", "outlet": "c.com"},
+    ]
+    chain_baseline = signature(chain)
+    for perm in ((0, 2, 1), (1, 0, 2), (1, 2, 0), (2, 0, 1), (2, 1, 0)):
+        assert signature([chain[i] for i in perm]) == chain_baseline
+
+
+def test_cluster_representative_stays_the_first_input_member():
+    """Determinism must not change WHICH article represents a cluster —
+    `independence` cites members[0] and the citations ride the payload."""
+    from app.services.corroboration import cluster_syndicated
+    arts = [
+        {"title": "Depot strike reported overnight in the western region",
+         "outlet": "first.com"},
+        {"title": "Depot strike reported overnight in the western region again",
+         "outlet": "second.com"},
+    ]
+    clusters = cluster_syndicated(arts)
+    assert clusters[0][0]["outlet"] == "first.com"

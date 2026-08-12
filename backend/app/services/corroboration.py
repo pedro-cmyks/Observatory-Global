@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from typing import Any
 
 # G2 thresholds — documented in the payload meta so the section is glass-box.
@@ -39,9 +40,40 @@ _STOP = {
 }
 
 
+# Script-safe token class (repaired 2026-08-12, M0 §a.1). The old
+# `[a-zà-ÿ0-9]` was Latin-only — the exact defect class `thread_ranking.
+# _fold_headline` fixed on 2026-07-30. A Cyrillic/CJK/Greek/Devanagari
+# headline reduced to its DIGITS, so three unrelated Russian and Ukrainian
+# stories clustered on the bare token "2026" and produced a fabricated
+# syndication family. `[^\W_]` keeps letters and digits of EVERY script and
+# drops the underscore that a `\w` class would otherwise admit. Combining
+# marks are kept with their base letter — Python's `\w` excludes category-M
+# code points, which would shatter every Devanagari/Arabic-vowelled word into
+# sub-3-character fragments and silently reproduce the same blindness.
+_MARK_CATEGORIES = frozenset({"Mn", "Mc", "Me"})
+_MIN_TOKEN_CHARS = 3
+
+
 def _tokens(text: str) -> list[str]:
-    return [t for t in re.findall(r"[a-zà-ÿ0-9]{3,}", (text or "").lower())
-            if t not in _STOP]
+    tokens: list[str] = []
+    buf: list[str] = []
+    for ch in (text or "").lower():
+        if ch.isalnum() or unicodedata.category(ch) in _MARK_CATEGORIES:
+            buf.append(ch)
+        elif buf:
+            tokens.append("".join(buf))
+            buf = []
+    if buf:
+        tokens.append("".join(buf))
+    return [t for t in tokens
+            if len(t) >= _MIN_TOKEN_CHARS and t not in _STOP]
+
+
+def _clusterable(tokens: frozenset) -> bool:
+    """A token set with no LETTERS (a bare year, a price, punctuation
+    residue) cannot identify a story — every such title would share one
+    bucket. Mirrors `thread_ranking._degenerate_key`."""
+    return any(any(ch.isalpha() for ch in tok) for tok in tokens)
 
 
 def build_pin_queries(
@@ -104,20 +136,49 @@ def _jaccard(a: frozenset, b: frozenset) -> float:
 
 def cluster_syndicated(articles: list[dict]) -> list[list[dict]]:
     """Greedy near-identical-title clustering. Each cluster ≈ one wire story
-    (or one genuinely distinct account). Input dicts need `title`; order is
-    preserved (first member = representative)."""
-    clusters: list[tuple[frozenset, list[dict]]] = []
-    for art in articles:
-        tset = frozenset(_tokens(art.get("title") or ""))
-        placed = False
-        for cset, members in clusters:
-            if _jaccard(tset, cset) >= SYNDICATION_JACCARD:
-                members.append(art)
-                placed = True
-                break
-        if not placed:
-            clusters.append((tset, [art]))
-    return [members for _, members in clusters]
+    (or one genuinely distinct account). Input dicts need `title`; the input
+    order is preserved in the output (first member = representative).
+
+    DETERMINISM (repaired 2026-08-12, M0 §a.1): the old first-fit walked the
+    input order, so the partition depended on which row the database happened
+    to return first — the same 26 members scored a top family of 0.538 in one
+    run and 0.731 in another. Titles chain (A~B and B~C clear the bar while
+    A~C does not), and whichever of them seeds decides the answer. Two changes
+    remove the input order from the result entirely:
+
+      1. Seeds are visited in a CONTENT-derived order — richest token set
+         first, then the sorted token tuple as the tiebreak. Input position is
+         only the last resort, for titles whose token sets are identical (in
+         which case the choice cannot matter).
+      2. Assignment is BEST-fit, not first-fit: a title joins the cluster it
+         is most similar to, not the first one that happens to clear the bar.
+
+    Both were needed: the sort alone still let two equal-length token sets
+    swap seats, and best-fit alone still walked the input order."""
+    tokenised = [(idx, art, frozenset(_tokens(art.get("title") or "")))
+                 for idx, art in enumerate(articles)]
+    seed_order = sorted(
+        tokenised,
+        key=lambda row: (-len(row[2]), tuple(sorted(row[2])), row[0]),
+    )
+    clusters: list[tuple[frozenset, list[int]]] = []
+    for idx, _art, tset in seed_order:
+        best: list[int] | None = None
+        best_sim = 0.0
+        if _clusterable(tset):
+            for cset, members in clusters:
+                if not _clusterable(cset):
+                    continue
+                sim = _jaccard(tset, cset)
+                if sim >= SYNDICATION_JACCARD and sim > best_sim:
+                    best, best_sim = members, sim
+        if best is None:
+            clusters.append((tset, [idx]))
+        else:
+            best.append(idx)
+    ordered = sorted((sorted(members) for _, members in clusters),
+                     key=lambda members: members[0])
+    return [[articles[i] for i in members] for members in ordered]
 
 
 def independence(articles: list[dict], *, group_fn=None) -> dict[str, Any]:
