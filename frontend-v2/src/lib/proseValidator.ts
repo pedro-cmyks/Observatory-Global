@@ -61,6 +61,62 @@ const FIGURE_KEYWORD_WINDOW = 40
  *  ASCII/Unicode sign. */
 const NUMBER_RE = /[-−+]?\d{1,3}(?:,\d{3})+(?:\.\d+)?|[-−+]?\d+(?:\.\d+)?/g
 
+/** DATE SPANS (Frank 2026-08-12): the lede rendered "2026⚠-08⚠-10⚠" because
+ *  NUMBER_RE splits an ISO date into 2026 / -08 / -10 and a quantity keyword
+ *  ("outlets on 2026-08-10") sat inside the keyword window. A number that is
+ *  PART OF A DATE is never a figure claim, so date spans are computed once per
+ *  prose and any number intersecting one is skipped.
+ *  Covered: YYYY-MM-DD · YYYY/MM/DD · DD-MM-YYYY · MM/DD/YYYY · long forms
+ *  ("August 10, 2026", "10 August 2026", "Aug. 10"). The day in a long form is
+ *  `\d{1,2}(?![\d,])` so "The March left 5,000 dead" keeps 5,000 a real count. */
+const MONTH = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?'
+const DATE_RES: RegExp[] = [
+  /\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b/g,
+  /\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b/g,
+  new RegExp(`\\b${MONTH}\\s+\\d{1,2}(?![\\d,])(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?`, 'gi'),
+  new RegExp(`\\b\\d{1,2}(?![\\d,])(?:st|nd|rd|th)?\\s+${MONTH}(?:,?\\s+\\d{4})?`, 'gi'),
+]
+
+function dateSpans(prose: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = []
+  for (const re of DATE_RES) {
+    re.lastIndex = 0
+    for (const m of prose.matchAll(re)) {
+      const start = m.index ?? 0
+      spans.push([start, start + m[0].length])
+    }
+  }
+  return spans
+}
+
+/** True when [start,end) touches a date span (the sign of "-08" sits INSIDE the
+ *  ISO span, so intersection — not containment — is the test). */
+function intersectsDate(spans: Array<[number, number]>, start: number, end: number): boolean {
+  return spans.some(([s, e]) => start < e && end > s)
+}
+
+/** NEGATION SCOPE (Frank 2026-08-12): when the corroboration lane failed, the
+ *  substitution spliced its phrase into negated clauses — "could not be verified
+ *  or linked to the confirmed deal" rendered as "could not be reported
+ *  (uncorroborated) or linked to the reported (uncorroborated) deal". That is
+ *  both ungrammatical AND false: "could not be verified" is an honest statement
+ *  of ABSENCE, exactly what the honesty rail wants — downgrading it asserts the
+ *  opposite. A confirmation word already under a negation in its own clause is
+ *  therefore left verbatim. Clause-scoped (not sentence-scoped) so a fresh
+ *  assertion after a comma is still softened. */
+const NEGATION_RE = /\b(?:not|never|no|nor|none|without|cannot|unable|lacks?|lacking|absent|yet)\b|n[’']t\b/i
+const CLAUSE_BREAK_RE = /[.!?;:,()"“”—–]/
+const NEGATION_WINDOW = 80
+
+function isNegatedClaim(prose: string, start: number): boolean {
+  const from = Math.max(0, start - NEGATION_WINDOW)
+  let clause = prose.slice(from, start)
+  const lastBreak = clause.split('').reduce(
+    (acc, ch, i) => (CLAUSE_BREAK_RE.test(ch) ? i : acc), -1)
+  if (lastBreak >= 0) clause = clause.slice(lastBreak + 1)
+  return NEGATION_RE.test(clause)
+}
+
 interface Hit {
   start: number
   end: number
@@ -99,7 +155,10 @@ function isCitationMarker(prose: string, start: number, end: number): boolean {
 
 /** Is the number at [start,end) a figure CLAIM (a count/percent/sentiment we
  *  should validate), rather than a year / duration / ordinal we should ignore? */
-function isFigureClaim(prose: string, token: string, start: number, end: number): boolean {
+function isFigureClaim(
+  prose: string, token: string, start: number, end: number, dates: Array<[number, number]>,
+): boolean {
+  if (intersectsDate(dates, start, end)) return false   // a date component, never a count
   if (token.includes(',')) return true          // thousands-separated → a count
   if (prose[end] === '%') return true           // a percentage
   const ctxStart = Math.max(0, start - FIGURE_KEYWORD_WINDOW)
@@ -114,12 +173,16 @@ export function validateProse(prose: string, ctx: MeasuredContext): ProseAnnotat
   if (!prose) return []
 
   const hits: Hit[] = []
+  const dates = dateSpans(prose)
 
-  // 1) Confirmation words — only a problem when nothing backs them.
+  // 1) Confirmation words — only a problem when nothing backs them AND the
+  //    sentence actually ASSERTS corroboration. Under a negation the word is
+  //    already honest ("could not be verified"), so it is left verbatim.
   if (!ctx.corroborationBacked) {
     for (const m of prose.matchAll(CONFIRMATION_RE)) {
       const original = m[0]
       const start = m.index ?? 0
+      if (isNegatedClaim(prose, start)) continue
       hits.push({
         start,
         end: start + original.length,
@@ -138,7 +201,7 @@ export function validateProse(prose: string, ctx: MeasuredContext): ProseAnnotat
     const start = m.index ?? 0
     const end = start + token.length
     if (isCitationMarker(prose, start, end)) continue
-    if (!isFigureClaim(prose, token, start, end)) continue
+    if (!isFigureClaim(prose, token, start, end, dates)) continue
     const value = Number(token.replace(/,/g, '').replace('−', '-'))
     if (!Number.isFinite(value)) continue
     if (figureBacked(value, ctx.figures)) continue

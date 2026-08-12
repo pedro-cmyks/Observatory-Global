@@ -105,6 +105,111 @@ describe('numeric figure claims vs the measured set', () => {
   })
 })
 
+// Frank test 2026-08-12 (break d.3): the lede rendered "2026⚠-08⚠-10⚠" — every
+// component of an ISO date read as an unbacked figure because a quantity keyword
+// ("outlets") sat inside the 40-char window. A date is never a figure claim.
+describe('dates are never figure claims (Frank witness "2026-08-10")', () => {
+  it('leaves an ISO date untouched even beside a quantity keyword', () => {
+    const prose = 'The deal was reported by multiple outlets on 2026-08-10 and 2026-08-12 [2][3].'
+    const segs = validateProse(prose, NO_CORROBORATION)
+    expect(segs.some(s => s.kind === 'unbacked-figure')).toBe(false)
+    expect(joinValidatedText(segs)).toBe(prose)
+  })
+
+  it('leaves DD-MM-YYYY and slashed dates untouched', () => {
+    for (const prose of [
+      'Outlets reported 10-08-2026 as the announcement date.',
+      'Outlets reported 2026/08/10 as the announcement date.',
+      'Outlets reported 08/10/2026 as the announcement date.',
+    ]) {
+      const segs = validateProse(prose, NO_CORROBORATION)
+      expect(segs.some(s => s.kind === 'unbacked-figure'), prose).toBe(false)
+    }
+  })
+
+  it('leaves long-form dates untouched', () => {
+    for (const prose of [
+      'Sources say the memorandum was signed on August 10, 2026.',
+      'Sources say the memorandum was signed on 10 August 2026.',
+      'Sources say the memorandum was signed on Aug. 10.',
+    ]) {
+      const segs = validateProse(prose, NO_CORROBORATION)
+      expect(segs.some(s => s.kind === 'unbacked-figure'), prose).toBe(false)
+    }
+  })
+
+  it('still flags a real count that sits next to a date', () => {
+    const segs = validateProse(
+      'At least 4,930 dead were reported on 2026-08-10.',
+      { figures: [4734], corroborationBacked: false },
+    )
+    const flagged = segs.filter(s => s.kind === 'unbacked-figure').map(s => s.original)
+    expect(flagged).toEqual(['4,930'])
+  })
+
+  it('still flags a count inside a month-named sentence (March is not a date here)', () => {
+    const segs = validateProse(
+      'The March left 5,000 dead.',
+      { figures: [], corroborationBacked: false },
+    )
+    expect(segs.find(s => s.kind === 'unbacked-figure')?.original).toBe('5,000')
+  })
+})
+
+// Frank test 2026-08-12 (break d.2): when the corroboration lane 502s, the
+// substitution spliced the phrase into NEGATED clauses and destroyed both the
+// grammar and the meaning ("could not be verified" → "could not be reported
+// (uncorroborated)" claims the opposite). A negated confirmation word is already
+// an honest statement of absence — never downgrade it.
+describe('degraded copy stays grammatical (Frank 502-run witnesses)', () => {
+  const rendered = (prose: string) => joinValidatedText(validateProse(prose, NO_CORROBORATION))
+
+  it('witness 1 — "not confirmed connected" is left verbatim', () => {
+    const prose = 'They are topically adjacent but not confirmed connected to the Syria-Russia bases deal.'
+    expect(rendered(prose)).toBe(prose)
+    expect(rendered(prose)).not.toContain('reported (uncorroborated) connected')
+  })
+
+  it('witness 2 — "share no confirmed actor" is left verbatim', () => {
+    const prose = 'They share no confirmed actor with it.'
+    expect(rendered(prose)).toBe(prose)
+  })
+
+  it('witness 3 — "could not be verified or linked to the confirmed deal" is left verbatim', () => {
+    const prose = 'Their content could not be verified or linked to the confirmed deal [2][3].'
+    expect(rendered(prose)).toBe(prose)
+    expect(rendered(prose)).not.toContain('reported (uncorroborated) or linked')
+  })
+
+  it('covers the contracted and lexical negations', () => {
+    for (const prose of [
+      "The link wasn't confirmed by any outlet.",
+      'The link was never confirmed by any outlet.',
+      'The link cannot be verified from the frozen evidence.',
+      'The transfer went ahead without corroborated receipts.',
+    ]) {
+      expect(rendered(prose), prose).toBe(prose)
+    }
+  })
+
+  it('an honest negative is not counted as unbacked prose', () => {
+    const segs = validateProse('Their content could not be verified.', NO_CORROBORATION)
+    expect(hasUnbacked(segs)).toBe(false)
+  })
+
+  it('still downgrades the ASSERTION in a later clause of the same sentence', () => {
+    // The negation scopes to its own clause: "was confirmed by AFP" after the
+    // comma is a fresh, unbacked assertion and must still be softened.
+    const out = rendered('The report was not published, but the strike was confirmed by AFP.')
+    expect(out).toBe('The report was not published, but the strike was reported (uncorroborated) by AFP.')
+  })
+
+  it('still downgrades a plain unbacked assertion', () => {
+    expect(rendered('Israel confirmed the strike on the depot.'))
+      .toBe('Israel reported (uncorroborated) the strike on the depot.')
+  })
+})
+
 describe('a properly-backed claim passes untouched', () => {
   it('returns a single ok segment when nothing is unbacked', () => {
     const ctx: MeasuredContext = { figures: [4734], corroborationBacked: true }
