@@ -556,6 +556,32 @@ def _receipt_rows(nodes: list[InvestigationNode]) -> list[PublicationReceipt]:
     return rows
 
 
+# The 5W+H HOW row is the SOURCING list an editor reads (Frank test 2026-08-12:
+# it listed `language:en` and `bluesky` beside tass.com/sana.sy/dw.com "as if they
+# were sources"). Two token classes reach `sources`/`languages` that are not
+# outlets:
+#   · synthetic language tokens ("language:en") — a coverage property, not a
+#     masthead;
+#   · platform LANES, which is exactly what ingest writes as `source_name` for the
+#     social feeds ("bluesky", "lemmy/<community>@<host>") — a lane is where a post
+#     lives, not an outlet that published it.
+# DENY-list, not an allow-list of domain-shaped strings: RSS outlet names need not
+# look like domains, and dropping a real outlet is the worse error.
+_NON_OUTLET_LANES = frozenset({
+    "bluesky", "bsky", "lemmy", "mastodon", "reddit", "telegram", "twitter", "x",
+    "threads", "discord", "hackernews", "hn", "social", "forum",
+})
+
+
+def _is_outlet(value: str) -> bool:
+    """True when a source token names an OUTLET (the only thing HOW may list)."""
+    token = (value or "").strip().lower()
+    if not token or token.startswith("language:"):
+        return False
+    lane = token.split("/", 1)[0].split("@", 1)[0].strip()
+    return lane not in _NON_OUTLET_LANES
+
+
 def _item(values: set[str], missing: str, *, partial_below: int = 1) -> ReadinessItem:
     cleaned = sorted(v for v in values if v)
     if not cleaned:
@@ -677,12 +703,20 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
             status="missing", reason_codes=["no_verified_subjects"],
         )
 
+    # HOW = the outlets that carried it. Language tokens and platform lanes are
+    # excluded (they are not mastheads) — but never SILENTLY: when the exclusion
+    # is the reason HOW has nothing to show, the row says so.
+    outlets = {s for s in sources if _is_outlet(s)}
+    how_readiness = _item(outlets, "no_outlet_receipts")
+    if not outlets and (sources or languages):
+        how_readiness.reason_codes.append("non_outlet_tokens_excluded_from_how")
+
     readiness = {
         "who": who_readiness,
         "what": _item(what, "no_story_or_event_nodes"),
         "when": _item(dates, "no_dated_receipts"),
         "where": where_readiness,
-        "how": _item(sources | {f"language:{x}" for x in languages}, "no_source_or_language_receipts"),
+        "how": how_readiness,
         "why": why_readiness,
     }
 

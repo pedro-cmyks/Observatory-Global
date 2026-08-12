@@ -376,3 +376,57 @@ def test_publication_package_carries_upstream_operational_gaps():
 
     assert "edition_cutoff_stale" in package.gaps
     assert "receipt_signal_provider_timeout" in package.gaps
+
+
+# Frank test 2026-08-12 (break d.4): the 5W+H HOW row — which an editor reads as
+# the sourcing list — listed `language:en` and `bluesky` beside tass.com/dw.com
+# as if they were outlets. HOW carries OUTLETS only; the language tokens and the
+# social-platform lanes are excluded, and never silently (a HOW that goes empty
+# because of the exclusion says so).
+def test_publication_how_row_lists_outlets_not_languages_or_platform_lanes():
+    story = node(
+        "node-story-1", "story", "thread", "Syria Russia bases deal",
+        {"live": {
+            "top_countries": ["SY"],
+            "top_sources": ["tass.com", "sana.sy", "dw.com", "bluesky", "lemmy/world@lemmy.ml"],
+            "evidence_samples": [{
+                "id": 42, "headline": "Syria says deal reached", "source_name": "naharnet.com",
+                "source_url": "https://a/42", "timestamp": "2026-08-10T00:00:00Z",
+                "source_lang": "en",
+            }],
+        }},
+        quality={"verified_subjects": ["Vladimir Putin"]},
+    )
+    graph = assemble_investigation_graph(GraphRequest(nodes=[story]), measured_at=STAMP)
+    package = build_publication_package(PublicationPackageRequest(
+        title="Syria Russia bases deal", authorship="analyst", graph=graph, generated_at=STAMP,
+    ))
+
+    how = package.readiness["how"]
+    assert how.status == "ready"
+    assert how.values == ["dw.com", "naharnet.com", "sana.sy", "tass.com"]
+    assert not any(v.startswith("language:") for v in how.values)
+    assert "bluesky" not in how.values
+    assert not any(v.startswith("lemmy/") for v in how.values)
+
+
+def test_publication_how_row_says_so_when_only_non_outlet_tokens_were_captured():
+    story = node(
+        "node-story-1", "story", "thread", "Forum chatter",
+        {"live": {
+            "top_sources": ["bluesky", "reddit"],
+            "source_lang": "en",
+            "evidence_samples": [],
+        }},
+    )
+    graph = assemble_investigation_graph(GraphRequest(nodes=[story]), measured_at=STAMP)
+    package = build_publication_package(PublicationPackageRequest(
+        title="Forum chatter", authorship="analyst", graph=graph, generated_at=STAMP,
+    ))
+
+    how = package.readiness["how"]
+    assert how.status == "missing"
+    assert how.values == []
+    assert "no_outlet_receipts" in how.reason_codes
+    # never a silent drop: the excluded lanes are named as the reason HOW is empty
+    assert "non_outlet_tokens_excluded_from_how" in how.reason_codes
