@@ -158,3 +158,93 @@ def test_resolve_citations_orders_dedupes_and_drops_out_of_range():
     assert [c["n"] for c in cites] == [2, 1]   # first-appearance order
     assert cites[0]["url"] == "http://x"
     assert all(c["n"] != 7 for c in cites)     # invented receipt never enters
+
+
+# ── measured cross-read tensions vs the synthesis prose ───────────────────────
+# Frank test 2026-08-12 (break d.1, "the single most publishable finding in the
+# whole run and the prose drops it"): the cross-read measured
+#   c10 naharnet  "Russia has yet to officially comment on the agreement."
+#   c1  algemeiner "Russia's Foreign Ministry said on Tuesday that a deal …
+#                   would boost ties"
+# and flagged them ⚠ POSSIBLE TENSION — yet the synthesis asserted flatly
+# "Russia said the base deal will boost ties…". The report contradicted itself
+# and only the buried section was right. The measured tension is now handed to
+# the model AND enforced deterministically after the pass: a sentence that
+# asserts one side of a flagged pair, unqualified, is downgraded in place.
+
+_WITNESS = dossier.SynthTension(
+    a_quote="Russia has yet to officially comment on the agreement.",
+    a_outlet="naharnet.com",
+    b_quote="Russia's Foreign Ministry said on Tuesday that a deal would boost ties",
+    b_outlet="algemeiner.com",
+    note="c10 asserts Russia has not yet officially commented, while c1 attributes a statement to Russia's Foreign Ministry.",
+)
+
+
+def test_tension_guard_downgrades_the_unqualified_assertion_witness():
+    texts = ["Russia said the base deal will boost ties, and a source said some Russian forces will stay [1]."]
+    guarded, downgrades = dossier.apply_tension_guard(texts, [_WITNESS])
+
+    assert len(downgrades) == 1
+    out = guarded[0]
+    assert "reported (uncorroborated)" in out
+    # the counter-quote travels with the downgrade — the reader sees the tension
+    assert "Russia has yet to officially comment on the agreement" in out
+    assert "naharnet.com" in out
+    # grammatical: the marker lands before the sentence's terminal period, once
+    assert out.endswith(".")
+    assert out.count("reported (uncorroborated)") == 1
+    assert out.startswith("Russia said the base deal will boost ties")
+    assert downgrades[0]["counter_outlet"] == "naharnet.com"
+
+
+def test_tension_guard_leaves_prose_that_already_carries_both_sides():
+    texts = ["Russia's Foreign Ministry said the deal would boost ties, though Russia has yet to officially comment on the agreement [1]."]
+    guarded, downgrades = dossier.apply_tension_guard(texts, [_WITNESS])
+    assert downgrades == []
+    assert guarded == texts
+
+
+def test_tension_guard_leaves_an_already_attributed_or_hedged_sentence():
+    for text in [
+        "According to algemeiner.com, the base deal will boost ties [1].",
+        "The base deal will reportedly boost ties [1].",
+    ]:
+        guarded, downgrades = dossier.apply_tension_guard([text], [_WITNESS])
+        assert downgrades == [], text
+        assert guarded == [text], text
+
+
+def test_tension_guard_ignores_sentences_about_something_else():
+    texts = ["Syria will assume control of civilian facilities at Hmeimim Airport [2]."]
+    guarded, downgrades = dossier.apply_tension_guard(texts, [_WITNESS])
+    assert downgrades == []
+    assert guarded == texts
+
+
+def test_tension_guard_is_a_noop_without_measured_tensions():
+    texts = ["Russia said the base deal will boost ties [1]."]
+    assert dossier.apply_tension_guard(texts, []) == (texts, [])
+
+
+def test_tension_guard_only_touches_the_offending_sentence_in_a_paragraph():
+    para = ("Syria and Russia reached an agreement on the bases [3]. "
+            "Russia said the base deal will boost ties [1]. "
+            "The transition runs three months [3].")
+    guarded, downgrades = dossier.apply_tension_guard([para], [_WITNESS])
+    assert len(downgrades) == 1
+    out = guarded[0]
+    assert out.startswith("Syria and Russia reached an agreement on the bases [3]. ")
+    assert out.endswith("The transition runs three months [3].")
+    assert "reported (uncorroborated)" in out
+
+
+def test_synth_user_hands_the_measured_tensions_to_the_model():
+    req = dossier.SynthesizeRequest(
+        pins=[_pin("A", items=[{"headline": "h1"}])], tensions=[_WITNESS],
+    )
+    user = dossier._synth_user(req)
+    assert "MEASURED CROSS-READ TENSIONS" in user
+    assert "Russia has yet to officially comment" in user
+    assert "naharnet.com" in user
+    assert "TENSION" in dossier._SYNTH_SYSTEM.upper()

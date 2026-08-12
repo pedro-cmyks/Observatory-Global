@@ -65,11 +65,26 @@ class SynthConnection(BaseModel):
     lens_note: str | None = None
 
 
+class SynthTension(BaseModel):
+    # One MEASURED cross-read tension (workbench-cross-read-v1, kind='tension'):
+    # two quote-backed claims from different articles that disagree. The prose
+    # may never assert either side as settled — see apply_tension_guard.
+    a_quote: str
+    a_outlet: str | None = None
+    b_quote: str
+    b_outlet: str | None = None
+    note: str | None = None
+
+
 class SynthesizeRequest(BaseModel):
     title: str = ""
     pins: list[SynthPin] = Field(..., min_length=1)
     connection: SynthConnection | None = None
     gaps: list[str] = Field(default_factory=list)
+    # Measured cross-read tensions for THIS pin set (optional — absent on the
+    # daily-edition path and on a first report run, present once the analyst has
+    # cross-read the sources).
+    tensions: list[SynthTension] = Field(default_factory=list)
 
 
 _SYNTH_SYSTEM = (
@@ -140,6 +155,12 @@ _SYNTH_SYSTEM = (
     "an independent line, you may state it and cite both. A lede or figure resting "
     "solely on '[STATE MEDIA]' citations MUST carry the state-media attribution in the "
     "same sentence — never present it bare.\n"
+    "4b. NEVER SETTLE A MEASURED TENSION. When 'MEASURED CROSS-READ TENSIONS' are "
+    "supplied, two read sources DISAGREE on that point. Do NOT assert either side "
+    "as established fact: attribute both ('<outlet> says X, while <outlet> says Y') "
+    "or say the point is contested. A sentence asserting one side unqualified will "
+    "be downgraded server-side to 'reported (uncorroborated)' with the opposing "
+    "quote attached — write it attributed the first time.\n"
     "5. SURFACE THE NON-OBVIOUS insight visible only across pins (a self-declared "
     "alignment, a coverage asymmetry, an actor bridging two CONFIRMED stories) — but "
     "only over the confirmed spine, never over a bracketed or unreliable pin.\n"
@@ -257,11 +278,144 @@ def _synth_user(req: SynthesizeRequest, article_texts: dict | None = None) -> st
             parts.append(f"  coverage lens: {c.lens_note}")
         if c.bridges:
             parts.append("  nearby unpinned stories (bridges): " + " | ".join(c.bridges[:6]))
+    if req.tensions:
+        parts.append("\nMEASURED CROSS-READ TENSIONS (two read sources disagree — "
+                     "never assert either side as settled; attribute both):")
+        for t in req.tensions[:6]:
+            parts.append(f"  - {t.note or 'claims in tension'}")
+            parts.append(f"      A: “{t.a_quote[:240]}”" + (f" — {t.a_outlet}" if t.a_outlet else ""))
+            parts.append(f"      B: “{t.b_quote[:240]}”" + (f" — {t.b_outlet}" if t.b_outlet else ""))
     if req.gaps:
         parts.append("\nKNOWN GAPS (from the frozen report):")
         for g in req.gaps[:6]:
             parts.append(f"  - {g}")
     return "\n".join(parts)
+
+
+# ── measured-tension guard ────────────────────────────────────────────────────
+# Frank test 2026-08-12: the cross-read measured a real editorial discrepancy
+# (naharnet "Russia has yet to officially comment" vs algemeiner "Russia's
+# Foreign Ministry said … would boost ties") and the synthesis asserted the
+# second side flatly — "the report contradicts itself and only the buried
+# section is right". The prompt rule above asks the model not to; THIS is the
+# enforcement, deterministic and after the fact.
+#
+# WHAT IS BUILT (honest scope): this is lexical, not semantic. A sentence is
+# treated as asserting one side of a flagged pair when it carries at least one
+# content term EXCLUSIVE to that side plus ≥3 terms of the pair overall, carries
+# NO term exclusive to the other side (prose that already presents both sides is
+# doing the right thing), and is not already attributed/hedged. Such a sentence
+# keeps its text and gains, before its terminal punctuation, the honesty clause
+# "— reported (uncorroborated): …" naming the opposing quote and outlet. It is
+# never dropped: dropping would lose the finding the analyst most needs.
+_TENSION_STOPWORDS = frozenset({
+    "about", "after", "again", "against", "also", "another", "been", "before",
+    "being", "between", "both", "could", "does", "doing", "during", "each",
+    "from", "have", "having", "here", "into", "just", "like", "more", "most",
+    "much", "must", "only", "other", "over", "same", "should", "since", "some",
+    "such", "than", "that", "their", "them", "then", "there", "these", "they",
+    "this", "those", "through", "under", "until", "very", "were", "what", "when",
+    "where", "which", "while", "will", "with", "would", "your", "shall", "might",
+    "still", "into", "onto", "upon", "including", "however", "although",
+})
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+# Already-honest phrasings: an attributed or hedged sentence is not an
+# unqualified assertion, so the guard leaves it alone.
+_HEDGE_RE = re.compile(
+    r"\b(?:according to|reportedly|reported by|per\s+[a-z0-9.-]+\.[a-z]{2,}|is said to|"
+    r"was said to|claims?|claimed|alleged(?:ly)?|uncorroborated|unconfirmed|contested|"
+    r"disputed|denies|denied|yet to|has not|have not|did not|no comment)\b",
+    re.IGNORECASE,
+)
+# A sentence ends on .!? only when the next thing is a new sentence (or the end)
+# — so "According to algemeiner.com, …" stays ONE sentence and keeps its hedge.
+_SENT_END_RE = re.compile(r"[.!?]+(?=\s+[A-Z“\"(]|\s*$)")
+_TERMINAL_RE = re.compile(r"([.!?]+)(\s*)$")
+_TENSION_MIN_OVERLAP = 3
+_TENSION_QUOTE_CHARS = 200
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Sentences with their trailing whitespace kept, so "".join() is lossless."""
+    out: list[str] = []
+    start = 0
+    for m in _SENT_END_RE.finditer(text or ""):
+        end = m.end()
+        while end < len(text) and text[end].isspace():
+            end += 1
+        out.append(text[start:end])
+        start = end
+    if start < len(text or ""):
+        out.append(text[start:])
+    return out
+
+
+def _tension_tokens(text: str) -> set[str]:
+    return {
+        t for t in _TOKEN_RE.findall((text or "").lower())
+        if len(t) >= 4 and t not in _TENSION_STOPWORDS
+    }
+
+
+def _tension_marker(quote: str, outlet: str | None) -> str:
+    trimmed = " ".join((quote or "").split())[:_TENSION_QUOTE_CHARS].rstrip(" .,;:")
+    attribution = f" ({outlet})" if outlet else ""
+    return (" — reported (uncorroborated): the cross-read measured a contrary "
+            f"account, “{trimmed}”{attribution}")
+
+
+def apply_tension_guard(
+    texts: list[str], tensions: list[SynthTension],
+) -> tuple[list[str], list[dict]]:
+    """Downgrade every sentence that asserts one side of a MEASURED cross-read
+    tension without attribution. Pure. Returns (guarded texts, ledger)."""
+    if not tensions or not texts:
+        return texts, []
+    pairs = []
+    for t in tensions:
+        ta, tb = _tension_tokens(t.a_quote), _tension_tokens(t.b_quote)
+        if not ta or not tb:
+            continue
+        pairs.append((t, ta, tb, ta - tb, tb - ta))
+    if not pairs:
+        return texts, []
+
+    out: list[str] = []
+    ledger: list[dict] = []
+    for text in texts:
+        rebuilt: list[str] = []
+        for sentence in _split_sentences(text or ""):
+            if not sentence.strip():
+                rebuilt.append(sentence)
+                continue
+            tokens = _tension_tokens(sentence)
+            marked = sentence
+            for t, ta, tb, only_a, only_b in pairs:
+                if len(tokens & (ta | tb)) < _TENSION_MIN_OVERLAP:
+                    continue
+                hits_a, hits_b = bool(tokens & only_a), bool(tokens & only_b)
+                if hits_a == hits_b:
+                    continue          # both sides present (honest) or neither side named
+                if _HEDGE_RE.search(sentence):
+                    continue          # already attributed / hedged
+                counter_quote = t.a_quote if hits_b else t.b_quote
+                counter_outlet = t.a_outlet if hits_b else t.b_outlet
+                marker = _tension_marker(counter_quote, counter_outlet)
+                m = _TERMINAL_RE.search(marked)
+                if m:
+                    marked = marked[:m.start()] + marker + m.group(1) + m.group(2)
+                else:
+                    marked = marked.rstrip() + marker
+                ledger.append({
+                    "sentence": sentence.strip(),
+                    "counter_quote": counter_quote,
+                    "counter_outlet": counter_outlet,
+                    "note": t.note,
+                })
+                break                 # one downgrade per sentence
+            rebuilt.append(marked)
+        out.append("".join(rebuilt))
+    return out, ledger
 
 
 def _extract_json(text: str) -> dict | None:
@@ -320,7 +474,8 @@ async def synthesize_publication_article(req: SynthesizeRequest) -> dict:
     daily edition (its lead story) so both produce the same cited prose."""
     contract = "dossier-synthesis-v2"
     empty = {"contract": contract, "headline": None, "lede": None, "body": None,
-             "unknowns": None, "citations": None, "synthesis": None, "gap": None}
+             "unknowns": None, "citations": None, "synthesis": None, "gap": None,
+             "tension_downgrades": None}
     # Workbench enrichment F1: pull cached full texts for the evidence URLs and
     # feed excerpts under their [n] lines. Best-effort — synthesis never fails
     # on the enrichment substrate being absent (fresh deploy, table missing, db
@@ -347,6 +502,13 @@ async def synthesize_publication_article(req: SynthesizeRequest) -> dict:
     body = _as_paragraphs(parsed.get("body"))
     if lede or body:
         unknowns = _as_paragraphs(parsed.get("unknowns"))
+        # The prose may not settle a tension the cross-read MEASURED — enforced
+        # after the pass, never left to the model's compliance.
+        guarded, downgrades = apply_tension_guard(
+            ([lede] if lede else []) + (body or []), req.tensions)
+        if lede:
+            lede, guarded = guarded[0], guarded[1:]
+        body = guarded or None
         citations = _resolve_citations(
             ([lede] if lede else []) + (body or []), _citation_table(req))
         return {
@@ -356,6 +518,7 @@ async def synthesize_publication_article(req: SynthesizeRequest) -> dict:
             "body": body,
             "unknowns": unknowns,
             "citations": citations or None,
+            "tension_downgrades": downgrades or None,
             "provider": provider,
             "error": None,
         }
