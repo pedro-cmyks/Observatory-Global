@@ -128,6 +128,13 @@ class PublicationPackage(BaseModel):
     # Cross-read over the LEAD story's fetched bodies: corroboration/tension
     # findings with verbatim quotes ("possible — verify quotes"). None = not run.
     coverage_check: dict[str, Any] | None = None
+    # The Brief's two measured sections (T3.2, brief-rising-v1 / brief-gap-v1),
+    # computed by the SAME functions the live briefing calls so the sealed
+    # edition and the front page can never diverge. Template prose over measured
+    # fields — no provider, so they never threaten the seal's autonomy.
+    # None = the section was not computed for this package.
+    rising: dict[str, Any] | None = None
+    gap: dict[str, Any] | None = None
 
 
 class RelationAdapterResult(BaseModel):

@@ -32,6 +32,7 @@ from app.services.investigation_graph import (
     assemble_investigation_graph,
     build_publication_package,
 )
+from app.services.brief_sections import fetch_gap, fetch_rising
 from app.services.investigation_nodes import ResolveNodeInput, resolve_investigation_node
 from app.services.subjects import classify_subject
 from app.services.source_tiers import classify_source_tier
@@ -613,6 +614,22 @@ async def fetch_daily_publication(
                 if len(by_topic.setdefault(topic_id, [])) < 6:
                     by_topic[topic_id].append(dict(row))
 
+        # LO QUE SUBE + EL VACÍO (T3.2) — the SAME functions the live briefing
+        # calls, on the SAME connection, inside the sealed window. Template
+        # prose over measured fields: no provider, no network, so G-SELLO holds
+        # (the seal gains no new dependency it could die on). Rising reuses the
+        # receipts already in hand for edition stories and only queries for the
+        # ones outside the edition. EL VACÍO's ledger write is stamped 'seal'.
+        section_timeout = 12.0 if serving_budget else 30.0
+        rising_section = await fetch_rising(
+            conn, hours=hours, window_end=edition_end,
+            receipts_by_thread=by_topic, timeout=section_timeout,
+        )
+        gap_section = await fetch_gap(
+            conn, window_end=edition_end, computed_by="seal",
+            timeout=section_timeout,
+        )
+
     label_decisions: dict[str, tuple[str, dict[str, Any]]] = {
         candidate.thread_id: choose_current_edition_label(
             candidate.label,
@@ -822,6 +839,8 @@ async def fetch_daily_publication(
         },
         input_gaps=input_gaps,
     ))
+    package.rising = rising_section
+    package.gap = gap_section
     # ── Workbench-enrichment bridge (spec 2026-07-20 — Pedro: all three
     # sections). Fetch the edition's receipt pages server-side BEFORE the lead
     # synthesis so (a) the front-page article quotes bodies, not just headlines

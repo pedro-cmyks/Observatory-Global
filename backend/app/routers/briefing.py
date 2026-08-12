@@ -43,6 +43,7 @@ from app.services.coverage_gaps import (  # noqa: E402
     fetch_extended_receipts_by_slug,
     gap_status,
 )
+from app.services.brief_sections import fetch_gap, fetch_rising  # noqa: E402
 
 
 TOP_THREADS_CONTRACT = "living-narrative-threads-v0"
@@ -376,6 +377,13 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # local voice + frame polyphony + geo confidence − duplication), not raw
         # signal volume. Complements top_countries (volume rank) so the briefing
         # exposes both lenses without forcing a single ranking metric.
+        #
+        # ⚠ The `voice` field below is `country_heat_v2.local_voice_ratio`, which
+        # answers a literal 0.5 when `known_origin_n < 50` — a SENTINEL for
+        # "cannot judge", not "half local" (M0 §b.2; see the note in
+        # routers/heat.py). No consumer reads it today. The `gap` section
+        # further down deliberately does NOT read this column: it counts outlet
+        # ownership itself so an unjudgeable country comes back null + reason.
         has_country_heat = await conn.fetchval(
             "SELECT to_regclass('country_heat_v2') IS NOT NULL"
         )
@@ -600,6 +608,23 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 degraded_segments.append("top_threads")
                 logger.warning("briefing section degraded: top_threads: %s", exc)
                 top_threads = []
+
+        # LO QUE SUBE + EL VACÍO (T3.2, spec §3b): the two sections that make the
+        # Brief the diary of the COVERAGE rather than a late wire front page.
+        # Both are template prose over measured fields — zero LLM calls — and the
+        # SAME functions run inside the nightly seal, so the front page and the
+        # sealed artifact can never say different things. Both degrade into a
+        # served reason; neither can 500 the briefing.
+        rising_section = await fetch_rising(
+            conn, hours=hours, timeout=BRIEFING_DB_TIMEOUT_SECONDS,
+        )
+        if rising_section.get("status") == "unavailable":
+            degraded_segments.append("rising")
+        gap_section = await fetch_gap(
+            conn, computed_by="live", timeout=BRIEFING_DB_TIMEOUT_SECONDS,
+        )
+        if gap_section.get("status") == "unavailable":
+            degraded_segments.append("gap")
 
         # Atlas hierarchy + co-occurrence (2026-05-23 narrative-cluster spec):
         # parent_domain (10 domains, 2-5 topics each) is the natural cluster
@@ -914,6 +939,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             ),
             "top_threads": top_threads,
             "top_threads_contract": TOP_THREADS_CONTRACT,
+            "rising": rising_section,
+            "gap": gap_section,
             "topics_by_domain": [
                 {
                     "parent_domain": r["parent_domain"],

@@ -28,6 +28,20 @@ router = APIRouter()
 
 
 # Component-driven flags surfaced to the UI.
+#
+# ⚠ `local_voice_ratio` CARRIES A SENTINEL, not always a ratio. Migration 017
+# computes `CASE WHEN known_origin_n >= 50 THEN raw ELSE 0.5 END`, so a literal
+# 0.5 means "too few origin-attributable signals to judge" — measured
+# 2026-08-12, five of the day's top-ten anomalous countries carried it
+# (docs/research/brief-daily/2026-08-12-m0-measurement.md §b.2). The
+# `< 0.2` test below is fail-safe by accident (the sentinel never flags), and no
+# frontend reads the served `components.local_voice_ratio` today, so this is a
+# latent trap rather than a live lie. The real fix is at the matview: expose
+# `known_origin_n` (or serve NULL) and keep the 0.5 ONLY as the composite's
+# neutral prior, where it is deliberate. That is a DROP/CREATE+swap of
+# `country_heat_v2` and it moves the map's heat for every low-attribution
+# country, so it is NOT done here — filed by T3.2, which sidesteps the column
+# entirely and counts ownership itself (`services/brief_sections.py`).
 def _compute_warnings(row: dict[str, Any]) -> list[str]:
     flags: list[str] = []
     if (row.get("local_voice_ratio") or 0.5) < 0.2:
