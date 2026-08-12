@@ -7,12 +7,16 @@ reads it, and the live build stays as the fallback.
 
 These tests pin the two things that make that honest:
 
-  1. the ORDER OF TRUTH in the handler (fresh artifact -> live build ->
-     STALE artifact rather than a 503), and
+  1. the ORDER OF TRUTH in the handler — fresh artifact -> STALE artifact
+     served IMMEDIATELY (labeled, rebuilt behind the reader) -> live build
+     only when there is no artifact at all (V6, 2026-08-12: the old middle
+     step made the reader wait on the live build exactly when the DB was
+     loaded, with a servable artifact sitting right there), and
   2. that the artifact carries `slot_guard` — the N17 guard runs at build
      time, and an artifact without the block is indistinguishable from a
      guard that never ran, so the builder refuses to store one.
 """
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -223,50 +227,83 @@ async def test_handler_builds_live_when_no_artifact_exists(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handler_prefers_a_live_build_over_a_stale_artifact(monkeypatch):
+async def test_handler_serves_a_stale_artifact_without_waiting_on_the_live_build(
+    monkeypatch,
+):
+    """V6 (cold-user probe, 2026-08-12). The stale door used to fall THROUGH to
+    the live build, so a loaded DB hung the reader for 20-110s with a servable
+    edition sitting right there. The stale artifact now answers immediately —
+    labeled — and the rebuild runs behind the reader."""
     geo = _geo(monkeypatch)
     stale = ce.stamp_artifact(
-        _payload(), generated_at=datetime.now(UTC) - timedelta(hours=48),
+        _payload(excluded=1), generated_at=datetime.now(UTC) - timedelta(hours=48),
         build_seconds=9.0, selection_reason="volume_rank",
     )
+    entered = asyncio.Event()
+    release = asyncio.Event()
 
     async def fake_stored(cc, *, hours=24, now=None):
         return stale
 
-    async def fake_live(cc, hours=24):
+    async def hanging_live(cc, hours=24, enqueue=True):
+        entered.set()
+        await release.wait()          # in front of the reader this is the hang
         return {**_payload(), "live": True}
 
-    monkeypatch.setattr("app.services.country_edition.fetch_stored_country_edition", fake_stored)
-    monkeypatch.setattr("app.services.country_edition.fetch_country_edition", fake_live)
+    stored_rows: list = []
 
-    out = await geo.get_country_edition(cc="co")
-    assert out["live"] is True
+    async def fake_store(payload, **kwargs):
+        stored_rows.append(kwargs)
+
+    monkeypatch.setattr("app.services.country_edition.fetch_stored_country_edition", fake_stored)
+    monkeypatch.setattr("app.services.country_edition.fetch_country_edition", hanging_live)
+    monkeypatch.setattr("app.services.country_edition.store_country_edition_artifact", fake_store)
+
+    out = await asyncio.wait_for(geo.get_country_edition(cc="co", hours=24), timeout=2)
+
+    assert out["artifact"]["stale"] is True
+    assert out["artifact"]["degraded"] is True
+    assert out["artifact"]["degraded_reason"] == "stale_artifact_background_refresh"
+    assert out["artifact"]["refresh_scheduled"] is True
+    assert out["slot_guard"]["excluded"] == 1          # the guard still rides
+
+    # the rebuild IS running — behind the response, not in front of it
+    await asyncio.wait_for(entered.wait(), timeout=2)
+    release.set()
+    await asyncio.wait_for(ce.wait_for_country_edition_refresh("CO", hours=24), timeout=2)
+    assert [k["country_code"] for k in stored_rows] == ["CO"]
 
 
 @pytest.mark.asyncio
 async def test_handler_serves_the_stale_artifact_instead_of_503(monkeypatch):
-    """The N26 defect itself: the live build dies under load. A day-old
-    edition, LABELED day-old, beats 'database is busy'."""
+    """The N26 defect itself: the live build cannot answer under load. A
+    day-old edition, LABELED day-old, beats 'database is busy' — and under the
+    V6 order the reader never pays the failing build's latency to find out."""
     geo = _geo(monkeypatch)
     from app.services.thread_intelligence import DatabaseBusyError
     stale = ce.stamp_artifact(
         _payload(), generated_at=datetime.now(UTC) - timedelta(hours=48),
         build_seconds=9.0, selection_reason="volume_rank",
     )
+    built = {"n": 0}
 
     async def fake_stored(cc, *, hours=24, now=None):
         return stale
 
-    async def fake_live(cc, hours=24):
+    async def fake_live(cc, hours=24, enqueue=True):
+        built["n"] += 1
         raise DatabaseBusyError("database command timed out")
 
     monkeypatch.setattr("app.services.country_edition.fetch_stored_country_edition", fake_stored)
     monkeypatch.setattr("app.services.country_edition.fetch_country_edition", fake_live)
 
-    out = await geo.get_country_edition(cc="co")
+    out = await asyncio.wait_for(geo.get_country_edition(cc="co", hours=24), timeout=2)
     assert out["artifact"]["degraded"] is True
-    assert out["artifact"]["degraded_reason"] == "live_build_db_busy"
     assert out["artifact"]["stale"] is True
+    # the reader was served off the artifact; the failing build is the
+    # background task's problem, and it dies quietly there
+    await asyncio.wait_for(ce.wait_for_country_edition_refresh("CO", hours=24), timeout=2)
+    assert built["n"] == 1
 
 
 @pytest.mark.asyncio
@@ -302,6 +339,98 @@ async def test_handler_never_lets_the_artifact_read_break_the_door(monkeypatch):
 
     out = await geo.get_country_edition(cc="co")
     assert out["live"] is True
+
+
+# ── background refresh (V6) ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_background_refresh_is_single_flight_per_country(monkeypatch):
+    """A saturated DB is exactly when readers pile onto the same door. N
+    readers must not become N live builds — one refresh per (country, window),
+    and a different country is a different lane."""
+    release = asyncio.Event()
+    runs: list = []
+
+    async def slow_live(cc, hours=24, enqueue=True):
+        runs.append(cc)
+        await release.wait()
+        return _payload(cc)
+
+    async def fake_store(payload, **kwargs):
+        return None
+
+    monkeypatch.setattr("app.services.country_edition.fetch_country_edition", slow_live)
+    monkeypatch.setattr("app.services.country_edition.store_country_edition_artifact", fake_store)
+
+    assert ce.schedule_country_edition_refresh("co") is True
+    assert ce.schedule_country_edition_refresh("CO") is False   # already in flight
+    assert ce.schedule_country_edition_refresh("co", hours=6) is True   # other window
+    assert ce.schedule_country_edition_refresh("ng") is True    # other country
+
+    release.set()
+    for cc, hours in (("CO", 24), ("CO", 6), ("NG", 24)):
+        await asyncio.wait_for(ce.wait_for_country_edition_refresh(cc, hours=hours), timeout=2)
+    assert sorted(runs) == ["CO", "CO", "NG"]
+    # the lane reopens once the task is done
+    assert ce.schedule_country_edition_refresh("co") is True
+    await asyncio.wait_for(ce.wait_for_country_edition_refresh("CO"), timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_background_refresh_failure_is_logged_not_raised(monkeypatch):
+    """The refresh is detached from the request. A failing build there must be
+    a logged non-event — never an unhandled task exception, never a door."""
+    from app.services.thread_intelligence import DatabaseBusyError
+
+    async def failing_live(cc, hours=24, enqueue=True):
+        raise DatabaseBusyError("database command timed out")
+
+    stored = {"n": 0}
+
+    async def fake_store(payload, **kwargs):
+        stored["n"] += 1
+
+    monkeypatch.setattr("app.services.country_edition.fetch_country_edition", failing_live)
+    monkeypatch.setattr("app.services.country_edition.store_country_edition_artifact", fake_store)
+
+    assert ce.schedule_country_edition_refresh("co") is True
+    await asyncio.wait_for(ce.wait_for_country_edition_refresh("CO"), timeout=2)
+    assert stored["n"] == 0                       # nothing half-built was stored
+    assert ce.schedule_country_edition_refresh("co") is True   # lane reopened
+    await asyncio.wait_for(ce.wait_for_country_edition_refresh("CO"), timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_background_refresh_never_enqueues(monkeypatch):
+    """Same reason the nightly build stopped: the enqueue's known-domain gate
+    MEASURED 2-3.5 min per door under load, and load is when this fires."""
+    seen: list = []
+
+    async def fake_live(cc, hours=24, enqueue=True):
+        seen.append(enqueue)
+        return _payload(cc)
+
+    async def fake_store(payload, **kwargs):
+        return None
+
+    monkeypatch.setattr("app.services.country_edition.fetch_country_edition", fake_live)
+    monkeypatch.setattr("app.services.country_edition.store_country_edition_artifact", fake_store)
+
+    ce.schedule_country_edition_refresh("co")
+    await asyncio.wait_for(ce.wait_for_country_edition_refresh("CO"), timeout=2)
+    assert seen == [False]
+
+
+@pytest.mark.asyncio
+async def test_schedule_refresh_never_raises_at_the_reader(monkeypatch):
+    """The scheduler is called with the reader's response already composed. A
+    bad argument there must be a False, never an exception that takes down the
+    one path whose entire job is to not fail."""
+    async def fake_live(cc, hours=24, enqueue=True):
+        return _payload(cc)
+
+    monkeypatch.setattr("app.services.country_edition.fetch_country_edition", fake_live)
+    assert ce.schedule_country_edition_refresh("co", hours=object()) is False  # type: ignore[arg-type]
 
 
 # ── the build does not enqueue ───────────────────────────────────────────────

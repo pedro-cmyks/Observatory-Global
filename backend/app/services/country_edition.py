@@ -24,9 +24,23 @@ stores one compact JSONB row each in `country_edition_artifacts` (mig 098). The
 handler's order of truth is:
 
   1. a FRESH artifact (an indexed read, always fast),
-  2. else the live build (unchanged — the path below),
-  3. else the STALE artifact, labeled stale + degraded — a day-old edition that
-     says it is a day old beats "database is busy".
+  2. else the STALE artifact — served IMMEDIATELY, labeled stale + degraded,
+     with the rebuild fired off the request path,
+  3. else (nothing stored at all) the live build, which may still 503.
+
+WHY THE STALE ARTIFACT NOW COMES BEFORE THE BUILD (V6, cold-user probe
+2026-08-12)
+-----------------------------------------------------------------------------
+The first cut ordered it fresh -> LIVE BUILD -> stale, which reads sensibly and
+fails exactly where it matters: a blind reader hit "could not assemble this
+country's edition" on DE and NG *during* db saturation, because the middle step
+put a 20-110s build in front of them while a servable artifact sat one indexed
+read away. Waiting is the defect, not the staleness. So: a reader NEVER waits on
+a live build while ANY artifact exists. A stale door answers now and says it is
+old (`stale` + `degraded_reason=stale_artifact_background_refresh`), and
+`schedule_country_edition_refresh` rebuilds it behind the response — at most one
+in flight per (country, window), so N readers on the same hot door never become
+N live builds.
 
 The N17 slot guard runs on BOTH paths: for the artifact it runs at build time
 and is stored inside the payload, so a reader still sees exactly which row was
@@ -36,9 +50,11 @@ block — a missing check must never be indistinguishable from a passing one.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any, Iterable, Optional, Sequence
 
@@ -450,6 +466,7 @@ def stamp_artifact(
     window_requested: int | None = None,
     window_served: int | None = None,
     degraded_reason: str | None = None,
+    refresh_scheduled: bool | None = None,
 ) -> dict:
     """Add the `artifact` provenance block. Pure; the edition body is untouched.
 
@@ -487,7 +504,42 @@ def stamp_artifact(
     if degraded_reason:
         block["degraded"] = True
         block["degraded_reason"] = degraded_reason
+    if refresh_scheduled is not None:
+        block["refresh_scheduled"] = bool(refresh_scheduled)
     return {**payload, "artifact": block}
+
+
+def mark_artifact_degraded(
+    stored: dict,
+    *,
+    reason: str,
+    refresh_scheduled: bool | None = None,
+    now: Optional[datetime] = None,
+) -> dict:
+    """Re-stamp an already-stamped artifact payload as degraded, keeping its
+    provenance (build time, build seconds, selection reason, window mismatch).
+
+    Falls back to the payload UNCHANGED when the block cannot be re-read: it is
+    already labeled stale by `fetch_stored_country_edition`, and a slightly
+    under-labeled edition still beats raising at the one point in the door whose
+    entire job is to not fail.
+    """
+    block = (stored or {}).get("artifact") or {}
+    try:
+        generated_at = datetime.fromisoformat(str(block["generated_at"]))
+    except Exception:  # noqa: BLE001 — see docstring
+        return stored
+    return stamp_artifact(
+        {k: v for k, v in stored.items() if k != "artifact"},
+        generated_at=generated_at,
+        build_seconds=block.get("build_seconds"),
+        selection_reason=block.get("selection_reason"),
+        now=now,
+        window_requested=block.get("window_requested"),
+        window_served=block.get("window_served"),
+        degraded_reason=reason,
+        refresh_scheduled=refresh_scheduled,
+    )
 
 
 async def store_country_edition_artifact(
@@ -705,3 +757,109 @@ async def fetch_country_edition(
         window_hours=hours,
         slot_guard=slot_guard,
     )
+
+
+# ── background refresh: a stale door never makes the reader wait ─────────────
+#
+# The nightly builder covers the top ~50 doors plus the day's spikes. Everything
+# else — and any door whose night was missed — goes stale, and V6 says a stale
+# door answers immediately and rebuilds BEHIND the reader. This is that rebuild.
+#
+# SINGLE FLIGHT is the load-bearing part. The moment a stale door matters is the
+# moment it is being read repeatedly (a country becomes the story), which is also
+# when the DB is loaded; without the guard, 30 readers would fire 30 live builds
+# at a database that is already the reason the artifact went stale.
+
+_REFRESH_TIMEOUT_SECONDS = 180.0
+
+_refresh_inflight: dict[tuple[str, int], "asyncio.Task"] = {}
+
+
+async def _refresh_country_edition(cc: str, hours: int) -> None:
+    """Rebuild + store ONE door, detached from any request.
+
+    Never raises. A task nobody awaits that raises is an unhandled exception in
+    the event loop and a door that silently stops refreshing; a failed rebuild
+    here just means the next reader gets the same stale artifact again, which is
+    exactly what they would have gotten anyway.
+    """
+    started = time.monotonic()
+    try:
+        payload = await asyncio.wait_for(
+            # enqueue=False for the same reason the nightly build stopped: the
+            # known-domain gate MEASURED 2-3.5 min per door under load, and load
+            # is precisely when this path fires. The browser posts pending_urls.
+            fetch_country_edition(cc, hours=hours, enqueue=False),
+            timeout=_REFRESH_TIMEOUT_SECONDS,
+        )
+        elapsed = time.monotonic() - started
+        await store_country_edition_artifact(
+            payload,
+            country_code=cc,
+            hours=hours,
+            build_seconds=elapsed,
+            selection_reason="background_refresh",
+        )
+        logger.info(
+            "country-edition background refresh stored cc=%s hours=%d in %.1fs "
+            "threads=%d",
+            cc, hours, elapsed, len(payload.get("threads") or []),
+        )
+    except Exception as exc:  # noqa: BLE001 — see docstring
+        logger.warning(
+            "country-edition background refresh failed cc=%s hours=%d after "
+            "%.1fs: %s: %s",
+            cc, hours, time.monotonic() - started,
+            type(exc).__name__, str(exc)[:200],
+        )
+
+
+def schedule_country_edition_refresh(
+    country_code: str, *, hours: int = 24,
+) -> bool:
+    """Fire-and-forget rebuild of one door. Returns True when THIS call started
+    it, False when a refresh for that (country, window) is already in flight or
+    there is no running loop to attach to.
+
+    Never awaits and never raises — the caller is a reader whose response is
+    already composed.
+    """
+    try:
+        cc = str(country_code).upper()
+        hours = int(hours)
+    except Exception:  # noqa: BLE001 — the caller's response is already composed
+        return False
+    key = (cc, hours)
+    running = _refresh_inflight.get(key)
+    if running is not None and not running.done():
+        return False
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:      # no loop (sync context) — nothing to schedule on
+        return False
+    task = loop.create_task(_refresh_country_edition(cc, hours))
+    _refresh_inflight[key] = task
+
+    def _release(done: "asyncio.Task", _key=key) -> None:
+        # Only clear OUR task: a task can finish between the done() check above
+        # and this callback, and popping a successor would reopen the lane while
+        # it is still running.
+        if _refresh_inflight.get(_key) is done:
+            _refresh_inflight.pop(_key, None)
+
+    task.add_done_callback(_release)
+    return True
+
+
+async def wait_for_country_edition_refresh(
+    country_code: str, *, hours: int = 24,
+) -> None:
+    """Await the in-flight refresh for one door, if any. Introspection for tests
+    and scripts — the request path never calls this."""
+    task = _refresh_inflight.get((country_code.upper(), int(hours)))
+    if task is None:
+        return
+    try:
+        await task
+    except Exception:  # noqa: BLE001 — the task already logs its own failure
+        return

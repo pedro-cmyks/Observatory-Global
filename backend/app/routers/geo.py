@@ -1264,19 +1264,23 @@ async def get_country_edition(cc: str, hours: int = Query(24, ge=1, le=24)):
     """L1 country edition — country-scoped threads + coverage-gaps band +
     cache-first article enrichment.
 
-    ORDER OF TRUTH (council R4 N26, 2026-08-11). The live composition MEASURES
-    12-23s of scoped queries per country and answered 503 db_busy on cold open
-    on the day Colombia was the story (CO 110.8s, JP 21.7s, US 19.2s — all
-    503). So the door reads a nightly artifact first and only builds when it
-    has to:
+    ORDER OF TRUTH (council R4 N26, 2026-08-11; reordered by V6 after the
+    cold-user probe, 2026-08-12). The live composition MEASURES 12-23s of
+    scoped queries per country and answered 503 db_busy on cold open on the day
+    Colombia was the story (CO 110.8s, JP 21.7s, US 19.2s — all 503):
 
       1. Redis (120s), unchanged;
       2. a FRESH artifact from `country_edition_artifacts` (mig 098) — one
          indexed read, and it carries the build-time slot guard;
-      3. the live build (the pre-N26 path, byte-identical);
-      4. the STALE artifact, labeled stale + degraded, when the live build
-         cannot answer. A day-old edition that SAYS it is a day old beats
-         "database is busy"; only a door with no artifact at all still 503s.
+      3. a STALE artifact, served IMMEDIATELY and labeled stale + degraded,
+         with the rebuild fired behind the response;
+      4. the live build — ONLY when nothing is stored for this door; still the
+         one path that can 503.
+
+    Step 3 used to sit BELOW the live build, and that ordering is what the blind
+    probe hit: DE and NG answered "could not assemble this country's edition"
+    during db saturation while a servable artifact sat one indexed read away.
+    A reader never waits on a live build when ANY artifact exists.
     """
     from app.services import country_edition as ce
     from app.services.thread_intelligence import DatabaseBusyError
@@ -1317,31 +1321,36 @@ async def get_country_edition(cc: str, hours: int = Query(24, ge=1, le=24)):
             "country-edition artifact lookup failed cc=%s: %s: %s",
             cc, type(exc).__name__, str(exc)[:200],
         )
-    if stored is not None and not stored.get("artifact", {}).get("stale"):
-        return await _cache(stored)
+    if stored is not None:
+        if not stored.get("artifact", {}).get("stale"):
+            return await _cache(stored)
 
-    # (3) live build.
+        # (3) V6: stale is still an ANSWER. Serve it now, labeled, and rebuild
+        # behind the reader (single-flight per country+window inside the
+        # service). NOT cached for the full 120s: the refresh may land within
+        # seconds, and the next reader should get the fresh artifact rather
+        # than a cached copy of the old one.
+        refreshing = ce.schedule_country_edition_refresh(cc, hours=hours)
+        logger.info(
+            "country-edition stale artifact served cc=%s age=%.1fh "
+            "refresh_started=%s",
+            cc, stored.get("artifact", {}).get("age_hours", -1.0), refreshing,
+        )
+        return ce.mark_artifact_degraded(
+            stored,
+            reason="stale_artifact_background_refresh",
+            refresh_scheduled=refreshing,
+        )
+
+    # (4) nothing stored for this door: the live build is the only path left,
+    # and it is the only one that can still 503.
     try:
         result = await ce.fetch_country_edition(cc, hours=hours)
     except DatabaseBusyError:
-        # (4) N26 itself: the build died under load. Serve the stale artifact,
-        # labeled — but do NOT cache it for the full 120s window, so the next
-        # reader after the pressure lifts gets a real build.
-        if stored is not None:
-            logger.warning(
-                "country-edition live build db_busy cc=%s — serving the stale "
-                "artifact (age %.1fh) instead of 503",
-                cc, stored.get("artifact", {}).get("age_hours", -1.0),
-            )
-            return ce.stamp_artifact(
-                {k: v for k, v in stored.items() if k != "artifact"},
-                generated_at=datetime.fromisoformat(
-                    stored["artifact"]["generated_at"]
-                ),
-                build_seconds=stored["artifact"].get("build_seconds"),
-                selection_reason=stored["artifact"].get("selection_reason"),
-                degraded_reason="live_build_db_busy",
-            )
+        logger.warning(
+            "country-edition live build db_busy cc=%s and no artifact to fall "
+            "back on", cc,
+        )
         raise
 
     return await _cache(result)
