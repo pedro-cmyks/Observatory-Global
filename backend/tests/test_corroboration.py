@@ -130,3 +130,32 @@ def test_citation_verdict_excludes_template_matches():
     assert v["corroborating"] == 1
     assert v["template_matches"] == 1
     assert "template" in v["note"]
+
+
+# ── Task 5 / C-N22: a six-week-old receipt cannot back today ─────────────────
+
+def test_aged_receipts_marked_and_not_counted():
+    """C-N22 (spec R3): a 6-week-old receipt cannot back a verdict dated today."""
+    from app.services.corroboration import citation_verdict
+    today = dt.date(2026, 8, 11)
+    matches = [
+        {"relation": "corroborates", "official": True, "date": "2026-06-28"},
+        {"relation": "corroborates", "official": False, "date": "2026-08-10"},
+        {"relation": "corroborates", "official": False, "date": "20260809T120000Z"},
+        {"relation": "corroborates", "official": False, "date": None},
+    ]
+    v = citation_verdict(matches, today=today)
+    assert v["corroborating"] == 3          # dateless is NOT aged (can't claim)
+    assert v["aged"] == 1
+    assert matches[0]["aged"] is True and matches[1]["aged"] is False
+    assert "aged" in v["note"]
+
+
+def test_all_aged_means_uncorroborated_today():
+    from app.services.corroboration import citation_verdict
+    today = dt.date(2026, 8, 11)
+    v = citation_verdict(
+        [{"relation": "corroborates", "official": False, "date": "2026-06-01"}],
+        today=today)
+    assert v["status"] == "uncorroborated"
+    assert v["aged"] == 1

@@ -222,6 +222,30 @@ FIGURE_MATCH_TOLERANCE = 0.01   # |a-b|/max ≤ this = same figure = corroborate
 SAME_EVENT_TERM_RECALL = 0.40   # ≥ this share of claim terms present = same event
 CORROBORATE_TERM_RECALL = 0.50  # ≥ this (and no figure conflict) = corroborates
 SAME_EVENT_SIMILARITY = 0.86    # semantic sim ≥ this = same event (hot lane)
+CITATION_WINDOW_DAYS = 7   # spec R3 — frozen at approval
+
+_DOC20_DATE_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})T")
+
+
+def _match_date(raw: str | None):
+    """Best-effort date from a match's `date` field: ISO 'YYYY-MM-DD[…]' or
+    DOC 2.0 'YYYYMMDDTHHMMSSZ'. None when absent/unparseable — an undated
+    receipt is never CLAIMED aged (honest: we can't measure what we don't
+    have)."""
+    import datetime as _dt
+    if not raw:
+        return None
+    s = str(raw).strip()
+    m = _DOC20_DATE_RE.match(s)
+    if m:
+        try:
+            return _dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            return None
+    try:
+        return _dt.date.fromisoformat(s[:10])
+    except ValueError:
+        return None
 
 # International wire agencies / official bodies — mirrors the frontend
 # claimLedger.ts OFFICIAL_SOURCE_TOKENS so backend + client agree on what
@@ -482,13 +506,32 @@ def dedup_matches(matches: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def citation_verdict(matches: list[dict[str, Any]]) -> dict[str, Any]:
+def citation_verdict(
+    matches: list[dict[str, Any]],
+    *,
+    window_days: int = CITATION_WINDOW_DAYS,
+    today: Any | None = None,
+) -> dict[str, Any]:
     """Compact per-receipt verdict the dossier renders next to a Citation.
     Counts corroborating / contradicting / official-among-corroborating. Answers
     the claim ledger's 'official source missing' question: is any corroborating
-    source a wire/official body?"""
-    corr = [m for m in matches if m.get("relation") == "corroborates"]
-    contra = [m for m in matches if m.get("relation") == "contradicts"]
+    source a wire/official body?
+
+    R3 (council C-N22): every match is stamped `aged` — outside the
+    window_days window relative to `today` — and an aged receipt does NOT
+    count toward the verdict. It stays in the payload (visible, context only);
+    a six-week-old report can no longer silently back a claim dated today.
+    An UNDATED receipt is never claimed aged: we don't measure what we lack."""
+    import datetime as _dt
+    today = today or _dt.date.today()
+    for m in matches:
+        d = _match_date(m.get("date"))
+        m["aged"] = bool(d and (today - d).days > window_days)
+
+    corr = [m for m in matches
+            if m.get("relation") == "corroborates" and not m.get("aged")]
+    contra = [m for m in matches
+              if m.get("relation") == "contradicts" and not m.get("aged")]
     # F2: template-shaped matches are SHOWN but never counted — they are the
     # Mali-ambush-backing-a-Gaza-claim class (shared boilerplate, no anchor).
     template = [m for m in matches if m.get("relation") == "template_match"]
@@ -514,12 +557,23 @@ def citation_verdict(matches: list[dict[str, Any]]) -> dict[str, Any]:
         parts.append(
             f"{len(template)} template-shaped match(es) set aside "
             "(shared casualty boilerplate, no shared event anchor)")
+    # Only aged EVIDENCE rows changed the counts — an aged 'context' row was
+    # never going to be counted, so naming it would overstate the effect.
+    n_aged_evidence = sum(
+        1 for m in matches
+        if m.get("aged") and m.get("relation") in ("corroborates", "contradicts")
+    )
+    if n_aged_evidence:
+        parts.append(f"{n_aged_evidence} aged receipt(s) outside the "
+                     f"{window_days}-day window (context only)")
     return {
         "status": status,
         "corroborating": n_corr,
         "contradicting": n_contra,
         "official_corroborating": official_corr,
         "template_matches": len(template),
+        "aged": sum(1 for m in matches if m.get("aged")),
+        "window_days": window_days,
         "note": "; ".join(parts),
     }
 
