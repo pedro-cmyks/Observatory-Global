@@ -14,7 +14,10 @@ import {
   buildCorroborationRequest, statusChip, corroborationMarkdown,
   loadCachedCorroboration, saveCorroboration, clearCorroboration,
   pinCountsText, citationTierChip, citationTierClass, citationCollapseNote,
+  citationDay, citationDateText, citationAged, agedTip,
+  corroborationWindowText, verdictFacets,
   type CorroborationData, type CorroborationCitation, type CorroborationPin,
+  type CorroborationVerdict,
 } from './dossierCorroboration'
 import type { WorkbenchPin } from './workbench'
 import type { ConnectionNode } from './dossierConnections'
@@ -221,5 +224,161 @@ describe('corroboration cache', () => {
     const stale = data({ measured_at: new Date(Date.now() - 25 * 3600 * 1000).toISOString() })
     saveCorroboration('inv-1', stale)
     expect(loadCachedCorroboration('inv-1')).toBeNull()
+  })
+})
+
+// ── V1 (tren B2): the honesty fields reach the page ──────────────────────────
+// Frank's fresh test found corroborate-v2 fully implemented server-side and
+// consumed by nobody: citations rendered no DATE (so an aged receipt was
+// invisible), and the verdict block (template_matches / aged / window_days /
+// official_corroborating) had zero frontend consumers.
+
+describe('citation dates (Frank gap-3: an aged receipt was invisible)', () => {
+  const cit = (over: Partial<CorroborationCitation>): CorroborationCitation =>
+    ({ title: 't', url: 'https://x/y', outlet: 'x.com', ...over })
+
+  it('parses the DOC 2.0 stamp and plain ISO alike', () => {
+    expect(citationDay(cit({ seendate: '20260810T120000Z' }))).toBe('2026-08-10')
+    expect(citationDay(cit({ seendate: '2026-08-10' }))).toBe('2026-08-10')
+    expect(citationDay(cit({ seendate: '2026-08-10T09:31:00Z' }))).toBe('2026-08-10')
+  })
+
+  it('never invents a date it does not have', () => {
+    expect(citationDay(cit({}))).toBeNull()
+    expect(citationDay(cit({ seendate: null }))).toBeNull()
+    expect(citationDay(cit({ seendate: 'sometime last week' }))).toBeNull()
+    expect(citationDay(cit({ seendate: '20261332T120000Z' }))).toBeNull()
+    expect(citationDateText(cit({}))).toBeNull()
+  })
+
+  it('renders the day short, like every other receipt in the report', () => {
+    expect(citationDateText(cit({ seendate: '20260810T120000Z' }))).toBe('Aug 10')
+  })
+})
+
+describe('per-row aged flag (R3: aged = context, never backing)', () => {
+  const cit = (over: Partial<CorroborationCitation>): CorroborationCitation =>
+    ({ title: 't', url: 'https://x/y', outlet: 'x.com', ...over })
+  const measured = data({ measured_at: '2026-08-12T00:00:00Z', window_days: 7 })
+
+  it('flags a receipt published outside the measured window', () => {
+    expect(citationAged(cit({ seendate: '20260801T120000Z' }), measured)).toBe(true)
+  })
+
+  it('leaves receipts inside the window alone (boundary day counts as inside)', () => {
+    expect(citationAged(cit({ seendate: '20260810T120000Z' }), measured)).toBe(false)
+    expect(citationAged(cit({ seendate: '20260805T000000Z' }), measured)).toBe(false)
+  })
+
+  it('NEVER claims an undated receipt is aged — we do not measure what we lack', () => {
+    expect(citationAged(cit({}), measured)).toBe(false)
+    expect(citationAged(cit({ seendate: null }), measured)).toBe(false)
+    expect(citationAged(cit({ lane: 'client-supplied' }), measured)).toBe(false)
+  })
+
+  it('says nothing when the measurement itself carries no window', () => {
+    const noWindow = { ...measured, window_days: 0 } as CorroborationData
+    expect(citationAged(cit({ seendate: '20250101T120000Z' }), noWindow)).toBe(false)
+  })
+
+  it('names the window in the tip', () => {
+    expect(agedTip(7)).toContain('outside the 7-day window')
+    expect(agedTip(7)).toContain('context')
+  })
+})
+
+describe('window_days in the section header copy', () => {
+  it('states the window as a sentence, not a bare number', () => {
+    expect(corroborationWindowText(data({ window_days: 14 })))
+      .toBe('receipts within the last 14 days')
+    expect(corroborationWindowText(data({ window_days: 1 })))
+      .toBe('receipts within the last 1 day')
+  })
+})
+
+describe('verdictFacets (corroborate-v2 verdict block)', () => {
+  const v = (over: Partial<CorroborationVerdict>): CorroborationVerdict => ({
+    status: 'corroborated', corroborating: 7, contradicting: 0,
+    official_corroborating: 0, note: 'corroborated by 7 source(s), none official/wire',
+    template_matches: 5, aged: 0, window_days: 7, ...over,
+  })
+
+  it('renders the four v2 fields as inspectable facets', () => {
+    const f = verdictFacets(v({ official_corroborating: 2, aged: 3 }))
+    const labels = f.map(x => x.label)
+    expect(labels).toContain('7 corroborating')
+    expect(labels).toContain('2 official/wire')
+    expect(labels).toContain('5 template-shaped set aside')
+    expect(labels).toContain('3 outside the 7-day window')
+  })
+
+  it('says "none official/wire" rather than staying silent about it', () => {
+    expect(verdictFacets(v({})).map(x => x.label)).toContain('none official/wire')
+  })
+
+  it('marks template + aged facets as set-aside so the render can mute them', () => {
+    const f = verdictFacets(v({ aged: 1 }))
+    expect(f.find(x => x.key === 'template')?.setAside).toBe(true)
+    expect(f.find(x => x.key === 'aged')?.setAside).toBe(true)
+    expect(f.find(x => x.key === 'corroborating')?.setAside).toBe(false)
+  })
+
+  it('shows contradictions when the verdict has them', () => {
+    expect(verdictFacets(v({ contradicting: 2 })).map(x => x.label)).toContain('2 contradicting')
+  })
+
+  it('omits every zero and every field a pre-v2 verdict never carried', () => {
+    const labels = verdictFacets({
+      status: 'uncorroborated', corroborating: 0, contradicting: 0,
+      official_corroborating: 0, note: 'no corroborating coverage found',
+    }).map(x => x.label)
+    expect(labels).not.toContain('none official/wire')   // nothing corroborated to qualify
+    expect(labels.some(l => l.includes('template'))).toBe(false)
+    expect(labels.some(l => l.includes('window'))).toBe(false)
+  })
+
+  it('returns nothing for an absent verdict — no verdict, no claim', () => {
+    expect(verdictFacets(null)).toEqual([])
+    expect(verdictFacets(undefined)).toEqual([])
+  })
+})
+
+describe('markdown export carries the same honesty fields as the screen', () => {
+  it('prints citation dates and marks aged rows', () => {
+    const md = corroborationMarkdown(data({
+      measured_at: '2026-08-12T00:00:00Z',
+      window_days: 7,
+      pins: [{
+        id: 'p', label: 'Bases deal', status: 'established',
+        independent_outlets: 2, total_articles: 3, syndicated_clusters: 1,
+        single_source: false, note: 'measured',
+        citations: [
+          { title: 'Fresh', url: 'https://a/1', outlet: 'a.com', seendate: '20260810T120000Z' },
+          { title: 'Old', url: 'https://b/2', outlet: 'b.com', seendate: '20260701T120000Z' },
+        ],
+        queries: [],
+      }],
+    })).join('\n')
+    expect(md).toContain('a.com, Aug 10')
+    expect(md).toContain('b.com, Jul 1')
+    expect(md).toContain('outside the 7-day window')
+    expect(md).toContain('receipts within the last 7 days')
+  })
+
+  it('prints the verdict facets when a pin carries a verdict', () => {
+    const md = corroborationMarkdown(data({
+      pins: [{
+        id: 'p', label: 'Bases deal', status: 'established',
+        independent_outlets: 2, total_articles: 3, syndicated_clusters: 1,
+        single_source: false, note: 'measured', citations: [], queries: [],
+        verdict: {
+          status: 'corroborated', corroborating: 7, contradicting: 0,
+          official_corroborating: 0, template_matches: 5, aged: 0, window_days: 7,
+          note: 'corroborated by 7 source(s), none official/wire; 5 template-shaped match(es) set aside',
+        },
+      }],
+    })).join('\n')
+    expect(md).toContain('5 template-shaped set aside')
+    expect(md).toContain('none official/wire')
   })
 })

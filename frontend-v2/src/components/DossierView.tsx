@@ -10,7 +10,9 @@ import { synthesizeDossier, synthesisMarkdown, isArticle, splitCitations, type D
 import {
     buildCorroborationRequest, fetchCorroboration, loadCachedCorroboration,
     saveCorroboration, corroborationMarkdown, statusChip,
-    citationTierChip, citationTierClass, citationCollapseNote, type CorroborationData,
+    citationTierChip, citationTierClass, citationCollapseNote,
+    citationDateText, citationAged, agedTip, corroborationWindowText, verdictFacets,
+    type CorroborationData,
 } from '../lib/dossierCorroboration'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
@@ -27,6 +29,7 @@ import { VerdictChip } from './VerdictChip'
 import { buildClaimTable, claimTableMarkdown } from '../lib/claimLedger'
 import { resolveLauncherVerbs } from '../lib/launcherVerbs'
 import { sourceMix, formatSourceMix } from '../lib/sourceTiers'
+import { TierChip } from './TierChip'
 import {
     validateProse, joinValidatedText, corroborationBackedFrom, type MeasuredContext,
 } from '../lib/proseValidator'
@@ -585,6 +588,10 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                                         {(c.source || c.date) && (
                                                             <span className="dossier-src"> — {[c.source, c.date ? fmtDay(c.date) : null].filter(Boolean).join(', ')}</span>
                                                         )}
+                                                        {/* Frank reads the numbered citations AS the
+                                                            sourcing list — a state outlet must be
+                                                            marked here too, not only in corroboration. */}
+                                                        <TierChip source={c.source} />
                                                         <span className="dossier-cite-pin"> ({c.pin})</span>
                                                     </li>
                                                 ))}
@@ -738,6 +745,11 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                                 {(e.source || e.date) ? (
                                                     <span className="dossier-src"> — {e.source ?? ''}{e.source && e.date ? ', ' : ''}{e.date ? fmtDay(e.date) : ''}</span>
                                                 ) : null}
+                                                {/* The tier the Brief already shows on its receipts —
+                                                    state media in the evidence list was unmarked here
+                                                    while the corroboration list marked it. Same
+                                                    classifier, same chip; unknown renders nothing. */}
+                                                <TierChip source={e.source} />
                                                 {tag && <span className="dossier-ft-tag">{tag}</span>}
                                                 {/* Enrichment F1: excerpt + citation, never republished full text */}
                                                 {art?.status === 'ok' && art.excerpt && (
@@ -939,7 +951,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                             <>
                                 {corrob.search_available ? (
                                     <p className="dossier-meta" data-tip={corrob.meta?.independence_rule ?? ''}>
-                                        measured {new Date(corrob.measured_at).toLocaleString()} · independent sources weighted · {corrob.search_source} · window {corrob.window_days}d
+                                        measured {new Date(corrob.measured_at).toLocaleString()} · independent sources weighted · {corrob.search_source} · {corroborationWindowText(corrob)}
                                     </p>
                                 ) : (
                                     <p className="dossier-meta">{corrob.meta?.search_note ?? 'Web-search lane unavailable — corroboration not measured.'}</p>
@@ -956,6 +968,22 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                             as one voice)"). Rendered whole, never truncated, never
                                             restated in our own words beside it. */}
                                         <div className="dossier-pin-summary">{p.note}</div>
+                                        {/* corroborate-v2 verdict block — template-shaped and aged
+                                            matches are SHOWN set-aside (muted), never folded into
+                                            the backing count. Renders only when a verdict travels
+                                            with the pin; today that is the per-claim lane
+                                            (/api/v2/corroborate), which the report does not call. */}
+                                        {verdictFacets(p.verdict).length > 0 && (
+                                            <div className="dossier-corrob-verdict">
+                                                {verdictFacets(p.verdict).map(f => (
+                                                    <span
+                                                        key={f.key}
+                                                        className={`dossier-corrob-facet${f.setAside ? ' dossier-corrob-facet--aside' : ''}`}
+                                                        data-tip={f.tip}
+                                                    >{f.label}</span>
+                                                ))}
+                                            </div>
+                                        )}
                                         {p.citations.length > 0 && (
                                             <ul className="dossier-evidence">
                                                 {p.citations.map((c, i) => {
@@ -964,10 +992,18 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                                     // the receipt says why it did not count twice.
                                                     const chip = citationTierChip(c)
                                                     const collapse = citationCollapseNote(c)
+                                                    // R3: the receipt's own date, and whether it falls
+                                                    // outside the window this run measured. An undated
+                                                    // row is never called aged.
+                                                    const day = citationDateText(c)
+                                                    const aged = citationAged(c, corrob)
                                                     return (
-                                                        <li key={i}>
+                                                        <li key={i} className={aged ? 'dossier-corrob-cit--aged' : undefined}>
                                                             {c.url ? <a href={c.url} target="_blank" rel="noopener noreferrer">{c.title}</a> : c.title}
-                                                            <span className="dossier-src"> — {c.outlet}{c.lane === 'client-supplied' ? ' (supplied)' : ''}</span>
+                                                            <span className="dossier-src"> — {c.outlet}{day ? `, ${day}` : ''}{c.lane === 'client-supplied' ? ' (supplied)' : ''}</span>
+                                                            {aged && (
+                                                                <span className="dossier-corrob-aged" data-tip={agedTip(corrob.window_days)}>· outside the {corrob.window_days}-day window</span>
+                                                            )}
                                                             {chip && (
                                                                 <span
                                                                     className={`l2-tier-chip l2-tier-chip--${citationTierClass(c)}`}

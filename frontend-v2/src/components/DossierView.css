@@ -447,6 +447,46 @@
     cursor: help;
 }
 
+/* corroborate-v2 verdict block: the counts the reader needs to judge the
+   claim, each inspectable on its own. `--aside` is the set-aside class —
+   template-shaped and aged matches are SHOWN (they must stay inspectable) but
+   dimmed and struck of their weight, so they can never read as backing. */
+.dossier-corrob-verdict {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 0;
+}
+.dossier-corrob-facet {
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border, rgba(139, 151, 166, 0.3));
+    white-space: nowrap;
+    cursor: help;
+}
+.dossier-corrob-facet--aside {
+    color: var(--color-text-muted);
+    border-style: dashed;
+    opacity: 0.75;
+}
+
+/* R3: a receipt published outside the measured window stays visible (it is
+   real coverage) but is muted, and says so inline — an aged receipt rendering
+   identically to a fresh one is exactly how stale backing hides. */
+.dossier-corrob-cit--aged { opacity: 0.62; }
+.dossier-corrob-aged {
+    margin-left: 6px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    border-bottom: 1px dotted currentColor;
+    cursor: help;
+}
+
 /* R3c defect 16 — emerald: title-edit hint was rgba(243,244,246,.35) — a
    near-white ghost, invisible on the white dossier page. Scoped; noir exact. */
 [data-theme^='emerald'] .dossier-title-edit {

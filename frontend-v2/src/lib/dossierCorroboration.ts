@@ -53,6 +53,12 @@ export interface CorroborationPin {
   citations: CorroborationCitation[]
   note: string
   queries: string[]
+  /** corroborate-v2 verdict block, when one travels with the pin. The dossier
+   *  lane (`/api/v2/dossier/corroborate`) does NOT emit it today — it rides
+   *  the per-claim lane (`/api/v2/corroborate`). Optional so the consumer is
+   *  in place the moment a verdict does arrive, and silent until then: an
+   *  absent verdict renders nothing rather than a fabricated zero. */
+  verdict?: CorroborationVerdict | null
 }
 
 /** Per-claim verdict from `POST /api/v2/corroborate` (corroboration-v1 +
@@ -69,6 +75,71 @@ export interface CorroborationVerdict {
   template_matches?: number
   aged?: number
   window_days?: number
+}
+
+/** One inspectable piece of a verdict. `setAside` marks the counts the backend
+ *  SHOWS but never counts as backing (template-shaped matches, aged receipts)
+ *  so the render can mute them instead of letting them read as corroboration. */
+export interface VerdictFacet {
+  key: 'corroborating' | 'contradicting' | 'official' | 'template' | 'aged'
+  label: string
+  tip: string
+  setAside: boolean
+}
+
+/** The verdict block, exploded into facets the report can render one by one.
+ *  Every number comes from the backend's own count — nothing is derived here,
+ *  and a zero is simply not shown (absence over a decorative "0"). Pure.
+ *
+ *  PRODUCER NOTE: `verdict` rides `POST /api/v2/corroborate` (contract
+ *  `corroboration-v1`), the per-CLAIM lane, which the app does not call today.
+ *  `POST /api/v2/dossier/corroborate` — the lane the report DOES call — returns
+ *  no verdict block, so these facets render only once a verdict actually
+ *  travels with a pin. See the note on `CorroborationPin.verdict`. */
+export function verdictFacets(v: CorroborationVerdict | null | undefined): VerdictFacet[] {
+  if (!v) return []
+  const out: VerdictFacet[] = []
+  if (v.corroborating > 0) {
+    out.push({
+      key: 'corroborating', setAside: false,
+      label: `${v.corroborating} corroborating`,
+      tip: 'Sources that independently back this claim, inside the measured window.',
+    })
+    // Answering the claim ledger's question out loud: is any backer official?
+    out.push(v.official_corroborating > 0
+      ? {
+        key: 'official', setAside: false,
+        label: `${v.official_corroborating} official/wire`,
+        tip: 'Among the corroborating sources: government, UN, or an international wire agency.',
+      }
+      : {
+        key: 'official', setAside: false,
+        label: 'none official/wire',
+        tip: 'No government, UN, or wire-agency source is among the backers — treat the figure as contested.',
+      })
+  }
+  if (v.contradicting > 0) {
+    out.push({
+      key: 'contradicting', setAside: false,
+      label: `${v.contradicting} contradicting`,
+      tip: 'Sources whose figure or account conflicts with this claim.',
+    })
+  }
+  if ((v.template_matches ?? 0) > 0) {
+    out.push({
+      key: 'template', setAside: true,
+      label: `${v.template_matches} template-shaped set aside`,
+      tip: 'Matched only shared casualty boilerplate with no shared event anchor — shown so you can inspect them, never counted as backing (corroborate-v2 F2).',
+    })
+  }
+  if ((v.aged ?? 0) > 0) {
+    out.push({
+      key: 'aged', setAside: true,
+      label: `${v.aged} outside the ${v.window_days ?? '?'}-day window`,
+      tip: agedTip(v.window_days ?? 0),
+    })
+  }
+  return out
 }
 
 export interface CorroborationData {
@@ -127,6 +198,69 @@ export function citationTierClass(cit: CorroborationCitation): string | null {
   if (!citationTierChip(cit)) return null
   const label = (cit.credibility?.label ?? '').trim().toLowerCase()
   return TIER_CHIP_CLASS[label] ?? 'local'
+}
+
+// ── Citation dates + the aged window (corroborate-v2 R3) ─────────────────────
+// Frank's fresh test: "citations render no date (an aged receipt would be
+// invisible)". The payload has carried `seendate` all along — DOC 2.0 stamps
+// it `YYYYMMDDTHHMMSSZ`, a client-supplied row carries null. These mirror the
+// backend's `_match_date` rule exactly, including its discipline: an UNDATED
+// receipt is never claimed aged, because we do not measure what we lack.
+
+const DOC20_DATE_RE = /^(\d{4})(\d{2})(\d{2})T\d{6}Z$/
+
+/** A citation's measured publication day as `YYYY-MM-DD`, or null when the
+ *  backend recorded none / it does not parse. Never guesses. Pure. */
+export function citationDay(cit: CorroborationCitation): string | null {
+  const raw = (cit.seendate ?? '').trim()
+  if (!raw) return null
+  const m = DOC20_DATE_RE.exec(raw)
+  const iso = m ? `${m[1]}-${m[2]}-${m[3]}` : raw.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
+  const d = new Date(`${iso}T00:00:00Z`)
+  // Reject impossible calendar dates (Date rolls 2026-13-32 over silently).
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== iso) return null
+  return iso
+}
+
+/** The short day the rest of the report uses ("Aug 10"), or null. Pure. */
+export function citationDateText(cit: CorroborationCitation): string | null {
+  const day = citationDay(cit)
+  if (!day) return null
+  try {
+    return new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', timeZone: 'UTC',
+    })
+  } catch { return day }
+}
+
+/** True when this receipt was published outside the window the run measured
+ *  (`window_days` back from `measured_at`) — the R3 rule: an aged receipt is
+ *  context, never backing. Arithmetic over two fields the payload already
+ *  carries; nothing is inferred about an undated row, and a payload with no
+ *  window makes no claim at all. Pure. */
+export function citationAged(cit: CorroborationCitation, data: CorroborationData): boolean {
+  const day = citationDay(cit)
+  if (!day || !data.window_days || data.window_days <= 0) return false
+  const measured = new Date(data.measured_at)
+  if (Number.isNaN(measured.getTime())) return false
+  const measuredDay = Date.UTC(
+    measured.getUTCFullYear(), measured.getUTCMonth(), measured.getUTCDate())
+  const cited = new Date(`${day}T00:00:00Z`).getTime()
+  const ageDays = Math.round((measuredDay - cited) / 86_400_000)
+  return ageDays > data.window_days
+}
+
+export function agedTip(windowDays: number): string {
+  return `Published outside the ${windowDays}-day window this run measured — `
+    + 'shown as context, never counted as backing.'
+}
+
+/** The window as a sentence for the section header — a bare "window 14d" is a
+ *  number the reader has to decode. Pure. */
+export function corroborationWindowText(data: CorroborationData): string {
+  const d = data.window_days
+  return `receipts within the last ${d} day${d === 1 ? '' : 's'}`
 }
 
 /** Why this citation did not count as its own voice, in one plain line — or
@@ -244,15 +378,24 @@ export function corroborationMarkdown(c: CorroborationData): string[] {
     lines.push('')
     lines.push(`_${c.meta?.search_note ?? 'Web-search lane unavailable — corroboration not measured.'}_`)
   } else {
-    lines.push(`*Source: ${c.search_source ?? 'unknown'} · window ${c.window_days}d · syndicated wire copies collapse to one source; independently-operated outlets counted, never articles.*`)
+    lines.push(`*Source: ${c.search_source ?? 'unknown'} · ${corroborationWindowText(c)} · syndicated wire copies collapse to one source; independently-operated outlets counted, never articles.*`)
   }
   lines.push('')
   for (const p of c.pins) {
     lines.push(`### ${statusChip(p.status)} — ${p.label}`)
     lines.push(`${p.note} (${pinCountsText(p)})`)
+    const facets = verdictFacets(p.verdict)
+    if (facets.length) {
+      lines.push(`Verdict: ${facets.map(f => f.label).join(' · ')}`)
+    }
     for (const cit of p.citations) {
       const chip = citationTierChip(cit)
-      lines.push(`- [${cit.title}](${cit.url}) — ${cit.outlet}${chip ? ` ${chip}` : ''}`)
+      const day = citationDateText(cit)
+      // The date is part of the receipt, not decoration — an aged receipt that
+      // renders undated is exactly how stale backing hides in plain sight.
+      const attribution = `${cit.outlet}${day ? `, ${day}` : ''}`
+      const aged = citationAged(cit, c) ? ` _(outside the ${c.window_days}-day window — context only)_` : ''
+      lines.push(`- [${cit.title}](${cit.url}) — ${attribution}${chip ? ` ${chip}` : ''}${aged}`)
     }
     lines.push('')
   }
