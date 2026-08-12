@@ -12,9 +12,13 @@ from datetime import datetime, timezone
 from itertools import combinations
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
+from app.services.edition_status import (
+    READINESS_FULL_BAR,
+    READINESS_PARTIAL_BAR,
+)
 from app.services.investigation_nodes import InvestigationNode
 from app.services.subject_geography import (
     infer_receipt_subject_geography,
@@ -73,10 +77,37 @@ class InvestigationGraph(BaseModel):
     measured_at: datetime
 
 
+class ReadinessFraction(BaseModel):
+    """What a readiness dimension actually measured, over a NAMED denominator.
+
+    The seal used to ask an all-or-nothing question ("does EVERY story node
+    carry an actor?"), which over 12 nodes at ~50% per-node coverage can never
+    be answered yes — 25 of 25 sealed editions read `degraded`. The fraction is
+    served instead so a reader can be told "6 of 12 stories carry verified
+    subjects", and so the bar can be a fraction (see `edition_status`).
+
+    `basis` names the denominator (`story_nodes` | `nodes` | `receipts`) — the
+    unit differs per dimension and is never left for the reader to guess.
+    """
+    ready: int = 0
+    total: int = 0
+    basis: str
+    fraction: float | None = None
+
+    @model_validator(mode="after")
+    def _derive_fraction(self) -> "ReadinessFraction":
+        if self.fraction is None and self.total:
+            self.fraction = self.ready / self.total
+        return self
+
+
 class ReadinessItem(BaseModel):
     status: Literal["ready", "partial", "missing"]
     values: list[str] = Field(default_factory=list)
     reason_codes: list[str] = Field(default_factory=list)
+    # The measured coverage behind `status`. None only when a dimension has no
+    # countable denominator at all.
+    measured: ReadinessFraction | None = None
 
 
 class PublicationReceipt(BaseModel):
@@ -589,12 +620,52 @@ def _is_outlet(value: str) -> bool:
     return lane not in _NON_OUTLET_LANES
 
 
-def _item(values: set[str], missing: str, *, partial_below: int = 1) -> ReadinessItem:
+_WHAT_NODE_TYPES = {"story", "evidence", "event", "anomaly", "attention"}
+
+
+def _fraction_status(
+    fraction: float | None,
+) -> Literal["ready", "partial", "missing"]:
+    """One bar set, applied to every dimension that has a denominator.
+
+    The bars are measured over the 21 non-empty sealed editions — see
+    `app/services/edition_status.py` for the histogram and why a unanimity
+    conjunction was unreachable.
+    """
+    if fraction is None:
+        return "ready"
+    if fraction >= READINESS_FULL_BAR:
+        return "ready"
+    if fraction >= READINESS_PARTIAL_BAR:
+        return "partial"
+    return "partial" if fraction > 0 else "missing"
+
+
+def _item(
+    values: set[str],
+    missing: str,
+    *,
+    partial_below: int = 1,
+    ready: int | None = None,
+    total: int | None = None,
+    basis: str = "values",
+) -> ReadinessItem:
     cleaned = sorted(v for v in values if v)
+    measured = (
+        ReadinessFraction(ready=ready, total=total, basis=basis)
+        if ready is not None and total is not None
+        else None
+    )
     if not cleaned:
-        return ReadinessItem(status="missing", reason_codes=[missing])
+        return ReadinessItem(status="missing", reason_codes=[missing], measured=measured)
     status: Literal["ready", "partial", "missing"] = "partial" if len(cleaned) < partial_below else "ready"
-    return ReadinessItem(status=status, values=cleaned)
+    if measured is not None and measured.total:
+        # A dimension that produced values but covers only part of its
+        # denominator is PARTIAL, and says so with a number.
+        status = _fraction_status(measured.fraction)
+        if status == "missing":
+            status = "partial"
+    return ReadinessItem(status=status, values=cleaned, measured=measured)
 
 
 def build_publication_package(request: PublicationPackageRequest) -> PublicationPackage:
@@ -610,6 +681,8 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
     story_nodes = [node for node in graph.nodes if node.node_type == "story"]
     story_nodes_with_actor = 0
     story_nodes_with_subject_geo = 0
+    story_nodes_with_movement: set[str] = set()
+    what_nodes = 0
     grab_bag_stories: list[str] = []
 
     for node in graph.nodes:
@@ -618,7 +691,8 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
         verified_subject_countries = _verified_subject_country_codes(node)
         if node.node_type == "story" and not verified_subject_countries:
             verified_subject_countries = _receipt_verified_subject_country_codes(node)
-        if node.node_type in {"story", "evidence", "event", "anomaly", "attention"}:
+        if node.node_type in _WHAT_NODE_TYPES:
+            what_nodes += 1
             what.add(node.label)
         if node.node_type == "subject":
             subjects.add(node.label)
@@ -653,14 +727,17 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
             delta = parent.get("changed_10h")
             if isinstance(delta, (int, float)):
                 movement.add(f"{node.label}: changed_10h={delta:+g}")
+                story_nodes_with_movement.add(node.node_id)
             movement_row = parent.get("movement")
             if isinstance(movement_row, dict):
                 velocity = movement_row.get("velocity")
                 surprise = movement_row.get("surprise")
                 if isinstance(velocity, (int, float)):
                     movement.add(f"{node.label}: velocity={float(velocity):+.4f}")
+                    story_nodes_with_movement.add(node.node_id)
                 if isinstance(surprise, (int, float)):
                     movement.add(f"{node.label}: surprise={float(surprise):.4f}")
+                    story_nodes_with_movement.add(node.node_id)
     for receipt in receipts:
         if receipt.source:
             sources.add(receipt.source)
@@ -676,52 +753,110 @@ def build_publication_package(request: PublicationPackageRequest) -> Publication
         for e in measured_relations
     }
 
-    if subject_countries and story_nodes_with_subject_geo == len(story_nodes):
-        where_readiness = ReadinessItem(status="ready", values=sorted(subject_countries))
-    elif subject_countries:
+    # WHO and WHERE are the two dimensions the standing enrichment gaps bite
+    # (#184 NER throughput, #238 subject geography). They are measured as a
+    # FRACTION of story nodes and graded against the measured bar — never as a
+    # unanimity conjunction, which over 12 nodes at ~50% per-node coverage
+    # sealed 25 of 25 editions `degraded`. The shortfall is still named.
+    where_measured = ReadinessFraction(
+        ready=story_nodes_with_subject_geo, total=len(story_nodes), basis="story_nodes",
+    )
+    if subject_countries:
+        where_status = _fraction_status(where_measured.fraction)
         where_readiness = ReadinessItem(
-            status="partial",
+            status="ready" if where_status == "ready" else "partial",
             values=sorted(subject_countries),
-            reason_codes=["subject_geography_incomplete_for_story_nodes"],
+            reason_codes=(
+                [] if where_status == "ready"
+                else ["subject_geography_incomplete_for_story_nodes"]
+            ),
+            measured=where_measured,
         )
     elif coverage_countries:
         where_readiness = ReadinessItem(
             status="partial",
             values=sorted(coverage_countries),
             reason_codes=["coverage_geography_only_not_subject"],
+            measured=where_measured,
         )
     else:
-        where_readiness = ReadinessItem(status="missing", reason_codes=["no_geography_context"])
-    why_readiness = _item(why_values, "no_measured_movement_or_relation")
+        where_readiness = ReadinessItem(
+            status="missing",
+            reason_codes=["no_geography_context"],
+            measured=where_measured,
+        )
+
+    why_ready = story_nodes_with_movement | {
+        node_id
+        for edge in measured_relations
+        for node_id in (edge.source_node_id, edge.target_node_id)
+    }
+    story_node_ids = {node.node_id for node in story_nodes}
+    why_readiness = _item(
+        why_values,
+        "no_measured_movement_or_relation",
+        ready=len(why_ready & story_node_ids),
+        total=len(story_nodes),
+        basis="story_nodes",
+    )
     if why_readiness.status == "ready":
+        # Movement and measured relations are never causality. `why` is capped
+        # at partial for every edition, by construction.
         why_readiness.status = "partial"
         why_readiness.reason_codes.append("causal_explanation_not_measured")
 
-    if subjects and story_nodes_with_actor == len(story_nodes):
-        who_readiness = ReadinessItem(status="ready", values=sorted(subjects))
-    elif subjects:
+    who_measured = ReadinessFraction(
+        ready=story_nodes_with_actor, total=len(story_nodes), basis="story_nodes",
+    )
+    if subjects:
+        who_status = _fraction_status(who_measured.fraction)
         who_readiness = ReadinessItem(
-            status="partial",
+            status="ready" if who_status == "ready" else "partial",
             values=sorted(subjects),
-            reason_codes=["actor_attribution_incomplete_for_story_nodes"],
+            reason_codes=(
+                [] if who_status == "ready"
+                else ["actor_attribution_incomplete_for_story_nodes"]
+            ),
+            measured=who_measured,
         )
     else:
         who_readiness = ReadinessItem(
-            status="missing", reason_codes=["no_verified_subjects"],
+            status="missing",
+            reason_codes=["no_verified_subjects"],
+            measured=who_measured,
         )
 
     # HOW = the outlets that carried it. Language tokens and platform lanes are
     # excluded (they are not mastheads) — but never SILENTLY: when the exclusion
     # is the reason HOW has nothing to show, the row says so.
     outlets = {s for s in sources if _is_outlet(s)}
-    how_readiness = _item(outlets, "no_outlet_receipts")
+    how_readiness = _item(
+        outlets,
+        "no_outlet_receipts",
+        ready=sum(1 for r in receipts if r.source and _is_outlet(r.source)),
+        total=len(receipts),
+        basis="receipts",
+    )
     if not outlets and (sources or languages):
         how_readiness.reason_codes.append("non_outlet_tokens_excluded_from_how")
 
     readiness = {
         "who": who_readiness,
-        "what": _item(what, "no_story_or_event_nodes"),
-        "when": _item(dates, "no_dated_receipts"),
+        "what": _item(
+            what,
+            "no_story_or_event_nodes",
+            ready=sum(1 for node in graph.nodes
+                      if node.node_type in _WHAT_NODE_TYPES and (node.label or "").strip()),
+            total=what_nodes,
+            basis="nodes",
+        ),
+        "when": _item(
+            dates,
+            "no_dated_receipts",
+            ready=sum(1 for r in receipts if r.date),
+            total=len(receipts),
+            basis="receipts",
+        ),
         "where": where_readiness,
         "how": how_readiness,
         "why": why_readiness,

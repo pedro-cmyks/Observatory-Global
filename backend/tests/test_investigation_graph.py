@@ -430,3 +430,94 @@ def test_publication_how_row_says_so_when_only_non_outlet_tokens_were_captured()
     assert "no_outlet_receipts" in how.reason_codes
     # never a silent drop: the excluded lanes are named as the reason HOW is empty
     assert "non_outlet_tokens_excluded_from_how" in how.reason_codes
+
+
+# --- readiness carries MEASURED FRACTIONS, not a unanimity verdict (T3.2) ----
+# `who`/`where` used to be `ready` only when EVERY story node carried
+# attribution. With ~50% per-node coverage that conjunction can never fire over
+# 12 nodes, so 25/25 sealed editions read `degraded`. Readiness now reports the
+# fraction it measured, and the bar is a fraction (see test_edition_status.py).
+
+def _story_with_actor(node_id: str, country: str) -> InvestigationNode:
+    return node(
+        node_id, "story", "thread", f"Story {node_id}", {},
+        quality={
+            "verified_subject_countries": [country],
+            "subject_country_status": "verified",
+        },
+    )
+
+
+def _story_without_actor(node_id: str) -> InvestigationNode:
+    return node(node_id, "story", "thread", f"Story {node_id}", {"live": {"top_countries": ["DE"]}})
+
+
+def _package_of(nodes):
+    graph = assemble_investigation_graph(GraphRequest(nodes=nodes), measured_at=STAMP)
+    return build_publication_package(PublicationPackageRequest(
+        title="Edition", authorship="system", graph=graph, generated_at=STAMP,
+    ))
+
+
+def test_readiness_reports_the_measured_fraction_for_every_dimension():
+    package = _package_of([_story_with_actor("node-story-1", "TR"), _story_without_actor("node-story-2")])
+
+    for dim in ("who", "what", "when", "where", "how", "why"):
+        measured = package.readiness[dim].measured
+        assert measured is not None, dim
+        assert measured.basis, dim
+        assert measured.ready <= measured.total or measured.total == 0
+
+    where = package.readiness["where"].measured
+    assert (where.ready, where.total, where.basis) == (1, 2, "story_nodes")
+    assert where.fraction == 0.5
+
+
+def test_who_and_where_clear_the_bar_without_unanimity():
+    # 7 of 12 story nodes attributed — above the measured full bar (0.55) and
+    # far from unanimity. The old rule called this `partial` forever.
+    nodes = [_story_with_actor(f"node-story-{i}", "TR") for i in range(7)]
+    nodes += [_story_without_actor(f"node-story-b{i}") for i in range(5)]
+
+    package = _package_of(nodes)
+
+    assert package.readiness["who"].status == "ready"
+    assert package.readiness["where"].status == "ready"
+    assert package.readiness["where"].measured.ready == 7
+    assert package.readiness["where"].measured.total == 12
+
+
+def test_below_the_partial_bar_readiness_still_serves_what_it_measured():
+    nodes = [_story_with_actor("node-story-1", "TR")]
+    nodes += [_story_without_actor(f"node-story-b{i}") for i in range(11)]
+
+    package = _package_of(nodes)
+    where = package.readiness["where"]
+
+    assert where.status == "partial"  # measured, not missing: the value exists
+    assert where.values == ["TR"]
+    assert "subject_geography_incomplete_for_story_nodes" in where.reason_codes
+    assert where.measured.ready == 1 and where.measured.total == 12
+
+
+def test_a_dimension_with_nothing_measured_is_missing_not_a_zero_fraction():
+    package = _package_of([_story_without_actor("node-story-1")])
+    where = package.readiness["where"]
+
+    assert where.status == "partial"  # coverage geography only
+    assert "coverage_geography_only_not_subject" in where.reason_codes
+    assert where.measured.ready == 0 and where.measured.total == 1
+
+
+def test_why_never_reaches_ready_however_high_the_fraction():
+    story = node(
+        "node-story-1", "story", "thread", "Moving story",
+        {"live": {"changed_10h": 12, "top_countries": ["TR"]}},
+        quality={"verified_subject_countries": ["TR"], "subject_country_status": "verified"},
+    )
+    package = _package_of([story])
+    why = package.readiness["why"]
+
+    assert why.status == "partial"
+    assert "causal_explanation_not_measured" in why.reason_codes
+    assert why.measured is not None
