@@ -120,22 +120,33 @@ def cluster_syndicated(articles: list[dict]) -> list[list[dict]]:
     return [members for _, members in clusters]
 
 
-def independence(articles: list[dict]) -> dict[str, Any]:
-    """The G2 rule as a number. Cluster near-identical titles; each cluster
-    collapses to its representative's outlet; count DISTINCT outlets across
-    representatives. 20 reprints of one wire story = 1; CNBC+Time+ABC each
-    writing their own = 3. Articles need `title` + `outlet` (domain)."""
+def independence(articles: list[dict], *, group_fn=None) -> dict[str, Any]:
+    """The G2 rule as a number, ownership-aware (corroborate-v2 R1).
+    Cluster near-identical titles (wire copies -> one representative); count
+    DISTINCT outlets across representatives; THEN collapse outlets that share
+    an ownership group (group_fn, e.g. source_tiers.ownership_group) into one
+    VOICE. 20 reprints of one wire = 1 outlet; ria+tass+rt each writing their
+    own = 3 outlets but 1 voice. Citations keep one row per outlet (receipts
+    stay visible) and carry `ownership_group` so the render can say why."""
     clusters = cluster_syndicated(articles)
     rep_outlets: list[str] = []
     citations: list[dict] = []
+    voices: list[str] = []
     for members in clusters:
         rep = members[0]
         outlet = (rep.get("outlet") or "").lower()
-        if outlet and outlet not in rep_outlets:
-            rep_outlets.append(outlet)
-            citations.append(rep)
+        if not outlet or outlet in rep_outlets:
+            continue
+        rep_outlets.append(outlet)
+        group = group_fn(outlet) if group_fn else None
+        citations.append({**rep, "ownership_group": group})
+        voice_key = group or outlet
+        if voice_key not in voices:
+            voices.append(voice_key)
     return {
         "independent_outlets": len(rep_outlets),
+        "independent_voices": len(voices),
+        "state_collapsed": len(rep_outlets) - len(voices),
         "total_articles": len(articles),
         "syndicated_clusters": sum(1 for m in clusters if len(m) > 1),
         "citations": citations,   # one per independent outlet, input order
@@ -143,12 +154,16 @@ def independence(articles: list[dict]) -> dict[str, Any]:
 
 
 def pin_status(
-    independent_outlets: int,
+    independent_voices: int,
     search_available: bool,
     *,
     applicable: bool = True,
+    outlets: int | None = None,
+    state_collapsed: int = 0,
 ) -> tuple[str, str]:
-    """(status, note) from the independence count — glass-box, no judgment."""
+    """(status, note) from the independence count — glass-box, no judgment.
+    v2: the bar is independent VOICES (ownership-collapsed), and the note
+    names the collapse when it changed the number."""
     if not applicable:
         return (
             "not_applicable",
@@ -157,15 +172,20 @@ def pin_status(
     if not search_available:
         return ("unverified",
                 "web-search lane unavailable — corroboration not measured")
-    if independent_outlets >= ESTABLISHED_MIN_OUTLETS:
+    collapse_note = ""
+    if state_collapsed > 0 and outlets is not None:
+        collapse_note = (f" ({outlets} outlets; same-state outlets "
+                         "counted as one voice)")
+    if independent_voices >= ESTABLISHED_MIN_OUTLETS:
         return ("established",
-                f"{independent_outlets} independently-operated outlets "
-                "(syndicated copies collapsed)")
-    if independent_outlets == 0:
+                f"{independent_voices} independent voices"
+                f"{collapse_note or ' (syndicated copies collapsed)'}")
+    if independent_voices == 0:
         return ("unverified", "no matching web coverage found in the window")
     return ("unverified",
-            f"only {independent_outlets} independent outlet(s) — "
-            "insufficient corroboration; treat as single-sourced")
+            f"only {independent_voices} independent voice(s)"
+            f"{collapse_note} — insufficient corroboration; "
+            "treat as single-sourced")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

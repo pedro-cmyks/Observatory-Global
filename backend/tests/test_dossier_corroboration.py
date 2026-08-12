@@ -117,7 +117,9 @@ class TestPinStatus:
     def test_established_at_threshold(self):
         status, note = pin_status(ESTABLISHED_MIN_OUTLETS, True)
         assert status == "established"
-        assert "independently-operated" in note
+        # corroborate-v2 R1: the judged count is independent VOICES; the note
+        # says so (status logic for the ungrouped path is unchanged).
+        assert "independent voices" in note
 
     def test_single_source_is_unverified(self):
         status, note = pin_status(1, True)
