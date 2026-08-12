@@ -17,6 +17,15 @@ BRIEFING_DB_TIMEOUT_SECONDS = float(os.getenv("BRIEFING_DB_TIMEOUT_SECONDS", "8"
 BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS = float(
     os.getenv("BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS", "1.5")
 )
+# LO QUE SUBE / EL VACÍO get their own, more patient budget. Measured on prod
+# 2026-08-12: the movement query costs 49 ms server-side and 0.6 s warm, but
+# under the nightly load the pooler queues it past the shared 8 s budget and the
+# marquee section degrades over a query that is not expensive. The whole payload
+# is cached 15 min, so waiting a few more seconds once per cache fill is the
+# cheap side of that trade. Stays under the connection's 15 s statement_timeout.
+BRIEF_SECTION_DB_TIMEOUT_SECONDS = float(
+    os.getenv("BRIEF_SECTION_DB_TIMEOUT_SECONDS", "12")
+)
 # Volume floor percentile for the hot-AND-voluminous lens (#187). 0.75 keeps
 # the top quartile by volume before re-ranking by atlas_heat.
 HEAT_VOLUMINOUS_PERCENTILE = float(os.getenv("BRIEFING_HEAT_VOLUMINOUS_PERCENTILE", "0.75"))
@@ -616,12 +625,12 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # sealed artifact can never say different things. Both degrade into a
         # served reason; neither can 500 the briefing.
         rising_section = await fetch_rising(
-            conn, hours=hours, timeout=BRIEFING_DB_TIMEOUT_SECONDS,
+            conn, hours=hours, timeout=BRIEF_SECTION_DB_TIMEOUT_SECONDS,
         )
         if rising_section.get("status") == "unavailable":
             degraded_segments.append("rising")
         gap_section = await fetch_gap(
-            conn, computed_by="live", timeout=BRIEFING_DB_TIMEOUT_SECONDS,
+            conn, computed_by="live", timeout=BRIEF_SECTION_DB_TIMEOUT_SECONDS,
         )
         if gap_section.get("status") == "unavailable":
             degraded_segments.append("gap")
