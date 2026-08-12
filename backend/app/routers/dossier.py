@@ -1279,6 +1279,7 @@ async def dossier_corroborate(req: CorroborateRequest):
         ESTABLISHED_MIN_OUTLETS,
     )
     from app.services.external_depth import fetch_external_depth
+    from app.services.source_tiers import ownership_group, tier_payload
 
     pins = req.pins
     timespan = f"{req.days}d"
@@ -1357,18 +1358,25 @@ async def dossier_corroborate(req: CorroborateRequest):
     web_titles: dict[str, list[str]] = {}
     for p in pins:
         arts = articles_by_pin[p.id]
-        ind = independence(arts)
+        # corroborate-v2 R1: outlets in one state apparatus collapse to ONE
+        # voice, and every citation ships its ownership group + tier so the
+        # render can SAY why three receipts counted once.
+        ind = independence(arts, group_fn=ownership_group)
         pin_search_available = lane_ok_by_pin[p.id]
         applicable = bool(p.evidence)
         status, note = pin_status(
-            ind["independent_outlets"],
+            ind["independent_voices"],
             pin_search_available,
             applicable=applicable,
+            outlets=ind["independent_outlets"],
+            state_collapsed=ind["state_collapsed"],
         )
         citations = [{
             "title": c["title"], "url": c["url"], "outlet": c["outlet"],
             "language": c.get("language"), "seendate": c.get("seendate"),
             "lane": c.get("lane"),
+            "ownership_group": c.get("ownership_group"),
+            "credibility": tier_payload(c.get("outlet")),
         } for c in ind["citations"][:MAX_CITATIONS_PER_PIN]]
         web_titles[p.id] = [f"{c['title']} — {c['outlet']}" for c in citations]
         pin_payloads.append({
@@ -1376,6 +1384,8 @@ async def dossier_corroborate(req: CorroborateRequest):
             "label": p.label,
             "status": status,
             "independent_outlets": ind["independent_outlets"],
+            "independent_voices": ind["independent_voices"],
+            "state_collapsed": ind["state_collapsed"],
             "total_articles": ind["total_articles"],
             "syndicated_clusters": ind["syndicated_clusters"],
             "single_source": (
@@ -1416,12 +1426,15 @@ async def dossier_corroborate(req: CorroborateRequest):
             "independence_rule": (
                 "near-identical headlines (syndicated wire) collapse to one "
                 "source; independently-operated outlets are counted, never "
-                "articles (G2)"),
+                "articles (G2); outlets in the same-state apparatus then "
+                "collapse to ONE voice — ria + tass + rt writing separately "
+                "is three outlets but one government speaking (v2 R1)"),
             "status_rule": (
-                f"established = ≥{ESTABLISHED_MIN_OUTLETS} independent outlets; "
-                "unverified otherwise; 'contested' is reserved for stance "
-                "detection (not emitted by v1 math); metadata-only context "
-                "with no frozen evidence is not_applicable"),
+                f"established = ≥{ESTABLISHED_MIN_OUTLETS} independent VOICES "
+                "(ownership-collapsed outlets, not articles); unverified "
+                "otherwise; 'contested' is reserved for stance detection "
+                "(not emitted by this math); metadata-only context with no "
+                "frozen evidence is not_applicable"),
             "dropped_pins": 0,
             "search_note": (
                 None
