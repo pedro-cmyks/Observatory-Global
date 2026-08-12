@@ -9,14 +9,18 @@ import {
 import { synthesizeDossier, synthesisMarkdown, isArticle, splitCitations, type DossierSynthesis } from '../lib/dossierSynthesis'
 import {
     buildCorroborationRequest, fetchCorroboration, loadCachedCorroboration,
-    saveCorroboration, corroborationMarkdown, statusChip, type CorroborationData,
+    saveCorroboration, corroborationMarkdown, statusChip,
+    citationTierChip, citationTierClass, citationCollapseNote, type CorroborationData,
 } from '../lib/dossierCorroboration'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
 import { humanizeReadinessValue } from '../lib/humanizeInternals'
 import { addPin, removePin, renameInvestigation, type Investigation } from '../lib/workbench'
 import { enqueueUrls, extractSnapshotUrls, fullTextYield, stateTag, useArticleStates } from '../lib/articleEnrichment'
-import { fetchCrossRead, type CrossRead } from '../lib/aiRead'
+import {
+    fetchCrossRead, crossFindingLabel, crossFindingLabelLong, independenceTip,
+    type CrossRead,
+} from '../lib/aiRead'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { deriveVerdictChips, type NodeStateRef, type VerdictChipDescriptor } from '../lib/verdictChips'
 import { VerdictChip } from './VerdictChip'
@@ -36,13 +40,11 @@ import {
 } from '../lib/investigationPublication'
 import './DossierView.css'
 
-/** Cross-read finding label. 'shared_source' (Council R3 P1) = two syndicated
- *  copies of one wire story agree — NOT independent corroboration. */
-function crossFindingLabel(kind: string): string {
-    if (kind === 'tension') return '⚠ possible tension'
-    if (kind === 'shared_source') return '⊘ same source (not independent)'
-    return '✓ corroboration'
-}
+// Cross-read finding labels + independence tips live in lib/aiRead.ts (pure,
+// unit-tested): 'shared_source' (Council R3 P1) = two syndicated copies of one
+// wire story agree — NOT independent corroboration; corroborate-v2 R2 refines
+// that by the MEASURED reason (attributed primary source / shared quotes), so
+// a derivation is never mislabeled as a wire echo.
 
 /** P0.6a: article text with inline [n] receipt markers → clickable superscript
  *  anchors into the numbered receipts list below the article. */
@@ -428,9 +430,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                 '## Source cross-read (AI READ — verify the quotes)',
                 '',
                 ...crossRead.findings.flatMap(f => {
-                    const label = f.kind === 'tension' ? 'Possible tension'
-                        : f.kind === 'shared_source' ? 'Same source (not independent corroboration)'
-                        : 'Corroboration'
+                    const label = crossFindingLabelLong(f.kind, f.independence?.reason)
                     const indep = f.independence ? ` _(${f.independence.label})_` : ''
                     return [
                         `**${label}**${indep} — ${f.note}`,
@@ -877,10 +877,10 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                 )}
                                 {crossRead.findings.map((f, i) => (
                                     <div key={i} className={`dossier-crossread-finding dossier-crossread-finding--${f.kind}`}>
-                                        <span className="dossier-crossread-kind">{crossFindingLabel(f.kind)}</span>
+                                        <span className="dossier-crossread-kind">{crossFindingLabel(f.kind, f.independence?.reason)}</span>
                                         {f.independence && (
                                             <span className={`dossier-crossread-independence dossier-crossread-independence--${f.independence.independent ? 'yes' : 'no'}`}
-                                                data-tip={f.independence.independent ? 'Two independent sources agree — corroboration.' : 'The claims agree but come from one wire source echoing itself — not independent corroboration.'}>
+                                                data-tip={independenceTip(f.independence)}>
                                                 {f.independence.label}
                                             </span>
                                         )}
@@ -950,15 +950,36 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                             <span className={`badge dossier-corrob-chip dossier-corrob-chip--${p.status}`}>{statusChip(p.status)}</span>
                                             <span className="dossier-pin-label">{p.label}</span>
                                         </div>
+                                        {/* The note is the backend's OWN sentence — in v2 it already
+                                            names the voices and the ownership collapse ("only 2
+                                            independent voice(s) (4 outlets; same-state outlets counted
+                                            as one voice)"). Rendered whole, never truncated, never
+                                            restated in our own words beside it. */}
                                         <div className="dossier-pin-summary">{p.note}</div>
                                         {p.citations.length > 0 && (
                                             <ul className="dossier-evidence">
-                                                {p.citations.map((c, i) => (
-                                                    <li key={i}>
-                                                        {c.url ? <a href={c.url} target="_blank" rel="noopener noreferrer">{c.title}</a> : c.title}
-                                                        <span className="dossier-src"> — {c.outlet}{c.lane === 'client-supplied' ? ' (supplied)' : ''}</span>
-                                                    </li>
-                                                ))}
+                                                {p.citations.map((c, i) => {
+                                                    // corroborate-v2 R1: the credibility tier and the
+                                                    // ownership group come MEASURED from the backend —
+                                                    // the receipt says why it did not count twice.
+                                                    const chip = citationTierChip(c)
+                                                    const collapse = citationCollapseNote(c)
+                                                    return (
+                                                        <li key={i}>
+                                                            {c.url ? <a href={c.url} target="_blank" rel="noopener noreferrer">{c.title}</a> : c.title}
+                                                            <span className="dossier-src"> — {c.outlet}{c.lane === 'client-supplied' ? ' (supplied)' : ''}</span>
+                                                            {chip && (
+                                                                <span
+                                                                    className={`l2-tier-chip l2-tier-chip--${citationTierClass(c)}`}
+                                                                    data-tip={c.credibility?.provenance ? `Credibility tier recorded at measurement (${c.credibility.provenance}).` : 'Credibility tier recorded at measurement.'}
+                                                                >{chip.replace(/^\[|\]$/g, '')}</span>
+                                                            )}
+                                                            {collapse && (
+                                                                <span className="dossier-corrob-collapse" data-tip={collapse}>· one voice</span>
+                                                            )}
+                                                        </li>
+                                                    )
+                                                })}
                                             </ul>
                                         )}
                                     </div>

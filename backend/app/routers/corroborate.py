@@ -34,6 +34,9 @@ class CorroborateRequest(BaseModel):
     figure: float | None = None
     country: str | None = Field(default=None, max_length=3)
     published_date: str | None = None
+    # corroborate-v2 F1: the CLAIM's source language, so "1.700" from an
+    # Indonesian receipt parses as 1700 and not 1.7 (council C-N17).
+    lang: str | None = Field(default=None, max_length=8)
 
 
 @router.post("/corroborate")
@@ -52,6 +55,7 @@ async def corroborate(body: CorroborateRequest) -> dict:
                 figure=body.figure,
                 country=(body.country or None),
                 published_date=body.published_date,
+                lang=(body.lang or None),
                 conn=conn,
                 embed_fn=lambda text: asyncio.to_thread(embed_query, text),
             )
@@ -61,4 +65,5 @@ async def corroborate(body: CorroborateRequest) -> dict:
         figure=body.figure,
         country=(body.country or None),
         published_date=body.published_date,
+        lang=(body.lang or None),
     )

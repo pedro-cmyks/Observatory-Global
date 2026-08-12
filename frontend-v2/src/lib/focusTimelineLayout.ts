@@ -66,7 +66,14 @@ export interface FocusTimelineResponse {
         key_subjects: ChannelStatus
         voice_mix: ChannelStatus
     }
+    /** 'measured_zero' | 'lane_starved' | 'invalid_ref' | 'topic_not_found'
+     *  | 'db_busy' | 'db_error' | 'db_unavailable' (N23 vocabulary). */
     reason?: string
+    /** The evidence behind `reason` — e.g. 'person_lane_coverage_0/600'. */
+    reason_detail?: string
+    /** The coverage probe that produced a measured_zero / lane_starved
+     *  verdict; kept on the wire so the verdict is inspectable, not asserted. */
+    lane_coverage?: { lane: string; sampled: number | null; covered: number | null }
 }
 
 export interface EdgeChange {
@@ -327,6 +334,92 @@ export function channelGapLabel(status: ChannelStatus | undefined, reason?: stri
         return 'not measured for this focus'
     }
     return ''
+}
+
+// ------------------------------------------------------------- empty states
+/** An empty timeline is not one state, it is three (backend N23 reason codes):
+ *  the world was quiet (`measured`), this channel cannot see (`gap`), or the
+ *  question was malformed (`error`). Rendering all three as "No activity in
+ *  this window." is what Council R4 N23 caught — a starved lane's blindness
+ *  read to the analyst as a finding. */
+export interface TimelineEmptyCopy {
+    headline: string
+    detail?: string
+    tone: 'measured' | 'gap' | 'error'
+}
+
+/** Why a lane could not answer — named per source, so the gap is attributable
+ *  rather than a shrug. Keyed on the backend's `reason_detail` prefix. */
+function laneStarvedDetail(detail?: string): string {
+    const d = detail || ''
+    const unverified = d.endsWith('coverage_unverified')
+    if (d.startsWith('person_lane')) {
+        return unverified
+            ? 'the person lane’s coverage could not be verified for this window — absence is not measured'
+            : 'the person lane (names extracted at ingest) has no coverage in this window — absence here is not a measured fact'
+    }
+    if (d.startsWith('country_hourly')) {
+        return unverified
+            ? 'the hourly country aggregate could not be verified for this window'
+            : 'the hourly country aggregate holds no rows for this window — it cannot show a country was quiet'
+    }
+    if (d.startsWith('topic_members')) {
+        return unverified
+            ? 'the membership projection could not be verified for this window'
+            : 'the membership projection wrote no rows for this window — it cannot show a thread was quiet'
+    }
+    return unverified
+        ? 'this channel’s coverage could not be verified for this window'
+        : 'this channel has no coverage for this window — absence is not measured'
+}
+
+/** What is wrong with the reference itself. */
+function invalidRefDetail(detail?: string): string {
+    switch (detail) {
+        case 'empty_ref': return 'the reference is empty'
+        case 'ref_too_long': return 'the reference is too long to be a focus'
+        case 'country_code_malformed': return 'expected a 2-letter country code'
+        case 'person_ref_unmatchable': return 'a person reference needs at least one letter or digit'
+        default: return 'the reference could not be read as a thread, country or person'
+    }
+}
+
+export function emptyTimelineCopy(reason?: string, detail?: string): TimelineEmptyCopy {
+    switch (reason) {
+        case 'measured_zero':
+        // pre-rename payloads can still be in the 5-minute Redis window
+        case 'no_activity_in_window':
+            return {
+                headline: 'No measured activity in this window.',
+                detail: 'the lane was populated and nothing matched',
+                tone: 'measured',
+            }
+        case 'lane_starved':
+            return {
+                headline: 'This channel cannot answer for this window.',
+                detail: laneStarvedDetail(detail),
+                tone: 'gap',
+            }
+        case 'invalid_ref':
+            return {
+                headline: 'That focus reference is not valid.',
+                detail: invalidRefDetail(detail),
+                tone: 'error',
+            }
+        case 'topic_not_found':
+            return { headline: 'No extended timeline for this thread type.', tone: 'gap' }
+        case 'db_unavailable':
+            return { headline: 'Timeline unavailable — database offline.', tone: 'gap' }
+        case 'db_busy':
+        case 'db_error':
+            return {
+                headline: 'Timeline not measured for this focus.',
+                detail: channelGapLabel('degraded', reason),
+                tone: 'gap',
+            }
+        default:
+            return { headline: `No timeline (${reason || 'no data'}).`, tone: 'gap' }
+    }
 }
 
 // ---------------------------------------------------------------- edge diff

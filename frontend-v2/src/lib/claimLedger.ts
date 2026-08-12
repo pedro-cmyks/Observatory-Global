@@ -91,13 +91,68 @@ export function isOfficialSource(source: string | null | undefined): boolean {
   return isOfficialishTier(classifyOutlet(source).tier)
 }
 
-/** First number (thousands-separated or plain) in a string → integer, else null. */
-export function extractFigure(text: string | null | undefined): number | null {
+// ── Locale numeral discipline (corroborate-v2 F1, council C-N17) ────────────
+// Indonesian "1.700" parsed as 1.7 made the best match the top CONTRADICTION.
+// This set + {@link parseFigureToken} MIRROR `_COMMA_DECIMAL_LANGS` and
+// `_parse_figure_token` in backend/app/services/corroboration.py rule for rule,
+// so a headline's toll parses identically on both ends. Keep them in lockstep:
+// languages that write decimals with a COMMA and group thousands with a DOT.
+const COMMA_DECIMAL_LANGS = new Set([
+  'es', 'pt', 'de', 'fr', 'it', 'id', 'in', 'tr', 'ru', 'uk', 'nl', 'da',
+  'sv', 'no', 'nb', 'nn', 'fi', 'pl', 'cs', 'sk', 'el', 'ro', 'hu', 'vi',
+  'az', 'kk', 'sr', 'hr', 'bg', 'ca', 'sl', 'lt', 'lv', 'et', 'mk', 'sq',
+  'bs', 'ka', 'hy', 'be',
+])
+
+const FIGURE_TOKEN_RE = /\d[\d.,]*\d|\d/
+
+/** One numeric token → number under the locale's separator convention.
+ *  Universal rule first: when BOTH separators appear, the LAST one is the
+ *  decimal mark. Then per-locale: a single separator followed by exactly three
+ *  digits is thousands-grouping in that locale's grouping character; otherwise
+ *  it is the decimal mark. Unknown-locale single-dot stays decimal
+ *  (conservative: preserves the pre-v2 behavior for English). */
+function parseFigureToken(raw: string, commaDecimal: boolean): number | null {
+  const tok = raw.replace(/^[.,]+/, '').replace(/[.,]+$/, '')
+  if (!tok) return null
+  const hasDot = tok.includes('.')
+  const hasComma = tok.includes(',')
+  let out: number
+  if (hasDot && hasComma) {
+    const dec = tok.lastIndexOf('.') > tok.lastIndexOf(',') ? '.' : ','
+    const grp = dec === '.' ? ',' : '.'
+    out = Number(tok.split(grp).join('').replace(dec, '.'))
+  } else if (hasDot) {
+    const parts = tok.split('.')
+    if (parts.length > 2) out = Number(parts.join(''))          // 1.234.567 — unambiguous
+    else if (commaDecimal && parts[1].length === 3) out = Number(parts.join(''))  // id/es/de: 1.700 = 1700
+    else out = Number(tok)
+  } else if (hasComma) {
+    const parts = tok.split(',')
+    if (parts.length > 2) out = Number(parts.join(''))          // 1,234,567 — unambiguous
+    else if (commaDecimal) out = Number(parts.join('.'))        // es: 7,6 = 7.6
+    else if (parts[1].length === 3) out = Number(parts.join(''))  // en: 1,700 = 1700
+    else out = Number(parts.join('.'))
+  } else {
+    out = Number(tok)
+  }
+  return Number.isFinite(out) ? out : null
+}
+
+/** First number in the text under the source language's numeral locale.
+ *  `sourceLang` is optional: without it the parse is the conservative
+ *  English-default one (a bare "1.700" stays 1.7 — we never invent a locale we
+ *  weren't told). Mirrors `extract_figure(text, lang=…)` in the backend, which
+ *  stays the authoritative end. */
+export function extractFigure(
+  text: string | null | undefined,
+  sourceLang?: string | null,
+): number | null {
   if (!text) return null
-  const m = text.match(/\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?/)
+  const m = text.match(FIGURE_TOKEN_RE)
   if (!m) return null
-  const n = Number(m[0].replace(/,/g, ''))
-  return Number.isFinite(n) ? n : null
+  const lang = (sourceLang ?? '').trim().toLowerCase().slice(0, 2)
+  return parseFigureToken(m[0], COMMA_DECIMAL_LANGS.has(lang))
 }
 
 /** "4734" → "4,734"; null → "—" (em dash). */
@@ -141,7 +196,9 @@ export function buildClaimTable(citations: Citation[], claims: Claim[]): ClaimTa
     // Gather each side as a provisional row, then compute the claim-level flag.
     const sides: Omit<ClaimTableRow, 'officialSourcePresent'>[] = []
 
-    const aFigure = claim.figure ?? extractFigure(a.headline)
+    // Each receipt's headline is read in ITS OWN source language (F1) — a
+    // Spanish "1.700" is 1700, an unlabeled one stays 1.7 (absence over guess).
+    const aFigure = claim.figure ?? extractFigure(a.headline, a.sourceLang)
     sides.push({
       claimId: claim.id,
       relation: claim.relation,
@@ -155,7 +212,7 @@ export function buildClaimTable(citations: Citation[], claims: Claim[]): ClaimTa
     })
 
     if (b) {
-      const bFigure = extractFigure(b.headline)
+      const bFigure = extractFigure(b.headline, b.sourceLang)
       sides.push({
         claimId: claim.id,
         relation: claim.relation,

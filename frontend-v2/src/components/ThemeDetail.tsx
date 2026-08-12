@@ -3,7 +3,7 @@ import { getThemeLabel, getThemeIcon, resolveThreadTitle } from '../lib/themeLab
 import { decodeEntities } from '../lib/decodeEntities'
 import { formatAttachSimilarity, laneTag, truncationNote } from '../lib/discussionHonesty'
 import { buildThreadVoiceModel, canHaveThreadVoice, type ThreadVoiceModel } from '../lib/threadVoice'
-import { CountQualifierChip } from '../lib/countQualifier'
+import { CountQualifierChip, formatCountWindow } from '../lib/countQualifier'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { CompareBar } from './CompareBar'
@@ -51,6 +51,24 @@ interface ThemeData {
     // panel number reconciled with the list instead of silently disagreeing.
     rawTotal?: number
     gated?: number
+    /**
+     * Council R4 N19 — what `total` actually IS. For dynamic threads `total` is
+     * `agg_n_signals`, a LIFETIME aggregate, and the header used to stamp it
+     * with the requested window ("3,659 signals · Last 24h") while the thread
+     * row one click up read 88 for the same story.
+     *
+     * `countBasis: 'lifetime'` names the basis so the header never has to infer
+     * it; `currentTotal` is the ROW'S OWN number (the latest snapshot's kept
+     * count) so the two surfaces agree by construction; `countWindowHours` is
+     * the MEASURED window that number was clustered over (168h in production —
+     * never the hardcoded 24 either surface used to print).
+     *
+     * All optional and honestly absent: a caller/topic without a snapshot
+     * serves undefined, never 0 (a 0 would read as "nothing in the window").
+     */
+    countBasis?: 'lifetime'
+    currentTotal?: number | null
+    countWindowHours?: number | null
     verified?: number
     extended?: number
     extendedThreshold?: number
@@ -626,6 +644,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // While the first fetch is in flight there is no honest count yet — print
     // an ellipsis, never a false "0 signals" next to a skeleton.
     const totalDisplay = loading && !data ? '…' : String(data?.total || 0)
+    // N19: does this payload declare `total` to be a lifetime aggregate AND
+    // carry the row's current-window number to show beside it? Both are
+    // required — a lifetime basis with no current number would leave the header
+    // with nothing windowed to print.
+    const lifetimeBasis = data?.countBasis === 'lifetime' && data?.currentTotal != null
+    // The measured window, or null. Never defaulted to '24h' — printing an
+    // assumed window over a number counted across another one is the bug.
+    const currentWindowLabel = formatCountWindow(data?.countWindowHours)
     // total counts VERIFIED (gate-kept) evidence; with the below-gate
     // fallback (#214) the backend can return raw signals labeled unverified
     // even when total is 0 — only show the empty state when there is truly
@@ -759,6 +785,21 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 {data?.rawTotal && data.rawTotal !== data.total ? (
                                     <span data-tip={`${data.rawTotal.toLocaleString()} raw signals assigned to this thread · ${(data.signals?.length ?? 0).toLocaleString()} sourced (fetched with headline + outlet in this view) · ${(data.total || 0).toLocaleString()} verified by the relevance gate`}>
                                         Global · {data.rawTotal.toLocaleString()} raw · {(data.signals?.length ?? 0).toLocaleString()} sourced · {(data.total || 0).toLocaleString()} verified · Last {hours}h
+                                    </span>
+                                ) : lifetimeBasis ? (
+                                    /* N19: `total` is a LIFETIME aggregate. Print the
+                                       current-window number the thread row shows (same
+                                       source, so they cannot contradict) with the window
+                                       it was really counted over, and name the lifetime
+                                       total as lifetime instead of stamping it "Last
+                                       24h". When the window is unknown we say so rather
+                                       than inventing one. */
+                                    <span data-tip={`${(data!.currentTotal ?? 0).toLocaleString()} signals in this thread's serving membership${currentWindowLabel ? ` over the last ${currentWindowLabel}` : ''} — the number the Narrative Threads row shows. ${(data!.total || 0).toLocaleString()} is this story's all-time total since it first appeared, not a count for the current window.`}>
+                                        Global · {(data!.currentTotal ?? 0).toLocaleString()} signals
+                                        {currentWindowLabel
+                                            ? <> · last {currentWindowLabel}</>
+                                            : <> · window not reported</>}
+                                        {' · '}{(data!.total || 0).toLocaleString()} lifetime
                                     </span>
                                 ) : (
                                     <>Global · {totalDisplay} signals · Last {hours}h</>
@@ -951,19 +992,30 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
                         {/* Summary Stats */}
                         <div className="theme-stats-row">
-                            <div className="theme-stat" data-tip={data.rawTotal && data.rawTotal !== data.total
+                            <div className="theme-stat" data-tip={lifetimeBasis
+                                ? `${data.total.toLocaleString()} signals over this story's whole lifetime — an all-time total, not a count for the current window. ${(data.currentTotal ?? 0).toLocaleString()} are in the current serving membership${currentWindowLabel ? ` (last ${currentWindowLabel})` : ''}.`
+                                : data.rawTotal && data.rawTotal !== data.total
                                 ? `${data.total} precise signals kept by the relevance gate, of ${data.rawTotal} assigned to this thread. The Narrative Threads list shows the assigned count.`
                                 : "Total media signals (articles, posts) mentioning this topic in the selected time window"}>
                                 <span className="theme-stat-value">
                                     {data.total}
+                                    {/* N19: a lifetime total takes the 'lifetime' base, which
+                                        suppresses the window segment entirely — the old chip
+                                        stamped `${hours}h` on an all-time number. */}
                                     <CountQualifierChip
                                         count={data.total}
-                                        windowLabel={`${hours}h`}
-                                        base={data.rawTotal && data.rawTotal !== data.total ? 'verified' : 'raw'}
+                                        windowLabel={lifetimeBasis ? null : `${hours}h`}
+                                        base={lifetimeBasis
+                                            ? 'lifetime'
+                                            : data.rawTotal && data.rawTotal !== data.total ? 'verified' : 'raw'}
                                     />
                                 </span>
                                 <span className="theme-stat-label">Signals</span>
-                                {data.rawTotal && data.rawTotal !== data.total ? (
+                                {lifetimeBasis ? (
+                                    <span className="theme-stat-subnote">
+                                        {(data.currentTotal ?? 0).toLocaleString()} in the last {currentWindowLabel ?? 'reported window'}
+                                    </span>
+                                ) : data.rawTotal && data.rawTotal !== data.total ? (
                                     <span className="theme-stat-subnote">of {data.rawTotal.toLocaleString()} assigned</span>
                                 ) : null}
                             </div>

@@ -503,6 +503,86 @@
     font-size: 12px;
 }
 
+/* Council R4 DESKTOP-N26 — honest states for a heavy/degraded subject.
+   Everything here is deliberately GREY, never a sentiment or alert colour:
+   a gap is an absence of measurement, not a finding. */
+
+/* The slow notice: shown at 8s above the still-running skeleton. */
+.entity-slow-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(var(--color-ink-rgb), 0.12);
+    border-radius: 4px;
+    background: rgba(var(--color-ink-rgb), 0.03);
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.entity-slow-dot {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text-muted);
+    animation: entity-slow-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes entity-slow-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .entity-slow-dot { animation: none; opacity: 0.6; }
+}
+
+/* Inline "not measured" substitute for a count we could not take. */
+.entity-gap {
+    color: var(--color-text-muted);
+    font-style: italic;
+    opacity: 0.75;
+}
+
+/* Section-level grey gap where a degraded lane's content would have gone. */
+.entity-lane-gap {
+    padding: 12px 10px;
+    border: 1px dashed rgba(var(--color-ink-rgb), 0.15);
+    border-radius: 4px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* A failed request is a state with a way out, not a dead end. */
+.entity-empty--failed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.entity-retry {
+    background: transparent;
+    border: 1px solid rgba(var(--color-ink-rgb), 0.2);
+    color: var(--color-text-muted);
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.entity-retry:hover {
+    border-color: rgba(var(--color-ink-rgb), 0.4);
+    color: var(--color-ink);
+}
+
 /* Geographic narrative */
 .entity-geo-narrative {
     font-size: 10px;

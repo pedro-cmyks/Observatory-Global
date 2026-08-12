@@ -89,11 +89,23 @@ class TestClassifyRelation:
         assert rel == "context"
 
     def test_semantic_similarity_can_stand_in_for_terms(self):
-        # hot-lane hit with different wording but high cosine
+        # hot-lane hit with different wording but high cosine — still stands in
+        # for lexical recall, PROVIDED one anchor is shared (here: venezuela).
+        rel = c.classify_relation(
+            self.CLAIM, None,
+            "Seismic disaster claims thousands in Venezuela", similarity=0.92)
+        assert rel == "corroborates"
+
+    def test_semantic_similarity_alone_is_a_template_match(self):
+        # corroborate-v2 G-TEMPLATE: this fixture used to assert 'corroborates'
+        # for a same-script hit sharing ZERO terms with the claim — exactly the
+        # shape that let a Mali ambush corroborate a Gaza headline (T-N19).
+        # Cosine alone no longer establishes the same event; the row stays
+        # VISIBLE as template_match, it is just never counted.
         rel = c.classify_relation(
             self.CLAIM, None,
             "Seismic disaster claims thousands in the Andes", similarity=0.92)
-        assert rel == "corroborates"
+        assert rel == "template_match"
 
 
 class TestCorpusQueryBuilders:
@@ -209,10 +221,16 @@ async def test_degraded_doc20_throttle_still_serves_atlas():
     async def throttled_doc20(query):
         return {"status": "throttled", "articles": []}
 
+    # Dates are RELATIVE to today: corroborate-v2 R3 sets aside receipts older
+    # than CITATION_WINDOW_DAYS, so a hard-coded date silently ages this
+    # fixture out of its own contract (the aging rule itself is pinned by
+    # test_corroboration.py::test_all_aged_means_uncorroborated_today).
+    import datetime as _dt
+    recent = (_dt.date.today() - _dt.timedelta(days=1)).isoformat()
     archive_rows = [{
         "headline": "Venezuela earthquake death toll rises to 4,930",
         "source_url": "https://reuters.com/x", "source_name": "Reuters",
-        "country_code": "VE", "day": "2026-06-02", "topic_slug": "quake",
+        "country_code": "VE", "day": recent, "topic_slug": "quake",
     }]
     conn = _FakeConn(archive_rows)
 
@@ -235,18 +253,24 @@ async def test_degraded_doc20_throttle_still_serves_atlas():
 
 @pytest.mark.asyncio
 async def test_doc20_ok_and_hot_lane_unify_and_dedup():
+    # Relative dates — see the note in the throttle test above (R3 window).
+    import datetime as _dt
+    recent = _dt.date.today() - _dt.timedelta(days=1)
+    seendate = recent.strftime("%Y%m%dT000000Z")
+    hot_ts = f"{recent.isoformat()}T10:00:00+00:00"
+
     async def ok_doc20(query):
         return {"status": "ok", "articles": [{
             "title": "Venezuela earthquake death toll now 4,734 confirmed",
             "url": "https://ap.org/a", "domain": "ap.org",
-            "sourcecountry": "us", "seendate": "20260602T000000Z",
+            "sourcecountry": "us", "seendate": seendate,
         }]}
 
     async def fake_hot(conn, vec, hours):
         return [{
             "headline": "Venezuela earthquake: rescue efforts continue",
             "country_code": "VE", "source_name": "El Nacional",
-            "timestamp": "2026-06-02T10:00:00+00:00", "similarity": 0.91,
+            "timestamp": hot_ts, "similarity": 0.91,
         }]
 
     conn = _FakeConn([])  # empty archive

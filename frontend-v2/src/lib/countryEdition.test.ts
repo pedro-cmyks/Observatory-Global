@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   composeCountrySections,
+  editionAgeNote,
   fetchCountryEdition,
   type CountryGap,
 } from './countryEdition'
@@ -74,5 +75,37 @@ describe('fetchCountryEdition (honest degrade)', () => {
   it('returns null when fetch throws', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('net') }))
     expect(await fetchCountryEdition('CO')).toBeNull()
+  })
+})
+
+// ── precomputed-door age note (council R4 N26) ───────────────────────────────
+// The door now serves a nightly artifact when one is fresh. That is the fix for
+// the cold 503, but it introduces staleness the reader cannot see anywhere else
+// on the page: the vitals beside the edition ("Signals · in the last 24h") are
+// live. So an artifact-served edition says how old it is.
+describe('editionAgeNote', () => {
+  it('says nothing for a live build — there is nothing to disclose', () => {
+    expect(editionAgeNote(null)).toBeNull()
+    expect(editionAgeNote(undefined)).toBeNull()
+    expect(editionAgeNote({ source: 'precomputed_artifact' })).toBeNull()
+  })
+
+  it('says nothing for a fresh artifact under an hour old', () => {
+    expect(editionAgeNote({ age_hours: 0.4, stale: false })).toBeNull()
+  })
+
+  it('names the age of a same-day artifact', () => {
+    expect(editionAgeNote({ age_hours: 9.2, stale: false })).toBe('Assembled 9h ago')
+  })
+
+  it('switches to days once the build is older than a day', () => {
+    expect(editionAgeNote({ age_hours: 30, stale: true }))
+      .toBe('Assembled 1d ago — serving the last edition Atlas could build')
+  })
+
+  it('always speaks when the artifact is a degraded fallback, however young', () => {
+    // the live rebuild failed: age alone would have kept this silent
+    expect(editionAgeNote({ age_hours: 0.2, degraded: true }))
+      .toBe('Assembled less than an hour ago — serving the last edition Atlas could build')
   })
 })

@@ -46,6 +46,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { bandStartsCollapsed, freshnessSummary, type BriefBand, type FreshnessFacts } from '../lib/briefMobileBands'
 import {
     composeCountrySections,
+    editionAgeNote,
     fetchCountryEdition,
     type CountryEdition,
     type CountrySection,
@@ -1954,6 +1955,18 @@ export function BriefNewspaper() {
                                     below the country edition header. Renders nothing when the
                                     country has no tracked instrument (honest absence). */}
                                 <BriefCountryMarketsCard countryCode={countryFilter} />
+
+                                {/* N26: this door is served from the nightly artifact when one
+                                    is fresh, so it can legitimately be hours old — while the
+                                    vitals right above it ("in the last 24h") are live. Say the
+                                    age rather than let the two read as one moment. Renders
+                                    nothing for a live build. */}
+                                {(() => {
+                                    const note = editionAgeNote(countryEdition?.artifact)
+                                    return note ? (
+                                        <p className="brief-country-enrich">{note}</p>
+                                    ) : null
+                                })()}
 
                                 {(() => {
                                     const enr = countryEdition?.article_enrichment

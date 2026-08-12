@@ -8,6 +8,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useFocus } from './FocusContext'
 import { buildFocusRequestKey } from '../lib/focusRequestKey'
+import { fetchWithTimeout } from '../lib/fetchWithTimeout'
+import { FOCUS_TIMEOUT_MS } from '../lib/focusLoadingState'
 
 // Types
 export interface NodeData {
@@ -235,7 +237,18 @@ export const FocusDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                         value: focus.value,
                         hours: '24'
                     })
-                    const summaryRes = await fetch(`/api/v2/focus?${summaryParams}`, { signal: controller.signal })
+                    // N26: this was the last unbounded `/api/v2/focus` caller.
+                    // The outer `controller` cancels a STALE request on focus
+                    // change, but nothing bounded a HUNG one — measured in
+                    // the browser at 23.4s while EntityPanel's own (bounded)
+                    // request had long since settled. The sibling `flows`
+                    // fetch above already had a 12s bound; this one now
+                    // matches EntityPanel's client bound and composes with
+                    // the outer signal rather than replacing it.
+                    const summaryRes = await fetchWithTimeout(`/api/v2/focus?${summaryParams}`, {
+                        timeoutMs: FOCUS_TIMEOUT_MS,
+                        parentSignal: controller.signal,
+                    })
                     if (summaryRes.ok) {
                         summaryData = await summaryRes.json()
                     }

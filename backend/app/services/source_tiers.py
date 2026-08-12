@@ -106,6 +106,39 @@ STATE = {
     "sana.sy": "Syrian state wire",
 }
 
+# Corroborate-v2 R1: ownership groups. Outlets in one state apparatus are ONE
+# voice for independence counting (ria+interfax+tass corroborating each other
+# is one government speaking three times). Keys MUST mirror STATE exactly
+# (test-frozen) so the tier chip and the independence math never disagree.
+STATE_GROUPS = {
+    "rt.com": "ru", "sputniknews.com": "ru", "sputnikglobe.com": "ru",
+    "tass.com": "ru", "tass.ru": "ru", "ria.ru": "ru", "1tv.ru": "ru",
+    "xinhuanet.com": "cn", "news.cn": "cn", "cgtn.com": "cn",
+    "globaltimes.cn": "cn", "people.com.cn": "cn", "chinadaily.com.cn": "cn",
+    "cctv.com": "cn",
+    "presstv.ir": "ir", "irna.ir": "ir", "tasnimnews.com": "ir",
+    "mehrnews.com": "ir",
+    "trtworld.com": "tr", "aa.com.tr": "tr",
+    "kcna.kp": "kp",
+    "granma.cu": "cu", "prensa-latina.cu": "cu",
+    "telesurtv.net": "ve",
+    "sana.sy": "sy",
+}
+
+
+def ownership_group(source: str | None) -> str | None:
+    """Ownership-group key for independence counting, or None when the outlet
+    has no known shared owner. Only state apparatuses are grouped in v2 —
+    commercial conglomerates need a measured list before they join."""
+    dom = _domain_of(source)
+    if not dom:
+        return None
+    for d, g in STATE_GROUPS.items():
+        if dom == d or dom.endswith("." + d):
+            return f"state:{g}"
+    return None
+
+
 TIER_LABELS = {
     1: "reference", 2: "wire", 3: "mainstream",
     4: "unknown", 5: "state", 6: "flagged",

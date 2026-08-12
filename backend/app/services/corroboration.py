@@ -120,22 +120,33 @@ def cluster_syndicated(articles: list[dict]) -> list[list[dict]]:
     return [members for _, members in clusters]
 
 
-def independence(articles: list[dict]) -> dict[str, Any]:
-    """The G2 rule as a number. Cluster near-identical titles; each cluster
-    collapses to its representative's outlet; count DISTINCT outlets across
-    representatives. 20 reprints of one wire story = 1; CNBC+Time+ABC each
-    writing their own = 3. Articles need `title` + `outlet` (domain)."""
+def independence(articles: list[dict], *, group_fn=None) -> dict[str, Any]:
+    """The G2 rule as a number, ownership-aware (corroborate-v2 R1).
+    Cluster near-identical titles (wire copies -> one representative); count
+    DISTINCT outlets across representatives; THEN collapse outlets that share
+    an ownership group (group_fn, e.g. source_tiers.ownership_group) into one
+    VOICE. 20 reprints of one wire = 1 outlet; ria+tass+rt each writing their
+    own = 3 outlets but 1 voice. Citations keep one row per outlet (receipts
+    stay visible) and carry `ownership_group` so the render can say why."""
     clusters = cluster_syndicated(articles)
     rep_outlets: list[str] = []
     citations: list[dict] = []
+    voices: list[str] = []
     for members in clusters:
         rep = members[0]
         outlet = (rep.get("outlet") or "").lower()
-        if outlet and outlet not in rep_outlets:
-            rep_outlets.append(outlet)
-            citations.append(rep)
+        if not outlet or outlet in rep_outlets:
+            continue
+        rep_outlets.append(outlet)
+        group = group_fn(outlet) if group_fn else None
+        citations.append({**rep, "ownership_group": group})
+        voice_key = group or outlet
+        if voice_key not in voices:
+            voices.append(voice_key)
     return {
         "independent_outlets": len(rep_outlets),
+        "independent_voices": len(voices),
+        "state_collapsed": len(rep_outlets) - len(voices),
         "total_articles": len(articles),
         "syndicated_clusters": sum(1 for m in clusters if len(m) > 1),
         "citations": citations,   # one per independent outlet, input order
@@ -143,12 +154,16 @@ def independence(articles: list[dict]) -> dict[str, Any]:
 
 
 def pin_status(
-    independent_outlets: int,
+    independent_voices: int,
     search_available: bool,
     *,
     applicable: bool = True,
+    outlets: int | None = None,
+    state_collapsed: int = 0,
 ) -> tuple[str, str]:
-    """(status, note) from the independence count — glass-box, no judgment."""
+    """(status, note) from the independence count — glass-box, no judgment.
+    v2: the bar is independent VOICES (ownership-collapsed), and the note
+    names the collapse when it changed the number."""
     if not applicable:
         return (
             "not_applicable",
@@ -157,15 +172,20 @@ def pin_status(
     if not search_available:
         return ("unverified",
                 "web-search lane unavailable — corroboration not measured")
-    if independent_outlets >= ESTABLISHED_MIN_OUTLETS:
+    collapse_note = ""
+    if state_collapsed > 0 and outlets is not None:
+        collapse_note = (f" ({outlets} outlets; same-state outlets "
+                         "counted as one voice)")
+    if independent_voices >= ESTABLISHED_MIN_OUTLETS:
         return ("established",
-                f"{independent_outlets} independently-operated outlets "
-                "(syndicated copies collapsed)")
-    if independent_outlets == 0:
+                f"{independent_voices} independent voices"
+                f"{collapse_note or ' (syndicated copies collapsed)'}")
+    if independent_voices == 0:
         return ("unverified", "no matching web coverage found in the window")
     return ("unverified",
-            f"only {independent_outlets} independent outlet(s) — "
-            "insufficient corroboration; treat as single-sourced")
+            f"only {independent_voices} independent voice(s)"
+            f"{collapse_note} — insufficient corroboration; "
+            "treat as single-sourced")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -195,13 +215,37 @@ import urllib.parse as _urlparse
 
 _log = _logging.getLogger(__name__)
 
-Relation = str  # 'corroborates' | 'contradicts' | 'context'
+Relation = str  # 'corroborates' | 'contradicts' | 'context' | 'template_match'
 
 # Relation thresholds — glass-box, echoed in the payload meta.
 FIGURE_MATCH_TOLERANCE = 0.01   # |a-b|/max ≤ this = same figure = corroborates
 SAME_EVENT_TERM_RECALL = 0.40   # ≥ this share of claim terms present = same event
 CORROBORATE_TERM_RECALL = 0.50  # ≥ this (and no figure conflict) = corroborates
 SAME_EVENT_SIMILARITY = 0.86    # semantic sim ≥ this = same event (hot lane)
+CITATION_WINDOW_DAYS = 7   # spec R3 — frozen at approval
+
+_DOC20_DATE_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})T")
+
+
+def _match_date(raw: str | None):
+    """Best-effort date from a match's `date` field: ISO 'YYYY-MM-DD[…]' or
+    DOC 2.0 'YYYYMMDDTHHMMSSZ'. None when absent/unparseable — an undated
+    receipt is never CLAIMED aged (honest: we can't measure what we don't
+    have)."""
+    import datetime as _dt
+    if not raw:
+        return None
+    s = str(raw).strip()
+    m = _DOC20_DATE_RE.match(s)
+    if m:
+        try:
+            return _dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            return None
+    try:
+        return _dt.date.fromisoformat(s[:10])
+    except ValueError:
+        return None
 
 # International wire agencies / official bodies — mirrors the frontend
 # claimLedger.ts OFFICIAL_SOURCE_TOKENS so backend + client agree on what
@@ -213,24 +257,66 @@ _OFFICIAL_SOURCE_TOKENS = (
     "united nations", "u.n.", "who ", "world health", "government",
 )
 
-# Numbers that are almost never a death-toll / magnitude claim — years and
-# small counts that would create noisy figure "contradictions".
-_FIGURE_RE = re.compile(r"\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?")
+# Locale numeral discipline (corroborate-v2 F1, council C-N17: Indonesian
+# "1.700" parsed as 1.7 made the best match the top contradiction). Languages
+# that write decimals with a COMMA and group thousands with a DOT:
+_COMMA_DECIMAL_LANGS = frozenset({
+    "es", "pt", "de", "fr", "it", "id", "in", "tr", "ru", "uk", "nl", "da",
+    "sv", "no", "nb", "nn", "fi", "pl", "cs", "sk", "el", "ro", "hu", "vi",
+    "az", "kk", "sr", "hr", "bg", "ca", "sl", "lt", "lv", "et", "mk", "sq",
+    "bs", "ka", "hy", "be",
+})
+_FIGURE_TOKEN_RE = re.compile(r"\d[\d.,]*\d|\d")
 
 
-def extract_figure(text: str | None) -> float | None:
-    """First thousands-grouped or plain number → float, else None. Mirrors
-    claimLedger.ts extractFigure so a headline's toll parses identically on
-    both ends of the wire."""
-    if not text:
+def _parse_figure_token(tok: str, *, comma_decimal: bool) -> float | None:
+    """One numeric token -> float under the locale's separator convention.
+    Universal rule first: when BOTH separators appear, the LAST one is the
+    decimal mark. Then per-locale: a single separator followed by exactly
+    three digits is thousands-grouping in that locale's grouping character;
+    otherwise it is the decimal mark. Unknown-locale single-dot stays decimal
+    (conservative: preserves v1 behavior for English)."""
+    tok = tok.strip(".,")
+    if not tok:
         return None
-    m = _FIGURE_RE.search(text)
-    if not m:
-        return None
+    has_dot, has_comma = "." in tok, "," in tok
     try:
-        return float(m.group(0).replace(",", ""))
+        if has_dot and has_comma:
+            dec = "." if tok.rfind(".") > tok.rfind(",") else ","
+            grp = "," if dec == "." else "."
+            return float(tok.replace(grp, "").replace(dec, "."))
+        if has_dot:
+            parts = tok.split(".")
+            if len(parts) > 2:                      # 1.234.567 — unambiguous
+                return float(tok.replace(".", ""))
+            if comma_decimal and len(parts[1]) == 3:
+                return float(tok.replace(".", ""))  # id/es/de: 1.700 = 1700
+            return float(tok)
+        if has_comma:
+            parts = tok.split(",")
+            if len(parts) > 2:                      # 1,234,567 — unambiguous
+                return float(tok.replace(",", ""))
+            if comma_decimal:
+                return float(tok.replace(",", "."))  # es: 7,6 = 7.6
+            if len(parts[1]) == 3:
+                return float(tok.replace(",", ""))   # en: 1,700 = 1700
+            return float(tok.replace(",", "."))
+        return float(tok)
     except ValueError:
         return None
+
+
+def extract_figure(text: str | None, *, lang: str | None = None) -> float | None:
+    """First number in the text under the source language's numeral locale.
+    Mirrors claimLedger.ts extractFigure (which gains the same lang param in
+    this change) so a headline's toll parses identically on both ends."""
+    if not text:
+        return None
+    m = _FIGURE_TOKEN_RE.search(text)
+    if not m:
+        return None
+    comma_decimal = (lang or "").strip().lower()[:2] in _COMMA_DECIMAL_LANGS
+    return _parse_figure_token(m.group(0), comma_decimal=comma_decimal)
 
 
 def is_official_source(source: str | None) -> bool:
@@ -276,6 +362,46 @@ def term_recall(claim_terms: list[str], candidate_text: str | None) -> float:
     return hit / len(set(claim_terms))
 
 
+# Anti-template guard (corroborate-v2 F2, council T-N19/DESK-N23: a Mali
+# ambush corroborated a Gaza headline). Casualty/disaster boilerplate that
+# two UNRELATED events share; matching on these alone is matching the
+# TEMPLATE, not the event. A same-event verdict needs at least one shared
+# ANCHOR term (a non-template, non-numeric token) — except cross-script
+# semantic matches, where lexical overlap is impossible by construction.
+_TEMPLATE_TERMS = frozenset({
+    "kill", "kills", "killed", "killing", "dead", "death", "deaths", "die",
+    "dies", "died", "toll", "casualties", "victims", "injured", "wounded",
+    "wounds", "hurt", "attack", "attacks", "attacked", "strike", "strikes",
+    "struck", "blast", "blasts", "explosion", "bomb", "bombing", "shooting",
+    "shot", "gunmen", "ambush", "raid", "clash", "clashes", "soldiers",
+    "troops", "forces", "militants", "fighters", "police", "officials",
+    "people", "least", "several", "dozens", "hundreds", "thousands",
+    "missing", "rescue", "rescued", "survivors", "damage", "destroyed",
+    "fire", "fires", "flood", "floods", "flooding", "earthquake", "quake",
+    "storm", "crash", "crashes", "collapse", "collapsed",
+})
+
+
+def anchor_overlap(claim_terms: list[str], candidate_text: str | None) -> int:
+    """Count of shared NON-template, non-numeric terms — the event's proper
+    anchors (places, actors, distinctive nouns)."""
+    cand = set(_tokens(candidate_text or ""))
+    return sum(
+        1 for t in set(claim_terms)
+        if t in cand and t not in _TEMPLATE_TERMS and not t.isdigit()
+    )
+
+
+_LATIN_LETTER_RE = re.compile(r"[a-zA-Z]")
+_NON_LATIN_LETTER_RE = re.compile(r"[^\W\d_a-zA-Z]", re.UNICODE)
+
+
+def _mostly_latin(text: str | None) -> bool:
+    latin = len(_LATIN_LETTER_RE.findall(text or ""))
+    other = len(_NON_LATIN_LETTER_RE.findall(text or ""))
+    return latin >= other
+
+
 def figure_relation(claim_figure: float | None,
                     candidate_figure: float | None) -> Relation | None:
     """Figure-level relation, or None when a figure is missing on either side.
@@ -296,27 +422,32 @@ def classify_relation(
     candidate_headline: str | None,
     *,
     similarity: float | None = None,
+    candidate_lang: str | None = None,
 ) -> Relation:
-    """MATH relation for one candidate against the claim. A candidate is the
-    SAME EVENT when it restates enough claim terms OR (hot lane) is semantically
-    close. Same-event + a conflicting figure = contradicts; same-event with a
-    matching or absent figure = corroborates; everything weaker = context
-    (related coverage, not a restatement). No stance model — honest by
-    construction."""
+    """MATH relation for one candidate against the claim. Same-event needs
+    term recall OR semantic closeness AND at least one shared anchor term
+    (F2 — template vocabulary alone never establishes the same event; a
+    cross-script semantic match is exempt because lexical anchors cannot
+    exist there). Same-event + conflicting figure = contradicts; same-event
+    + matching/absent figure = corroborates; template-shaped closeness with
+    no anchors = template_match (visible, never counted); weaker = context.
+    The candidate's figure is parsed under ITS OWN numeral locale (F1)."""
     recall = term_recall(claim_terms, candidate_headline)
-    same_event = recall >= SAME_EVENT_TERM_RECALL or (
-        similarity is not None and similarity >= SAME_EVENT_SIMILARITY
-    )
-    cand_figure = extract_figure(candidate_headline)
+    semantic_same = similarity is not None and similarity >= SAME_EVENT_SIMILARITY
+    same_event = recall >= SAME_EVENT_TERM_RECALL or semantic_same
+    anchors = anchor_overlap(claim_terms, candidate_headline)
+    cross_script = not _mostly_latin(candidate_headline)
+    anchored = anchors > 0 or (semantic_same and cross_script)
+    if same_event and not anchored:
+        return "template_match"
+    cand_figure = extract_figure(candidate_headline, lang=candidate_lang)
     fig_rel = figure_relation(claim_figure, cand_figure)
     if same_event and fig_rel == "contradicts":
         return "contradicts"
     if fig_rel == "corroborates" and same_event:
         return "corroborates"
-    if recall >= CORROBORATE_TERM_RECALL or (
-        similarity is not None and similarity >= SAME_EVENT_SIMILARITY
-    ):
-        return "corroborates"
+    if recall >= CORROBORATE_TERM_RECALL or semantic_same:
+        return "corroborates" if anchored else "template_match"
     return "context"
 
 
@@ -375,13 +506,35 @@ def dedup_matches(matches: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def citation_verdict(matches: list[dict[str, Any]]) -> dict[str, Any]:
+def citation_verdict(
+    matches: list[dict[str, Any]],
+    *,
+    window_days: int = CITATION_WINDOW_DAYS,
+    today: Any | None = None,
+) -> dict[str, Any]:
     """Compact per-receipt verdict the dossier renders next to a Citation.
     Counts corroborating / contradicting / official-among-corroborating. Answers
     the claim ledger's 'official source missing' question: is any corroborating
-    source a wire/official body?"""
-    corr = [m for m in matches if m.get("relation") == "corroborates"]
-    contra = [m for m in matches if m.get("relation") == "contradicts"]
+    source a wire/official body?
+
+    R3 (council C-N22): every match is stamped `aged` — outside the
+    window_days window relative to `today` — and an aged receipt does NOT
+    count toward the verdict. It stays in the payload (visible, context only);
+    a six-week-old report can no longer silently back a claim dated today.
+    An UNDATED receipt is never claimed aged: we don't measure what we lack."""
+    import datetime as _dt
+    today = today or _dt.date.today()
+    for m in matches:
+        d = _match_date(m.get("date"))
+        m["aged"] = bool(d and (today - d).days > window_days)
+
+    corr = [m for m in matches
+            if m.get("relation") == "corroborates" and not m.get("aged")]
+    contra = [m for m in matches
+              if m.get("relation") == "contradicts" and not m.get("aged")]
+    # F2: template-shaped matches are SHOWN but never counted — they are the
+    # Mali-ambush-backing-a-Gaza-claim class (shared boilerplate, no anchor).
+    template = [m for m in matches if m.get("relation") == "template_match"]
     official_corr = sum(1 for m in corr if m.get("official"))
     n_corr, n_contra = len(corr), len(contra)
     if n_contra and n_contra >= n_corr:
@@ -400,11 +553,27 @@ def citation_verdict(matches: list[dict[str, Any]]) -> dict[str, Any]:
         parts.append(f"contradicted by {n_contra}")
     if not parts:
         parts.append("no corroborating coverage found in the queried corpora")
+    if template:
+        parts.append(
+            f"{len(template)} template-shaped match(es) set aside "
+            "(shared casualty boilerplate, no shared event anchor)")
+    # Only aged EVIDENCE rows changed the counts — an aged 'context' row was
+    # never going to be counted, so naming it would overstate the effect.
+    n_aged_evidence = sum(
+        1 for m in matches
+        if m.get("aged") and m.get("relation") in ("corroborates", "contradicts")
+    )
+    if n_aged_evidence:
+        parts.append(f"{n_aged_evidence} aged receipt(s) outside the "
+                     f"{window_days}-day window (context only)")
     return {
         "status": status,
         "corroborating": n_corr,
         "contradicting": n_contra,
         "official_corroborating": official_corr,
+        "template_matches": len(template),
+        "aged": sum(1 for m in matches if m.get("aged")),
+        "window_days": window_days,
         "note": "; ".join(parts),
     }
 
@@ -457,7 +626,10 @@ def rows_to_archive_matches(
         recall = term_recall(claim_terms, headline)
         if recall < SAME_EVENT_TERM_RECALL:
             continue
-        relation = classify_relation(claim_terms, claim_figure, headline)
+        # historical_evidence_samples carries no source_lang (mig 029) —
+        # candidate_lang stays None: honest absence, never a fabricated locale.
+        relation = classify_relation(
+            claim_terms, claim_figure, headline, candidate_lang=None)
         day = r.get("day")
         out.append(normalize_match(
             basis="atlas_archive",
@@ -483,7 +655,9 @@ def articles_to_doc20_matches(
         title = (a.get("title") or "").strip()
         if not title:
             continue
-        relation = classify_relation(claim_terms, claim_figure, title)
+        relation = classify_relation(
+            claim_terms, claim_figure, title,
+            candidate_lang=((a.get("language") or "").strip().lower() or None))
         url = a.get("url")
         out.append(normalize_match(
             basis="doc20",
@@ -512,7 +686,8 @@ def rows_to_hot_matches(
             continue
         sim = m.get("similarity")
         relation = classify_relation(
-            claim_terms, claim_figure, headline, similarity=sim)
+            claim_terms, claim_figure, headline, similarity=sim,
+            candidate_lang=m.get("source_lang"))
         ts = m.get("timestamp")
         out.append(normalize_match(
             basis="atlas_hot",
@@ -688,6 +863,7 @@ async def corroborate_claim(
     figure: float | None = None,
     country: str | None = None,
     published_date: str | None = None,
+    lang: str | None = None,
     conn: Any | None = None,
     embed_fn: Any | None = None,
     hot_fetch: Any | None = None,
@@ -707,7 +883,7 @@ async def corroborate_claim(
     parsed = extract_claim_terms(headline, country=country)
     terms, query = parsed["terms"], parsed["query"]
     if figure is None:
-        figure = extract_figure(headline)
+        figure = extract_figure(headline, lang=lang)
 
     source_status: dict[str, str] = {
         "doc20": "not_queried",
@@ -759,6 +935,9 @@ async def corroborate_claim(
     corroborating = [m for m in matches if m["relation"] == "corroborates"]
     contradicting = [m for m in matches if m["relation"] == "contradicts"]
     context = [m for m in matches if m["relation"] == "context"]
+    # Spec F2: template matches are "visible, never counted" — a row set
+    # aside by the anti-template guard must be inspectable, not vanished.
+    template_matches = [m for m in matches if m["relation"] == "template_match"]
 
     return {
         "contract": "corroboration-v1",
@@ -774,6 +953,7 @@ async def corroborate_claim(
         "corroborating": corroborating,
         "contradicting": contradicting,
         "context": context,
+        "template_matches": template_matches,
         "verdict": citation_verdict(matches),
         "meta": {
             "figure_match_tolerance": FIGURE_MATCH_TOLERANCE,

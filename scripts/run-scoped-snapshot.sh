@@ -472,6 +472,43 @@ else
   echo "[scoped-snapshot] skip universe field build (ATLAS_UNIVERSE_FIELD=off)" >&2
 fi
 
+# Step 7b (2026-08-11, council R4 N26): WARM THE COUNTRY DOORS.
+#
+# GET /api/v2/country-edition answered 503 db_busy on cold open ON THE DAY
+# COLOMBIA WAS THE STORY (measured from prod the same day: CO 110.8s -> 503,
+# JP 21.7s -> 503, US 19.2s -> 503). The door composes country-scoped threads
+# in-request, and that composition MEASURES 12-23s of scoped queries per
+# country against a 15s budget; the 120s Redis layer never helped because
+# nothing ever succeeded, so it never filled. The fast door failed exactly
+# when the country was in the news.
+#
+# So the composition runs HERE, like the seal and the universe field above,
+# and stores one compact row per door in country_edition_artifacts (mig 098).
+# The endpoint reads that row and keeps its live build as the fallback.
+#
+# Runs AFTER the seal + universe on purpose: the doors then freeze the SAME
+# substrate the rest of the night produced (this is the post-seal warm step
+# the old "curl the endpoint to warm it" trick could never be — a warm curl
+# dies in the proxy, an artifact does not).
+#
+# Doors = top-50 of the 24h field (88.9% of all signals; the curve is flat
+# past there) + any country spiking >=1.5x its own baseline with >=150
+# signals (the N26 case: the country that is the story without being big).
+# Bounded by a 40-min wall clock at concurrency 3 and by an 80-door cap; a
+# truncated run leaves the HEAD warm and NAMES every skipped door. Non-fatal:
+# a failed build leaves the previous artifacts in place, and any door with no
+# artifact simply falls back to today's live path. Disable with
+# ATLAS_COUNTRY_EDITIONS=off.
+if [[ "${ATLAS_COUNTRY_EDITIONS:-on}" == "on" ]]; then
+  atlas_step "country edition artifacts" "$BACKEND_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m scripts.build_country_editions --execute
+  if [ "$_ATLAS_LAST_STEP_RC" -ne 0 ]; then
+    echo "[scoped-snapshot] ERROR country edition build failed — the country doors serve the PREVIOUS artifacts (stale, labeled) or fall back to the live build" >&2
+  fi
+else
+  echo "[scoped-snapshot] skip country edition artifacts (ATLAS_COUNTRY_EDITIONS=off)" >&2
+fi
+
 # Step 8 (2026-08-04): RECEIPT PRUNE — bound mig 097's sample_receipts growth.
 # emergent_clusters never prunes rows (identity history: dynamic_topic_members
 # references them) and the receipt writer stamps ~2,700 clusters/night, so the

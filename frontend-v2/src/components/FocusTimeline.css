@@ -196,6 +196,35 @@
     text-align: center;
 }
 .ft-degraded { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* Three empty states, visually distinct so the reader can tell a measurement
+   from a blind spot from a bad input at a glance (N23). */
+.ft-empty-headline { font-weight: 500; }
+.ft-empty-detail {
+    margin-top: 4px;
+    font-size: 11px;
+    opacity: 0.85;
+    max-width: 46ch;
+    margin-inline: auto;
+}
+.ft-empty-measure {
+    margin-top: 6px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+/* a blind lane is a GAP, drawn with the same hatch vocabulary as a degraded
+   channel — never styled like a finding */
+.ft-empty--gap {
+    border-left: 2px solid var(--color-border-subtle);
+    background: repeating-linear-gradient(45deg,
+        rgba(var(--color-ink-rgb), 0.04) 0 3px, transparent 3px 6px);
+}
+.ft-empty--error {
+    border-left: 2px solid var(--color-warning, #c2703d);
+}
+.ft-empty--error .ft-empty-headline { color: var(--color-warning, #c2703d); }
 .ft-degraded-dot {
     width: 8px;
     height: 8px;

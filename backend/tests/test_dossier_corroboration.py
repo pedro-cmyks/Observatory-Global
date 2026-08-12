@@ -117,7 +117,9 @@ class TestPinStatus:
     def test_established_at_threshold(self):
         status, note = pin_status(ESTABLISHED_MIN_OUTLETS, True)
         assert status == "established"
-        assert "independently-operated" in note
+        # corroborate-v2 R1: the judged count is independent VOICES; the note
+        # says so (status logic for the ungrouped path is unchanged).
+        assert "independent voices" in note
 
     def test_single_source_is_unverified(self):
         status, note = pin_status(1, True)
@@ -229,3 +231,116 @@ async def test_router_tracks_search_availability_per_pin_and_skips_context(monke
         "no evidence-bearing pins — context remains in the dossier but has "
         "no frozen claim to corroborate"
     )
+
+
+@pytest.mark.asyncio
+async def test_router_counts_voices_and_carries_ownership_and_tier(monkeypatch):
+    """corroborate-v2 R1 at the serving edge (council witness M-N18).
+
+    ria.ru + tass.com + rt.com + cnn.com writing four DIFFERENT stories is four
+    independently-operated outlets but only TWO voices — one Russian state
+    apparatus speaking three times, plus one independent newsroom. The pin must
+    stay ``unverified`` and every citation must carry the ownership group and
+    the credibility tier that explain why.
+    """
+    from app.routers import dossier as dossier_module
+    from app.services import external_depth
+
+    async def fake_fetch(_label, *, raw_query, timespan):
+        return None   # DOC 2.0 silent — the client-supplied lane carries this
+
+    async def fake_generate(_system, _user, **_kwargs):
+        return "Measured comparison.", "test-provider", None, None
+
+    monkeypatch.setattr(external_depth, "fetch_external_depth", fake_fetch)
+    monkeypatch.setattr(dossier_module, "generate_insight", fake_generate)
+
+    response = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(
+            force=True,
+            pins=[{
+                "id": "grid-pin",
+                "label": "Strike on Kyiv power grid",
+                "anchor_type": "thread",
+                "evidence": ["Twelve killed as Kyiv substations burn"],
+            }],
+            supplied_results=[
+                {"pin_id": "grid-pin", "outlet": "ria.ru",
+                 "title": "Defence ministry announces precision hit",
+                 "url": "https://ria.ru/1"},
+                {"pin_id": "grid-pin", "outlet": "tass.com",
+                 "title": "Energy infrastructure targeted, military confirms",
+                 "url": "https://tass.com/2"},
+                {"pin_id": "grid-pin", "outlet": "rt.com",
+                 "title": "Kiev blackout follows overnight barrage",
+                 "url": "https://rt.com/3"},
+                {"pin_id": "grid-pin", "outlet": "cnn.com",
+                 "title": "Twelve dead as strikes darken Ukrainian capital",
+                 "url": "https://cnn.com/4"},
+            ],
+        )
+    )
+
+    pin = response["pins"][0]
+    assert pin["independent_outlets"] == 4        # receipts stay visible…
+    assert pin["independent_voices"] == 2         # …but three of them are one
+    assert pin["state_collapsed"] == 2
+    assert pin["status"] == "unverified"
+    assert "same-state outlets counted as one voice" in pin["note"]
+
+    by_outlet = {c["outlet"]: c for c in pin["citations"]}
+    assert by_outlet["ria.ru"]["ownership_group"] == "state:ru"
+    assert by_outlet["tass.com"]["ownership_group"] == "state:ru"
+    assert by_outlet["rt.com"]["ownership_group"] == "state:ru"
+    assert by_outlet["cnn.com"]["ownership_group"] is None
+    assert by_outlet["ria.ru"]["credibility"]["label"] == "state"
+    assert by_outlet["cnn.com"]["credibility"]["label"] != "state"
+
+    # The glass-box meta must name the bar it actually applies.
+    assert "voices" in response["meta"]["status_rule"].lower()
+    assert "same-state" in response["meta"]["independence_rule"]
+
+
+@pytest.mark.asyncio
+async def test_single_source_flag_keys_on_voices_not_outlets(monkeypatch):
+    """corroborate-v2 R1 follow-through: three same-state outlets ARE one
+    source. The flag and the voices bar must agree — an all-state pin reads
+    single_source=True even though it shows three receipts."""
+    from app.routers import dossier as dossier_module
+    from app.services import external_depth
+
+    async def fake_fetch(_label, *, raw_query, timespan):
+        return None
+
+    async def fake_generate(_system, _user, **_kwargs):
+        return "Measured comparison.", "test-provider", None, None
+
+    monkeypatch.setattr(external_depth, "fetch_external_depth", fake_fetch)
+    monkeypatch.setattr(dossier_module, "generate_insight", fake_generate)
+
+    response = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(
+            force=True,
+            pins=[{
+                "id": "state-pin",
+                "label": "Strike on Kyiv power grid",
+                "anchor_type": "thread",
+                "evidence": ["Twelve killed as Kyiv substations burn"],
+            }],
+            supplied_results=[
+                {"pin_id": "state-pin", "outlet": "ria.ru",
+                 "title": "Defence ministry announces precision hit",
+                 "url": "https://ria.ru/1"},
+                {"pin_id": "state-pin", "outlet": "tass.com",
+                 "title": "Energy infrastructure targeted, military confirms",
+                 "url": "https://tass.com/2"},
+                {"pin_id": "state-pin", "outlet": "rt.com",
+                 "title": "Kiev blackout follows overnight barrage",
+                 "url": "https://rt.com/3"},
+            ],
+        )
+    )
+    pin = response["pins"][0]
+    assert pin["independent_outlets"] == 3
+    assert pin["independent_voices"] == 1
+    assert pin["single_source"] is True

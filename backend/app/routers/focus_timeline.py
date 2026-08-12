@@ -47,16 +47,24 @@ import re
 from typing import Any, Optional
 
 import asyncpg
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 from app import db
 from app.core.search_normalization import normalize_search_text
 from app.main_v2 import app
 from app.services.edge_diff import parse_dynamic_topic_id, strip_focus_suffix
+from app.services.focus_lanes import PERSON_MATCH_EXPR, person_like_needle
 from app.services.focus_timeline import (
     DEFAULT_KEY_SUBJECTS_LIMIT,
+    PERSON_LANE_MIN_COVERAGE,
+    PERSON_LANE_MIN_ROWS,
+    PERSON_LANE_SAMPLE_PER_STRATUM,
+    REASON_INVALID_REF,
+    REASON_LANE_STARVED,
     TIMELINE_CONTRACT,
     build_key_subject_series,
+    classify_ref,
+    classify_zero_result,
     detect_focus_kind,
     rebucket_hourly_to_day,
     voice_mix_bucket_from_counts,
@@ -136,53 +144,15 @@ def _trunc(granularity: str) -> str:
     return "day" if granularity == "day" else "hour"
 
 
-# The ONE person predicate, spelled EXACTLY as migration 090 indexed the
-# column (`f_unaccent(lower(f_arr_text(persons)))` — `f_arr_text` is the
-# IMMUTABLE array_to_string wrapper 090 had to add because array_to_string
-# itself is only STABLE and cannot appear in an index expression). Same
-# spelling as `search.py`'s persons branch; a trigram GIN index only serves a
-# predicate that matches its expression character for character, so this
-# string is load-bearing — do not "simplify" it back to unnest/ILIKE.
-_PERSON_MATCH_EXPR = "persons IS NOT NULL AND f_unaccent(lower(f_arr_text(persons))) LIKE"
-
-
-_LIKE_SPECIALS = re.compile(r"([\\%_])")
-
-
-def _person_like_needle(name: str) -> Optional[str]:
-    """Fold a person ref into the LIKE needle the mig-090 index expects.
-
-    The indexed side is accent-folded and lowercased, so the needle must be
-    too or an accented ref silently matches nothing — the "Mbappé hole"
-    `search.py` documents, re-measured here against prod (12h window): the
-    raw `%mbappé%` matched 0 rows, the folded `%mbappe%` matched 8. So the
-    fold is `normalize_search_text`, the SAME helper /search/thread builds
-    its persons/themes patterns with — one normalizer, not two.
-
-    ONE adjustment on top of it, measured. `normalize_search_text` squashes
-    every non-alphanumeric run to a SPACE, but the stored person value keeps
-    its punctuation — 808 of 68,643 distinct values in a 24h window are
-    hyphenated ('abdel fattah al-sisi', 'aaron taylor-johnson'), i.e. mostly
-    Arabic names. A literal-space needle MISSES all of them (measured on
-    'abdel fattah al-sisi': old predicate 1 row, space needle 0, so a plain
-    reuse here would have been a silent recall REGRESSION for that 1.2%).
-    Substituting LIKE's single-character wildcard `_` for the space bridges
-    both spellings at once and still takes the index (Bitmap Index Scan,
-    cost 435). It is strictly wider than the old predicate, never narrower.
-
-    Falls back to a plain lowercase when the fold comes back empty — that
-    happens for a name written wholly in a non-Latin script, where the
-    squash would erase everything and leave the needle '%%', silently
-    matching the entire corpus. `f_unaccent` is the identity for those
-    scripts, so lower() alone already matches the indexed expression. The
-    fallback escapes LIKE metacharacters because, unlike the folded path, it
-    has not been through a character filter.
-    """
-    folded = normalize_search_text(name)
-    if folded:
-        return "%" + folded.replace(" ", "_") + "%"
-    fallback = _LIKE_SPECIALS.sub(r"\\\1", name.strip().lower())
-    return f"%{fallback}%" if fallback else None
+# The person predicate + needle now live in `app/services/focus_lanes.py`
+# so this router and `/api/v2/focus` share ONE spelling. The N26 hang was
+# caused by exactly these drifting apart: this router used the mig-090
+# indexed form while `/api/v2/focus` still used the unindexable `unnest` +
+# `LOWER(p) LIKE` form and seq-scanned on every person request. One
+# definition means that divergence cannot recur. Aliased to the original
+# private names so every call site below is unchanged.
+_PERSON_MATCH_EXPR = PERSON_MATCH_EXPR
+_person_like_needle = person_like_needle
 
 
 def _bucket_iso(row_bucket: Any) -> str:
@@ -319,8 +289,9 @@ def _scoped_ch3_sql(gran: str, where_clause: str) -> str:
     """
 
 
-def _empty_payload(ref: str, focus_type: str, reason: str) -> dict:
-    return {
+def _empty_payload(ref: str, focus_type: str, reason: str,
+                   detail: Optional[str] = None) -> dict:
+    payload = {
         "contract": TIMELINE_CONTRACT,
         "ref": ref,
         "focus_type": focus_type,
@@ -329,11 +300,121 @@ def _empty_payload(ref: str, focus_type: str, reason: str) -> dict:
         "channels": {"volume": "unavailable", "key_subjects": "unavailable", "voice_mix": "unavailable"},
         "reason": reason,
     }
+    if detail:
+        payload["reason_detail"] = detail
+    return payload
+
+
+# ------------------------------------------------------- lane coverage probes
+# Every probe below runs ONLY on the about-to-claim-zero path, and every one
+# answers the same question in the same shape: of the source rows this channel
+# reads, how many are in the window (`sampled`) and how many actually carry the
+# field it filters on (`covered`)? `classify_zero_result` turns that pair into
+# measured_zero vs lane_starved. Marked with a `lane_coverage_probe` comment so
+# the intent survives in `pg_stat_statements` and in test SQL dispatch.
+#
+# Measured cost (prod, 2026-08-11): person 113-130ms warm, thread 445ms
+# populated / 118ms empty, country 110ms — all far inside the scan budget, and
+# all bounded by construction (LIMIT per stratum / per probe), so a starved
+# lane cannot make its own diagnosis expensive.
+_PERSON_LANE_PROBE_SQL = f"""
+    -- lane_coverage_probe: is signals_v2.persons being written at all in this
+    -- window? Head/middle/tail strata, each LIMIT-bounded on the timestamp
+    -- index, so one dead stretch inside the window cannot hide behind a
+    -- healthy edge (and a healthy edge cannot rescue a dead window).
+    WITH strata AS (
+        (SELECT persons FROM signals_v2
+          WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+          ORDER BY timestamp DESC LIMIT {PERSON_LANE_SAMPLE_PER_STRATUM})
+        UNION ALL
+        (SELECT persons FROM signals_v2
+          WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+            AND timestamp <= NOW() - (($1::float / 2) * INTERVAL '1 hour')
+          ORDER BY timestamp DESC LIMIT {PERSON_LANE_SAMPLE_PER_STRATUM})
+        UNION ALL
+        (SELECT persons FROM signals_v2
+          WHERE timestamp > NOW() - ($1::int * INTERVAL '1 hour')
+          ORDER BY timestamp ASC LIMIT {PERSON_LANE_SAMPLE_PER_STRATUM})
+    )
+    SELECT COUNT(*)::bigint AS sampled,
+           COUNT(*) FILTER (
+               WHERE persons IS NOT NULL AND array_length(persons, 1) > 0
+           )::bigint AS covered
+    FROM strata
+"""
+
+_COUNTRY_LANE_PROBE_SQL = """
+    -- lane_coverage_probe: does the country_hourly_v2 matview hold ANY row in
+    -- this window, for any country? It has gone stale in production before
+    -- (2026-07-01: the refresh outgrew its statement_timeout and 13 missing
+    -- hours were served as fact), and a stale matview can never prove that a
+    -- country was quiet.
+    SELECT COUNT(*)::bigint AS sampled, COUNT(*)::bigint AS covered
+    FROM (SELECT 1 FROM country_hourly_v2
+           WHERE hour >= NOW() - ($1::int * INTERVAL '1 hour') LIMIT 50) t
+"""
+
+_THREAD_LANE_PROBE_SQL = """
+    -- lane_coverage_probe: did the topic_members projection write ANY evidence
+    -- row for this engine version in this window? When the projection dies
+    -- (clusters with no membership row — a measured failure mode), every
+    -- thread looks equally quiet.
+    SELECT COUNT(*)::bigint AS sampled, COUNT(*)::bigint AS covered
+    FROM (SELECT 1 FROM topic_members
+           WHERE engine_version = $1 AND role = 'evidence'
+             AND quarantined IS NOT TRUE
+             AND assigned_at >= NOW() - ($2::int * INTERVAL '1 hour')
+           LIMIT 50) t
+"""
+
+
+# Coverage probes get their OWN budget, not the raw-scan one. Measured live
+# after the first deploy: on `_SCAN_TIMEOUT_MS` (3000ms, sized for UNBOUNDED
+# signals_v2 scans) the probe answered at hours=4 (187/600) but timed out at
+# hours=3 and hours=6 minutes apart — a verdict flipping on connection weather
+# rather than on lane health, which turns the honest "cannot answer" into
+# noise the reader learns to ignore. Every probe is bounded to at most 600
+# rows by construction (measured 110-505ms warm, ~4s worst cold page-in), so a
+# larger budget cannot make it expensive — it can only stop it lying about its
+# own failure.
+_PROBE_TIMEOUT_MS = 6000
+
+
+async def _probe_lane(sql: str, params: list) -> tuple[Optional[int], Optional[int]]:
+    """Run a coverage probe. Returns (sampled, covered), or (None, None) when
+    the probe itself could not run — which `classify_zero_result` reads as
+    "coverage unverified", i.e. still not licence to claim absence."""
+    rows, reason = await _try_query(sql, params, _PROBE_TIMEOUT_MS)
+    if reason or not rows:
+        return None, None
+    row = rows[0]
+    return int(row["sampled"] or 0), int(row["covered"] or 0)
+
+
+async def _classify_empty_window(kind: str, hours: int) -> tuple[str, str, dict]:
+    """Zero buckets came back. Decide — with a measurement, never by default —
+    whether that is a fact about the world (`measured_zero`) or about this
+    lane's own coverage (`lane_starved`). Returns (reason, detail, coverage)."""
+    if kind == "person":
+        lane, min_rows, min_ratio = "person_lane", PERSON_LANE_MIN_ROWS, PERSON_LANE_MIN_COVERAGE
+        sampled, covered = await _probe_lane(_PERSON_LANE_PROBE_SQL, [hours])
+    elif kind == "country":
+        lane, min_rows, min_ratio = "country_hourly", 1, 0.0
+        sampled, covered = await _probe_lane(_COUNTRY_LANE_PROBE_SQL, [hours])
+    else:
+        lane, min_rows, min_ratio = "topic_members", 1, 0.0
+        sampled, covered = await _probe_lane(
+            _THREAD_LANE_PROBE_SQL, [topic_members_engine_version(), hours])
+    reason, detail = classify_zero_result(
+        sampled, covered, lane=lane, min_rows=min_rows, min_ratio=min_ratio)
+    coverage = {"lane": lane, "sampled": sampled, "covered": covered}
+    return reason, detail, coverage
 
 
 @router.get("/api/v2/focus/{ref}/timeline")
 async def focus_timeline(
     ref: str,
+    response: Response,
     focus_type: Optional[str] = Query(
         None, pattern="^(thread|country|person)$",
         description="Override the auto-detected focus kind"),
@@ -347,6 +428,16 @@ async def focus_timeline(
     for the measured cost model and the resulting honest-degradation design.
     """
     kind = focus_type or detect_focus_kind(ref)
+
+    # Ref validity is decided BEFORE the cache and before any query: a ref that
+    # cannot pose a question must never come back wearing an answer's clothes
+    # ("no activity in this window" was the N23 defect), and must never occupy
+    # a cache slot or a connection.
+    invalid = classify_ref(ref, kind)
+    if invalid is not None:
+        response.status_code = 400
+        return _empty_payload(ref, kind, REASON_INVALID_REF, invalid)
+
     cache_key = f"focus:timeline:v0:{kind}:{ref}:{hours}:{granularity}:{key_subjects_limit}"
     cached = await _cache_get(cache_key)
     if cached is not None:
@@ -408,10 +499,12 @@ async def focus_timeline(
             # A ref that folds to nothing at all (punctuation/whitespace
             # only). Refusing is the honest answer: the alternative needle
             # is '%%', which would silently serve the whole corpus as if it
-            # were this person's timeline.
-            payload = _empty_payload(ref, kind, "person_not_matchable")
-            await _cache_set(cache_key, payload, _CACHE_TTL_S)
-            return payload
+            # were this person's timeline. `classify_ref` already rejects this
+            # class above with the same code — this is the belt-and-braces
+            # copy, kept because the consequence of it ever slipping through
+            # is serving the entire corpus under one person's name.
+            response.status_code = 400
+            return _empty_payload(ref, kind, REASON_INVALID_REF, "person_ref_unmatchable")
         where_clause = (f"{_PERSON_MATCH_EXPR} $1"
                         " AND timestamp > NOW() - ($2::int * INTERVAL '1 hour')")
         where_params = [needle, hours]
@@ -570,9 +663,19 @@ async def focus_timeline(
         },
     }
     if ch1_reason and volume_channel_status == "degraded":
+        # The channel named its own failure (db_busy / db_error). That is
+        # already honest and is never re-labelled by the zero-path classifier.
         payload["reason"] = ch1_reason
     elif not bucket_keys:
-        payload["reason"] = "no_activity_in_window"
+        reason, detail, coverage = await _classify_empty_window(kind, hours)
+        payload["reason"] = reason
+        payload["reason_detail"] = detail
+        payload["lane_coverage"] = coverage
+        if reason == REASON_LANE_STARVED:
+            # The query exited cleanly, so the channel would otherwise read
+            # 'live' — but a lane that cannot answer has measured nothing, and
+            # 'live' over an unanswerable lane is exactly the claim N23 caught.
+            payload["channels"]["volume"] = "unavailable"
 
     await _cache_set(cache_key, payload, _CACHE_TTL_S)
     return payload

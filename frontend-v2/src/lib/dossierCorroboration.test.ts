@@ -13,7 +13,8 @@ vi.stubGlobal('localStorage', {
 import {
   buildCorroborationRequest, statusChip, corroborationMarkdown,
   loadCachedCorroboration, saveCorroboration, clearCorroboration,
-  type CorroborationData,
+  pinCountsText, citationTierChip, citationTierClass, citationCollapseNote,
+  type CorroborationData, type CorroborationCitation, type CorroborationPin,
 } from './dossierCorroboration'
 import type { WorkbenchPin } from './workbench'
 import type { ConnectionNode } from './dossierConnections'
@@ -111,6 +112,40 @@ describe('corroborationMarkdown', () => {
     expect(md).toContain('Web leads with Trump drama')
   })
 
+  // corroborate-v2 R1: the bar is independent VOICES (ownership-collapsed).
+  // ria + tass + rt each writing their own copy = 3 outlets, 1 voice.
+  it('reports VOICES and names the ownership collapse when the backend measured one', () => {
+    const md = corroborationMarkdown(data({
+      pins: [{
+        id: 'dynamic-topic-1', label: 'Depot strike', status: 'unverified',
+        independent_outlets: 4, independent_voices: 2, state_collapsed: 2,
+        total_articles: 9, syndicated_clusters: 1, single_source: false,
+        note: 'only 2 independent voice(s) (4 outlets; same-state outlets counted as one voice) — insufficient corroboration; treat as single-sourced',
+        citations: [
+          {
+            title: 'Strikes hit depot overnight', url: 'https://ria.ru/x', outlet: 'ria.ru',
+            ownership_group: 'state:ru',
+            credibility: { tier: 5, label: 'state', provenance: 'domain-list' },
+          },
+          { title: 'Depot fire after raid', url: 'https://cnn.com/y', outlet: 'cnn.com', ownership_group: null },
+        ],
+        queries: ['depot strike'],
+      }],
+    })).join('\n')
+    expect(md).toContain('2 independent voices')
+    expect(md).toContain('4 outlets')
+    expect(md).toContain('same-owner outlets counted as one voice')
+    expect(md).toContain('ria.ru [STATE]')
+    // the un-grouped outlet carries no chip it did not earn
+    expect(md).toContain('— cnn.com\n')
+  })
+
+  it('keeps a pre-v2 payload (no voices/ownership fields) rendering exactly as before', () => {
+    const md = corroborationMarkdown(data({})).join('\n')
+    expect(md).toContain('4 independent · 12 articles · 2 syndicated clusters')
+    expect(md).not.toContain('voices')
+  })
+
   it('degrades honestly when the search lane is unavailable', () => {
     const md = corroborationMarkdown(data({
       search_available: false, search_source: null, coverage_asymmetry: null,
@@ -124,6 +159,49 @@ describe('corroborationMarkdown', () => {
     })).join('\n')
     expect(md).toContain('no server-side web-search path answered')
     expect(md).toContain('— not applicable — Iran')
+  })
+})
+
+describe('citation credibility + ownership (corroborate-v2 R1)', () => {
+  const cit = (over: Partial<CorroborationCitation>): CorroborationCitation =>
+    ({ title: 't', url: 'https://x/y', outlet: 'x.com', ...over })
+
+  it('shows only the tier the backend measured', () => {
+    expect(citationTierChip(cit({ credibility: { tier: 5, label: 'state' } }))).toBe('[STATE]')
+    expect(citationTierChip(cit({ credibility: { tier: 2, label: 'wire' } }))).toBe('[WIRE]')
+    // absence over guess: no block, or an explicit unknown, shows nothing
+    expect(citationTierChip(cit({}))).toBeNull()
+    expect(citationTierChip(cit({ credibility: null }))).toBeNull()
+    expect(citationTierChip(cit({ credibility: { tier: 4, label: 'unknown' } }))).toBeNull()
+  })
+
+  it('maps the backend tier vocabulary onto the shared chip classes', () => {
+    expect(citationTierClass(cit({ credibility: { tier: 5, label: 'state' } }))).toBe('state')
+    expect(citationTierClass(cit({ credibility: { tier: 2, label: 'wire' } }))).toBe('wire')
+    // 'mainstream'/'reference' have no chip colour of their own — they reuse the
+    // established major/wire hues rather than rendering an unstyled chip.
+    expect(citationTierClass(cit({ credibility: { tier: 3, label: 'mainstream' } }))).toBe('major')
+    expect(citationTierClass(cit({ credibility: { tier: 1, label: 'reference' } }))).toBe('wire')
+    expect(citationTierClass(cit({}))).toBeNull()
+  })
+
+  it('explains the ownership collapse in plain words, and stays silent otherwise', () => {
+    expect(citationCollapseNote(cit({ ownership_group: 'state:ru' })))
+      .toContain('Same state apparatus (RU)')
+    expect(citationCollapseNote(cit({ ownership_group: null }))).toBeNull()
+    expect(citationCollapseNote(cit({}))).toBeNull()
+  })
+
+  it('pinCountsText: singular voice reads as one, plural as many', () => {
+    const base: CorroborationPin = {
+      id: 'p', label: 'l', status: 'unverified', independent_outlets: 3,
+      total_articles: 5, syndicated_clusters: 1, single_source: false,
+      citations: [], note: '', queries: [],
+    }
+    expect(pinCountsText({ ...base, independent_voices: 1, state_collapsed: 2 }))
+      .toContain('1 independent voice ·')
+    expect(pinCountsText({ ...base, independent_voices: 3, state_collapsed: 0 }))
+      .not.toContain('same-owner')
   })
 })
 

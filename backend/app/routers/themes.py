@@ -24,6 +24,62 @@ import httpx
 
 router = APIRouter()
 
+
+def _empty_focus_payload(focus_type: str, value: str, hours: int) -> dict:
+    """A focus ref that cannot produce a needle (an empty/whitespace person)
+    is an honest EMPTY, not a degradation: nothing failed, there is simply
+    nothing to match. Lanes are reported live with zero rows so the frontend
+    renders "no data" rather than a grey "could not measure" gap."""
+    from app.services.focus_lanes import LANE_LIVE, LANE_ORDER
+
+    return {
+        "focus": {"type": focus_type, "value": value, "hours": hours},
+        "lanes": {lane: LANE_LIVE for lane in LANE_ORDER},
+        "degraded_lanes": [],
+        "degraded_reasons": {},
+        "summary": {
+            "total_signals": 0,
+            "total_countries": 0,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "nodes": [],
+        "related_topics": [],
+        "top_sources": [],
+        "headlines": [],
+        "key_people": [],
+        "key_subjects": [],
+    }
+
+
+def _degraded_focus_payload(focus_type: str, value: str, hours: int,
+                            *, reason: str) -> dict:
+    """We could not measure ANY lane — the pool never gave us a connection.
+
+    Distinct from `_empty_focus_payload`: that one measured and found
+    nothing, this one failed to measure. Counts are therefore null, never 0,
+    and every lane is named degraded so the panel renders grey gaps instead
+    of a confident empty result."""
+    from app.services.focus_lanes import LANE_DEGRADED, LANE_ORDER
+
+    return {
+        "focus": {"type": focus_type, "value": value, "hours": hours},
+        "lanes": {lane: LANE_DEGRADED for lane in LANE_ORDER},
+        "degraded_lanes": list(LANE_ORDER),
+        "degraded_reasons": {lane: reason for lane in LANE_ORDER},
+        "summary": {
+            "total_signals": None,
+            "total_countries": None,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "nodes": [],
+        "related_topics": [],
+        "top_sources": [],
+        "headlines": [],
+        "key_people": [],
+        "key_subjects": [],
+    }
+
+
 @router.get("/api/v2/focus")
 async def get_focus_data(
     focus_type: str = Query(..., description="Type: theme, person, country, source"),
@@ -33,8 +89,50 @@ async def get_focus_data(
     """
     Get filtered data for Focus Mode.
     Returns nodes, related topics, and top sources matching the focus.
+
+    Council R4 DESKTOP-N26: every lane is BOUNDED. This handler used to run
+    six unbounded queries sequentially, each carrying an unindexable person
+    predicate, and held the request open for 45-120s on a ubiquitous name
+    while the frontend showed a skeleton with no time bound. Now the person
+    filter is spelled the way migration 090 indexed it (measured: the nodes
+    lane goes seq-scan -> BitmapAnd, 576ms warm for `%trump%`) and each lane
+    runs under its own statement_timeout inside a global deadline, degrading
+    to a NAMED reason. See `app/services/focus_lanes.py` for the measured
+    budget table. A degraded lane serves honest absence — never a 500, and
+    never a zero presented as a measurement.
     """
-    async with db.pool.acquire() as conn:
+    import asyncio
+    import time as _time
+
+    from app.services.focus_lanes import (
+        POOL_ACQUIRE_TIMEOUT_S,
+        LaneRunner,
+        PERSON_MATCH_EXPR,
+        person_like_needle,
+    )
+
+    # Clock starts HERE, not after the connection is in hand. Queueing for a
+    # connection is time the user spends looking at a skeleton, so it counts
+    # against the deadline; measured in the browser, an unbounded acquire
+    # under load turned a 9s budget into a 23.4s response.
+    started = _time.monotonic()
+    try:
+        conn_ctx = db.pool.acquire(timeout=POOL_ACQUIRE_TIMEOUT_S)
+    except TypeError:
+        # Test fakes (and any pool implementation without the kwarg) —
+        # correctness of the lane logic must not depend on this bound.
+        conn_ctx = db.pool.acquire()
+
+    try:
+        conn_acquired = await conn_ctx.__aenter__()
+    except (asyncio.TimeoutError, TimeoutError):
+        # Saturated pool: say so in ~3s rather than queueing behind a mute
+        # skeleton. Honest all-degraded 200, never a 500.
+        logger.warning("focus: pool acquire timed out for %s=%s", focus_type, value)
+        return _degraded_focus_payload(focus_type, value, hours, reason="db_busy")
+
+    try:
+        conn = conn_acquired
         # Build WHERE clause based on focus type
         if focus_type == "theme":
             # Thread ids resolve via typed membership (see focus_filters) —
@@ -47,8 +145,13 @@ async def get_focus_data(
                 focus_filter = "$1 = ANY(themes)"
                 filter_value = value.upper()
         elif focus_type == "person":
-            focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
-            filter_value = f"%{value}%"
+            # The mig-090 spelling — load-bearing. `unnest(persons) +
+            # LOWER(p) LIKE` is unindexable and was the N26 hang.
+            needle = person_like_needle(value)
+            if needle is None:
+                return _empty_focus_payload(focus_type, value, hours)
+            focus_filter = f"{PERSON_MATCH_EXPR} $1"
+            filter_value = needle
         elif focus_type == "country":
             focus_filter = "country_code = $1"
             filter_value = value.upper()
@@ -58,9 +161,15 @@ async def get_focus_data(
         else:
             return {"error": f"Unknown focus type: {focus_type}"}
         
+        # Lanes run in VALUE order under one bounded runner (N26): nodes
+        # first because the map, the evidence route and the summary all read
+        # it, so if the global deadline bites, what survives is what the
+        # panel most needs.
+        runner = LaneRunner(conn, started_at=started)
+
         # 1. Get nodes (countries) with signal counts
-        nodes = await conn.fetch(f"""
-            SELECT 
+        nodes = await runner.run("nodes", f"""
+            SELECT
                 country_code,
                 COUNT(*) as signal_count,
                 ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment,
@@ -71,44 +180,9 @@ async def get_focus_data(
             GROUP BY country_code
             ORDER BY signal_count DESC
         """, filter_value)
-        
-        # 2. Get related topics (co-occurring themes)
-        related = await conn.fetch(f"""
-            SELECT 
-                unnest(themes) as topic,
-                COUNT(*) as count
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-              AND {focus_filter}
-            GROUP BY topic
-            ORDER BY count DESC
-            LIMIT 15
-        """, filter_value)
-        
-        # Filter out the focus value itself if it's a theme
-        related_topics = [
-            {"topic": r['topic'], "count": int(r['count'])}
-            for r in related
-            if r['topic'].upper() != value.upper()
-        ][:10]
-        
-        # 3. Get top sources
-        sources = await conn.fetch(f"""
-            SELECT 
-                source_name,
-                COUNT(*) as count,
-                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment
-            FROM signals_v2
-            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
-              AND {focus_filter}
-              AND source_name IS NOT NULL
-            GROUP BY source_name
-            ORDER BY count DESC
-            LIMIT 10
-        """, filter_value)
-        
-        # 4. Get recent headlines (deduped by title prefix)
-        headlines = await conn.fetch(f"""
+
+        # 2. Get recent headlines (deduped by title prefix)
+        headlines = await runner.run("headlines", f"""
             SELECT DISTINCT ON (LEFT(source_url, 100))
                 source_url,
                 source_name,
@@ -122,11 +196,11 @@ async def get_focus_data(
             LIMIT 10
         """, filter_value)
 
-        # 5. Get key people mentioned in matching signals. distinct_outlets /
+        # 3. Get key people mentioned in matching signals. distinct_outlets /
         # distinct_headlines feed the syndication-resistant ranking (#176): a
         # wire story republished by many outlets must not outrank local actors.
         # Pull a wide pool (40) so the corroboration floor still leaves results.
-        persons_rows = await conn.fetch(f"""
+        persons_rows = await runner.run("persons", f"""
             SELECT
                 p AS person,
                 COUNT(*) AS signal_count,
@@ -158,8 +232,9 @@ async def get_focus_data(
         # posing as people. NER (spaCy) gives real verified types; the untyped
         # GDELT pool fills names NER missed, flagged unverified. NER query
         # degrades to GDELT-only on error (e.g. malformed nlp_persons jsonb).
-        try:
-            ner_rows = await conn.fetch(f"""
+        # The runner already swallows a malformed-jsonb failure into a named
+        # `db_error` lane, so the old bare try/except is no longer needed.
+        ner_rows = await runner.run("ner", f"""
                 SELECT e->>'name' AS name, e->>'type' AS ner_type,
                        COUNT(*) AS signal_count,
                        COUNT(DISTINCT source_name) AS distinct_outlets,
@@ -176,10 +251,7 @@ async def get_focus_data(
                 GROUP BY e->>'name', e->>'type'
                 ORDER BY signal_count DESC
                 LIMIT 40
-            """, filter_value)
-        except Exception as exc:
-            logger.warning("NER subjects degraded: %s", exc)
-            ner_rows = []
+        """, filter_value)
         key_subjects = build_key_subjects(
             merge_entity_rows(
                 [dict(r) for r in ner_rows],
@@ -194,9 +266,51 @@ async def get_focus_data(
             limit=8,
         )
 
-        # Calculate totals
-        total_signals = sum(int(n['signal_count']) for n in nodes)
-        total_countries = len(nodes)
+        # 5. Get top sources
+        sources = await runner.run("sources", f"""
+            SELECT
+                source_name,
+                COUNT(*) as count,
+                ROUND(AVG(sentiment)::numeric, 2) as avg_sentiment
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+              AND source_name IS NOT NULL
+            GROUP BY source_name
+            ORDER BY count DESC
+            LIMIT 10
+        """, filter_value)
+
+        # 6. Get related topics (co-occurring themes)
+        related = await runner.run("related", f"""
+            SELECT
+                unnest(themes) as topic,
+                COUNT(*) as count
+            FROM signals_v2
+            WHERE timestamp > NOW() - INTERVAL '{hours} hours'
+              AND {focus_filter}
+            GROUP BY topic
+            ORDER BY count DESC
+            LIMIT 15
+        """, filter_value)
+
+        # Filter out the focus value itself if it's a theme
+        related_topics = [
+            {"topic": r['topic'], "count": int(r['count'])}
+            for r in related
+            if r['topic'].upper() != value.upper()
+        ][:10]
+
+        # Totals are a MEASUREMENT of the nodes lane. When that lane degraded
+        # we did not measure zero — we failed to measure at all, so the
+        # summary reports null and the panel renders an honest gap. Serving 0
+        # here is the zero-as-fact trap this whole track exists to close.
+        if runner.is_live("nodes"):
+            total_signals = sum(int(n['signal_count']) for n in nodes)
+            total_countries = len(nodes)
+        else:
+            total_signals = None
+            total_countries = None
 
         return {
             "focus": {
@@ -204,6 +318,9 @@ async def get_focus_data(
                 "value": value,
                 "hours": hours
             },
+            "lanes": runner.statuses,
+            "degraded_lanes": runner.degraded_lanes,
+            "degraded_reasons": runner.reasons,
             "summary": {
                 "total_signals": total_signals,
                 "total_countries": total_countries,
@@ -239,6 +356,10 @@ async def get_focus_data(
             "key_people": key_people,
             "key_subjects": key_subjects
         }
+    finally:
+        # Mirror of the `async with` this replaced: the connection goes back
+        # to the pool on every path, including the early returns above.
+        await conn_ctx.__aexit__(None, None, None)
 
 @router.get("/api/v2/theme/{theme_code}/deep-history")
 async def get_theme_deep_history(
@@ -729,6 +850,21 @@ async def _thread_coherence(conn, topic_id: int) -> Optional[dict]:
     }
 
 
+def _opt_int(value) -> Optional[int]:
+    """int() that preserves absence.
+
+    A missing/NULL count must serve None, never 0 — a 0 on a count surface
+    reads as the measured claim "nothing here", which is exactly the class of
+    silent fabrication the count-basis contract exists to kill.
+    """
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 async def _dynamic_topic_detail(
     conn,
     *,
@@ -773,6 +909,31 @@ async def _dynamic_topic_detail(
         "total": gated_total,
         "rawTotal": gated_total,
         "gated": gated_total,
+        # ------------------------------------------------------------------
+        # Count basis (council R4 N19, the N8 residual): `total` is
+        # `agg_n_signals` — a LIFETIME aggregate — and the header used to
+        # stamp it with the requested window ("3,659 signals · Last 24h")
+        # while the thread row one click up showed 88 for the same story.
+        # Measured 2026-08-11: the row's number is `recent_n_signals` (the
+        # latest snapshot's kept count) and every cluster at that snapshot
+        # carries snapshot_window_h=168 — so NEITHER number was ever a 24h
+        # count and both surfaces' window word was false.
+        #
+        # A truly window-scoped total was measured and rejected: the
+        # signals_v2 join exceeded 120s and the assigned_at variant ran 19.4s
+        # cold against this handler's 15s statement_timeout, and
+        # `topic_members` is only a PROJECTION for dynamic topics (dt-11810:
+        # 125 rows vs 3,659 lifetime), so its count would have been a third
+        # number contradicting both. Instead the detail carries THE ROW'S OWN
+        # number (1.1s cold / ~101ms warm on the heaviest active topic) so the
+        # two surfaces agree by construction, and each number states its base.
+        #
+        # Absence stays honest — None, never 0: a 0 reads as a measured
+        # "nothing in the window", which is a claim we have not made.
+        # ------------------------------------------------------------------
+        "countBasis": "lifetime",
+        "currentTotal": _opt_int(_rec.get("recent_n_signals")),
+        "countWindowHours": _opt_int(_rec.get("count_window_hours")),
         "snapshotAt": topic_row["last_seen"].isoformat()
             if topic_row["last_seen"] else None,
         # X2/S2 (time-as-dimension): AGE is first-class — "active since".
@@ -1498,6 +1659,42 @@ async def get_theme_details(
                             dt.signature_meta,
                             dt.label_status,
                             dt.label_proposed,
+                            -- Council R4 N19: the number the THREAD ROW shows,
+                            -- served here so row and detail cannot contradict.
+                            -- Mirrors thread_intelligence._DYNAMIC_TOPICS_SELECT's
+                            -- recent_n_signals exactly (same latest-snapshot SUM);
+                            -- measured 1.09s cold / ~101ms warm on dt-3433, the
+                            -- heaviest active topic, inside a 15s budget.
+                            -- Deliberately NOT coalesced to 0: no snapshot must
+                            -- serve absence, not a measured "nothing".
+                            (
+                                SELECT SUM(ec4.n_signals)::int
+                                FROM dynamic_topic_members dtm4
+                                JOIN emergent_clusters ec4
+                                  ON ec4.id = dtm4.emergent_cluster_id
+                                WHERE dtm4.dynamic_topic_id = dt.id
+                                  AND dtm4.snapshot_at = (
+                                      SELECT MAX(snapshot_at)
+                                      FROM dynamic_topic_members
+                                      WHERE dynamic_topic_id = dt.id
+                                  )
+                            ) AS recent_n_signals,
+                            -- The window those members were actually clustered
+                            -- over. Measured uniformly 168h (3,080/3,080 clusters
+                            -- at the latest snapshot) — read, never hardcoded, so
+                            -- the label follows the engine if the window changes.
+                            (
+                                SELECT MAX(ec6.snapshot_window_h)::int
+                                FROM dynamic_topic_members dtm6
+                                JOIN emergent_clusters ec6
+                                  ON ec6.id = dtm6.emergent_cluster_id
+                                WHERE dtm6.dynamic_topic_id = dt.id
+                                  AND dtm6.snapshot_at = (
+                                      SELECT MAX(snapshot_at)
+                                      FROM dynamic_topic_members
+                                      WHERE dynamic_topic_id = dt.id
+                                  )
+                            ) AS count_window_hours,
                             COALESCE((
                                 SELECT array_agg(DISTINCT sid.signal_id)
                                 FROM dynamic_topic_members dtm

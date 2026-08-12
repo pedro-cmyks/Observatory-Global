@@ -1210,6 +1210,22 @@ SELECT
               SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
           )
     ), 0)::int AS recent_n_signals,
+    -- N19: the window recent_n_signals was counted over. NOT the requested
+    -- hours — the snapshot's own clustering window (measured 168h uniformly,
+    -- 3,080/3,080 clusters). Read rather than assumed so the label follows the
+    -- engine. NULL (no snapshot) = honest absence, never a fabricated 24.
+    -- Measured cost on the live list query: no detectable delta (base
+    -- 684-817ms vs 669-736ms, interleaved runs) — it rides the same
+    -- latest-snapshot join the aggregates above already pay for.
+    (
+        SELECT MAX(ec6.snapshot_window_h)::int
+        FROM dynamic_topic_members dtm6
+        JOIN emergent_clusters ec6 ON ec6.id = dtm6.emergent_cluster_id
+        WHERE dtm6.dynamic_topic_id = dt.id
+          AND dtm6.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ) AS count_window_hours,
     COALESCE((
         -- movement = velocity at the topic's LATEST snapshot only. The old
         -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
@@ -1352,6 +1368,30 @@ SELECT
     dt.label_checked_at,
     dt.temporal_signature,  -- mig 085: new/continuous/recurrent/resurrected (NULL=unclassified)
     dt.signature_meta,      -- {eras, gap_weeks, first_seen_week, returned_week, ...}
+    -- N19 (found while fixing the theme detail): this SQL carried NO
+    -- recent_n_signals, so assemble_dynamic_thread's
+    -- `recent_n_signals or agg_n_signals` fallback made /threads/{id} serve the
+    -- LIFETIME aggregate as `signal_count` — the same contradiction the theme
+    -- detail had, on a third surface. Both columns mirror
+    -- _DYNAMIC_TOPICS_SELECT exactly so every surface counts the same thing.
+    COALESCE((
+        SELECT SUM(ec4.n_signals)
+        FROM dynamic_topic_members dtm4
+        JOIN emergent_clusters ec4 ON ec4.id = dtm4.emergent_cluster_id
+        WHERE dtm4.dynamic_topic_id = dt.id
+          AND dtm4.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ), 0)::int AS recent_n_signals,
+    (
+        SELECT MAX(ec6.snapshot_window_h)::int
+        FROM dynamic_topic_members dtm6
+        JOIN emergent_clusters ec6 ON ec6.id = dtm6.emergent_cluster_id
+        WHERE dtm6.dynamic_topic_id = dt.id
+          AND dtm6.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members WHERE dynamic_topic_id = dt.id
+          )
+    ) AS count_window_hours,
     COALESCE((
         -- movement = velocity at the topic's LATEST snapshot only. The old
         -- MAX(ec.velocity) spanned ALL snapshots (a lifetime max): 69/101
@@ -1564,6 +1604,13 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         or 0
     )
     lifetime_signals = int(_record_get(topic_row, "agg_n_signals") or 0)
+    # Council R4 N19: `signal_count` above counts the LATEST SNAPSHOT, whose
+    # clustering window is snapshot_window_h (measured 168h uniformly), NOT the
+    # requested hours — so the row's window label cannot be the request's. Serve
+    # the window this number actually belongs to; None (never a fabricated 24)
+    # when the column is absent, leaving the caller to fall back honestly.
+    _window_h = _record_get(topic_row, "count_window_hours")
+    count_window_hours = int(_window_h) if _window_h is not None else None
     changed_10h = int(_record_get(topic_row, "changed_10h") or 0)
     noise_rate = _record_get(topic_row, "noise_rate")
     avg_conf = 1.0 - float(noise_rate) if noise_rate is not None else None
@@ -1635,6 +1682,9 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "crisis_relevant": bool(crisis_relevant) if crisis_relevant is not None else None,
         "signal_count": signal_count,
         "lifetime_signal_count": lifetime_signals,
+        # The window `signal_count` belongs to (N19) — the row chip stops
+        # hardcoding '24h' over a number counted across 168h.
+        "count_window_hours": count_window_hours,
         "source_count": source_count,
         "country_count": country_count,
         "avg_confidence": (
@@ -1740,20 +1790,26 @@ async def _fetch_dynamic_threads_with_conn(
     # row over the full active set; cold it lands ~7-9s and an 8s cap intermittently
     # degraded it to atlas-only (dropping the R2 umbrellas). Redis caches the result
     # so the cold hit is once per window. (Perf follow-up: fold the array subqueries.)
+    # `query_timeout` keeps 15s for every request-path caller and only widens
+    # for the off-request nightly build (see its docstring).
     if country_code:
         # country view = R1 scoped CHILDREN whose primary country is country_code
         topic_rows = await conn.fetch(
-            _DYNAMIC_TOPICS_COUNTRY_SQL, hours, limit, country_code.upper(), timeout=15
+            _DYNAMIC_TOPICS_COUNTRY_SQL, hours, limit, country_code.upper(),
+            timeout=query_timeout(15),
         )
     else:
-        topic_rows = await conn.fetch(_DYNAMIC_TOPICS_SQL, hours, limit, timeout=15)
+        topic_rows = await conn.fetch(
+            _DYNAMIC_TOPICS_SQL, hours, limit, timeout=query_timeout(15),
+        )
     threads: list[dict[str, Any]] = []
     for topic in topic_rows:
         sample_ids = list(topic["sample_signal_ids"] or [])
         sample_signals = []
         if sample_ids:
             sample_signals = await conn.fetch(
-                _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
+                _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids,
+                timeout=query_timeout(8),
             )
         thread = assemble_dynamic_thread(topic, list(sample_signals))
         # #238: the SQL pre-filters candidates by coverage (latest-snapshot codes,
@@ -2084,7 +2140,7 @@ async def _attach_atlas_evidence(
                 topic_slug,
                 country_codes or None,
                 per_thread,
-                timeout=8,
+                timeout=query_timeout(8),
             )
             # #248 item 2: atlas topics are the crisis taxonomy
             # (crisis_relevant=True by construction) — noise-lane receipts sink.
@@ -2338,6 +2394,39 @@ def stamped_counts(threads: list[dict[str, Any]]) -> dict[str, int]:
 
 _THREADS_FETCH_MULT_DEFAULT = 1
 _THREADS_FETCH_MULT_MAX = 4
+
+# Hard ceiling on the build-path override below. Anything longer than this and
+# a stuck query would hold the nightly step open instead of failing it.
+_QUERY_TIMEOUT_MAX_S = 600.0
+
+
+def query_timeout(default_s: float) -> float:
+    """The per-query budget, widened only for OFF-REQUEST callers.
+
+    The timeouts in this module are sized for an HTTP request: `/threads` must
+    answer or degrade inside the Fly proxy's patience, so the scoped-children
+    query gets 15s and the sample/evidence fetches 8s. The nightly country-
+    edition BUILD (scripts/build_country_editions.py) has the opposite
+    constraint — it runs under the M1 heavy-job mutex with no reader waiting,
+    and that same query MEASURES 12.2-23.1s per country against prod
+    (2026-08-11). Under the serving budget the build would fail on exactly the
+    slowest, busiest countries — the ones whose doors most need warming.
+
+    `ATLAS_THREADS_QUERY_TIMEOUT_S` therefore raises the floor for that caller
+    only. It can never LOWER a serving timeout (a typo must not tighten the
+    request path into new timeouts), is clamped to 600s, and an unparseable
+    value degrades to today's behavior.
+    """
+    raw = os.environ.get("ATLAS_THREADS_QUERY_TIMEOUT_S", "").strip()
+    if not raw:
+        return default_s
+    try:
+        override = float(raw)
+    except ValueError:
+        return default_s
+    if override <= default_s:
+        return default_s
+    return min(override, _QUERY_TIMEOUT_MAX_S)
 
 
 def threads_fetch_mult() -> int:
