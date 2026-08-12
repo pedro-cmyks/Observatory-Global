@@ -4,6 +4,7 @@ import { decodeEntities } from '../lib/decodeEntities'
 import { formatAttachSimilarity, laneTag, truncationNote } from '../lib/discussionHonesty'
 import { buildThreadVoiceModel, canHaveThreadVoice, type ThreadVoiceModel } from '../lib/threadVoice'
 import { CountQualifierChip, formatCountWindow } from '../lib/countQualifier'
+import { resolveThemeCountMeta } from '../lib/themeDetailCount'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { CompareBar } from './CompareBar'
@@ -44,7 +45,9 @@ interface ThemeData {
     theme: string
     label?: string
     country: string | null
-    total: number
+    /** null = NOT MEASURED (the count query timed out or failed — see
+     *  `degraded`). Render "not measured", never 0: a timeout is not absence. */
+    total: number | null
     // Atlas-topic threads resolve through gated signal_topic_assignments: `total`
     // is the precise (gate-kept) count once scored, while `rawTotal` is the raw
     // assigned count the Narrative Threads list shows. Surfacing both keeps the
@@ -81,7 +84,13 @@ interface ThemeData {
      *  runs — the chip renders nothing then (absence over guess). */
     temporalSignature?: string | null
     signatureMeta?: TemporalSignatureMeta | null
-    avgSentiment: number
+    /** null when the payload is degraded (query timeout/error) — unmeasured. */
+    avgSentiment: number | null
+    /** Timeout-as-absence contract (mirrors /api/v2/stats): true when the
+     *  backend's queries did not complete, with a reason code. Counts are
+     *  null, arrays empty — nothing here is a measured zero. */
+    degraded?: boolean
+    degraded_reason?: 'db_timeout' | 'db_error' | string | null
     signals: Array<{
         id?: number
         timestamp: string
@@ -205,7 +214,10 @@ interface AttentionSearchData {
     themes?: Array<{ theme: string; total_signals: number }>
 }
 
-function buildDynamicTopicInsight(data: ThemeData): string {
+function buildDynamicTopicInsight(data: ThemeData): string | null {
+    // A degraded payload has no measured count or tone — a templated insight
+    // over unmeasured numbers would be fabrication. Serve nothing.
+    if (data.total == null || data.avgSentiment == null) return null
     const topCountries = data.countryBreakdown
         .slice(0, 3)
         .map(c => `${resolveCountryName(c.code)} (${c.count.toLocaleString()} signals)`)
@@ -642,8 +654,19 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         || threadContext?.label
         || (isQueryThread ? queryThreadText : resolveThreadTitle(theme, null, loading && !data)))
     // While the first fetch is in flight there is no honest count yet — print
-    // an ellipsis, never a false "0 signals" next to a skeleton.
-    const totalDisplay = loading && !data ? '…' : String(data?.total || 0)
+    // an ellipsis, never a false "0 signals" next to a skeleton, and never a
+    // window word ("Last 24h") over a count that doesn't exist yet. A degraded
+    // payload (total: null — the query timed out/failed) renders "not
+    // measured", never 0: a timeout is not absence (cc0bf804 class).
+    const countMeta = resolveThemeCountMeta({
+        loading,
+        hasData: !!data,
+        total: data?.total,
+        degraded: data?.degraded,
+        degradedReason: data?.degraded_reason,
+        hours,
+    })
+    const totalDisplay = countMeta.countText
     // N19: does this payload declare `total` to be a lifetime aggregate AND
     // carry the row's current-window number to show beside it? Both are
     // required — a lifetime basis with no current number would leave the header
@@ -716,7 +739,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             <ShareThreadButton
                                 input={{
                                     label: displayLabel,
-                                    whyNow: `${(data.total ?? data.signals.length).toLocaleString()} signals`,
+                                    whyNow: countMeta.unmeasured
+                                        ? 'signal count not measured'
+                                        : `${(data.total ?? data.signals.length).toLocaleString()} signals`,
                                     url: `${window.location.origin}/app?theme=${encodeURIComponent(theme)}`,
                                 }}
                                 evidence={data.signals.map(s => s.headline).filter((h): h is string => !!h)}
@@ -763,7 +788,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 {data?.coverageTier === 'limited' && (
                                     <span className="coverage-badge coverage-badge--limited" data-tip="Limited matching signals for this query">LIMITED</span>
                                 )}
-                                {' '}Built from your search · {totalDisplay} matching signals
+                                {' '}Built from your search · {countMeta.unmeasured ? 'matching signals not measured' : `${totalDisplay} matching signals`}
                             </p>
                         )}
                         {drillCountry ? (
@@ -774,7 +799,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 >
                                     ← Global
                                 </button>
-                                {' · '}<Flag code={drillCountry} title={drillCountryName} /> {drillCountryName} · {totalDisplay} signals
+                                {' · '}<Flag code={drillCountry} title={drillCountryName} /> {drillCountryName} · {countMeta.unmeasured ? 'signal count not measured' : `${totalDisplay} signals`}
                             </p>
                         ) : (
                             <p className="theme-detail-meta">
@@ -801,8 +826,20 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                             : <> · window not reported</>}
                                         {' · '}{(data!.total || 0).toLocaleString()} lifetime
                                     </span>
+                                ) : countMeta.unmeasured ? (
+                                    /* Degraded payload: the count query did not
+                                       complete. "not measured" is the claim —
+                                       never 0, and no window word over a number
+                                       that doesn't exist. */
+                                    <span data-tip={countMeta.notice ?? undefined}>
+                                        Global · signal count not measured
+                                    </span>
                                 ) : (
-                                    <>Global · {totalDisplay} signals · Last {hours}h</>
+                                    /* While the first fetch is in flight
+                                       windowLabel is null — the old branch
+                                       stamped "Last 24h" beside "…" (N19: never
+                                       print an assumed window). */
+                                    <>Global · {totalDisplay} signals{countMeta.windowLabel ? <> · {countMeta.windowLabel}</> : null}</>
                                 )}
                                 {data?.firstSeen && (
                                     <span className="origin-country-hint" data-tip="Topic lifetime — when this story identity first appeared (not the current window)">
@@ -875,6 +912,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 )}
                 {loading && data && <div className="panel-reloading" aria-label="Refreshing" />}
                 {error && <div className="theme-detail-error">Error: {error}</div>}
+                {countMeta.notice && (
+                    /* Degraded payload (query timeout/error under DB load):
+                       name the state instead of rendering fabricated zeros. */
+                    <div className="theme-detail-error" data-tip="The backend served a degraded payload — its database queries did not complete. Counts and evidence below are unmeasured, not empty.">
+                        {countMeta.notice}
+                    </div>
+                )}
 
                 {data && emptyState && (
                     <div className="theme-detail-empty-state">
@@ -941,15 +985,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <p className="theme-insight-unavailable">
                                     {insightError === 'insight_no_credits'
                                         ? 'AI analysis unavailable — Anthropic account has no credits.'
-                                        : data
+                                        : data && data.total != null && data.avgSentiment != null
                                             ? (() => {
                                                 const top = data.countryBreakdown[0]
                                                 const topName = top ? resolveCountryName(top.code) : null
-                                                const tone = data.avgSentiment > 0.1 ? 'positive' : data.avgSentiment < -0.1 ? 'negative' : 'neutral'
+                                                const tone = data.avgSentiment! > 0.1 ? 'positive' : data.avgSentiment! < -0.1 ? 'negative' : 'neutral'
                                                 return [
                                                     topName ? `Top coverage: ${topName} (${top!.count} signals).` : null,
-                                                    `Overall tone: ${tone} (${data.avgSentiment.toFixed(2)}).`,
-                                                    `${data.total.toLocaleString()} total signals. AI summary unavailable.`,
+                                                    `Overall tone: ${tone} (${data.avgSentiment!.toFixed(2)}).`,
+                                                    `${data.total!.toLocaleString()} total signals. AI summary unavailable.`,
                                                 ].filter(Boolean).join(' ')
                                             })()
                                             : 'AI summary unavailable.'
@@ -993,24 +1037,33 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {/* Summary Stats */}
                         <div className="theme-stats-row">
                             <div className="theme-stat" data-tip={lifetimeBasis
-                                ? `${data.total.toLocaleString()} signals over this story's whole lifetime — an all-time total, not a count for the current window. ${(data.currentTotal ?? 0).toLocaleString()} are in the current serving membership${currentWindowLabel ? ` (last ${currentWindowLabel})` : ''}.`
+                                ? `${(data.total ?? 0).toLocaleString()} signals over this story's whole lifetime — an all-time total, not a count for the current window. ${(data.currentTotal ?? 0).toLocaleString()} are in the current serving membership${currentWindowLabel ? ` (last ${currentWindowLabel})` : ''}.`
                                 : data.rawTotal && data.rawTotal !== data.total
                                 ? `${data.total} precise signals kept by the relevance gate, of ${data.rawTotal} assigned to this thread. The Narrative Threads list shows the assigned count.`
+                                : countMeta.unmeasured
+                                ? (countMeta.notice ?? 'Count not measured — the data query did not complete.')
                                 : "Total media signals (articles, posts) mentioning this topic in the selected time window"}>
                                 <span className="theme-stat-value">
-                                    {data.total}
+                                    {/* Degraded: null total is NOT MEASURED — never
+                                        render it as 0 or stamp a window chip on it. */}
+                                    {countMeta.unmeasured ? '—' : data.total}
                                     {/* N19: a lifetime total takes the 'lifetime' base, which
                                         suppresses the window segment entirely — the old chip
                                         stamped `${hours}h` on an all-time number. */}
-                                    <CountQualifierChip
-                                        count={data.total}
-                                        windowLabel={lifetimeBasis ? null : `${hours}h`}
-                                        base={lifetimeBasis
-                                            ? 'lifetime'
-                                            : data.rawTotal && data.rawTotal !== data.total ? 'verified' : 'raw'}
-                                    />
+                                    {data.total != null && (
+                                        <CountQualifierChip
+                                            count={data.total}
+                                            windowLabel={lifetimeBasis ? null : `${hours}h`}
+                                            base={lifetimeBasis
+                                                ? 'lifetime'
+                                                : data.rawTotal && data.rawTotal !== data.total ? 'verified' : 'raw'}
+                                        />
+                                    )}
                                 </span>
                                 <span className="theme-stat-label">Signals</span>
+                                {countMeta.unmeasured && (
+                                    <span className="theme-stat-subnote">not measured</span>
+                                )}
                                 {lifetimeBasis ? (
                                     <span className="theme-stat-subnote">
                                         {(data.currentTotal ?? 0).toLocaleString()} in the last {currentWindowLabel ?? 'reported window'}
@@ -1019,18 +1072,25 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     <span className="theme-stat-subnote">of {data.rawTotal.toLocaleString()} assigned</span>
                                 ) : null}
                             </div>
-                            <div className="theme-stat" data-tip="Avg GDELT tone: −10 to +10. Negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news.">
-                                <span className="theme-stat-value" style={{ color: getSentimentColor(data.avgSentiment) }}>
-                                    {data.avgSentiment > 0 ? '+' : ''}{data.avgSentiment.toFixed(2)}
+                            <div className="theme-stat" data-tip={data.avgSentiment == null
+                                ? 'Not measured — the data query did not complete.'
+                                : "Avg GDELT tone: −10 to +10. Negative = topic framed critically or with conflict, positive = framed supportively. Scores rarely exceed ±3 in normal news."}>
+                                <span className="theme-stat-value" style={data.avgSentiment != null ? { color: getSentimentColor(data.avgSentiment) } : undefined}>
+                                    {data.avgSentiment == null
+                                        ? '—'
+                                        : `${data.avgSentiment > 0 ? '+' : ''}${data.avgSentiment.toFixed(2)}`}
                                 </span>
                                 <span className="theme-stat-label">Avg Sentiment</span>
                             </div>
-                            <div className="theme-stat" data-tip="Number of distinct countries where media sources are covering this topic">
-                                <span className="theme-stat-value">{data.countryBreakdown.length}</span>
+                            {/* Degraded: these arrays are empty because the
+                                queries failed — their length is not a measured
+                                0 either. */}
+                            <div className="theme-stat" data-tip={countMeta.unmeasured ? 'Not measured — the data query did not complete.' : "Number of distinct countries where media sources are covering this topic"}>
+                                <span className="theme-stat-value">{countMeta.unmeasured ? '—' : data.countryBreakdown.length}</span>
                                 <span className="theme-stat-label">Countries</span>
                             </div>
-                            <div className="theme-stat" data-tip="Number of distinct media outlets (news sites, blogs, feeds) contributing signals">
-                                <span className="theme-stat-value">{data.topSources.length}</span>
+                            <div className="theme-stat" data-tip={countMeta.unmeasured ? 'Not measured — the data query did not complete.' : "Number of distinct media outlets (news sites, blogs, feeds) contributing signals"}>
+                                <span className="theme-stat-value">{countMeta.unmeasured ? '—' : data.topSources.length}</span>
                                 <span className="theme-stat-label">Sources</span>
                             </div>
                         </div>
