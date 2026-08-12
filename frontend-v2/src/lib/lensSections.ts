@@ -168,12 +168,13 @@ export const SHEET_SECTION_NAMES: string[] = [
  * a shared template would blur them into one vague line.
  *
  * Every section carries a sentence for every status even where that section
- * cannot currently produce it — `no_subject` is `connected`'s alone today.
- * They are written rather than typed as optional because a lane with no
- * sentence would render blank, which is the one outcome this table exists to
- * make unrepresentable. (That is a different thing from a STATUS with no
- * producer at all, which is why `withheld_by_gate` was removed instead: see
- * the note on LaneStatus.)
+ * cannot currently produce it — `no_subject` is `connected`'s alone today
+ * (its lane measures a thread against the ranked pool that thread is IN, and
+ * a deep-linked thread can be outside it). They are written rather than typed
+ * as optional because a lane with no sentence would render blank, which is
+ * the one outcome this table exists to make unrepresentable. (That is a
+ * different thing from a STATUS with no producer at all, which is why
+ * `withheld_by_gate` was removed instead: see the note on LaneStatus.)
  */
 const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', string>> = {
   whereItLives: {
