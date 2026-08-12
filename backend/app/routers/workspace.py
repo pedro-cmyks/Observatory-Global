@@ -5,6 +5,11 @@ from fastapi import APIRouter, Query
 from app import db
 from app.utils import extract_domain
 from app.core.gdelt_taxonomy import classify_source
+from app.services.count_basis import (
+    BASIS_HOURLY_ROLLUP,
+    describe_count_basis,
+    nodes_count_basis,
+)
 from app.services.processed_historical import (
     build_historical_coverage,
     query_historical_country_attention,
@@ -13,6 +18,11 @@ from app.services.processed_historical import (
 )
 
 router = APIRouter()
+
+#: Look-back the anomaly baseline actually measures over. Kept next to the SQL
+#: that uses it so the served label can never drift from the window again — the
+#: country panel asserted "7-day baseline" over this 8-day query for months.
+ANOMALY_BASELINE_DAYS = 8
 
 @router.get("/api/v2/compare")
 async def compare_periods(
@@ -182,8 +192,41 @@ async def get_nodes(
                 }
                 effective_hours = range_map.get(time_range, hours)
 
+            # A COUNTRY focus is served from the same hourly rollup the map, the
+            # heat layer and the signal-density list read. Cold-user probe
+            # 2026-08-12 §4: this lane used to scan raw signals_v2, so Germany
+            # measured 5,238 here and 3,836 in the density list twelve inches
+            # below — one quantity, two tables. The rollup carries a country
+            # dimension, so nothing is lost by unifying; theme/person/source
+            # focus genuinely cannot be served from it and stay raw below.
+            if (
+                focus_type
+                and focus_value
+                and nodes_count_basis(focus_type) == BASIS_HOURLY_ROLLUP
+                and not use_processed_history(effective_hours)
+            ):
+                effective_limit = min(limit, 250)
+                rows = await conn.fetch("""
+                    SELECT
+                        h.country_code,
+                        c.name,
+                        c.latitude,
+                        c.longitude,
+                        SUM(h.signal_count) as total_signals,
+                        AVG(h.avg_sentiment) as sentiment,
+                        SUM(h.unique_sources) as unique_sources
+                    FROM country_hourly_v2 h
+                    LEFT JOIN countries_v2 c ON h.country_code = c.code
+                    WHERE h.hour > NOW() - INTERVAL '%s hours'
+                      AND h.country_code = $1
+                    GROUP BY h.country_code, c.name, c.latitude, c.longitude
+                    HAVING SUM(h.signal_count) > 0
+                    ORDER BY total_signals DESC
+                    LIMIT %s
+                """ % (effective_hours, effective_limit), focus_value.upper(), timeout=10.0)
+                response_source = BASIS_HOURLY_ROLLUP
             # If focus is active, query signals_v2 directly with filtering
-            if focus_type and focus_value:
+            elif focus_type and focus_value:
                 # Build focus filter based on type
                 if focus_type == "theme":
                     # Thread ids (dynamic-topic-<id>/atlas slugs) resolve via
@@ -200,6 +243,10 @@ async def get_nodes(
                     focus_filter = "EXISTS (SELECT 1 FROM unnest(persons) p WHERE LOWER(p) LIKE LOWER($1))"
                     filter_value = f"%{focus_value}%"
                 elif focus_type == "country":
+                    # Handled before this block by the rollup branch (see
+                    # nodes_count_basis): a country focus is servable from
+                    # country_hourly_v2, so it MUST be, or the country card and
+                    # the density list print two answers to one question.
                     focus_filter = "country_code = $1"
                     filter_value = focus_value.upper()
                 elif focus_type == "source":
@@ -262,8 +309,11 @@ async def get_nodes(
                         "unique_sources": row.get("source_diversity") or 0,
                     })
             else:
-                # Use hourly materialized view for short ranges (faster)
-                effective_limit = min(limit, 217)
+                # Use hourly materialized view for short ranges (faster).
+                # Cap raised 217 -> 250: 218 countries carried signals on
+                # 2026-08-12, so the old cap silently truncated the tail and
+                # made the disclosed coverage totals wrong by construction.
+                effective_limit = min(limit, 250)
                 rows = await conn.fetch("""
                     SELECT
                         h.country_code,
@@ -356,7 +406,19 @@ async def get_nodes(
 
             nodes = []
             total_signals = 0
+            # Counted BEFORE the coordinate drop below. Cold-user probe §4: the
+            # console header printed "175 countries · 100,587 signals" from this
+            # payload while the dock and the Brief printed "218 · 109,632" off
+            # the same table — because this is a MAP endpoint that silently
+            # discards every country it cannot plot, then totals what survived.
+            # A cartographic constraint was leaking into a statistical readout.
+            # These two counters cost nothing and let the surface print the real
+            # base while still drawing only what it can place.
+            counted_countries = 0
+            counted_signals = 0
             for row in rows:
+                counted_countries += 1
+                counted_signals += int(row['total_signals'])
                 # Use DB coords first, fall back to static dict for countries with NULL coords
                 lat = row['latitude']
                 lon = row['longitude']
@@ -396,6 +458,27 @@ async def get_nodes(
 
             if allowed_fields:
                 nodes = [{k: v for k, v in n.items() if k in allowed_fields} for n in nodes]
+
+            # Disclose the map's own blind spot rather than letting a consumer
+            # mistake "what we could draw" for "what there is".
+            if coverage_payload is None:
+                basis = describe_count_basis(response_source)
+                coverage_payload = {
+                    **basis,
+                    "counted_countries": counted_countries,
+                    "counted_signals": counted_signals,
+                    "mapped_countries": len(nodes),
+                    "mapped_signals": total_signals,
+                    "unmapped_countries": counted_countries - len(nodes),
+                    "unmapped_signals": counted_signals - total_signals,
+                }
+                if coverage_payload["unmapped_countries"] > 0:
+                    coverage_payload["note"] = (
+                        f"{basis['note']} "
+                        f"{coverage_payload['unmapped_countries']} country code(s) carrying "
+                        f"{coverage_payload['unmapped_signals']:,} signals have no map "
+                        "coordinates and are not drawn; the counted totals include them."
+                    )
 
             return {
                 "nodes": nodes,
@@ -442,7 +525,7 @@ async def get_anomalies(
                         DATE_TRUNC('day', hour) as day,
                         SUM(signal_count) as daily_count
                     FROM country_hourly_v2
-                    WHERE hour > NOW() - INTERVAL '8 days'
+                    WHERE hour > NOW() - INTERVAL '""" + str(ANOMALY_BASELINE_DAYS) + """ days'
                     AND hour <= NOW() - ($1::int * INTERVAL '1 hour')
                     GROUP BY country_code, DATE_TRUNC('day', hour)
                 ),
@@ -506,6 +589,11 @@ async def get_anomalies(
                     "current_count": int(row['signal_count']),
                     "baseline_avg": round(float(row['baseline_avg']), 1),
                     "days_observed": int(row['days_observed']),
+                    # The badge on the country panel hardcoded "7-day baseline"
+                    # while this SQL has always looked back 8 days (cold-user
+                    # probe §4). Serve the window we actually measured so the
+                    # surface can stop asserting one we never used.
+                    "baseline_days": ANOMALY_BASELINE_DAYS,
                     "multiplier": multiplier,
                     "zscore": zscore,
                     "level": level

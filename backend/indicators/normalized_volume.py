@@ -5,13 +5,39 @@ Calculates volume metrics relative to historical baseline,
 including multiplier (X times normal) and z-score.
 """
 
+import math
 from typing import Dict, Any, Optional
+
+#: Fewest daily observations that can support a sigma anyone should read.
+#: East Timor's "z: 71.2" rested on six sparse days (cold-user probe 2026-08-12).
+MIN_BASELINE_DAYS = 5
+#: Smallest baseline average (signals per period) worth dividing by. Below this
+#: the stddev is a rounding artifact and the quotient explodes.
+MIN_BASELINE_AVG = 5.0
+
+
+def scale_baseline_stddev(baseline_stddev: float, hours: int) -> float:
+    """Scale a per-day sigma to an arbitrary window.
+
+    The mean of a count over t days scales linearly with t; its standard
+    deviation scales with sqrt(t). Scaling both linearly (the previous
+    behaviour) left the multiplier invariant -- the factor cancels in a ratio --
+    while dragging the z-score around with the window, so the two numbers on the
+    country panel diverged further the more the reader touched the time control.
+    """
+    if not baseline_stddev or baseline_stddev <= 0:
+        return 0.0
+    if not hours or hours <= 0:
+        return 0.0
+    return baseline_stddev * math.sqrt(hours / 24)
 
 
 def calculate_normalized_volume(
     current_count: int,
     baseline_avg: float,
-    baseline_stddev: float
+    baseline_stddev: float,
+    days_observed: Optional[int] = None,
+    baseline_days: int = 7,
 ) -> Dict[str, Any]:
     """
     Calculate normalized volume metrics.
@@ -37,6 +63,9 @@ def calculate_normalized_volume(
             "z_score": None,
             "current": current_count,
             "baseline": baseline_avg,
+            "baseline_days": baseline_days,
+            "days_observed": days_observed,
+            "thin_baseline": True,
             "level": "unknown",
             "tooltip": "Insufficient baseline data to calculate normalized volume."
         }
@@ -69,19 +98,39 @@ def calculate_normalized_volume(
         level = "normal"
         level_desc = "Within expected range"
     
+    # A baseline can be arithmetically valid and still be far too thin to carry
+    # a sigma. Flag it so the surface degrades honestly instead of printing a
+    # confident "z: 71.2" built on six sparse days of a 2.3/day country.
+    thin_baseline = (
+        not baseline_stddev
+        or baseline_stddev <= 0
+        or baseline_avg < MIN_BASELINE_AVG
+        or (days_observed is not None and days_observed < MIN_BASELINE_DAYS)
+    )
+
     # Build tooltip
     tooltip = (
         f"{multiplier:.1f}x normal volume ({level_desc}). "
         f"Z-score: {z_score:.1f}. "
-        f"Current: {current_count} signals, Baseline: {baseline_avg:.0f} signals/period (7-day average)."
+        f"Current: {current_count} signals, Baseline: {baseline_avg:.0f} "
+        f"signals/period ({baseline_days}-day average"
+        f"{f', {days_observed} day(s) observed' if days_observed is not None else ''})."
     )
-    
+    if thin_baseline:
+        tooltip += (
+            " Baseline is too thin for a meaningful z-score -- treat the "
+            "multiplier as the readable signal here."
+        )
+
     return {
         "multiplier": round(multiplier, 2),
         "z_score": round(z_score, 2),
         "current": current_count,
         "baseline": round(baseline_avg, 1),
         "baseline_stddev": round(baseline_stddev, 1) if baseline_stddev else None,
+        "baseline_days": baseline_days,
+        "days_observed": days_observed,
+        "thin_baseline": bool(thin_baseline),
         "level": level,
         "tooltip": tooltip
     }

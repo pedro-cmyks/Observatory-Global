@@ -5,13 +5,21 @@ from app.utils import extract_domain
 try:
     from indicators.source_diversity import calculate_source_diversity, DIVERSITY_TOOLTIP
     from indicators.source_quality import calculate_source_quality, get_allowlist, get_denylist, QUALITY_TOOLTIP
-    from indicators.normalized_volume import calculate_normalized_volume, VOLUME_TOOLTIP
+    from indicators.normalized_volume import (
+        calculate_normalized_volume,
+        scale_baseline_stddev,
+        VOLUME_TOOLTIP,
+    )
 
     INDICATORS_AVAILABLE = True
 except ImportError:
     INDICATORS_AVAILABLE = False
 
 router = APIRouter()
+
+#: Look-back this endpoint's volume baseline measures over. Served in the
+#: payload so the country panel stops hardcoding a window it never queried.
+INDICATOR_BASELINE_DAYS = 7
 
 @router.get("/api/indicators/tooltips")
 async def get_indicator_tooltips():
@@ -105,30 +113,39 @@ async def get_country_indicators(
                     COUNT(*) as day_count
                 FROM signals_v2
                 WHERE country_code = $1
-                AND timestamp > NOW() - INTERVAL '7 days'
+                AND timestamp > NOW() - INTERVAL '""" + str(INDICATOR_BASELINE_DAYS) + """ days'
                 AND timestamp <= NOW() - INTERVAL '%s hours'
                 GROUP BY day
             )
-            SELECT 
+            SELECT
                 (SELECT current_count FROM current_period) as current_count,
                 AVG(day_count) as baseline_avg,
-                COALESCE(STDDEV(day_count), 0) as baseline_stddev
+                COALESCE(STDDEV(day_count), 0) as baseline_stddev,
+                COUNT(*) as days_observed
             FROM baseline_data
         """ % (hours, hours), country_code.upper())
-        
+
         current_count = volume_data['current_count'] or 0
         baseline_avg = float(volume_data['baseline_avg'] or 0)
         baseline_stddev = float(volume_data['baseline_stddev'] or 0)
-        
-        # Scale baseline to match hours parameter
+        # NOTE: baseline_data emits a row only for days that HAD signals, so a
+        # sparse country's zero-days are absent and this is an upper bound on
+        # how much evidence the baseline really rests on. That is exactly why it
+        # is served -- the surface needs to know when the sigma is unusable.
+        days_observed = int(volume_data['days_observed'] or 0)
+
+        # Scale baseline to match hours parameter. The mean scales linearly with
+        # the window; sigma scales with sqrt(t) (see scale_baseline_stddev).
         hours_ratio = hours / 24
         baseline_avg_scaled = baseline_avg * hours_ratio
-        baseline_stddev_scaled = baseline_stddev * hours_ratio
-        
+        baseline_stddev_scaled = scale_baseline_stddev(baseline_stddev, hours)
+
         volume = calculate_normalized_volume(
             current_count,
             baseline_avg_scaled,
-            baseline_stddev_scaled
+            baseline_stddev_scaled,
+            days_observed=days_observed,
+            baseline_days=INDICATOR_BASELINE_DAYS,
         )
         
         return {
