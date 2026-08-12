@@ -1,5 +1,5 @@
 /* Frame strip (Exploration Flywheel Task 2.4) — the deliberate-pins counterpart
-   to FocusIndicator's ephemeral focus band. Same visual family (accent-tinted
+   to the scope band's ephemeral focus (ScopeBreadcrumb, T2.1). Same visual family (accent-tinted
    in-flow strip, monospace meta labels) so the two read as siblings, not
    competing systems. Compact single row; lanes scroll horizontally rather
    than wrap, so the strip never grows tall on a narrow desktop viewport. */
@@ -9,7 +9,7 @@
     gap: 10px;
     width: 100%;
     /* The command bar is position:absolute (h=48); when the strip is the first
-       in-flow band it must clear it — same trick as .focus-indicator. When it
+       in-flow band it must clear it — same trick as .scope-breadcrumb--band. When it
        follows the focus band (which already cleared 48px), the sibling rule
        below zeroes this so they stack flush. */
     margin-top: 48px;
@@ -27,9 +27,12 @@
     animation: frameStripFade 0.18s ease-out;
 }
 
-/* When the focus band is present above the strip it already cleared the
-   absolute command bar — don't double-offset. */
-.focus-indicator + .frame-strip {
+/* When the scope band is present above the strip it already cleared the
+   absolute command bar — don't double-offset. (It replaced FocusIndicator's
+   focus band in the same slot, T2.1, and unlike that one it is always
+   present — the `margin-top: 48px` above now only applies on surfaces that
+   render the strip without the band.) */
+.scope-breadcrumb--band + .frame-strip {
     margin-top: 0;
 }
 

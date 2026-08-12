@@ -45,9 +45,10 @@ interface Props {
 
 export function CountryFocusWalkthrough({ countryName, onDismiss }: Props) {
     const isMobile = useIsMobile()
-    // The focus chip sits top-left on desktop, but floats above the tab bar on
-    // mobile — name the right place so the deselect instruction is accurate.
-    const chipWhere = isMobile ? 'above the tabs' : 'top-left'
+    // T2.1: the way out is no longer a ✕ but the first crumb of the scope path
+    // — the band under the command bar on desktop, the Lens header row on the
+    // phone. Name the right place, and name the real gesture.
+    const pathWhere = isMobile ? 'at the top of the Lens' : 'under the command bar'
     const steps: Step[] = [
         {
             eyebrow: 'Country selected',
@@ -60,8 +61,8 @@ export function CountryFocusWalkthrough({ countryName, onDismiss }: Props) {
         },
         {
             eyebrow: 'Return anytime',
-            title: `${isMobile ? 'Tap' : 'Click'} ✕ to see the whole world again`,
-            body: `The focus chip (${chipWhere}) shows what you are looking at. Its ✕ clears the country and returns the console to the global view.`,
+            title: `${isMobile ? 'Tap' : 'Click'} World to see the whole world again`,
+            body: `The scope path (${pathWhere}) reads World ▸ ${countryName} — it shows which folder you are in. Every crumb to the left is one step back out; World clears the country and returns the console to the global view.`,
             selector: '[data-tour="focus-clear"]',
         },
     ]

@@ -55,11 +55,11 @@
 /* Same treatment for the sections bar, one strip lower — it is in flow behind
    a covering read for exactly the same reason the chrome is, and it composes
    its own `top` from the two numbers above it rather than hard-coding 44px.
-   Gated identically (`:has(.lens-breadcrumb)`) so the bar and the read's inset
+   Gated identically (`:has(.scope-breadcrumb)`) so the bar and the read's inset
    agree about whether the offset applies: the inset rule above is gated on the
    breadcrumb too, and a bar that floated while the read did not move down
    would cover the top of the read. */
-.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay) .lens-sections-bar {
+.lens-shell:has(.scope-breadcrumb):has(.theme-detail-overlay) .lens-sections-bar {
   position: fixed;
   top: calc(var(--lens-top-offset) + var(--lens-chrome-h));
   left: 0;
@@ -70,7 +70,7 @@
   border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.18);
 }
 
-.lens-shell:has(.lens-breadcrumb):has(.theme-detail-overlay) .lens-chrome {
+.lens-shell:has(.scope-breadcrumb):has(.theme-detail-overlay) .lens-chrome {
   position: fixed;
   top: var(--lens-top-offset);
   left: 0;
@@ -97,7 +97,7 @@
    Unscoped by breakpoint on purpose: `.lens-shell` only exists inside App's
    `if (isMobile)` branch, so this cannot reach the desktop overlay, which
    stays `position: static` inside the stream panel. */
-.lens-shell:has(.lens-breadcrumb) .terminal-panel.stream .theme-detail-overlay {
+.lens-shell:has(.scope-breadcrumb) .terminal-panel.stream .theme-detail-overlay {
   top: calc(var(--lens-top-offset) + var(--lens-chrome-h) + var(--lens-sections-h));
   height: calc(100dvh - var(--lens-top-offset) - var(--lens-chrome-h) - var(--lens-sections-h));
 }
@@ -118,10 +118,24 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  /* Zero-height when it carries only the (visually hidden) heading — at field
-     scope there is no previous scope, so there is no breadcrumb to show. */
-  padding: 0;
+  gap: 4px;
+  /* T2.1: no longer ever zero-height on a Lens surface — the containment path
+     renders at every scope, including the world (a band that only appears once
+     you are lost cannot teach that stepping back exists). The `:has()` gates
+     above therefore key on `.scope-breadcrumb`, which is present exactly when
+     this row costs its 44px. */
+  padding: 0 8px;
+  min-height: var(--lens-chrome-h);
+}
+
+/* The history ← lost its label to the path beside it: icon-only, fixed width,
+   still on the 44px touch floor. */
+.lens-breadcrumb--icon {
+  flex: 0 0 auto;
+  min-width: 32px;
+  justify-content: center;
+  padding: 4px 4px;
+  font-size: 15px;
 }
 
 .lens-breadcrumb {

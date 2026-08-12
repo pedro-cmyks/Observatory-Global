@@ -22,6 +22,13 @@ export interface LensPanelProps {
   /** Walk back one scope. Wired to the console's own back, not a private one. */
   onBack: () => void
   /**
+   * T2.1: the containment path (`<ScopeBreadcrumb variant="lens"/>`), rendered
+   * in the chrome row. Passed as a node rather than derived here because the
+   * crumbs navigate through the console's OWN openers — the same reason
+   * `onOpenCountry` is a prop and not a `setCountry` call.
+   */
+  breadcrumb?: ReactNode
+  /**
    * Re-scope the Lens to a country. Must be the console's OWN country opener:
    * the Lens scope is derived from App's focus state, not from the shared
    * filter, so calling `setCountry` from FocusContext here would re-scope the
@@ -459,7 +466,7 @@ function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread, at
  * it were still a direct child of the shell.
  */
 export function LensPanel({
-  surface, trail, onBack, onOpenCountry, onOpenThread, countryScope, field, read,
+  surface, trail, onBack, breadcrumb, onOpenCountry, onOpenThread, countryScope, field, read,
   attention, sources,
 }: LensPanelProps) {
   const showsField = fieldVisible(surface)
@@ -474,17 +481,28 @@ export function LensPanel({
     <>
       {showsChrome && scope && (
         <div className="lens-chrome">
+          {/* T2.1: the row is now the CONTAINMENT path (`breadcrumb`), and the
+              ← is history. They answer different questions and both are worth
+              keeping: the path walks UP (World ▸ Country ▸ Story), the arrow
+              walks BACK to the scope you actually came from — which is the only
+              way home from the scopes the path does not model (an attention
+              item, a chokepoint, a free-text story query set no focus, so they
+              have no crumb). The arrow lost its label because the path prints
+              the names now; its accessible name still carries the full title.
+              The class stays `lens-breadcrumb`: it is what reserves the 44px
+              this chrome promises the read's inset. */}
           {previous && (
             <button
               type="button"
-              className="lens-breadcrumb"
+              className="lens-breadcrumb lens-breadcrumb--icon"
               onClick={onBack}
-              data-tip="Back to the scope you came from"
+              data-tip={`Back to ${scopeTitle(previous)}`}
+              aria-label={`Back to ${scopeTitle(previous)}`}
             >
               <span aria-hidden="true">←</span>
-              <span className="lens-breadcrumb-label">{scopeTitle(previous)}</span>
             </button>
           )}
+          {breadcrumb}
           {/* A real heading for the surface, carrying the FULL scope title —
               the panel header below it truncates to fit the phone, this does
               not. Visually hidden because the panel already shows the name;

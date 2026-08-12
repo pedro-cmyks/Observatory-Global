@@ -36,7 +36,8 @@ import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext'
 import { StoryLensBanner } from './components/StoryLensBanner'
 import { useStoryLens } from './contexts/StoryLensContext'
 import { STORY_LENS_AUTO, isLensAnchor } from './lib/storyLens'
-import { FocusIndicator } from './components/FocusIndicator'
+import { ScopeBreadcrumb } from './components/ScopeBreadcrumb'
+import { buildScopePath, type ScopeCrumb } from './lib/scopePath'
 import { FrameStrip } from './components/FrameStrip'
 import { FrameSheet } from './components/FrameSheet'
 import { SearchSheet } from './components/SearchSheet'
@@ -354,6 +355,22 @@ function AppContent() {
   // T3.3 P-FOCUS: a clicked conflict event becomes the subject (not its country).
   const [selectedConflictEvent, setSelectedConflictEvent] = useState<ConflictEventFocus | null>(null)
   const [rightPanelThemeCountry, setRightPanelThemeCountry] = useState<{ code: string, name: string } | null>(null)
+  // T2.1 scope path: the open signal is the LEAF of the containment path, and
+  // it is the one level whose state does not live here — SignalStream owns its
+  // detail panel (lensScope.ts:38 records the same gap for the phone's Lens).
+  // Rather than move that state up (the panel re-points itself when a semantic
+  // neighbour is opened, and lifting it would put that flow through App), the
+  // stream REPORTS its selection and accepts a close TOKEN. The breadcrumb
+  // therefore represents the signal without owning it, which is the same
+  // arrangement every other crumb has with FocusContext.
+  const [openSignal, setOpenSignal] = useState<{ id: string; label: string } | null>(null)
+  const [closeSignalSeq, setCloseSignalSeq] = useState(0)
+  const closeOpenSignal = useCallback(() => {
+    // Bumping unconditionally is safe (the stream's effect only clears) and
+    // avoids a stale-read race when a crumb click and the report cross.
+    setCloseSignalSeq(n => n + 1)
+    setOpenSignal(null)
+  }, [])
   // One-level back navigation for the stream panel
   type PrevCtx =
     | { type: 'chokepoint'; cp: Chokepoint }
@@ -725,7 +742,106 @@ function AppContent() {
     // at popPanel's and closeAll's inline exits below.)
     storyLens.exit()
     stripLensParam()
-  }, [clearFocus, storyLens.exit, stripLensParam])
+    closeOpenSignal()
+  }, [clearFocus, storyLens.exit, stripLensParam, closeOpenSignal])
+
+  // ── T2.1 · THE SCOPE PATH ────────────────────────────────────────────────
+  // `World ▸ Country ▸ Person ▸ Story ▸ signal`, derived from state that
+  // already exists. It is REPRESENTATION, never a second source of truth: see
+  // lib/scopePath.ts for why the order is containment rather than visit
+  // history, and why compound focus renders as one path.
+  //
+  // The story's name in the order every door supplies it: the detail's own
+  // label, the opener's hint, then the focus context's. Taking them in that
+  // order is what stops the crumb printing a raw `dynamic-topic-N` (and, since
+  // the resolver's fallback for an opaque id is the generic word "Story", what
+  // stops the "STORY Story" stutter — scopePath marks that case `pending` and
+  // prints an ellipsis instead).
+  const openStoryLabel =
+    selectedTheme?.thread?.label ?? selectedTheme?.labelHint
+    ?? filter.themeLabel ?? selectedThread?.label ?? null
+  // A synthetic query-thread deliberately never enters FocusContext (it has no
+  // theme code to fetch against), so it is not a scope and gets no crumb.
+  const openStoryId = filter.theme
+    ?? (selectedTheme && !selectedTheme.theme.startsWith('query-thread::') ? selectedTheme.theme : null)
+  const scopePath = useMemo(() => buildScopePath(
+    {
+      country: filter.country,
+      countryName: filter.country ? resolveCountryName(filter.country) : null,
+      person: filter.person,
+      thread: filter.thread,
+      theme: openStoryId,
+      storyLabel: openStoryLabel,
+      signal: openSignal,
+    },
+    { resolveStoryLabel: resolveThreadLabel },
+  ), [filter.country, filter.person, filter.thread, openStoryId, openStoryLabel, openSignal])
+
+  // A SCOPE PANEL CLOSES THE SIGNAL UNDER IT. Measured in the browser before
+  // this existed: with a signal open, clicking a story left the crumb reading
+  // `World ▸ Story ▸ Signal` while the signal detail was NOT on screen — the
+  // stream slot is one slot, and ThemeDetail/CountryBrief/EntityPanel render
+  // OVER the still-mounted stream (the #239 keep-alive shell). A crumb for a
+  // panel nobody can see is exactly the kind of claim this path exists to stop
+  // making, and the honest resolution is to close the signal rather than to
+  // hide the crumb: the reader did leave it.
+  useEffect(() => {
+    if (!openSignal) return
+    if (openStoryId || filter.country || filter.person) closeOpenSignal()
+  }, [openStoryId, filter.country, filter.person, openSignal, closeOpenSignal])
+
+  /**
+   * Go up to a crumb — i.e. drop every scope to its RIGHT and keep the rest.
+   *
+   * Every branch reuses the console's OWN openers rather than poking focus
+   * directly, because the panels and the focus filter are two things that have
+   * to move together (a country click that only set the shared filter would
+   * move the map while the stream kept the old panel — the class documented at
+   * the Lens's country row below).
+   */
+  const navigateToScope = useCallback((crumb: ScopeCrumb, index: number) => {
+    if (index === scopePath.length - 1) return // already standing here
+    closeOpenSignal()
+    if (crumb.level === 'signal') return
+    // Dropping the story means the lens that was scoping it goes too — the same
+    // inline exit popPanel and clearAll perform, and for the same reason
+    // (syncLensToThreadOpen early-returns on !STORY_LENS_AUTO, which must not
+    // apply to a deliberate navigation exit).
+    const dropStory = () => {
+      setSelectedTheme(null)
+      setSelectedThread(null)
+      setThemeBackStack([])
+      setStoryQuery(null)
+      if (filter.theme) setTheme(null)
+      if (storyLens.state.active) { storyLens.exit(); stripLensParam() }
+    }
+    switch (crumb.level) {
+      case 'world':
+        clearAll()
+        break
+      case 'country':
+        // setPerson/setTheme FIRST: handleCountryClick clears the theme PANEL
+        // but not the theme FOCUS, and nextFocusDims' country case keeps person
+        // — either survivor would re-open on the next commit and the reader
+        // would watch the scope they just left come back (#236 Task 8's
+        // measured failure, same fix).
+        setPerson(null)
+        setTheme(null)
+        dropStory()
+        handleCountryClick(crumb.id)
+        setMapFlyCountry(crumb.id)
+        break
+      case 'person':
+        // The country to its left stays; only the story and signal go.
+        dropStory()
+        setSelectedPublicAttention(null)
+        setSelectedChokepoint(null)
+        break
+      case 'story':
+        // Nothing to drop but the signal, already closed above.
+        break
+    }
+  }, [scopePath.length, closeOpenSignal, clearAll, filter.theme, setTheme, setPerson, setMapFlyCountry, storyLens, stripLensParam])
 
   // Workbench / research-plan handlers (Phase 2, #213). Anchors open the
   // existing surfaces: a thread anchor routes through the theme-detail
@@ -1869,17 +1985,15 @@ function AppContent() {
         </div>
       </header>
 
-      {/* A1: persistent focus chip — shows what's focused and gives one ✕ to
-          return to the whole, unfocused view (the missing country deselect). */}
-      {/* T11 gate fix (M2), reviewed and DELIBERATELY left unwired: this is
-          the granular theme-chip ✕ (not a full country/context-switch door),
-          and a prior review (T5/T10) ruled that keeping the lens active here
-          is spec-compliant — it's the only door that reveals the STORY|ALL
-          stream tabs, so closing the theme panel alone should not also kill
-          the lens session the analyst may still want (e.g. to re-open a
-          sibling from the STORY tab). Only handleCountryClick and the
-          thread/theme-close paths in popPanel/clearAll/closeAll exit it. */}
-      <FocusIndicator onClear={clearAll} onRemoveTheme={() => { setTheme(null); setSelectedTheme(null); setSelectedThread(null) }} />
+      {/* T2.1 · the scope path. Replaces the focus chip band: same slot, same
+          in-flow band (so the eclipse ribbon and the story-lens banner still
+          push it down via `body { padding-top }` rather than paint over it),
+          but a containment PATH instead of a chip set — and the way out is now
+          the first crumb rather than an 18px ✕ at the far right that R4's cold
+          reader never found. Persistent by design: a band that only appears
+          once you are lost cannot teach that stepping back exists.
+          The phone gets the same component inside the Lens chrome (below). */}
+      {!isMobile && <ScopeBreadcrumb path={scopePath} onNavigate={navigateToScope} variant="band" />}
       {/* Flywheel Task 2.4: the always-visible "investigation you're building" —
           pinned items auto-sorted into WHO/WHERE/WHAT lanes. Invisible until the
           first pin (prominence gradient). Clicking a pin re-opens it by type. */}
@@ -2440,7 +2554,7 @@ function AppContent() {
                     }}
                   />
                 ) : (
-                  <SignalStream paused={readPaneHidden} />
+                  <SignalStream paused={readPaneHidden} onSignalScope={setOpenSignal} closeSignalSeq={closeSignalSeq} />
                 )}
               </div>
             </div>
@@ -2694,6 +2808,11 @@ function AppContent() {
                    the same depth. popPanel is the same function Escape and the
                    edge-swipe call, so all three agree. */
                 onBack={() => { rewindLens(); popPanel() }}
+                /* T2.1: the SAME path the desktop band shows, in the Lens
+                   chrome — one grammar on both sizes. Its crumbs call the same
+                   console openers, so a phone tap and a desktop click land in
+                   exactly the same state. */
+                breadcrumb={<ScopeBreadcrumb path={scopePath} onNavigate={navigateToScope} variant="lens" />}
                 /* #236 Task 8: a country row in `where it lives` re-scopes the
                    Lens. The console's own opener, not FocusContext.setCountry
                    — the Lens scope is derived from this component's focus

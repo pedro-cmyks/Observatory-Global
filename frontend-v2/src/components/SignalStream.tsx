@@ -242,9 +242,25 @@ interface SignalStreamProps {
      *  alive behind another tab). Its three timers idle instead of polling,
      *  dripping and re-rendering a subtree nobody is looking at. */
     paused?: boolean
+    /**
+     * T2.1: report the open signal so the scope path can name its leaf.
+     *
+     * REPORTED, not lifted. The detail panel re-points ITSELF when a semantic
+     * neighbour is opened (`onSignalOpen` below), so moving the state to App
+     * would route that entirely-local flow through the console. The breadcrumb
+     * needs the id and a name, nothing else.
+     */
+    onSignalScope?: (signal: { id: string; label: string } | null) => void
+    /**
+     * A monotonic token: any change closes the open signal. This is how a crumb
+     * click ("go up to the story") shuts a panel it does not own — a token
+     * rather than a boolean because closing twice in a row is a real gesture
+     * and a boolean would swallow the second.
+     */
+    closeSignalSeq?: number
 }
 
-export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false }) => {
+export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSignalScope, closeSignalSeq }) => {
     const { filter, setTheme, setCountry, setPerson, setStreamLevel } = useFocus()
     // The stream is ambient — the live day (VIEW selector retired 2026-07-15).
     const STREAM_HOURS = 24
@@ -256,6 +272,29 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false }) =>
     const [streamFilter, setStreamFilter] = useState<StreamTab>(STREAM_DEFAULT_TAB)
     const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
+    // T2.1 scope path: publish the leaf, and accept a close from the crumb that
+    // sits above it. Both are effects over the SAME local state, so the panel
+    // stays the only thing that owns it.
+    const onSignalScopeRef = useRef(onSignalScope)
+    onSignalScopeRef.current = onSignalScope
+    useEffect(() => {
+        onSignalScopeRef.current?.(
+            selectedSignal
+                ? {
+                    id: String(selectedSignal.id),
+                    label: selectedSignal.headline || `Signal from ${selectedSignal.source}`,
+                }
+                : null,
+        )
+    }, [selectedSignal])
+    // Skips the mount run: a token that has never moved is not a close request,
+    // and clearing on mount would fight a signal restored by any other path.
+    const closeSeqSeen = useRef(closeSignalSeq)
+    useEffect(() => {
+        if (closeSeqSeen.current === closeSignalSeq) return
+        closeSeqSeen.current = closeSignalSeq
+        setSelectedSignal(null)
+    }, [closeSignalSeq])
     // G5 (dataviz audit): distinguish a SERVICE FAILURE (fetch threw / non-2xx,
     // e.g. the 503 db_busy the API now returns when the shared DB is contended)
     // from an honest empty-200. A 500/503 must NOT read as "No signals found".

@@ -1,0 +1,184 @@
+/* Scope path — the folder model, made readable.
+   Inherits FocusIndicator's visual family on purpose (accent-tinted in-flow
+   band, monospace meta labels, the same emerald dot) so the surface it replaces
+   does not read as a new system. What changed is the GRAMMAR, not the skin. */
+.scope-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+}
+
+/* ── Desktop: the in-flow band under the command bar ─────────────────────── */
+.scope-breadcrumb--band {
+    position: static;
+    /* The command bar is position:absolute (h=48), so the first in-flow element
+       starts underneath it and must clear it explicitly. Being IN FLOW is also
+       what keeps this clear of the eclipse ribbon and the story-lens banner:
+       both are fixed at the viewport top and compensate with `body
+       { padding-top }` (storyLens.css:10-15), which moves flow content — and
+       this band with it — instead of being painted over. */
+    margin-top: 48px;
+    padding: 5px 14px;
+    background: linear-gradient(
+        90deg,
+        rgba(var(--color-accent-deep-rgb), 0.14),
+        rgba(var(--color-accent-deep-rgb), 0.05) 55%,
+        transparent
+    );
+    border-top: 1px solid rgba(var(--color-accent-deep-rgb), 0.25);
+    border-bottom: 1px solid rgba(var(--color-accent-deep-rgb), 0.35);
+    z-index: 20;
+}
+
+/* World-only: the band is present (it teaches that stepping left exists) but
+   quiet, so a persistent strip does not shout at a reader who has focused
+   nothing. */
+.scope-breadcrumb--band:has(.scope-crumbs > :only-child) {
+    background: none;
+    border-top-color: rgba(var(--color-accent-deep-rgb), 0.1);
+    border-bottom-color: rgba(var(--color-accent-deep-rgb), 0.14);
+    opacity: 0.72;
+}
+
+.scope-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #1D9E75;
+    flex-shrink: 0;
+}
+
+.scope-crumbs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.scope-crumbs::-webkit-scrollbar { display: none; }
+
+.scope-crumb {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+/* The LAST crumb is where the reader is, and it is the one worth reading — let
+   it keep its room while the ancestors shrink. */
+.scope-crumb:last-child { flex-shrink: 1; }
+
+.scope-sep {
+    color: rgba(var(--color-accent-deep-rgb), 0.55);
+    font-size: 10px;
+    padding: 0 3px;
+    flex-shrink: 0;
+}
+
+.scope-crumb-link,
+.scope-crumb-current {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    max-width: 240px;
+    padding: 2px 8px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    font-family: inherit;
+    text-align: left;
+}
+
+.scope-crumb-link {
+    cursor: pointer;
+}
+
+.scope-crumb-link:hover,
+.scope-crumb-link:focus-visible {
+    background: rgba(var(--color-accent-deep-rgb), 0.12);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.28);
+}
+
+.scope-crumb-current {
+    background: rgba(var(--color-accent-deep-rgb), 0.12);
+    border-color: rgba(var(--color-accent-deep-rgb), 0.28);
+}
+
+.scope-meta {
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5f8f7a;
+    flex-shrink: 0;
+}
+
+.scope-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #d8e0ea;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A name that has not arrived yet. Dimmer than a name, so the ellipsis reads as
+   "loading", not as a story literally called "…". */
+.scope-value--pending {
+    color: var(--color-text-muted, #8b97a6);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+}
+
+.scope-note {
+    margin-left: auto;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted, #8b97a6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
+/* ── Phone: the same path, inside the Lens chrome row ────────────────────── */
+.scope-breadcrumb--lens {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    margin: 0;
+    gap: 6px;
+}
+
+.scope-breadcrumb--lens .scope-dot { display: none; }
+.scope-breadcrumb--lens .scope-crumb-link,
+.scope-breadcrumb--lens .scope-crumb-current {
+    max-width: 62vw;
+    padding: 3px 7px;
+    /* Tap targets on a phone: the row is 44px, so the crumbs fill it. */
+    min-height: 30px;
+}
+.scope-breadcrumb--lens .scope-meta { font-size: 8px; }
+.scope-breadcrumb--lens .scope-value { font-size: 11.5px; }
+
+/* Contrast: the value colour is a dark-theme literal, as it was on the band it
+   replaces — the themed light shells need their own token or the crumb goes
+   near-invisible (the R3c residual, carried over deliberately). */
+[data-theme^='emerald'] .scope-value {
+    color: var(--color-text-primary);
+}
+[data-theme^='emerald'] .scope-meta {
+    color: var(--color-text-secondary);
+}

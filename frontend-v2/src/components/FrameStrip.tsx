@@ -1,6 +1,6 @@
 // Exploration Flywheel Task 2.4 — the FRAME strip.
 //
-// Distinct from FocusIndicator (the ephemeral compound FOCUS — country ∧
+// Distinct from ScopeBreadcrumb (the ephemeral compound FOCUS — country ∧
 // theme ∧ person, cleared on navigation): this strip shows the analyst's
 // DELIBERATE pins for the active investigation, auto-sorted into three
 // lanes (lib/pinLanes.ts — WHO/WHERE/WHAT) so "the investigation you're
