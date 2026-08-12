@@ -1388,10 +1388,12 @@ async def dossier_corroborate(req: CorroborateRequest):
             "state_collapsed": ind["state_collapsed"],
             "total_articles": ind["total_articles"],
             "syndicated_clusters": ind["syndicated_clusters"],
+            # Voices, not outlets: three same-state outlets ARE one source
+            # (corroborate-v2 R1 — the bar and this flag must agree).
             "single_source": (
                 applicable
                 and pin_search_available
-                and ind["independent_outlets"] <= 1
+                and ind["independent_voices"] <= 1
             ),
             "citations": citations,
             "note": note,

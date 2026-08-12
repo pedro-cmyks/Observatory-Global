@@ -299,3 +299,48 @@ async def test_router_counts_voices_and_carries_ownership_and_tier(monkeypatch):
     # The glass-box meta must name the bar it actually applies.
     assert "voices" in response["meta"]["status_rule"].lower()
     assert "same-state" in response["meta"]["independence_rule"]
+
+
+@pytest.mark.asyncio
+async def test_single_source_flag_keys_on_voices_not_outlets(monkeypatch):
+    """corroborate-v2 R1 follow-through: three same-state outlets ARE one
+    source. The flag and the voices bar must agree — an all-state pin reads
+    single_source=True even though it shows three receipts."""
+    from app.routers import dossier as dossier_module
+    from app.services import external_depth
+
+    async def fake_fetch(_label, *, raw_query, timespan):
+        return None
+
+    async def fake_generate(_system, _user, **_kwargs):
+        return "Measured comparison.", "test-provider", None, None
+
+    monkeypatch.setattr(external_depth, "fetch_external_depth", fake_fetch)
+    monkeypatch.setattr(dossier_module, "generate_insight", fake_generate)
+
+    response = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(
+            force=True,
+            pins=[{
+                "id": "state-pin",
+                "label": "Strike on Kyiv power grid",
+                "anchor_type": "thread",
+                "evidence": ["Twelve killed as Kyiv substations burn"],
+            }],
+            supplied_results=[
+                {"pin_id": "state-pin", "outlet": "ria.ru",
+                 "title": "Defence ministry announces precision hit",
+                 "url": "https://ria.ru/1"},
+                {"pin_id": "state-pin", "outlet": "tass.com",
+                 "title": "Energy infrastructure targeted, military confirms",
+                 "url": "https://tass.com/2"},
+                {"pin_id": "state-pin", "outlet": "rt.com",
+                 "title": "Kiev blackout follows overnight barrage",
+                 "url": "https://rt.com/3"},
+            ],
+        )
+    )
+    pin = response["pins"][0]
+    assert pin["independent_outlets"] == 3
+    assert pin["independent_voices"] == 1
+    assert pin["single_source"] is True
