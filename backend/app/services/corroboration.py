@@ -160,18 +160,40 @@ def pin_status(
     applicable: bool = True,
     outlets: int | None = None,
     state_collapsed: int = 0,
+    search_state: str | None = None,
+    queries_run: int = 0,
+    queries_answered: int = 0,
 ) -> tuple[str, str]:
     """(status, note) from the independence count — glass-box, no judgment.
     v2: the bar is independent VOICES (ownership-collapsed), and the note
-    names the collapse when it changed the number."""
+    names the collapse when it changed the number.
+
+    tren-B2 V5: `search_state` lets the note say WHY a pin was not measured —
+    a rate-limited lane and a story nobody covered are different facts, and the
+    analyst plans differently around each. A pin measured on only SOME of its
+    queries says so rather than passing a thin count off as the whole answer.
+    """
     if not applicable:
         return (
             "not_applicable",
             "metadata-only context pin — no frozen evidence claim to corroborate",
         )
     if not search_available:
+        if search_state == "throttled":
+            return ("unverified",
+                    "web lane throttled (GDELT DOC 2.0 allows one query every "
+                    "five seconds) — corroboration not measured; re-run in a "
+                    "minute")
+        if search_state == "timeout":
+            return ("unverified",
+                    "web lane did not answer inside the time budget — "
+                    "corroboration not measured")
         return ("unverified",
                 "web-search lane unavailable — corroboration not measured")
+    partial_note = ""
+    if queries_run and queries_answered and queries_answered < queries_run:
+        partial_note = (f" · partial: {queries_answered} of {queries_run} "
+                        "search queries answered")
     collapse_note = ""
     if state_collapsed > 0 and outlets is not None:
         collapse_note = (f" ({outlets} outlets; same-state outlets "
@@ -179,13 +201,15 @@ def pin_status(
     if independent_voices >= ESTABLISHED_MIN_OUTLETS:
         return ("established",
                 f"{independent_voices} independent voices"
-                f"{collapse_note or ' (syndicated copies collapsed)'}")
+                f"{collapse_note or ' (syndicated copies collapsed)'}"
+                f"{partial_note}")
     if independent_voices == 0:
-        return ("unverified", "no matching web coverage found in the window")
+        return ("unverified",
+                f"no matching web coverage found in the window{partial_note}")
     return ("unverified",
             f"only {independent_voices} independent voice(s)"
             f"{collapse_note} — insufficient corroboration; "
-            "treat as single-sourced")
+            f"treat as single-sourced{partial_note}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -776,6 +800,23 @@ async def doc20_cache_store(cache: Any, key: str,
         _log.warning("doc20 cache store failed: %s", str(exc)[:120])
 
 
+def _build_doc20_getter(url: str):
+    """Blocking DOC 2.0 GET as a factory — replaceable in tests without
+    patching urllib globally. Returns (http_status, body)."""
+
+    def _get() -> tuple[int, bytes]:
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request(url, headers={"User-Agent": "atlas/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=_DOC20_TIMEOUT) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, b""
+
+    return _get
+
+
 async def doc20_fetch_status(
     query: str,
     *,
@@ -807,23 +848,20 @@ async def doc20_fetch_status(
     })
     url = f"{DOC_URL}?{params}"
 
-    def _get() -> tuple[int, bytes]:
-        import urllib.error
-        import urllib.request
-        req = urllib.request.Request(url, headers={"User-Agent": "atlas/1.0"})
-        try:
-            with urllib.request.urlopen(req, timeout=_DOC20_TIMEOUT) as r:
-                return r.status, r.read()
-        except urllib.error.HTTPError as e:
-            return e.code, b""
+    _get = _build_doc20_getter(url)
 
     try:
-        # Reuse the external-depth global throttle when available.
+        # Reuse the external-depth PROCESS-WIDE throttle — two lanes each
+        # honoring their own 1-req/5s would still break GDELT's. Resolved at
+        # call time (module attribute), so the wiring is patchable and a broken
+        # import is LOUD: a silently-dropped rate limiter is the failure mode
+        # this lane was built to avoid.
         try:
-            from app.services.external_depth import _throttle
-            await _throttle()
-        except Exception:  # noqa: BLE001 — throttle is best-effort
-            pass
+            from app.services import external_depth as _ed
+            await _ed.throttle()
+        except Exception as exc:  # noqa: BLE001 — never blocks the fetch
+            _log.error("doc20 shared throttle unavailable — firing unthrottled: %s",
+                       str(exc)[:120])
         status_code, body = await _asyncio.wait_for(
             _asyncio.get_event_loop().run_in_executor(None, _get),
             timeout=_DOC20_TIMEOUT + 2,

@@ -12,6 +12,8 @@ import {
   formatLevel,
   directionGlyph,
   unitTag,
+  changeWindowLabel,
+  changeWindowTip,
   RELATION_PENDING_TEXT,
   NOT_ADVICE_TEXT,
 } from '../lib/markets'
@@ -56,7 +58,7 @@ export function InstrumentSpark({
   return (
     <span
       className={`atlas-instrument-spark atlas-instrument-spark--${direction}`}
-      data-tip="30-day close shape only — self-scaled to this instrument's own range; compare by the printed last-close, not amplitude."
+      data-tip={`${changeWindowLabel({ spark_30d: clean }) ?? 'daily'} of closes — shape only, self-scaled to this instrument's own range; compare by the printed last-close, not amplitude.`}
     >
       <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none">
         <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.4" />
@@ -72,6 +74,11 @@ export function InstrumentSpark({
 export function InstrumentTile({ inst, onClick }: { inst: MarketInstrument; onClick?: () => void }) {
   const dir = changeDirection(inst.change_pct)
   const pct = formatChangePct(inst.change_pct)
+  // Cold-user probe 2026-08-12: `▲ +20.10%` alone on the summary card read as a
+  // one-day move — the window lived only in the drill chart. N19 discipline: the
+  // delta never renders without the window it was measured over.
+  const windowLabel = changeWindowLabel(inst)
+  const windowTip = changeWindowTip(inst)
   const clickable = !!onClick
   return (
     <div
@@ -111,6 +118,11 @@ export function InstrumentTile({ inst, onClick }: { inst: MarketInstrument; onCl
             ) : (
               <span className="atlas-instrument-change atlas-instrument-change--flat">·</span>
             )}
+            {pct && windowLabel && (
+              <span className="atlas-instrument-window" data-tip={windowTip ?? undefined}>
+                · {windowLabel}
+              </span>
+            )}
           </div>
           <InstrumentSpark series={inst.spark_30d} direction={dir} />
         </>
@@ -127,6 +139,11 @@ export function InstrumentChart({ inst, onBack }: { inst: MarketInstrument; onBa
   const pct = formatChangePct(inst.change_pct)
   const series = (inst.spark_30d ?? []).filter(v => typeof v === 'number' && isFinite(v))
   const hasChart = series.length >= 2
+  // Same helper as the tile — the drill view used to hardcode "· 30d", which is
+  // both a different word from the card and the wrong unit (the series is
+  // trading closes, not calendar days).
+  const windowLabel = changeWindowLabel(inst)
+  const windowTip = changeWindowTip(inst)
   let path = ''
   let lo = 0
   let hi = 0
@@ -160,8 +177,11 @@ export function InstrumentChart({ inst, onBack }: { inst: MarketInstrument; onBa
           <div className="markets-chart-levelrow">
             <span className="markets-chart-level">{formatLevel(inst.last_close)}</span>
             {pct && (
-              <span className={`atlas-instrument-change atlas-instrument-change--${dir}`}>
-                {directionGlyph(dir)} {pct} · 30d
+              <span
+                className={`atlas-instrument-change atlas-instrument-change--${dir}`}
+                data-tip={windowTip ?? undefined}
+              >
+                {directionGlyph(dir)} {pct}{windowLabel ? ` · ${windowLabel}` : ''}
               </span>
             )}
           </div>
@@ -178,7 +198,9 @@ export function InstrumentChart({ inst, onBack }: { inst: MarketInstrument; onBa
           ) : (
             <p className="markets-note">Not enough history yet — fills over the next cron runs.</p>
           )}
-          <p className="markets-chart-foot">30-day close series · self-scaled shape · descriptive, not a trade signal.</p>
+          <p className="markets-chart-foot">
+            {windowLabel ? `${windowLabel} of daily closes` : 'daily close series'} · self-scaled shape · descriptive, not a trade signal.
+          </p>
         </>
       )}
     </div>

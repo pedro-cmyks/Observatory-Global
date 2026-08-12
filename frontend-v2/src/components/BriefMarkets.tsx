@@ -82,7 +82,7 @@ export function BriefWorldMarketsBand() {
     <section className="brief-markets-band" aria-label="World markets — descriptive overlay">
       <MarketsInner
         title="World markets"
-        tip="World bellwether instruments — descriptive levels and 30-day trend at the last close. NOT a claim that today's news moved them."
+        tip="World bellwether instruments — descriptive levels at the last close, with each delta labelled by the number of trading sessions it spans. NOT today's move, and NOT a claim that today's news moved them."
         instruments={world}
         asOf={data?.as_of}
         degraded={degraded}

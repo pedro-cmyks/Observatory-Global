@@ -8,11 +8,12 @@ import {
 } from '../lib/dossierConnections'
 import { synthesizeDossier, synthesisMarkdown, isArticle, splitCitations, type DossierSynthesis } from '../lib/dossierSynthesis'
 import {
-    buildCorroborationRequest, fetchCorroboration, loadCachedCorroboration,
+    buildCorroborationRequest, runCorroborationJob, loadCachedCorroboration,
     saveCorroboration, corroborationMarkdown, statusChip,
     citationTierChip, citationTierClass, citationCollapseNote,
     citationDateText, citationAged, agedTip, corroborationWindowText, verdictFacets,
-    type CorroborationData,
+    pinSearchStatusText, corroborationCoverageText,
+    type CorroborationData, type CorroborationJobProgress,
 } from '../lib/dossierCorroboration'
 import { DossierConnections } from './DossierConnections'
 import { track, trackOnce } from '../lib/telemetry'
@@ -292,14 +293,23 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
             setCrossRunning(false)
         }
     }, [evidenceUrls, crossRunning])
+    // V5: the run is a JOB the client polls. A real route (2+ evidence pins)
+    // costs ~5.75s per search query — the DOC 2.0 one-query-per-five-seconds
+    // limit — which is over the proxy's response ceiling by construction, so a
+    // single long request came back as a silent 502 (fresh Frank test: 2 of 4).
+    // Progress is the honest wait: the analyst sees queries land one by one.
+    const [corrobProgress, setCorrobProgress] = useState<CorroborationJobProgress | null>(null)
     const runCorroboration = useCallback(async (force: boolean) => {
         if (dossierRef.current.pinCount === 0) return
         setCorrobRunning(true)
         setCorrobFailed(false)
+        setCorrobProgress(null)
         track('dossier_corroborate', { pins: dossierRef.current.pinCount, force })
         const body = buildCorroborationRequest(
             dossierRef.current.pins, connRef.current?.data.nodes ?? null)
-        const data = await fetchCorroboration(body, force)
+        const data = await runCorroborationJob(body, force, {
+            onProgress: p => { if (mounted.current) setCorrobProgress(p) },
+        })
         if (!mounted.current) return
         if (data) {
             saveCorroboration(investigation.id, data)
@@ -953,7 +963,12 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                     <section className="dossier-section dossier-corroboration">
                         <h2>Web corroboration</h2>
                         {corrobRunning ? (
-                            <p className="dossier-meta">Checking every evidence-bearing pin against live web coverage… DOC 2.0 permits one query every five seconds, so duration grows with the route.</p>
+                            <p className="dossier-meta">
+                                Checking every evidence-bearing pin against live web coverage… DOC 2.0 permits one query every five seconds, so duration grows with the route.
+                                {(corrobProgress?.queries_total ?? 0) > 0 && (
+                                    <> {' '}<strong>{corrobProgress?.queries_done ?? 0} of {corrobProgress?.queries_total} search queries done.</strong></>
+                                )}
+                            </p>
                         ) : corrob ? (
                             <>
                                 {corrob.search_available ? (
@@ -962,6 +977,13 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                     </p>
                                 ) : (
                                     <p className="dossier-meta">{corrob.meta?.search_note ?? 'Web-search lane unavailable — corroboration not measured.'}</p>
+                                )}
+                                {/* V5: a degraded run says which part of it is missing. An
+                                    unmeasured pin must never read as "no coverage found". */}
+                                {corroborationCoverageText(corrob) && (
+                                    <p className="dossier-meta dossier-corrob-partial">
+                                        ⚠ {corroborationCoverageText(corrob)}
+                                    </p>
                                 )}
                                 {corrob.pins.map(p => (
                                     <div key={p.id} className="dossier-pin">
@@ -975,6 +997,11 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                             as one voice)"). Rendered whole, never truncated, never
                                             restated in our own words beside it. */}
                                         <div className="dossier-pin-summary">{p.note}</div>
+                                        {pinSearchStatusText(p) && (
+                                            <div className="dossier-meta dossier-corrob-lane">
+                                                ⚠ {pinSearchStatusText(p)}
+                                            </div>
+                                        )}
                                         {/* corroborate-v2 verdict block — template-shaped and aged
                                             matches are SHOWN set-aside (muted), never folded into
                                             the backing count. Renders only when a verdict travels

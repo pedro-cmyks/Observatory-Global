@@ -35,10 +35,22 @@ export interface CorroborationCitation {
   credibility?: CorroborationCredibility | null
 }
 
+/** Per-pin health of the SEARCH LANE itself (tren B2 V5) — orthogonal to the
+ *  corroboration status. `ok` = every query answered (a measured zero is still
+ *  ok: "nobody covered this" is an answer). `partial` = some answered.
+ *  `throttled` = GDELT DOC 2.0's one-query-per-five-seconds limit.
+ *  `timeout` = still in flight when the time budget expired. Absent on pre-V5
+ *  payloads, which then render exactly as they did before. */
+export type CorroborationSearchStatus =
+  'ok' | 'partial' | 'throttled' | 'timeout' | 'unavailable' | 'not_applicable'
+
 export interface CorroborationPin {
   id: string
   label: string
   status: 'established' | 'contested' | 'unverified' | 'not_applicable'
+  search_status?: CorroborationSearchStatus
+  queries_run?: number
+  queries_answered?: number
   /** Distinct outlets after syndication clustering — receipts stay visible. */
   independent_outlets: number
   /** corroborate-v2 R1: outlets AFTER ownership collapse — the number the
@@ -149,8 +161,59 @@ export interface CorroborationData {
   search_source: string | null
   window_days: number
   pins: CorroborationPin[]
+  /** V5: true when at least one evidence pin was not fully measured. Absent on
+   *  pre-V5 payloads — absence means "this backend did not measure it", which
+   *  is why the banner stays silent rather than claiming a complete run. */
+  partial?: boolean
+  pins_measured?: number
+  pins_applicable?: number
   coverage_asymmetry: { note: string; provider: string | null } | null
-  meta?: { independence_rule?: string; status_rule?: string; search_note?: string | null }
+  meta?: {
+    independence_rule?: string
+    status_rule?: string
+    search_note?: string | null
+    search_status_rule?: string
+    budget_seconds?: number
+    elapsed_seconds?: number
+    throttle_interval_seconds?: number
+  }
+}
+
+/** Why this pin is not fully measured, in one line — or null when it is (or
+ *  when the backend did not say). Never converts an unmeasured pin into a
+ *  zero. Pure. */
+export function pinSearchStatusText(p: CorroborationPin): string | null {
+  const s = p.search_status
+  if (!s || s === 'ok' || s === 'not_applicable') return null
+  if (s === 'throttled') {
+    return 'web lane throttled — GDELT DOC 2.0 allows one query every five seconds; not measured'
+  }
+  if (s === 'timeout') {
+    return 'web lane did not answer inside the time budget — not measured'
+  }
+  if (s === 'partial') {
+    const run = p.queries_run ?? 0
+    const answered = p.queries_answered ?? 0
+    return run
+      ? `partially measured — ${answered} of ${run} search queries answered`
+      : 'partially measured'
+  }
+  return 'web lane unavailable — not measured'
+}
+
+/** The run-level honesty banner: "web lane throttled — 1 of 3 evidence pins
+ *  measured". null when the run was complete or the backend is pre-V5. Pure. */
+export function corroborationCoverageText(c: CorroborationData): string | null {
+  if (!c.partial) return null
+  const measured = c.pins_measured ?? 0
+  const applicable = c.pins_applicable ?? c.pins.length
+  const states = new Set(c.pins.map(p => p.search_status))
+  const why = states.has('throttled')
+    ? 'web lane throttled'
+    : states.has('timeout')
+      ? 'web lane timed out'
+      : 'web lane degraded'
+  return `${why} — ${measured} of ${applicable} evidence pins measured; the rest are shown unmeasured, not as zero coverage`
 }
 
 /** ✓ established / ⚠ contested / ? unverified — the per-pin status chip. */
@@ -320,6 +383,94 @@ export async function fetchCorroboration(
   }
 }
 
+// ── Job + poll (the proxy ceiling binds after serialization) ─────────────────
+// MEASURED against prod (2026-08-12): a corroboration run costs ~5.75s per
+// search query (the DOC 2.0 1-req/5s throttle) + ~12s fixed — 3 evidence pins
+// = 46.3s, 4 pins = 57.8s — against a ~30s Vercel rewrite ceiling. Any real
+// investigation therefore dies as a silent 502 on a single request (the fresh
+// Frank test: 2 of 4 runs). So the client STARTS a run and polls it, the same
+// shape as the universe build and the article-enrichment fill.
+
+export interface CorroborationJobProgress {
+  queries_total?: number
+  queries_done?: number
+  pins_total?: number
+  pins_applicable?: number
+}
+
+export interface CorroborationJob {
+  job_id: string | null
+  status: 'running' | 'done' | 'error' | 'unknown'
+  progress: CorroborationJobProgress
+  result: CorroborationData | null
+  error?: string | null
+}
+
+const JOB_POLL_MS = 2000
+const JOB_MAX_WAIT_MS = 6 * 60 * 1000
+
+export async function startCorroboration(
+  body: ReturnType<typeof buildCorroborationRequest>,
+  force = false,
+): Promise<CorroborationJob | null> {
+  try {
+    const res = await fetch('/api/v2/dossier/corroborate/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, force }),
+    })
+    if (!res.ok) return null
+    return await res.json() as CorroborationJob
+  } catch {
+    return null
+  }
+}
+
+export async function pollCorroboration(jobId: string): Promise<CorroborationJob | null> {
+  try {
+    const res = await fetch(`/api/v2/dossier/corroborate/status/${encodeURIComponent(jobId)}`)
+    if (!res.ok) return null
+    return await res.json() as CorroborationJob
+  } catch {
+    return null
+  }
+}
+
+/** Start a run and poll it to completion. Returns the payload, or null when the
+ *  run was lost/failed — the caller renders its honest failure state and never
+ *  an empty result. Falls back to the synchronous endpoint when the job path is
+ *  not available (older backend), so a stale deploy degrades instead of dying. */
+export async function runCorroborationJob(
+  body: ReturnType<typeof buildCorroborationRequest>,
+  force = false,
+  opts?: {
+    pollMs?: number
+    maxWaitMs?: number
+    onProgress?: (p: CorroborationJobProgress) => void
+    signal?: { aborted: boolean }
+  },
+): Promise<CorroborationData | null> {
+  const pollMs = opts?.pollMs ?? JOB_POLL_MS
+  const maxWaitMs = opts?.maxWaitMs ?? JOB_MAX_WAIT_MS
+  const started = await startCorroboration(body, force)
+  if (!started) return await fetchCorroboration(body, force)
+  if (started.status === 'done') return started.result
+  if (started.status === 'error' || !started.job_id) return null
+  opts?.onProgress?.(started.progress ?? {})
+
+  const deadline = Date.now() + maxWaitMs
+  while (Date.now() < deadline) {
+    if (opts?.signal?.aborted) return null
+    await new Promise(r => setTimeout(r, pollMs))
+    const snap = await pollCorroboration(started.job_id)
+    if (!snap) continue
+    opts?.onProgress?.(snap.progress ?? {})
+    if (snap.status === 'done') return snap.result
+    if (snap.status === 'error' || snap.status === 'unknown') return null
+  }
+  return null
+}
+
 // ── Per-investigation cache (re-run on demand) ───────────────────────────────
 const CACHE_KEY = 'atlas.corroboration.v2'
 const CACHE_MAX_AGE_MS = 24 * 3600 * 1000
@@ -380,10 +531,17 @@ export function corroborationMarkdown(c: CorroborationData): string[] {
   } else {
     lines.push(`*Source: ${c.search_source ?? 'unknown'} · ${corroborationWindowText(c)} · syndicated wire copies collapse to one source; independently-operated outlets counted, never articles.*`)
   }
+  const coverage = corroborationCoverageText(c)
+  if (coverage) {
+    lines.push('')
+    lines.push(`**⚠ ${coverage}**`)
+  }
   lines.push('')
   for (const p of c.pins) {
     lines.push(`### ${statusChip(p.status)} — ${p.label}`)
     lines.push(`${p.note} (${pinCountsText(p)})`)
+    const lane = pinSearchStatusText(p)
+    if (lane) lines.push(`_${lane}_`)
     const facets = verdictFacets(p.verdict)
     if (facets.length) {
       lines.push(`Verdict: ${facets.map(f => f.label).join(' · ')}`)

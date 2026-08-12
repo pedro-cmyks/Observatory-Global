@@ -1242,6 +1242,29 @@ class CorroborateRequest(BaseModel):
 
 _CORROB_CACHE: dict = {}
 _CORROB_CACHE_TTL_S = 900
+
+# ── Time budgets (tren B2 V5) ────────────────────────────────────────────────
+# MEASURED against prod before this change (scratchpad harness, distinct stories
+# per run so the 30-min DOC 2.0 cache could not flatter a later run):
+#     1 evidence pin  (2 queries) ≈ 23s
+#     2 evidence pins (4 queries) ≈ 35s
+#     3 evidence pins (6 queries)  = 46.3s
+#     4 evidence pins (8 queries)  = 57.8s
+# i.e. ~5.75s per query (the 5.1s DOC 2.0 throttle + fetch jitter) + ~12s fixed.
+# The Vercel rewrite ceiling sits at ~30s (Frank: 21.7s → 200, 31.4s → 502), so
+# ANY investigation with two evidence pins exceeds it by construction. Two
+# consequences, both implemented below:
+#   * the synchronous POST is BUDGETED under the ceiling and returns honest
+#     partials instead of dying as a proxy 502;
+#   * the real run is a JOB the client polls (universe/enrichment pattern).
+CORROB_SYNC_BUDGET_S = float(os.getenv("ATLAS_CORROB_SYNC_BUDGET_S", "20"))
+CORROB_JOB_BUDGET_S = float(os.getenv("ATLAS_CORROB_JOB_BUDGET_S", "300"))
+# The asymmetry LLM pass is a phrasing nicety; it never eats the budget the
+# receipts need.
+CORROB_LLM_RESERVE_S = 8.0
+
+_CORROB_JOBS: dict[str, dict] = {}
+_CORROB_JOB_TTL_S = 1800
 _ASYMMETRY_SYSTEM = (
     "You compare what an analyst's PINNED evidence emphasizes versus what WEB "
     "coverage titles emphasize, per story and overall. STRICT RULES: use ONLY "
@@ -1269,33 +1292,43 @@ def _asymmetry_user(pins: list[CorrobPin], web_titles: dict[str, list[str]]) -> 
     return "\n".join(parts)
 
 
-@router.post("/corroborate")
-async def dossier_corroborate(req: CorroborateRequest):
-    """Per-pin web corroboration with source-independence weighting."""
+def _corrob_cache_key(req: CorroborateRequest):
+    return (tuple(sorted(
+        (p.id, p.label, p.anchor_type, tuple(p.actors), tuple(p.evidence))
+        for p in req.pins
+    )), req.days,
+        tuple(sorted((s.pin_id, s.title) for s in req.supplied_results)))
+
+
+async def _run_corroboration(
+    req: CorroborateRequest,
+    *,
+    budget_s: float,
+    progress: dict | None = None,
+) -> dict:
+    """The measurement itself, under a HARD wall-clock budget.
+
+    Queries are launched together and released 5.1s apart by the shared DOC 2.0
+    throttle (app.services.external_depth.throttle) — that pacing IS the
+    dominant cost, so the budget is what keeps the response inside any proxy
+    ceiling. When it expires, in-flight queries are cancelled and their pins say
+    `timeout`; every pin that DID land still serves its receipts. Partial is a
+    STATE, never a silent shorter list and never an all-or-nothing failure.
+    """
     import asyncio
 
     from app.services.corroboration import (
         MAX_CITATIONS_PER_PIN, build_pin_queries, independence, pin_status,
         ESTABLISHED_MIN_OUTLETS,
     )
-    from app.services.external_depth import fetch_external_depth
+    from app.services import external_depth
     from app.services.source_tiers import ownership_group, tier_payload
 
     pins = req.pins
     timespan = f"{req.days}d"
+    started = time.monotonic()
+    deadline = started + budget_s
 
-    cache_key = (tuple(sorted(
-        (p.id, p.label, p.anchor_type, tuple(p.actors), tuple(p.evidence))
-        for p in pins
-    )), req.days,
-                 tuple(sorted((s.pin_id, s.title) for s in req.supplied_results)))
-    if not req.force:
-        hit = _CORROB_CACHE.get(cache_key)
-        if hit and time.monotonic() - hit[0] < _CORROB_CACHE_TTL_S:
-            return hit[1]
-
-    # 1-2 focused queries per pin, all fetched concurrently (DOC 2.0 p50 is
-    # 16-35s per query — sequential would take minutes).
     pin_queries: dict[str, list[str]] = {
         p.id: (
             build_pin_queries(p.label, p.actors, p.evidence)
@@ -1303,20 +1336,54 @@ async def dossier_corroborate(req: CorroborateRequest):
         )
         for p in pins
     }
-    tasks: list = []
-    task_owner: list[tuple[str, str]] = []   # (pin_id, query)
+    tasks: dict[Any, tuple[str, str]] = {}   # task -> (pin_id, query)
     for p in pins:
         for q in pin_queries[p.id]:
-            tasks.append(fetch_external_depth(p.label, raw_query=q, timespan=timespan))
-            task_owner.append((p.id, q))
-    results = await asyncio.gather(*tasks, return_exceptions=True) if tasks else []
+            task = asyncio.ensure_future(
+                external_depth.fetch_external_depth_status(
+                    p.label, raw_query=q, timespan=timespan))
+            tasks[task] = (p.id, q)
+
+    if progress is not None:
+        progress.update({"queries_total": len(tasks), "queries_done": 0,
+                         "pins_total": len(pins),
+                         "pins_applicable": sum(1 for p in pins if p.evidence)})
+
+    # Per-query outcome, so a pin can report HOW MUCH of it was measured.
+    query_states: dict[str, list[str]] = {p.id: [] for p in pins}
+    results: list[tuple[tuple[str, str], Any]] = []
+    pending = set(tasks)
+    while pending:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        done, pending = await asyncio.wait(
+            pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            pin_id, q = tasks[task]
+            try:
+                out = task.result()
+            except Exception as exc:  # noqa: BLE001 — a raising lane is a gap
+                logger.warning("corroboration query failed (%s): %s",
+                               q, str(exc)[:120])
+                out = {"status": "down", "result": None}
+            state = (out or {}).get("status") or "down"
+            query_states[pin_id].append(state)
+            results.append(((pin_id, q), (out or {}).get("result")))
+            if progress is not None:
+                progress["queries_done"] = progress.get("queries_done", 0) + 1
+    for task in pending:                      # budget expired — cut, don't hang
+        task.cancel()
+        pin_id, q = tasks[task]
+        query_states[pin_id].append("timeout")
+        logger.warning("corroboration budget expired with query in flight: %s", q)
 
     any_lane_ok = False
     lane_ok_by_pin: dict[str, bool] = {p.id: False for p in pins}
     articles_by_pin: dict[str, list[dict]] = {p.id: [] for p in pins}
     seen_urls: dict[str, set] = {p.id: set() for p in pins}
-    for (pin_id, _q), res in zip(task_owner, results):
-        if isinstance(res, Exception) or res is None:
+    for (pin_id, _q), res in results:
+        if res is None:
             continue
         any_lane_ok = True
         lane_ok_by_pin[pin_id] = True
@@ -1364,12 +1431,24 @@ async def dossier_corroborate(req: CorroborateRequest):
         ind = independence(arts, group_fn=ownership_group)
         pin_search_available = lane_ok_by_pin[p.id]
         applicable = bool(p.evidence)
+        states = query_states[p.id]
+        queries_run = len(pin_queries[p.id])
+        queries_answered = sum(1 for s in states if s == "ok")
+        search_state = _pin_search_state(
+            applicable=applicable,
+            states=states,
+            answered=queries_answered,
+            supplied=bool(pin_search_available and not states),
+        )
         status, note = pin_status(
             ind["independent_voices"],
             pin_search_available,
             applicable=applicable,
             outlets=ind["independent_outlets"],
             state_collapsed=ind["state_collapsed"],
+            search_state=search_state,
+            queries_run=queries_run,
+            queries_answered=queries_answered,
         )
         citations = [{
             "title": c["title"], "url": c["url"], "outlet": c["outlet"],
@@ -1398,12 +1477,29 @@ async def dossier_corroborate(req: CorroborateRequest):
             "citations": citations,
             "note": note,
             "queries": pin_queries[p.id],
+            # tren-B2 V5: the lane's own health, per pin. The backend already
+            # measured this and threw it away — without it the render cannot
+            # distinguish "nobody covered this" from "we never asked".
+            "search_status": search_state,
+            "queries_run": queries_run,
+            "queries_answered": queries_answered,
         })
 
+    applicable_pins = [pp for pp in pin_payloads
+                       if pp["search_status"] != "not_applicable"]
+    measured_pin_count = sum(1 for pp in applicable_pins
+                             if pp["search_status"] == "ok")
+    partial = any(pp["search_status"] not in ("ok", "not_applicable")
+                  for pp in pin_payloads)
+    degraded_states = {pp["search_status"] for pp in applicable_pins
+                       if pp["search_status"] != "ok"}
+
     # ONE LLM call, phrasing only — the coverage-asymmetry slot (glass-box:
-    # built strictly from the gathered titles + pinned headlines).
+    # built strictly from the gathered titles + pinned headlines). It never
+    # eats the budget: with no room left the slot is honestly absent.
     asymmetry = None
-    if search_available and any(wt for wt in web_titles.values()):
+    llm_room = (deadline - time.monotonic()) >= CORROB_LLM_RESERVE_S
+    if search_available and llm_room and any(wt for wt in web_titles.values()):
         try:
             measured_pins = [p for p in pins if lane_ok_by_pin[p.id]]
             text, provider, _err, _usage = await generate_insight(
@@ -1423,6 +1519,12 @@ async def dossier_corroborate(req: CorroborateRequest):
                          ("client-supplied" if supplied_any else None),
         "window_days": req.days,
         "pins": pin_payloads,
+        # Partial is a first-class STATE (V5): the render must be able to say
+        # "web lane throttled — 2 of 3 pins measured" instead of presenting a
+        # thinned-out run as the whole answer.
+        "partial": partial,
+        "pins_measured": measured_pin_count,
+        "pins_applicable": len(applicable_pins),
         "coverage_asymmetry": asymmetry,
         "meta": {
             "independence_rule": (
@@ -1438,24 +1540,185 @@ async def dossier_corroborate(req: CorroborateRequest):
                 "(not emitted by this math); metadata-only context with no "
                 "frozen evidence is not_applicable"),
             "dropped_pins": 0,
-            "search_note": (
-                None
-                if search_available
-                else (
-                    "no evidence-bearing pins — context remains in the dossier "
-                    "but has no frozen claim to corroborate"
-                    if not any(p.evidence for p in pins)
-                    else (
-                        "no server-side web-search path answered — GDELT DOC "
-                        "2.0 unreachable and no supplied results; a SERP/Brave "
-                        "key would add a generic-web lane"
-                    )
-                )
+            "search_status_rule": (
+                "per pin: ok = every query answered · partial = some answered "
+                "· throttled = GDELT DOC 2.0 rate limit (one query / 5s) · "
+                "timeout = the query was still in flight at the time budget · "
+                "unavailable = the lane did not answer · not_applicable = no "
+                "frozen evidence to corroborate"),
+            "budget_seconds": budget_s,
+            "elapsed_seconds": round(time.monotonic() - started, 1),
+            "throttle_interval_seconds": external_depth._RATE_INTERVAL_S,
+            "search_note": _corrob_search_note(
+                search_available=search_available,
+                any_evidence=any(p.evidence for p in pins),
+                degraded_states=degraded_states,
+                measured=measured_pin_count,
+                applicable=len(applicable_pins),
             ),
         },
     }
-    _CORROB_CACHE[cache_key] = (time.monotonic(), payload)
     return payload
+
+
+def _pin_search_state(*, applicable: bool, states: list[str],
+                      answered: int, supplied: bool) -> str:
+    """One pin's lane health from its per-query outcomes. Glass-box, no guess:
+    a throttle and a dead lane are different facts and stay different."""
+    if not applicable:
+        return "not_applicable"
+    if not states:
+        # No web query ran for this pin (client-supplied results only).
+        return "ok" if supplied else "unavailable"
+    if answered == len(states):
+        return "ok"
+    if answered:
+        return "partial"
+    if "throttled" in states:
+        return "throttled"
+    if "timeout" in states:
+        return "timeout"
+    return "unavailable"
+
+
+def _corrob_search_note(*, search_available: bool, any_evidence: bool,
+                        degraded_states: set, measured: int,
+                        applicable: int) -> str | None:
+    """The one-line honest account of what this run did and did not reach."""
+    if not any_evidence:
+        return ("no evidence-bearing pins — context remains in the dossier "
+                "but has no frozen claim to corroborate")
+    if not search_available:
+        if "throttled" in degraded_states:
+            return ("GDELT DOC 2.0 throttled this run (it allows one query "
+                    "every five seconds) — corroboration not measured; "
+                    "re-run in a minute")
+        if "timeout" in degraded_states:
+            return ("the web lane did not answer inside the time budget — "
+                    "corroboration not measured; re-run to extend it")
+        return ("no server-side web-search path answered — GDELT DOC "
+                "2.0 unreachable and no supplied results; a SERP/Brave "
+                "key would add a generic-web lane")
+    if degraded_states:
+        why = ("throttled" if "throttled" in degraded_states
+               else "timed out" if "timeout" in degraded_states
+               else "did not answer")
+        return (f"web lane {why} on part of this run — {measured} of "
+                f"{applicable} evidence pins measured; the rest are shown "
+                "unmeasured, not as zero coverage")
+    return None
+
+
+@router.post("/corroborate")
+async def dossier_corroborate(req: CorroborateRequest):
+    """Per-pin web corroboration with source-independence weighting.
+
+    Synchronous form, BUDGETED under the proxy ceiling (see CORROB_SYNC_BUDGET_S)
+    so it can never die as a 502 — a run that outgrows the budget comes back
+    partial and says so. A full route (2+ evidence pins) needs the job form
+    below; this one stays for single-pin runs, scripts and direct API callers.
+    """
+    cache_key = _corrob_cache_key(req)
+    if not req.force:
+        hit = _CORROB_CACHE.get(cache_key)
+        if hit and time.monotonic() - hit[0] < _CORROB_CACHE_TTL_S:
+            return hit[1]
+    payload = await _run_corroboration(req, budget_s=CORROB_SYNC_BUDGET_S)
+    # A degraded run is never replayed as the answer for 15 minutes.
+    if not payload.get("partial"):
+        _CORROB_CACHE[cache_key] = (time.monotonic(), payload)
+    return payload
+
+
+# ── Job + poll (the proxy ceiling binds after serialization) ─────────────────
+# Measured: a 3-pin route takes 46.3s and a 4-pin route 57.8s, against a ~30s
+# Vercel rewrite ceiling. Serialization + partials alone cannot fit a real
+# investigation into one HTTP response, so the client STARTS a run and polls it
+# — the same shape as the universe build and the article-enrichment fill.
+# Job state is in-process (one uvicorn worker, matching _CORROB_CACHE); a
+# machine restart loses the job and the poll answers `unknown`, which the client
+# renders as "the run was interrupted — re-run", never as a result.
+
+def _prune_corrob_jobs() -> None:
+    cutoff = time.monotonic() - _CORROB_JOB_TTL_S
+    for jid, job in list(_CORROB_JOBS.items()):
+        if job.get("updated_at", 0) < cutoff:
+            _CORROB_JOBS.pop(jid, None)
+
+
+def _job_snapshot(job: dict) -> dict:
+    return {
+        "contract": "dossier-corroboration-job-v1",
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "progress": dict(job["progress"]),
+        "result": job.get("result"),
+        "error": job.get("error"),
+    }
+
+
+@router.post("/corroborate/start")
+async def dossier_corroborate_start(req: CorroborateRequest):
+    """Start a corroboration run; returns immediately with a job id.
+
+    A complete cached run is returned inline (status `done`) — polling for a
+    result we already hold would only add a round trip.
+    """
+    import asyncio
+    import uuid
+
+    _prune_corrob_jobs()
+    cache_key = _corrob_cache_key(req)
+    if not req.force:
+        hit = _CORROB_CACHE.get(cache_key)
+        if hit and time.monotonic() - hit[0] < _CORROB_CACHE_TTL_S:
+            return {"contract": "dossier-corroboration-job-v1",
+                    "job_id": None, "status": "done",
+                    "progress": {"queries_total": 0, "queries_done": 0,
+                                 "pins_total": len(req.pins),
+                                 "pins_applicable": sum(
+                                     1 for p in req.pins if p.evidence)},
+                    "result": hit[1], "error": None, "cached": True}
+
+    job_id = uuid.uuid4().hex[:16]
+    job: dict = {
+        "job_id": job_id, "status": "running", "error": None, "result": None,
+        "updated_at": time.monotonic(),
+        "progress": {"queries_total": max(1, sum(1 for p in req.pins if p.evidence)),
+                     "queries_done": 0, "pins_total": len(req.pins),
+                     "pins_applicable": sum(1 for p in req.pins if p.evidence)},
+    }
+    _CORROB_JOBS[job_id] = job
+
+    async def _run() -> None:
+        try:
+            payload = await _run_corroboration(
+                req, budget_s=CORROB_JOB_BUDGET_S, progress=job["progress"])
+            job["result"] = payload
+            job["status"] = "done"
+            if not payload.get("partial"):
+                _CORROB_CACHE[cache_key] = (time.monotonic(), payload)
+        except Exception as exc:  # noqa: BLE001 — the job carries its own error
+            logger.exception("corroboration job %s failed", job_id)
+            job["status"] = "error"
+            job["error"] = str(exc)[:200]
+        finally:
+            job["updated_at"] = time.monotonic()
+
+    job["task"] = asyncio.ensure_future(_run())
+    return {**_job_snapshot(job), "cached": False}
+
+
+@router.get("/corroborate/status/{job_id}")
+async def dossier_corroborate_status(job_id: str):
+    """Poll a run. `unknown` = the job is gone (restart / expiry) — the client
+    says so and offers a re-run; it never renders absence as a measurement."""
+    job = _CORROB_JOBS.get(job_id)
+    if job is None:
+        return {"contract": "dossier-corroboration-job-v1", "job_id": job_id,
+                "status": "unknown", "progress": {}, "result": None,
+                "error": "job not found — it expired or the server restarted"}
+    return _job_snapshot(job)
 
 
 @router.post("/synthesize")

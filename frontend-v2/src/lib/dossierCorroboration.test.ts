@@ -382,3 +382,144 @@ describe('markdown export carries the same honesty fields as the screen', () => 
     expect(md).toContain('none official/wire')
   })
 })
+
+// ── tren B2 V5: partial/throttled states are RENDERABLE facts ───────────────
+import {
+  pinSearchStatusText, corroborationCoverageText, startCorroboration,
+  pollCorroboration, runCorroborationJob,
+} from './dossierCorroboration'
+
+const cpin = (over: Partial<CorroborationPin>): CorroborationPin => ({
+  id: 'p1', label: 'Syria Russia Bases Deal', status: 'established',
+  independent_outlets: 5, independent_voices: 4, state_collapsed: 1,
+  total_articles: 12, syndicated_clusters: 2, single_source: false,
+  citations: [], note: '4 independent voices', queries: ['syria russia bases'],
+  ...over,
+})
+
+const cdata = (over: Partial<CorroborationData>): CorroborationData => ({
+  contract: 'dossier-corroboration-v1', measured_at: '2026-08-12T10:00:00Z',
+  search_available: true, search_source: 'gdelt-doc-2.0', window_days: 14,
+  pins: [], coverage_asymmetry: null,
+  ...over,
+})
+
+describe('pinSearchStatusText', () => {
+  it('says nothing when the pin was fully measured', () => {
+    expect(pinSearchStatusText(cpin({ search_status: 'ok' }))).toBeNull()
+    expect(pinSearchStatusText(cpin({ search_status: 'not_applicable' }))).toBeNull()
+  })
+
+  it('names the rate limit rather than a generic failure', () => {
+    const t = pinSearchStatusText(cpin({ search_status: 'throttled' }))
+    expect(t).toMatch(/throttled/i)
+  })
+
+  it('reports how much of a partial pin was measured', () => {
+    const t = pinSearchStatusText(cpin({
+      search_status: 'partial', queries_run: 2, queries_answered: 1,
+    }))
+    expect(t).toMatch(/1 of 2/)
+  })
+
+  it('a timed-out pin says so, never reads as zero coverage', () => {
+    expect(pinSearchStatusText(cpin({ search_status: 'timeout' }))).toMatch(/time budget/i)
+  })
+
+  it('a pre-V5 payload with no search_status stays silent', () => {
+    expect(pinSearchStatusText(cpin({}))).toBeNull()
+  })
+})
+
+describe('corroborationCoverageText', () => {
+  it('is null on a complete run', () => {
+    expect(corroborationCoverageText(cdata({
+      partial: false, pins_measured: 2, pins_applicable: 2,
+    }))).toBeNull()
+  })
+
+  it('names the throttle and the measured fraction', () => {
+    const t = corroborationCoverageText(cdata({
+      partial: true, pins_measured: 1, pins_applicable: 3,
+      pins: [cpin({ search_status: 'throttled' }), cpin({ id: 'p2', search_status: 'ok' })],
+    }))
+    expect(t).toMatch(/throttled/i)
+    expect(t).toMatch(/1 of 3/)
+  })
+
+  it('a pre-V5 payload (no partial field) shows no banner', () => {
+    expect(corroborationCoverageText(cdata({ pins: [cpin({})] }))).toBeNull()
+  })
+})
+
+describe('job + poll', () => {
+  beforeEach(() => { vi.restoreAllMocks() })
+
+  it('start returns the job snapshot', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => ({ job_id: 'abc', status: 'running', progress: { queries_done: 0, queries_total: 4 }, result: null }),
+    })) as never)
+    const started = await startCorroboration({ pins: [], days: 14 } as never, false)
+    expect(started?.job_id).toBe('abc')
+    expect(started?.status).toBe('running')
+  })
+
+  it('a cached start comes back done with the result inline', async () => {
+    const result = cdata({ pins: [cpin({})] })
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => ({ job_id: null, status: 'done', progress: {}, result }),
+    })) as never)
+    const started = await startCorroboration({ pins: [], days: 14 } as never, false)
+    expect(started?.status).toBe('done')
+    expect(started?.result?.pins).toHaveLength(1)
+  })
+
+  it('polls until done and returns the payload', async () => {
+    const result = cdata({ pins: [cpin({})] })
+    let calls = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).includes('/start')) {
+        return { ok: true, json: async () => ({ job_id: 'j1', status: 'running', progress: { queries_done: 0, queries_total: 2 }, result: null }) }
+      }
+      calls += 1
+      return calls < 2
+        ? { ok: true, json: async () => ({ job_id: 'j1', status: 'running', progress: { queries_done: 1, queries_total: 2 }, result: null }) }
+        : { ok: true, json: async () => ({ job_id: 'j1', status: 'done', progress: { queries_done: 2, queries_total: 2 }, result }) }
+    }) as never)
+    const seen: number[] = []
+    const out = await runCorroborationJob({ pins: [], days: 14 } as never, false, {
+      pollMs: 1, onProgress: p => seen.push(p.queries_done ?? 0),
+    })
+    expect(out?.pins).toHaveLength(1)
+    expect(seen.length).toBeGreaterThan(0)
+  })
+
+  it('a lost job resolves to null — never a fabricated empty result', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (
+      String(url).includes('/start')
+        ? { ok: true, json: async () => ({ job_id: 'gone', status: 'running', progress: {}, result: null }) }
+        : { ok: true, json: async () => ({ job_id: 'gone', status: 'unknown', progress: {}, result: null }) }
+    )) as never)
+    const out = await runCorroborationJob({ pins: [], days: 14 } as never, false, { pollMs: 1 })
+    expect(out).toBeNull()
+  })
+
+  it('poll returns the snapshot as-is', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => ({ job_id: 'j', status: 'running', progress: { queries_done: 1, queries_total: 3 }, result: null }),
+    })) as never)
+    const snap = await pollCorroboration('j')
+    expect(snap?.progress.queries_total).toBe(3)
+  })
+})
+
+describe('markdown carries the degraded state', () => {
+  it('prints the coverage line when the run was partial', () => {
+    const md = corroborationMarkdown(cdata({
+      partial: true, pins_measured: 1, pins_applicable: 2,
+      pins: [cpin({ search_status: 'throttled', note: 'web lane throttled' })],
+    })).join('\n')
+    expect(md).toMatch(/throttled/i)
+    expect(md).toMatch(/1 of 2/)
+  })
+})

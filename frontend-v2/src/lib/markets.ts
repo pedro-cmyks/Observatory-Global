@@ -148,6 +148,40 @@ export function formatChangePct(change_pct: number | null | undefined): string |
   return `${sign}${change_pct.toFixed(2)}%`
 }
 
+/**
+ * The window a `change_pct` belongs to, MEASURED from the served series.
+ *
+ * Cold-user probe 2026-08-12: the Brief card printed `WTI ▲ +20.10%` and it
+ * read as a one-day move; the window (`· 30d`) appeared only after drilling
+ * into the full chart. Council N19's discipline applies verbatim — a number
+ * never renders without its window, and the window is the one the number
+ * actually belongs to, never a hardcoded default.
+ *
+ * Stated in SESSIONS, not days: `markets/push_atlas_db.latest_snapshots` takes
+ * the trailing N ROWS of `market_price_daily` (trading days), so 30 closes span
+ * roughly six calendar weeks. Printing "30d" would swap a right label for a
+ * wrong one. A short/patchy series labels itself honestly ("12 sessions").
+ *
+ * Returns null when fewer than two finite closes exist — there is no delta to
+ * label, and the tile prints no percentage either.
+ */
+export function changeWindowLabel(
+  inst: Pick<MarketInstrument, 'spark_30d'> | { spark_30d?: number[] | null },
+): string | null {
+  const clean = (inst.spark_30d ?? []).filter(v => typeof v === 'number' && isFinite(v))
+  if (clean.length < 2) return null
+  return `${clean.length} session${clean.length === 1 ? '' : 's'}`
+}
+
+/** Tip for the window chip: what the delta spans, and what it is NOT. */
+export function changeWindowTip(
+  inst: Pick<MarketInstrument, 'spark_30d'> | { spark_30d?: number[] | null },
+): string | null {
+  const label = changeWindowLabel(inst)
+  if (!label) return null
+  return `Net change across the last ${label} of daily closes (first vs last) — NOT today's move, and not a claim that news moved it.`
+}
+
 /** A neutral triangle glyph for direction — redundant with color + the signed %,
  *  so color is never the sole channel (CVD safety, design §7). */
 export function directionGlyph(dir: MarketDirection): string {

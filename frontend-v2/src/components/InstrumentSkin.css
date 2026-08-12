@@ -120,6 +120,17 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* The window the delta was measured over (cold-user probe 2026-08-12: a bare
+   `▲ +20.10%` read as a one-day move). Muted and secondary — it qualifies the
+   number, it does not compete with it — but never hidden and never truncated. */
+.atlas-instrument-window {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--color-text-tertiary, rgba(127, 127, 127, 0.85));
+}
 .atlas-instrument-change--up { color: var(--mkt-up); }
 .atlas-instrument-change--down { color: var(--mkt-down); }
 .atlas-instrument-change--flat { color: var(--mkt-flat); }

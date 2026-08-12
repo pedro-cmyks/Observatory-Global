@@ -487,6 +487,18 @@
     cursor: help;
 }
 
+/* tren B2 V5 — a run that could not reach every pin says so, at run level and
+   at pin level. Warning-toned, never alarm-toned: the measurement is honest,
+   it is simply incomplete, and the analyst must be able to see WHICH part. */
+.dossier-corrob-partial,
+.dossier-corrob-lane {
+    color: var(--color-warning, #d99a2b);
+    border-left: 2px solid var(--color-warning, #d99a2b);
+    padding-left: 8px;
+    margin-top: 4px;
+}
+.dossier-corrob-lane { font-size: 11px; }
+
 /* R3c defect 16 — emerald: title-edit hint was rgba(243,244,246,.35) — a
    near-white ghost, invisible on the white dossier page. Scoped; noir exact. */
 [data-theme^='emerald'] .dossier-title-edit {
