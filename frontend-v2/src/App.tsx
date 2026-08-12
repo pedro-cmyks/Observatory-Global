@@ -50,6 +50,8 @@ import type { PublicAttentionOrigin } from './lib/publicAttention'
 import { prefetchBriefing } from './lib/briefingPrefetch'
 import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
 import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
+import { fieldCoverageReadout } from './lib/fieldCoverage'
+import { coverageStartIsStale, coverageStartLabel } from './lib/dataCoverageStart'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
@@ -1566,8 +1568,12 @@ function AppContent() {
   // (MapLibre overlay-push + native layer-handler effects removed with the
   //  2026-07-04 deprecation — EE renders overlays from nativeOverlayData.)
 
-  // Total signals for stats
-  const totalSignals = nodes.reduce((sum, n) => sum + n.signalCount, 0)
+  // Field readout for the header. This used to sum the RENDERED nodes, but
+  // /api/v2/nodes is a map endpoint that drops every country it cannot plot —
+  // so the header printed "175 countries · 100,587 signals" while the dock and
+  // the Brief printed "218 · 109,632" off the same table (cold-user probe §4).
+  // The endpoint now discloses both; print the counted base, name the undrawn.
+  const fieldReadout = fieldCoverageReadout(focusMeta.coverage, nodes)
   const historicalCoverageCue = buildHistoricalCoverageCue({
     source: focusMeta.source,
     coverage: focusMeta.coverage,
@@ -1587,18 +1593,39 @@ function AppContent() {
     navigate(qs ? `/brief?${qs}` : '/brief')
   }
 
-  // Data coverage start date
+  // Data coverage start date.
+  //
+  // `oldest_signal` is a RETENTION FLOOR that advances daily. This used to be a
+  // one-shot `[]`-deps fetch, and <App/> never unmounts (the Brief↔console
+  // keep-alive shell hides panes with display:none), so the value froze for the
+  // life of the browser session. On a PWA phone session that lasts days, the
+  // chip read `FROM 5 AUG` while a freshly-loaded desktop read `FROM 9 AUG`
+  // (cold-user probe 2026-08-12 §4). Revalidate whenever the document comes
+  // back to the foreground and the cached floor has aged out.
   const [dataStartDate, setDataStartDate] = useState<string | null>(null)
+  const dataStartFetchedAt = useRef<number | null>(null)
   useEffect(() => {
-    fetch('/api/v2/stats')
-      .then(r => r.json())
-      .then(d => {
-        if (d.database?.oldest_signal) {
-          const dt = new Date(d.database.oldest_signal)
-          setDataStartDate(dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }))
-        }
-      })
-      .catch(() => { })
+    let cancelled = false
+    const load = () => {
+      if (!coverageStartIsStale(dataStartFetchedAt.current, Date.now())) return
+      fetch('/api/v2/stats')
+        .then(r => r.json())
+        .then(d => {
+          if (cancelled) return
+          const label = coverageStartLabel(d.database?.oldest_signal)
+          // Only stamp the clock on a usable answer, so a degraded response
+          // does not suppress the next revalidation attempt.
+          if (label) {
+            dataStartFetchedAt.current = Date.now()
+            setDataStartDate(label)
+          }
+        })
+        .catch(() => { })
+    }
+    load()
+    const onVisible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
   // Prefetch briefing data so the modal opens instantly — the Brief and the
@@ -1757,9 +1784,9 @@ function AppContent() {
             {loading ? '...' : (
               <span
                 style={{ opacity: isRefetching ? 0.5 : 1, transition: 'opacity 0.2s' }}
-                data-tip={`Countries and signals in the selected time window${filter.country || filter.theme ? ' (filtered view)' : ' (global)'}`}
+                data-tip={`${fieldReadout.tip}${filter.country || filter.theme ? ' Filtered view.' : ''}`}
               >
-                {nodes.length} countries · {totalSignals.toLocaleString()} signals
+                {fieldReadout.label}
               </span>
             )}
             {historicalCoverageCue && (

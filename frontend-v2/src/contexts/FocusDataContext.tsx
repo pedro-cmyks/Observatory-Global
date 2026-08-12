@@ -61,6 +61,19 @@ export interface FocusDataMeta {
         modelVersion?: string | null
         requestedHours?: number | null
         partialCoverage?: boolean | null
+        // Live-window disclosure (cold-user probe §4): /api/v2/nodes drops every
+        // country it cannot plot, so what it COUNTED and what it could MAP are
+        // different numbers. Both are served now so the header can print the
+        // counted base and name the undrawn remainder instead of absorbing it.
+        basis?: string
+        label?: string
+        note?: string
+        counted_countries?: number
+        counted_signals?: number
+        mapped_countries?: number
+        mapped_signals?: number
+        unmapped_countries?: number
+        unmapped_signals?: number
     } | null
 }
 
