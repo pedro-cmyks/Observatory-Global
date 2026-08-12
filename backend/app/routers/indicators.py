@@ -113,7 +113,7 @@ async def get_country_indicators(
                     COUNT(*) as day_count
                 FROM signals_v2
                 WHERE country_code = $1
-                AND timestamp > NOW() - INTERVAL '""" + str(INDICATOR_BASELINE_DAYS) + """ days'
+                AND timestamp > NOW() - INTERVAL '%s days'
                 AND timestamp <= NOW() - INTERVAL '%s hours'
                 GROUP BY day
             )
@@ -123,7 +123,7 @@ async def get_country_indicators(
                 COALESCE(STDDEV(day_count), 0) as baseline_stddev,
                 COUNT(*) as days_observed
             FROM baseline_data
-        """ % (hours, hours), country_code.upper())
+        """ % (hours, INDICATOR_BASELINE_DAYS, hours), country_code.upper())
 
         current_count = volume_data['current_count'] or 0
         baseline_avg = float(volume_data['baseline_avg'] or 0)
