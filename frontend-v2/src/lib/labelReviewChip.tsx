@@ -65,6 +65,7 @@ export type LabelReviewReason =
   | 'label-too-broad'
   | 'low-confidence'
   | 'awaiting-verification'
+  | 'syndicated-family'
 
 export interface LabelReviewInput {
   /** Label Court verdict: 'failed' | 'partial' | 'entailed' | null (unchecked). */
@@ -147,6 +148,8 @@ export function labelReviewTip(reason: LabelReviewReason, labelProposed?: string
       return `Low assignment confidence — this label may not match its receipts yet.${advisory}`
     case 'awaiting-verification':
       return `Not yet verified — this label is queued for its receipt check.${advisory}`
+    case 'syndicated-family':
+      return 'Most of this coverage is one syndicated piece under many mastheads — it can rank, but not lead.'
   }
 }
 

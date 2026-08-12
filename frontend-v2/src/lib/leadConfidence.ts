@@ -40,9 +40,16 @@ export interface LeadGateThread {
   // when a numeric avg_confidence is not carried on the row.
   confidence?: string | null
   label_status?: LabelStatus
+  // T3.1 lead veto (G-JALAPEÑO): the backend demotes a syndicated-family
+  // story out of slot 1 and says why in quality.lead_veto. The gate must
+  // honor it — the arc's own witness re-took the lead THROUGH this gate when
+  // rank #1 lacked a court stamp and the veto wasn't consulted here.
+  quality?: { lead_veto?: string | null } | null
 }
 
-export type LeadBlockReason = 'low-confidence' | 'label-failed' | 'awaiting-verification' | null
+export type LeadBlockReason =
+  | 'low-confidence' | 'label-failed' | 'awaiting-verification'
+  | 'syndicated-family' | null
 
 // Representative numeric value for a served confidence band, used only when a
 // numeric avg_confidence is missing. Mirrors thread_intelligence.confidence_band:
@@ -85,6 +92,7 @@ export function resolveLeadConfidence(t: LeadGateThread): number | null {
  * cycle stamps it). Returns null when eligible.
  */
 export function leadBlockReason(t: LeadGateThread): LeadBlockReason {
+  if (t.quality?.lead_veto) return 'syndicated-family'
   if (t.label_status === 'failed') return 'label-failed'
   const c = resolveLeadConfidence(t)
   if (c == null || c < LEAD_CONFIDENCE_FLOOR) return 'low-confidence'

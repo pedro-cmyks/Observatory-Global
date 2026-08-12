@@ -162,3 +162,25 @@ describe('selectLiveLead', () => {
     expect(sel.awaitingVerification).toBe(false)
   })
 })
+
+describe('lead veto travels to the serving row (G-JALAPEÑO frontend path)', () => {
+  it('a vetoed story never leads, even when everything above it lacks a stamp', () => {
+    // The witness: backend ranked the syndicated recall #2 with
+    // quality.lead_veto, but rank #1 had no court stamp — the old gate
+    // skipped #1 and promoted the witness back to the lead.
+    const threads = [
+      { label_status: null, avg_confidence: 0.9 },                       // unstamped
+      { label_status: 'entailed' as const, avg_confidence: 0.9,
+        quality: { lead_veto: 'syndicated_family' } },                    // the witness
+      { label_status: 'entailed' as const, avg_confidence: 0.85 },        // real story
+    ]
+    const s = selectLiveLead(threads)
+    expect(s.lead).toBe(threads[2])
+    expect(leadBlockReason(threads[1])).toBe('syndicated-family')
+  })
+
+  it('a veto-free payload behaves exactly as before', () => {
+    const t = { label_status: 'entailed' as const, avg_confidence: 0.9, quality: {} }
+    expect(leadBlockReason(t)).toBeNull()
+  })
+})
