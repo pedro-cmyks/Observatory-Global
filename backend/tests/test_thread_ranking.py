@@ -317,3 +317,98 @@ def test_correctly_typed_sport_is_damped_below_news_despite_global_breadth():
     assert ranked[0] == "US-Iran war"  # real news leads, not the football
     # the sport is damped below the war despite carrying the highest breadth+volume
     assert ranked.index("Suiza Elimina a Colombia") > ranked.index("US-Iran war")
+
+
+# ── T3.1 (i): the dash-masthead repair ──────────────────────────────────────
+#
+# M0 (docs/research/brief-daily/2026-08-12-m0-measurement.md §a.1/§a.7) measured
+# the live witness `dynamic-topic-11877` ("Jalapeño Salmonella Outbreak"):
+# 22 of its 26 raw 24h members are ONE wire piece stamped with a per-masthead
+# EN-DASH suffix, yet the served `headline_diversity` was 1.000 — the maximum,
+# no damp at all — because `_norm_headline` only stripped the PIPE stamp.
+# These headlines are frozen verbatim from the M0 artifact's cluster dump.
+
+JALAPENO_WIRE_FAMILY = [
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– The Fort Morgan Times", "fortmorgantimes.com"),
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– The Morning Call", "mcall.com"),
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– Hazleton Standard Speaker", "standardspeaker.com"),
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– The Press Democrat", "pressdemocrat.com"),
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– Sun Sentinel", "sun-sentinel.com"),
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– Orlando Sentinel", "orlandosentinel.com"),
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– Wilkes-Barre Citizens' Voice", "citizensvoice.com"),
+    ("'Guac signal' sparked Chipotle's frantic bid to recall jalapeños "
+     "– San Diego Union-Tribune", "sandiegouniontribune.com"),
+]
+
+
+def test_norm_headline_folds_the_measured_en_dash_masthead_family():
+    # The M0 witness: 8 distinct domains, 8 distinct raw headlines, ONE story.
+    from app.services.thread_ranking import _norm_headline
+    keys = {_norm_headline(h) for h, _ in JALAPENO_WIRE_FAMILY}
+    assert len(keys) == 1, keys
+    # and the surviving key is the STORY, not the masthead
+    assert "jalapenos" in keys.pop()
+
+
+def test_norm_headline_folds_em_dash_and_spaced_hyphen_stamps_too():
+    from app.services.thread_ranking import _norm_headline
+    story = ("Jalapeños linked to a US salmonella outbreak are tracked to a "
+             "Mexican farm and a distributor")
+    keys = {
+        _norm_headline(f"{story} – Western Kansas News"),
+        _norm_headline(f"{story} — Daily Camera"),
+        _norm_headline(f"{story} - Lowell Sun"),
+        _norm_headline(story),
+    }
+    assert len(keys) == 1, keys
+
+
+def test_dash_strip_does_not_swallow_a_subtitle_or_a_short_headline():
+    # The dash is prose punctuation, not a rare stamp like "|": the strip must
+    # only fire when a LONG story side carries a SHORT stamp. Two genuinely
+    # different stories that share a short dashed prefix stay distinct.
+    from app.services.thread_ranking import _norm_headline
+    assert _norm_headline("Ukraine war – live updates") != \
+        _norm_headline("Ukraine war – Russia claims advance near Bakhmut")
+    # a long story side with a LONG tail is a subtitle, not a masthead
+    a = _norm_headline("Colombia quake death toll tops 250 as rescuers keep "
+                       "searching – hopes fade for those still under rubble")
+    b = _norm_headline("Colombia quake death toll tops 250 as rescuers keep "
+                       "searching – survivors pulled out after three days")
+    assert a != b
+
+
+def test_headline_diversity_catches_the_measured_en_dash_signature():
+    # The repair's consequence: the witness family now clamps at the floor
+    # instead of scoring the maximum 1.000 it scored in production.
+    from app.services.thread_ranking import headline_diversity
+    assert headline_diversity({"evidence_samples": _evidence(
+        JALAPENO_WIRE_FAMILY)}) == 0.4
+
+
+def test_headline_diversity_denominator_counts_the_deduped_reprints():
+    # M0 §a.2: the atlas evidence SQL is DISTINCT ON (LOWER(headline)), so one
+    # wire piece running on 20 outlets arrives as ONE receipt carrying
+    # syndication_count=20. Judging 4-of-4 distinct keys reads as full
+    # diversity; the honest denominator is the raw signals those rows stand for.
+    from app.services.thread_ranking import headline_diversity
+    samples = [
+        {"headline": "One wire piece everywhere", "source": "a.com",
+         "syndication_count": 20},
+        {"headline": "Second angle", "source": "b.com", "syndication_count": 1},
+        {"headline": "Third angle", "source": "c.com", "syndication_count": 1},
+        {"headline": "Fourth angle", "source": "d.com", "syndication_count": 1},
+    ]
+    assert headline_diversity({"evidence_samples": samples}) == 0.4
+    # ...and a genuinely diverse thread with no reprints is untouched (the
+    # dynamic lane serves syndication_count=1, so this path is byte-identical).
+    plain = [{"headline": f"Angle {i}", "source": f"s{i}.com",
+              "syndication_count": 1} for i in range(6)]
+    assert headline_diversity({"evidence_samples": plain}) == 1.0

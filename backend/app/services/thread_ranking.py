@@ -135,6 +135,42 @@ def _degenerate_key(key: str) -> bool:
     return not key or not any(ch.isalpha() for ch in key)
 
 
+# A masthead stamp is also delivered on a DASH (measured 2026-08-12, M0
+# §a.1): the live witness `dynamic-topic-11877` carries 22 copies of one wire
+# piece as "<story> – <masthead>" across 22 US mastheads, and the pipe-only
+# strip folded none of them. Unlike "|", a dash is ordinary prose punctuation
+# (subtitles, ranges, em-dash asides), so the strip is guarded: it fires only
+# when a LONG story side carries a SHORT stamp. Conservative by construction —
+# an unstripped headline stays its own honest key, which is the safe error.
+_DASH_SEP_RE = re.compile(r"\s+[–—]\s+|\s+-\s+")
+_MASTHEAD_MAX_TOKENS = 5      # "Wilkes-Barre Citizens' Voice" folds to 4
+_MASTHEAD_MIN_STORY_TOKENS = 8  # the story side must read like a headline
+
+
+def _dash_masthead_key(text: str) -> str | None:
+    """Fold key for a dash-stamped masthead, or None when the dash is prose.
+
+    Tries the suffix stamp first (the measured signature) then the prefix, and
+    keeps a side only if the stamp is short, the story is long, and the story
+    out-tokens the stamp at least 2:1."""
+    parts = _DASH_SEP_RE.split(text)
+    if len(parts) < 2:
+        return None
+    for story_parts, stamp in ((parts[:-1], parts[-1]), (parts[1:], parts[0])):
+        story_key = _fold_headline(" ".join(story_parts))
+        stamp_key = _fold_headline(stamp)
+        if _degenerate_key(story_key):
+            continue
+        story_n = len(story_key.split())
+        stamp_n = len(stamp_key.split())
+        if not stamp_n or stamp_n > _MASTHEAD_MAX_TOKENS:
+            continue
+        if story_n < _MASTHEAD_MIN_STORY_TOKENS or story_n < 2 * stamp_n:
+            continue
+        return story_key
+    return None
+
+
 def _norm_headline(text: str) -> str:
     """Normalise a headline for reprint detection. The measured live
     syndication signature (2026-07-18, AU Community Media) is the identical
@@ -171,26 +207,57 @@ def _norm_headline(text: str) -> str:
             # the story side out-tokens the stamp side; tie keeps the
             # measured suffix-strip (AU Community Media signature).
             return max(candidates, key=lambda k: len(k.split()))
+    # The dash-delimited masthead (M0 §a.1, the jalapeño witness) — guarded,
+    # because a dash is prose punctuation where a pipe is a stamp.
+    dashed = _dash_masthead_key(text)
+    if dashed:
+        return dashed
     if not _degenerate_key(full):
         return full
     return " ".join(text.casefold().split())
+
+
+def _reprint_weight(sample: dict) -> int:
+    """How many raw signals one served receipt stands for. The evidence SQL
+    de-duplicates on LOWER(headline) and reports the fold size as
+    `syndication_count`; lanes that do not de-duplicate serve 1."""
+    try:
+        return max(1, int(sample.get("syndication_count") or 1))
+    except (TypeError, ValueError):
+        return 1
 
 
 def headline_diversity(thread: dict) -> float:
     """Distinct-outlet/headline ratio over the thread's evidence receipts,
     clamped to [0.4, 1.0]. 25 near-identical reprints of one wire piece score
     the floor; genuinely multi-outlet coverage scores 1.0. Honest defaults:
-    no receipts, or fewer than 3, cannot be judged → 1.0 (no damp)."""
+    no receipts, or fewer than 3, cannot be judged → 1.0 (no damp).
+
+    DENOMINATOR (repaired 2026-08-12, M0 §a.2/§a.7): the atlas evidence SQL is
+    `DISTINCT ON (LOWER(s.headline))`, so a wire piece that ran on 20 outlets
+    arrives as ONE receipt carrying `syndication_count = 20`. Counting rows
+    made the ratio saturate at 1.0 by construction — the reprints had already
+    been folded away before the damp could see them. The headline denominator
+    is now the RAW signals those rows stand for. Lanes that serve
+    `syndication_count = 1` (the dynamic sample) are byte-identical to before.
+
+    Honest residual: the served sample is the only population reachable on the
+    request path — a raw-membership join over `topic_members` measured 72 s
+    cold / 5.7 s warm for 41 topics (2026-08-12), far outside the 15 s serving
+    budget. Threads whose amplification lives only in raw membership are
+    judged by `syndication_family_share` on the lead path instead."""
     samples = thread.get("evidence_samples") or []
     if len(samples) < _DIVERSITY_MIN_SAMPLES:
         return 1.0
     outlets: set[str] = set()
     headlines: set[str] = set()
     counted = 0
+    raw_signals = 0
     for sample in samples:
         if not isinstance(sample, dict):
             continue
         counted += 1
+        raw_signals += _reprint_weight(sample)
         source = str(sample.get("source") or "").strip().lower()
         if source:
             outlets.add(source)
@@ -200,7 +267,7 @@ def headline_diversity(thread: dict) -> float:
     if counted < _DIVERSITY_MIN_SAMPLES:
         return 1.0
     outlet_ratio = len(outlets) / counted if outlets else 1.0
-    headline_ratio = len(headlines) / counted if headlines else 1.0
+    headline_ratio = len(headlines) / raw_signals if headlines else 1.0
     # The binding constraint wins: one family reprinting (low outlet ratio) OR
     # one wire headline everywhere (low headline ratio) both mean the volume
     # is amplification, not independent coverage.
