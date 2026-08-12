@@ -64,6 +64,17 @@ describe('buildSections', () => {
     expect(s.connected.reason).toBe('Neighbours are not measured for this scope yet.')
   })
 
+  it('separates "the subject was not in the pool" from "the pool held no neighbour"', () => {
+    // The #234 relation measures a thread against the ranked pool it is IN. A
+    // thread reached by deep link can be outside that pool, and then nothing
+    // was compared at all — which is not the same claim as "we compared and
+    // found none", the sentence `none` makes.
+    const s = buildSections({ countries: [], connected: [], attention: [] }, { connected: 'no_subject' })
+    expect(s.connected.state).toBe('empty')
+    expect(s.connected.reason).toBe('This story is not in the current ranked field, so no neighbourhood was measured.')
+    expect(s.connected.reason).not.toBe('No measured neighbour cleared the bar.')
+  })
+
   it('reports a failing lane as degraded even when it returned some rows', () => {
     // Partial data from a broken lane is still partial. Rendering it as `ok`
     // would present an unknown fraction of the neighbourhood as all of it.
@@ -108,7 +119,7 @@ describe('buildSections', () => {
   it('gives every section a reason whenever it has no rows to show', () => {
     // The rule that must hold across all of the above: never blank and silent.
     const cases: LaneStatuses[] = [
-      {}, { connected: 'loading' }, { connected: 'no_anchor' },
+      {}, { connected: 'loading' }, { connected: 'no_anchor' }, { connected: 'no_subject' },
       { connected: 'unavailable' }, { connected: 'db_error' }, { connected: 'timeout' },
     ]
     for (const lanes of cases) {

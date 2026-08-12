@@ -67,10 +67,15 @@ export type SectionKey = 'whereItLives' | 'connected' | 'attention'
  * means something different in each case, and only the lane knows which:
  * - `loading`  — has not answered yet.
  * - `no_anchor`— nothing is focused, so there was no subject to measure against.
+ * - `no_subject` — something IS focused, but the lane could not resolve it to a
+ *   subject it can measure. Distinct from `no_anchor` (which is about the
+ *   reader having opened nothing) and from a measured zero: nothing was
+ *   compared, so "none matched" would claim a comparison that never ran.
  * - `unavailable` — this scope kind has no such lane; nothing was attempted.
  * - `db_error` / `timeout` — it was attempted and it failed.
  */
-export type LaneStatus = 'ok' | 'loading' | 'no_anchor' | 'unavailable' | 'db_error' | 'timeout'
+export type LaneStatus =
+  | 'ok' | 'loading' | 'no_anchor' | 'no_subject' | 'unavailable' | 'db_error' | 'timeout'
 
 export type LaneStatuses = Partial<Record<SectionKey, LaneStatus>>
 
@@ -108,12 +113,19 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
  * genuinely differs: "no country resolved" is a fact about geocoding, "no
  * measured neighbour cleared the bar" is a fact about a ranking threshold, and
  * a shared template would blur them into one vague line.
+ *
+ * `no_subject` is produced by `connected` alone today — its lane measures a
+ * thread against the ranked pool that thread is IN, and a deep-linked thread
+ * can be outside it. The other two are written anyway rather than typed as
+ * optional, because a lane with no sentence would render blank, which is the
+ * one outcome this table exists to make unrepresentable.
  */
 const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', string>> = {
   whereItLives: {
     none: 'No country resolved for this scope.',
     loading: 'Measuring where this lives…',
     no_anchor: 'Nothing is focused yet.',
+    no_subject: 'This scope could not be resolved to a measurable subject.',
     unavailable: 'Where this lives is not measured for this scope.',
     db_error: 'Where this lives could not be measured right now.',
     timeout: 'Where this lives could not be measured right now.',
@@ -122,6 +134,7 @@ const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', str
     none: 'No measured neighbour cleared the bar.',
     loading: 'Measuring the neighbourhood…',
     no_anchor: 'Open a thread, a country or a person — neighbours are measured against a subject.',
+    no_subject: 'This story is not in the current ranked field, so no neighbourhood was measured.',
     unavailable: 'Neighbours are not measured for this scope yet.',
     db_error: 'Neighbours could not be measured right now.',
     timeout: 'Neighbours could not be measured right now.',
@@ -130,6 +143,7 @@ const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', str
     none: 'No public attention matched this scope.',
     loading: 'Reading public attention…',
     no_anchor: 'Nothing is focused yet.',
+    no_subject: 'This scope could not be resolved to a measurable subject.',
     unavailable: 'Public attention is not measured for this scope.',
     db_error: 'Public attention could not be read right now.',
     timeout: 'Public attention could not be read right now.',

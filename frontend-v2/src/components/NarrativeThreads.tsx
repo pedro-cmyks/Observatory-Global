@@ -4,7 +4,7 @@ import { useFocus } from '../contexts/FocusContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { resolveCountryName } from '../lib/countryNames'
 import { Flag } from './Flag'
-import { buildCountryThreadEmptyState, getNarrativeFetchLimit, getNarrativesForDisplay } from '../lib/narrativeThreadLimits'
+import { buildCountryThreadEmptyState, getNarrativesForDisplay, THREAD_POOL_HOURS, threadPoolQuery } from '../lib/narrativeThreadLimits'
 import { threadConfidencePresentation } from '../lib/threadConfidence'
 import { threadCountryPresentation } from '../lib/threadGeography'
 import { familyColor, familyGradient } from '../lib/categoryFamily'
@@ -18,6 +18,7 @@ import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText, type StoryLensSibling } from '../lib/storyLens'
+import { buildThreadRelation } from '../lib/threadRelation'
 import { visibleEntities } from '../lib/threadRowMobile'
 import { useIsMobile } from '../hooks/useIsMobile'
 import './NarrativeThreads.css'
@@ -329,25 +330,22 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     // 2026-07-15; the global list was already capped to 24h because
     // spread_pct is meaningless at wider windows). Looking back = the map
     // scrubber / deep-history, not a re-windowed list.
-    const cappedHours = 24
+    const cappedHours = THREAD_POOL_HOURS
 
-    // Fetch enough rows for the panel to use the available vertical space.
-    const fetchLimit = getNarrativeFetchLimit(!!filter.country)
+    // The pool this panel ranks over — and the SAME pool the phone's Lens
+    // measures its `connected` section against, which is why the query is a
+    // shared definition rather than one built here (see threadPoolQuery).
+    const poolQuery = threadPoolQuery(filter.country, cappedHours)
 
     const fetchNarratives = useCallback(async () => {
         try {
-            const params = new URLSearchParams({
-                hours: String(cappedHours),
-                limit: String(fetchLimit),
-            })
-            if (filter.country) params.set('country_code', filter.country)
-            let res = await fetch(`/api/v2/threads?${params.toString()}`)
+            let res = await fetch(poolQuery)
             if (!res.ok) {
                 // One quick retry: a cold country-scoped query can 500 once,
                 // which silently left the GLOBAL list under a "Scoped to X"
                 // strip until the 5-min interval (capture-doc §B, live-seen).
                 await new Promise(r => setTimeout(r, 2500))
-                res = await fetch(`/api/v2/threads?${params.toString()}`)
+                res = await fetch(poolQuery)
                 if (!res.ok) { setFeedError(true); return }   // service failure, not empty
             }
             const data = await res.json()
@@ -360,7 +358,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         } finally {
             setLoading(false)
         }
-    }, [cappedHours, fetchLimit, filter.country])
+    }, [poolQuery])
 
     // Initial fetch + 5-minute interval; re-fetch when country changes.
     // #236: the interval (not the initial fetch) idles while hidden — read
@@ -431,53 +429,24 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
     }
     const anyPersonMatch = !!focusPerson && displayedNarratives.some(threadMatchesPerson)
 
-    // #234: when a thread is open, surface its SIBLING threads — those sharing a
-    // top country with it — and dim the rest. No focus-model change (thread-open
-    // clears focus by design); reuses the activeThreadId prop. Guarded: only
-    // when the open thread is in this list, has countries, and at least one
-    // OTHER thread relates — otherwise the list stays as-is.
-    const activeThread = activeThreadId
-        ? displayedNarratives.find(n => n.thread_id === activeThreadId)
-        : null
-    // Relate by the open thread's PRIMARY geography (top-2 countries), not all 5:
-    // sharing the dominant country (often US) is too broad to be a real sibling.
-    const activeCountries = new Set((activeThread?.top_countries || []).slice(0, 2))
-    // #234 upgrade: ALSO relate by shared DISTINCTIVE ENTITY (rarity-weighted) —
-    // sharper than geography alone. Naive entity overlap is HARMFUL: a single
-    // common GDELT entity (measured: "donald trump" in 14/30 threads) links every
-    // unrelated thread. So only entities shared by FEW threads count — a common
-    // actor is noise, a rare shared actor is a real sibling signal (e.g. opening a
-    // Russia–Ukraine thread surfaces another thread sharing Zelensky, not every
-    // US thread sharing Trump). Cap = min(3, 25% of the list).
-    const norm = (e: string) => e.toLowerCase().trim()
-    const entityDF = new Map<string, number>()
-    for (const n of displayedNarratives)
-        for (const e of new Set((n.top_entities || []).map(norm).filter(Boolean)))
-            entityDF.set(e, (entityDF.get(e) || 0) + 1)
-    const distinctiveCap = Math.max(2, Math.min(3, Math.floor(displayedNarratives.length * 0.25)))
-    const isDistinctive = (e: string) => (entityDF.get(e) || 0) <= distinctiveCap
-    const activeEntities = new Set(
-        (activeThread?.top_entities || []).map(norm).filter(e => e && isDistinctive(e))
-    )
-    const threadRelated = (n: Narrative): boolean =>
-        !!activeThread && (
-            n.thread_id === activeThreadId ||
-            n.top_countries.some(c => activeCountries.has(c)) ||
-            (n.top_entities || []).some(e => activeEntities.has(norm(e)))
-        )
-    const anyThreadRelation = !!activeThread && (activeCountries.size > 0 || activeEntities.size > 0) &&
-        displayedNarratives.some(n => n.thread_id !== activeThreadId && threadRelated(n))
+    // #234: when a thread is open, surface its SIBLING threads — those sharing
+    // the open thread's primary geography or one of its rare actors — and dim
+    // the rest. No focus-model change (thread-open clears focus by design);
+    // reuses the activeThreadId prop.
+    //
+    // The rule itself lives in lib/threadRelation: it has a second caller (the
+    // phone's Lens `connected` section), and a hand-transcribed second copy is
+    // this repo's most-repeated defect. `relation.active` carries the same
+    // guard this block always had — an anchor in this list, at least one basis,
+    // and at least one OTHER row sharing it, or the list stays as it was.
+    const relation = buildThreadRelation(displayedNarratives, activeThreadId, { resolveCountryName })
+    const threadRelated = (n: Narrative): boolean => relation.isRelated(n)
+    const anyThreadRelation = relation.active
 
     // #234 legibility (Paper 7 / reason-codes guardrail): expose WHY a sibling
     // relates — the shared distinctive entity (preferred, more specific) or the
     // shared primary country — so the re-scope is never a silent dim.
-    const relationReason = (n: Narrative): string | null => {
-        if (!activeThread || n.thread_id === activeThreadId) return null
-        const sharedEntity = (n.top_entities || []).find(e => activeEntities.has(norm(e)))
-        if (sharedEntity) return sharedEntity
-        const sharedCountry = n.top_countries.find(c => activeCountries.has(c))
-        return sharedCountry ? resolveCountryName(sharedCountry) : null
-    }
+    const relationReason = (n: Narrative): string | null => relation.reason(n)
 
     // person focus takes precedence; else thread-sibling relation
     const relate = anyPersonMatch ? threadMatchesPerson : (anyThreadRelation ? threadRelated : null)

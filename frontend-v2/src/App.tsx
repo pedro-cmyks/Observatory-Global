@@ -2629,6 +2629,16 @@ function AppContent() {
                    kept naming the old scope. It resolves the display name
                    itself, which is why the section passes just the code. */
                 onOpenCountry={handleCountryClick}
+                /* A `connected` row re-scopes to that thread, through the same
+                   opener every other thread door uses — so the trail, the read
+                   and the story lens all move together. The label rides along
+                   (handleThemeSelect's own `labelHint`) so the breadcrumb never
+                   shows a raw dynamic-topic id while the read loads. */
+                onOpenThread={(id, label) => handleThemeSelect(id, undefined, undefined, undefined, label)}
+                /* The sections measure neighbours over the SAME thread pool the
+                   field panel below them ranks — including its country scoping,
+                   which changes which actors count as rare. */
+                countryScope={filter.country}
                 field={threadsPanel}
                 read={streamPanel}
               />

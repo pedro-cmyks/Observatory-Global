@@ -3,8 +3,10 @@ import { fieldVisible, type MobileSurface } from '../lib/mobileNav'
 import { scopeTitle, type LensScope, type LensScopeKind } from '../lib/lensScope'
 import {
   buildSections, nodesQueryFor, readNodesResponse, SECTION_LABELS,
-  type CountryRow, type LaneStatus,
+  type ConnectedRow, type CountryRow, type LaneStatus,
 } from '../lib/lensSections'
+import { readThreadPool, threadPoolQuery, type PoolThread } from '../lib/narrativeThreadLimits'
+import { buildThreadRelation } from '../lib/threadRelation'
 import { resolveCountryName } from '../lib/countryNames'
 import './LensPanel.css'
 
@@ -12,15 +14,17 @@ import './LensPanel.css'
 const WHERE_IT_LIVES_CAP = 12
 
 /**
- * What `connected` can honestly report, per scope.
+ * What `connected` can report at a scope it cannot measure.
  *
- * EVERY scope returns a NON-`ok` status today, which is the finding rather than
- * a placeholder — see the section comment on <LensSectionSheet/>. `field` is
- * `no_anchor` because nothing is focused, so there is no subject to measure
- * neighbours against; every other scope is `unavailable` because the neighbour
- * lane this section would draw from has not cleared its own gate.
+ * `thread` is absent on purpose: it is the ONE scope with a measured relation
+ * (see <LensSectionSheet/>), so its status comes from the fetch rather than
+ * from the kind. `field` is `no_anchor` — nothing is focused, so there is no
+ * subject to measure against. The rest are `unavailable`: the #234 relation is
+ * defined between THREADS, and a country or a person has no sibling thread in
+ * that sense. Claiming otherwise would need a different measurement, not a
+ * looser reading of this one.
  */
-function connectedLane(kind: LensScopeKind): LaneStatus {
+function connectedLaneFor(kind: LensScopeKind): LaneStatus {
   return kind === 'field' ? 'no_anchor' : 'unavailable'
 }
 
@@ -42,6 +46,20 @@ export interface LensPanelProps {
    * a name the console already owns.
    */
   onOpenCountry: (code: string) => void
+  /**
+   * Re-scope the Lens to another thread — a `connected` row. The console's own
+   * thread opener, for the same reason as `onOpenCountry`. The label travels so
+   * the breadcrumb names the story immediately instead of showing a raw
+   * `dynamic-topic-N` until the read resolves it.
+   */
+  onOpenThread: (id: string, label?: string) => void
+  /**
+   * The console's country filter, if any. Passed rather than read from
+   * FocusContext so the Lens keeps deriving everything it shows from props —
+   * and because the sections need the same pool the thread list fetched, which
+   * is scoped by this.
+   */
+  countryScope?: string | null
   /** The ranked field — what the Lens shows when nothing is focused. */
   field: ReactNode
   /**
@@ -71,24 +89,29 @@ export interface LensPanelProps {
  * bottom-anchored slots are occupied: the tab bar (z 9500) and FrameSheet
  * (fixed, `bottom: 56px + safe-area`, z 9400).
  *
- * WHY `connected` IS EMPTY AT EVERY SCOPE. Not an unfinished wire — a refusal
- * with a measurement behind it. The one live neighbour ranker,
- * `GET /api/v2/story/{id}/siblings`, was hand-judged at 30 of 50 top-5 rows
- * being an unrelated story presented as kin on random active anchors, a rate
- * inherited from the cosine walk over a field that is 61.25% blob; its own
- * pre-registered gate held NAV-LOSS 6/6 and the story lens ships dark
- * (STORY_LENS_AUTO = false) because of it. The client also cannot tell a fused
- * anchor from a clean one: `anchor.is_blob` is only populated on the umbrella
- * path and is `false` meaning "not evaluated" everywhere else. A phone row has
- * no room for that caveat, so the section states its absence instead of
- * ranking. The honest neighbour relation that DOES exist — the rarity-weighted
- * distinctive-entity + shared-primary-country siblings — lives inside
- * NarrativeThreads over its own fetched pool; surfacing it here means lifting
- * that rule into a shared module rather than copying it, which is its own task.
+ * WHICH NEIGHBOUR RELATION `connected` SHOWS, AND WHICH IT REFUSES TO. It shows
+ * the #234 sibling relation — a shared country in the open thread's PRIMARY
+ * geography, or a shared actor that few threads in the pool carry — because
+ * every one of its receipts is checkable: the basis is a country or a name the
+ * reader can see on both rows. It does NOT show
+ * `GET /api/v2/story/{id}/siblings`, the ranked walk, which was hand-judged at
+ * 30 of 50 top-5 rows being an unrelated story presented as kin on random
+ * active anchors — a rate inherited from the cosine walk over a field that is
+ * 61.25% blob. That lens ships dark (STORY_LENS_AUTO = false) on its own
+ * pre-registered gate, and the client cannot even tell a fused anchor from a
+ * clean one (`anchor.is_blob` is populated only on the umbrella path and is
+ * `false` meaning "not evaluated" everywhere else). A phone row has no room for
+ * that caveat. Weaker and checkable beats stronger and unfalsifiable.
+ *
+ * THREAD SCOPE ONLY. #234 relates a thread to other THREADS, so that is the one
+ * scope where it can answer; the rest say so rather than borrowing the shape.
  */
-function LensSectionSheet({ scope, onOpenCountry }: {
+function LensSectionSheet({ scope, countryScope, onOpenCountry, onOpenThread }: {
   scope: LensScope
+  /** The console's country filter — see `poolQuery` below for why it matters. */
+  countryScope?: string | null
   onOpenCountry: (code: string) => void
+  onOpenThread: (id: string, label?: string) => void
 }) {
   const [open, setOpen] = useState(false)
   // The sheet is fixed, so it needs an absolute `top` — and the bar it hangs
@@ -155,9 +178,66 @@ function LensSectionSheet({ scope, onOpenCountry }: {
     return () => ac.abort()
   }, [open, query])
 
+  // The neighbourhood lane. `null` until measured, exactly as `rows` above.
+  const [pool, setPool] = useState<PoolThread[] | null>(null)
+  const [poolLane, setPoolLane] = useState<LaneStatus>('loading')
+  const isThread = scope.kind === 'thread'
+  // The SAME pool the console's thread list ranks over — same hours, same
+  // limit, same country scoping. Not a detail: the relation weights an actor by
+  // how many threads in the pool carry it, so a differently-scoped pool would
+  // honestly produce a different receipt for the same pair, and the phone's two
+  // surfaces would then disagree about why two stories are neighbours.
+  const poolQuery = threadPoolQuery(countryScope)
+
+  useEffect(() => {
+    if (!open || !isThread) return
+    const ac = new AbortController()
+    setPool(null)
+    setPoolLane('loading')
+    fetch(poolQuery, { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j) => {
+        const next = readThreadPool(j)
+        // `null` is an unreadable body, which is a failure — never an empty
+        // pool. The section says degraded, not "no neighbour cleared the bar".
+        if (next === null) { setPool([]); setPoolLane('db_error'); return }
+        setPool(next)
+        setPoolLane('ok')
+      })
+      .catch((e) => {
+        if ((e as Error)?.name === 'AbortError') return
+        // No retry, unlike the thread list's — that one retries because its
+        // failure mode is SILENT (a stale global list under a "Scoped to X"
+        // strip). This one says out loud that it could not measure, and
+        // closing and reopening the sheet asks again. Observed live: this
+        // endpoint 503s under a per-IP rate limit, which a second immediate
+        // request only feeds.
+        setPool([])
+        setPoolLane('db_error')
+      })
+    return () => ac.abort()
+  }, [open, isThread, poolQuery])
+
+  // The rule itself is lib/threadRelation's, shared with NarrativeThreads —
+  // one function, not a second transcription of the cap and the top-2.
+  const relation = buildThreadRelation(pool ?? [], isThread ? scope.id : null, { resolveCountryName })
+  const connectedRows: ConnectedRow[] = relation.related.map((r) => ({
+    id: r.thread.thread_id,
+    label: r.thread.label,
+    receipt: r.receipt,
+    kind: 'thread',
+  }))
+  // A measured pool that does not contain the open thread measured NOTHING
+  // about it — a different statement from "we compared and found none", which
+  // is what an `ok` lane with zero rows says. Reachable by deep link, and by
+  // any thread that has since fallen out of the ranked field.
+  const connectedLane: LaneStatus = !isThread
+    ? connectedLaneFor(scope.kind)
+    : poolLane === 'ok' && !relation.anchor ? 'no_subject' : poolLane
+
   const sections = buildSections(
-    { countries: rows ?? [], connected: [], attention: [] },
-    { whereItLives: lane, connected: connectedLane(scope.kind) },
+    { countries: rows ?? [], connected: connectedRows, attention: [] },
+    { whereItLives: lane, connected: connectedLane },
   )
   const { whereItLives, connected } = sections
 
@@ -217,13 +297,17 @@ function LensSectionSheet({ scope, onOpenCountry }: {
               <ul className="lens-section-rows">
                 {connected.rows.map((r) => (
                   <li key={r.id}>
-                    <div className="lens-section-row lens-section-row--static">
+                    <button
+                      type="button"
+                      className="lens-section-row lens-section-row--stacked"
+                      onClick={() => { setOpen(false); onOpenThread(r.id, r.label) }}
+                    >
                       <span className="lens-row-name">{r.label}</span>
                       {/* Rule 2: the basis rides with the row, always. It wraps
                           rather than truncating — a receipt you cannot read is
                           not a receipt. */}
                       <span className="lens-row-receipt">↔ {r.receipt}</span>
-                    </div>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -265,7 +349,9 @@ function LensSectionSheet({ scope, onOpenCountry }: {
  * contents` means the wrapper generates no box, so each panel lays out as if
  * it were still a direct child of the shell.
  */
-export function LensPanel({ surface, trail, onBack, onOpenCountry, field, read }: LensPanelProps) {
+export function LensPanel({
+  surface, trail, onBack, onOpenCountry, onOpenThread, countryScope, field, read,
+}: LensPanelProps) {
   const showsField = fieldVisible(surface)
   // Live is not a Lens surface: it is the unfocused firehose, and it wears no
   // scope chrome. The read slot is visible under both, which is exactly why
@@ -300,7 +386,12 @@ export function LensPanel({ surface, trail, onBack, onOpenCountry, field, read }
       {/* Same condition as the chrome: Live is the unfocused firehose and wears
           no scope furniture, so it gets no sections either. */}
       {showsChrome && scope && (
-        <LensSectionSheet scope={scope} onOpenCountry={onOpenCountry} />
+        <LensSectionSheet
+          scope={scope}
+          countryScope={countryScope}
+          onOpenCountry={onOpenCountry}
+          onOpenThread={onOpenThread}
+        />
       )}
       <div key="lens-field" style={{ display: showsField ? 'contents' : 'none' }}>{field}</div>
       <div key="lens-read" style={{ display: showsField ? 'none' : 'contents' }}>{read}</div>

@@ -284,10 +284,10 @@
   cursor: pointer;
 }
 
-/* A connected row is not a tap target yet — it carries a receipt to read, not
-   a destination. Stated in CSS so it does not merely LOOK inert. */
-.lens-section-row--static {
-  cursor: default;
+/* A row whose receipt takes its own line beneath the name (see
+   .lens-row-receipt's `flex: 1 0 100%`). Layout only — a stacked row is a
+   destination like any other, so it keeps the base row's pointer and hit area. */
+.lens-section-row--stacked {
   flex-wrap: wrap;
 }
 
