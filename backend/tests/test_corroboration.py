@@ -49,3 +49,38 @@ def test_pin_status_counts_voices_and_names_collapse():
     assert "state" in note
     status, _ = pin_status(3, True, outlets=3, state_collapsed=0)
     assert status == "established"
+
+
+# ── Task 3 / G-LOCALE: numerals parse under the source language ──────────────
+
+def test_g_locale_indonesian_dot_grouping():
+    """G-LOCALE (spec): '1.700' in a comma-decimal locale is 1700, not 1.7."""
+    from app.services.corroboration import extract_figure
+    assert extract_figure("1.700 orang tewas akibat gempa", lang="id") == 1700.0
+    assert extract_figure("1.700 muertos según el gobierno", lang="es") == 1700.0
+
+
+def test_extract_figure_unambiguous_grouping_any_lang():
+    from app.services.corroboration import extract_figure
+    assert extract_figure("1.234.567 affected") == 1234567.0     # two dot groups
+    assert extract_figure("1.234.567,89 total", lang="de") == 1234567.89
+    assert extract_figure("1,234,567.89 total") == 1234567.89
+
+
+def test_extract_figure_decimal_preserved():
+    from app.services.corroboration import extract_figure
+    assert extract_figure("magnitude 7.6 earthquake") == 7.6            # en default
+    assert extract_figure("magnitud 7,6 del sismo", lang="es") == 7.6   # comma decimal
+    assert extract_figure("1.700 dead") == 1.7   # lang unknown -> conservative, unchanged
+
+
+def test_g_locale_relation_no_longer_inverts():
+    """The C-N17 witness: same toll in two locales must corroborate."""
+    from app.services.corroboration import classify_relation
+    claim_terms = ["earthquake", "sulawesi", "dead", "1700"]
+    claim_figure = 1700.0
+    rel = classify_relation(
+        claim_terms, claim_figure,
+        "Gempa Sulawesi: 1.700 orang tewas, ribuan mengungsi",
+        candidate_lang="id")
+    assert rel != "contradicts"

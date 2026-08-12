@@ -233,24 +233,66 @@ _OFFICIAL_SOURCE_TOKENS = (
     "united nations", "u.n.", "who ", "world health", "government",
 )
 
-# Numbers that are almost never a death-toll / magnitude claim — years and
-# small counts that would create noisy figure "contradictions".
-_FIGURE_RE = re.compile(r"\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?")
+# Locale numeral discipline (corroborate-v2 F1, council C-N17: Indonesian
+# "1.700" parsed as 1.7 made the best match the top contradiction). Languages
+# that write decimals with a COMMA and group thousands with a DOT:
+_COMMA_DECIMAL_LANGS = frozenset({
+    "es", "pt", "de", "fr", "it", "id", "in", "tr", "ru", "uk", "nl", "da",
+    "sv", "no", "nb", "nn", "fi", "pl", "cs", "sk", "el", "ro", "hu", "vi",
+    "az", "kk", "sr", "hr", "bg", "ca", "sl", "lt", "lv", "et", "mk", "sq",
+    "bs", "ka", "hy", "be",
+})
+_FIGURE_TOKEN_RE = re.compile(r"\d[\d.,]*\d|\d")
 
 
-def extract_figure(text: str | None) -> float | None:
-    """First thousands-grouped or plain number → float, else None. Mirrors
-    claimLedger.ts extractFigure so a headline's toll parses identically on
-    both ends of the wire."""
-    if not text:
+def _parse_figure_token(tok: str, *, comma_decimal: bool) -> float | None:
+    """One numeric token -> float under the locale's separator convention.
+    Universal rule first: when BOTH separators appear, the LAST one is the
+    decimal mark. Then per-locale: a single separator followed by exactly
+    three digits is thousands-grouping in that locale's grouping character;
+    otherwise it is the decimal mark. Unknown-locale single-dot stays decimal
+    (conservative: preserves v1 behavior for English)."""
+    tok = tok.strip(".,")
+    if not tok:
         return None
-    m = _FIGURE_RE.search(text)
-    if not m:
-        return None
+    has_dot, has_comma = "." in tok, "," in tok
     try:
-        return float(m.group(0).replace(",", ""))
+        if has_dot and has_comma:
+            dec = "." if tok.rfind(".") > tok.rfind(",") else ","
+            grp = "," if dec == "." else "."
+            return float(tok.replace(grp, "").replace(dec, "."))
+        if has_dot:
+            parts = tok.split(".")
+            if len(parts) > 2:                      # 1.234.567 — unambiguous
+                return float(tok.replace(".", ""))
+            if comma_decimal and len(parts[1]) == 3:
+                return float(tok.replace(".", ""))  # id/es/de: 1.700 = 1700
+            return float(tok)
+        if has_comma:
+            parts = tok.split(",")
+            if len(parts) > 2:                      # 1,234,567 — unambiguous
+                return float(tok.replace(",", ""))
+            if comma_decimal:
+                return float(tok.replace(",", "."))  # es: 7,6 = 7.6
+            if len(parts[1]) == 3:
+                return float(tok.replace(",", ""))   # en: 1,700 = 1700
+            return float(tok.replace(",", "."))
+        return float(tok)
     except ValueError:
         return None
+
+
+def extract_figure(text: str | None, *, lang: str | None = None) -> float | None:
+    """First number in the text under the source language's numeral locale.
+    Mirrors claimLedger.ts extractFigure (which gains the same lang param in
+    this change) so a headline's toll parses identically on both ends."""
+    if not text:
+        return None
+    m = _FIGURE_TOKEN_RE.search(text)
+    if not m:
+        return None
+    comma_decimal = (lang or "").strip().lower()[:2] in _COMMA_DECIMAL_LANGS
+    return _parse_figure_token(m.group(0), comma_decimal=comma_decimal)
 
 
 def is_official_source(source: str | None) -> bool:
@@ -316,18 +358,20 @@ def classify_relation(
     candidate_headline: str | None,
     *,
     similarity: float | None = None,
+    candidate_lang: str | None = None,
 ) -> Relation:
     """MATH relation for one candidate against the claim. A candidate is the
     SAME EVENT when it restates enough claim terms OR (hot lane) is semantically
     close. Same-event + a conflicting figure = contradicts; same-event with a
     matching or absent figure = corroborates; everything weaker = context
     (related coverage, not a restatement). No stance model — honest by
-    construction."""
+    construction. The candidate's figure is parsed under ITS OWN numeral
+    locale (corroborate-v2 F1)."""
     recall = term_recall(claim_terms, candidate_headline)
     same_event = recall >= SAME_EVENT_TERM_RECALL or (
         similarity is not None and similarity >= SAME_EVENT_SIMILARITY
     )
-    cand_figure = extract_figure(candidate_headline)
+    cand_figure = extract_figure(candidate_headline, lang=candidate_lang)
     fig_rel = figure_relation(claim_figure, cand_figure)
     if same_event and fig_rel == "contradicts":
         return "contradicts"
@@ -477,7 +521,10 @@ def rows_to_archive_matches(
         recall = term_recall(claim_terms, headline)
         if recall < SAME_EVENT_TERM_RECALL:
             continue
-        relation = classify_relation(claim_terms, claim_figure, headline)
+        # historical_evidence_samples carries no source_lang (mig 029) —
+        # candidate_lang stays None: honest absence, never a fabricated locale.
+        relation = classify_relation(
+            claim_terms, claim_figure, headline, candidate_lang=None)
         day = r.get("day")
         out.append(normalize_match(
             basis="atlas_archive",
@@ -503,7 +550,9 @@ def articles_to_doc20_matches(
         title = (a.get("title") or "").strip()
         if not title:
             continue
-        relation = classify_relation(claim_terms, claim_figure, title)
+        relation = classify_relation(
+            claim_terms, claim_figure, title,
+            candidate_lang=((a.get("language") or "").strip().lower() or None))
         url = a.get("url")
         out.append(normalize_match(
             basis="doc20",
@@ -532,7 +581,8 @@ def rows_to_hot_matches(
             continue
         sim = m.get("similarity")
         relation = classify_relation(
-            claim_terms, claim_figure, headline, similarity=sim)
+            claim_terms, claim_figure, headline, similarity=sim,
+            candidate_lang=m.get("source_lang"))
         ts = m.get("timestamp")
         out.append(normalize_match(
             basis="atlas_hot",
@@ -708,6 +758,7 @@ async def corroborate_claim(
     figure: float | None = None,
     country: str | None = None,
     published_date: str | None = None,
+    lang: str | None = None,
     conn: Any | None = None,
     embed_fn: Any | None = None,
     hot_fetch: Any | None = None,
@@ -727,7 +778,7 @@ async def corroborate_claim(
     parsed = extract_claim_terms(headline, country=country)
     terms, query = parsed["terms"], parsed["query"]
     if figure is None:
-        figure = extract_figure(headline)
+        figure = extract_figure(headline, lang=lang)
 
     source_status: dict[str, str] = {
         "doc20": "not_queried",
