@@ -3,20 +3,12 @@
    so the honesty layer reads as one system. Theme vars only; never hides the
    thread, never competes with the label — it annotates it. */
 .label-review-chip {
-  display: inline-flex;
-  align-items: center;
+    /* #247 C2: shared anatomy from the .badge base */
   margin-left: 6px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  line-height: 1.4;
-  white-space: nowrap;
-  vertical-align: middle;
   color: var(--color-severity-notable, #f59e0b);
   background: rgba(251, 191, 36, 0.1);
   border: 1px solid rgba(251, 191, 36, 0.28);
   border-radius: 4px;
-  padding: 1px 5px;
   cursor: help;
 }
 

@@ -227,7 +227,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
 
                     {/* Trust Indicators */}
                     <div className="entity-section">
-                        <div className="entity-section-label">Trust Indicators</div>
+                        <div className="section-label entity-section-label">Trust Indicators</div>
                         <div className="entity-indicators">
                             <div className="entity-indicator">
                                 <span className="indicator-label">Source Diversity</span>
@@ -249,7 +249,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                     {/* Top Countries */}
                     {topNodes.length > 0 && (
                         <div className="entity-section" id="ep-countries">
-                            <div className="entity-section-label">Coverage by Country</div>
+                            <div className="section-label entity-section-label">Coverage by Country</div>
                             <div className="entity-country-list">
                                 {topNodes.map((node, i) => (
                                     <div
@@ -282,7 +282,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                         narrative threads, ABOVE the demoted GDELT "Related Themes". */}
                     {focusType === 'person' && personThreads.length > 0 && (
                         <div className="entity-section" id="ep-threads">
-                            <div className="entity-section-label">Threads {displayName} participates in</div>
+                            <div className="section-label entity-section-label">Threads {displayName} participates in</div>
                             <div className="entity-threads">
                                 {personThreads.slice(0, 6).map(t => (
                                     <button
@@ -307,7 +307,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                     {/* Top Themes */}
                     {relatedThemeGroups.length > 0 && (
                         <div className="entity-section">
-                            <div className="entity-section-label">Related Themes</div>
+                            <div className="section-label entity-section-label">Related Themes</div>
                             <div className="entity-theme-groups">
                                 {relatedThemeGroups.map(group => (
                                     <div key={group.cluster.id} className="entity-theme-group">
@@ -333,7 +333,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                     {/* Key Subjects — typed: person is one type (#176) */}
                     {keySubjects.length > 0 && (
                         <div className="entity-section" id="ep-subjects">
-                            <div className="entity-section-label">Key Subjects</div>
+                            <div className="section-label entity-section-label">Key Subjects</div>
                             <div className="entity-people">
                                 {keySubjects.map(s => {
                                     const fullData = data.key_people.find(k => k.person === s.name)
@@ -344,7 +344,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                                             className={`entity-person-row${clickable ? '' : ' entity-person-row--static'}`}
                                             onClick={clickable ? () => onPersonSelect?.(s.name) : undefined}
                                         >
-                                            <span className="entity-subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
+                                            <span className="badge entity-subject-badge" data-type={s.type}>{SUBJECT_BADGE[s.type]}</span>
                                             <span className="entity-person-name">{s.name}</span>
                                             <span className="entity-person-count">{formatCount(s.count)}</span>
                                             {fullData && fullData.country_count > 1 && (
@@ -377,7 +377,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                         if (!showSplit) {
                             return (
                                 <div className="entity-section">
-                                    <div className="entity-section-label">Top Sources</div>
+                                    <div className="section-label entity-section-label">Top Sources</div>
                                     <div className="entity-sources">
                                         {sources.map(s => (
                                             <div key={s.source} className="entity-source-row"
@@ -398,7 +398,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                         const maxRows = Math.max(positive.length, negative.length, 1)
                         return (
                             <div className="entity-section">
-                                <div className="entity-section-label">Framing Split</div>
+                                <div className="section-label entity-section-label">Framing Split</div>
                                 {spread !== null && spread > 0.4 && (
                                     <div className="entity-framing-spread">
                                         <span className="framing-spread-label">Narrative spread</span>
@@ -453,7 +453,7 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                     {/* Recent Coverage */}
                     {data.headlines.length > 0 && (
                         <div className="entity-section" id="ep-coverage">
-                            <div className="entity-section-label">Recent Coverage</div>
+                            <div className="section-label entity-section-label">Recent Coverage</div>
                             <div className="entity-headlines">
                                 {data.headlines.slice(0, 8).map((h, i) => {
                                     const displayText = h.headline

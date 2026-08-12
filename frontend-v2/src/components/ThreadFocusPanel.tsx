@@ -204,7 +204,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     </div>
 
                     <div className="thread-focus-section">
-                        <div className="thread-focus-section-title">{geography.label} Geography</div>
+                        <div className="section-label thread-focus-section-title">{geography.label} Geography</div>
                         <div className="thread-focus-chip-row">
                             {countryPairs.map(country => (
                                 <button key={country.code} className="thread-focus-chip" onClick={() => onCountrySelect?.(country.code)}>
@@ -215,7 +215,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     </div>
 
                     <div className="thread-focus-section">
-                        <div className="thread-focus-section-title">10h Signal Change</div>
+                        <div className="section-label thread-focus-section-title">10h Signal Change</div>
                         <Sparkline data={active.hourly_timeline} trend={displayTrend} />
                         <div className="thread-focus-movement">
                             <span>{active.changed_10h > 0 ? '+' : ''}{active.changed_10h} signals in 10h</span>
@@ -225,7 +225,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     </div>
 
                     <div className="thread-focus-section">
-                        <div className="thread-focus-section-title">Sources Driving It</div>
+                        <div className="section-label thread-focus-section-title">Sources Driving It</div>
                         <div className="thread-focus-source-list">
                             {topSources.slice(0, 6).map((source: string) => (
                                 <button key={source} onClick={() => onSourceClick?.(source)}>{source}</button>
@@ -234,7 +234,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     </div>
 
                     <div className="thread-focus-section">
-                        <div className="thread-focus-section-title">Evidence</div>
+                        <div className="section-label thread-focus-section-title">Evidence</div>
                         {(active.evidence_samples || []).length === 0 ? (
                             <div className="thread-focus-muted">Evidence samples are still being assembled for this thread.</div>
                         ) : (
@@ -259,7 +259,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     {/* PACKET: Sentiment Timeline */}
                     {!!active.packet?.timeline?.length && (
                         <div className="thread-focus-section">
-                            <div className="thread-focus-section-title">Activity Timeline</div>
+                            <div className="section-label thread-focus-section-title">Activity Timeline</div>
                             <div className="thread-focus-timeline-chart">
                                 {active.packet.timeline!.map((t, i) => (
                                     <div
@@ -284,7 +284,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     {/* PACKET: Country Edges */}
                     {!!active.packet?.countryBreakdown?.length && (
                         <div className="thread-focus-section">
-                            <div className="thread-focus-section-title">Country Breakdown</div>
+                            <div className="section-label thread-focus-section-title">Country Breakdown</div>
                             <div className="thread-focus-country-breakdown">
                                 {active.packet.countryBreakdown!.slice(0, 10).map(c => (
                                     <button
@@ -311,7 +311,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     {/* PACKET: Source Lanes + Top Sources */}
                     {(!!active.packet?.lanes || !!active.packet?.topSources?.length) && (
                         <div className="thread-focus-section">
-                            <div className="thread-focus-section-title">Source Lanes</div>
+                            <div className="section-label thread-focus-section-title">Source Lanes</div>
                             {active.packet?.lanes && (
                                 <div className="thread-focus-lane-chips">
                                     {active.packet.lanes.media > 0 && (
@@ -371,7 +371,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     {/* PACKET: Related Themes */}
                     {!!active.packet?.relatedThemes?.length && (
                         <div className="thread-focus-section">
-                            <div className="thread-focus-section-title">Related Topics</div>
+                            <div className="section-label thread-focus-section-title">Related Topics</div>
                             <div className="thread-focus-chip-row">
                                 {active.packet.relatedThemes!.slice(0, 8).map(t => (
                                     <span key={t.theme} className="thread-focus-related-chip" data-tip={`${t.count} co-occurrences`}>
@@ -388,7 +388,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     {(!!(active.packet?.public_attention?.trends as unknown[] | undefined)?.length ||
                       !!(active.packet?.public_attention?.wiki as unknown[] | undefined)?.length) && (
                         <div className="thread-focus-section">
-                            <div className="thread-focus-section-title">Public Attention</div>
+                            <div className="section-label thread-focus-section-title">Public Attention</div>
                             <div className="thread-focus-attention-row">
                                 {!!(active.packet!.public_attention!.trends as unknown[])?.length && (
                                     <div className="thread-focus-attention-card">

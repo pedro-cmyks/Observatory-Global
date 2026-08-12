@@ -222,7 +222,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     />
 
                     <div>
-                        <div className="sdp-section-label">Sentiment</div>
+                        <div className="section-label sdp-section-label">Sentiment</div>
                         <div className="sdp-sentiment-row">
                             <span className="sdp-sentiment-label" style={{ color: sentimentColor }}>
                                 {getSentimentLabel(signal.sentiment)}
@@ -253,7 +253,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     {context && (
                         <div id="sdp-threads">
                             <div
-                                className="sdp-section-label"
+                                className="section-label sdp-section-label"
                                 data-tip="The living Narrative Threads this signal belongs to or connects to. IN THREAD = assigned membership; RELATED = linked via nearest-meaning neighbours; KEYWORD = headline-term overlap with a thread."
                             >
                                 Where this fits
@@ -299,7 +299,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     {signal.themes.length > 0 && (
                         <details className="sdp-taxonomy-details" id="sdp-taxonomy">
                             <summary
-                                className="sdp-section-label sdp-section-label--taxonomy"
+                                className="section-label sdp-section-label sdp-section-label--taxonomy"
                                 data-tip="GDELT taxonomy codes — a navigation index, not the story model. 'Where this fits' above is the product unit. Collapsed by default; being phased out of the surface."
                             >
                                 GDELT Taxonomy · {signal.themes.length}
@@ -331,7 +331,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         if (subjects.length === 0) return null
                         return (
                             <div>
-                                <div className="sdp-section-label">Key Subjects</div>
+                                <div className="section-label sdp-section-label">Key Subjects</div>
                                 <div className="sdp-tags">
                                     {subjects.map(s => (
                                         <span
@@ -357,7 +357,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                     {context && context.semantic_neighbors.length > 0 ? (
                         <div id="sdp-neighbors">
                             <div
-                                className="sdp-section-label"
+                                className="section-label sdp-section-label"
                                 data-tip="Nearest signals by meaning (multilingual embedding similarity), not by shared taxonomy code. Similarity shown per item; UNVERIFIED = not assigned to any gated thread."
                             >
                                 Semantic Neighbors
@@ -410,7 +410,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         </div>
                     ) : !context && relatedSignals && relatedSignals.length > 0 && (
                         <div>
-                            <div className="sdp-section-label">Related Signals</div>
+                            <div className="section-label sdp-section-label">Related Signals</div>
                             <div className="sdp-related-list">
                                 {relatedSignals.map(r => (
                                     <a

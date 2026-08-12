@@ -101,7 +101,7 @@ export function MarketsPanel() {
         <>
           {/* World bellwether board — always present, never blank. */}
           <div className="markets-section">
-            <h4 className="markets-section-title">World basket</h4>
+            <h4 className="section-label markets-section-title">World basket</h4>
             {world.length > 0 ? (
               <div className="markets-grid">
                 {world.map(inst => (
@@ -119,7 +119,7 @@ export function MarketsPanel() {
           {showCountry && country && (
             <div className="markets-section">
               <div className="markets-section-headrow">
-                <h4 className="markets-section-title">
+                <h4 className="section-label markets-section-title">
                   {resolveCountryName(country.country_code, undefined)} · own instruments
                 </h4>
                 <button

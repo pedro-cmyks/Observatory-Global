@@ -577,7 +577,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         tier). Sentiment was not frozen, so none is shown. */}
                     {sig.archived && (
                         <span
-                            className="coverage-badge coverage-badge--archived"
+                            className="badge coverage-badge coverage-badge--archived"
                             data-tip="Frozen receipt captured when this story was clustered — the live signal has aged out of the 7-day hot window. Headline and link are real; live stats no longer include it."
                         >
                             FROM THE ARCHIVE
@@ -732,10 +732,10 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             <p className="theme-detail-meta">
                                 <span className="query-thread-tag">Custom thread</span>
                                 {data?.coverageTier === 'thin' && (
-                                    <span className="coverage-badge coverage-badge--thin" data-tip="Few matching signals — this thread is built from thin coverage">THIN</span>
+                                    <span className="badge coverage-badge coverage-badge--thin" data-tip="Few matching signals — this thread is built from thin coverage">THIN</span>
                                 )}
                                 {data?.coverageTier === 'limited' && (
-                                    <span className="coverage-badge coverage-badge--limited" data-tip="Limited matching signals for this query">LIMITED</span>
+                                    <span className="badge coverage-badge coverage-badge--limited" data-tip="Limited matching signals for this query">LIMITED</span>
                                 )}
                                 {' '}Built from your search · {totalDisplay} matching signals
                             </p>
@@ -1239,7 +1239,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                             {cf.signal_count.toLocaleString()} sig
                                                             <span className="framing-share"> · {sharePct}%</span>
                                                             {isThin && (
-                                                                <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${cf.signal_count} signal${cf.signal_count === 1 ? '' : 's'} from this country — treat as indicative only`}>thin</span>
+                                                                <span className="badge coverage-badge coverage-badge--thin" data-tip={`Only ${cf.signal_count} signal${cf.signal_count === 1 ? '' : 's'} from this country — treat as indicative only`}>thin</span>
                                                             )}
                                                         </span>
                                                         {toneMeaningful ? (
@@ -1503,7 +1503,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                     of attributable voices are {resolveCountryName(sv.subject, sv.subject)}&apos;s own press
                                                 </span>
                                                 {sv.thin && (
-                                                    <span className="coverage-badge coverage-badge--thin" data-tip={`Only ${sv.attributable} voices carry a known outlet origin — treat this ratio as indicative only`}>
+                                                    <span className="badge coverage-badge coverage-badge--thin" data-tip={`Only ${sv.attributable} voices carry a known outlet origin — treat this ratio as indicative only`}>
                                                         thin
                                                     </span>
                                                 )}

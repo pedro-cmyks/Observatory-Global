@@ -108,10 +108,7 @@
 .wb-action--danger { border-color: rgba(248, 113, 113, 0.3); color: rgba(252, 165, 165, 0.8); }
 
 .wb-section-title {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(var(--color-neutral-rgb), 0.7);
+  /* #247 C1: typography from the shared .section-label base */
   padding: 10px 0 4px;
 }
 

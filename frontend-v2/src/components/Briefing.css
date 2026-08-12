@@ -355,14 +355,10 @@
 
 /* Coarse source-credibility tier (#217) chip on Brief receipts. */
 .source-tier-chip {
-    display: inline-block;
+    /* #247 C2: shared anatomy from the .badge base */
     margin-left: 5px;
     font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
     padding: 1px 4px;
-    border-radius: 3px;
-    vertical-align: middle;
 }
 .source-tier-chip--wire { background: rgba(59, 130, 246, 0.16); color: #3b82f6; }
 .source-tier-chip--state { background: rgba(245, 158, 11, 0.18); color: #b45309; }

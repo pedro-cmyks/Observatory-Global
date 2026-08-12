@@ -154,10 +154,7 @@
 }
 
 .rp-section-title {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(var(--color-neutral-rgb), 0.7);
+  /* #247 C1: typography from the shared .section-label base */
   padding: 0 0 4px;
 }
 
