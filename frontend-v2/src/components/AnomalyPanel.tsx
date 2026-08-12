@@ -171,7 +171,13 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                         data-tip={relationBasis
                             ? `${relationBasis} — that lead is the only reason this panel re-scoped. Coverage volume, not a claim that the story is about ${resolveCountryName(relationCountry)}.`
                             : `Re-scoped to the focus's dominant country: ${resolveCountryName(relationCountry)}`}>
-                        {(relation.value || '').toUpperCase().slice(0, 14)} → {relationCountry}
+                        {/* resolveThreadLabel exists precisely so an opaque numeric
+                            id never reaches the screen ("DYNAMIC-TOPIC-" was
+                            leaking here); person/source values pass through it
+                            unchanged. */}
+                        {(relation.kind === 'theme'
+                            ? resolveThreadLabel(relation.value)
+                            : (relation.value || '')).toUpperCase().slice(0, 16)} → {relationCountry}
                         {relation.leaderSignals != null && relation.totalSignals > 0 && (
                             <span className="ap-focus-basis"> · {relation.leaderSignals}/{relation.totalSignals} sig</span>
                         )}
