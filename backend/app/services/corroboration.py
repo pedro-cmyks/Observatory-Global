@@ -935,6 +935,9 @@ async def corroborate_claim(
     corroborating = [m for m in matches if m["relation"] == "corroborates"]
     contradicting = [m for m in matches if m["relation"] == "contradicts"]
     context = [m for m in matches if m["relation"] == "context"]
+    # Spec F2: template matches are "visible, never counted" — a row set
+    # aside by the anti-template guard must be inspectable, not vanished.
+    template_matches = [m for m in matches if m["relation"] == "template_match"]
 
     return {
         "contract": "corroboration-v1",
@@ -950,6 +953,7 @@ async def corroborate_claim(
         "corroborating": corroborating,
         "contradicting": contradicting,
         "context": context,
+        "template_matches": template_matches,
         "verdict": citation_verdict(matches),
         "meta": {
             "figure_match_tolerance": FIGURE_MATCH_TOLERANCE,

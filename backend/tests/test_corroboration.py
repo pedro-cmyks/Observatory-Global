@@ -159,3 +159,38 @@ def test_all_aged_means_uncorroborated_today():
         today=today)
     assert v["status"] == "uncorroborated"
     assert v["aged"] == 1
+
+
+def test_template_matches_visible_in_payload():
+    """Spec F2: 'visible, never counted' — the payload must carry the rows
+    the guard set aside, not vanish them (they appear in no other list)."""
+    import asyncio
+    from app.services.corroboration import corroborate_claim
+
+    async def fake_doc20(_query, **_kw):
+        return {"status": "down", "articles": []}
+
+    class _FakeConn:
+        async def fetch(self, *_a):
+            return []
+
+    async def fake_hot(_conn, _vec, _hours):
+        # The T-N19 witness lives in the semantic lane: template shapes
+        # embed close (0.87) while sharing zero event anchors.
+        return [{"headline": "Ambush kills 12 soldiers in northern Mali",
+                 "source_name": "x.example", "source_url": "https://x/1",
+                 "country_code": "ML", "timestamp": "2026-08-11T00:00:00Z",
+                 "similarity": 0.87, "source_lang": "en"}]
+
+    res = asyncio.run(corroborate_claim(
+        headline="Israeli strike kills 12 in Gaza refugee camp",
+        doc20_fetch=fake_doc20,
+        conn=_FakeConn(),
+        embed_fn=lambda _t: [0.0] * 8,
+        hot_fetch=fake_hot))
+    assert [m["snippet"] for m in res["template_matches"]] == [
+        "Ambush kills 12 soldiers in northern Mali"]
+    assert res["verdict"]["template_matches"] == 1
+    assert all(m["relation"] != "template_match"
+               for lst in ("corroborating", "contradicting", "context")
+               for m in res[lst])
