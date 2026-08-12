@@ -27,7 +27,7 @@ export function FocusIndicator({ onClear, onRemoveTheme }: { onClear?: () => voi
     if (filter.thread) {
         chips.push({
             key: 'thread',
-            typeLabel: 'Thread',
+            typeLabel: 'Story',
             value: resolveThreadLabel(filter.thread, filter.themeLabel),
             onRemove: () => setThread(null),
         })
@@ -88,7 +88,7 @@ export function FocusIndicator({ onClear, onRemoveTheme }: { onClear?: () => voi
             {/* Pedro 2026-07-16: the floating chip covered the layer chips.
                 Now a full-width in-flow band — and since EVERY surface
                 re-scopes to the focus, the band says so. */}
-            <span className="focus-scope-note">map · threads · stream · universe re-scoped</span>
+            <span className="focus-scope-note">map · stories · stream · universe re-scoped</span>
             <button
                 className="focus-clear focus-clear-all"
                 data-tour="focus-clear"

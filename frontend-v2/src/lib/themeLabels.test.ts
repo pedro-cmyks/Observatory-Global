@@ -32,8 +32,8 @@ describe('resolveThreadLabel', () => {
     expect(resolveThreadLabel('dynamic-topic-821', 'Portugal Beach Croatia 2-1')).toBe('Portugal Beach Croatia 2-1')
   })
   it('never echoes a raw numeric thread id when no label is known', () => {
-    expect(resolveThreadLabel('dynamic-topic-821')).toBe('Narrative Thread')
-    expect(resolveThreadLabel('emergent-cluster-17')).toBe('Narrative Thread')
+    expect(resolveThreadLabel('dynamic-topic-821')).toBe('Story')
+    expect(resolveThreadLabel('emergent-cluster-17')).toBe('Story')
   })
   it('prettifies an atlas slug when no label is known', () => {
     expect(resolveThreadLabel('election-legitimacy--co')).toBe('Election Legitimacy')
@@ -50,8 +50,8 @@ describe('resolveThreadLabel', () => {
 describe('resolveThreadTitle (council STILL-BROKEN: deep-link cold title)', () => {
   it('while the first fetch is in flight an opaque thread id titles as a neutral loading state — never the raw id, never a resolved-looking generic', async () => {
     const { resolveThreadTitle } = await import('./themeLabels')
-    expect(resolveThreadTitle('dynamic-topic-3667', null, true)).toBe('Loading thread…')
-    expect(resolveThreadTitle('emergent-cluster-17', undefined, true)).toBe('Loading thread…')
+    expect(resolveThreadTitle('dynamic-topic-3667', null, true)).toBe('Loading story…')
+    expect(resolveThreadTitle('emergent-cluster-17', undefined, true)).toBe('Loading story…')
   })
   it('a known label wins even while loading (list row carried it)', async () => {
     const { resolveThreadTitle } = await import('./themeLabels')
@@ -59,7 +59,7 @@ describe('resolveThreadTitle (council STILL-BROKEN: deep-link cold title)', () =
   })
   it('after loading settles with no label, falls to the resolveThreadLabel fallback (fetch failed — honest generic, not a fake loading state)', async () => {
     const { resolveThreadTitle } = await import('./themeLabels')
-    expect(resolveThreadTitle('dynamic-topic-3667', null, false)).toBe('Narrative Thread')
+    expect(resolveThreadTitle('dynamic-topic-3667', null, false)).toBe('Story')
   })
   it('atlas slugs and GDELT codes carry their own names — no loading state needed', async () => {
     const { resolveThreadTitle } = await import('./themeLabels')
@@ -106,7 +106,7 @@ describe('resolveDisplayLabel', () => {
   })
   it('never renders a raw opaque topic id', async () => {
     const { resolveDisplayLabel } = await import('./themeLabels')
-    expect(resolveDisplayLabel('dynamic-topic-8072', 'dynamic-topic-8072')).toBe('Narrative Thread')
+    expect(resolveDisplayLabel('dynamic-topic-8072', 'dynamic-topic-8072')).toBe('Story')
   })
   it('uses the caller fallback when there is nothing to resolve', async () => {
     const { resolveDisplayLabel } = await import('./themeLabels')

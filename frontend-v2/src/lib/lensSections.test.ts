@@ -59,7 +59,7 @@ describe('buildSections', () => {
   it('says nothing was measured, not that nothing matched, when there is no subject', () => {
     const s = buildSections({ countries: [], connected: [], attention: [] }, { connected: 'no_anchor' })
     expect(s.connected.state).toBe('empty')
-    expect(s.connected.reason).toBe('Open a thread, a country or a person — neighbours are measured against a subject.')
+    expect(s.connected.reason).toBe('Open a story, a country or a person — neighbours are measured against a subject.')
   })
 
   it('says a scope has no such lane rather than claiming a measured zero', () => {

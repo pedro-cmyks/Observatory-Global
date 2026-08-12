@@ -24,7 +24,7 @@ interface ConnectedThread {
 }
 
 function basisLabel(t: ConnectedThread): string {
-    if (t.basis === 'member') return t.discussion ? 'discussed' : 'in thread'
+    if (t.basis === 'member') return t.discussion ? 'discussed' : 'in story'
     if (t.basis === 'keyword') return 'keyword'
     return 'related'
 }
@@ -83,7 +83,7 @@ export function ConnectionsSection({ signalId, onThreadClick, hours = 336, label
             snapshot: {
                 capturedAt: new Date().toISOString(),
                 summary: cts.length > 0
-                    ? `Connects to ${cts.length} thread${cts.length > 1 ? 's' : ''}: ${cts.slice(0, 2).map(t => t.label).join(', ')}`
+                    ? `Connects to ${cts.length} ${cts.length > 1 ? 'stories' : 'story'}: ${cts.slice(0, 2).map(t => t.label).join(', ')}`
                     : 'No strong narrative connection at pin time',
                 metrics: { connectedThreads: cts.length },
                 evidence: cts.slice(0, 3).map(t => ({
@@ -137,7 +137,7 @@ export function ConnectionsSection({ signalId, onThreadClick, hours = 336, label
                 <div className="connections-empty">
                     {notEmbedded
                         ? 'Not analyzed yet — no narrative connection available for this item.'
-                        : 'No strong narrative connection — this looks like local chatter, not part of a tracked thread.'}
+                        : 'No strong narrative connection — this looks like local chatter, not part of a tracked story.'}
                 </div>
             ) : (
                 <div className="connections-threads">
@@ -146,7 +146,7 @@ export function ConnectionsSection({ signalId, onThreadClick, hours = 336, label
                             key={t.thread_id}
                             className="connections-thread"
                             onClick={() => onThreadClick?.(t.thread_id)}
-                            data-tip={`Open the "${t.label}" narrative thread`}
+                            data-tip={`Open the "${t.label}" story`}
                         >
                             <span className={`connections-basis connections-basis--${t.discussion ? 'discussion' : t.basis}`}>
                                 {basisLabel(t)}

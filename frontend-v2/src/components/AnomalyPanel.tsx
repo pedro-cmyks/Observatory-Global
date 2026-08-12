@@ -151,8 +151,8 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                     {overallSeverity.toUpperCase()}
                 </span>
                 {activeTheme && (
-                    <span className="ap-focus-badge ap-focus-theme" data-tip={`Narrative Thread active: ${resolveThreadLabel(activeTheme, activeThemeLabel)}`}>
-                        THREAD: {resolveThreadLabel(activeTheme, activeThemeLabel).slice(0, 22)}
+                    <span className="ap-focus-badge ap-focus-theme" data-tip={`Story active: ${resolveThreadLabel(activeTheme, activeThemeLabel)}`}>
+                        STORY: {resolveThreadLabel(activeTheme, activeThemeLabel).slice(0, 22)}
                     </span>
                 )}
                 {streamLevel && streamLevel !== 'notable' && streamLevel !== 'all' && !activeTheme && (
@@ -246,7 +246,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                     const cc = conflictCountryCode(c)
                                     return (
                                         <div key={c.id} className={`ap-row ap-row--conflict${cc ? ' clickable' : ''}`}
-                                            data-tip={cc ? `Focus ${resolveCountryName(cc)} — map, threads and dock re-scope to it` : 'No country attributed to this event'}
+                                            data-tip={cc ? `Focus ${resolveCountryName(cc)} — map, stories and dock re-scope to it` : 'No country attributed to this event'}
                                             onClick={cc ? () => handleAnomalyClick(cc) : undefined}>
                                             <span className="ap-src-tag" style={{ color: src === 'A' ? '#f87171' : '#fb923c' }}>{src}</span>
                                             <span className="ap-conflict-info">

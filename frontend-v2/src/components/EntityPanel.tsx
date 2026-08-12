@@ -359,14 +359,14 @@ export function EntityPanel({ focusType, focusValue, onClose, onThemeSelect, onC
                         narrative threads, ABOVE the demoted GDELT "Related Themes". */}
                     {focusType === 'person' && personThreads.length > 0 && (
                         <div className="entity-section" id="ep-threads">
-                            <div className="section-label entity-section-label">Threads {displayName} participates in</div>
+                            <div className="section-label entity-section-label">Stories {displayName} participates in</div>
                             <div className="entity-threads">
                                 {personThreads.slice(0, 6).map(t => (
                                     <button
                                         key={t.thread_id}
                                         className="entity-thread-row"
                                         onClick={() => onThemeSelect?.(t.thread_id)}
-                                        data-tip={`Open the "${t.label}" narrative thread`}
+                                        data-tip={`Open the "${t.label}" story`}
                                     >
                                         <span className="entity-thread-label">{t.label}</span>
                                         {t.discussion_count != null && t.discussion_count > 0 && (

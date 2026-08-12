@@ -41,7 +41,7 @@ export function degradedSearchSegments(results: DegradableSearchResult | null): 
 }
 
 const SEGMENT_LABELS: Record<string, string> = {
-  live_threads: 'live threads',
+  live_threads: 'live stories',
   public_attention: 'public attention',
   signal_matches: 'media signals',
   themes: 'themes',

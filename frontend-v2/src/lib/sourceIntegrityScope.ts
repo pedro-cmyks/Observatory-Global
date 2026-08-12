@@ -26,7 +26,7 @@ export function buildSourceIntegrityScopeLabel(input: SourceIntegrityScopeInput)
   if (input.theme) {
     return {
       heading: getThemeLabel(input.theme),
-      sublabel: 'Scoped to active thread/topic',
+      sublabel: 'Scoped to active story/topic',
       scoped: true,
     }
   }

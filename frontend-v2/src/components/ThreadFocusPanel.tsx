@@ -108,7 +108,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
             })
             .then(payload => setDetail(payload.thread ? { ...payload.thread, label: thread.label } : thread))
             .catch(err => {
-                if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'Failed to load thread')
+                if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'Failed to load story')
             })
             .finally(() => {
                 if (!controller.signal.aborted) setLoading(false)
@@ -170,14 +170,14 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
         <div className="thread-focus-panel">
             <div className="thread-focus-header">
                 <div>
-                    <div className="thread-focus-kicker">LIVING THREAD</div>
+                    <div className="thread-focus-kicker">LIVING STORY</div>
                     <h2>{active.label}</h2>
                 </div>
-                <button className="thread-focus-close" onClick={onClose} aria-label="Close thread focus">×</button>
+                <button className="thread-focus-close" onClick={onClose} aria-label="Close story focus">×</button>
             </div>
 
             {loading && <PanelSkeleton rows={4} />}
-            {error && <div className="thread-focus-error">Could not load thread detail: {error}</div>}
+            {error && <div className="thread-focus-error">Could not load story detail: {error}</div>}
 
             {!loading && !error && (
                 <>
@@ -236,7 +236,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
                     <div className="thread-focus-section">
                         <div className="section-label thread-focus-section-title">Evidence</div>
                         {(active.evidence_samples || []).length === 0 ? (
-                            <div className="thread-focus-muted">Evidence samples are still being assembled for this thread.</div>
+                            <div className="thread-focus-muted">Evidence samples are still being assembled for this story.</div>
                         ) : (
                             <div className="thread-focus-evidence">
                                 {(active.evidence_samples || []).slice(0, 6).map((sample: ThreadEvidence) => {

@@ -73,7 +73,7 @@ describe('degradedSearchSegments', () => {
 
 describe('describeDegradedSegments', () => {
   it('names known lanes in analyst language', () => {
-    expect(describeDegradedSegments(['live_threads', 'signal_matches'])).toBe('live threads, media signals')
+    expect(describeDegradedSegments(['live_threads', 'signal_matches'])).toBe('live stories, media signals')
     expect(describeDegradedSegments(['public_attention'])).toBe('public attention')
     expect(describeDegradedSegments([SEARCH_LOOKUP_FAILED])).toBe('the search request')
   })

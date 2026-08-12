@@ -314,7 +314,7 @@ export default function WorkbenchPanel({
                     className="wb-action wb-action--airead"
                     onClick={runAiRead}
                     disabled={evidenceUrls.length === 0 || aiReading}
-                    data-tip="AI-read the fetched source texts: claims with verbatim quotes (quoteless claims are dropped), plus LEADS — actors the bodies reveal, matched against Atlas threads you haven't pinned. First run pays the model; later runs hit the cache."
+                    data-tip="AI-read the fetched source texts: claims with verbatim quotes (quoteless claims are dropped), plus LEADS — actors the bodies reveal, matched against Atlas stories you haven't pinned. First run pays the model; later runs hit the cache."
                   >{aiReading ? 'READING SOURCES…' : (readings.size > 0 ? 'RE-READ' : 'AI READ')}</button>
                 )}
                 {otherInvestigations.length > 0 && (
@@ -362,7 +362,7 @@ export default function WorkbenchPanel({
                 true rather than aspirational (localStorage is per-device until
                 sign-in; accounts-v1 / AuthContext.tsx). */}
             {isMobile ? (
-              <div className="wb-desktop-only" data-tip="The constellation reads measured semantic proximity, shared countries and shared actors between pinned threads; the research plan and the dossier both run live model passes. All three assume the screen space and the working session a phone read does not have.">
+              <div className="wb-desktop-only" data-tip="The constellation reads measured semantic proximity, shared countries and shared actors between pinned stories; the research plan and the dossier both run live model passes. All three assume the screen space and the working session a phone read does not have.">
                 The constellation, the research plan and the dossier are worked on the computer.{' '}
                 {session
                   ? 'Pins you capture here sync to your signed-in session — open them on the desktop.'
@@ -376,7 +376,7 @@ export default function WorkbenchPanel({
                     wish 21). */}
                 <WorkbenchConstellation inv={active} onOpenThread={onOpenThread} onRerender={rerender} />
                 {connectionTopicIds(active).length < 2 && (
-                  <div className="wb-constellation-hint" data-tip="The constellation measures semantic proximity, shared countries and shared actors between pinned topic threads — it needs at least two to have anything to connect.">
+                  <div className="wb-constellation-hint" data-tip="The constellation measures semantic proximity, shared countries and shared actors between pinned stories — it needs at least two to have anything to connect.">
                     Pin 2+ topic threads to see their measured connections.
                   </div>
                 )}
@@ -538,7 +538,7 @@ export default function WorkbenchPanel({
                 stays on the computer. */}
             {leads && !isMobile && (leads.leads.length > 0 || leads.suppressed.length > 0) && (
               <>
-                <div className="section-label wb-section-title" data-tip={leads.basis ?? 'Actors from the fetched article bodies, matched against current Atlas threads.'}>
+                <div className="section-label wb-section-title" data-tip={leads.basis ?? 'Actors from the fetched article bodies, matched against current Atlas stories.'}>
                   LEADS FROM THE TEXT ({leads.leads.length})
                 </div>
                 <div className="wb-leads">
@@ -547,8 +547,8 @@ export default function WorkbenchPanel({
                       <div className="wb-lead-head">
                         <span className="wb-lead-entity">{l.entity}</span>
                         <span className="wb-lead-kind">{l.kind}{l.role ? ` · ${l.role}` : ''}</span>
-                        <span className="wb-lead-basis" data-tip="Measured: how many current Atlas threads this actor appears in (rarest first — a one-thread actor is the investigative one).">
-                          {l.thread_count} thread{l.thread_count === 1 ? '' : 's'}
+                        <span className="wb-lead-basis" data-tip="Measured: how many current Atlas stories this actor appears in (rarest first — a one-story actor is the investigative one).">
+                          {l.thread_count} {l.thread_count === 1 ? 'story' : 'stories'}
                         </span>
                       </div>
                       {l.quote && <blockquote className="wb-lead-quote">“{l.quote}”</blockquote>}
@@ -610,7 +610,7 @@ export default function WorkbenchPanel({
                     <div className="wb-empty">No new leads — the bodies name no rare actors beyond what you pinned.</div>
                   )}
                   {leads.suppressed.length > 0 && (
-                    <div className="wb-lead-suppressed" data-tip="No silent filtering: entities skipped for being the investigation's own subject or matching too many threads (a ubiquitous actor relates nothing).">
+                    <div className="wb-lead-suppressed" data-tip="No silent filtering: entities skipped for being the investigation's own subject or matching too many stories (a ubiquitous actor relates nothing).">
                       {leads.suppressed.length} suppressed: {leads.suppressed.slice(0, 4).map(s => `${s.name} (${s.reason.replace(/_/g, ' ')})`).join(' · ')}{leads.suppressed.length > 4 ? ' · …' : ''}
                     </div>
                   )}

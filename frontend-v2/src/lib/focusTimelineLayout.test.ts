@@ -484,8 +484,8 @@ describe('emptyTimelineCopy — three empty states, never one sentence', () => {
         expect(emptyTimelineCopy('invalid_ref', 'ref_too_long').detail).toMatch(/long/i)
     })
 
-    it('keeps the existing thread + fallback reasons intact', () => {
-        expect(emptyTimelineCopy('topic_not_found').headline).toMatch(/thread type/i)
+    it('keeps the existing story + fallback reasons intact', () => {
+        expect(emptyTimelineCopy('topic_not_found').headline).toMatch(/story type/i)
         expect(emptyTimelineCopy('db_unavailable').tone).toBe('gap')
         expect(emptyTimelineCopy(undefined).headline).toMatch(/no data|no timeline/i)
     })

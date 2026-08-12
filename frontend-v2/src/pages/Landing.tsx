@@ -214,7 +214,7 @@ const PILLARS = [
         pc: 'lp-pc-em',
         tag: 'Who says what',
         h: 'Across borders and languages',
-        b: <>Open any thread to see who is covering it, in which countries and languages, and press against public. <b>Self-voice is measured by who owns the outlet</b>, not what language it prints — a country talked about is not the same as a country with its own voice.</>,
+        b: <>Open any story to see who is covering it, in which countries and languages, and press against public. <b>Self-voice is measured by who owns the outlet</b>, not what language it prints — a country talked about is not the same as a country with its own voice.</>,
     },
     {
         pc: 'lp-pc-oc',
@@ -423,7 +423,7 @@ export function Landing() {
                 <RevealSection className="lp-sect" labelledBy="lp-wai">
                     <p className="lp-kicker">What Atlas is</p>
                     <h2 className="lp-sect-title" id="lp-wai">A measured read on how the world is covered.</h2>
-                    <p className="lp-sect-lede">Atlas aggregates the world's news into narrative threads and tells you four honest things about each one — who is covering it, how the framing moves across borders, what is under-covered, and where the quiet sections are. No single front page, no editor's verdict.</p>
+                    <p className="lp-sect-lede">Atlas aggregates the world's news into stories and tells you four honest things about each one — who is covering it, how the framing moves across borders, what is under-covered, and where the quiet sections are. No single front page, no editor's verdict.</p>
                     <div className="lp-pillars">
                         {PILLARS.map(p => (
                             <article key={p.tag} className={`lp-pill-card ${p.pc}`}>
@@ -471,7 +471,7 @@ export function Landing() {
                         <p className="lp-vnote">Live voice-mix unavailable — showing the dated baseline ({VOICE_BASELINE_LABEL}, measured 2026-06-23) rather than pretending it is current.</p>
                     )}
 
-                    <p className="lp-subhead">Moving right now — the day's threads, measured</p>
+                    <p className="lp-subhead">Moving right now — the day's stories, measured</p>
                     {movers === null && (
                         <p className="lp-loading">Loading the latest narratives…</p>
                     )}
@@ -487,19 +487,19 @@ export function Landing() {
                                     {m.covering && (
                                         <p className="lp-tmeta">
                                             <span data-tip={m.covering.approx
-                                                ? 'A floor read from the thread\'s capped top-countries list — the true count is at least this many.'
+                                                ? 'A floor read from the story\'s capped top-countries list — the true count is at least this many.'
                                                 : undefined}
                                             >
                                                 <b>{m.covering.value}</b> {m.covering.noun} covering
                                             </span>
                                         </p>
                                     )}
-                                    <div className="lp-trec"><span className="lp-rq">Open the thread — who is covering it, and how <ArrowRight /></span></div>
+                                    <div className="lp-trec"><span className="lp-rq">Open the story — who is covering it, and how <ArrowRight /></span></div>
                                 </button>
                             ))}
                         </div>
                     )}
-                    <p className="lp-todaynote">Threads are clustered live from cross-language coverage and ranked by spread, movement and coherence — <b>never by a single outlet's front page</b>. Opening one lands in the console, scoped to that story.</p>
+                    <p className="lp-todaynote">Stories are clustered live from cross-language coverage and ranked by spread, movement and coherence — <b>never by a single outlet's front page</b>. Opening one lands in the console, scoped to that story.</p>
                 </RevealSection>
 
                 {/* ============ HONEST LIMITS ============ */}
@@ -524,7 +524,7 @@ export function Landing() {
                     <div className="lp-entry-in">
                         <p className="lp-kicker lp-kicker-center">Start here</p>
                         <h2 className="lp-entry-h" id="lp-en">Read today's edition<span className="lp-dot">.</span></h2>
-                        <p className="lp-entry-p">The Brief is the front page — measured, last 24 hours, with the receipts. The console is the full instrument: the globe, the threads, the gaps, and the workbench behind them.</p>
+                        <p className="lp-entry-p">The Brief is the front page — measured, last 24 hours, with the receipts. The console is the full instrument: the globe, the stories, the gaps, and the workbench behind them.</p>
                         <div className="lp-entry-cta">
                             <button className="lp-btn lp-btn-primary" onClick={() => navigate('/brief')}>Read the Brief<ArrowRight /></button>
                             <button className="lp-btn lp-btn-ghost" onClick={() => navigate('/app')}>Open the console</button>

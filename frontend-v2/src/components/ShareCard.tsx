@@ -33,7 +33,7 @@ export function ShareThreadButton({ input }: Props) {
       type="button"
       className="share-thread-btn"
       onClick={onShare}
-      data-tip="Share this thread"
+      data-tip="Share this story"
       disabled={state === 'busy'}
     >
       {state === 'copied' ? 'Copied ✓' : state === 'busy' ? 'Sharing…' : 'Share ↗'}

@@ -207,15 +207,15 @@ export function Docs() {
                             <h2 id="what-h">What Atlas is</h2>
                             <p className="docs-lead">
                                 Atlas ingests global news coverage and public-attention feeds, clusters them into living{' '}
-                                <strong>narrative threads</strong>, and measures how those threads move: which countries
+                                <strong>stories</strong>, and measures how those stories move: which countries
                                 are covering them, in which languages, whose voice is present, whose is absent, and how
                                 fast attention is accelerating or fading.
                             </p>
                             <p>
-                                The unit of the product is the thread — a cluster of semantically related articles discovered
-                                from multilingual text embeddings, not a fixed topic code. A thread carries its evidence
+                                The unit of the product is the story — a cluster of semantically related articles discovered
+                                from multilingual text embeddings, not a fixed topic code. A story carries its evidence
                                 (real headlines with links), its geography of coverage, its movement over time, and its
-                                open category badge. Categories are a <em>lens</em> laid over the threads, never the thing
+                                open category badge. Categories are a <em>lens</em> laid over the stories, never the thing
                                 you are reading.
                             </p>
                             <div className="docs-callout">
@@ -256,7 +256,7 @@ export function Docs() {
                                     <h3>The day, readable</h3>
                                     <p>
                                         A newspaper-style read of the last 24 hours — fixed window by design. A lead story
-                                        built from the top thread with its evidence headlines, a watchlist with movement,
+                                        built from the top story with its evidence headlines, a watchlist with movement,
                                         a heating-countries strip, and a "what is missing" box listing categories with raw
                                         coverage but nothing that cleared the quality gate.
                                     </p>
@@ -267,9 +267,9 @@ export function Docs() {
                                     <h3>Time as a dimension</h3>
                                     <p>
                                         The working view: an equal-area globe colored by composite heat, the live signal
-                                        stream, narrative threads, a semantic universe of all active stories, and a
+                                        stream, the stories, a semantic universe of all active stories, and a
                                         public-attention dock. Scrubbers replay up to 30 days of real history; clicking a
-                                        country, thread, or person re-scopes every panel to its relations.
+                                        country, story, or person re-scopes every panel to its relations.
                                     </p>
                                     <p className="docs-card-do"><b>You can:</b> orient, pivot, scrub back in time, and pull the day's archived receipts for any country.</p>
                                 </article>
@@ -320,7 +320,7 @@ export function Docs() {
                                         <tr>
                                             <td>Bluesky + Lemmy</td>
                                             <td><span className="docs-lane commentary">commentary</span></td>
-                                            <td>The forum lane: public Bluesky posts (Jetstream firehose) and federated Lemmy instances. Always labeled UNVERIFIED, attached to threads as discussion only, and never allowed to seed a thread.</td>
+                                            <td>The forum lane: public Bluesky posts (Jetstream firehose) and federated Lemmy instances. Always labeled UNVERIFIED, attached to stories as discussion only, and never allowed to seed a story.</td>
                                         </tr>
                                         <tr>
                                             <td>Google Trends</td>
@@ -335,7 +335,7 @@ export function Docs() {
                                         <tr>
                                             <td>USGS + GDACS</td>
                                             <td><span className="docs-lane context">events</span></td>
-                                            <td>Natural-hazard events (earthquakes, floods, storms) that news taxonomies represent poorly, bound geo-temporally to threads so a disaster story carries its physical event.</td>
+                                            <td>Natural-hazard events (earthquakes, floods, storms) that news taxonomies represent poorly, bound geo-temporally to stories so a disaster story carries its physical event.</td>
                                         </tr>
                                         <tr>
                                             <td>AIS vessels + aircraft</td>
@@ -366,7 +366,7 @@ export function Docs() {
                                 base; a raw-feed domain count and an attributable-source count should never be compared
                                 directly.
                             </p>
-                            <h3>From signal to thread</h3>
+                            <h3>From signal to story</h3>
                             <p>
                                 Every headline is embedded with a multilingual model, so a Persian and an English article
                                 about the same event land near each other with no shared keywords. Clustering runs over
@@ -397,7 +397,7 @@ export function Docs() {
                                     Numbers come from counting and math — signal counts, entropies, cosine similarities,
                                     z-scores — never from a model's opinion of what matters. Language models are used in
                                     exactly two narrow places: labeling a cluster with a human-readable name, and typing a
-                                    thread's category from its evidence. Both outputs are decorations on measured structure;
+                                    story's category from its evidence. Both outputs are decorations on measured structure;
                                     neither decides what you see or in what order.
                                 </p>
                             </div>
@@ -444,7 +444,7 @@ export function Docs() {
                                     counts come from assignments the gate kept at its high-precision threshold.{' '}
                                     <span className="docs-chip-unv">Extended</span> coverage — material above a looser, explicitly
                                     stated threshold — is served separately and labeled with its approximate precision.
-                                    When a thread has raw coverage but nothing cleared the gate, Atlas shows the raw
+                                    When a story has raw coverage but nothing cleared the gate, Atlas shows the raw
                                     headlines under an <span className="docs-chip-unv">Unverified</span> banner instead of showing
                                     nothing: hiding real relevant coverage because a classifier was strict would be its own
                                     kind of dishonesty.
@@ -471,7 +471,7 @@ export function Docs() {
                             <div className="docs-principle" id="p-empty">
                                 <h3>Honest empties</h3>
                                 <p>
-                                    A country with signals but no coherent thread shows "0 threads" with an explanation —
+                                    A country with signals but no coherent story shows "0 stories" with an explanation —
                                     never a fallback padded with generic category volume. A research lane that finds nothing
                                     emits a coverage-gap note instead of failing silently. The Brief's "what is missing" box
                                     is built from exactly these gaps: categories with real raw coverage where nothing
@@ -498,9 +498,9 @@ export function Docs() {
                                     diversity score (40.1/100 at measurement) climbs and plateaus rather than reaching 100.
                                 </li>
                                 <li>
-                                    <strong>Clustering covers a fraction of the feed.</strong> Living threads are formed
+                                    <strong>Clustering covers a fraction of the feed.</strong> Living stories are formed
                                     from the coherent, recurring part of the corpus — a large share of raw signals remain
-                                    honest noise that never joins a thread. Thin substrate produces short lists; Atlas
+                                    honest noise that never joins a story. Thin substrate produces short lists; Atlas
                                     serves a short honest list rather than padding it.
                                 </li>
                                 <li>
@@ -510,7 +510,7 @@ export function Docs() {
                                     re-query. Anything before May 2026 does not exist in Atlas.
                                 </li>
                                 <li>
-                                    <strong>Labels lag embeddings.</strong> Threading and semantic search are
+                                    <strong>Labels lag embeddings.</strong> Story formation and semantic search are
                                     language-agnostic, but the labeling layer (sentiment, named entities) is English-first;
                                     non-English entities are typed by a gazetteer and flagged unverified rather than
                                     asserted.
@@ -574,7 +574,7 @@ export function Docs() {
 
                             <details>
                                 <summary>Why do the numbers change between visits?</summary>
-                                <p>Atlas is a living system over a rolling window. Threads form, grow, retire, and
+                                <p>Atlas is a living system over a rolling window. Stories form, grow, retire, and
                                     resurrect as coverage moves; the hot store advances daily. That is why the Workbench
                                     freezes snapshots at pin time — so the evidence in your dossier stays what it was when
                                     you cited it, even after the live numbers move on.</p>

@@ -504,7 +504,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         Pure country → Go to <country>; topic/compound → the story. */}
                     {countryIsPrimary && parsedQuery.countryCode && (
                         <button className="search-query-thread-cta search-query-thread-cta--country" onClick={handleGoToCountry}
-                            data-tip="Open the country brief — its threads, voice mix (who covers it) and coverage">
+                            data-tip="Open the country brief — its stories, voice mix (who covers it) and coverage">
                             <span className="search-query-thread-icon"><Flag code={parsedQuery.countryCode} title={parsedQuery.countryDisplay ?? parsedQuery.countryCode} /></span>
                             <span className="search-query-thread-text">
                                 Go to <strong>{parsedQuery.countryDisplay}</strong>
@@ -515,12 +515,12 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
                     {storyIsPrimary && (
                         <button className="search-query-thread-cta" onClick={handleOpenStory}
-                            data-tip="The cross-thread story: matching live threads, who says what, coverage gaps — press Enter">
+                            data-tip="The cross-story read: matching live stories, who says what, coverage gaps — press Enter">
                             <span className="search-query-thread-icon">◆</span>
                             <span className="search-query-thread-text">
                                 Open the story for <strong>“{trimmedQuery}”</strong>
                             </span>
-                            <span className="search-query-thread-hint">↵ cross-thread narrative</span>
+                            <span className="search-query-thread-hint">↵ cross-story narrative</span>
                         </button>
                     )}
 
@@ -539,12 +539,12 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
                     {countryIsPrimary && canStory && (
                         <button className="search-query-thread-cta search-query-thread-cta--muted" onClick={handleOpenStory}
-                            data-tip="The cross-thread story for this query — press Enter">
+                            data-tip="The cross-story read for this query — press Enter">
                             <span className="search-query-thread-icon">◆</span>
                             <span className="search-query-thread-text">
                                 Open the story for <strong>“{trimmedQuery}”</strong>
                             </span>
-                            <span className="search-query-thread-hint">↵ cross-thread narrative</span>
+                            <span className="search-query-thread-hint">↵ cross-story narrative</span>
                         </button>
                     )}
 
@@ -624,10 +624,10 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                     <div className="search-results-secondary">
                     {results?.live_threads && results.live_threads.length > 0 && (
                         <div className="search-section">
-                            <div className="search-section-label">Live Threads</div>
+                            <div className="search-section-label">Live Stories</div>
                             {results.live_threads.map(t => (
                                 <div key={t.id} className="search-item search-item--thread" onClick={() => handleLiveThreadClick(t)}>
-                                    <span className="search-item-tag thread-tag">{t.is_umbrella ? 'EVENT' : 'THREAD'}</span>
+                                    <span className="search-item-tag thread-tag">{t.is_umbrella ? 'EVENT' : 'STORY'}</span>
                                     <span className="search-item-name">
                                         {decodeEntities(t.label)}
                                         {/* N15: court failed/partial → compact under-review dot
@@ -645,7 +645,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                                     {t.match === 'partial' && (
                                         <span
                                             className="search-item-partial-chip"
-                                            data-tip="Loose match — only some words of your query appear in this thread's label"
+                                            data-tip="Loose match — only some words of your query appear in this story's label"
                                         >
                                             partial match
                                         </span>
@@ -711,7 +711,7 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
 
                     {results?.themes && results.themes.filter(t => t.total_signals > 0).length > 0 && (
                         <div className="search-section">
-                            <div className="search-section-label">Narrative threads</div>
+                            <div className="search-section-label">Stories</div>
                             {results.themes.filter(t => t.total_signals > 0).map((t) => (
                                 <div key={t.theme} className="search-item" onClick={() => handleThemeClick(t)}>
                                     <span className="search-item-icon">{getThemeIcon(t.theme)}</span>
@@ -782,17 +782,17 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                             <div className="search-more">
                                 {!showMore ? (
                                     <button className="search-more-toggle" onClick={() => setShowMore(true)}
-                                        data-tip="Power tools: build a custom thread, start a Workbench investigation">
+                                        data-tip="Power tools: build a custom story, start a Workbench investigation">
                                         More actions ▾
                                     </button>
                                 ) : (
                                     <>
                                         <button className="search-query-thread-cta search-query-thread-cta--muted"
                                             onClick={handleQueryThreadClick}
-                                            data-tip="Build a custom Narrative Thread from the exact query text">
+                                            data-tip="Build a custom Story from the exact query text">
                                             <span className="search-query-thread-icon">🧵</span>
                                             <span className="search-query-thread-text">
-                                                Build a custom thread for <strong>“{trimmedQuery}”</strong>
+                                                Build a custom story for <strong>“{trimmedQuery}”</strong>
                                             </span>
                                             <span className="search-query-thread-hint">power tool →</span>
                                         </button>

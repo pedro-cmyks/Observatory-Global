@@ -68,9 +68,9 @@ const TYPE_COLORS: Record<OrbitalBody['type'], string> = {
 }
 
 const EMPTY_REASONS: Record<string, string> = {
-    topic_not_found: 'This thread has no engine record to map into a constellation.',
-    unsupported_theme_kind: 'Constellation view needs a thread (dynamic or atlas topic), not a raw GDELT code.',
-    no_members: 'No typed members recorded for this thread yet — the nightly engine pass populates them.',
+    topic_not_found: 'This story has no engine record to map into a constellation.',
+    unsupported_theme_kind: 'Constellation view needs a story (dynamic or atlas topic), not a raw GDELT code.',
+    no_members: 'No typed members recorded for this story yet — the nightly engine pass populates them.',
     no_embeddings: 'Member signals are not embedded yet, so semantic distance cannot be measured.',
     no_embedded_members: 'Member signals are not embedded yet, so semantic distance cannot be measured.',
     error: 'Constellation data unavailable right now.',

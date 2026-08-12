@@ -61,7 +61,7 @@ const THIN_ATTRIBUTABLE = 10
 
 export function buildThreadVoiceModel(p: ThreadVoicePayload): ThreadVoiceModel {
     if (!p.available) {
-        return { kind: 'unavailable', reason: p.reason || 'voice mix unavailable for this thread' }
+        return { kind: 'unavailable', reason: p.reason || 'voice mix unavailable for this story' }
     }
     const rel = p.relation
     let selfVoice: ThreadVoiceSelf | null = null

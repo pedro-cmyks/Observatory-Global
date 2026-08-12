@@ -29,7 +29,7 @@ import './NarrativeBiography.css'
 const SVG_H = 132
 
 const SEAM_TIP = 'Two measured lineages joined by this thread — they were '
-    + 'measured separately in the archive; the live thread is their only '
+    + 'measured separately in the archive; the live story is their only '
     + 'measured connection.'
 
 function fmtWeek(week: string): string {
@@ -104,7 +104,7 @@ export function NarrativeBiography({ theme, temporalSignature, signatureMeta }: 
             <div className="theme-section-title" style={{ color: '#818cf8' }}>
                 NARRATIVE BIOGRAPHY · {spine.weekSpan} WEEKS
                 {stitch?.candidate && (
-                    <span className="nb-candidate-chip" data-tip="The stitch between the live thread and the archive lineage scored below the measured threshold — shown as a candidate, not asserted.">
+                    <span className="nb-candidate-chip" data-tip="The stitch between the live story and the archive lineage scored below the measured threshold — shown as a candidate, not asserted.">
                         CANDIDATE STITCH
                     </span>
                 )}
@@ -186,7 +186,7 @@ export function NarrativeBiography({ theme, temporalSignature, signatureMeta }: 
             </div>
 
             <div className="nb-legend">
-                <span><i className="nb-dot nb-dot--hot" /> live thread</span>
+                <span><i className="nb-dot nb-dot--hot" /> live story</span>
                 <span><i className="nb-dot nb-dot--archive" /> archive era</span>
                 <span><i className="nb-line nb-line--steady" /> steady</span>
                 <span><i className="nb-line nb-line--shifting" /> shifting</span>
@@ -222,7 +222,7 @@ export function NarrativeBiography({ theme, temporalSignature, signatureMeta }: 
                         {selectedEra.candidate && <span className="nb-era-candidate"> · candidate era</span>}
                         {selectedEra.joined && (
                             <span className="nb-era-joined" data-tip={SEAM_TIP}>
-                                {' · '}two measured lineages joined by this thread
+                                {' · '}two measured lineages joined by this story
                             </span>
                         )}
                     </div>
@@ -281,11 +281,11 @@ export function NarrativeBiography({ theme, temporalSignature, signatureMeta }: 
                         <span data-tip={SEAM_TIP}> · union of {data.meta!.lineage_ids!.length} measured lineages ({data.meta!.lineage_ids!.join(' + ')})</span>
                     )}
                     {data.meta?.hot_n_signals_source && (
-                        <span data-tip="Where the live-thread signal count comes from: a full count over evidence members, or the topic's stored aggregate when the count was unavailable.">
+                        <span data-tip="Where the live-story signal count comes from: a full count over evidence members, or the topic's stored aggregate when the count was unavailable.">
                             {' · '}hot count: {data.meta.hot_n_signals_source === 'members' ? 'evidence members' : 'topic aggregate'}
                         </span>
                     )}
-                    {' · '}hot = live thread · archive = weekly archive clusters
+                    {' · '}hot = live story · archive = weekly archive clusters
                 </div>
             )}
         </div>

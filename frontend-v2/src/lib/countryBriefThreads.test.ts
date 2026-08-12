@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildCountryBriefThreadSummary } from './countryBriefThreads'
 
 describe('CountryBrief thread summary', () => {
-  it('counts country-scoped Narrative Threads instead of the fixed GDELT theme cap', () => {
+  it('counts country-scoped Stories instead of the fixed GDELT theme cap', () => {
     const gdeltThemes = Array.from({ length: 12 }, (_, index) => ({
       name: `GDELT_THEME_${index}`,
       count: 100 - index,
@@ -34,7 +34,7 @@ describe('CountryBrief thread summary', () => {
     })
 
     expect(summary.count).toBe(3)
-    expect(summary.label).toBe('threads')
+    expect(summary.label).toBe('stories')
     expect(summary.rows.map(row => row.name)).toEqual([
       'dynamic-topic-17',
       'dynamic-topic-18',

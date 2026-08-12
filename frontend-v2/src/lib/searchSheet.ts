@@ -224,7 +224,7 @@ export function parseSearchRows(json: unknown, opts: ParseRowsOptions = {}): Sea
 }
 
 const REASON = {
-  idle: 'Search Atlas — threads, countries, people, signals.',
+  idle: 'Search Atlas — stories, countries, people, signals.',
   tooShort: 'Type at least 2 characters.',
   loading: 'Searching…',
   networkError: "Couldn't reach the search — check your connection and try again.",

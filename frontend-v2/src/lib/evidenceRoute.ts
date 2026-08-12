@@ -95,7 +95,7 @@ export function buildPersonEvidenceRoute(input: PersonEvidenceRouteInput): Evide
     { key: 'countries', label: 'Countries', count: asCount(input.countryCount), detail: null, targetId: 'ep-countries' },
   ]
   if (input.threadCount !== undefined) {
-    steps.push({ key: 'threads', label: 'Narrative Threads', count: asCount(input.threadCount), detail: null, targetId: 'ep-threads' })
+    steps.push({ key: 'threads', label: 'Stories', count: asCount(input.threadCount), detail: null, targetId: 'ep-threads' })
   }
   steps.push({ key: 'subjects', label: 'Key Subjects', count: asCount(input.keySubjectCount), detail: null, targetId: 'ep-subjects' })
   return steps
@@ -124,7 +124,7 @@ export function buildSignalEvidenceRoute(input: SignalEvidenceRouteInput): Evide
       detail: input.lane ? `${input.lane} lane` : null,
       targetId: 'sdp-headline',
     },
-    { key: 'threads', label: 'Narrative Threads', count: asCount(input.connectedThreadCount), detail: null, targetId: 'sdp-threads' },
+    { key: 'threads', label: 'Stories', count: asCount(input.connectedThreadCount), detail: null, targetId: 'sdp-threads' },
     { key: 'neighbors', label: 'Semantic Neighbors', count: asCount(input.semanticNeighborCount), detail: null, targetId: 'sdp-neighbors' },
     { key: 'taxonomy', label: 'GDELT Taxonomy', count: asCount(input.gdeltThemeCount), detail: 'raw themes', targetId: 'sdp-taxonomy' },
   ]
@@ -182,7 +182,7 @@ export function buildEvidenceRoute(input: EvidenceRouteInput): EvidenceRouteStep
     },
     {
       key: 'threads',
-      label: 'Narrative Threads',
+      label: 'Stories',
       count: asCount(input.narrativeThreadCount),
       detail: null,
       targetId: 'cb-threads',

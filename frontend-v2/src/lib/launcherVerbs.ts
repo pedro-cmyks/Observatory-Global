@@ -18,9 +18,9 @@ export function resolveLauncherVerbs(kind: LauncherKind): LauncherVerb[] {
     case 'semantic-neighbor':
       return [V('open', 'Open in Atlas', 'Open the nearest-meaning signal in-app'), V('keep', 'Keep', 'Pin it to the investigation')]
     case 'connected-thread':
-      return [V('open', 'Open thread', 'Open the connected thread in-app')]
+      return [V('open', 'Open story', 'Open the connected story in-app')]
     case 'lead':
-      return [V('open', 'Open thread', 'Open the lead\'s thread'), V('keep', 'Keep', 'Pin the lead to the investigation')]
+      return [V('open', 'Open story', 'Open the lead\'s story'), V('keep', 'Keep', 'Pin the lead to the investigation')]
     case 'isolated-pin':
       return [V('keep', 'Keep anyway', 'Mark reviewed — keep the pin'), V('drop', 'Drop receipt', 'Remove this unrelated receipt')]
     default:

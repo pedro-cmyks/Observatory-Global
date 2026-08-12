@@ -55,7 +55,7 @@ export const FocusSummaryPanel: React.FC = () => {
                     {/* Related Threads / Topics */}
                     {summary.related_topics && summary.related_topics.length > 0 && (
                         <section className="focus-section">
-                            <h4>Related Threads / Topics</h4>
+                            <h4>Related Stories / Topics</h4>
                             <div className="focus-topics">
                                 {summary.related_topics.slice(0, 10).map((topic, i) => (
                                     <span key={i} className="focus-topic-chip" data-tip={`${topic.count} signals`}>

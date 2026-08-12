@@ -121,11 +121,11 @@ export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySel
                     This event lives in{' '}
                     {countryCode ? (
                         <button className="cep-country-link" onClick={() => onCountrySelect?.(countryCode)}
-                            data-tip={`Focus ${countryName} — map, threads and dock re-scope to it`}>
+                            data-tip={`Focus ${countryName} — map, stories and dock re-scope to it`}>
                             {countryName}
                         </button>
                     ) : (event.country || 'an unknown country')}
-                    {threads.length > 0 ? ' — narrative threads there:' : ''}
+                    {threads.length > 0 ? ' — stories there:' : ''}
                 </div>
                 {threads.length > 0 ? (
                     <div className="cep-threads">
@@ -144,7 +144,7 @@ export function ConflictEventPanel({ event, onClose, onThemeSelect, onCountrySel
                         ))}
                     </div>
                 ) : (
-                    <div className="cep-empty">No narrative threads cleared the gate here in this window.</div>
+                    <div className="cep-empty">No stories cleared the gate here in this window.</div>
                 )}
             </div>
         </div>

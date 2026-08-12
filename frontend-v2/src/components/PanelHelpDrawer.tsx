@@ -57,15 +57,15 @@ const PANEL_HELP: Record<PanelHelpId, PanelHelpContent> = {
     },
     'narrative-threads': {
         eyebrow: 'Narrative engine',
-        title: 'Narrative Threads',
-        summary: 'Threads show how topics spread across countries and time. This is the core Atlas lens: not just what happened, but how public narratives are moving.',
+        title: 'Stories',
+        summary: 'Stories show how topics spread across countries and time. This is the core Atlas lens: not just what happened, but how public narratives are moving.',
         reads: [
             'Volume shows observed media signal count.',
             'Country tags show where the narrative is present.',
             'Trend lines show acceleration or fading over the selected window.',
         ],
         actions: [
-            'Open a thread to inspect evolution, drift, people, related investigations, and coverage.',
+            'Open a story to inspect evolution, drift, people, related investigations, and coverage.',
             'Use related investigations carefully: they are pivots into adjacent frames.',
         ],
         docsHash: 'narrative-threads',
@@ -80,8 +80,8 @@ const PANEL_HELP: Record<PanelHelpId, PanelHelpContent> = {
             'Theme x Theme compares topics that travel together.',
         ],
         actions: [
-            'Use it after a thread opens to find adjacent countries or themes.',
-            'Treat high correlation as a lead, then validate in the stream and thread detail.',
+            'Use it after a story opens to find adjacent countries or themes.',
+            'Treat high correlation as a lead, then validate in the stream and story detail.',
         ],
         docsHash: 'correlation-panel',
     },
@@ -96,7 +96,7 @@ const PANEL_HELP: Record<PanelHelpId, PanelHelpContent> = {
         ],
         actions: [
             'Click a public-attention item to open its investigation panel.',
-            'Use related pills to continue into narrative threads or country context.',
+            'Use related pills to continue into stories or country context.',
         ],
         docsHash: 'public-attention-panel',
     },

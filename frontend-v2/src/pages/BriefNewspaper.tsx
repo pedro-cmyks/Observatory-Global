@@ -1127,7 +1127,7 @@ export function BriefNewspaper() {
                 {(translateControl) => (
             <article className={`brief-card${opts?.wide ? ' wide' : ''}`}>
                 <div className="reader-kicker">
-                    <span>{category || 'Narrative thread'}</span>
+                    <span>{category || 'Story'}</span>
                     <span className="cat">{t.signal_count.toLocaleString()} signals</span>
                 </div>
                 <h3 className="brief-card-headline">
@@ -1156,7 +1156,7 @@ export function BriefNewspaper() {
                     {renderCoverageChips(t, opts?.country, 2)}
                     <span className="brief-card-actions">
                         {renderSaveChip(t)}
-                        <button className="brief-theme-link" onClick={() => openThread(t, opts?.country)}>Open thread →</button>
+                        <button className="brief-theme-link" onClick={() => openThread(t, opts?.country)}>Open story →</button>
                     </span>
                 </div>
             </article>
@@ -1501,7 +1501,7 @@ export function BriefNewspaper() {
                             <div className="brief-vital">
                                 <div className="k">Tracked stories</div>
                                 <div className="v">{allThreads.length}</div>
-                                <div className="sub">ranked narrative threads served this window</div>
+                                <div className="sub">ranked stories served this window</div>
                             </div>
                             <div className="brief-vital">
                                 {/* Same rationale as the sentiment tile above: "Coverage gaps"
@@ -1666,7 +1666,7 @@ export function BriefNewspaper() {
                                         <article className="brief-lead">
                                             <div className="reader-kicker">
                                                 <span>Lead{(leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}</span>
-                                                <span className="cat" data-tip="Top-ranked narrative thread in this window (movement, volume and coherence). Sample evidence headlines shown when available.">
+                                                <span className="cat" data-tip="Top-ranked story in this window (movement, volume and coherence). Sample evidence headlines shown when available.">
                                                     top-ranked thread · 24h window
                                                 </span>
                                             </div>
@@ -1717,7 +1717,7 @@ export function BriefNewspaper() {
                                             <div className="brief-card-foot">
                                                 <span className="brief-card-actions">
                                                     {renderSaveChip(leadThread)}
-                                                    <button className="brief-theme-link" onClick={() => openThread(leadThread)}>Open thread →</button>
+                                                    <button className="brief-theme-link" onClick={() => openThread(leadThread)}>Open story →</button>
                                                 </span>
                                             </div>
                                         </article>
@@ -1758,7 +1758,7 @@ export function BriefNewspaper() {
                                     ) : (
                                         <article className="brief-lead brief-lead-empty">
                                             <div className="reader-kicker"><span>Lead</span></div>
-                                            <p>No narrative thread cleared the quality gate in this window. Open the console to inspect raw coverage.</p>
+                                            <p>No story cleared the quality gate in this window. Open the console to inspect raw coverage.</p>
                                         </article>
                                     )}
 
@@ -1972,9 +1972,9 @@ export function BriefNewspaper() {
                                             <div className="sub">in the last 24h</div>
                                         </div>
                                         <div className="brief-vital">
-                                            <div className="k">Threads</div>
+                                            <div className="k">Stories</div>
                                             <div className="v">{countryEdition?.threads.length ?? countryThreads?.length ?? 0}</div>
-                                            <div className="sub">country-scoped narrative threads</div>
+                                            <div className="sub">country-scoped stories</div>
                                         </div>
                                         <div className={`brief-vital ${moodClass(countryDetail.sentiment)}`}>
                                             <div className="k">Country mood</div>
@@ -2032,7 +2032,7 @@ export function BriefNewspaper() {
                                     </p>
                                 ) : countryEdition.threads.length === 0 && countryEdition.coverage_gaps.length === 0 ? (
                                     <div className="brief-country-note">
-                                        <p>No coherent narrative thread cleared the quality gate for this country in the current window.</p>
+                                        <p>No coherent story cleared the quality gate for this country in the current window.</p>
                                         <button className="brief-theme-link" onClick={() => goToAtlas(`country=${countryFilter}`)}>
                                             Open country in Atlas →
                                         </button>
@@ -2125,7 +2125,7 @@ export function BriefNewspaper() {
                                 ÷10 values for the internal ±0.1 thresholds; multiply back for
                                 display and label the unit. */}
                             <div className="brief-bottom-col">
-                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Negative</h3>
+                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's story detail.">Most Negative</h3>
                                 {data.negative_sentiment.slice(0, 4).map(c => {
                                     // Council P1-4: never print a value outside the legend
                                     // ("Gaza −10.3" under −10…+10) — clamp for display, keep
@@ -2148,7 +2148,7 @@ export function BriefNewspaper() {
                                 <div className="brief-scale-note">GDELT tone · −10…+10</div>
                             </div>
                             <div className="brief-bottom-col">
-                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's thread detail.">Most Positive</h3>
+                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's story detail.">Most Positive</h3>
                                 {data.positive_sentiment.slice(0, 4).map(c => {
                                     const tone = formatTone10(c.sentiment)
                                     return (
@@ -2196,7 +2196,7 @@ export function BriefNewspaper() {
                                     </>
                                 ) : (
                                     <>
-                                        <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Narrative Threads above are the editorial unit.">By Theme</h3>
+                                        <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Stories above are the editorial unit.">By Theme</h3>
                                         {data.top_themes.slice(0, 6).map(t => (
                                             <button
                                                 key={t.theme}

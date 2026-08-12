@@ -41,7 +41,7 @@ export function buildCountryBriefThreadSummary({
   fallbackThemes: _fallbackThemes,
 }: CountryBriefThreadSummaryInput): {
   count: number
-  label: 'threads'
+  label: 'stories'
   rows: CountryBriefThreadRow[]
 } {
   const threadRows: CountryBriefThreadRow[] = threads
@@ -67,7 +67,7 @@ export function buildCountryBriefThreadSummary({
   // below-gate ones are surfaced separately, never as confident threads.
   return {
     count: threadRows.filter(r => !r.belowGate).length,
-    label: 'threads',
+    label: 'stories',
     rows: threadRows,
   }
 }

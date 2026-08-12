@@ -233,7 +233,7 @@ function buildDynamicTopicInsight(data: ThemeData): string | null {
             : 'mixed'
 
     return [
-        `This dynamic narrative thread is active in the selected window with ${data.total.toLocaleString()} signals${topCountries ? `, led by ${topCountries}` : ''}.`,
+        `This dynamic story is active in the selected window with ${data.total.toLocaleString()} signals${topCountries ? `, led by ${topCountries}` : ''}.`,
         `Coverage tone is ${tone} (${data.avgSentiment.toFixed(2)}), and the current evidence sample spans ${data.signals.length.toLocaleString()} recent items${topSources ? ` from sources including ${topSources}` : ''}.`,
     ].join('\n\n')
 }
@@ -781,9 +781,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         </h2>
                         {isQueryThread && (
                             <p className="theme-detail-meta">
-                                <span className="query-thread-tag">Custom thread</span>
+                                <span className="query-thread-tag">Custom story</span>
                                 {data?.coverageTier === 'thin' && (
-                                    <span className="badge coverage-badge coverage-badge--thin" data-tip="Few matching signals — this thread is built from thin coverage">THIN</span>
+                                    <span className="badge coverage-badge coverage-badge--thin" data-tip="Few matching signals — this story is built from thin coverage">THIN</span>
                                 )}
                                 {data?.coverageTier === 'limited' && (
                                     <span className="badge coverage-badge coverage-badge--limited" data-tip="Limited matching signals for this query">LIMITED</span>
@@ -808,7 +808,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     count; unlabeled they read as bugs. Convention: raw · sourced ·
                                     verified. */}
                                 {data?.rawTotal && data.rawTotal !== data.total ? (
-                                    <span data-tip={`${data.rawTotal.toLocaleString()} raw signals assigned to this thread · ${(data.signals?.length ?? 0).toLocaleString()} sourced (fetched with headline + outlet in this view) · ${(data.total || 0).toLocaleString()} verified by the relevance gate`}>
+                                    <span data-tip={`${data.rawTotal.toLocaleString()} raw signals assigned to this story · ${(data.signals?.length ?? 0).toLocaleString()} sourced (fetched with headline + outlet in this view) · ${(data.total || 0).toLocaleString()} verified by the relevance gate`}>
                                         Global · {data.rawTotal.toLocaleString()} raw · {(data.signals?.length ?? 0).toLocaleString()} sourced · {(data.total || 0).toLocaleString()} verified · Last {hours}h
                                     </span>
                                 ) : lifetimeBasis ? (
@@ -819,7 +819,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                        total as lifetime instead of stamping it "Last
                                        24h". When the window is unknown we say so rather
                                        than inventing one. */
-                                    <span data-tip={`${(data!.currentTotal ?? 0).toLocaleString()} signals in this thread's serving membership${currentWindowLabel ? ` over the last ${currentWindowLabel}` : ''} — the number the Narrative Threads row shows. ${(data!.total || 0).toLocaleString()} is this story's all-time total since it first appeared, not a count for the current window.`}>
+                                    <span data-tip={`${(data!.currentTotal ?? 0).toLocaleString()} signals in this story's serving membership${currentWindowLabel ? ` over the last ${currentWindowLabel}` : ''} — the number the Stories row shows. ${(data!.total || 0).toLocaleString()} is this story's all-time total since it first appeared, not a count for the current window.`}>
                                         Global · {(data!.currentTotal ?? 0).toLocaleString()} signals
                                         {currentWindowLabel
                                             ? <> · last {currentWindowLabel}</>
@@ -867,7 +867,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {conflictScopeCountry && scopedConflicts.length > 0 && (
                             <button
                                 className="td-conflict-chip"
-                                data-tip="GDELT CAMEO machine-coded events in this thread's country — related by country, not by story. Click to open the country brief with the full list."
+                                data-tip="GDELT CAMEO machine-coded events in this story's country — related by country, not by story. Click to open the country brief with the full list."
                                 onClick={() => onConflictChipClick?.(conflictScopeCountry, resolveCountryName(conflictScopeCountry, drillCountryName || originCountryName))}
                             >
                                 ⚑ {scopedConflicts.length} conflict event{scopedConflicts.length === 1 ? '' : 's'} in {resolveCountryName(conflictScopeCountry, drillCountryName || originCountryName)} this window
@@ -877,7 +877,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {data?.coherence?.warning && (
                             <div
                                 className={`theme-coherence-warn theme-coherence-warn--${data.coherence.tier}`}
-                                data-tip="Measured coherence = average similarity of this thread's coverage to its own centre. A low score means the thread mixes unrelated stories under one label — pinning it can pollute an investigation."
+                                data-tip="Measured coherence = average similarity of this story's coverage to its own centre. A low score means the story mixes unrelated stories under one label — pinning it can pollute an investigation."
                             >
                                 <span className="theme-coherence-glyph">⚠</span>
                                 <span>{data.coherence.warning}</span>
@@ -1039,7 +1039,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             <div className="theme-stat" data-tip={lifetimeBasis
                                 ? `${(data.total ?? 0).toLocaleString()} signals over this story's whole lifetime — an all-time total, not a count for the current window. ${(data.currentTotal ?? 0).toLocaleString()} are in the current serving membership${currentWindowLabel ? ` (last ${currentWindowLabel})` : ''}.`
                                 : data.rawTotal && data.rawTotal !== data.total
-                                ? `${data.total} precise signals kept by the relevance gate, of ${data.rawTotal} assigned to this thread. The Narrative Threads list shows the assigned count.`
+                                ? `${data.total} precise signals kept by the relevance gate, of ${data.rawTotal} assigned to this story. The Stories list shows the assigned count.`
                                 : countMeta.unmeasured
                                 ? (countMeta.notice ?? 'Count not measured — the data query did not complete.')
                                 : "Total media signals (articles, posts) mentioning this topic in the selected time window"}>
@@ -1106,7 +1106,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         <span className="attention-signal-icon">PUBLIC</span>
                                         <h3>{originAttention.title}</h3>
                                         <p>
-                                            This thread was opened from a people-side attention item, so Atlas is reading {displayLabel}
+                                            This story was opened from a people-side attention item, so Atlas is reading {displayLabel}
                                             {' '}through that context instead of as a generic global topic.
                                         </p>
                                     </div>
@@ -1247,7 +1247,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             <div className="theme-section">
                                 <div className="theme-section-title">
                                     PUBLIC ATTENTION · THIS THREAD
-                                    <span className="forum-lane-badge" data-tip="Forum discussion semantically related to this thread. Discussion only — never counted as verified evidence.">DISCUSSION · UNVERIFIED</span>
+                                    <span className="forum-lane-badge" data-tip="Forum discussion semantically related to this story. Discussion only — never counted as verified evidence.">DISCUSSION · UNVERIFIED</span>
                                 </div>
                                 <div className="thread-forum-list">
                                     {threadForum.slice(0, 6).map(item => (
@@ -1260,7 +1260,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         >
                                             <span className="thread-forum-meta">
                                                 {item.subreddit && <span className="thread-forum-sub">{item.subreddit}</span>}
-                                                <span className="thread-forum-sim" data-tip="Semantic similarity to this thread">{Math.round(item.similarity * 100)}%</span>
+                                                <span className="thread-forum-sim" data-tip="Semantic similarity to this story">{Math.round(item.similarity * 100)}%</span>
                                             </span>
                                             <span className="thread-forum-headline">
                                                 <TranslatableHeadline signalId={item.signal_id} original={decodeEntities(item.headline)} sourceLang={item.source_lang} />
@@ -1560,7 +1560,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <button
                                     className="all-coverage-toggle"
                                     onClick={() => setShowAllCoverage(v => !v)}
-                                    data-tip="Every recent article in this thread, newest first"
+                                    data-tip="Every recent article in this story, newest first"
                                 >
                                     {showAllCoverage ? '▴ Hide' : '▾ Show'} all coverage ({data.signals.length})
                                 </button>
@@ -1595,7 +1595,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <div className="theme-section thread-voice-section">
                                     <div className="theme-section-title">
                                         VOICE MIX · WHO SPEAKS
-                                        <span className="sentiment-info-icon" data-tip="Who carries this story: languages and outlet home countries over the thread's typed evidence members (a projection of the engine's member record, not all coverage). Self-voice is outlet OWNERSHIP, not language — a foreign outlet in the local language counts as soft power, never as a local voice.">?</span>
+                                        <span className="sentiment-info-icon" data-tip="Who carries this story: languages and outlet home countries over the story's typed evidence members (a projection of the engine's member record, not all coverage). Self-voice is outlet OWNERSHIP, not language — a foreign outlet in the local language counts as soft power, never as a local voice.">?</span>
                                     </div>
                                     <div className="thread-voice-langs">
                                         {m.languages.slice(0, 6).map(l => (
@@ -1665,7 +1665,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                             {/* #248 relevance honesty: MEASURED attach similarity —
                                                 absent when the engine recorded none (never faked). */}
                                             {formatAttachSimilarity(it.similarity) && (
-                                                <span className="thread-forum-sim" data-tip="Measured semantic similarity between this post and the thread — how confidently it was attached. Not verification.">
+                                                <span className="thread-forum-sim" data-tip="Measured semantic similarity between this post and the story — how confidently it was attached. Not verification.">
                                                     {formatAttachSimilarity(it.similarity)}
                                                 </span>
                                             )}

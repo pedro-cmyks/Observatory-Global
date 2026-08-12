@@ -105,11 +105,11 @@ export function confidenceBucketTip(
   bucket: ConfidenceBucket | null,
   source: ConfidenceBucketSource | null,
 ): string {
-  if (bucket == null) return 'No calibrated confidence measurement is available for this thread.'
+  if (bucket == null) return 'No calibrated confidence measurement is available for this story.'
   if (source === 'band') {
-    return 'Confidence BAND served with this thread (evidence, sources, geography and assignment confidence together) — a band, not a point estimate.'
+    return 'Confidence BAND served with this story (evidence, sources, geography and assignment confidence together) — a band, not a point estimate.'
   }
-  return 'Confidence band derived from this thread\'s measured assignment confidence — the payload served no band of its own. A band, not a point estimate.'
+  return 'Confidence band derived from this story\'s measured assignment confidence — the payload served no band of its own. A band, not a point estimate.'
 }
 
 export function threadConfidencePresentation(

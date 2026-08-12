@@ -16,11 +16,11 @@ describe('NarrativeThreads limits', () => {
     expect(getNarrativesForDisplay(narratives, 'US')).toHaveLength(12)
   })
 
-  it('explains a country-scoped empty state without implying the global thread list is broken', () => {
+  it('explains a country-scoped empty state without implying the global story list is broken', () => {
     expect(buildCountryThreadEmptyState('CO', 'Colombia')).toEqual({
-      title: 'No living Narrative Threads detected for Colombia in this window',
-      body: 'Atlas asked for country-scoped threads. This usually means Colombia has signals, but no coherent thread cleared the current quality gate for the selected time range.',
-      actionLabel: 'Show global threads',
+      title: 'No living Stories detected for Colombia in this window',
+      body: 'Atlas asked for country-scoped stories. This usually means Colombia has signals, but no coherent story cleared the current quality gate for the selected time range.',
+      actionLabel: 'Show global stories',
     })
   })
 })

@@ -61,7 +61,7 @@ export function EclipseLens({ onOpenTopic, onInvestigate }: Props) {
               <button
                 className="eclipse-lens-open"
                 onClick={() => onOpenTopic(item.topic_id, item.label)}
-                data-tip="Open this thread in the console"
+                data-tip="Open this story in the console"
               >
                 <span className="eclipse-lens-label">
                   {decodeEntities(item.label)}

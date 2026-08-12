@@ -63,7 +63,7 @@ export function humanizeReadinessValue(raw: string): HumanizedValue {
   }
   // opaque thread/topic ids
   if (/^(dynamic-topic|emergent-cluster|cluster)-\d+$/i.test(s)) {
-    return { text: 'internal thread reference', raw: s, internal: true }
+    return { text: 'internal story reference', raw: s, internal: true }
   }
   // hex-ish node hashes (no vowel words, ≥12 hex chars)
   if (/^[a-f0-9]{12,}$/i.test(s)) {

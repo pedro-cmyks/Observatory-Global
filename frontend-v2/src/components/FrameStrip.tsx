@@ -155,14 +155,14 @@ export function FrameStrip({ onOpenPin, onScopeThread, onOpenReport }: FrameStri
                         truncating text) so it can never be clipped away. */}
                     <span
                         className="frame-strip-detect-tag"
-                        data-tip="A measured overlap in headline text (or subject country) between a pin and a thread in today's console — not a claim the stories are causally linked or mutually corroborated."
+                        data-tip="A measured overlap in headline text (or subject country) between a pin and a story in today's console — not a claim the stories are causally linked or mutually corroborated."
                     >measured, not asserted</span>
                     {onScopeThread && (
                         <button
                             type="button"
                             className="frame-strip-detect-action"
                             onClick={() => onScopeThread(relation.threadId, relation.threadLabel)}
-                            data-tip="Open and scope the console to the connected thread"
+                            data-tip="Open and scope the console to the connected story"
                         >Scope</button>
                     )}
                     {onOpenReport && (

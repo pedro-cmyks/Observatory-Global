@@ -76,8 +76,8 @@ export function getNarrativesForDisplay<T extends { top_countries: string[] }>(
 export function buildCountryThreadEmptyState(countryCode: string, countryName = countryCode): CountryThreadEmptyState {
   const label = countryName || countryCode
   return {
-    title: `No living Narrative Threads detected for ${label} in this window`,
-    body: `Atlas asked for country-scoped threads. This usually means ${label} has signals, but no coherent thread cleared the current quality gate for the selected time range.`,
-    actionLabel: 'Show global threads',
+    title: `No living Stories detected for ${label} in this window`,
+    body: `Atlas asked for country-scoped stories. This usually means ${label} has signals, but no coherent story cleared the current quality gate for the selected time range.`,
+    actionLabel: 'Show global stories',
   }
 }

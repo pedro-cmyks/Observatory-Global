@@ -709,7 +709,7 @@ export function UniverseView({ onThemeSelect, activeTheme, activeThemeLabel, hou
                             data-tip={spread.shape === 'cross-cutting'
                                 ? 'This entity spans many narrative categories — a dominant, cross-cutting figure right now'
                                 : spread.shape === 'concentrated'
-                                    ? 'This entity sits in one or two stories — a focused, single-thread actor'
+                                    ? 'This entity sits in one or two stories — a focused, single-story actor'
                                     : 'This entity spans a few narrative categories'}>
                             {spread.shape === 'cross-cutting' ? '◇ cross-cutting' : spread.shape === 'concentrated' ? '◈ concentrated' : '◈ mixed'}
                         </span>

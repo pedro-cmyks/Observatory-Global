@@ -766,7 +766,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                     : (filter.person || '')
                 const clearScope = scopedToCountry ? clearCountryFilter : () => setPerson(null)
                 return (
-                    <div className="narrative-scope-strip" data-tip={scopedToCountry ? 'Threads filtered to this country by backend quality gates' : 'Threads that mention this person'}>
+                    <div className="narrative-scope-strip" data-tip={scopedToCountry ? 'Stories filtered to this country by backend quality gates' : 'Stories that mention this person'}>
                         <span className="narrative-scope-label">
                             Scoped to <strong>{scopeName}</strong>
                         </span>
@@ -776,7 +776,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
             })()}
             {effectiveHours != null && effectiveHours < cappedHours && (
                 <div className="narrative-cap-notice">
-                    Thread details show last {effectiveHours}h · counts reflect full {cappedHours}h window
+                    Story details show last {effectiveHours}h · counts reflect full {cappedHours}h window
                 </div>
             )}
             {renderRows.map((n, rowIdx) => {
@@ -829,9 +829,9 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // count/source/country stats — say so honestly instead of
                 // printing the fabricated zeros the type defaults carry.
                 const rowHint = isSynthRow
-                    ? 'From the measured walk — not in the current top threads. Click to open.'
-                    : `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified thread detail.`
-                const domainLabel = (n.parent_domain || 'narrative thread').replace(/-/g, ' ')
+                    ? 'From the measured walk — not in the current top stories. Click to open.'
+                    : `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified story detail.`
+                const domainLabel = (n.parent_domain || 'story').replace(/-/g, ' ')
                 const geography = threadCountryPresentation(n)
                 // Unified threads (Pedro 2026-06-24): no living/aggregate source
                 // tier — every row is a narrative thread, ranked by movement +
@@ -900,7 +900,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                             ↔ {lensReason.text}
                                         </span>
                                     ) : siblingReason && (
-                                        <span className="narrative-sibling-reason" data-tip={`Related to the open thread via ${siblingReason}`}>
+                                        <span className="narrative-sibling-reason" data-tip={`Related to the open story via ${siblingReason}`}>
                                             ↔ {siblingReason}
                                         </span>
                                     )}
@@ -978,7 +978,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             })()}
                             <button
                                 className={`narrative-pin ${isPinned(`theme-${n.thread_id}`) ? 'narrative-pin--active' : ''}`}
-                                data-tip={isPinned(`theme-${n.thread_id}`) ? 'Unpin from investigation' : 'Pin thread to investigation'}
+                                data-tip={isPinned(`theme-${n.thread_id}`) ? 'Unpin from investigation' : 'Pin story to investigation'}
                                 onClick={e => {
                                     e.stopPropagation()
                                     const id = `theme-${n.thread_id}`
@@ -1024,7 +1024,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     Not a bug; do not "fix" by expanding the cap without deciding
                                     that trade-off on purpose. */}
                                 {hiddenEntityCount > 0 && (
-                                    <span className="narrative-entity-more" data-tip="More entities in this thread">
+                                    <span className="narrative-entity-more" data-tip="More entities in this story">
                                         +{hiddenEntityCount}
                                     </span>
                                 )}

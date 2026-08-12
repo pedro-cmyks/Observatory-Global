@@ -77,7 +77,7 @@ describe('eclipseDominantLabel (N28: never headline a raw slug)', () => {
     expect(eclipseDominantLabel({
       ...eclipseOn,
       dominant: { topic_id: 'dynamic-topic-8072', label: 'dynamic-topic-8072', share: 0.3 },
-    })).toBe('Narrative Thread')
+    })).toBe('Story')
   })
   it('degrades to the honest generic on an empty dominant', () => {
     expect(eclipseDominantLabel({ ...eclipseOn, dominant: {} })).toBe('one story')

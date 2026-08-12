@@ -108,7 +108,7 @@ export function DossierConnections(
   if (!data || data.nodes.length < 2 || !cluster) {
     return (
       <div className="dcx-empty">
-        Pin at least two story/thread anchors to measure how they connect.
+        Pin at least two story anchors to measure how they connect.
       </div>
     )
   }
@@ -315,7 +315,7 @@ const FACET_LABEL: Record<string, string> = {
   'government-response': 'Government response',
   rescues: 'Rescues',
   aftermath: 'Aftermath',
-  core: 'Main thread',
+  core: 'Main story',
 }
 const facetLabel = (f: string): string => FACET_LABEL[f] || f.replace(/-/g, ' ')
 

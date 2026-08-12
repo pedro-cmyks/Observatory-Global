@@ -634,7 +634,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Narrative Threads */}
             <section className="brief-section" id="cb-threads">
-                <div className="section-label cb-section-label">Narrative Threads</div>
+                <div className="section-label cb-section-label">Stories</div>
                 <div className="theme-list">
                     {/* B1: no positional "critical" marker — a country volume spike
                         doesn't make the first thread critical. B2 (#214): show the
@@ -650,8 +650,8 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                             className="theme-chip"
                             onClick={() => onThemeSelect?.(thread.name)}
                             data-tip={thread.rawCount > thread.count
-                                ? `${countQualifier(thread.count, `${timeWindow}h`, 'verified').tip} ${thread.rawCount.toLocaleString()} were assigned before the gate. Click to open the thread.`
-                                : `Click to open ${thread.label} narrative thread`}
+                                ? `${countQualifier(thread.count, `${timeWindow}h`, 'verified').tip} ${thread.rawCount.toLocaleString()} were assigned before the gate. Click to open the story.`
+                                : `Click to open the ${thread.label} story`}
                         >
                             <span className="theme-name">
                                 {thread.label}
@@ -793,7 +793,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                     href={f.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    data-tip={f.subreddit ? `Discussion on ${f.subreddit} — open thread` : 'Open discussion'}
+                                    data-tip={f.subreddit ? `Discussion on ${f.subreddit} — open discussion thread` : 'Open discussion'}
                                 >
                                     <span>{f.headline ? decodeEntities(f.headline) : '(untitled)'}</span>
                                     {f.subreddit && <strong className="cb-forum-src">{f.subreddit}</strong>}
@@ -1105,7 +1105,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                             e.stopPropagation();
                                             onThemeSelect?.(story.themeCode);
                                         }}
-                                        data-tip={`Open narrative thread: ${getThemeLabel(story.themeCode)}`}
+                                        data-tip={`Open story: ${getThemeLabel(story.themeCode)}`}
                                     >
                                         {getThemeLabel(story.themeCode)}
                                     </span>

@@ -395,7 +395,7 @@ export function FocusTimeline({
                         if (!isChannelUsable(vmStatus)) {
                             return (
                                 <text x={M.left + plotW / 2} y={bandTop + VOICE_H / 2} className="ft-gap-note" textAnchor="middle">
-                                    voice mix {usingFallback ? 'unavailable for this thread type' : channelGapLabel(vmStatus, data.reason)}
+                                    voice mix {usingFallback ? 'unavailable for this story type' : channelGapLabel(vmStatus, data.reason)}
                                 </text>
                             )
                         }
@@ -464,7 +464,7 @@ export function FocusTimeline({
             {showBars && barsDrawable && tone && (
                 <div className="ft-note">
                     Bars: height = signal volume; up/down = <em>average</em> tone (position, not a per-signal count).
-                    {usingFallback && ' Extended channels unavailable for this thread type.'}
+                    {usingFallback && ' Extended channels unavailable for this story type.'}
                 </div>
             )}
 
@@ -494,7 +494,7 @@ export function FocusTimeline({
                     </div>
                     {dormant.length > 0 && (
                         <div className="ft-diff-dormant">
-                            <span className="ft-dormant-lab" data-tip="§4 divergence: actors still co-appear, but no current thread binds them">latent</span>
+                            <span className="ft-dormant-lab" data-tip="§4 divergence: actors still co-appear, but no current story binds them">latent</span>
                             {dormant.slice(0, 4).map((d, i) => (
                                 <span key={i} className="ft-dormant-item">{d.entity_a} ↔ {d.entity_b} <em>({d.cooccur_count}×)</em></span>
                             ))}

@@ -2453,7 +2453,7 @@ function AppContent() {
           <div className="panel-header">
             <div className="panel-header-title-wrap">
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Narrative threads
+                Stories
                 <PanelHelpButton panel="narrative-threads" />
               </span>
               <span className="panel-subtitle">how topics spread over time</span>
@@ -2461,7 +2461,7 @@ function AppContent() {
             <span className="honesty-chip" data-tip="Rank = composite of volume (log-damped) + movement + coherence — measured, never a raw count or source bias. Left border color = category family.">MEASURED · COMPOSITE RANK</span>
           </div>
           <div className="panel-content">
-            <PanelErrorBoundary panelName="NARRATIVE THREADS">
+            <PanelErrorBoundary panelName="STORIES">
               <NarrativeThreads
                 paused={fieldHidden}
                 activeThreadId={selectedTheme?.thread?.thread_id ?? selectedThread?.thread_id}

@@ -34,7 +34,7 @@ const BASE_TIPS: Record<CountBase, (n: string, w: string | null) => string> = {
   // assignment count BY DESIGN. Stating this base kills the "42 here, 347
   // there, identical tooltip" contradiction.
   gated: (n, w) =>
-    `${n} signals in this thread's curated serving membership${w ? ` for the last ${w}` : ''} — the set the engine serves after relevance gating. The detail view counts every raw assignment, which can be larger.`,
+    `${n} signals in this story's curated serving membership${w ? ` for the last ${w}` : ''} — the set the engine serves after relevance gating. The detail view counts every raw assignment, which can be larger.`,
   // Fix round 2026-08-12 pair (a): Germany read 4,840 on the country card (a
   // live raw scan) and 3,836 in the density list (the hourly rollup). Same
   // quantity, two freshness levels — and the card called itself 'raw', which

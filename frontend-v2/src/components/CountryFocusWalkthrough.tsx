@@ -55,8 +55,8 @@ export function CountryFocusWalkthrough({ countryName, onDismiss }: Props) {
             // Desktop = side-by-side panels; mobile = bottom tabs. The whole
             // console re-scopes either way, but name the right surfaces.
             body: isMobile
-                ? 'Its brief opened in the Stream tab, and the map dimmed to the countries it relates to. The Map, Threads and Pulse tabs all re-scoped to it — switch tabs to explore.'
-                : 'Its brief opened in the center panel and the map dimmed to the countries it relates to. The stream, threads and dock all re-scoped to this country.',
+                ? 'Its brief opened in the Stream tab, and the map dimmed to the countries it relates to. The Map, Stories and Pulse tabs all re-scoped to it — switch tabs to explore.'
+                : 'Its brief opened in the center panel and the map dimmed to the countries it relates to. The stream, stories and dock all re-scoped to this country.',
         },
         {
             eyebrow: 'Return anytime',

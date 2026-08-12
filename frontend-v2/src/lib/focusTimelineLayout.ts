@@ -366,7 +366,7 @@ function laneStarvedDetail(detail?: string): string {
     if (d.startsWith('topic_members')) {
         return unverified
             ? 'the membership projection could not be verified for this window'
-            : 'the membership projection wrote no rows for this window — it cannot show a thread was quiet'
+            : 'the membership projection wrote no rows for this window — it cannot show a story was quiet'
     }
     return unverified
         ? 'this channel’s coverage could not be verified for this window'
@@ -380,7 +380,7 @@ function invalidRefDetail(detail?: string): string {
         case 'ref_too_long': return 'the reference is too long to be a focus'
         case 'country_code_malformed': return 'expected a 2-letter country code'
         case 'person_ref_unmatchable': return 'a person reference needs at least one letter or digit'
-        default: return 'the reference could not be read as a thread, country or person'
+        default: return 'the reference could not be read as a story, country or person'
     }
 }
 
@@ -407,7 +407,7 @@ export function emptyTimelineCopy(reason?: string, detail?: string): TimelineEmp
                 tone: 'error',
             }
         case 'topic_not_found':
-            return { headline: 'No extended timeline for this thread type.', tone: 'gap' }
+            return { headline: 'No extended timeline for this story type.', tone: 'gap' }
         case 'db_unavailable':
             return { headline: 'Timeline unavailable — database offline.', tone: 'gap' }
         case 'db_busy':

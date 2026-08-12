@@ -105,7 +105,7 @@ export interface SearchSheetDoors {
 }
 
 const KIND_LABEL: Record<SearchRowKind, string> = {
-  thread: 'Threads', country: 'Countries', person: 'People', signal: 'Signals',
+  thread: 'Stories', country: 'Countries', person: 'People', signal: 'Signals',
 }
 
 function groupByKind(rows: SearchRow[]): [SearchRowKind, SearchRow[]][] {
@@ -214,7 +214,7 @@ function SearchSheetModal({ onClose, onThemeSelect, onCountrySelect, onPersonSel
             inputMode="search"
             enterKeyHint="search"
             className="search-sheet-input"
-            placeholder="Threads, countries, people…"
+            placeholder="Stories, countries, people…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

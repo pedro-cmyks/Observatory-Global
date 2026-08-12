@@ -275,7 +275,7 @@ export function resolveThreadLabel(themeId: string | null | undefined, knownLabe
     if (isThreadId(themeId)) {
         const slug = themeId.split('--')[0]
         // Opaque numeric ids carry no name of their own — never show the raw id.
-        if (/^(dynamic-topic|emergent-cluster|cluster)-\d+$/.test(slug)) return 'Narrative Thread'
+        if (/^(dynamic-topic|emergent-cluster|cluster)-\d+$/.test(slug)) return 'Story'
         // Atlas slug ("election-legitimacy--co") → prettify the slug portion.
         return formatThemeWords(slug.toUpperCase())
     }
@@ -336,7 +336,7 @@ export function resolveThreadTitle(
         loading && themeId
         && /^(dynamic-topic|emergent-cluster|cluster)-\d+$/.test(themeId.split('--')[0])
     ) {
-        return 'Loading thread…'
+        return 'Loading story…'
     }
     return resolveThreadLabel(themeId, knownLabel)
 }

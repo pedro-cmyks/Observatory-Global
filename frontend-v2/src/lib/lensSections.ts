@@ -189,7 +189,7 @@ const REASONS: Record<SectionKey, Record<Exclude<LaneStatus, 'ok'> | 'none', str
   connected: {
     none: 'No measured neighbour cleared the bar.',
     loading: 'Measuring the neighbourhood…',
-    no_anchor: 'Open a thread, a country or a person — neighbours are measured against a subject.',
+    no_anchor: 'Open a story, a country or a person — neighbours are measured against a subject.',
     unavailable: 'Neighbours are not measured for this scope yet.',
     no_subject: 'This story is not in the current ranked field, so no neighbourhood was measured.',
     scope_is_self: 'This scope is its own neighbourhood.',

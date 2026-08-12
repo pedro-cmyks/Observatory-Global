@@ -69,7 +69,7 @@ export function buildDossier(
   if (taxonomy.length > 0) {
     gaps.push(`${taxonomy.length} anchor(s) matched the taxonomy description, not found evidence — treat as context, not proof.`)
   }
-  gaps.push('This report is frozen at pin time; live counts, gate scores, and threads may have drifted since.')
+  gaps.push('This report is frozen at pin time; live counts, gate scores, and stories may have drifted since.')
   if (enrichment && Object.keys(enrichment.whoSaysWhat).length === 0 && Object.keys(enrichment.voice).length === 0) {
     gaps.push('Who-says-what and voice sections could not be measured (endpoints unavailable at generation time).')
   }

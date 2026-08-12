@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildEvidenceRoute } from './evidenceRoute'
 
 describe('Evidence Route breadcrumb builder (#173)', () => {
-  it('builds the full funnel Country -> Source Mix -> Atlas Topics -> Narrative Threads -> Evidence Signals', () => {
+  it('builds the full funnel Country -> Source Mix -> Atlas Topics -> Stories -> Evidence Signals', () => {
     const steps = buildEvidenceRoute({
       countryName: 'Colombia',
       outletCount: 34,
@@ -23,7 +23,7 @@ describe('Evidence Route breadcrumb builder (#173)', () => {
       'Colombia',
       'Source Mix',
       'Atlas Topics',
-      'Narrative Threads',
+      'Stories',
       'Evidence Signals',
     ])
     expect(steps.map(s => s.count)).toEqual([null, 34, 12, 5, 1240])

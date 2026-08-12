@@ -139,7 +139,7 @@ describe('lensErrorCopy', () => {
 
   it('unsupported_anchor_type reads structural, not a failure', () => {
     const copy = lensErrorCopy('unsupported_anchor_type')
-    expect(copy).toBe('No measured neighborhood for this thread type yet')
+    expect(copy).toBe('No measured neighborhood for this story type yet')
     expect(copy.toLowerCase()).not.toContain('fail')
     expect(copy.toLowerCase()).not.toContain('error')
   })

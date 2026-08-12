@@ -724,7 +724,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                 <section className="dossier-section">
                     <h2>Evidence ({dossier.pinCount})</h2>
                     {dossier.pins.length === 0 ? (
-                        <p className="dossier-empty">No pins yet — pin anchors or truncated threads to build the report.</p>
+                        <p className="dossier-empty">No pins yet — pin anchors or truncated stories to build the report.</p>
                     ) : (
                         dossier.pins.map(p => {
                             const hasEvidence = (p.snapshot?.evidence ?? []).length > 0
@@ -1091,7 +1091,7 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                         {e.moodCount > 0 ? ` · mood ${e.moodCount}` : ''} — {e.rationale}
                                     </div>
                                     {e.sourceTiers && (
-                                        <div className="dossier-pin-tiers" data-tip="Credibility tiers of the sources backing this thread (#217) — labels with provenance, measured now.">
+                                        <div className="dossier-pin-tiers" data-tip="Credibility tiers of the sources backing this story (#217) — labels with provenance, measured now.">
                                             receipts by tier: {Object.entries(e.sourceTiers)
                                                 .sort((a, b) => b[1] - a[1])
                                                 .map(([t, n]) => `${t} ${n}`).join(' · ')}

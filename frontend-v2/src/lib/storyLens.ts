@@ -186,7 +186,7 @@ export function siblingKinshipSummary(siblings: StoryLensSibling[]): string {
 export function lensErrorCopy(code: string | null | undefined): string {
   switch (code) {
     case 'unsupported_anchor_type':
-      return 'No measured neighborhood for this thread type yet'
+      return 'No measured neighborhood for this story type yet'
     case 'seed_not_found_or_no_centroid':
       return 'Story not in the active measured field'
     case 'invalid_thread_id':

@@ -254,7 +254,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         <div id="sdp-threads">
                             <div
                                 className="section-label sdp-section-label"
-                                data-tip="The living Narrative Threads this signal belongs to or connects to. IN THREAD = assigned membership; RELATED = linked via nearest-meaning neighbours; KEYWORD = headline-term overlap with a thread."
+                                data-tip="The living Stories this signal belongs to or connects to. IN STORY = assigned membership; RELATED = linked via nearest-meaning neighbours; KEYWORD = headline-term overlap with a story."
                             >
                                 Where this fits
                             </div>
@@ -268,7 +268,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                                 ? `RELATED${t.strength != null ? ` ${Math.round(t.strength * 100)}%` : ''}`
                                                 : 'KEYWORD'
                                         const tip = t.basis === 'member'
-                                            ? (unverified ? 'Assigned to this thread but below the quality gate — unverified membership' : 'Verified thread membership')
+                                            ? (unverified ? 'Assigned to this story but below the quality gate — unverified membership' : 'Verified story membership')
                                             : t.basis === 'semantic'
                                                 ? 'Connected via its nearest-meaning neighbours — not a direct membership'
                                                 : `Headline-keyword overlap${t.shared?.length ? `: ${t.shared.join(', ')}` : ''} — weakest link, no embedding yet`
@@ -286,8 +286,8 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                     })}
                                 </div>
                             ) : (
-                                <div className="sdp-empty-connect" data-tip="This signal isn't linked to any living thread yet — it may not be embedded (nightly NER/embed lag) or no thread matches. The connection is missing, not absent by design.">
-                                    Not connected to a living thread yet
+                                <div className="sdp-empty-connect" data-tip="This signal isn't linked to any living story yet — it may not be embedded (nightly NER/embed lag) or no story matches. The connection is missing, not absent by design.">
+                                    Not connected to a living story yet
                                     {context.notes.length > 0 && (
                                         <span className="sdp-empty-note"> · {context.notes[0]}</span>
                                     )}
@@ -358,7 +358,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                         <div id="sdp-neighbors">
                             <div
                                 className="section-label sdp-section-label"
-                                data-tip="Nearest signals by meaning (multilingual embedding similarity), not by shared taxonomy code. Similarity shown per item; UNVERIFIED = not assigned to any gated thread."
+                                data-tip="Nearest signals by meaning (multilingual embedding similarity), not by shared taxonomy code. Similarity shown per item; UNVERIFIED = not assigned to any gated story."
                             >
                                 Semantic Neighbors
                             </div>
@@ -375,7 +375,7 @@ export const SignalDetailPanel: React.FC<Props> = ({
                                             type="button"
                                             className="sdp-related-open"
                                             data-tip={onSignalOpen
-                                                ? 'Open this neighbor in-app — explore its connected threads and neighbors'
+                                                ? 'Open this neighbor in-app — explore its connected stories and neighbors'
                                                 : 'Scope the stream to this neighbor’s country'}
                                             onClick={() => {
                                                 if (onSignalOpen) onSignalOpen(neighborToSignal(n))

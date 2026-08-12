@@ -39,9 +39,9 @@ const STEPS: TourStep[] = [
     },
     {
         selector: '[data-tour="threads"]',
-        eyebrow: 'Narrative threads',
+        eyebrow: 'Stories',
         title: 'Follow themes instead of individual headlines',
-        body: 'Threads show what is spreading across countries, how sentiment is moving, and which topics deserve a deeper drill-down.',
+        body: 'Stories show what is spreading across countries, how sentiment is moving, and which topics deserve a deeper drill-down.',
     },
     {
         selector: '[data-tour="anomaly-attention"]',
@@ -105,7 +105,7 @@ const MOBILE_STEPS: TourStep[] = [
         selector: '',
         eyebrow: 'Pivot, don’t just scroll',
         title: 'Tap anything to drill in',
-        body: 'Tap a thread, a source, or a headline and the Lens re-scopes to it. Its “where it lives” strip names the countries that story actually lands in — tap one to pivot there. Anything you open can be pinned in the Workbench.',
+        body: 'Tap a story, a source, or a headline and the Lens re-scopes to it. Its “where it lives” strip names the countries that story actually lands in — tap one to pivot there. Anything you open can be pinned in the Workbench.',
     },
 ]
 
