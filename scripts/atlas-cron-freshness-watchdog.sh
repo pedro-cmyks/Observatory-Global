@@ -43,7 +43,7 @@ age_h() { # $1 = SQL returning a timestamptz; prints integer hours, or NOTHING
     "SELECT COALESCE(round(extract(epoch from (now()-($1)))/3600)::int, 9999)" 2>/dev/null \
     | tr -d '[:space:]'
 }
-running() { launchctl list | grep -q "[0-9].*$1"; }  # has a live PID
+running() { launchctl list | grep -qE "^[0-9]+[[:space:]].*$1"; }  # live PID column, not the exit status
 kick() { launchctl kickstart "gui/$UID_N/$1" >>"$LOG" 2>&1 && echo "$(ts) KICKSTARTED $1 ($2)" >>"$LOG"; }
 
 heavy_lock_state() {
