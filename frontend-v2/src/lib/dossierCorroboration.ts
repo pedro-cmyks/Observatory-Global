@@ -49,6 +49,10 @@ export interface CorroborationPin {
   label: string
   status: 'established' | 'contested' | 'unverified' | 'not_applicable'
   search_status?: CorroborationSearchStatus
+  /** Whether THIS PIN got an answer from any lane — distinct from
+   *  `search_status`, which reports the web lane specifically. A pin whose web
+   *  query was throttled can still be measured by the client-supplied lane. */
+  measured?: boolean
   queries_run?: number
   queries_answered?: number
   /** Distinct outlets after syndication clustering — receipts stay visible. */
@@ -165,7 +169,12 @@ export interface CorroborationData {
    *  pre-V5 payloads — absence means "this backend did not measure it", which
    *  is why the banner stays silent rather than claiming a complete run. */
   partial?: boolean
+  /** Evidence pins whose lane answered at least one query — a pin measured on
+   *  one of two queries still returned real coverage, so it counts. */
   pins_measured?: number
+  /** How many of those were only PARTIALLY measured — kept separate so the
+   *  banner can say it instead of rounding it away in either direction. */
+  pins_partial?: number
   pins_applicable?: number
   coverage_asymmetry: { note: string; provider: string | null } | null
   meta?: {
@@ -213,7 +222,19 @@ export function corroborationCoverageText(c: CorroborationData): string | null {
     : states.has('timeout')
       ? 'web lane timed out'
       : 'web lane degraded'
-  return `${why} — ${measured} of ${applicable} evidence pins measured; the rest are shown unmeasured, not as zero coverage`
+  const partially = c.pins_partial ?? 0
+  const unreached = applicable - measured
+  if (unreached <= 0) {
+    // Degraded but complete — naming a "rest" that does not exist is its own
+    // small lie, and it lands right beside verdicts built on real receipts.
+    const partly = partially ? `, ${partially} of them only partially` : ''
+    return `${why} — all ${applicable} evidence pins measured${partly}`
+  }
+  const partly = partially ? ` (${partially} of them only partially)` : ''
+  const rest = unreached > 1
+    ? `the ${unreached} pins not reached are shown unmeasured`
+    : 'the pin not reached is shown unmeasured'
+  return `${why} — ${measured} of ${applicable} evidence pins measured${partly}; ${rest}, not as zero coverage`
 }
 
 /** ✓ established / ⚠ contested / ? unverified — the per-pin status chip. */

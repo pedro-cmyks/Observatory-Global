@@ -445,6 +445,35 @@ describe('corroborationCoverageText', () => {
     }))
     expect(t).toMatch(/throttled/i)
     expect(t).toMatch(/1 of 3/)
+    expect(t).toMatch(/2 pins not reached are shown/)
+  })
+
+  it('agrees with itself when exactly one pin was not reached', () => {
+    const t = corroborationCoverageText(cdata({
+      partial: true, pins_measured: 1, pins_applicable: 2,
+      pins: [cpin({ search_status: 'throttled' }), cpin({ id: 'p2', search_status: 'ok' })],
+    }))
+    expect(t).toMatch(/the pin not reached is shown/)
+  })
+
+  it('a partially measured pin counts as measured AND says it was partial', () => {
+    // Never a 0 next to an `established` verdict built on real receipts.
+    const t = corroborationCoverageText(cdata({
+      partial: true, pins_measured: 2, pins_partial: 1, pins_applicable: 3,
+      pins: [cpin({ search_status: 'partial' }), cpin({ id: 'p2', search_status: 'ok' }),
+             cpin({ id: 'p3', search_status: 'throttled' })],
+    }))
+    expect(t).toMatch(/2 of 3/)
+    expect(t).toMatch(/1 of them only partially/)
+  })
+
+  it('never refers to a rest that does not exist', () => {
+    const t = corroborationCoverageText(cdata({
+      partial: true, pins_measured: 2, pins_partial: 2, pins_applicable: 2,
+      pins: [cpin({ search_status: 'partial' }), cpin({ id: 'p2', search_status: 'partial' })],
+    }))
+    expect(t).not.toMatch(/the rest/)
+    expect(t).toMatch(/all 2 evidence pins measured/)
   })
 
   it('a pre-V5 payload (no partial field) shows no banner', () => {

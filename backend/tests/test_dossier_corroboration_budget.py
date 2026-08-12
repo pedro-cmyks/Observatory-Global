@@ -199,6 +199,7 @@ async def test_one_dead_pin_never_kills_the_others(no_llm, monkeypatch):
     assert resp["partial"] is True
     assert resp["pins_measured"] == 1
     assert resp["pins_applicable"] == 2
+    assert resp["pins_partial"] == 0
 
 
 @pytest.mark.asyncio
@@ -245,6 +246,11 @@ async def test_partial_pin_reports_how_many_queries_answered(no_llm, monkeypatch
     assert pin["queries_answered"] == 1
     assert pin["search_status"] == "partial"
     assert pin["citations"], "the answered query's receipts still serve"
+    # A partially-measured pin that returned real coverage IS measured — the
+    # run-level count must not read 0 beside an `established` verdict.
+    assert resp["pins_measured"] == 1
+    assert resp["pins_partial"] == 1
+    assert "partially" in (resp["meta"]["search_note"] or "")
 
 
 @pytest.mark.asyncio
@@ -428,3 +434,95 @@ async def test_job_failure_is_reported_not_swallowed(no_llm, monkeypatch):
     # A raising lane is an honest per-pin gap, not a 500 for the whole report.
     assert snap["status"] == "done"
     assert snap["result"]["pins"][0]["search_status"] == "unavailable"
+
+
+@pytest.mark.asyncio
+async def test_a_pin_measured_by_the_supplied_lane_counts_as_measured(no_llm, monkeypatch):
+    """Live witness 2026-08-12: a pin came back `established` on 3 voices / 4
+    receipts while the run-level line read "0 of 2 evidence pins measured" —
+    its DOC 2.0 query was throttled, but the client-supplied lane HAD measured
+    it. `search_status` describes the WEB lane (throttled is true of it); the
+    measured COUNT must describe the pin, or the banner puts a 0 next to a
+    receipt list."""
+    from app.services import external_depth
+    dossier_module = no_llm
+
+    async def fake_status(_label, *, raw_query, timespan, **_kw):
+        return {"status": "throttled", "result": None}
+
+    monkeypatch.setattr(external_depth, "fetch_external_depth_status", fake_status)
+
+    resp = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(force=True, pins=[
+            _pin("supplied-pin", "supplied story"),
+            _pin("dark-pin", "dark story"),
+        ], supplied_results=[
+            {"pin_id": "supplied-pin", "outlet": "dw.com",
+             "title": "Independent account one", "url": "https://dw.com/1"},
+            {"pin_id": "supplied-pin", "outlet": "naharnet.com",
+             "title": "A different independent account", "url": "https://naharnet.com/2"},
+            {"pin_id": "supplied-pin", "outlet": "cnn.com",
+             "title": "A third distinct account", "url": "https://cnn.com/3"},
+        ]))
+
+    by_id = {p["id"]: p for p in resp["pins"]}
+    supplied = by_id["supplied-pin"]
+    assert supplied["status"] == "established"
+    assert supplied["measured"] is True
+    assert supplied["search_status"] == "throttled"   # the WEB lane, honestly
+    assert by_id["dark-pin"]["measured"] is False
+    assert resp["pins_measured"] == 1, "never 0 beside an established verdict"
+    assert resp["pins_applicable"] == 2
+    assert resp["partial"] is True
+
+
+@pytest.mark.asyncio
+async def test_the_banner_never_refers_to_a_rest_that_does_not_exist(no_llm, monkeypatch):
+    """Live witness 2026-08-12: "2 of 2 evidence pins measured … the rest are
+    shown unmeasured" — there is no rest. A degraded run that still reached
+    every pin says only what is true of it."""
+    from app.services import external_depth
+    dossier_module = no_llm
+
+    async def fake_status(_label, *, raw_query, timespan, **_kw):
+        # Both pins answer their first query; the second one never lands.
+        if "receipt" in raw_query:
+            return {"status": "down", "result": None}
+        return _ok("Independent coverage", f"{raw_query.split()[0]}.example")
+
+    monkeypatch.setattr(external_depth, "fetch_external_depth_status", fake_status)
+
+    resp = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(force=True, pins=[
+            {"id": "p1", "label": "alpha story", "anchor_type": "thread",
+             "evidence": ["alpha story receipt headline"]},
+            {"id": "p2", "label": "beta story", "anchor_type": "thread",
+             "evidence": ["beta story receipt headline"]},
+        ]))
+
+    note = resp["meta"]["search_note"]
+    assert resp["pins_measured"] == resp["pins_applicable"] == 2
+    assert "the rest" not in note, note
+    assert "all 2 evidence pins measured" in note, note
+    assert "2 of them only partially" in note, note
+
+
+@pytest.mark.asyncio
+async def test_the_banner_agrees_with_itself_grammatically(no_llm, monkeypatch):
+    """Live witness: "the 1 not reached are shown". V2 is fixing agrammatical
+    splices elsewhere in the dossier; this lane does not add one."""
+    from app.services import external_depth
+    dossier_module = no_llm
+
+    async def fake_status(_label, *, raw_query, timespan, **_kw):
+        if raw_query.startswith("dark"):
+            return {"status": "throttled", "result": None}
+        return _ok("Independent coverage", "indep.example")
+
+    monkeypatch.setattr(external_depth, "fetch_external_depth_status", fake_status)
+    resp = await dossier_module.dossier_corroborate(
+        dossier_module.CorroborateRequest(force=True, pins=[
+            _pin("p1", "lit story"), _pin("p2", "dark story")]))
+    note = resp["meta"]["search_note"]
+    assert "the pin not reached is shown unmeasured" in note, note
+    assert " 1 not reached are " not in note

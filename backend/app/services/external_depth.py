@@ -32,6 +32,13 @@ _CACHE_TTL = 1800.0
 # 1-in-4 reliability the fresh Frank test measured (docs/research/gold/
 # 2026-08-12-frank-test-fresh.md §3a). Successes still cache long.
 _FAIL_CACHE_TTL = 60.0
+# A THROTTLE is upstream saying "come back later", and it is measured in
+# MINUTES: probed live 2026-08-12, DOC 2.0 answered 429 to a first request
+# after 45s, 60s and 90s of complete idleness — the ban is not per-request
+# spacing, so re-firing every minute only feeds it. Matches the claim lane's
+# DOC20_COOLDOWN_TTL. Traffic changes; the story we tell does not (the pin
+# still reads `throttled`, honestly unmeasured).
+_THROTTLE_CACHE_TTL = 120.0
 _MAX_RECORDS = 40
 
 _cache: dict[str, tuple[float, dict]] = {}
@@ -127,7 +134,9 @@ async def fetch_external_depth_status(
     hit = _cache.get(cache_key)
     if hit:
         cached_status = hit[1].get("status")
-        ttl = _CACHE_TTL if cached_status == "ok" else _FAIL_CACHE_TTL
+        ttl = (_CACHE_TTL if cached_status == "ok"
+               else _THROTTLE_CACHE_TTL if cached_status == "throttled"
+               else _FAIL_CACHE_TTL)
         if now - hit[0] < ttl:
             return hit[1]
 

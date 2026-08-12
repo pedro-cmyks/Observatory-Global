@@ -1404,6 +1404,7 @@ async def _run_corroboration(
 
     # Client-supplied lane (contract v0): merged into the same independence math.
     supplied_any = False
+    supplied_pins: set[str] = set()
     for s in req.supplied_results:
         if s.pin_id not in articles_by_pin:
             continue
@@ -1417,6 +1418,7 @@ async def _run_corroboration(
             "lane": "client-supplied",
         })
         lane_ok_by_pin[s.pin_id] = True
+        supplied_pins.add(s.pin_id)
         supplied_any = True
 
     search_available = any_lane_ok or supplied_any
@@ -1434,12 +1436,19 @@ async def _run_corroboration(
         states = query_states[p.id]
         queries_run = len(pin_queries[p.id])
         queries_answered = sum(1 for s in states if s == "ok")
+        pin_supplied = p.id in supplied_pins
         search_state = _pin_search_state(
             applicable=applicable,
             states=states,
             answered=queries_answered,
-            supplied=bool(pin_search_available and not states),
+            supplied=pin_supplied,
         )
+        # `search_status` is the health of the WEB lane; `measured` is whether
+        # THIS PIN got an answer from any lane. A pin whose DOC 2.0 query was
+        # throttled but whose supplied receipts established it IS measured —
+        # keeping these separate is what stops a 0 landing beside a receipt
+        # list (live witness 2026-08-12).
+        pin_measured = applicable and (queries_answered > 0 or pin_supplied)
         status, note = pin_status(
             ind["independent_voices"],
             pin_search_available,
@@ -1481,14 +1490,21 @@ async def _run_corroboration(
             # measured this and threw it away — without it the render cannot
             # distinguish "nobody covered this" from "we never asked".
             "search_status": search_state,
+            "measured": pin_measured,
             "queries_run": queries_run,
             "queries_answered": queries_answered,
         })
 
     applicable_pins = [pp for pp in pin_payloads
                        if pp["search_status"] != "not_applicable"]
-    measured_pin_count = sum(1 for pp in applicable_pins
-                             if pp["search_status"] == "ok")
+    # MEASURED = the lane answered at least one of this pin's queries. A pin
+    # measured on one of two queries still returned real coverage and can carry
+    # an `established` verdict — counting it as unmeasured would put a 0 next to
+    # a receipt list, the same number-incoherence class the console fixed (N19).
+    # `pins_partial` keeps the incompleteness visible instead of hiding it.
+    measured_pin_count = sum(1 for pp in applicable_pins if pp["measured"])
+    partial_pin_count = sum(1 for pp in applicable_pins
+                            if pp["search_status"] == "partial")
     partial = any(pp["search_status"] not in ("ok", "not_applicable")
                   for pp in pin_payloads)
     degraded_states = {pp["search_status"] for pp in applicable_pins
@@ -1524,6 +1540,7 @@ async def _run_corroboration(
         # thinned-out run as the whole answer.
         "partial": partial,
         "pins_measured": measured_pin_count,
+        "pins_partial": partial_pin_count,
         "pins_applicable": len(applicable_pins),
         "coverage_asymmetry": asymmetry,
         "meta": {
@@ -1554,6 +1571,7 @@ async def _run_corroboration(
                 any_evidence=any(p.evidence for p in pins),
                 degraded_states=degraded_states,
                 measured=measured_pin_count,
+                partially=partial_pin_count,
                 applicable=len(applicable_pins),
             ),
         },
@@ -1583,7 +1601,7 @@ def _pin_search_state(*, applicable: bool, states: list[str],
 
 def _corrob_search_note(*, search_available: bool, any_evidence: bool,
                         degraded_states: set, measured: int,
-                        applicable: int) -> str | None:
+                        applicable: int, partially: int = 0) -> str | None:
     """The one-line honest account of what this run did and did not reach."""
     if not any_evidence:
         return ("no evidence-bearing pins — context remains in the dossier "
@@ -1603,9 +1621,21 @@ def _corrob_search_note(*, search_available: bool, any_evidence: bool,
         why = ("throttled" if "throttled" in degraded_states
                else "timed out" if "timeout" in degraded_states
                else "did not answer")
+        unreached = applicable - measured
+        if unreached <= 0:
+            # Degraded but complete: every pin was reached, some on fewer
+            # queries. Naming a "rest" that does not exist is its own small lie.
+            partly = (f", {partially} of them only partially" if partially
+                      else "")
+            return (f"web lane {why} on part of this run — all {applicable} "
+                    f"evidence pins measured{partly}")
+        partly = (f" ({partially} of them only partially)" if partially else "")
+        rest = (f"the {unreached} pins not reached are shown unmeasured"
+                if unreached > 1 else
+                "the pin not reached is shown unmeasured")
         return (f"web lane {why} on part of this run — {measured} of "
-                f"{applicable} evidence pins measured; the rest are shown "
-                "unmeasured, not as zero coverage")
+                f"{applicable} evidence pins measured{partly}; {rest}, "
+                "not as zero coverage")
     return None
 
 
