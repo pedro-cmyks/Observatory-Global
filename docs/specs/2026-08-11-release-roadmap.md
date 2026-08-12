@@ -58,10 +58,22 @@ medida ±1 nivel. Wedge (dossier): "casi pasa el test de Frank" (NIVELES).
 Prod: Fly v502 + Vercel (push v3-intel-layer eb1b8091). 2,833 backend +
 1,310 vitest verdes en el gate de integración.
 
-### 2b · Precisión del corroborate (el "file no" del R3, ahora nombrado)
-Independencia medible: ownership (tiers en citations — N18 backend ya da la
-base) + paraphrase (el caso Haaretz×3) + ventana temporal (recibo de 6
-semanas avalando veredicto de hoy). Es UN spec de corroborate-v2.
+### 2b · Precisión del corroborate — ✅ CERRADO 2026-08-11 (corroborate-v2)
+Spec aprobado → build mismo día → **5/5 gates pre-registrados PASS** →
+deployado, ambos testigos muertos EN PROD:
+- **G-HAARETZ**: 3 rewrites atribuidos → "1 primary source (attributed)"
+  (atribución-en-cita + quote-overlap, `07a228e8`).
+- **G-STATE / M-N18 vivo en prod**: ria+tass+rt+cnn → 4 outlets / **2
+  voces** / 'unverified' / chip `state:ru`; `single_source` clavado a voces.
+- **G-LOCALE**: "1.700" id/es = 1700 en ambos extremos (backend + espejo
+  claimLedger con sourceLang cableado).
+- **G-TEMPLATE**: Mali≠Gaza → `template_match` visible-nunca-contado; un
+  fixture pre-existente codificaba el comportamiento matado.
+- **G-NO-REGRESIÓN**: run-1 FAIL 22.8% CONFUNDIDO por varianza DOC 2.0 →
+  instrumento pareado pre-registrado (barra intacta) → **PASS 10.6%**,
+  atribución completa (template 15 / aged 1 / gained 0).
+Artefacto: `docs/research/corroborate-v2/2026-08-11-gate-run.md`. Cero LLM
+nuevo en hot path. Muestra congelada ANTES de todo cambio (5c59f2f5).
 
 ### 2c · R4 P1/P2 restantes (filed, con dueño natural)
 Sub-historias del lens (4 'Thailand School Shooting' = dedup de identidad —
@@ -85,7 +97,10 @@ gold día-7 (persistencia-como-estado, 3er par).
 
 ## 4 · Criterio honesto de "release al público"
 El review del 07-18 fijó: readiness ≥70 + reliability ≥70 + semanas limpias.
-Hoy la brecha es §2a (confiabilidad) + §2b (precisión corroborate) — ambas
-acotadas. La honestidad — el eje del producto — ya está: **medida, con
-council, y sin superficies que mientan.** Cuando §2a cierre: beta pública
-con el Brief como puerta (la PWA ya instala), console/workbench detrás.
+**§2a y §2b CERRARON el mismo día (2026-08-11).** La brecha técnica
+enumerada está saldada; lo que queda es TIEMPO: la semana de sellos limpios
+del gate de release-beta (plan de acción §orden-de-fuego) + los relojes de
+§3 corriendo solos. La honestidad — el eje del producto — ya está: medida,
+con council, sin superficies que mientan, y ahora con corroboración cuya
+independencia es un número con reglas, no una afirmación. Beta pública con
+el Brief como puerta (la PWA ya instala), console/workbench detrás.
