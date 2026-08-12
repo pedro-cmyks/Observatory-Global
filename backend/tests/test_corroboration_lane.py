@@ -89,11 +89,23 @@ class TestClassifyRelation:
         assert rel == "context"
 
     def test_semantic_similarity_can_stand_in_for_terms(self):
-        # hot-lane hit with different wording but high cosine
+        # hot-lane hit with different wording but high cosine — still stands in
+        # for lexical recall, PROVIDED one anchor is shared (here: venezuela).
+        rel = c.classify_relation(
+            self.CLAIM, None,
+            "Seismic disaster claims thousands in Venezuela", similarity=0.92)
+        assert rel == "corroborates"
+
+    def test_semantic_similarity_alone_is_a_template_match(self):
+        # corroborate-v2 G-TEMPLATE: this fixture used to assert 'corroborates'
+        # for a same-script hit sharing ZERO terms with the claim — exactly the
+        # shape that let a Mali ambush corroborate a Gaza headline (T-N19).
+        # Cosine alone no longer establishes the same event; the row stays
+        # VISIBLE as template_match, it is just never counted.
         rel = c.classify_relation(
             self.CLAIM, None,
             "Seismic disaster claims thousands in the Andes", similarity=0.92)
-        assert rel == "corroborates"
+        assert rel == "template_match"
 
 
 class TestCorpusQueryBuilders:

@@ -215,7 +215,7 @@ import urllib.parse as _urlparse
 
 _log = _logging.getLogger(__name__)
 
-Relation = str  # 'corroborates' | 'contradicts' | 'context'
+Relation = str  # 'corroborates' | 'contradicts' | 'context' | 'template_match'
 
 # Relation thresholds — glass-box, echoed in the payload meta.
 FIGURE_MATCH_TOLERANCE = 0.01   # |a-b|/max ≤ this = same figure = corroborates
@@ -338,6 +338,46 @@ def term_recall(claim_terms: list[str], candidate_text: str | None) -> float:
     return hit / len(set(claim_terms))
 
 
+# Anti-template guard (corroborate-v2 F2, council T-N19/DESK-N23: a Mali
+# ambush corroborated a Gaza headline). Casualty/disaster boilerplate that
+# two UNRELATED events share; matching on these alone is matching the
+# TEMPLATE, not the event. A same-event verdict needs at least one shared
+# ANCHOR term (a non-template, non-numeric token) — except cross-script
+# semantic matches, where lexical overlap is impossible by construction.
+_TEMPLATE_TERMS = frozenset({
+    "kill", "kills", "killed", "killing", "dead", "death", "deaths", "die",
+    "dies", "died", "toll", "casualties", "victims", "injured", "wounded",
+    "wounds", "hurt", "attack", "attacks", "attacked", "strike", "strikes",
+    "struck", "blast", "blasts", "explosion", "bomb", "bombing", "shooting",
+    "shot", "gunmen", "ambush", "raid", "clash", "clashes", "soldiers",
+    "troops", "forces", "militants", "fighters", "police", "officials",
+    "people", "least", "several", "dozens", "hundreds", "thousands",
+    "missing", "rescue", "rescued", "survivors", "damage", "destroyed",
+    "fire", "fires", "flood", "floods", "flooding", "earthquake", "quake",
+    "storm", "crash", "crashes", "collapse", "collapsed",
+})
+
+
+def anchor_overlap(claim_terms: list[str], candidate_text: str | None) -> int:
+    """Count of shared NON-template, non-numeric terms — the event's proper
+    anchors (places, actors, distinctive nouns)."""
+    cand = set(_tokens(candidate_text or ""))
+    return sum(
+        1 for t in set(claim_terms)
+        if t in cand and t not in _TEMPLATE_TERMS and not t.isdigit()
+    )
+
+
+_LATIN_LETTER_RE = re.compile(r"[a-zA-Z]")
+_NON_LATIN_LETTER_RE = re.compile(r"[^\W\d_a-zA-Z]", re.UNICODE)
+
+
+def _mostly_latin(text: str | None) -> bool:
+    latin = len(_LATIN_LETTER_RE.findall(text or ""))
+    other = len(_NON_LATIN_LETTER_RE.findall(text or ""))
+    return latin >= other
+
+
 def figure_relation(claim_figure: float | None,
                     candidate_figure: float | None) -> Relation | None:
     """Figure-level relation, or None when a figure is missing on either side.
@@ -360,27 +400,30 @@ def classify_relation(
     similarity: float | None = None,
     candidate_lang: str | None = None,
 ) -> Relation:
-    """MATH relation for one candidate against the claim. A candidate is the
-    SAME EVENT when it restates enough claim terms OR (hot lane) is semantically
-    close. Same-event + a conflicting figure = contradicts; same-event with a
-    matching or absent figure = corroborates; everything weaker = context
-    (related coverage, not a restatement). No stance model — honest by
-    construction. The candidate's figure is parsed under ITS OWN numeral
-    locale (corroborate-v2 F1)."""
+    """MATH relation for one candidate against the claim. Same-event needs
+    term recall OR semantic closeness AND at least one shared anchor term
+    (F2 — template vocabulary alone never establishes the same event; a
+    cross-script semantic match is exempt because lexical anchors cannot
+    exist there). Same-event + conflicting figure = contradicts; same-event
+    + matching/absent figure = corroborates; template-shaped closeness with
+    no anchors = template_match (visible, never counted); weaker = context.
+    The candidate's figure is parsed under ITS OWN numeral locale (F1)."""
     recall = term_recall(claim_terms, candidate_headline)
-    same_event = recall >= SAME_EVENT_TERM_RECALL or (
-        similarity is not None and similarity >= SAME_EVENT_SIMILARITY
-    )
+    semantic_same = similarity is not None and similarity >= SAME_EVENT_SIMILARITY
+    same_event = recall >= SAME_EVENT_TERM_RECALL or semantic_same
+    anchors = anchor_overlap(claim_terms, candidate_headline)
+    cross_script = not _mostly_latin(candidate_headline)
+    anchored = anchors > 0 or (semantic_same and cross_script)
+    if same_event and not anchored:
+        return "template_match"
     cand_figure = extract_figure(candidate_headline, lang=candidate_lang)
     fig_rel = figure_relation(claim_figure, cand_figure)
     if same_event and fig_rel == "contradicts":
         return "contradicts"
     if fig_rel == "corroborates" and same_event:
         return "corroborates"
-    if recall >= CORROBORATE_TERM_RECALL or (
-        similarity is not None and similarity >= SAME_EVENT_SIMILARITY
-    ):
-        return "corroborates"
+    if recall >= CORROBORATE_TERM_RECALL or semantic_same:
+        return "corroborates" if anchored else "template_match"
     return "context"
 
 
@@ -446,6 +489,9 @@ def citation_verdict(matches: list[dict[str, Any]]) -> dict[str, Any]:
     source a wire/official body?"""
     corr = [m for m in matches if m.get("relation") == "corroborates"]
     contra = [m for m in matches if m.get("relation") == "contradicts"]
+    # F2: template-shaped matches are SHOWN but never counted — they are the
+    # Mali-ambush-backing-a-Gaza-claim class (shared boilerplate, no anchor).
+    template = [m for m in matches if m.get("relation") == "template_match"]
     official_corr = sum(1 for m in corr if m.get("official"))
     n_corr, n_contra = len(corr), len(contra)
     if n_contra and n_contra >= n_corr:
@@ -464,11 +510,16 @@ def citation_verdict(matches: list[dict[str, Any]]) -> dict[str, Any]:
         parts.append(f"contradicted by {n_contra}")
     if not parts:
         parts.append("no corroborating coverage found in the queried corpora")
+    if template:
+        parts.append(
+            f"{len(template)} template-shaped match(es) set aside "
+            "(shared casualty boilerplate, no shared event anchor)")
     return {
         "status": status,
         "corroborating": n_corr,
         "contradicting": n_contra,
         "official_corroborating": official_corr,
+        "template_matches": len(template),
         "note": "; ".join(parts),
     }
 

@@ -84,3 +84,49 @@ def test_g_locale_relation_no_longer_inverts():
         "Gempa Sulawesi: 1.700 orang tewas, ribuan mengungsi",
         candidate_lang="id")
     assert rel != "contradicts"
+
+
+# ── Task 4 / G-TEMPLATE: casualty boilerplate is not an event ────────────────
+
+def test_g_template_mali_does_not_corroborate_gaza():
+    """G-TEMPLATE (spec): same casualty template, disjoint entities."""
+    from app.services.corroboration import classify_relation, extract_claim_terms
+    claim = extract_claim_terms("Israeli strike kills 12 in Gaza refugee camp")
+    rel = classify_relation(
+        claim["terms"], 12.0,
+        "Ambush kills 12 soldiers in northern Mali",
+        similarity=0.87)          # template shapes embed close — the witness
+    assert rel == "template_match"
+
+
+def test_template_guard_spares_true_same_event():
+    from app.services.corroboration import classify_relation, extract_claim_terms
+    claim = extract_claim_terms("Israeli strike kills 12 in Gaza refugee camp")
+    rel = classify_relation(
+        claim["terms"], 12.0,
+        "Gaza refugee camp hit by Israeli strike, 12 dead")
+    assert rel == "corroborates"
+
+
+def test_template_guard_exempts_cross_script_semantic():
+    """Cross-language TRUE matches share zero Latin tokens — the semantic
+    lane stays alive across scripts (anchor requirement is lexical)."""
+    from app.services.corroboration import classify_relation, extract_claim_terms
+    claim = extract_claim_terms("Israeli strike kills 12 in Gaza refugee camp")
+    rel = classify_relation(
+        claim["terms"], None,
+        "غارة إسرائيلية تقتل 12 في مخيم للاجئين بغزة",
+        similarity=0.90)
+    assert rel == "corroborates"
+
+
+def test_citation_verdict_excludes_template_matches():
+    from app.services.corroboration import citation_verdict
+    matches = [
+        {"relation": "corroborates", "official": False},
+        {"relation": "template_match", "official": True},
+    ]
+    v = citation_verdict(matches)
+    assert v["corroborating"] == 1
+    assert v["template_matches"] == 1
+    assert "template" in v["note"]
