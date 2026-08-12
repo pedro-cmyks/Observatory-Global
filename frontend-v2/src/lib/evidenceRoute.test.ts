@@ -96,7 +96,7 @@ describe('Evidence Route breadcrumb builder (#173)', () => {
   })
 })
 
-import { buildPersonEvidenceRoute, buildSignalEvidenceRoute, buildTopicEvidenceRoute } from './evidenceRoute'
+import { buildPersonEvidenceRoute, buildSignalEvidenceRoute, buildSourceEvidenceRoute, buildTopicEvidenceRoute } from './evidenceRoute'
 
 describe('cross-context Evidence Routes (#173, 2026-08-03)', () => {
   it('topic route: Thread -> Raw -> Gate-verified -> Countries -> Source Mix -> Evidence', () => {
@@ -154,5 +154,30 @@ describe('cross-context Evidence Routes (#173, 2026-08-03)', () => {
     const steps = buildSignalEvidenceRoute({ gdeltThemeCount: 3 })
     expect(steps.find(s => s.key === 'threads')?.count).toBeNull()
     expect(steps.find(s => s.key === 'neighbors')?.count).toBeNull()
+  })
+})
+
+describe('source Evidence Route (#173, 2026-08-11 — the fifth acceptance context)', () => {
+  it('source route: Source (tier) -> Signals -> Countries -> Thematic Focus', () => {
+    const steps = buildSourceEvidenceRoute({
+      domain: 'russian.rt.com',
+      tierLabel: 'STATE',
+      signalCount: 481,
+      countryCount: 34,
+      themeCount: 8,
+    })
+    expect(steps.map(s => s.key)).toEqual(['source', 'signals', 'countries', 'themes'])
+    expect(steps.map(s => s.count)).toEqual([null, 481, 34, 8])
+    // the tier is the head chip's source-class fact — the acceptance's
+    // "distinguish reporting / wire / state" requirement
+    expect(steps[0].detail).toBe('STATE')
+    expect(steps.every(s => s.targetId.startsWith('sp-'))).toBe(true)
+  })
+
+  it('source route while the profile is still loading: counts absent, never zero', () => {
+    const steps = buildSourceEvidenceRoute({ domain: 'example.org', tierLabel: 'UNKNOWN' })
+    expect(steps.find(s => s.key === 'signals')?.count).toBeNull()
+    expect(steps.find(s => s.key === 'countries')?.count).toBeNull()
+    expect(steps.find(s => s.key === 'themes')?.count).toBeNull()
   })
 })
