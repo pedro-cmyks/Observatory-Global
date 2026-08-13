@@ -1125,3 +1125,52 @@ def test_persist_revival_counter_rides_the_single_atomic_update():
     _, args = conn.calls[0]
     assert args[11] is False and args[12] is False
     assert t.revival_count == 2
+
+
+def test_load_clusters_keyset_paginated_and_order_preserved(monkeypatch):
+    """2026-08-13: the ONE unbounded load_clusters fetch outgrew the pooler's
+    2min statement_timeout (79k rows / 432MB) and killed Step 2 on 08-12/08-13
+    before any matching — active last_seen froze. The loader must issue only
+    bounded keyset statements AND restore the (snapshot_at, cluster_id) order
+    the single ORDER BY used to guarantee."""
+    import asyncio
+    from datetime import datetime, timezone
+
+    import scripts.project_dynamic_topics as pdt
+
+    def _row(rid, snap_day, cluster_id):
+        return {
+            "id": rid,
+            "snapshot_at": datetime(2026, 8, snap_day, tzinfo=timezone.utc),
+            "cluster_id": cluster_id,
+            "label": f"t{rid}",
+            "n_signals": 3,
+            "cohesion": 0.9,
+            "sample_signal_ids": [rid],
+            "centroid_vec": [0.1, 0.2],
+            "role_noise_rate": None,
+            "top_country_codes": ["US"],
+        }
+
+    # ids ascending but snapshot/cluster order scrambled vs id order
+    rows_by_id = [
+        _row(1, 12, 5), _row(2, 11, 9), _row(3, 12, 1), _row(4, 11, 2), _row(5, 13, 0),
+    ]
+
+    class _FakeConn:
+        def __init__(self):
+            self.calls = []
+
+        async def fetch(self, sql, *args):
+            assert "LIMIT" in sql and "id > $1" in sql  # never unbounded
+            last_id, chunk = args
+            self.calls.append((last_id, chunk))
+            batch = [r for r in rows_by_id if r["id"] > last_id][:chunk]
+            return batch
+
+    monkeypatch.setattr(pdt, "CLUSTER_FETCH_CHUNK", 2)
+    conn = _FakeConn()
+    out = asyncio.run(pdt.load_clusters(conn))
+    assert conn.calls == [(0, 2), (2, 2), (4, 2)]          # bounded keyset walk
+    assert [c["id"] for c in out] == [4, 2, 3, 1, 5]        # snapshot_at, cluster_id
+    assert all(c["snapshot_at"] for c in out)               # dict shape intact

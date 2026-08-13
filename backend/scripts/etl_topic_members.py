@@ -20,6 +20,15 @@ list parity is exact (6734=6734). A prior version stamped insert-time, which
 would have served stale (aged-out) assignments; re-seed v1-compat after that
 fix (DELETE WHERE engine_version='v1-compat' + re-run).
 
+Timeout discipline (2026-08-13): the single windowed INSERT..SELECT over the
+full --hours window outran the pooler's 2min statement_timeout under
+post-snapshot contention two nights running (08-12 + 08-13, Step 3.5 of the
+nightly). The window is now sliced into fixed slabs anchored to ONE client-side
+timestamp (no NOW()-drift gaps between statements; the newest slab stays
+open-ended so coverage is identical to the old single statement), and every
+statement runs inside its own transaction with a SET LOCAL statement_timeout —
+the sanctioned pattern for heavy statements through the transaction pooler.
+
 Run:  python -m backend.scripts.etl_topic_members --hours 168
 """
 from __future__ import annotations
@@ -28,9 +37,16 @@ import argparse
 import asyncio
 import os
 import sys
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 
+# Slab width for the windowed inserts + the per-statement timeout override.
+SLAB_HOURS = int(os.environ.get("ATLAS_ETL_MEMBERS_SLAB_HOURS", "24") or "24")
+STMT_TIMEOUT = os.environ.get("ATLAS_ETL_MEMBERS_STMT_TIMEOUT", "540s")
+
+# $1/$2 = half-open (lo, hi] slab bounds; $2 NULL = open-ended newest slab
+# (matches the old `> NOW() - hours` upper-unbounded window exactly).
 _ATLAS_EVIDENCE = """
 INSERT INTO topic_members
   (signal_id, topic_id, role, source_family, basis, confidence, gate_kept,
@@ -44,7 +60,8 @@ FROM signal_topic_assignments a
 JOIN atlas_topics at ON at.id = a.topic_id
 JOIN signals_v2 s ON s.id = a.signal_id
 WHERE a.model_version = 'theme-hint-lex-v2'
-  AND a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+  AND a.assigned_at > $1::timestamptz
+  AND ($2::timestamptz IS NULL OR a.assigned_at <= $2::timestamptz)
 ON CONFLICT DO NOTHING
 """
 
@@ -58,7 +75,8 @@ FROM signal_topic_assignments a
 JOIN atlas_topics at ON at.id = a.topic_id
 JOIN signals_v2 s ON s.id = a.signal_id
 WHERE a.model_version = 'semantic-discussion-v1'
-  AND a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')
+  AND a.assigned_at > $1::timestamptz
+  AND ($2::timestamptz IS NULL OR a.assigned_at <= $2::timestamptz)
 ON CONFLICT DO NOTHING
 """
 
@@ -83,6 +101,47 @@ ON CONFLICT DO NOTHING
 """
 
 
+def slab_bounds(
+    anchor: datetime, hours: int, slab_hours: int = SLAB_HOURS
+) -> list[tuple[datetime, datetime | None]]:
+    """Half-open (lo, hi] slabs covering (anchor-hours, +inf), oldest first.
+
+    Pure. Anchored to ONE timestamp so consecutive statements cannot open a
+    NOW()-drift gap at a slab boundary; the final slab's hi is None (open
+    upper bound = the old single statement's coverage). slab_hours<=0 returns
+    the whole window as ONE open-ended slab (explicit legacy opt-out).
+    """
+    if slab_hours <= 0 or hours <= slab_hours:
+        return [(anchor - timedelta(hours=hours), None)]
+    bounds: list[tuple[datetime, datetime | None]] = []
+    lo_h = hours
+    while lo_h > 0:
+        hi_h = max(lo_h - slab_hours, 0)
+        bounds.append((
+            anchor - timedelta(hours=lo_h),
+            None if hi_h == 0 else anchor - timedelta(hours=hi_h),
+        ))
+        lo_h = hi_h
+    return bounds
+
+
+def _rowcount(status: str) -> int:
+    """'INSERT 0 123' -> 123 (0 on anything unparseable)."""
+    try:
+        return int(status.rsplit(" ", 1)[-1])
+    except (ValueError, AttributeError):
+        return 0
+
+
+async def _execute_guarded(conn, sql: str, *args) -> int:
+    """One statement in its own transaction with SET LOCAL statement_timeout."""
+    async with conn.transaction():
+        await conn.execute(
+            "SELECT set_config('statement_timeout', $1, true)", STMT_TIMEOUT
+        )
+        return _rowcount(await conn.execute(sql, *args))
+
+
 async def run(hours: int) -> None:
     db = os.environ.get("DATABASE_URL")
     if not db:
@@ -90,17 +149,19 @@ async def run(hours: int) -> None:
         sys.exit(2)
     conn = await asyncpg.connect(db)
     try:
-        ev = await conn.execute(_ATLAS_EVIDENCE, hours)
-        di = await conn.execute(_DISCUSSION, hours)
-        dy = await conn.execute(_DYNAMIC_SAMPLE)
-        print(f"atlas evidence:  {ev}")
-        print(f"discussion:      {di}")
-        print(f"dynamic sample:  {dy}")
+        anchor = datetime.now(timezone.utc)
+        slabs = slab_bounds(anchor, hours)
+        ev = sum([await _execute_guarded(conn, _ATLAS_EVIDENCE, lo, hi) for lo, hi in slabs])
+        di = sum([await _execute_guarded(conn, _DISCUSSION, lo, hi) for lo, hi in slabs])
+        dy = await _execute_guarded(conn, _DYNAMIC_SAMPLE)
+        print(f"atlas evidence:  INSERT 0 {ev} ({len(slabs)} slabs)")
+        print(f"discussion:      INSERT 0 {di} ({len(slabs)} slabs)")
+        print(f"dynamic sample:  INSERT 0 {dy}")
         # Parity check vs the source assignments (atlas evidence path).
         src = await conn.fetchval(
             """SELECT COUNT(*) FROM signal_topic_assignments a
                WHERE a.model_version = 'theme-hint-lex-v2'
-                 AND a.assigned_at > NOW() - ($1::int * INTERVAL '1 hour')""", hours)
+                 AND a.assigned_at > $1::timestamptz""", anchor - timedelta(hours=hours))
         dst = await conn.fetchval(
             "SELECT COUNT(*) FROM topic_members WHERE role='evidence' AND engine_version='v1-compat'")
         by_role = await conn.fetch(

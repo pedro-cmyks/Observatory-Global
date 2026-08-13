@@ -1022,12 +1022,44 @@ async def _fetch_by_ids(conn, sql: str, all_ids: list[int]):
     return rows
 
 
+# Keyset page size for the full-table cluster load. 5,000 rows × ~3-4KB of
+# centroid ≈ 15-20MB / ~5s per statement (measured 2026-08-13) — far under the
+# pooler's 2min statement_timeout that the ONE unbounded fetch outgrew at
+# ~79k rows / 432MB (killed Step 2 on 08-12 and 08-13 BEFORE any matching, so
+# no active advanced last_seen while later steps kept running).
+CLUSTER_FETCH_CHUNK = int(os.environ.get("ATLAS_PROJECT_CLUSTER_FETCH_CHUNK", "5000") or "5000")
+
+
 async def load_clusters(conn) -> list[dict[str, Any]]:
-    rows = await conn.fetch(
+    # Keyset-paginated over the PK (2026-08-13): no single statement may
+    # approach the timeout — the same medicine as _fetch_by_ids above. The
+    # original ORDER BY (snapshot_at, cluster_id) contract is restored by the
+    # in-memory sort; chunk<=0 = explicit legacy unbounded opt-out.
+    sql = (
         "SELECT id, snapshot_at, cluster_id, label, n_signals, cohesion, "
         "sample_signal_ids, centroid_vec, role_noise_rate, top_country_codes "
-        "FROM emergent_clusters WHERE centroid_vec IS NOT NULL ORDER BY snapshot_at, cluster_id"
+        "FROM emergent_clusters WHERE centroid_vec IS NOT NULL"
     )
+    rows: list = []
+    if CLUSTER_FETCH_CHUNK <= 0:
+        rows = list(await conn.fetch(sql + " ORDER BY snapshot_at, cluster_id"))
+    else:
+        last_id = 0
+        while True:
+            batch = await conn.fetch(
+                sql + " AND id > $1 ORDER BY id LIMIT $2", last_id, CLUSTER_FETCH_CHUNK
+            )
+            if not batch:
+                break
+            rows.extend(batch)
+            last_id = batch[-1]["id"]
+            if len(batch) < CLUSTER_FETCH_CHUNK:
+                break
+        rows.sort(key=lambda r: (
+            r["snapshot_at"],
+            r["cluster_id"] is None,  # SQL ASC puts NULLs last
+            r["cluster_id"] if r["cluster_id"] is not None else 0,
+        ))
     return [
         {
             "id": int(r["id"]), "snapshot_at": r["snapshot_at"].isoformat(),
