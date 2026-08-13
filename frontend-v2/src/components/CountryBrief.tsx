@@ -605,6 +605,16 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     <div className="badge anomaly-badge" data-tip={basis.tip}>
                         <span className="anomaly-badge-icon">▲</span>
                         <span>{basis.text}</span>
+                        {/* X4 (2026-08-13, blind college C5): "12× VS 8-DAY
+                            BASELINE" was quoted verbatim as unparseable by four
+                            of eight personas. W5 had already fixed the LIE in
+                            this badge (it said 12σ, and it said 7-day); this
+                            fixes the READING. The ratio stays exactly where it
+                            was — the companion is derived from the very number
+                            printed to its left, so the two can never disagree. */}
+                        {basis.plain && (
+                            <span className="anomaly-badge-plain">{basis.plain}</span>
+                        )}
                         <span className="anomaly-badge-level">{anomaly.level?.toUpperCase()}</span>
                     </div>
                 );

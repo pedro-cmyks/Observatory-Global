@@ -5,6 +5,7 @@
 import { decodeEntities } from '../lib/decodeEntities'
 import type { CoverageGap } from '../lib/coverageGaps'
 import { receiptBasis, GAP_RECEIPT_TIER_TIP } from '../lib/gapReceiptBasis'
+import { verifiedCountPhrase } from '../lib/statPhrases'
 import './CoverageGapCard.css'
 
 interface Props {
@@ -31,6 +32,12 @@ export function CoverageGapCard({ gap: g, maxRaw, onOpen }: Props) {
         <span className="brief-gbar" aria-hidden="true" style={{ width: `${Math.max(8, Math.round((g.raw_signals / maxRaw) * 100))}%` }}>
           <i style={{ width: g.raw_signals > 0 ? `${Math.round((g.verified / g.raw_signals) * 100)}%` : '0%' }} />
         </span>
+        {/* X4 (2026-08-13, blind college C5): the gauge above prints "172 raw
+            signals / 0 verified" — two engine terms and no sentence. The plain
+            reading goes directly under the numbers, which stay exactly as they
+            were. "not yet" is load-bearing in both branches: unverified is
+            pending, never rejected. */}
+        <span className="brief-gap-plain">{verifiedCountPhrase(g.raw_signals, g.verified)}</span>
         <span className={`brief-gap-status brief-gap-status--${g.status}`}>
           <span className="d" />
           {g.status === 'gate_pending' ? 'gate pending — not yet scored' : `${g.verified} of ${g.raw_signals.toLocaleString()} admitted — none cleared the quality gate`}

@@ -170,6 +170,18 @@
   background: var(--r-accent-2, var(--color-accent-secondary));
 }
 
+/* X4: the plain reading of the two gauge numbers, set in READER type directly
+   under them — the sentence is the thing a non-analyst reads first, so it must
+   not look like another mono-spaced machine label. */
+.brief-gap-plain {
+  display: block;
+  font-family: var(--r-serif, var(--font-serif));
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--r-ink, var(--color-text-primary));
+  margin-bottom: 7px;
+}
+
 .brief-gap-status {
   font-family: var(--r-mono, var(--font-mono));
   font-size: 0.66rem;

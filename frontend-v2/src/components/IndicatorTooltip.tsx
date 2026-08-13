@@ -200,6 +200,14 @@ export const VolumeIndicator: React.FC<VolumeIndicatorProps> = ({
                     ({zBasis.text})
                 </span>
             )}
+            {/* X4 (2026-08-13, blind college C5): "z" is the densest token on
+                this panel. The number stays for the analyst; the direction and
+                its coarse size ride beside it for everyone else. Null on a thin
+                baseline by construction — the chip already withholds precision
+                there, and words must not smuggle a magnitude back in. */}
+            {zBasis.plain && (
+                <span className="indicator-zplain">{zBasis.plain}</span>
+            )}
             <button
                 className="indicator-help"
                 onMouseEnter={() => setShowTooltip(true)}

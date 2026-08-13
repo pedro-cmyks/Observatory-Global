@@ -744,6 +744,28 @@
   line-height: 1.5;
 }
 
+/* X4 (2026-08-13, blind college C5): the why-now is now two lines — the plain
+   reading a non-analyst can act on, and the statistics that back it. The
+   hierarchy IS the fix: the sentence is set in reading type at full contrast,
+   the numbers sit under it as a smaller mono stat line. Neither is hidden;
+   four of eight personas simply could never find the sentence before, because
+   there was none. */
+.brief-whynow-plain {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--r-ink);
+  line-height: 1.45;
+}
+
+.brief-whynow-measured {
+  display: block;
+  font-family: var(--r-mono);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--r-muted);
+  margin-top: 5px;
+}
+
 .brief-whynow .lab,
 .brief-standfirst-box .lab {
   font-family: var(--r-mono);
@@ -1182,11 +1204,16 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   color: var(--r-sec);
 }
 
+/* X4: this chip now carries a short SENTENCE ("an unusual mix of stories for
+   it") where it used to carry a one-word column name, so the mono-uppercase
+   tracking that suited "SURPRISE" would make it unreadable. Reader face,
+   sentence case, and it wraps rather than being clipped. */
 .brief-heat-comp {
-  font-family: var(--r-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--r-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  line-height: 1.3;
   color: var(--r-muted);
 }
 

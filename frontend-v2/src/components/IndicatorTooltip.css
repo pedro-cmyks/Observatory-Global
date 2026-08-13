@@ -41,6 +41,14 @@
   font-style: italic;
 }
 
+/* X4 (2026-08-13, blind college C5): the z-score in words, beside the number.
+   Body face, not mono — it is the sentence, not a second reading. */
+.indicator-zplain {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted, #9ca3af);
+  letter-spacing: 0.01em;
+}
+
 /* The composite's inputs, rendered inline so the score is auditable:
    "48 outlets · top tribunnews.com 11%" / "0 of 48 outlets recognized". */
 .indicator-inputs {

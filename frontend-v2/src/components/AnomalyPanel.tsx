@@ -13,6 +13,10 @@ import { getThemeLabel, resolveThreadLabel } from '../lib/themeLabels'
 import { getPublicAttentionTopUrl, getTrendingSearchesUrl, getForumAttentionUrl } from '../lib/publicAttention'
 import { conflictsForCountry, conflictCountryCode } from '../lib/conflictEvents'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
+// X4 (2026-08-13, blind college C5): every bare "12.3×" in this dock
+// hovers with its own plain reading; the symbol itself is defined once
+// under the GEO ALERTS label, where a per-row sentence would not fit.
+import { timesPhrase } from '../lib/statPhrases'
 import './AnomalyPanel.css'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -195,7 +199,14 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                 <div className="anomaly-col">
                     <div className="ap-geo-section">
                     <div className="col-label">GEO ALERTS</div>
-                    <div className="ap-confidence-label">model confidence &gt; 0.8</div>
+                    {/* X4 (2026-08-13, blind college C5): the rows below print a
+                        bare "12.3×" and this line printed a bare threshold. The
+                        dock is too dense for a sentence per row, so the symbol
+                        is defined ONCE here and each row's own reading rides in
+                        its hover. Both numbers stay. */}
+                    <div className="ap-confidence-label">
+                        × = times its usual coverage · shown at model confidence &gt; 0.8
+                    </div>
                     <div className="col-scroll">
                         {loading && anomalies.length === 0 ? (
                             <div className="ap-empty">Scanning…</div>
@@ -209,7 +220,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                         className={`ap-row ap-row--mover clickable${a.country_code === activeCountry ? ' ap-row--selected' : ''}`}
                                         onClick={() => handleAnomalyClick(a.country_code)}>
                                         <span className="ap-country">{resolveCountryName(a.country_code, a.country_name)}</span>
-                                        <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
+                                        <span className="ap-mult" data-tip={timesPhrase(a.multiplier) ?? undefined}>{a.multiplier.toFixed(1)}×</span>
                                     </div>
                                 ))}
                             </>
@@ -220,7 +231,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                     onClick={() => handleAnomalyClick(a.country_code)}>
                                     <span className="ap-anom-id">A-{String(idx + 1).padStart(3, '0')}</span>
                                     <span className="ap-country">{resolveCountryName(a.country_code, a.country_name)}</span>
-                                    <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
+                                    <span className="ap-mult" data-tip={timesPhrase(a.multiplier) ?? undefined}>{a.multiplier.toFixed(1)}×</span>
                                     <button className="ap-brief-btn" onClick={e => { e.stopPropagation(); handleAnomalyClick(a.country_code) }}>
                                         BRIEF
                                     </button>
@@ -275,7 +286,7 @@ export const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ onWikiClick, onPubli
                                         <span className="ap-country" data-tip={a.theme}>
                                             {getThemeLabel(a.theme).slice(0, 24)}
                                         </span>
-                                        <span className="ap-mult">{a.multiplier.toFixed(1)}×</span>
+                                        <span className="ap-mult" data-tip={timesPhrase(a.multiplier) ?? undefined}>{a.multiplier.toFixed(1)}×</span>
                                     </div>
                                 ))}
                             </div>

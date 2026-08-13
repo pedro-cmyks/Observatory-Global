@@ -88,9 +88,14 @@ import {
     gapEmptyCopy,
     risingEmptyCopy,
     sectionReceipts,
+    whyNowParts,
     type GapSection,
     type RisingSection,
 } from '../lib/briefSections'
+// X4 (2026-08-13, blind college C5) — every stat on this page prints its plain
+// companion beside it. The number stays; the words are what make it checkable
+// by a reader who does not read statistics.
+import { timesPhrase, baselinePhrase, selfVoicePhrase, heatComponentPhrase } from '../lib/statPhrases'
 import { buildStaleBanner } from '../lib/staleBanner'
 import {
     resolveSourceCount,
@@ -2335,12 +2340,21 @@ export function BriefNewspaper() {
                                                         <p className="brief-gap-caveat">{gapSection.caveat}</p>
                                                     )}
                                                     <div className="brief-metarow">
+                                                        {/* X4 (blind college C5): every pill in this row
+                                                            was a bare statistic. Each keeps its number and
+                                                            gains the plain reading beside it — the pills
+                                                            are the reader's only summary when the prose
+                                                            above scrolls past. */}
                                                         {typeof gapMeasured.multiplier === 'number' && (
                                                             <span
                                                                 className="reader-pill measured"
                                                                 data-tip="Today's volume against the mean of this country's other retained days — its OWN baseline, not the field's."
                                                             >
-                                                                {gapMeasured.multiplier}× its own baseline
+                                                                {gapMeasured.multiplier}×
+                                                                <span className="reader-pill-plain">
+                                                                    {timesPhrase(gapMeasured.multiplier, { of: 'its usual day' })
+                                                                        ?? 'against its own usual day'}
+                                                                </span>
                                                             </span>
                                                         )}
                                                         {typeof gapMeasured.volume === 'number' && (
@@ -2348,8 +2362,10 @@ export function BriefNewspaper() {
                                                         )}
                                                         {typeof gapMeasured.baseline === 'number' && (
                                                             <span className="reader-pill">
-                                                                baseline {gapMeasured.baseline}/day
-                                                                {typeof gapMeasured.baseline_days === 'number' ? ` · ${gapMeasured.baseline_days} days` : ''}
+                                                                {gapMeasured.baseline}/day
+                                                                <span className="reader-pill-plain">
+                                                                    {baselinePhrase(gapMeasured.baseline, gapMeasured.baseline_days)}
+                                                                </span>
                                                             </span>
                                                         )}
                                                         {/* The 0.5 sentinel never becomes a fact: an
@@ -2361,6 +2377,14 @@ export function BriefNewspaper() {
                                                                 data-tip={withBasisTip(`Outlet OWNERSHIP, not language: ${gapMeasured.domestic_n ?? 0} of the ${gapMeasured.known_origin_n ?? 0} signals whose outlet home country is known are domestic${typeof gapMeasured.unattributed_n === 'number' ? `; ${gapMeasured.unattributed_n} carry no known origin` : ''}.`)}
                                                             >
                                                                 own press {Math.round(gapMeasured.self_voice_ratio * 100)}% of ingest
+                                                                {/* X4: "% of ingest" is two abstractions
+                                                                    stacked. The share stays; "N in every
+                                                                    100" is the same fact a reader can
+                                                                    picture. X1's base is already on the
+                                                                    tip above and in the prose. */}
+                                                                <span className="reader-pill-plain">
+                                                                    {selfVoicePhrase(gapMeasured.self_voice_ratio)}
+                                                                </span>
                                                             </span>
                                                         ) : (
                                                             <span
@@ -2429,12 +2453,34 @@ export function BriefNewspaper() {
                                                                         for exactly this chip. */}
                                                                     <LabelReviewChip labelStatus={item.label_status ?? null} confidenceMeasured={false} />
                                                                 </h4>
-                                                                {item.why_now && (
-                                                                    <p className="brief-whynow">
-                                                                        <span className="lab">Why now</span>
-                                                                        {item.why_now}
-                                                                    </p>
-                                                                )}
+                                                                {/* X4: the plain reading LEADS, in reader
+                                                                    type; the statistics follow as a stat
+                                                                    line, so the analyst keeps every number
+                                                                    and the non-analyst still learns what
+                                                                    happened. A seal frozen before X4 carries
+                                                                    only the old joined string, and
+                                                                    whyNowParts renders that verbatim rather
+                                                                    than guessing a clause out of it. */}
+                                                                {(() => {
+                                                                    const why = whyNowParts(item)
+                                                                    if (!why.plain && !why.measured) return null
+                                                                    return (
+                                                                        <p className="brief-whynow">
+                                                                            <span className="lab">Why now</span>
+                                                                            {why.plain && (
+                                                                                <span className="brief-whynow-plain">{why.plain}</span>
+                                                                            )}
+                                                                            {why.measured && (
+                                                                                <span
+                                                                                    className="brief-whynow-measured"
+                                                                                    data-tip="Measured against this story's OWN history, never against the field: how far above its normal pace it ran, which way it is moving, and how many signals that rests on."
+                                                                                >
+                                                                                    {why.measured}
+                                                                                </span>
+                                                                            )}
+                                                                        </p>
+                                                                    )
+                                                                })()}
                                                                 {receipts.length > 0 ? (
                                                                     <div className="brief-receipts">
                                                                         {receipts.map((ev, i) => renderReceipt(ev, i, { contextLabel: item.label }))}
@@ -2647,7 +2693,21 @@ export function BriefNewspaper() {
                                                 >
                                                     <span className="brief-heat-name"><Flag code={h.code} /> {name}</span>
                                                     <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
-                                                    {comp && <span className="brief-heat-comp">{comp}</span>}
+                                                    {/* X4 (2026-08-13, blind college C5): this chip
+                                                        printed the raw metric column name — "Malta 67
+                                                        SURPRISE" — on the front page. It is a REASON
+                                                        label, not a number, so translating it whole
+                                                        costs the analyst nothing while the tip keeps
+                                                        the engine's own term. An unknown component
+                                                        falls back to the raw name: at least true. */}
+                                                    {comp && (
+                                                        <span
+                                                            className="brief-heat-comp"
+                                                            data-tip={`Strongest ingredient of this country's heat score: the "${comp}" component.`}
+                                                        >
+                                                            {heatComponentPhrase(comp) ?? comp}
+                                                        </span>
+                                                    )}
                                                     <span className="brief-heat-door">{door.cue}</span>
                                                 </button>
                                             )

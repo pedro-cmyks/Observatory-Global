@@ -199,6 +199,20 @@ button.reader-chip:hover {
   letter-spacing: 0.14em;
 }
 
+/* X4 (2026-08-13, blind college C5): the plain reading of the pill's own
+   number, printed beside it. Deliberately NOT mono-uppercase — a pill that
+   reads "12× TWELVE TIMES ITS USUAL DAY" is one machine label wearing two
+   hats. Sentence-case sans, so the eye reads the number as the label and the
+   words as the sentence. */
+.reader-pill-plain {
+  font-family: var(--r-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--r-ink);
+  opacity: 0.92;
+}
+
 /* ----------------------------------------------------------------------------
    SECTION KICKER (mono label with the colored dash) + item kicker
    ------------------------------------------------------------------------- */

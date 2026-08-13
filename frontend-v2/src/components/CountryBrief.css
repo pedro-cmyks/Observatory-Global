@@ -538,6 +538,19 @@
 .anomaly-badge-icon {
     animation: pulse-icon 1.2s ease-in-out infinite;
 }
+/* X4 (2026-08-13, blind college C5): the ratio, in words, beside the ratio.
+   Set in the body face rather than the badge's own condensed style so it reads
+   as a sentence and not as a second machine label. */
+.anomaly-badge-plain {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    opacity: 0.85;
+}
+.anomaly-badge-plain::before {
+    content: '· ';
+}
 .anomaly-badge-level {
     margin-left: auto;
     font-weight: 700;
