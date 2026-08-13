@@ -202,3 +202,57 @@ def test_choose_weighted_transformer_dominates_lexicon_volume():
     assert source == "nlp_weighted"
     assert sentiment_flat > 0       # flat AVG misclassifies as positive
     assert sentiment_weighted < 0   # weighted recovers the transformer signal
+
+
+# ── Scale descriptor (C2: three scales on one screen, no bridge) ─────────────
+#
+# The Brief prints the SAME fused number on two scales — the instrument strip
+# on ±1 and the tone panels on ×10 — and the panel legend (−10…+10) is NARROWER
+# than what the fusion can serve (NLP maps to [-5, 5], rescaled by 2.37 → ±1.185
+# on the ±1 unit = ±11.85 on the panel scale). Measured 2026-08-13: 1.29% of
+# eligible country-days exceed the legend, and because clipping happens exactly
+# at the extreme the columns rank for, 6 of 9 days rendered a clamped "−10.0".
+# The payload must therefore SAY so instead of leaving the frontend to guess.
+
+
+def test_scale_descriptor_names_the_unit_and_the_panel_conversion():
+    from app.services.sentiment_fusion import sentiment_scale_descriptor
+
+    d = sentiment_scale_descriptor()
+    assert d["unit"] == "pm1"
+    assert d["panel_multiplier"] == 10.0
+    assert d["panel_bounds"] == [-10.0, 10.0]
+    # the bridge is exact: a strip value times the multiplier IS the panel value
+    assert -0.49 * d["panel_multiplier"] == -4.9
+
+
+def test_scale_descriptor_declares_the_served_range_wider_than_the_legend():
+    """The honest disclosure: values can exceed the printed legend."""
+    from app.services.sentiment_fusion import sentiment_scale_descriptor
+
+    d = sentiment_scale_descriptor()
+    served_on_panel = d["served_abs_max"] * d["panel_multiplier"]
+    assert served_on_panel > d["panel_bounds"][1]
+    assert abs(served_on_panel - 11.85) < 0.01  # 5.0 * 2.37
+
+
+def test_scale_descriptor_names_the_blend_not_one_source():
+    """The panels' footer said 'GDELT tone' while every row was NLP-weighted."""
+    from app.services.sentiment_fusion import sentiment_scale_descriptor
+
+    d = sentiment_scale_descriptor()
+    assert d["basis"] == "fused"
+    assert d["nlp_coverage_threshold"] == NLP_COVERAGE_THRESHOLD
+    assert d["nlp_scale"] == NLP_SENTIMENT_SCALE
+
+
+def test_served_abs_max_tracks_the_configured_nlp_scale():
+    """Descriptor is derived, never a hardcoded number that can drift."""
+    from app.services.sentiment_fusion import (
+        NLP_MODEL_ABS_MAX,
+        sentiment_scale_descriptor,
+    )
+
+    d = sentiment_scale_descriptor()
+    expected = NLP_MODEL_ABS_MAX * NLP_SENTIMENT_SCALE / SENTIMENT_DIVISOR
+    assert abs(d["served_abs_max"] - expected) < 1e-3

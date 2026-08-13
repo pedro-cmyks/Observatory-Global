@@ -39,6 +39,7 @@ from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group
     NLP_SENTIMENT_SCALE,
     choose_sentiment,
     choose_sentiment_weighted,
+    sentiment_scale_descriptor,
     serialize_country_row,
 )
 from app.services.thread_intelligence import (  # noqa: E402
@@ -816,6 +817,11 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 "sentiment_source": global_source,
                 "nlp_coverage": round(global_coverage, 3),
             },
+            # C2: the strip (±1) and the tone panels (×10) print the SAME fused
+            # number on two scales, and the fusion can serve past the panels'
+            # −10…+10 legend. Serve the bridge + the true range so neither
+            # surface has to assert a scale it cannot prove.
+            "sentiment_scale": sentiment_scale_descriptor(),
             "top_countries": [serialize_country_row(r) for r in top_countries],
             "negative_sentiment": [serialize_country_row(r) for r in negative_sentiment],
             "category_counts": [

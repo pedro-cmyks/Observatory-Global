@@ -32,6 +32,42 @@ NLP_SENTIMENT_SCALE = float(os.getenv("BRIEFING_NLP_SENTIMENT_SCALE", "2.37"))
 NLP_COVERAGE_THRESHOLD = float(os.getenv("BRIEFING_NLP_COVERAGE_THRESHOLD", "0.30"))
 SENTIMENT_DIVISOR = 10.0
 
+# enrichment/nlp_pipeline._map_sentiment maps (pos*5) + (neg*-5) → [-5, +5].
+# This bound is what makes the served range WIDER than the Brief's printed
+# −10…+10 tone legend, so it is named here rather than inferred at the edge.
+NLP_MODEL_ABS_MAX = 5.0
+
+# The Brief prints one fused number on two scales: the instrument strip on the
+# ±1 unit every `sentiment` field in the payload uses, and the tone panels at
+# ×10. Serving the descriptor (instead of hardcoding the bridge in the client)
+# keeps the two surfaces reconciled and makes the legend overflow a fact the
+# payload states rather than a clamp the client performs silently.
+PANEL_MULTIPLIER = 10.0
+PANEL_BOUNDS = (-10.0, 10.0)
+
+
+def sentiment_scale_descriptor() -> dict:
+    """Describe the scale every `sentiment` field in the briefing payload uses.
+
+    `served_abs_max` is DERIVED from the configured NLP rescale, so tuning
+    ``BRIEFING_NLP_SENTIMENT_SCALE`` can never leave the disclosure stale.
+    On today's constants it is 1.185 (= 11.85 on the panel scale), i.e. the
+    fusion can serve values the −10…+10 legend cannot print.
+    """
+    return {
+        # not "gdelt": NLP-weighted wherever bucket coverage clears the
+        # threshold, GDELT V2Tone only as the fallback. The mix varies by row.
+        "basis": "fused",
+        "unit": "pm1",
+        "panel_multiplier": PANEL_MULTIPLIER,
+        "panel_bounds": [PANEL_BOUNDS[0], PANEL_BOUNDS[1]],
+        "served_abs_max": round(
+            NLP_MODEL_ABS_MAX * NLP_SENTIMENT_SCALE / SENTIMENT_DIVISOR, 3
+        ),
+        "nlp_coverage_threshold": NLP_COVERAGE_THRESHOLD,
+        "nlp_scale": NLP_SENTIMENT_SCALE,
+    }
+
 
 def choose_sentiment(
     gdelt_raw: float | None,
