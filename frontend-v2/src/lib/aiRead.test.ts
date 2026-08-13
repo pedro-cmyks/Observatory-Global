@@ -46,6 +46,58 @@ describe('fetchLeads', () => {
   })
 })
 
+// 429 storm (rate_limit.py "paid" bucket): a dev session against prod burns
+// the per-IP budget fast. The error body ({detail: ...}) must NEVER surface as
+// data — WorkbenchPanel reads leads.leads/leads.suppressed and r.claims
+// unconditionally, so a leaked body blanks the whole app (RootErrorBoundary).
+describe('rate-limited responses (429)', () => {
+  const rateLimited = {
+    ok: false,
+    status: 429,
+    json: async () => ({ detail: 'Rate limit exceeded. Try again in 300 seconds.' }),
+  }
+  it('fetchLeads returns null on 429 — never the error body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rateLimited))
+    expect(await fetchLeads([A], [])).toBeNull()
+  })
+  it('fetchReadings returns an empty map on 429', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rateLimited))
+    expect((await fetchReadings([A])).size).toBe(0)
+  })
+  it('fetchCrossRead returns null on 429', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rateLimited))
+    expect(await fetchCrossRead([A, B])).toBeNull()
+  })
+})
+
+// A 200 whose body is missing the contract arrays (degraded backend shape,
+// intermediary error page as JSON): normalize at the seam so no render path
+// ever reads .length/.slice/.map of undefined.
+describe('partial 200 bodies', () => {
+  it('fetchLeads defaults missing arrays', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ reason: 'degraded' }),
+    }))
+    const r = await fetchLeads([A], [])
+    expect(r).not.toBeNull()
+    expect(r!.leads).toEqual([])
+    expect(r!.suppressed).toEqual([])
+    expect(r!.reason).toBe('degraded')
+  })
+  it('fetchReadings defaults missing arrays on each entry', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ readings: { [A]: { model: 'deepseek-chat' } } }),
+    }))
+    const m = await fetchReadings([A])
+    const r = m.get(A)!
+    expect(r.claims).toEqual([])
+    expect(r.actors).toEqual([])
+    expect(r.numbers).toEqual([])
+    expect(r.gaps).toEqual([])
+    expect(r.model).toBe('deepseek-chat')
+  })
+})
+
 // corroborate-v2 R2 (G-HAARETZ): the backend now distinguishes DERIVATION —
 // three rewrites of one Haaretz report, or two accounts built from the same
 // quote set — from wire syndication. The render must not call either one

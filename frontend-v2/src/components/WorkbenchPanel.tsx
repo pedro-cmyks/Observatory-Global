@@ -648,7 +648,9 @@ export default function WorkbenchPanel({
                 )}
                 <div className="wb-citations">
                   {active.citations.map(cit => {
-                    const gate = GATE_BADGE[cit.gateStatus];
+                    // ?? unknown: sync-adopted citations can carry a gateStatus
+                    // outside the map — a miss must degrade, not throw.
+                    const gate = GATE_BADGE[cit.gateStatus] ?? GATE_BADGE.unknown;
                     const selected = selectedCites.includes(cit.id);
                     const day = cit.publishedDate
                       ? new Date(cit.publishedDate + 'T00:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
@@ -723,7 +725,9 @@ export default function WorkbenchPanel({
 
             <div className="section-label wb-section-title">TRAIL</div>
             <div className="wb-trail">
-              {active.trail.slice(-20).reverse().map((step, i) => (
+              {/* trail defaults to [] on store read; ?? [] guards stores this
+                  session didn't read through normalizeInvestigation. */}
+              {(active.trail ?? []).slice(-20).reverse().map((step, i) => (
                 <div key={i} className="wb-trail-step">
                   <span className="wb-trail-action">{step.action}</span>
                   <span className="wb-trail-detail">{step.detail}</span>
