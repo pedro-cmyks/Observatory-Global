@@ -1,0 +1,185 @@
+/* ============================================================================
+   PRINTER'S MARKS (shipped 2026-08-13, Pedro-approved).
+   Scoped under .atlas-reader; every color rides the --r-* reader tokens so
+   both themes hold without a single hardcoded ink. Corner furniture, not a
+   theme takeover: hairline weights, mono microtype, muted by default.
+   ========================================================================= */
+
+/* ---------- Variant 1 · registration mark (masthead corner) ---------- */
+
+.pm-reg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: help;
+}
+
+.pm-reg-glyph { flex: none; overflow: visible; }
+
+.pm-reg-plate { stroke: var(--r-ink-soft); }
+.pm-reg-impression { stroke: var(--r-accent); }
+.pm-reg--partial .pm-reg-impression { stroke: var(--r-accent-2); }
+.pm-reg--live .pm-reg-plate { stroke: var(--r-muted); }
+.pm-reg--live .pm-reg-impression { stroke: var(--r-critical); }
+
+.pm-reg-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--r-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.pm-reg-head { color: var(--r-ink-soft); font-weight: 600; }
+.pm-reg-grade { color: var(--r-muted); }
+.pm-reg--partial .pm-reg-grade { color: var(--r-accent-2); }
+.pm-reg--live .pm-reg-head,
+.pm-reg--live .pm-reg-grade { color: var(--r-critical); }
+
+/* ---------- Variant 2 · voice-mix control strip ---------- */
+
+.pm-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin: 2px 0 14px;
+}
+
+.pm-strip-slug {
+  flex: none;
+  font-family: var(--r-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--r-muted);
+  align-self: center;
+  cursor: help;
+  white-space: nowrap;
+}
+
+.pm-strip-bar {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 16px;
+  /* butted patches, hairline keyline — a control bar, not a chart */
+  border: 1px solid var(--r-line);
+}
+
+.pm-patch {
+  flex-basis: 0;
+  min-width: 3px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  cursor: help;
+}
+.pm-patch + .pm-patch { border-left: 1px solid var(--r-paper); }
+
+.pm-patch-label {
+  font-family: var(--r-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--r-on-accent);
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+/* Tier ink families — same hues as the receipt tier chips (App.css
+   .l2-tier-chip--*), printed at patch strength. */
+.pm-patch--wire { background: #2563eb; }
+.pm-patch--state { background: #b45309; }
+.pm-patch--major { background: #047857; }
+.pm-patch--local { background: #64748b; }
+/* UNKNOWN never prints as a solid ink — it is unmeasured, so it hatches. */
+.pm-patch--unknown {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--r-chip) 0 3px,
+    var(--r-muted) 3px 4px
+  );
+}
+/* the hatch would strike through its own label — print it on a paper chip */
+.pm-patch--unknown .pm-patch-label {
+  color: var(--r-ink-soft);
+  background: var(--r-paper);
+  margin-left: 4px;
+  padding: 0 4px;
+}
+
+.atlas-reader[data-rtheme='dark'] .pm-patch--wire { background: #3b82f6; }
+.atlas-reader[data-rtheme='dark'] .pm-patch--state { background: #d97706; }
+.atlas-reader[data-rtheme='dark'] .pm-patch--major { background: #059669; }
+.atlas-reader[data-rtheme='dark'] .pm-patch--local { background: #475569; }
+
+/* ---------- Variant 3 · crop marks around the sealed edition ---------- */
+
+.pm-trimbox {
+  position: relative;
+  /* room for the overhanging marks + labels */
+  margin: 26px 0 30px;
+}
+
+.pm-crop {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+.pm-crop line {
+  stroke: var(--r-ink-soft);
+  stroke-width: 1;
+  opacity: 0.75;
+}
+.pm-crop--tl { top: -20px; left: -20px; }
+.pm-crop--tr { top: -20px; right: -20px; transform: scaleX(-1); }
+.pm-crop--bl { bottom: -20px; left: -20px; transform: scaleY(-1); }
+.pm-crop--br { bottom: -20px; right: -20px; transform: scale(-1, -1); }
+
+.pm-trim-label {
+  position: absolute;
+  top: -20px;
+  left: 8px;
+  font-family: var(--r-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--r-ink-soft);
+  cursor: help;
+}
+
+.pm-trim-outside {
+  position: absolute;
+  bottom: -22px;
+  right: 8px;
+  font-family: var(--r-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  color: var(--r-muted);
+}
+
+.pm-notrim {
+  font-family: var(--r-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--r-critical);
+  border: 1px dashed var(--r-line);
+  padding: 5px 10px;
+  margin: 2px 0 14px;
+  cursor: help;
+  width: fit-content;
+}
+
+/* ---------- small screens: keep marks inside the 15px page gutter ---------- */
+
+@media (max-width: 768px) {
+  .pm-crop--tl { left: -10px; }
+  .pm-crop--tr { right: -10px; }
+  .pm-crop--bl { left: -10px; }
+  .pm-crop--br { right: -10px; }
+  .pm-strip { flex-direction: column; gap: 4px; }
+  .pm-patch-label { font-size: 8px; padding: 0 3px; }
+  .pm-reg-label { display: none; } /* glyph + tooltip only; the label row is
+                                      desktop corner furniture */
+}
