@@ -8,6 +8,10 @@ export interface GapReceipt {
   source: string | null
   url: string | null
   gate_score: number
+  /** How the engine assigned this row to the category — the honest basis the
+   *  card renders instead of the raw score (W5 "precision theatre"). Absent on
+   *  older payloads, which fall back to naming the tier. */
+  method?: 'lexicon' | 'embedding' | null
 }
 
 export interface CoverageGap {

@@ -227,7 +227,8 @@ async def test_receipts_attach_to_matching_gap_slug(monkeypatch):
                  "raw_signals": 280, "verified": 0, "scored": 280}]
     receipts = {"telecom-shutdown": [
         {"headline": "Regulator confirms nationwide telecom outage",
-         "source": "Reuters", "url": "http://x", "gate_score": 0.81},
+         "source": "Reuters", "url": "http://x", "gate_score": 0.81,
+         "method": "lexicon"},
     ]}
     conn = FakeConn(gap_rows, receipts_by_slug=receipts)
 
@@ -239,6 +240,8 @@ async def test_receipts_attach_to_matching_gap_slug(monkeypatch):
         "source": "Reuters",
         "url": "http://x",
         "gate_score": 0.81,
+        # W5: the assignment basis the Brief chips instead of the raw score.
+        "method": "lexicon",
         "tier": "extended",
     }]
 

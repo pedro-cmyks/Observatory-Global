@@ -4,6 +4,7 @@
 // stylesheet moved here supplies console fallbacks for the reader-theme vars.
 import { decodeEntities } from '../lib/decodeEntities'
 import type { CoverageGap } from '../lib/coverageGaps'
+import { receiptBasis, GAP_RECEIPT_TIER_TIP } from '../lib/gapReceiptBasis'
 import './CoverageGapCard.css'
 
 interface Props {
@@ -37,21 +38,31 @@ export function CoverageGapCard({ gap: g, maxRaw, onOpen }: Props) {
       </button>
       {(g.extended_receipts?.length ?? 0) > 0 && (
         <div className="brief-gap-receipts">
-          <span className="brief-gap-receipts-label" data-tip="The strongest rows the ~75%-precision extended model recovers from this gap's raw pool (measured slice precision 29-43% — read as leads, not verified evidence).">
+          <span className="brief-gap-receipts-label" data-tip={GAP_RECEIPT_TIER_TIP}>
             UNVERIFIED · EXTENDED (~75% MODEL)
           </span>
-          {g.extended_receipts!.map(r => (
-            <a
-              key={r.headline}
-              className="brief-gap-receipt"
-              href={r.url ?? undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="brief-gap-receipt-headline">{decodeEntities(r.headline)}</span>
-              <span className="brief-gap-receipt-meta">{r.source ?? 'source unknown'} · score {r.gate_score.toFixed(2)} ↗</span>
-            </a>
-          ))}
+          {g.extended_receipts!.map(r => {
+            // W5 "precision theatre": this row used to print `score 0.99`, which
+            // reads as calibrated confidence on a tier whose measured precision
+            // is 29-43%. The chip now names the BASIS the engine actually
+            // recorded; the raw number lives in the tip, labelled uncalibrated.
+            const basis = receiptBasis(r)
+            return (
+              <a
+                key={r.headline}
+                className="brief-gap-receipt"
+                href={r.url ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="brief-gap-receipt-headline">{decodeEntities(r.headline)}</span>
+                <span className="brief-gap-receipt-meta">
+                  {r.source ?? 'source unknown'} ·{' '}
+                  <span className="brief-gap-receipt-basis" data-tip={basis.tip}>{basis.chip}</span> ↗
+                </span>
+              </a>
+            )
+          })}
         </div>
       )}
     </div>

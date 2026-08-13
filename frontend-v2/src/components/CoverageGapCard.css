@@ -91,6 +91,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* W5: the basis chip that replaced the raw `score 0.99`. Underlined-dotted so
+   it reads as inspectable (the uncalibrated number is in its tip), and kept
+   deliberately quiet — it is a caveat, not a metric. */
+.brief-gap-receipt-basis {
+  border-bottom: 1px dotted color-mix(in srgb, var(--r-muted, var(--color-text-muted)) 55%, transparent);
+  cursor: help;
+  white-space: nowrap;
+}
+
 .brief-gap:hover {
   border-color: color-mix(in srgb, var(--r-accent-2, var(--color-accent-secondary)) 50%, var(--r-line, var(--color-border-subtle)));
   border-left-color: var(--r-accent-2, var(--color-accent-secondary));

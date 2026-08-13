@@ -87,7 +87,8 @@ COUNTRY_GAPS_SQL = """
 EXTENDED_RECEIPTS_SQL = """
     SELECT s.headline, s.source_name AS source,
            s.source_url AS url,
-           a.gate_score::float AS gate_score
+           a.gate_score::float AS gate_score,
+           a.method AS method
     FROM signal_topic_assignments a
     JOIN atlas_topics t ON t.id = a.topic_id
     JOIN signals_v2 s ON s.id = a.signal_id

@@ -51,5 +51,33 @@ def test_scores_rounded_and_fields_complete():
     out = pick_extended_receipts([_row("Authorities restrict internet access nationwide", 0.84567)], threshold=0.80, k=3)
     assert out[0] == {
         "headline": "Authorities restrict internet access nationwide", "source": "src", "url": "https://x/a",
-        "gate_score": 0.846, "tier": "extended",
+        "gate_score": 0.846, "method": None, "tier": "extended",
     }
+
+
+def test_assignment_method_is_carried_for_the_basis_chip():
+    """W5: the Brief renders the assignment BASIS, not the raw gate score.
+
+    `score 0.99` on a history.com Gold-Standard explainer read as calibrated
+    confidence on a tier whose measured precision is 29-43%. The chip needs to
+    say *how* the row was matched, so the method must survive this filter.
+    """
+    rows = [
+        {**_row("Radio blackout was not the original plan", 0.99), "method": "lexicon"},
+        {**_row("Central bank widens the rate corridor", 0.92), "method": "embedding"},
+    ]
+    out = pick_extended_receipts(rows, threshold=0.80, k=3)
+    assert [r["method"] for r in out] == ["lexicon", "embedding"]
+
+
+def test_method_survives_syndication_dedup_from_the_winning_row():
+    """Dedup keeps the best-scoring copy — it must keep that copy's method too,
+    not the method of whichever duplicate happened to arrive first."""
+    rows = [
+        {**_row("Nationwide outage confirmed", 0.81), "method": "lexicon"},
+        {**_row("Nationwide outage confirmed", 0.95), "method": "embedding"},
+    ]
+    out = pick_extended_receipts(rows, threshold=0.80, k=3)
+    assert len(out) == 1
+    assert out[0]["gate_score"] == 0.95
+    assert out[0]["method"] == "embedding"

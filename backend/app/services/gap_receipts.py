@@ -54,6 +54,11 @@ def pick_extended_receipts(
                 "headline": headline,
                 "source": row.get("source"),
                 "url": row.get("url"),
+                # How the engine assigned this row (`lexicon` = keyword hit,
+                # `embedding` = vector neighbour). The Brief renders THIS as the
+                # receipt's basis chip instead of the raw gate score, which read
+                # as calibrated confidence on a 29-43%-precision tier (W5).
+                "method": row.get("method"),
                 "_score": float(score),
             }
     ranked = sorted(best.values(), key=lambda r: r["_score"], reverse=True)[:k]
@@ -63,6 +68,7 @@ def pick_extended_receipts(
             "source": r["source"],
             "url": r["url"],
             "gate_score": round(r["_score"], 3),
+            "method": r.get("method"),
             "tier": "extended",
         }
         for r in ranked
