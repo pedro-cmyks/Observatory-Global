@@ -14,6 +14,7 @@ import { TranslatableHeadline } from './TranslatableHeadline'
 import PinReceiptButton from './PinReceiptButton'
 import { ShareThreadButton } from './ShareCard'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useScrollLock } from '../hooks/useScrollLock'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from '../lib/icons'
@@ -343,12 +344,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
     // On phones the thread read is a full-screen overlay; lock the cockpit
     // behind it so background scroll doesn't bleed through.
-    useEffect(() => {
-        if (!isMobile) return
-        const prev = document.body.style.overflow
-        document.body.style.overflow = 'hidden'
-        return () => { document.body.style.overflow = prev }
-    }, [isMobile])
+    //
+    // Through the SHARED ref-counted lock, not a private save/restore of
+    // document.body.style.overflow. The private version was half of the C5
+    // freeze: it assumed it was the only owner (SearchSheet is the other) and
+    // that unmount meant closed (the keep-alive shell hides this pane instead,
+    // so the lock outlived the surface and froze the Brief). lib/scrollLock
+    // carries the measured evidence.
+    useScrollLock(isMobile)
     // E3: how-covered cards expand IN PLACE (mini coverage peek) instead of
     // jumping straight to the big country panel.
     const [expandedFraming, setExpandedFraming] = useState<string | null>(null)

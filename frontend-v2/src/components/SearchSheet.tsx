@@ -78,6 +78,7 @@
 // regardless (SearchSheet.css) — it also covers the bottom safe-area inset,
 // which applies whether the tab bar is visible on top or not.
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useScrollLock } from '../hooks/useScrollLock'
 import { track } from '../lib/telemetry'
 import { getThemeLabel } from '../lib/themeLabels'
 import { Search } from '../lib/icons'
@@ -143,11 +144,12 @@ function SearchSheetModal({ onClose, onThemeSelect, onCountrySelect, onPersonSel
   // A full-screen sheet over content that itself scrolls (the read
   // underneath) — lock the body so a drag inside the sheet cannot bleed
   // through to the page behind it. Restored on close/unmount, never left on.
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
+  //
+  // The SHARED lock: this sheet opens OVER a story read that already holds it,
+  // and the private save/restore both used could only survive strict nesting —
+  // whichever unmounted last put back the other's 'hidden' and the page stayed
+  // frozen. lib/scrollLock ref-counts, so either order is safe.
+  useScrollLock(true)
 
   const runSearch = async (raw: string) => {
     const trimmed = raw.trim()

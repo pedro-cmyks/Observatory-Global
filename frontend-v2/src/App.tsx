@@ -95,6 +95,7 @@ import { UnderRadarLens } from './components/UnderRadarLens'
 import { MarketsPanel } from './components/MarketsPanel'
 import { SourceIntegrityPanel } from './components/SourceIntegrityPanel'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
+import { setPageScrollLocksSuspended } from './lib/scrollLock'
 import { ChokepointPanel } from './components/ChokepointPanel'
 import { AtlasLoader } from './components/AtlasLoader'
 import { PanelHelpButton } from './components/PanelHelpDrawer'
@@ -1376,6 +1377,31 @@ function AppContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, selectedTheme, focus.type, selectedSourceProfile, rightPanelThemeCountry, selectedCountry, selectedCountryCode, selectedPublicAttention])
+
+  // C5 — THE FREEZE. This pane is never unmounted: the keep-alive shell hides
+  // it with `display: none` on a route change (main.tsx, #239 slice 2). So a
+  // panel inside it that locked the page scroll — ThemeDetail on the phone,
+  // the search sheet anywhere — goes on holding that lock while the reader is
+  // over on the Brief, and its unmount cleanup, the only thing that ever let
+  // go, never runs.
+  //
+  // Measured live on prod at 375px before this landed: open a story, tap
+  // Brief, and `document.body.style.overflow` is still 'hidden' with the
+  // Brief's `scrollHeight` at 13,544 and `scrollY` pinned at 0. A front page
+  // that cannot scroll and gives no sign why — the blind judge's "the page
+  // stopped responding to scrolling and further taps hung. Had to reload."
+  //
+  // Suspended, not force-released: the panels genuinely are still open, and
+  // tapping back into the console must find the read exactly as it was, lock
+  // included. lib/scrollLock keeps holders and applied-ness separate for that
+  // reason. Cleanup resumes rather than suspends — this component only
+  // unmounts on a full teardown, and leaving the page's lock suspended on the
+  // way out would be a second global left in a state nobody owns.
+  const consoleRouteVisible = location.pathname === '/app'
+  useEffect(() => {
+    setPageScrollLocksSuspended(!consoleRouteVisible)
+    return () => setPageScrollLocksSuspended(false)
+  }, [consoleRouteVisible])
 
   const lensScope = useMemo(() => consoleLensScope(consoleFocus), [consoleFocus])
 
