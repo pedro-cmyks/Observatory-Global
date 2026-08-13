@@ -45,14 +45,27 @@ function AppBriefKeepAlive() {
   useEffect(() => { if (isBrief) setBriefOn(true) }, [isBrief])
   return (
     <>
+      {/* C5: each pane owns its own blast radius. Without these, a throw inside
+          the console — likeliest exactly when a rate-limited backend is handing
+          panels shapes they did not expect — propagated to RootErrorBoundary,
+          which wraps <MobileTabBar/> too: the three tabs vanished with the
+          surface that failed and a reload was the only control left. The bar is
+          rendered at the root, outside <Routes>, specifically so it outlives
+          whatever a pane does; boundarying the panes is what makes that true.
+          `resetKey` is the visible route, so leaving for another tab and coming
+          back is itself the retry. */}
       {(appOn || isApp) && (
         <div style={isApp ? { display: 'contents' } : { display: 'none' }}>
-          <App />
+          <PaneErrorBoundary paneName="The console" resetKey={pathname}>
+            <App />
+          </PaneErrorBoundary>
         </div>
       )}
       {(briefOn || isBrief) && (
         <div style={isBrief ? { display: 'contents' } : { display: 'none' }}>
-          <BriefNewspaper />
+          <PaneErrorBoundary paneName="The Brief" resetKey={pathname}>
+            <BriefNewspaper />
+          </PaneErrorBoundary>
         </div>
       )}
     </>
@@ -72,6 +85,7 @@ import { StoryLensProvider } from './contexts/StoryLensContext'
 import './components/storyLens.css'
 import { MobileNavProvider } from './contexts/MobileNavContext'
 import { MobileTabBar } from './components/MobileTabBar.tsx'
+import { PaneErrorBoundary } from './components/PaneErrorBoundary.tsx'
 import App from './App.tsx'
 import { Landing } from './pages/Landing.tsx'
 import { Docs } from './pages/Docs.tsx'

@@ -2480,6 +2480,21 @@ function AppContent() {
           const streamScopeName = isBlankState
             ? (filter.country ? resolveCountryName(filter.country) : (filter.person || null))
             : null
+          // C5: this pane is the ONLY content surface the phone's Lens and Live
+          // tabs have, and it was the one panel in this file with no boundary —
+          // threads, matrix and both dock lanes have had one for months. A
+          // throw in any of the eight reads below therefore escaped all the way
+          // to RootErrorBoundary, which sits ABOVE <MobileTabBar/> in main.tsx:
+          // one failing read took the tab bar with it and left a reload as the
+          // only way out. Named off the same booleans that choose what renders,
+          // so the fallback says which read failed rather than "STREAM" over an
+          // open country. Keyed on the slot so switching scope RETRIES by
+          // construction — a crash in one read must not follow the reader into
+          // the next one.
+          const readPanelName =
+            isStory ? 'STORY QUERY' : isPerson ? 'PERSON' : isPublicAttention ? 'PUBLIC ATTENTION'
+            : isThread ? 'THREAD' : isCountry ? 'COUNTRY' : isTheme ? 'STORY'
+            : isChokepoint ? 'CHOKEPOINT' : 'SIGNAL STREAM'
           return (
             <div className="terminal-panel stream" data-tour="stream">
               <div className="panel-header">
@@ -2492,6 +2507,7 @@ function AppContent() {
                 </div>
               )}
               <div className="panel-content">
+                <PanelErrorBoundary key={slot} panelName={readPanelName}>
                 {isStory ? (
                   <ResearchPlanPanel
                     query={storyQuery!}
@@ -2582,6 +2598,7 @@ function AppContent() {
                 ) : (
                   <SignalStream paused={readPaneHidden} onSignalScope={setOpenSignal} closeSignalSeq={closeSignalSeq} />
                 )}
+                </PanelErrorBoundary>
               </div>
             </div>
           )
