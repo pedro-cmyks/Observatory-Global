@@ -15,6 +15,7 @@ import { decodeEntities } from '../lib/decodeEntities'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { Flag } from './Flag'
 import { classifyQuery } from '../lib/searchIntent'
+import { looksLikeNaturalQuestion, askAtlasLabel } from '../lib/naturalQuery'
 import { isPublicAttentionRelevant } from '../lib/publicAttentionFilters'
 import './SearchBar.css'
 
@@ -454,6 +455,9 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
         bareCountry: parsedQuery.bareCountry,
     })
     const canStory = !!onOpenStory && trimmedQuery.length >= 3
+    // X5: does this read like a spoken question rather than analyst vocabulary?
+    // Only consulted where the lexical answer is already nothing.
+    const isNaturalQuestion = looksLikeNaturalQuestion(trimmedQuery)
     const canInvestigate = !!onStartInvestigation && trimmedQuery.length >= 8
     // "Go to <country>" leads a pure-country query; "Open the story" leads a
     // topic/compound query. The other stays available but visually secondary.
@@ -755,7 +759,35 @@ export function SearchBar({ onThemeSelect, onCountrySelect, onPublicAttentionSel
                         may claim it. A degraded response is a FAILED lookup —
                         the same distinction /research/plan renders in words. */}
                     {emptyVariant === 'measured_absence' && (
-                        <div className="search-empty">No results for "{parsedQuery.topic}"</div>
+                        <div className="search-empty">
+                            <div>No results for "{parsedQuery.topic}"</div>
+                            {/* X5 (colegio ciego, usuario-perdido): a question's
+                                words dissolve the lexical match — measured on
+                                prod, `israel` returns 4 themes / 6 live stories
+                                and `what is happening in israel` returns 0/0.
+                                The semantic read exists; the reader staring at
+                                this line is the one who needs it NAMED. When
+                                the story CTA already leads the dropdown we
+                                point AT it rather than repeat it. */}
+                            {isNaturalQuestion && canStory && (
+                                storyIsPrimary ? (
+                                    <div className="search-empty-hint">
+                                        Nothing matched those words literally — “Open the story” above reads your question across the live stories.
+                                    </div>
+                                ) : (
+                                    <button
+                                        className="search-query-thread-cta search-ask-atlas-cta"
+                                        onClick={handleOpenStory}
+                                        data-tip="Reads your question across the live stories — matching threads, who says what, and where coverage is missing."
+                                        aria-label={`Ask Atlas: ${trimmedQuery}`}
+                                    >
+                                        <span className="search-query-thread-icon">◆</span>
+                                        <span className="search-query-thread-text">{askAtlasLabel(trimmedQuery)}</span>
+                                        <span className="search-query-thread-hint">↵ reads it across the live stories</span>
+                                    </button>
+                                )
+                            )}
+                        </div>
                     )}
                     {emptyVariant === 'failed_lookup' && (
                         <div className="search-empty search-empty--degraded">

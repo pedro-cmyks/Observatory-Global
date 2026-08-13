@@ -245,6 +245,21 @@
     font-size: 12px;
 }
 
+/* X5 · the natural-language bridge. A zero-hit question is not a dead end:
+   the semantic read exists, so the empty state either NAMES it (button) or
+   points at the CTA already leading the dropdown (hint) — never both. */
+.search-empty-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+
+.search-ask-atlas-cta {
+    margin-top: 10px;
+    text-align: left;
+}
+
 /* Degraded lookup honesty (gold UI eval batch 3): a timed-out lane is a
    FAILED lookup and must never read as "No results". Amber = caution idiom. */
 .search-empty--degraded {

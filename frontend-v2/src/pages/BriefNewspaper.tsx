@@ -39,6 +39,7 @@ import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline, shouldTranslate as shouldTranslateSignal } from '../components/TranslatableHeadline'
 import PinReceiptButton from '../components/PinReceiptButton'
 import CopyCitationButton from '../components/CopyCitationButton'
+import { looksLikeNaturalQuestion, askAtlasLabel } from '../lib/naturalQuery'
 import type { CitationGateStatus } from '../lib/workbench'
 import { resolveOriginChip, resolveTierChip } from '../lib/sourceProvenance'
 import { TranslatableText } from '../components/TranslatableText'
@@ -832,6 +833,22 @@ export function BriefNewspaper() {
         const next = new URLSearchParams(params)
         next.set('entry', sectionName === 'eclipse' ? 'eclipse' : 'brief')
         navigate(`/app?${next.toString()}`)
+    }
+
+    // X5 · the bridge out of silence (colegio ciego, USUARIO-PERDIDO):
+    //   "I typed 'what is happening in israel,' pressed Enter — nothing, no
+    //    message, no 'try a country name.' … Three tries, gave up."
+    // He typed a question into a LEXICAL COUNTRY FILTER. Measured on prod:
+    // `israel` returns 4 themes / 6 live stories, `what is happening in israel`
+    // returns 0/0 — the question words dissolve the match. Atlas already has a
+    // lane for that question (the cross-thread story, /app?q=), and this is the
+    // only thing that was missing: the door being NAMED at the moment of the
+    // miss. No new search machinery — one route into the lane that exists.
+    const askAtlas = (raw: string) => {
+        const q = raw.trim()
+        if (q.length < 2) return
+        track('brief_ask_atlas', { q_len: q.length })
+        goToAtlas(`q=${encodeURIComponent(q)}`, 'ask-atlas')
     }
 
     const openThread = (thread: TopThread, country?: string | null) => {
@@ -1934,6 +1951,16 @@ export function BriefNewspaper() {
                                                 onChange={e => { setCountryQuery(e.target.value); setShowCountryDropdown(true) }}
                                                 onFocus={() => setShowCountryDropdown(true)}
                                                 onBlur={() => setTimeout(() => setShowCountryDropdown(false), 150)}
+                                                // X5: Enter used to do literally nothing. It now
+                                                // carries a QUESTION to the lane that can read it;
+                                                // a country-shaped query still belongs to the list
+                                                // below, so Enter stays inert for those.
+                                                onKeyDown={e => {
+                                                    if (e.key !== 'Enter') return
+                                                    if (suggestions.length > 0 || !looksLikeNaturalQuestion(countryQuery)) return
+                                                    e.preventDefault()
+                                                    askAtlas(countryQuery)
+                                                }}
                                             />
                                             {showCountryDropdown && suggestions.length > 0 && (
                                                 <div className="brief-country-dropdown">
@@ -1957,6 +1984,33 @@ export function BriefNewspaper() {
                                                             </button>
                                                         )
                                                     })}
+                                                </div>
+                                            )}
+                                            {/* X5: a zero-match lexical box must SAY so, and when
+                                                what was typed reads like a question it must name
+                                                the lane that can answer it. Silence was the whole
+                                                defect — "no message, no 'try a country name'". */}
+                                            {showCountryDropdown && q.length > 0 && suggestions.length === 0 && (
+                                                <div className="brief-country-dropdown brief-country-dropdown--empty">
+                                                    <p className="brief-country-empty">
+                                                        No country matches “{countryQuery.trim()}”.
+                                                    </p>
+                                                    {looksLikeNaturalQuestion(countryQuery) ? (
+                                                        <button
+                                                            className="brief-country-ask"
+                                                            onMouseDown={e => e.preventDefault()}
+                                                            onClick={() => askAtlas(countryQuery)}
+                                                            data-tip="Reads your question across the live stories — matching threads, who says what, and where coverage is missing."
+                                                            aria-label={`Ask Atlas: ${countryQuery.trim()}`}
+                                                        >
+                                                            <span className="brief-country-ask-label">{askAtlasLabel(countryQuery)}</span>
+                                                            <span className="brief-country-ask-hint">reads it across the live stories →</span>
+                                                        </button>
+                                                    ) : (
+                                                        <p className="brief-country-empty-hint">
+                                                            This box searches country names. Try one — or ask a full question and Atlas will read it across the stories.
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

@@ -432,6 +432,61 @@
   overflow-y: auto;
 }
 
+/* X5 · the zero-match state of the country box. It used to render NOTHING —
+   the usuario-perdido typed a question, got silence, and left. Now it says what
+   happened and, for a question, names the lane that can read it. */
+.brief-country-dropdown--empty {
+  padding: 10px 12px;
+}
+
+.brief-country-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--r-ink);
+  opacity: 0.78;
+}
+
+.brief-country-empty-hint {
+  margin: 6px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--r-ink);
+  opacity: 0.55;
+}
+
+.brief-country-ask {
+  appearance: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  font-family: inherit;
+  background: color-mix(in srgb, var(--r-accent, #1D9E75) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--r-accent, #1D9E75) 45%, transparent);
+  border-radius: 4px;
+  color: var(--r-ink);
+}
+
+.brief-country-ask:hover,
+.brief-country-ask:focus-visible {
+  background: color-mix(in srgb, var(--r-accent, #1D9E75) 16%, transparent);
+  outline: none;
+}
+
+.brief-country-ask-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.brief-country-ask-hint {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
 .brief-country-option {
   appearance: none;
   cursor: pointer;
