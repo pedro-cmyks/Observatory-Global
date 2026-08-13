@@ -896,24 +896,19 @@ export function BriefNewspaper() {
         : null
     const allThreads = serving.serve === 'sealed' ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
 
-    // PRINTER'S MARKS exploration (?marks=reg|strip|crop|all, comma-separable;
-    // ?marksState=full|partial|live is a MOCKUP-ONLY state override for
-    // screenshots). Every mark renders data this block already computed —
-    // seal moment, grade, degradation, receipts — never ornament.
-    const marksOn = new Set((searchParams.get('marks') ?? '').split(',').filter(Boolean))
-    const marksAll = marksOn.has('all')
-    const marksReg = marksAll || marksOn.has('reg')
-    const marksStrip = marksAll || marksOn.has('strip')
-    const marksCrop = marksAll || marksOn.has('crop')
-    const regMark = (marksReg || marksCrop)
+    // PRINTER'S MARKS (shipped 2026-08-13, Pedro-approved — exploration doc
+    // docs/superpowers/specs/2026-08-13-printers-marks-exploration.md). Every
+    // mark renders data this block already computed — seal moment, grade,
+    // degradation, receipts — never ornament. `?marks=off` is the kill switch.
+    const marksOff = searchParams.get('marks') === 'off'
+    const regMark = !marksOff
         ? buildRegMarkData(dailyEdition, serving, {
             ageLabel: staleBanner?.age ?? null,
             liveReason: staleBanner?.why ?? null,
             nextSeal: staleBanner?.nextAttempt ?? null,
-            force: searchParams.get('marksState'),
         })
         : null
-    const voiceMix = marksStrip
+    const voiceMix = !marksOff
         ? buildVoiceMix(
             (allThreads as Array<{ evidence_samples?: MixableReceipt[] }>).flatMap(t => t.evidence_samples ?? []),
             servedFromSeal ? 'sealed' : 'live',
@@ -1596,7 +1591,7 @@ export function BriefNewspaper() {
                         <p className="reader-tagline">Narrative intelligence — measured from coverage, not editorialized.</p>
                     </div>
                     <div className="brief-masthead-right">
-                        {marksReg && regMark && <RegistrationMark data={regMark} />}
+                        {regMark && <RegistrationMark data={regMark} />}
                         <div className="reader-dateline">
                             <span className="brief-dateline-full">{weekday}, <b>{dayLine}</b></span>
                             <span className="brief-dateline-short"><b>{dayLineShort}</b></span>
@@ -1648,7 +1643,7 @@ export function BriefNewspaper() {
                 ) : data ? (
                     <main className="brief-content">
 
-                        {marksStrip && voiceMix && <VoiceMixStrip mix={voiceMix} />}
+                        {voiceMix && <VoiceMixStrip mix={voiceMix} />}
 
                         {(showingStale || briefError) && (
                             <div className="brief-cache-note" role="status">
@@ -1959,8 +1954,9 @@ export function BriefNewspaper() {
 
                         {/* ===== GLOBAL EDITION — three color-coded sections ===== */}
                         {!countryFilter && (
+                            <>
                             <PMTrimWrap
-                                mode={!marksCrop ? 'off' : (regMark?.state === 'live' ? 'live' : 'frame')}
+                                mode={!regMark ? 'off' : (regMark.state === 'live' ? 'live' : 'frame')}
                                 sealTime={regMark?.sealTime ?? null}
                                 gradeLine={regMark
                                     ? (regMark.state === 'full'
@@ -2431,49 +2427,10 @@ export function BriefNewspaper() {
                                         label is struck under review and the raw receipts, grouped by
                                         source country, are the content. */}
                                     {unassembledThreads.length > 0 && renderUnassembledSection(unassembledThreads)}
-
-                                    {/* HEATING UP — country heat strip */}
-                                    {heatStrip.length > 0 && (
-                                        <section className="brief-heat-strip">
-                                            <h3
-                                                className="brief-bottom-heading"
-                                                data-tip="Countries with the strongest anomaly heat right now. The tag names the dominant component: velocity (volume acceleration), surprise (off-baseline), diversity (many themes), voice (source spread), polyphony (many actors)."
-                                            >
-                                                Heating Up
-                                            </h3>
-                                            {/* C4 — THE DOOR SAYS IT IS A DOOR. A bare tile with a
-                                                country and a number teleported the judge into the
-                                                analyst console with "no warning, no way back"
-                                                (§4.2). The destination is right — `?country=` sets
-                                                the scope, the console renders `World ▸ COUNTRY X`
-                                                and opens that country's panel — so the fix is to
-                                                announce the jump and NAME the way back, which is
-                                                the first crumb. Same voice as The Gap's already-
-                                                correct "Open Colombia →". */}
-                                            <div className="brief-heat-row">
-                                                {heatStrip.map(h => {
-                                                    const comp = dominantHeatComponent(h.components)
-                                                    const name = resolveCountryName(h.code, h.name)
-                                                    const door = countryDoorCopy(name, 'where this heat is measured')
-                                                    return (
-                                                        <button
-                                                            key={h.code}
-                                                            className="brief-heat-card"
-                                                            onClick={() => goToAtlas(`country=${h.code}`, 'heating_up')}
-                                                            data-tip={door.tip}
-                                                            aria-label={door.ariaLabel}
-                                                        >
-                                                            <span className="brief-heat-name"><Flag code={h.code} /> {name}</span>
-                                                            <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
-                                                            {comp && <span className="brief-heat-comp">{comp}</span>}
-                                                            <span className="brief-heat-door">{door.cue}</span>
-                                                        </button>
-                                                    )
-                                                })}
-                                            </div>
-                                        </section>
-                                    )}
-                                    {/* Markets moved to the top full-width band (BriefMarketsBand). */}
+                                    {/* Markets moved to the top full-width band (BriefMarketsBand).
+                                        HEATING UP moved below the trim (printer's-marks ship,
+                                        2026-08-13): it reads live heat_countries, so inside the
+                                        sealed edition's crop marks it made the trim over-claim. */}
                                 </section>
 
                                 {/* ---------- PANEL 2 · UNDER THE RADAR ---------- */}
@@ -2576,6 +2533,52 @@ export function BriefNewspaper() {
                                     )}
                                 </section>
                             </PMTrimWrap>
+
+                            {/* HEATING UP — live anomaly heat. Lives OUTSIDE the sealed
+                                edition's trim (it re-measures every load), beside the other
+                                live instrumentation, and no longer only on the World tab —
+                                it was never World-specific data. */}
+                            {heatStrip.length > 0 && (
+                                <section className="brief-heat-strip">
+                                    <h3
+                                        className="brief-bottom-heading"
+                                        data-tip="Countries with the strongest anomaly heat right now. The tag names the dominant component: velocity (volume acceleration), surprise (off-baseline), diversity (many themes), voice (source spread), polyphony (many actors). Live measurement — outside the sealed edition."
+                                    >
+                                        Heating Up
+                                    </h3>
+                                    {/* C4 — THE DOOR SAYS IT IS A DOOR. A bare tile with a
+                                        country and a number teleported the judge into the
+                                        analyst console with "no warning, no way back"
+                                        (§4.2). The destination is right — `?country=` sets
+                                        the scope, the console renders `World ▸ COUNTRY X`
+                                        and opens that country's panel — so the fix is to
+                                        announce the jump and NAME the way back, which is
+                                        the first crumb. Same voice as The Gap's already-
+                                        correct "Open Colombia →". */}
+                                    <div className="brief-heat-row">
+                                        {heatStrip.map(h => {
+                                            const comp = dominantHeatComponent(h.components)
+                                            const name = resolveCountryName(h.code, h.name)
+                                            const door = countryDoorCopy(name, 'where this heat is measured')
+                                            return (
+                                                <button
+                                                    key={h.code}
+                                                    className="brief-heat-card"
+                                                    onClick={() => goToAtlas(`country=${h.code}`, 'heating_up')}
+                                                    data-tip={door.tip}
+                                                    aria-label={door.ariaLabel}
+                                                >
+                                                    <span className="brief-heat-name"><Flag code={h.code} /> {name}</span>
+                                                    <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
+                                                    {comp && <span className="brief-heat-comp">{comp}</span>}
+                                                    <span className="brief-heat-door">{door.cue}</span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </section>
+                            )}
+                            </>
                         )}
 
                         {/* ===== COUNTRY EDITION ===== */}

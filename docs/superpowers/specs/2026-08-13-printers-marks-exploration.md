@@ -1,8 +1,10 @@
 # Printer's Marks on the Brief — mini design exploration
 
-**Date:** 2026-08-13 · **Status:** EXPLORATION — mockups for Pedro's eye, NOTHING ships
-without his approval. Code lives on this branch only, gated behind `?marks=`; the page is
-byte-identical without the param. No merge.
+**Date:** 2026-08-13 · **Status:** APPROVED & SHIPPED (all three variants) — Pedro
+approved same day ("me gusta" → ship las tres). See the ship addendum at the bottom for
+what changed between the mockups below and the shipped state; the body of this doc is
+kept as the exploration record (its `?marks=` URLs describe the mockup gate, which no
+longer exists — the marks now render by default and `?marks=off` is the kill switch).
 
 **Premise.** The Brief already behaves like a daily press proof: sealed at 02:30, graded,
 served with its degradations stated. Prepress furniture — registration marks, color
@@ -150,3 +152,30 @@ If only one ships: **V2**. If two: **V2 + V1**.
 - Not run/checked: print stylesheet (none exists), country-filter view with `marks=crop`
   (trim wraps the global edition only — the country panel is out of scope for the
   mockup).
+
+---
+
+## Ship addendum (same day — Pedro approved all three)
+
+Deltas between the mockups above and the shipped state:
+
+1. **Gate inverted.** Marks render by default on `/brief`; `?marks=off` is the kill
+   switch. The `?marks=reg|strip|crop|all` selector and the `?marksState=` mockup
+   override are **deleted** — a fabricated seal state must not be reachable by URL on a
+   shipped page. All three marks now only ever render the real payload.
+2. **V3 provenance pass executed (the caveat in the V3 section).** The HEATING UP strip
+   reads live `heat_countries`, so it moved out of The World panel to sit **below the
+   trim**, beside the other live instrumentation. Side effect (judged acceptable, it was
+   never World-specific data): it now shows on all three tabs, not only The World. The
+   two remaining live blocks inside the trim — the Editor's Analysis (self-labels basis
+   and age) and receipt full-text excerpts (live-fetched, attached to frozen receipts) —
+   are named in the trim tooltip instead of relocated: moving the analysis would gut the
+   front page, and both already state their own provenance on themselves.
+3. **Tests added:** `PrintersMarks.test.tsx` (7) freezes the pure builders — grade
+   derivation (partial ≠ answered), live-state reasons passed verbatim, null artifact
+   never fabricates, voice-mix uses the receipt-chip classifier and sums to its total,
+   zero receipts → no strip.
+4. Verified post-ship in the browser: default `/brief` renders all three marks with
+   today's real state (unregistered + NO TRIM + 256-live-receipt strip), `?marks=off`
+   removes every mark, heat strip sits after the culture panel and before the map row,
+   no stale references, build + full suite green (1716).

@@ -6,7 +6,8 @@ import type { DailyPublicationArtifact, EditionServing } from '../lib/dailyPubli
 import './PrintersMarks.css'
 
 /* ============================================================================
-   PRINTER'S MARKS — design exploration (2026-08-13), NOT SHIPPED.
+   PRINTER'S MARKS (shipped 2026-08-13, Pedro-approved — exploration record in
+   docs/superpowers/specs/2026-08-13-printers-marks-exploration.md).
 
    Prepress furniture for the Brief, under the house rule that no mark may be
    ornament: every mark renders a measurement the page already owns.
@@ -17,12 +18,12 @@ import './PrintersMarks.css'
    - VoiceMixStrip     — a color control bar whose patches ARE the day's voice
                          mix, measured from the receipts the page serves.
    - TrimFrame         — crop marks around the sealed edition content only;
-                         live overlays sit outside the trim by construction.
+                         live overlays sit outside the trim by construction
+                         (the Heating Up strip moved below the trim for this;
+                         the Editor's Analysis stays inside and self-labels
+                         its live nature — named in the trim tooltip).
 
-   Everything is gated behind `?marks=` in BriefNewspaper.tsx — the page is
-   byte-identical without the param. `?marksState=` is a MOCKUP-ONLY override
-   so all three seal states can be screenshotted regardless of what the
-   backend sealed last night; it fabricates nothing when absent.
+   Kill switch: `?marks=off` on /brief (BriefNewspaper.tsx).
    ========================================================================= */
 
 export type SealRegState = 'full' | 'partial' | 'live'
@@ -43,12 +44,11 @@ export interface RegMarkData {
     nextSeal: string | null
 }
 
-/** Derive the registration-mark data from fields the page already computed.
- *  `force` is the mockup-only state override (see header comment). */
+/** Derive the registration-mark data from fields the page already computed. */
 export function buildRegMarkData(
     artifact: DailyPublicationArtifact | null,
     serving: EditionServing,
-    opts: { ageLabel?: string | null; liveReason?: string | null; nextSeal?: string | null; force?: string | null },
+    opts: { ageLabel?: string | null; liveReason?: string | null; nextSeal?: string | null },
 ): RegMarkData {
     const sealedAtRaw = artifact?.sealed_at
         ?? (artifact?.completion?.generated_at as string | undefined)
@@ -63,37 +63,9 @@ export function buildRegMarkData(
     const answered = cells.length > 0 ? cells.filter(c => c?.status === 'ready').length : null
     const total = cells.length > 0 ? cells.length : null
 
-    let state: SealRegState = serving.serve === 'live'
+    const state: SealRegState = serving.serve === 'live'
         ? 'live'
         : (artifact?.status === 'ready' ? 'full' : 'partial')
-
-    // MOCKUP-ONLY: force a state for screenshots. Numbers the real payload
-    // lacks are substituted with plausible placeholders and the doc says so.
-    const force = opts.force
-    if (force === 'full' || force === 'partial' || force === 'live') {
-        state = force
-        if (force === 'partial') {
-            return {
-                state, sealTime: sealTime ?? '02:31', ageLabel: opts.ageLabel ?? null,
-                answered: answered !== null && total !== null && answered < total ? answered : 4,
-                total: total ?? 6,
-                degradation: ['partial edition · 4 of 6 answered'],
-                reason: null, nextSeal: opts.nextSeal ?? null,
-            }
-        }
-        if (force === 'full') {
-            return {
-                state, sealTime: sealTime ?? '02:31', ageLabel: opts.ageLabel ?? null,
-                answered: total ?? 6, total: total ?? 6, degradation: [],
-                reason: null, nextSeal: opts.nextSeal ?? null,
-            }
-        }
-        return {
-            state, sealTime: null, ageLabel: null, answered: null, total: null,
-            degradation: [], reason: opts.liveReason ?? 'no edition has sealed within the last day',
-            nextSeal: opts.nextSeal ?? 'next seal attempt 02:30',
-        }
-    }
 
     return {
         state,
@@ -272,7 +244,7 @@ export function TrimFrame({ sealTime, gradeLine, children }: {
             <CropCorner pos="tl" /><CropCorner pos="tr" /><CropCorner pos="bl" /><CropCorner pos="br" />
             <span
                 className="pm-trim-label"
-                data-tip="Crop marks frame what the 02:30 press run sealed. Everything outside the trim — vitals, markets, map, indexes — is live instrumentation, measured now, not part of the sealed edition."
+                data-tip="Crop marks frame what the nightly press run sealed. Everything outside the trim — vitals, markets, heat, map, indexes — is live instrumentation, measured now. Two blocks inside the trim regenerate live and say so on themselves: the Editor's Analysis (carries its own basis and age) and receipt full-text excerpts (fetched after the seal, attached to frozen receipts)."
             >
                 TRIM — SEALED EDITION{sealTime ? ` · ${sealTime}` : ''}{gradeLine ? ` · ${gradeLine}` : ''}
             </span>
