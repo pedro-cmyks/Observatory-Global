@@ -37,7 +37,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable, Sequence
 
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
-from app.services import ingest_basis
+from app.services import ingest_basis, stat_phrases
 
 logger = logging.getLogger(__name__)
 
@@ -122,15 +122,37 @@ def country_name(code: str) -> str:
 
 # ── (c) LO QUE SUBE ────────────────────────────────────────────────────────
 
-def rising_why_now(*, surprise: float, velocity: float, volume: int) -> str:
-    """The measured why-now, as a template. No provider, no adjectives we
-    cannot defend: `surprise` is a σ against the story's OWN Kalman baseline,
-    `velocity` is the smoothed slope in log-volume per 6 h step."""
+def rising_why_now_measured(*, surprise: float, velocity: float,
+                            volume: int) -> str:
+    """The measured half of the why-now, as a template. No provider, no
+    adjectives we cannot defend: `surprise` is a σ against the story's OWN
+    Kalman baseline, `velocity` is the smoothed slope in log-volume per 6 h
+    step."""
     return (
         f"surprise {surprise:.1f}σ over its own baseline, "
-        f"velocity +{velocity:.2f} (log-volume per 6 h) "
+        f"velocity {velocity:+.2f} (log-volume per 6 h) "
         f"on {volume} signals in the movement window"
     )
+
+
+def rising_why_now(*, surprise: float, velocity: float, volume: int) -> str:
+    """The why-now: the plain reading FIRST, then the numbers that back it.
+
+    X4 (2026-08-13). This template's previous form was one of the blind
+    college's C5 witnesses — four of eight personas, the entire non-analyst
+    range, could not parse "surprise 2.6σ over its own baseline, velocity +0.59
+    (log-volume per 6 h)". The panel's structural note is why the fix is not
+    cosmetic: a reader who cannot parse the grading system takes the honesty on
+    faith, so the jargon disables the trust mechanism the receipts provide.
+
+    Both halves ship. Deleting the numbers would trade the analyst and
+    news-junkie personas — who named them as the differentiator — for the four
+    who could not read them, and the plain clause alone is not checkable.
+    """
+    measured = rising_why_now_measured(surprise=surprise, velocity=velocity,
+                                       volume=volume)
+    plain = stat_phrases.rising_plain(surprise=surprise, velocity=velocity)
+    return f"{plain} — {measured}." if plain else measured
 
 
 def _unpresentable_reason(row: dict[str, Any]) -> str | None:
@@ -215,6 +237,13 @@ def select_rising(rows: Iterable[dict[str, Any]],
             if isinstance(measured_at, datetime) else measured_at,
             "why_now": rising_why_now(surprise=surprise, velocity=velocity,
                                       volume=volume),
+            # X4: the two halves separately, so the Brief can set the plain
+            # reading in reader type and the statistics as a stat line without
+            # re-parsing a sentence client-side.
+            "why_now_plain": stat_phrases.rising_plain(surprise=surprise,
+                                                       velocity=velocity),
+            "why_now_measured": rising_why_now_measured(
+                surprise=surprise, velocity=velocity, volume=volume),
             "receipts": [],
         })
     picked.sort(key=lambda item: (-item["surprise"], item["thread_id"]))
@@ -330,6 +359,11 @@ def gap_prose(candidate: dict[str, Any]) -> str:
     So the qualification now arrives BEFORE the claim rather than as a footnote
     after it, and a zero carries its own refusal (`absence_caveat`) instead of
     leaving the silence inference to the reader.
+
+    X4 (2026-08-13) then took the second half of the same sentence: "11.2× its
+    own daily baseline" is the same unparseable class the blind college's C5
+    named in the rising why-now. The ratio stays — it is what makes the claim
+    checkable — behind the plain reading of it.
     """
     name = country_name(candidate["country_code"])
     known = candidate["known_origin_n"]
@@ -344,11 +378,13 @@ def gap_prose(candidate: dict[str, Any]) -> str:
         if domestic == 0
         else ingest_basis.share_caveat()
     )
+    surge = stat_phrases.times_phrase(candidate["multiplier"],
+                                      of="its usual day")
     return (
-        f"{ingest_basis.IN_INGEST}, {name} ran {candidate['multiplier']:g}× its "
-        f"own daily baseline ({candidate['volume']} signals against "
-        f"{candidate['baseline']:g}); of the {known} signals whose outlet home "
-        f"country is known, {own}. {closer}"
+        f"{ingest_basis.IN_INGEST}, {name} ran {surge} "
+        f"({candidate['multiplier']:g}×) — {candidate['volume']} signals on a "
+        f"day it usually runs about {candidate['baseline']:g}. Of the {known} "
+        f"signals whose outlet home country is known, {own}. {closer}"
     )
 
 

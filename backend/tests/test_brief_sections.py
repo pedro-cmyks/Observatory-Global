@@ -183,6 +183,48 @@ def test_rising_why_now_is_a_template_over_measured_fields():
     assert "/h" not in line
 
 
+# ── X4: the grading system, in words (2026-08-13 blind college, C5) ─────────
+# Four of eight personas could not parse this exact sentence. The number stays
+# — the analyst and news-junkie personas named it as the differentiator — and
+# gains a plain companion that LEADS, so the reader who cannot parse the sigma
+# still learns what happened.
+
+def test_rising_why_now_leads_with_the_plain_reading():
+    line = rising_why_now(surprise=2.6, velocity=0.59, volume=116)
+    assert line.startswith("Rising much faster than its own normal pace, and still speeding up")
+    # ...and the plain clause arrives BEFORE the first statistic, not after it.
+    assert line.index("normal pace") < line.index("σ")
+
+
+def test_rising_why_now_still_carries_every_number():
+    line = rising_why_now(surprise=2.6, velocity=0.59, volume=116)
+    assert "2.6σ" in line
+    assert "+0.59" in line
+    assert "116 signals" in line
+    # The unit stays too: it is what makes the number checkable.
+    assert "log-volume per 6 h" in line
+
+
+def test_rising_why_now_never_calls_a_cooling_story_rising():
+    line = rising_why_now(surprise=2.6, velocity=-0.2, volume=40)
+    assert "already slowing down" in line
+    assert "speeding up" not in line
+
+
+def test_rising_item_serves_the_two_halves_separately_for_the_renderer():
+    # The Brief renders the plain half in reader type and the measured half as
+    # a stat line; splitting here keeps that from being a client-side re-parse
+    # of a sentence.
+    item = select_rising([movement_row("dynamic-topic-9", surprise=2.6,
+                                       velocity=0.59, volume=116)])[0]
+    assert item["why_now_plain"] == (
+        "Rising much faster than its own normal pace, and still speeding up"
+    )
+    assert item["why_now_measured"].startswith("surprise 2.6σ")
+    # And the joined sentence is exactly the two halves, so they cannot drift.
+    assert item["why_now"] == f"{item['why_now_plain']} — {item['why_now_measured']}."
+
+
 def test_rising_payload_is_honest_when_nothing_clears():
     payload = build_rising_payload([], candidates=0)
     assert payload["contract"] == RISING_CONTRACT
@@ -334,6 +376,20 @@ def test_gap_prose_refuses_the_silence_reading_when_domestic_is_zero():
     assert "not proof that Timor-Leste's press stayed silent" in line
     # The population is named, so "Atlas's feed set" is not an empty gesture.
     assert "GDELT" in line and "curated feeds" in line
+
+
+def test_gap_prose_reads_the_multiplier_in_words_before_the_ratio():
+    # X4: "11.2× its own daily baseline" was the same unparseable class as the
+    # rising why-now. The plain reading leads; the ratio stays, in brackets.
+    line = gap_prose(select_gap([TIMOR])[0])
+    assert "eleven times its usual day" in line
+    assert "(11.2×)" in line
+    assert line.index("usual day") < line.index("11.2")
+    # "baseline" was the word the panel could not place — the sentence now says
+    # what it means instead, and the raw counts stay checkable.
+    assert "baseline" not in line
+    # Both raw counts survive the rewrite: today's 28 and the usual 2.5.
+    assert "28 signals on a day it usually runs about 2.5" in line
 
 
 def test_gap_prose_qualifies_a_non_zero_share_as_a_share_of_the_ingest():
