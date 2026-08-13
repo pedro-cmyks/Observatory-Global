@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 
 from pydantic import BaseModel, Field
 
+from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.insight_llm import generate_insight
+from app.services.subject_geography import resolve_gazetteer_place
 
 
 class SynthEvidenceItem(BaseModel):
@@ -76,6 +79,25 @@ class SynthTension(BaseModel):
     note: str | None = None
 
 
+class SynthMarketReceipt(BaseModel):
+    # One SERVED descriptive market instrument (markets-descriptive-v0: the
+    # world basket + a country's own instruments). It is a RECEIPT, never a
+    # relation: it says what a price did, never that news moved it. Carried so
+    # prose asserting a market DIRECTION can be checked against the measurable
+    # (X3-A) — the scorecard's only "Atlas said the opposite" claim.
+    symbol: str
+    label: str
+    asset_class: str | None = None      # equity-index|equity-single|fx|rate|energy|metal|…
+    role: str | None = None             # currency|index|champion|export-commodity
+    country_code: str | None = None
+    last_close: float | None = None
+    last_close_at: str | None = None    # ISO date of the close the change is measured at
+    # Net % change of the LAST SESSION (last close vs the prior close). None
+    # when the price is pending or the series is too short — an absent
+    # measurement is never read as "no move".
+    change_pct: float | None = None
+
+
 class SynthesizeRequest(BaseModel):
     title: str = ""
     pins: list[SynthPin] = Field(..., min_length=1)
@@ -85,6 +107,11 @@ class SynthesizeRequest(BaseModel):
     # daily-edition path and on a first report run, present once the analyst has
     # cross-read the sources).
     tensions: list[SynthTension] = Field(default_factory=list)
+    # Served market receipts in scope for this story (world basket + the
+    # subject countries' own instruments). Optional: with none supplied a
+    # market-direction claim is still downgraded — as uncorroborated, never as
+    # contradicted.
+    markets: list[SynthMarketReceipt] = Field(default_factory=list)
 
 
 _SYNTH_SYSTEM = (
@@ -161,6 +188,17 @@ _SYNTH_SYSTEM = (
     "or say the point is contested. A sentence asserting one side unqualified will "
     "be downgraded server-side to 'reported (uncorroborated)' with the opposing "
     "quote attached — write it attributed the first time.\n"
+    "4c. NEVER INVENT A MARKET DIRECTION. Do NOT write that stocks, shares, an "
+    "index, a currency, bonds or a commodity rose, fell, rallied or plunged unless "
+    "an evidence headline says so or a 'SERVED MARKET RECEIPTS' line measures it — "
+    "and when a receipt measures it, use the receipt's own figure. A market "
+    "direction is never a mood: an aid pledge or a rescue is not evidence that "
+    "prices went up. An unbacked direction is downgraded server-side to 'reported "
+    "(uncorroborated)'.\n"
+    "4d. NEVER INVENT A PLACE. Name a city, town or region ONLY when an evidence "
+    "line (headline or full text) names it. If you know only the country, say the "
+    "COUNTRY ('in Colombia') — never substitute its capital or largest city as a "
+    "stand-in. An unbacked city is rewritten server-side to the country.\n"
     "5. SURFACE THE NON-OBVIOUS insight visible only across pins (a self-declared "
     "alignment, a coverage asymmetry, an actor bridging two CONFIRMED stories) — but "
     "only over the confirmed spine, never over a bracketed or unreliable pin.\n"
@@ -285,6 +323,14 @@ def _synth_user(req: SynthesizeRequest, article_texts: dict | None = None) -> st
             parts.append(f"  - {t.note or 'claims in tension'}")
             parts.append(f"      A: “{t.a_quote[:240]}”" + (f" — {t.a_outlet}" if t.a_outlet else ""))
             parts.append(f"      B: “{t.b_quote[:240]}”" + (f" — {t.b_outlet}" if t.b_outlet else ""))
+    if req.markets:
+        parts.append("\nSERVED MARKET RECEIPTS (descriptive — a level and its last-session "
+                     "change; NEVER evidence that news moved a price):")
+        for m in req.markets[:12]:
+            chg = f"{m.change_pct:+.2f}% last session" if m.change_pct is not None else "no measured change"
+            level = f"{m.last_close:g}" if m.last_close is not None else "pending"
+            asof = f" as of {m.last_close_at}" if m.last_close_at else ""
+            parts.append(f"  - {m.label} ({m.symbol}): {level}, {chg}{asof}")
     if req.gaps:
         parts.append("\nKNOWN GAPS (from the frozen report):")
         for g in req.gaps[:6]:
@@ -418,6 +464,352 @@ def apply_tension_guard(
     return out, ledger
 
 
+# ── market-direction guard (X3-A) ─────────────────────────────────────────────
+# Veracity scorecard 2026-08-13, claim 6 — the ONE place in twelve fact-checked
+# claims where Atlas asserted the OPPOSITE of the measurable: the Colombia
+# edition's prose had Colombian stocks rising ("aid + resilience" → optimism)
+# while COLCAP closed -0.51% and bonds fell. Evidence was clean; the SYNTHESIS
+# invented the direction.
+#
+# The rule, in the tension guard's discipline: a sentence asserting that a
+# market moved must carry a receipt. The receipt may be MEASURED (a served
+# instrument) or REPORTED (a cited evidence headline that says it). With
+# neither, the sentence keeps its text and gains the same "reported
+# (uncorroborated)" clause — the finding is never dropped.
+#
+# HONEST SCOPE — where this guard abstains, and why:
+#   * FX and RATE receipts never settle a direction. An FX quote carries no
+#     declared convention (USD/COP falling IS the peso strengthening) and a
+#     bond quote confuses price with yield ("bonds fell" / "yields rose" are
+#     the same event). Such a claim is uncorroborated, NEVER "contradicted".
+#   * A sentence naming BOTH directions is describing a mix — left alone.
+#   * An already attributed/hedged sentence is left alone (shared _HEDGE_RE).
+#   * Lexical, not semantic: it fires on a market SUBJECT plus a DIRECTION verb
+#     in the same sentence, so "the death toll rose" can never trip it.
+_MARKET_UP_RE = re.compile(
+    r"\b(?:rise|rises|rising|rose|risen|rally|rallies|rallied|rallying|rebound|"
+    r"rebounds|rebounded|climb|climbs|climbed|climbing|gain|gains|gained|surge|"
+    r"surges|surged|jump|jumps|jumped|soar|soars|soared|advance|advances|advanced|"
+    r"advancing|higher|firmer|strengthen|strengthens|strengthened|appreciate|"
+    r"appreciates|appreciated|up)\b"
+    r"|\b(?:al alza|en alza|al?\s?repunte)\b"
+    r"|\b(?:sube|suben|subió|subieron|subiendo|repunt\w*|avanz\w*|apreci\w*|"
+    r"fortalec\w*|gana|ganó|ganaron|ganancias)\b",
+    re.IGNORECASE,
+)
+_MARKET_DOWN_RE = re.compile(
+    r"\b(?:fall|falls|fell|fallen|falling|drop|drops|dropped|dropping|plunge|"
+    r"plunges|plunged|slide|slides|slid|slip|slips|slipped|sink|sinks|sank|sunk|"
+    r"tumble|tumbles|tumbled|slump|slumps|slumped|decline|declines|declined|"
+    r"lower|weaken|weakens|weakened|depreciate|depreciates|depreciated|retreat|"
+    r"retreats|retreated|selloff|sell-off|down)\b"
+    r"|\b(?:a la baja|en baja)\b"
+    r"|\b(?:cae|caen|cayó|cayeron|cayendo|ca[ií]da|desplom\w*|retroced\w*|pierde|"
+    r"perdió|perdieron|pérdidas|perdidas|debilit\w*|baja|bajan|bajó|bajaron)\b",
+    re.IGNORECASE,
+)
+# subject key → (pattern, instrument roles, instrument asset classes)
+_MARKET_SUBJECTS: tuple[tuple[str, re.Pattern, frozenset, frozenset], ...] = (
+    ("equities", re.compile(
+        r"\b(?:stocks?|shares?|equit(?:y|ies)|bourses?|index|indexes|indices|"
+        r"acciones|bolsas?|burs[áa]til(?:es)?|[íi]ndices?)\b", re.IGNORECASE),
+     frozenset({"index", "champion"}),
+     frozenset({"equity-index", "equity-etf", "equity-single"})),
+    ("currency", re.compile(
+        r"\b(?:currenc(?:y|ies)|exchange rate|forex|tipo de cambio|divisas?|"
+        r"moneda|peso|dollar|d[óo]lar|euro|yen|lira|rupee|rupia)\b", re.IGNORECASE),
+     frozenset({"currency"}), frozenset({"fx", "fx-index"})),
+    ("bonds", re.compile(
+        r"\b(?:bonds?|bonos?|yields?|rendimientos?|treasur(?:y|ies)|deuda)\b",
+        re.IGNORECASE),
+     frozenset(), frozenset({"rate", "rates"})),
+    ("oil", re.compile(r"\b(?:oil|crude|brent|wti|petr[óo]leo|crudo)\b", re.IGNORECASE),
+     frozenset(), frozenset({"energy"})),
+    ("metals", re.compile(r"\b(?:gold|silver|copper|oro|plata|cobre)\b", re.IGNORECASE),
+     frozenset(), frozenset({"metal"})),
+    # "markets rose" in everyday prose means equities — deliberately NOT a
+    # match-anything bucket, which would let an unrelated instrument moving the
+    # right way corroborate a claim about something else.
+    ("markets", re.compile(r"\b(?:markets?|mercados?)\b", re.IGNORECASE),
+     frozenset({"index", "champion"}),
+     frozenset({"equity-index", "equity-etf", "equity-single"})),
+)
+# Quote conventions these classes do NOT declare — they can never settle a
+# direction claim (see HONEST SCOPE above).
+_MARKET_AMBIGUOUS_CLASSES = frozenset({"fx", "fx-index", "rate", "rates"})
+# Label words that identify no instrument on their own.
+_MARKET_NAME_STOP = frozenset({
+    "index", "indices", "fund", "etf", "stock", "stocks", "share", "shares",
+    "front", "month", "crude", "spot", "futures", "dollar", "peso", "euro",
+    "yen", "bond", "bonds", "note", "notes", "year", "market", "markets",
+    "price", "prices", "front-month", "composite", "general",
+})
+_MARKET_FLAT_EPS = 0.05                  # |change| under this is "no move", not a direction
+_MARKET_TERSE_MARKER = " (uncorroborated)"
+
+
+def _market_name_tokens(label: str, symbol: str) -> set[str]:
+    toks = {t for t in _TOKEN_RE.findall((label or "").lower())
+            if len(t) >= 4 and t not in _MARKET_NAME_STOP}
+    sym = (symbol or "").lower()
+    if len(sym) >= 4 and sym not in _MARKET_NAME_STOP:
+        toks.add(sym)
+    return toks
+
+
+def _market_subject_keys(sentence: str) -> set[str]:
+    return {key for key, pattern, _r, _c in _MARKET_SUBJECTS if pattern.search(sentence)}
+
+
+def _market_claim_direction(sentence: str) -> int | None:
+    """+1 / -1, or None when the sentence names no direction or names both."""
+    up, down = bool(_MARKET_UP_RE.search(sentence)), bool(_MARKET_DOWN_RE.search(sentence))
+    if up == down:
+        return None
+    return 1 if up else -1
+
+
+def _market_named(sentence: str,
+                  markets: list[SynthMarketReceipt]) -> list[SynthMarketReceipt]:
+    """Instruments this sentence names outright ("Ecopetrol", "COLCAP") — the
+    strongest subject signal there is, and one that needs no subject lexicon."""
+    lowered = sentence.lower()
+    return [m for m in markets
+            if any(t in lowered for t in _market_name_tokens(m.label, m.symbol))]
+
+
+def _market_matches(sentence: str, keys: set[str],
+                    markets: list[SynthMarketReceipt]) -> list[SynthMarketReceipt]:
+    """Instruments this sentence is about — named outright, else by subject class."""
+    named = _market_named(sentence, markets)
+    if named:
+        return named
+    out: list[SynthMarketReceipt] = []
+    for key, _p, roles, classes in _MARKET_SUBJECTS:
+        if key not in keys:
+            continue
+        for m in markets:
+            if m in out:
+                continue
+            if (m.role or "") in roles or (m.asset_class or "") in classes:
+                out.append(m)
+    return out
+
+
+def _market_sign(m: SynthMarketReceipt) -> int | None:
+    """The measured direction of a receipt, or None when it cannot settle one."""
+    if (m.asset_class or "").lower() in _MARKET_AMBIGUOUS_CLASSES:
+        return None
+    if m.change_pct is None:
+        return None
+    if abs(m.change_pct) < _MARKET_FLAT_EPS:
+        return 0
+    return 1 if m.change_pct > 0 else -1
+
+
+def _cited_support(sentence: str, claim: int,
+                   cited_headlines: dict[int, str] | None) -> bool:
+    """A cited evidence headline that itself reports the same move. The claim
+    then HAS a receipt — reported rather than measured — so it stands."""
+    if not cited_headlines:
+        return False
+    for m in _CITE_RE.finditer(sentence):
+        headline = cited_headlines.get(int(m.group(1)))
+        if not headline:
+            continue
+        if _market_subject_keys(headline) and _market_claim_direction(headline) == claim:
+            return True
+    return False
+
+
+def _market_marker(worst: SynthMarketReceipt | None) -> str:
+    if worst is None:
+        return (" — reported (uncorroborated): no market receipt in this edition "
+                "measures that move")
+    asof = f" ({worst.last_close_at})" if worst.last_close_at else ""
+    return (f" — reported (uncorroborated): the served market receipt measures "
+            f"{worst.label} {worst.change_pct:+.2f}% at its last close{asof}")
+
+
+def apply_market_direction_guard(
+    texts: list[str],
+    markets: list[SynthMarketReceipt] | None,
+    *,
+    cited_headlines: dict[int, str] | None = None,
+    terse: bool = False,
+) -> tuple[list[str], list[dict]]:
+    """Downgrade every sentence asserting a market DIRECTION that no receipt
+    carries. Pure. Returns (guarded texts, ledger).
+
+    `terse=True` is the headline form: the ≤14-word headline gets the short
+    "(uncorroborated)" stamp instead of the full clause, so a downgraded lede
+    can never sit under a headline still asserting the move.
+    """
+    if not texts:
+        return texts, []
+    markets = list(markets or [])
+
+    out: list[str] = []
+    ledger: list[dict] = []
+    for text in texts:
+        rebuilt: list[str] = []
+        for sentence in _split_sentences(text or ""):
+            if not sentence.strip():
+                rebuilt.append(sentence)
+                continue
+            keys = _market_subject_keys(sentence)
+            named = _market_named(sentence, markets)
+            claim = _market_claim_direction(sentence) if (keys or named) else None
+            if claim is None or _HEDGE_RE.search(sentence):
+                rebuilt.append(sentence)
+                continue
+            matched = named or _market_matches(sentence, keys, markets)
+            measurable = [(m, s) for m in matched if (s := _market_sign(m)) is not None]
+            if measurable:
+                if any(sign == claim for _m, sign in measurable):
+                    rebuilt.append(sentence)          # the receipt corroborates it
+                    continue
+                worst = max(measurable, key=lambda pair: abs(pair[0].change_pct))[0]
+                basis = "contradicted"
+            else:
+                if _cited_support(sentence, claim, cited_headlines):
+                    rebuilt.append(sentence)          # the press reported the move
+                    continue
+                worst, basis = None, "uncorroborated"
+            marker = _MARKET_TERSE_MARKER if terse else _market_marker(worst)
+            m = _TERMINAL_RE.search(sentence)
+            if m:
+                marked = sentence[:m.start()] + marker + m.group(1) + m.group(2)
+            else:
+                marked = sentence.rstrip() + marker
+            ledger.append({
+                "sentence": sentence.strip(),
+                "claim": "up" if claim == 1 else "down",
+                "subjects": sorted(keys),
+                "basis": basis,
+                "symbol": worst.symbol if worst else None,
+                "label": worst.label if worst else None,
+                "change_pct": worst.change_pct if worst else None,
+                "as_of": worst.last_close_at if worst else None,
+            })
+            rebuilt.append(marked)
+        out.append("".join(rebuilt))
+    return out, ledger
+
+
+# ── capital-as-proxy geography guard (X3-B) ───────────────────────────────────
+# Veracity scorecard claim 1: two testers read two variants of the same lead —
+# one correct ("Chocó"), one false ("epicenter near Bogotá"). The epicenter was
+# San José del Palmar, Chocó, ~240 km WEST of Bogotá (USGS), and the receipts
+# under the story were correct. No code maps a country to its capital; the city
+# entered through the generative lede, which had no city-vs-receipt check.
+#
+# THE RULE: a city appears only when a receipt carries it. Degraded geography
+# names the COUNTRY ("in Colombia") and never a stand-in city.
+#
+# HONEST SCOPE: it fires only on a LOCATION PREPOSITION followed by a
+# Title-Case place the GeoNames gazetteer resolves (`resolve_gazetteer_place`,
+# cities ≥15k + admin-1, country names and the leader/demonym lexicons
+# excluded). A place the gazetteer does not carry (San José del Palmar) is left
+# untouched rather than guessed at, and the longest captured phrase is resolved
+# WHOLE — never by prefix, which would file that Chocó town in Costa Rica.
+_GEO_PREP_ES = ("cerca de", "en las afueras de", "a las afueras de", "en")
+_GEO_TITLE_WORD = r"[A-ZÀ-ÖØ-Þ][\w'’À-ſ-]*"
+_GEO_PLACE_RE = re.compile(
+    r"(?P<prep>\b(?:in|at|near|outside|around|close to|just outside|"
+    r"on the outskirts of|cerca de|en las afueras de|a las afueras de|en)\s+)"
+    r"(?P<place>" + _GEO_TITLE_WORD + r"(?:\s+(?:de|del|la|las|los|el|of|the)\s+"
+    + _GEO_TITLE_WORD + r"|\s+" + _GEO_TITLE_WORD + r"){0,3}"
+    # the ONE comma tail that is unambiguously part of the place name, so the
+    # rewrite never leaves an orphan ("in the United States, D.C.")
+    r"(?:,\s*D\.?\s?C\.?)?)"
+)
+_GEO_DC_TAIL_RE = re.compile(r",\s*D\.?\s?C\.?$")
+# Title-Case words that are never part of a place name — trimmed off the tail so
+# "in Cali Tuesday" still resolves "Cali".
+_GEO_TRAILING_STOP = frozenset({
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    "january", "february", "march", "april", "may", "june", "july", "august",
+    "september", "october", "november", "december", "lunes", "martes",
+    "miércoles", "miercoles", "jueves", "viernes", "sábado", "sabado", "domingo",
+})
+# Country names that read as "the <name>" in running prose.
+_GEO_THE_COUNTRIES = frozenset({
+    "United States", "United Kingdom", "United Arab Emirates", "Netherlands",
+    "Philippines", "Bahamas", "Gambia", "Maldives", "Marshall Islands",
+    "Solomon Islands", "Czech Republic", "Dominican Republic",
+    "Central African Republic", "Democratic Republic of the Congo",
+    "Republic of the Congo", "Ivory Coast",
+})
+
+
+def _fold(text: str) -> str:
+    """Accent- and case-insensitive fold, so a receipt spelling "Choco" still
+    carries the prose's "Chocó"."""
+    stripped = "".join(
+        c for c in unicodedata.normalize("NFKD", text or "")
+        if not unicodedata.combining(c)
+    )
+    return stripped.casefold()
+
+
+def _geo_country_phrase(code: str) -> str | None:
+    name = ISO_COUNTRY_NAMES.get(code)
+    if not name:
+        return None
+    return f"the {name}" if name in _GEO_THE_COUNTRIES else name
+
+
+def apply_geography_guard(
+    texts: list[str], receipt_texts: list[str] | None,
+) -> tuple[list[str], list[dict]]:
+    """Rewrite every located CITY the receipts do not carry down to its country.
+    Pure. Returns (guarded texts, ledger). A no-op without a receipt corpus —
+    with nothing to check against, the guard refuses to rewrite geography."""
+    corpus = [t for t in (receipt_texts or []) if t and str(t).strip()]
+    if not texts or not corpus:
+        return texts, []
+    haystack = _fold(" \n ".join(str(t) for t in corpus))
+
+    out: list[str] = []
+    ledger: list[dict] = []
+    for text in texts:
+        def _replace(m: re.Match) -> str:
+            prep = m.group("prep")
+            place = _GEO_DC_TAIL_RE.sub("", m.group("place").strip()).rstrip(".,;:!?")
+            words = place.split()
+            while words and _fold(words[-1]) in _GEO_TRAILING_STOP:
+                words.pop()
+            place = " ".join(words)
+            if not place:
+                return m.group(0)
+            code = resolve_gazetteer_place(place)
+            if not code:
+                return m.group(0)                     # unresolvable → never guessed
+            if _fold(place) in haystack:
+                return m.group(0)                     # a receipt carries the city
+            country = _geo_country_phrase(code)
+            if not country:
+                return m.group(0)
+            spanish = prep.strip().lower().startswith(_GEO_PREP_ES)
+            # Spanish prose keeps the Spanish preposition; the country name stays
+            # in the ISO English form the rest of the payload uses (and drops the
+            # article, which does not carry across).
+            replacement = ("en " + (ISO_COUNTRY_NAMES.get(code) or country)
+                           if spanish else "in " + country)
+            tail = m.group("place")[len(m.group("place").rstrip()):]
+            ledger.append({
+                "place": place,
+                "country": ISO_COUNTRY_NAMES.get(code),
+                "country_code": code,
+                "replaced_with": replacement,
+            })
+            return replacement + tail
+
+        out.append(_GEO_PLACE_RE.sub(_replace, text or ""))
+    return out, ledger
+
+
 def _extract_json(text: str) -> dict | None:
     """Lenient — providers sometimes fence the JSON or add a sentence around it."""
     try:
@@ -475,7 +867,8 @@ async def synthesize_publication_article(req: SynthesizeRequest) -> dict:
     contract = "dossier-synthesis-v2"
     empty = {"contract": contract, "headline": None, "lede": None, "body": None,
              "unknowns": None, "citations": None, "synthesis": None, "gap": None,
-             "tension_downgrades": None}
+             "tension_downgrades": None, "market_downgrades": None,
+             "geography_downgrades": None}
     # Workbench enrichment F1: pull cached full texts for the evidence URLs and
     # feed excerpts under their [n] lines. Best-effort — synthesis never fails
     # on the enrichment substrate being absent (fresh deploy, table missing, db
@@ -502,23 +895,54 @@ async def synthesize_publication_article(req: SynthesizeRequest) -> dict:
     body = _as_paragraphs(parsed.get("body"))
     if lede or body:
         unknowns = _as_paragraphs(parsed.get("unknowns"))
-        # The prose may not settle a tension the cross-read MEASURED — enforced
-        # after the pass, never left to the model's compliance.
+        table = _citation_table(req)
+        # The prose may not settle a tension the cross-read MEASURED, may not
+        # invent a market direction, and may not invent a place — all three
+        # enforced after the pass, never left to the model's compliance.
         guarded, downgrades = apply_tension_guard(
             ([lede] if lede else []) + (body or []), req.tensions)
+        # Receipt corpus for the geography check: the frozen headlines plus any
+        # fetched full text riding under them. Pin labels are NOT receipts (a
+        # label is itself generated — the mislabel class).
+        receipt_corpus = [row["headline"] for row in table] + [
+            str(art.get("text") or "") for art in article_texts.values()
+        ]
+        # The two X3 guards also cover `unknowns` — it is prose the reader reads,
+        # so an invented city or market move there is the same defect.
+        body_n = len(body or [])
+        prose = guarded + (unknowns or [])
+        prose, market_downgrades = apply_market_direction_guard(
+            prose, req.markets,
+            cited_headlines={row["n"]: row["headline"] for row in table},
+        )
+        prose, geography_downgrades = apply_geography_guard(prose, receipt_corpus)
+        head = 0
         if lede:
-            lede, guarded = guarded[0], guarded[1:]
-        body = guarded or None
+            lede, head = prose[0], 1
+        body = prose[head:head + body_n] or None
+        unknowns = prose[head + body_n:] or None
+        headline = (parsed.get("headline") or None)
+        if headline:
+            # Same two guards on the headline: a downgraded lede must never sit
+            # under a headline still asserting the move, and an invented city in
+            # ≤14 words is the variant a reader quotes.
+            (headline,), headline_geo = apply_geography_guard([headline], receipt_corpus)
+            (headline,), headline_market = apply_market_direction_guard(
+                [headline], req.markets, terse=True)
+            market_downgrades += headline_market
+            geography_downgrades += headline_geo
         citations = _resolve_citations(
-            ([lede] if lede else []) + (body or []), _citation_table(req))
+            ([lede] if lede else []) + (body or []), table)
         return {
             **empty,
-            "headline": (parsed.get("headline") or None),
+            "headline": headline,
             "lede": lede,
             "body": body,
             "unknowns": unknowns,
             "citations": citations or None,
             "tension_downgrades": downgrades or None,
+            "market_downgrades": market_downgrades or None,
+            "geography_downgrades": geography_downgrades or None,
             "provider": provider,
             "error": None,
         }

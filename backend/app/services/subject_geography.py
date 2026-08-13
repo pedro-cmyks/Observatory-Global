@@ -194,6 +194,31 @@ def resolve_place_to_country(place: Any) -> str | None:
     return None
 
 
+def resolve_gazetteer_place(place: Any) -> str | None:
+    """GeoNames-ONLY resolution: a named CITY / admin-1 region → ISO country.
+
+    Deliberately narrower than `resolve_place_to_country` above, for callers
+    that must distinguish "the prose named a CITY" from "the prose named a
+    country" (X3-B, the capital-as-proxy guard):
+
+      * country NAMES resolve to None — "in Colombia" is not a city claim;
+      * the leader/demonym lexicons (`_COUNTRY_PATTERNS`) are NOT consulted —
+        they would resolve "Colombian" and "Petro" to CO, and a guard rewriting
+        "in Colombian territory" to "in Colombia territory" is a regression.
+
+    Returns None for anything the gazetteer does not carry (San José del Palmar,
+    below the 15k floor): the same honest ceiling, never a guess.
+    """
+    text = decode_headline(place)
+    if not text:
+        return None
+    normalized = _normalize_place(text)
+    if not normalized or normalized in _COUNTRY_NAME_TO_ISO:
+        return None
+    code = _place_gazetteer().get(normalized)
+    return _alias(code) if code else None
+
+
 # ── Label ↔ receipt geography conjunct (council R4 N17, 2026-08-11) ──────────
 # The label court entails a label against its receipts but never checks the
 # label's OWN geography claim, and the country-edition slotter admits a thread

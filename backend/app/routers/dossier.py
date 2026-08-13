@@ -46,6 +46,7 @@ from app.services.publication_synthesis import (  # noqa: F401 (re-exported for 
     SynthConnection,
     SynthConnectionNode,
     SynthEvidenceItem,
+    SynthMarketReceipt,
     SynthPin,
     SynthesizeRequest,
     _SYNTH_SYSTEM,
@@ -1760,4 +1761,18 @@ async def dossier_corroborate_status(job_id: str):
 
 @router.post("/synthesize")
 async def dossier_synthesize(req: SynthesizeRequest):
-    return await synthesize_publication_article(req)
+    # Market receipts are MEASURED server-side and REPLACE anything the client
+    # sent: the request is the analyst's frozen evidence, but a receipt that
+    # checks the generated prose (X3-A) can never come from the same side as
+    # the prose. Best-effort — with none, a market-direction claim is still
+    # downgraded, as uncorroborated.
+    countries = list((req.connection.countries if req.connection else []) or [])[:6]
+    try:
+        from app.services.market_receipts import fetch_market_receipts
+        markets = [SynthMarketReceipt(**row) for row in
+                   await fetch_market_receipts(countries)]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("dossier synthesize market receipts skipped: %s: %s",
+                       type(exc).__name__, str(exc)[:200])
+        markets = []
+    return await synthesize_publication_article(req.model_copy(update={"markets": markets}))

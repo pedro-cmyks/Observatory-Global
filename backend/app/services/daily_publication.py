@@ -425,6 +425,7 @@ def build_lead_synthesis_payload(
     *,
     gaps: list[str],
     low_coherence: bool = False,
+    markets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """SynthesizeRequest payload for the daily lead story — the front-page cited
     article. The deduped frozen receipts become the authoritative numbered
@@ -460,6 +461,10 @@ def build_lead_synthesis_payload(
             "low_coherence": bool(low_coherence),
         }],
         "gaps": list(gaps or []),
+        # Served market receipts in scope (world basket + the lead's subject
+        # countries). The prose guard checks any market-direction claim against
+        # them — scorecard claim 6, "stocks rising" over a -0.51% COLCAP.
+        "markets": list(markets or []),
     }
 
 
@@ -920,8 +925,23 @@ async def fetch_daily_publication(
     if lead_id is not None and by_topic.get(lead_id):
         lead_label = label_decisions[lead_id][0]
         lead_grab = bool(publishability_by_id.get(lead_id, {}).get("grab_bag"))
+        # Market receipts for the lead's OWN countries — so a generated
+        # market-direction claim is checked against the measurable instead of
+        # riding a narrative arc (veracity scorecard claim 6). Best-effort:
+        # unavailable receipts leave the guard on its uncorroborated branch.
+        lead_markets: list[dict[str, Any]] = []
+        try:
+            from app.services.market_receipts import fetch_market_receipts
+            lead_markets = await fetch_market_receipts(
+                infer_receipt_subject_geography(by_topic[lead_id])[
+                    "verified_subject_countries"]
+            )
+        except Exception as exc:
+            logger.warning("daily-publication market receipts skipped: %s: %s",
+                           type(exc).__name__, str(exc)[:200])
         lead_payload = build_lead_synthesis_payload(
             lead_label, by_topic[lead_id], gaps=list(package.gaps), low_coherence=lead_grab,
+            markets=lead_markets,
         )
         try:
             article = await synthesize_publication_article(SynthesizeRequest(**lead_payload))
