@@ -10,11 +10,54 @@ The API runs as one Fly app machine, so module/instance state is sufficient
 (same assumption the waitlist limiter already documents). It is NOT durable
 across restarts, which is acceptable for the interim.
 
-Buckets (per IP), all env-tunable:
-  - "paid"   expensive LLM/embed endpoints          default 20 / 5 min
-  - "slow"   external-depth (holds a DB conn ~25s)  default  8 / 5 min
-  - "write"  anonymous DB writes (telemetry/events) default 60 / 1 min
-  - "global" everything else                        default 600 / 1 min
+Buckets (per IP), all env-tunable. A bucket is a COST CLASS, not a surface —
+an endpoint belongs to the one whose per-call cost it actually carries TODAY:
+
+  - "paid"      real spend per call: an LLM pass, an outbound fetch, an embed
+                                                    default 20 / 5 min
+  - "micro_llm" per-item micro-LLM, server-cached, N per rendered page
+                (translation)                       default 120 / 5 min
+  - "read"      artifact / Redis / indexed DB reads that used to sit in "paid"
+                                                    default 90 / 5 min
+  - "slow"      external-depth (holds a DB conn ~25s)  default  8 / 5 min
+  - "write"     anonymous DB writes (telemetry/events) default 60 / 1 min
+  - "global"    everything else                        default 600 / 1 min
+
+W4 (2026-08-13) — why "read" and "micro_llm" exist. The re-judge
+(docs/research/gold/2026-08-13-brief-rejudge.md) searched Nigeria on /brief:
+the header rendered its counts and the body said "the door did not answer",
+and the retry failed identically. Replaying that session against prod made 21
+"paid" requests inside one 300s window and the 21st — the country-edition
+retry — came back 429. The cause was accretion, not the limit: cheap reads had
+collected in the bucket built to protect LLM spend. MEASURED per call, prod,
+2026-08-13:
+
+    /api/v2/country-edition     0.76-1.12s   mig-098 artifact, one indexed read
+    /api/v2/attention/eclipse   0.41s        Redis 300s (24s only on a cold miss)
+    /api/v2/signal/{id}/context 3.3-6.7s     pgvector kNN, no LLM
+    /api/v2/translate           0.45-2.0s    ~65 tokens on a MISS, then cached
+  vs the same session's "global" (600/60s) traffic:
+    /api/v2/briefing            10.4s
+    /api/v2/theme/{id}           8.2s
+    /api/v2/story/{id}/siblings  6.4s
+
+The tightest bucket held the cheapest requests while the heaviest reads rode
+the most generous one. So: "paid" now holds ONLY what bills (and gained the
+LLM POSTs that were sitting on "global" — dossier synthesize/corroborate,
+/api/v2/corroborate), reads move to "read", and translation gets its own lane
+sized to what a page actually renders.
+
+Limit math (stated so the next person can re-derive rather than re-guess):
+  read 90/300s      a heavy tour is 10 country doors + a retry each (20) + 4
+                    tabs polling eclipse every 240s (8) + a story's context
+                    (1) = 29. At the cap: 90 x ~1.0s = 90 connection-seconds
+                    per 300s = 0.3 of one pool connection (pool=10), ~3% of
+                    the pool from a single IP at full tilt.
+  micro_llm 120/300s  the 2026-08-13 Brief payload carries 83 translate-
+                    eligible receipts and "Translate all" fires every one.
+                    At the cap, worst case (100% misses) = 120 x ~65 tokens
+                    ~= $0.003 per IP per 5 min; the per-(signal,lang) cache
+                    means a repeat caller converges on free DB reads.
 
 Kill switch: ATLAS_RATE_LIMIT_ENABLED=false disables all limiting.
 
@@ -73,6 +116,11 @@ def _int_env(name: str, default: int) -> int:
 def _limits() -> dict[str, tuple[int, int]]:
     return {
         "paid": (_int_env("ATLAS_RL_PAID_MAX", 20), _int_env("ATLAS_RL_PAID_WINDOW", 300)),
+        "read": (_int_env("ATLAS_RL_READ_MAX", 90), _int_env("ATLAS_RL_READ_WINDOW", 300)),
+        "micro_llm": (
+            _int_env("ATLAS_RL_MICRO_LLM_MAX", 120),
+            _int_env("ATLAS_RL_MICRO_LLM_WINDOW", 300),
+        ),
         "slow": (_int_env("ATLAS_RL_SLOW_MAX", 8), _int_env("ATLAS_RL_SLOW_WINDOW", 300)),
         "write": (_int_env("ATLAS_RL_WRITE_MAX", 60), _int_env("ATLAS_RL_WRITE_WINDOW", 60)),
         "global": (_int_env("ATLAS_RL_GLOBAL_MAX", 600), _int_env("ATLAS_RL_GLOBAL_WINDOW", 60)),
@@ -88,26 +136,37 @@ def _llm_flag(request: Request) -> bool:
 _RULE_SPECS: list[tuple[str, str, object]] = [
     (r"^/api/v2/theme/[^/]+/external-depth$", "slow", None),
     (r"^/api/v2/research/plan$", "paid", None),
-    (r"^/api/v2/country-edition$", "paid", None),
-    # Heavy read (~24s uncached, 3 SQL blocks under a 45s statement_timeout) —
-    # now Redis-cached (300s TTL), same profile as country-edition/research-plan
-    # above: cache absorbs the repeat-poll traffic, the bucket bounds the
-    # cold/thundering-herd case. NOT the tighter "slow" bucket (8/300s, sized
-    # for the always-uncached external-depth lane) — EclipseModeContext.tsx
-    # polls every 240s from every open tab at the same default params, so a
-    # handful of tabs can plausibly burst 6-8 hits per 5-min window; "paid"
-    # (20/300s) leaves headroom so that normal multi-tab polling never 429s.
-    (r"^/api/v2/attention/eclipse$", "paid", None),
+    # W4: the door a reader opens. Since mig 098 this is an ARTIFACT read —
+    # measured 0.76-1.12s across NG/DE/JP/BR/IN on 2026-08-13, one indexed row
+    # in front of a 120s Redis cache. It only reaches the live build for a
+    # country with nothing stored (KE, 9.1s), and that path is single-flighted
+    # in the service. It was the top blocker in the re-judge's session.
+    (r"^/api/v2/country-edition$", "read", None),
+    # Redis-cached (300s TTL); ~24s only on a cold miss, 0.41s measured warm.
+    # EclipseModeContext.tsx polls every 240s from EVERY open tab, so this is
+    # ambient reader traffic, not an action — it belongs with the reads.
+    (r"^/api/v2/attention/eclipse$", "read", None),
+    # pgvector kNN over signal_embeddings (3.3-6.7s measured). Heavy DB, zero
+    # LLM — the "paid" bucket was never about latency, it is about spend.
+    (r"^/api/v2/signal/[^/]+/context$", "read", None),
     # Article fetch spawns real outbound HTTP per URL — pay-bucket it. The
     # /state lookup is a cheap cache read and stays on the global bucket.
     (r"^/api/v2/research/articles/fetch$", "paid", None),
     # F2: LLM passes (read/crossread) + the leads pool query — paid bucket.
     (r"^/api/v2/research/articles/(?:read|crossread)$", "paid", None),
     (r"^/api/v2/research/leads$", "paid", None),
-    (r"^/api/v2/translate(?:/batch|/text)?$", "paid", None),
+    # Real LLM work that had no rule at all and so rode "global" (600/60s) —
+    # the exact inverse of the reader bug. The status poll below is deliberately
+    # NOT paid: throttling the poll would throttle waiting for a job already paid for.
+    (r"^/api/v2/dossier/corroborate/status/", "global", None),
+    (r"^/api/v2/dossier/(?:synthesize|corroborate|corroborate/start)$", "paid", None),
+    (r"^/api/v2/corroborate$", "paid", None),
+    # Micro-LLM, server-cached per (signal_id, target_lang), fired N times per
+    # rendered page and by "Translate all" over a whole section. Sized to the
+    # page (120/300s), not to an analyst action.
+    (r"^/api/v2/translate(?:/batch|/text)?$", "micro_llm", None),
     (r"^/api/v2/theme/[^/]+/insight$", "paid", None),
     (r"^/api/v2/briefing/insight$", "paid", None),
-    (r"^/api/v2/signal/[^/]+/context$", "paid", None),
     # Thread detail only triggers a paid DeepSeek note when llm= is set;
     # normal opens fall through to the generous global bucket.
     (r"^/api/v2/threads/[^/]+$", "paid", _llm_flag),

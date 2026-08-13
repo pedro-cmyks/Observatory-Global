@@ -183,9 +183,14 @@ def test_422_on_bad_target_lang():
 
 
 def test_rate_limit_rule_covers_translate_text():
+    # The rule must exist and must bound the lane — it is an LLM call. W4
+    # (2026-08-13) moved it off "paid" (20/300s, sized for analyst actions like
+    # dossier synthesis) onto "micro_llm": translation is ~65 tokens, cached per
+    # (signal_id, lang), and fires once per rendered non-English headline, so a
+    # single "Translate all" over a Brief section outran the action bucket.
     from app.rate_limit import _build_rules
 
     assert any(
-        p.match("/api/v2/translate/text") and bucket == "paid"
+        p.match("/api/v2/translate/text") and bucket == "micro_llm"
         for (p, bucket, _pred) in _build_rules()
     )

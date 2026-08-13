@@ -22,13 +22,17 @@ def test_siblings_bucket_is_not_paid():
     # T11 gate fix (L3): siblings fires on every thread open (not an explicit
     # paid action) — it must NOT ride the tight "paid" bucket (20/300s) that
     # starved a normal browsing session during the 2026-07-29 gate walk.
-    line = next(
-        (ln for ln in RATE.splitlines() if "siblings" in ln and "/api/v2/story/" in ln),
-        "",
+    # Asked of the RULES, not of a source line: W4 (2026-08-13) added a
+    # measurement table to the module docstring that mentions this path, and a
+    # line-scraping assertion picked the prose over the rule.
+    from app.rate_limit import _build_rules
+
+    path = "/api/v2/story/dynamic-topic-11877/siblings"
+    bucket = next(
+        (b for (p, b, pred) in _build_rules() if p.match(path) and pred is None),
+        "global",
     )
-    assert line, "siblings rate rule line not found"
-    assert '"paid"' not in line
-    assert '"global"' in line
+    assert bucket == "global"
 
 
 def test_full_path_and_contract():
