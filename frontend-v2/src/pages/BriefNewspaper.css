@@ -1261,6 +1261,45 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
 .brief-bottom-num.negative { color: var(--r-critical); }
 .brief-bottom-num.positive { color: var(--r-accent); }
 
+/* W5 — the category index carries BOTH of its numbers, so the raw-signal count
+   can never be read alone as "stories on this page". The tracked count leads
+   (it is the one a desk could have drawn from); raw recedes. Wraps rather than
+   overflowing at 375px. */
+.brief-bottom-basis {
+  margin: 4px 3px 10px;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.brief-bottom-num {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  white-space: normal;
+}
+
+.brief-bottom-topics { white-space: nowrap; }
+
+.brief-bottom-signals {
+  white-space: nowrap;
+  opacity: 0.62;
+}
+
+/* W5 — the front page names where its list ends and the console's continues. */
+.brief-coherence-note {
+  font-family: var(--r-sans);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--r-muted);
+  margin: 14px 3px 0;
+  max-width: 80ch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--r-line);
+}
+
 .brief-scale-note {
   font-family: var(--r-mono);
   font-size: 0.6rem;
