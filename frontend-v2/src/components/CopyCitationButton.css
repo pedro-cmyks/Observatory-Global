@@ -31,9 +31,18 @@
   color: var(--color-severity-notable, #fbbf24);
 }
 
-/* Touch: no hover to reveal intent, so the affordance rests readable. */
+/* Touch: no hover to reveal intent, so the affordance rests readable — and the
+   hit box grows past the 13px glyph WITHOUT changing the row's height (the
+   padding is cancelled by an equal negative block margin, measured: the receipt
+   meta stays 44px tall at 375px). */
 @media (hover: none) {
-  .copy-citation-btn { opacity: 0.7; }
+  .copy-citation-btn {
+    opacity: 0.7;
+    width: auto;
+    min-width: 1.15em;
+    padding: 8px 7px;
+    margin: -8px 0;
+  }
 }
 
 /* Story / dossier level — a quiet text button in a section header. */
