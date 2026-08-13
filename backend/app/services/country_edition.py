@@ -59,6 +59,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable, Optional, Sequence
 
 from app import db
+from app.services import ingest_basis
 from app.services.coverage_gaps import COUNTRY_GAPS_SQL, country_gap_floor
 from app.services.subject_geography import (
     label_geography_conflict,
@@ -288,6 +289,10 @@ def build_country_edition_payload(
         "window_hours": window_hours,
         "threads": ranked_threads,
         "coverage_gaps": coverage_gaps,
+        # A "what is missing" band is a coverage-SHAPE claim, so it ships with
+        # the population it was measured over (X1, 2026-08-13). The gap is a
+        # hole in Atlas's ingest and gate, never proof of a silent press.
+        "basis": ingest_basis.basis_field(),
         "article_enrichment": enrichment,
         # always present, even when nothing was excluded — an absent block
         # would read as "the guard did not run" (N17's own lesson: a missing

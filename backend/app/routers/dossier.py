@@ -1266,11 +1266,18 @@ CORROB_LLM_RESERVE_S = 8.0
 _CORROB_JOBS: dict[str, dict] = {}
 _CORROB_JOB_TTL_S = 1800
 _ASYMMETRY_SYSTEM = (
-    "You compare what an analyst's PINNED evidence emphasizes versus what WEB "
-    "coverage titles emphasize, per story and overall. STRICT RULES: use ONLY "
-    "the supplied titles — never invent events, actors, or framings not present "
-    "in them; name which side (pinned set vs web) carries an emphasis the other "
-    "lacks; if no clear asymmetry is visible from the titles, say exactly that. "
+    "You compare what an analyst's PINNED evidence emphasizes versus what the "
+    "RETRIEVED search titles emphasize, per story and overall. STRICT RULES: "
+    "use ONLY the supplied titles — never invent events, actors, or framings "
+    "not present in them; name which side (pinned set vs retrieved titles) "
+    "carries an emphasis the other lacks; if no clear asymmetry is visible "
+    "from the titles, say exactly that. "
+    # X1 (2026-08-13): the veracity panel was told the US press had not picked
+    # up Hormuz while CNN ran live coverage. A handful of retrieved titles is
+    # not a census of the press, so absence in them is never absence out there.
+    "Call the second side 'the retrieved titles', never 'the web' or 'the "
+    "press'. NEVER say the web, the press, or any outlet did not cover "
+    "something — at most say the retrieved titles do not show it. "
     "Answer in 2-4 plain sentences, no preamble, no JSON."
 )
 
@@ -1287,8 +1294,8 @@ def _asymmetry_user(pins: list[CorrobPin], web_titles: dict[str, list[str]]) -> 
         for t in titles[:6]:
             parts.append(f"  web: {t}")
     parts.append(
-        "\nWhat does the web coverage emphasize that the pinned evidence does "
-        "not, and vice versa?")
+        "\nWhat do the RETRIEVED titles emphasize that the pinned evidence "
+        "does not, and vice versa?")
     return "\n".join(parts)
 
 

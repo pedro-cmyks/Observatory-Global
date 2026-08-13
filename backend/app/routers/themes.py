@@ -2311,12 +2311,14 @@ async def get_theme_insight(
     theme_label = _clean_theme_label(theme_code)
 
     user_prompt = (
-        f'Analyze the global media coverage for the topic "{theme_label}" over the last {hours} hours.\n\n'
+        f'Analyze the coverage ATLAS INGESTED for the topic "{theme_label}" over the last {hours} hours.\n\n'
         f"Data points to weave into your summary:\n"
-        f"- Total volume: {total_signals} articles across {country_count} countries.\n"
+        f"- Total volume: {total_signals} articles across {country_count} countries, "
+        "counted over Atlas's own feed set (~220 curated feeds plus the GDELT firehose), "
+        "which is a sample of the world's press and not a census of it.\n"
         f"- Number of distinct sources: {source_count}\n"
         f"- Overall global tone (sentiment): {global_sentiment:+.1f} (where negative is bad/pessimistic, positive is good/optimistic)\n"
-        f"- Key countries driving the coverage (with their specific tone): {top_countries_formatted}\n"
+        f"- Countries with the most ingested coverage (with their specific tone): {top_countries_formatted}\n"
         f"- Current momentum: {trend_description}\n\n"
         "Write your 2-3 sentence summary now."
     )
@@ -2329,7 +2331,18 @@ async def get_theme_insight(
         "2. Do not write like a robot listing statistics. Weave the data (countries, sentiment, volume) into a fluid, human-readable narrative.\n"
         "3. Highlight interesting contrasts (e.g., if sentiment is negative in Russia but positive in the US, mention the regional split naturally).\n"
         "4. Keep it exactly 2-3 sentences. Be insightful, engaging, and professional.\n"
-        "5. Never use em-dashes (—) or en-dashes. Rephrase with commas or separate sentences."
+        "5. Never use em-dashes (—) or en-dashes. Rephrase with commas or separate sentences.\n"
+        # X1 (2026-08-13): Atlas told a blind panel the US press had not picked
+        # up the Hormuz story while CNN ran live coverage, and that Colombia had
+        # no domestic voices on its own earthquake while El Tiempo led with it.
+        # Both were the shape of the INGEST read as the shape of the WORLD.
+        "6. What you are shown is Atlas's ingested sample, never the whole press. "
+        "NEVER claim that a country, region or outlet is absent, silent, missing, "
+        "not covering, or ignoring the topic: a low or zero count means Atlas "
+        "ingested little from there, which is a fact about Atlas's feeds. If you "
+        "mention thin coverage at all, say it is thin IN THIS SAMPLE.\n"
+        "7. Do not call any figure a global maximum or minimum, and do not describe "
+        "the coverage as global, worldwide, or complete."
     )
 
     insight_text: Optional[str] = None

@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import math
 
+from app.services import ingest_basis
+
 CJK_LANGS = ("zh", "ja", "ko")
 CJK_TARGET = 0.05  # aspirational CJK share of language-known corpus
 
@@ -69,6 +71,11 @@ def relation(scope_total: int, origin_known: int, domestic: int,
                "pct_of_foreign": round(n / foreign, 4) if foreign else 0.0}
     return {
         "definition": "self_voice = outlet based in the subject country (ownership, not language)",
+        # The population these ratios are over. X1 (2026-08-13): a blind panel
+        # read "self_voice 0%" on Colombia as "Colombia's press said nothing"
+        # while El Tiempo/Caracol/El Colombiano covered the quake massively.
+        # Served as data so every renderer states the same base.
+        "basis": ingest_basis.basis_field(),
         "scope_signals": scope_total,
         "attributable_voices": origin_known,
         "unattributed": max(scope_total - origin_known, 0),

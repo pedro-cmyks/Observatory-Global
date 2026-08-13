@@ -1163,8 +1163,10 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
     #       (repair_scale_claims) — wording alone cannot close a generative slip.
     top_n = len(top_countries)
     user_prompt = (
-        f"Describe the measured shape of press coverage over the last {hours} hours.\n"
-        f"- Total coverage: {total:,} articles across {countries} countries\n"
+        f"Describe the measured shape of the press coverage ATLAS INGESTED over the last {hours} hours.\n"
+        f"- Total coverage ingested: {total:,} articles across {countries} countries, "
+        "counted over Atlas's own feed set (~220 curated feeds plus the GDELT firehose) "
+        "— a sample of the world's press, not a census of it\n"
         "- Tone scale: -1.00 to +1.00, fixed bounds (negative = critical/conflict-heavy "
         "wording, positive = supportive wording). Those two bounds are constants of the "
         "scale; a measured tone is never one of them.\n"
@@ -1198,6 +1200,12 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
         "present, do not mention themes or categories at all.\n"
         "6. When you mention the tone scale, write its bounds exactly as given (-1 to +1). "
         "Never restate a scale using a measured figure as one of its bounds.\n"
+        # X1 (2026-08-13): the systemic class from the veracity scorecard — the
+        # shape of Atlas's ingest served as the shape of the world's press.
+        "7. These counts are Atlas's ingested sample, never the whole press. NEVER say "
+        "a country, region or outlet is absent, silent, missing or not covering something; "
+        "a low or zero count is a fact about Atlas's feeds. Do not call the coverage "
+        "global, worldwide or complete.\n"
         "Be concise and neutral. No markdown, no bullet points — flowing prose only."
     )
 

@@ -97,6 +97,16 @@ def test_relation_handles_zero_attributable():
     assert r["unattributed"] == 500
 
 
+def test_relation_serves_its_ingest_basis(monkeypatch=None):
+    """X1 (2026-08-13): "0% Colombian voices" was true of Atlas's feeds and
+    false of Colombia. The ratio therefore ships with the population it was
+    measured over, so the panel copy cannot present it as a world fact."""
+    r = voice_mix.relation(1000, 800, 0, 0, [("US", 800)], [("en", 800)])
+    assert r["self_voice_ratio"] == 0.0
+    assert r["basis"]["measured_over"] == "atlas_ingest"
+    assert "not that nobody did" in r["basis"]["note"]
+
+
 # ── /voice-mix degraded path (2026-07-18, intermittent-503 fix) ──────────────
 # Under M1 batch-window DB contention the aggregation used to bubble a
 # QueryCanceledError into the global db_busy handler → 503. The router must

@@ -316,6 +316,49 @@ def test_gap_prose_counts_a_non_zero_domestic_voice_honestly():
     assert "5 of the 53" in gap_prose(chosen)
 
 
+# ── X1: the ingest is not the world (2026-08-13 veracity scorecard) ─────────
+# The panel read "none came from Colombia's own press" as "Colombia said
+# nothing" while El Tiempo was covering the quake massively. The base has to
+# arrive in the sentence, before the claim, and the silence reading has to be
+# refused in the copy itself.
+
+def test_gap_prose_declares_its_base_BEFORE_the_claim():
+    line = gap_prose(select_gap([TIMOR])[0])
+    assert line.startswith("In what Atlas ingests,")
+    # ...and the qualification precedes the country, not trails the paragraph.
+    assert line.index("Atlas") < line.index("Timor-Leste")
+
+
+def test_gap_prose_refuses_the_silence_reading_when_domestic_is_zero():
+    line = gap_prose(select_gap([TIMOR])[0])
+    assert "not proof that Timor-Leste's press stayed silent" in line
+    # The population is named, so "Atlas's feed set" is not an empty gesture.
+    assert "GDELT" in line and "curated feeds" in line
+
+
+def test_gap_prose_qualifies_a_non_zero_share_as_a_share_of_the_ingest():
+    line = gap_prose(select_gap([{**TIMOR, "domestic_n": 5}])[0])
+    # A share is not a silence claim, so it takes the share caveat, not the
+    # absence one — but its denominator is still declared.
+    assert "not of everything published" in line
+    assert "stayed silent" not in line
+
+
+def test_gap_payload_carries_the_ingest_basis_so_copy_cannot_drift():
+    chosen, scored = select_gap([TIMOR])
+    payload = build_gap_payload(chosen, scored, day=date(2026, 8, 12),
+                                day_complete=True)
+    assert payload["basis"]["measured_over"] == "atlas_ingest"
+    assert "not that nobody did" in payload["basis"]["note"]
+
+
+def test_gap_payload_carries_the_basis_even_when_nothing_clears():
+    # An empty day still renders copy about coverage shape, so it still needs
+    # its base.
+    payload = build_gap_payload(None, [], day=date(2026, 8, 12), day_complete=True)
+    assert payload["basis"]["measured_over"] == "atlas_ingest"
+
+
 def test_gap_payload_is_honest_when_no_country_clears():
     payload = build_gap_payload(None, [], day=date(2026, 8, 12), day_complete=True)
     assert payload["contract"] == GAP_CONTRACT

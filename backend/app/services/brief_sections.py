@@ -37,6 +37,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable, Sequence
 
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
+from app.services import ingest_basis
 
 logger = logging.getLogger(__name__)
 
@@ -317,7 +318,19 @@ def select_gap(rows: Iterable[dict[str, Any]]
 
 
 def gap_prose(candidate: dict[str, Any]) -> str:
-    """The finding as a sentence, entirely from measured fields."""
+    """The finding as a sentence, entirely from measured fields.
+
+    The base is IN the sentence (X1, 2026-08-13). This template's previous form
+    said "of the 53 signals whose outlet home country is known, none came from
+    Timor-Leste's own press" — every word true, and read by the blind panel as
+    "that country's press said nothing". On the Colombia earthquake that reading
+    was flatly false: El Tiempo, Caracol and El Colombiano were covering it
+    massively; what Atlas had measured was a hole in its own feed set.
+
+    So the qualification now arrives BEFORE the claim rather than as a footnote
+    after it, and a zero carries its own refusal (`absence_caveat`) instead of
+    leaving the silence inference to the reader.
+    """
     name = country_name(candidate["country_code"])
     known = candidate["known_origin_n"]
     domestic = candidate["domestic_n"]
@@ -326,10 +339,16 @@ def gap_prose(candidate: dict[str, Any]) -> str:
         if domestic == 0
         else f"{domestic} of the {known} came from {name}'s own press"
     )
+    closer = (
+        ingest_basis.absence_caveat(name)
+        if domestic == 0
+        else ingest_basis.share_caveat()
+    )
     return (
-        f"{name} ran {candidate['multiplier']:g}× its own daily baseline "
-        f"({candidate['volume']} signals against {candidate['baseline']:g}); "
-        f"of the {known} signals whose outlet home country is known, {own}."
+        f"{ingest_basis.IN_INGEST}, {name} ran {candidate['multiplier']:g}× its "
+        f"own daily baseline ({candidate['volume']} signals against "
+        f"{candidate['baseline']:g}); of the {known} signals whose outlet home "
+        f"country is known, {own}. {closer}"
     )
 
 
@@ -352,6 +371,9 @@ def build_gap_payload(chosen: dict[str, Any] | None,
         # baselines — the bar therefore errs toward silence, never toward a
         # fabricated finding.
         "day_complete": day_complete,
+        # The population this whole section is measured over — served as data so
+        # the renderer's copy cannot drift from it (X1).
+        "basis": ingest_basis.basis_field(),
         "candidates_scored": len(scored),
         "candidates_cleared": sum(1 for row in scored if row["cleared"]),
         "measured_at": (measured_at or datetime.now(timezone.utc)).isoformat(),
