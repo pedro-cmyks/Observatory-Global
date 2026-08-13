@@ -7,6 +7,8 @@
 // Anti-goal: this is a coverage/volume trail. It never implies public-attention
 // is corroboration — public attention is not a step in the route.
 
+import { MENTIONED_IT, PASSED_VERIFICATION } from './statPhrases'
+
 export interface EvidenceRouteInput {
   countryName: string
   /** Distinct outlets covering the country (top_sources.length). */
@@ -62,12 +64,20 @@ export interface TopicEvidenceRouteInput {
   sourcedEvidenceCount?: number | null
 }
 
-/** ThemeDetail: Thread -> Raw assigned -> Gate-verified -> Countries -> Source Mix -> Evidence. */
+/**
+ * ThemeDetail: Thread -> Raw assigned -> Gate-verified -> Countries -> Source Mix -> Evidence.
+ *
+ * X4 (2026-08-13): "Raw assigned / Gate-verified" is a verbatim witness from
+ * the blind college's C5 — four of eight personas could not read the funnel.
+ * The engine's own terms stay as labels (the analyst navigates by them) and
+ * the plain reading rides in `detail`, which this breadcrumb already renders
+ * beside the count.
+ */
 export function buildTopicEvidenceRoute(input: TopicEvidenceRouteInput): EvidenceRouteStep[] {
   return [
     { key: 'topic', label: input.topicLabel, count: null, detail: null, targetId: 'td-header' },
-    { key: 'raw', label: 'Raw assigned', count: asCount(input.rawAssignedCount), detail: null, targetId: 'td-header' },
-    { key: 'verified', label: 'Gate-verified', count: asCount(input.verifiedCount), detail: null, targetId: 'td-signals' },
+    { key: 'raw', label: 'Raw assigned', count: asCount(input.rawAssignedCount), detail: MENTIONED_IT, targetId: 'td-header' },
+    { key: 'verified', label: 'Gate-verified', count: asCount(input.verifiedCount), detail: PASSED_VERIFICATION, targetId: 'td-signals' },
     { key: 'countries', label: 'Countries', count: asCount(input.countryCount), detail: null, targetId: 'td-coverage' },
     { key: 'sources', label: 'Source Mix', count: asCount(input.outletCount), detail: null, targetId: 'td-sources' },
     { key: 'signals', label: 'Evidence Signals', count: asCount(input.sourcedEvidenceCount), detail: null, targetId: 'td-signals' },

@@ -8,6 +8,7 @@ import {
   risingEmptyCopy,
   sectionReceiptToEvidence,
   sectionReceipts,
+  whyNowParts,
   type GapSection,
   type RisingSection,
 } from './briefSections'
@@ -172,5 +173,41 @@ describe('section receipts', () => {
     expect(sectionReceipts([{ headline: 'No id here' }])).toEqual([
       expect.objectContaining({ id: undefined, headline: 'No id here' }),
     ])
+  })
+})
+
+// X4 (2026-08-13) — blind college C5. "surprise 2.6σ over its own baseline,
+// velocity +0.59 (log-volume per 6 h)" was a named witness. The backend now
+// serves the plain reading and the statistics separately so the Brief can set
+// them differently; this splitter also has to survive a seal frozen BEFORE X4.
+describe('whyNowParts — the plain lead and the numbers behind it', () => {
+  it('keeps the two halves the backend served', () => {
+    const parts = whyNowParts({
+      thread_id: 'dynamic-topic-9',
+      label: 'x',
+      why_now_plain: 'Rising much faster than its own normal pace, and still speeding up',
+      why_now_measured: 'surprise 2.6σ over its own baseline, velocity +0.59 (log-volume per 6 h) on 116 signals in the movement window',
+      why_now: 'joined — ignored when both halves exist',
+    })
+    expect(parts.plain).toBe('Rising much faster than its own normal pace, and still speeding up')
+    expect(parts.measured).toContain('2.6σ')
+    // The number is NOT dropped: this is translation, not simplification.
+    expect(parts.measured).toContain('116 signals')
+  })
+
+  it('prints a pre-X4 seal verbatim rather than guessing where a clause was', () => {
+    const parts = whyNowParts({
+      thread_id: 'dynamic-topic-9',
+      label: 'x',
+      why_now: 'surprise 2.6σ over its own baseline, velocity +0.59 (log-volume per 6 h) on 116 signals in the movement window',
+    })
+    expect(parts.plain).toBeNull()
+    expect(parts.measured).toContain('2.6σ')
+  })
+
+  it('has nothing to say when the item carries no why-now at all', () => {
+    expect(whyNowParts({ thread_id: 'dynamic-topic-9', label: 'x' }))
+      .toEqual({ plain: null, measured: null })
+    expect(whyNowParts(null)).toEqual({ plain: null, measured: null })
   })
 })

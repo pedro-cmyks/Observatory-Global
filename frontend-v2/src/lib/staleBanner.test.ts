@@ -35,11 +35,11 @@ describe('buildStaleBanner', () => {
         expect(b.served).toBe('live')
         expect(b.edition).toBe('Sealed edition from Jul 15')
         expect(b.age).toBe('sealed 2 days ago')
-        expect(b.why).toBe('the last nightly publication did not complete')
+        expect(b.why).toBe('last night’s edition did not finish building')
         expect(b.liveNote).toBe('live view below is current')
         expect(b.nextAttempt).toBe('next seal attempt 02:30')
         expect(b.sentence).toBe(
-            'Sealed edition from Jul 15 · sealed 2 days ago · the last nightly publication did not complete · live view below is current · next seal attempt 02:30',
+            'Sealed edition from Jul 15 · sealed 2 days ago · last night’s edition did not finish building · live view below is current · next seal attempt 02:30',
         )
     })
 
@@ -74,11 +74,45 @@ describe('buildStaleBanner', () => {
     it('why phrase reflects the dominant failure reason honestly', () => {
         const why = (codes: string[], sealedAt = '2026-07-15T02:30:00Z') =>
             buildStaleBanner({ sealedAt, editionDate: '2026-07-15', servedFromSeal: false, reasonCodes: codes, now: NOW }).why
-        expect(why(['contract_mismatch'])).toBe('the sealed edition could not be read')
-        expect(why(['candidate_universe_incomplete'])).toBe('the last nightly publication did not finish reconciling')
-        expect(why(['edition_degraded'])).toBe('the last nightly publication did not complete')
+        expect(why(['contract_mismatch'])).toBe('last night’s edition could not be opened')
+        expect(why(['candidate_universe_incomplete'])).toBe('last night’s edition did not finish checking its own story list')
+        expect(why(['edition_degraded'])).toBe('last night’s edition did not finish building')
         // stale by age with no explicit reason still reads honestly
-        expect(why([])).toBe('the last nightly publication did not complete')
+        expect(why([])).toBe('last night’s edition did not finish building')
+    })
+
+    // X4 (2026-08-13) — blind college C5. "the sealed edition carried no
+    // stories" was a named witness: four of eight personas could not parse the
+    // page's own vocabulary. The FACT is unchanged; the words are the reader's.
+    it('says what an empty seal means in words a non-analyst can read', () => {
+        const b = buildStaleBanner({
+            sealedAt: '2026-07-15T02:30:00Z', editionDate: '2026-07-15',
+            servedFromSeal: false, reasonCodes: ['no_story_nodes'], now: NOW,
+        })
+        expect(b.why).toBe('last night’s edition was assembled empty')
+        // The live escape stays in the same sentence — the reader's next
+        // question ("so what am I looking at?") is answered where they are.
+        expect(b.sentence).toContain('live view below is current')
+    })
+
+    it('keeps every why-phrase free of the page’s internal vocabulary', () => {
+        const codes = [
+            'contract_mismatch', 'no_story_nodes', 'seal_stale',
+            'seal_time_unknown', 'edition_degraded', 'candidate_universe_incomplete',
+        ]
+        for (const code of codes) {
+            const { why } = buildStaleBanner({
+                sealedAt: '2026-07-15T02:30:00Z', editionDate: '2026-07-15',
+                servedFromSeal: false, reasonCodes: [code], now: NOW,
+            })
+            // "sealed"/"seal" is the machine's word for the nightly build and
+            // it is what the panel stumbled on. The banner's own label still
+            // carries the dated "Sealed edition from Jul 15" — that one has a
+            // date beside it and reads; this clause has to stand alone.
+            expect(why.toLowerCase()).not.toContain('seal')
+            expect(why.toLowerCase()).not.toContain('publication')
+            expect(why.toLowerCase()).not.toContain('reconcil')
+        }
     })
 
     it('accepts a custom next-seal time', () => {

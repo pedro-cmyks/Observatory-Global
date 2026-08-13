@@ -49,6 +49,18 @@ export interface RisingItem {
   trend?: string | null
   /** The measured why-now, already templated backend-side. */
   why_now?: string
+  /**
+   * X4 (2026-08-13) — the same why-now, split so the renderer can set the two
+   * halves differently instead of re-parsing a sentence client-side.
+   *
+   * `why_now_plain` is the lay reading ("Rising much faster than its own normal
+   * pace, and still speeding up"); `why_now_measured` is the statistics that
+   * back it. Both come from `brief_sections.py`, and `why_now` is exactly their
+   * join, so a payload from an older seal that carries only `why_now` still
+   * renders the whole sentence.
+   */
+  why_now_plain?: string | null
+  why_now_measured?: string | null
   receipts?: SectionReceipt[] | null
   receipt_status?: string | null
   /** Which membership regime answered for the receipts (v1-compat / unified). */
@@ -189,6 +201,32 @@ export function gapConfidenceChip(
     tip: note
       || 'This bar is provisional: it has not been validated against enough measured days yet.',
   }
+}
+
+export interface WhyNowParts {
+  /** The lay reading, set in reader type. Null when the payload predates X4. */
+  plain: string | null
+  /** The statistics that back it, set as a stat line. */
+  measured: string | null
+}
+
+/**
+ * Split a rising item's why-now into the two halves the Brief renders.
+ *
+ * X4 (2026-08-13) — blind college C5. The number stays and gains a plain
+ * companion, so the renderer needs both halves separately. The backend serves
+ * them that way; this function exists for the payloads that do NOT — a sealed
+ * edition frozen before X4 carries only the joined `why_now`, and the honest
+ * thing to do with an old string is print it verbatim as the measured half
+ * rather than guess where a plain clause might have been.
+ */
+export function whyNowParts(item: RisingItem | null | undefined): WhyNowParts {
+  const plain = (item?.why_now_plain ?? '').trim()
+  const measured = (item?.why_now_measured ?? '').trim()
+  if (plain && measured) return { plain, measured }
+  const joined = (item?.why_now ?? '').trim()
+  if (measured) return { plain: plain || null, measured }
+  return { plain: plain || null, measured: joined || null }
 }
 
 /** Map one served receipt onto the Brief's receipt row contract. */

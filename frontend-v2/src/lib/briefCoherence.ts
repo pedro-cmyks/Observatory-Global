@@ -91,7 +91,12 @@ export function frontPageScope({ servedFromSeal, shown, cap }: FrontPageScopeInp
 
   const sentence = n === 0
     ? (servedFromSeal
-        ? 'The sealed edition carried no stories.'
+        // X4 (2026-08-13, blind college C5): "the sealed edition carried no
+        // stories" was a named witness — a true sentence in the machine's own
+        // vocabulary that four of eight personas could not parse. Same fact,
+        // reader's words, and it answers the question the emptiness raises
+        // ("then what am I looking at?") instead of leaving it hanging.
+        ? 'Last night’s edition was assembled empty — the live view below is current.'
         : 'The live rank placed no story on this page.')
     : truncated
       ? `These ${population} — this page's cap, so the rank continues past it.`

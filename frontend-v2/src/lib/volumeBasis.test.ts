@@ -56,6 +56,34 @@ describe('anomalyMultiplierBasis', () => {
     expect(anomalyMultiplierBasis({ multiplier: undefined }).text).toBeNull()
     expect(anomalyMultiplierBasis({ multiplier: Number.NaN }).text).toBeNull()
   })
+
+  // X4 (2026-08-13) — blind college C5. W5 already renamed this badge's 12σ to
+  // 12×, which made it CORRECT without making it READABLE: "12× VS 8-DAY
+  // BASELINE" was quoted verbatim as unparseable by four of eight personas.
+  // The badge keeps the ratio and gains the sentence beside it.
+  it('carries a plain companion the badge can print beside the ratio', () => {
+    const b = anomalyMultiplierBasis({ multiplier: 12.4, baselineDays: 8 })
+    expect(b.text).toBe('12× vs 8-day baseline')
+    expect(b.plain).toBe('twelve times its usual coverage')
+  })
+
+  it('never lets the companion out-claim the ratio', () => {
+    // 1.4x is a real but modest surge; the words must not promise a multiple.
+    expect(anomalyMultiplierBasis({ multiplier: 1.4, baselineDays: 8 }).plain)
+      .toBe('about 1.4 times its usual coverage')
+    // A zero has no "times" reading at all, so it gets no sentence.
+    expect(anomalyMultiplierBasis({ multiplier: 0, baselineDays: 8 }).plain).toBeNull()
+    expect(anomalyMultiplierBasis({ multiplier: null }).plain).toBeNull()
+  })
+
+  it('never states a precision the badge itself withheld', () => {
+    // The badge rounds 12.4 to "12×". A companion reading "about 12.4 times"
+    // beside it would hand back the precision the badge dropped — two numbers
+    // for one quantity, the exact defect this module exists to prevent.
+    const b = anomalyMultiplierBasis({ multiplier: 12.4, baselineDays: 8 })
+    expect(b.plain).not.toMatch(/12\.4/)
+    expect(b.text).toContain('12×')
+  })
 })
 
 describe('volumeZBasis', () => {
@@ -110,5 +138,24 @@ describe('volumeZBasis', () => {
     expect(b.tip).toMatch(/the current window/i)
     expect(b.tip).not.toMatch(/\d+-day baseline/)
     expect(b.tip).not.toMatch(/\d+ of \d+ days/)
+  })
+
+  // X4 (2026-08-13) — blind college C5. "z" is the single densest token on the
+  // country panel. The number stays for the analyst; the direction-with-a-size
+  // rides beside it for everyone else.
+  it('carries a plain companion beside the z-score', () => {
+    expect(volumeZBasis({ zScore: 71.2, windowLabel: '24h', baselineDays: 7 }).plain)
+      .toBe('far above its usual level')
+    expect(volumeZBasis({ zScore: 2.1, windowLabel: '24h', baselineDays: 7 }).plain)
+      .toBe('above its usual level')
+    expect(volumeZBasis({ zScore: 0, windowLabel: '24h', baselineDays: 7 }).plain)
+      .toBe('around its usual level')
+  })
+
+  it('withholds the companion exactly where it withholds the number', () => {
+    // A thin baseline already refuses precision; the words must not smuggle a
+    // magnitude back in. The chip's own "(thin baseline)" carries the state.
+    expect(volumeZBasis({ zScore: 71.2, thinBaseline: true, daysObserved: 2 }).plain).toBeNull()
+    expect(volumeZBasis({ zScore: null }).plain).toBeNull()
   })
 })

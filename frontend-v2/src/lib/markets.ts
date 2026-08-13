@@ -14,6 +14,7 @@
 // an empty-state (design §7).
 
 import { useEffect, useState } from 'react'
+import { tradingWindowPhrase } from './statPhrases'
 
 export type MarketRole = 'currency' | 'index' | 'champion' | 'export-commodity'
 
@@ -179,7 +180,16 @@ export function changeWindowTip(
 ): string | null {
   const label = changeWindowLabel(inst)
   if (!label) return null
-  return `Net change across the last ${label} of daily closes (first vs last) — NOT today's move, and not a claim that news moved it.`
+  // X4 (2026-08-13, blind college C5): "sessions" is trade vocabulary. The
+  // LABEL keeps it — W5 pinned that deliberately, because a bare "30 days"
+  // reads as calendar days and is wrong by ~2x — so the word is glossed here,
+  // where the tile's window is already explained. Nothing is given up: the tip
+  // still carries the measured window and the two refusals.
+  const plainWindow = tradingWindowPhrase(
+    (inst.spark_30d ?? []).filter(v => typeof v === 'number' && isFinite(v)).length,
+  )
+  const gloss = plainWindow ? ` — that is ${plainWindow} the market was open` : ''
+  return `Net change across the last ${label} of daily closes, first vs last${gloss}. NOT today's move, and not a claim that news moved it.`
 }
 
 /** A neutral triangle glyph for direction — redundant with color + the signed %,

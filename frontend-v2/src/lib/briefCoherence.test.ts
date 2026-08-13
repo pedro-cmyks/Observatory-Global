@@ -58,6 +58,17 @@ describe('frontPageScope — the front page names which population it is showing
     expect(s.truncated).toBe(false)
   })
 
+  // X4 (2026-08-13) — blind college C5. Same witness sentence as the seal
+  // banner's, in a second place: an empty edition has to say so in words a
+  // reader who has never met "sealed" can act on.
+  it('says an empty edition in plain words and points at what IS current', () => {
+    const s = frontPageScope({ servedFromSeal: true, shown: 0, cap: 10 })
+    expect(s.sentence).toBe(
+      'Last night’s edition was assembled empty — the live view below is current.',
+    )
+    expect(s.sentence).not.toMatch(/carried no stories/)
+  })
+
   it('offers the console as the fuller list, never as a contradiction', () => {
     expect(CONSOLE_LINK_LABEL).toMatch(/console/i)
     const s = frontPageScope({ servedFromSeal: false, shown: 10, cap: 10 })

@@ -118,6 +118,21 @@ describe('cross-context Evidence Routes (#173, 2026-08-03)', () => {
     expect(steps.find(s => s.key === 'raw')?.count).toBeNull()
   })
 
+  // X4 (2026-08-13) — blind college C5. "Raw assigned / Gate-verified" was a
+  // named witness. The engine's terms stay as the step labels (the analyst
+  // reads the funnel by them); the plain reading rides in the detail slot the
+  // breadcrumb already renders, so each step says what its number MEANS.
+  it('topic route: the two funnel steps say what they mean in plain words', () => {
+    const steps = buildTopicEvidenceRoute({
+      topicLabel: 'Ceuta Migration Crisis', rawAssignedCount: 502, verifiedCount: 347,
+    })
+    expect(steps.find(s => s.key === 'raw')?.detail).toBe('mentioned it')
+    expect(steps.find(s => s.key === 'verified')?.detail).toBe('passed verification')
+    // The technical labels survive — this is translation, not replacement.
+    expect(steps.find(s => s.key === 'raw')?.label).toBe('Raw assigned')
+    expect(steps.find(s => s.key === 'verified')?.label).toBe('Gate-verified')
+  })
+
   it('person route includes the threads step only when the context measures it', () => {
     const person = buildPersonEvidenceRoute({
       personName: 'Malhar Jammu',

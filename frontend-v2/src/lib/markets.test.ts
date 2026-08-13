@@ -63,3 +63,19 @@ describe('formatChangePct (unchanged contract)', () => {
     expect(formatChangePct(null)).toBeNull()
   })
 })
+
+// X4 (2026-08-13) — blind college C5. The LABEL keeps "sessions" (W5 pinned
+// that: a bare "30 days" reads as calendar days and is wrong by ~2x), so the
+// tip is where the word gets learnable. Additive — the tip loses nothing.
+describe('changeWindowTip — the trade word, glossed (X4)', () => {
+  it('says what a session is, without giving up the measured window', () => {
+    const tip = changeWindowTip({ spark_30d: new Array(21).fill(1) })
+    expect(tip).toMatch(/21 sessions/)
+    expect(tip).toMatch(/21 trading days/)
+    expect(tip).toMatch(/not a claim that news moved it/i)
+  })
+
+  it('is singular where singular is correct', () => {
+    expect(changeWindowTip({ spark_30d: [1, 2] })).toMatch(/2 trading days/)
+  })
+})

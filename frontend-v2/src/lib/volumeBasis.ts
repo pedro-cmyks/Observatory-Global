@@ -19,6 +19,8 @@
 // Nothing here invents a value. Missing metadata yields wording the number can
 // stand behind ("recent baseline"), never a fabricated day count.
 
+import { timesPhrase, zPhrase } from './statPhrases'
+
 export interface AnomalyMultiplierInput {
   multiplier?: number | null
   /** Days the baseline SQL spans, as served. Absent → we do not name a length. */
@@ -30,6 +32,15 @@ export interface AnomalyMultiplierInput {
 export interface AnomalyMultiplierResult {
   /** Badge text without the ▲ glyph, or null when there is no number. */
   text: string | null
+  /**
+   * The same ratio in plain words, for printing BESIDE `text` (X4).
+   *
+   * W5 renamed this badge's "12σ" to "12×", which made it correct without
+   * making it readable — "12× VS 8-DAY BASELINE" is a verbatim witness from
+   * the blind college's C5. Null wherever `timesPhrase` refuses, so the badge
+   * never gains words the number cannot back.
+   */
+  plain: string | null
   /** data-tip explaining the basis and distinguishing it from the z-score. */
   tip: string
 }
@@ -47,6 +58,12 @@ export interface VolumeZInput {
 export interface VolumeZResult {
   /** Chip text, or null when there is no z-score to show. */
   text: string | null
+  /**
+   * The z-score's direction and coarse size in plain words (X4), for printing
+   * beside `text`. Null on a thin baseline: the number is already withheld
+   * there as false precision, and a sentence must not smuggle it back.
+   */
+  plain: string | null
   /** True when we printed a real number; false when we degraded to a direction. */
   precise: boolean
   tip: string
@@ -82,8 +99,18 @@ export function anomalyMultiplierBasis(input: AnomalyMultiplierInput): AnomalyMu
     `It is a ratio, not a z-score.${observedClause} ` +
     `The z-score under Trust Indicators is a different statistic measured over a different window — the two are not expected to match.`
 
-  if (!isNumber(multiplier)) return { text: null, tip }
-  return { text: `${formatMultiplier(multiplier)}× vs ${basisPhrase}`, tip }
+  if (!isNumber(multiplier)) return { text: null, plain: null, tip }
+  // The companion is a word rendering of THE NUMBER THE BADGE PRINTS, not of
+  // the raw value: `formatMultiplier` already rounds 12.4 to "12×", so phrasing
+  // the raw value would put "12×" and "about 12.4 times" on one line and hand
+  // the reader a precision the badge deliberately withheld. Feeding the shown
+  // value through makes badge and sentence agree by construction.
+  const shown = Number(formatMultiplier(multiplier))
+  return {
+    text: `${formatMultiplier(multiplier)}× vs ${basisPhrase}`,
+    plain: timesPhrase(shown),
+    tip,
+  }
 }
 
 export function volumeZBasis(input: VolumeZInput): VolumeZResult {
@@ -99,6 +126,7 @@ export function volumeZBasis(input: VolumeZInput): VolumeZResult {
   if (!isNumber(zScore)) {
     return {
       text: null,
+      plain: null,
       precise: false,
       tip: `No z-score was measured for ${windowPhrase} against ${basisPhrase}.${contrast}`,
     }
@@ -114,6 +142,9 @@ export function volumeZBasis(input: VolumeZInput): VolumeZResult {
       : 'too few baseline days'
     return {
       text: `z: ${direction} (thin baseline)`,
+      // No companion here: the number was withheld as false precision, so a
+      // sentence stating a magnitude would reintroduce exactly what we refused.
+      plain: null,
       precise: false,
       tip:
         `The baseline had ${daysClause} at low volume, so its standard deviation is not meaningful and a precise z-score would be false precision. ` +
@@ -128,6 +159,7 @@ export function volumeZBasis(input: VolumeZInput): VolumeZResult {
 
   return {
     text: `z: ${zScore.toFixed(1)}`,
+    plain: zPhrase(zScore),
     precise: true,
     tip:
       `Standard deviations above this country's normal volume: ${windowPhrase} compared against ${basisPhrase}.${observedClause}` +

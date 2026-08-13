@@ -83,29 +83,44 @@ function humanizeAge(sealedAt: string, now: Date): string {
     return `sealed ${plural(Math.floor(minutes / 1440), 'day')}`
 }
 
+/**
+ * Why the live view is showing, in the reader's words.
+ *
+ * X4 (2026-08-13) — blind college C5. "the sealed edition carried no stories"
+ * was one of the four named witnesses: the phrase names a real fact in the
+ * page's own internal vocabulary ("sealed", "publication", "reconciling"),
+ * which four of eight personas could not parse. The retired teacher's verdict
+ * covered exactly this class of sentence.
+ *
+ * Every branch below states the SAME fact it always did — nothing was softened
+ * and nothing was dropped. "last night's edition" is the one noun a reader who
+ * has never met this product already understands, and the banner's dated label
+ * ("Sealed edition from Jul 15") still carries the product's own term where it
+ * has a date beside it to make it legible.
+ */
 function whyPhrase(reasonCodes: string[]): string {
     if (reasonCodes.includes('contract_mismatch')) {
-        return 'the sealed edition could not be read'
+        return 'last night’s edition could not be opened'
     }
     // T3.3 serving policy: a fresh seal is served whatever its status, so the
     // live view now means the seal is too OLD (or structurally empty) — never
     // just "degraded". These phrases name that difference.
     if (reasonCodes.includes('no_story_nodes')) {
-        return 'the sealed edition carried no stories'
+        return 'last night’s edition was assembled empty'
     }
     if (reasonCodes.includes('seal_stale')) {
-        return 'no edition has sealed within the last day'
+        return 'no edition has been built in the last day'
     }
     if (reasonCodes.includes('seal_time_unknown')) {
-        return 'the sealed edition carries no seal time'
+        return 'last night’s edition does not say when it was finished'
     }
     if (reasonCodes.includes('edition_degraded')) {
-        return 'the last nightly publication did not complete'
+        return 'last night’s edition did not finish building'
     }
     if (reasonCodes.includes('candidate_universe_incomplete')) {
-        return 'the last nightly publication did not finish reconciling'
+        return 'last night’s edition did not finish checking its own story list'
     }
-    return 'the last nightly publication did not complete'
+    return 'last night’s edition did not finish building'
 }
 
 /** "2026-07-17T02:30:00Z" edition date === now's UTC calendar day? */
