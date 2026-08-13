@@ -37,3 +37,37 @@ describe('shouldTranslate (honest unknown-source handling)', () => {
     expect(shouldTranslate('en', ENGLISH)).toBe(false)
   })
 })
+
+describe('explicit "Translate all" relaxes the unknown-source ASCII guard (W3)', () => {
+    // Measured on the 2026-08-13 Brief: a GDELT receipt filed source_lang='xx'
+    // whose German headline happens to carry no umlaut
+    // ("Sprengstoff-Drohne in Leipzig: Spur nach Russland?") is indistinguishable
+    // from English by shape alone, so the ambient lane leaves it alone — correct,
+    // it must not pay a DeepSeek call for every English headline on the page.
+    // But when the reader CLICKS "Translate all", "all" has to mean all: the ask
+    // is explicit, the answer is cached forever server-side, and a no-op comes
+    // back as `same` and settles silently.
+    const ASCII_GERMAN = 'Sprengstoff-Drohne in Leipzig: Spur nach Russland?'
+
+    it('ambient: unknown-source ASCII stays plain (no wasted call)', () => {
+        expect(shouldTranslate('xx', ASCII_GERMAN, 'en')).toBe(false)
+    })
+
+    it('explicit: unknown-source text is attempted whatever its script', () => {
+        expect(shouldTranslate('xx', ASCII_GERMAN, 'en', { explicit: true })).toBe(true)
+        expect(shouldTranslate(null, ASCII_GERMAN, 'en', { explicit: true })).toBe(true)
+    })
+
+    it('explicit never overrides a KNOWN same-language source — that is measured, not unknown', () => {
+        expect(shouldTranslate('en', 'A plain English headline', 'en', { explicit: true })).toBe(false)
+        expect(shouldTranslate('es', 'Un titular', 'es', { explicit: true })).toBe(false)
+    })
+
+    it('explicit still translates a known foreign source', () => {
+        expect(shouldTranslate('de', ASCII_GERMAN, 'en', { explicit: true })).toBe(true)
+    })
+
+    it('explicit does not resurrect empty text', () => {
+        expect(shouldTranslate('xx', '   ', 'en', { explicit: true })).toBe(false)
+    })
+})

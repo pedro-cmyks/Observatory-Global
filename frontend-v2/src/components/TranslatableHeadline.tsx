@@ -86,7 +86,20 @@ export function shouldTranslate(
     sourceLang: string | null | undefined,
     original: string,
     targetLang: string = getPageLanguage(),
+    /** `explicit` = the reader pressed "Translate all" on this section. The
+     *  ASCII guard below is a COST heuristic, not a measurement: a GDELT
+     *  receipt filed source_lang='xx' whose German headline happens to carry no
+     *  umlaut ("Sprengstoff-Drohne in Leipzig: Spur nach Russland?") is
+     *  indistinguishable from English by shape. Leaving it plain is right for
+     *  the ambient page and wrong the moment someone asks for ALL — measured on
+     *  the 2026-08-13 Brief, where two German receipts sat untouched under a
+     *  button claiming the section was translated. On an explicit ask we spend
+     *  the call: it rides the same batch request, the server caches it in
+     *  signal_translations forever, and a genuine no-op returns the same string
+     *  and settles silently. */
+    opts?: { explicit?: boolean },
 ): boolean {
+    if (!(original || '').trim()) return false;
     const s = (sourceLang || '').slice(0, 2).toLowerCase();
     // 'xx'/'un'/'und'/empty = unknown source (GDELT feed). We used to bail here,
     // which silently broke the "translated into your language" promise for the
@@ -97,7 +110,7 @@ export function shouldTranslate(
     // viewer's language (so a Greek viewer reading Greek is not "translated").
     // English-ASCII text stays plain (no wasted call, no loop).
     const unknown = !s || s === 'xx' || s === 'un' || s === 'und';
-    if (unknown) return isClearlyNonEnglish(original);
+    if (unknown) return opts?.explicit ? true : isClearlyNonEnglish(original);
     return s !== (targetLang || '').slice(0, 2).toLowerCase();
 }
 
@@ -146,16 +159,21 @@ export interface TranslatableHeadlineState {
 export function useTranslatableHeadline({ signalId, original, sourceLang }: Props): TranslatableHeadlineState {
     const targetLang = usePageLanguage();
     const L = labelsFor(targetLang);
-    const eligible = shouldTranslate(sourceLang, original, targetLang);
-    const cacheKey = `${signalId}:${targetLang}`;
-    const [translated, setTranslated] = useState<string | null>(() => memo.get(cacheKey) ?? null);
-    const [loading, setLoading] = useState(false);
-    const [unavailable, setUnavailable] = useState<TranslateFailure | null>(null);
 
     // Per-item toggle rides ON TOP of the enclosing section's mode (default
     // context when no <TranslatedSection> above — behavior unchanged). null =
     // follow the section; a click overrides until the next section action.
     const { mode, epoch } = useSectionTranslation();
+
+    // An explicit section Translate widens eligibility for unknown-source rows
+    // (see shouldTranslate). Ambient pages are untouched.
+    const explicit = mode === 'translated' && epoch > 0;
+    const eligible = shouldTranslate(sourceLang, original, targetLang, { explicit });
+    const cacheKey = `${signalId}:${targetLang}`;
+    const [translated, setTranslated] = useState<string | null>(() => memo.get(cacheKey) ?? null);
+    const [loading, setLoading] = useState(false);
+    const [unavailable, setUnavailable] = useState<TranslateFailure | null>(null);
+
     const [localOriginal, setLocalOriginal] = useState<boolean | null>(null);
     useEffect(() => { setLocalOriginal(null); }, [mode, epoch]);
     const showOriginal = resolveShowOriginal(localOriginal, mode);
