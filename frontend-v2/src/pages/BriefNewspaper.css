@@ -611,6 +611,29 @@
   margin: 4px 0 0;
 }
 
+/* C1: a lead that is empty because a LANE DIED is not the same object as a lead
+   that is empty because the gate ruled. The dashed edge is the page's existing
+   vocabulary for "unmeasured" (.brief-empty-note), borrowed here so the two
+   states are told apart at a glance, before the sentence is read. */
+.brief-lead-unanswered {
+  border-style: dashed;
+  border-top-style: solid;
+  border-top-color: var(--r-muted);
+}
+
+/* An instrument tile whose lane did not answer prints an em dash. Muted and
+   lighter than a measured figure — it is the absence of a number, and must not
+   read as one. */
+.brief-vital .v.brief-vital-unmeasured {
+  color: var(--r-muted);
+  font-weight: 400;
+}
+
+/* The map's "no density measured" line sits above the choropleth. */
+.brief-map-note {
+  margin: 8px 0 10px;
+}
+
 .brief-headline-btn {
   appearance: none;
   background: transparent;
@@ -720,6 +743,34 @@
 }
 
 .brief-standfirst-box p { margin: 0; }
+
+/* C3(i): the page's ONLY interpretation, labeled where it is read rather than
+   in a hover the judge (like any reader) never opened. Smaller and muted so it
+   frames the paragraph instead of competing with it — but present, always, on
+   the same surface as the claim it qualifies. */
+.brief-analysis-nature {
+  font-family: var(--r-sans);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--r-muted);
+  margin: 2px 0 8px !important;
+  max-width: 74ch;
+}
+
+/* C3(ii): the bridge between this paragraph's population/scale and the tone
+   columns below it. Italic — a caveat about the numbers, not a number. */
+.brief-analysis-basis {
+  font-style: italic;
+}
+
+/* C3(iii): a held reading, labeled with its hour. Beats an empty slot. */
+.brief-analysis-stale {
+  font-family: var(--r-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--r-muted);
+  margin: 8px 0 0 !important;
+}
 
 /* Council P1-4: the measured-sentiment chip anchors generated prose to the
    SAME ±1 number the instrument strip prints — one scale per page. */
@@ -1082,6 +1133,25 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--r-muted);
+}
+
+/* C4: the tile is a DOOR and now says so. Muted at rest so the measurement
+   (name + heat + component) still leads the card; it brightens on hover/focus,
+   which is when the reader is deciding whether to click. Never hidden — a door
+   the reader only discovers by clicking is the whiplash we are fixing. */
+.brief-heat-door {
+  font-family: var(--r-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--r-muted);
+  margin-top: 2px;
+  transition: color 0.16s ease;
+}
+
+.brief-heat-card:hover .brief-heat-door,
+.brief-heat-card:focus-visible .brief-heat-door {
+  color: var(--r-sec);
 }
 
 /* ---------- UNDER THE RADAR — GAPS ---------- */

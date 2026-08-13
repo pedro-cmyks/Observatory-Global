@@ -141,14 +141,32 @@ export function composeCountrySections<T extends EditionThreadLike>(
   ]
 }
 
+/**
+ * How long the reader waits before "assembling" becomes a lie.
+ *
+ * The blind judge (2026-08-12 §4.3) opened Colombia and Malta and sat on
+ * "Assembling this country's edition for the last 24h…" for 30+ seconds,
+ * twice, with no resolution — a dead end wearing a progress message. V6 made
+ * the backend answer immediately from a stale artifact rather than block on a
+ * live build (backend/app/services/country_edition.py), so a wait past this
+ * ceiling no longer means "still working", it means the request is not coming
+ * back. A spinner that never ends is the least honest state on the page.
+ */
+export const COUNTRY_EDITION_TIMEOUT_MS = 20000
+
 /** Fetch the live country edition. Returns null on any failure (honest degrade). */
 export async function fetchCountryEdition(
   cc: string,
   hours = 24,
 ): Promise<CountryEdition | null> {
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null
+  const timer = ctrl
+    ? setTimeout(() => ctrl.abort(), COUNTRY_EDITION_TIMEOUT_MS)
+    : null
   try {
     const resp = await fetch(
       `/api/v2/country-edition?cc=${encodeURIComponent(cc)}&hours=${hours}`,
+      ctrl ? { signal: ctrl.signal } : undefined,
     )
     if (!resp.ok) return null
     const data = await resp.json()
@@ -156,5 +174,7 @@ export async function fetchCountryEdition(
     return data as CountryEdition
   } catch {
     return null
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }

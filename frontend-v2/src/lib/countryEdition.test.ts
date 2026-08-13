@@ -76,6 +76,26 @@ describe('fetchCountryEdition (honest degrade)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('net') }))
     expect(await fetchCountryEdition('CO')).toBeNull()
   })
+
+  it('bounds the wait so "assembling…" can never become forever', async () => {
+    // Judge §4.3: 30+ seconds on the assembling message, twice, no resolution.
+    // The request must carry an abort signal; without one the page has no way
+    // to turn a hang into an honest failure state with a retry.
+    const spy = vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(init?.signal).toBeTruthy()
+      return { ok: true, json: async () => ({ contract: 'country-edition-v0', country: 'CO' }) }
+    })
+    vi.stubGlobal('fetch', spy)
+    await fetchCountryEdition('CO')
+    expect(spy).toHaveBeenCalledOnce()
+  })
+
+  it('degrades to null when the wait is aborted', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' })
+    }))
+    expect(await fetchCountryEdition('CO')).toBeNull()
+  })
 })
 
 // ── precomputed-door age note (council R4 N26) ───────────────────────────────

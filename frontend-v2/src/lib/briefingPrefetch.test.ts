@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { readBriefingCache } from './briefingPrefetch'
+import { clearBriefingCache, readBriefingCache, updateCachedInsight, writeBriefingCache } from './briefingPrefetch'
 
 const store: Record<string, string> = {}
 globalThis.sessionStorage = {
@@ -51,6 +51,7 @@ describe('readBriefingCache', () => {
     expect(readBriefingCache(24, { allowStale: true })).toEqual({
       briefing,
       insight: 'cached insight',
+      insightGeneratedAt: null,
       isStale: true,
     })
   })
@@ -84,6 +85,45 @@ describe('readBriefingCache', () => {
   })
 })
 
+describe('updateCachedInsight — the analysis stops flickering', () => {
+  it('folds a late insight into a cache that was written without one', () => {
+    writeBriefingCache(24, { stats: {} })
+    expect(readBriefingCache(24)!.insight).toBeNull()
+
+    updateCachedInsight(24, 'the reading', '2026-08-13T09:00:00Z')
+
+    const after = readBriefingCache(24)!
+    expect(after.insight).toBe('the reading')
+    expect(after.insightGeneratedAt).toBe('2026-08-13T09:00:00Z')
+    expect(after.briefing).toEqual({ stats: {} })
+  })
+
+  it('never overwrites a held reading with nothing', () => {
+    writeBriefingCache(24, { stats: {} }, 'held reading', '2026-08-13T09:00:00Z')
+    updateCachedInsight(24, null)
+    expect(readBriefingCache(24)!.insight).toBe('held reading')
+  })
+
+  it('does not cross windows', () => {
+    writeBriefingCache(24, { stats: {} })
+    updateCachedInsight(168, 'wrong window')
+    expect(readBriefingCache(24)!.insight).toBeNull()
+  })
+
+  it('survives a corrupt cache without throwing into a render', () => {
+    sessionStorage.setItem(CACHE_KEY, '{bad json}')
+    expect(() => updateCachedInsight(24, 'x')).not.toThrow()
+  })
+})
+
+describe('clearBriefingCache — retry means the network, not the cache', () => {
+  it('drops the entry so a forced refetch cannot be short-circuited', () => {
+    writeBriefingCache(24, { stats: {} }, 'reading')
+    clearBriefingCache()
+    expect(readBriefingCache(24, { allowStale: true })).toBeNull()
+  })
+})
+
 describe('BriefNewspaper cache wiring', () => {
   const source = readFileSync(new URL('../pages/BriefNewspaper.tsx', import.meta.url), 'utf8')
 
@@ -91,5 +131,11 @@ describe('BriefNewspaper cache wiring', () => {
     expect(source).toContain('readBriefingCache(h, { allowStale: true })')
     expect(source).toContain('Showing cached brief')
     expect(source).toContain('onClick={() => fetchData(hours)}')
+  })
+
+  it('re-requests the insight when the cached payload never got one', () => {
+    // Otherwise the cache hit is exactly the state that makes the analysis
+    // vanish for the rest of the TTL.
+    expect(source).toContain('fetchInsight')
   })
 })

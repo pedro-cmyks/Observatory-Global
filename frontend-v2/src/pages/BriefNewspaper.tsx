@@ -6,7 +6,22 @@ import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { COUNTRY_OPTIONS, resolveCountryName } from '../lib/countryNames'
 import { Flag } from '../components/Flag'
-import { readBriefingCache, writeBriefingCache } from '../lib/briefingPrefetch'
+import {
+    clearBriefingCache,
+    readBriefingCache,
+    updateCachedInsight,
+    writeBriefingCache,
+} from '../lib/briefingPrefetch'
+import {
+    deskEmptyCopy,
+    furnitureNote,
+    instrumentReading,
+    laneState,
+    mapDensityNote,
+    type LaneEvidence,
+} from '../lib/briefLanes'
+import { ANALYSIS_BASIS, ANALYSIS_LABEL, ANALYSIS_NATURE, insightStaleness } from '../lib/editorAnalysis'
+import { countryDoorCopy } from '../lib/countryDoor'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { isLeadEligible, leadBlockReason, selectLiveLead, LEAD_CONFIDENCE_FLOOR } from '../lib/leadConfidence'
 import { confidenceBucketLabel, confidenceBucketTip, resolveConfidenceBucket } from '../lib/threadConfidence'
@@ -245,6 +260,17 @@ interface BriefingData {
         modelVersion?: string | null
     }
     top_sources: { source: string; count: number }[]
+    /**
+     * C1 — WHICH LANES ANSWERED. The backend has always shipped this
+     * (`_fetch_section` appends a segment name on any exception; `top_threads`
+     * has its own try/except doing the same), and the page has always thrown it
+     * away and rendered the empty array as a measured zero. It is the only thing
+     * that separates "the gate judged and found nothing" from "the gate never
+     * ran", and the whole of §4.1/§4.7 of the blind judge's read is what happens
+     * when a page cannot tell those apart. See lib/briefLanes.ts.
+     */
+    degraded?: boolean
+    degraded_segments?: string[]
 }
 
 interface CountryBriefData {
@@ -401,6 +427,9 @@ export function BriefNewspaper() {
     const [watchCounts, setWatchCounts] = useState<Record<string, number | null>>({})
     const [data, setData] = useState<BriefingData | null>(null)
     const [insight, setInsight] = useState<string | null>(null)
+    // C3(iii): when the reading was written, so a held one can be LABELED stale
+    // instead of silently disappearing between reloads.
+    const [insightGeneratedAt, setInsightGeneratedAt] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [briefError, setBriefError] = useState<string | null>(null)
     const [showingStale, setShowingStale] = useState(false)
@@ -475,14 +504,47 @@ export function BriefNewspaper() {
     // windows live in the console; time-as-dimension belongs to L2 scrubbers.
     const hours = 24
 
-    const fetchData = useCallback(async (h: number) => {
+    // C3(iii) — the analysis stops flickering.
+    //
+    // The insight is a background LLM call the front page deliberately never
+    // waits on. It used to be written to React state ONLY, while the cache was
+    // written the instant the brief landed (insight: null). Every reload inside
+    // the 4-minute TTL then read that cache, short-circuited before requesting
+    // the insight again, and rendered the bare fallback line where the analysis
+    // had been — "present on two loads, absent on two others" (judge §4.10).
+    //
+    // One function, used on BOTH paths (cache hit and fresh fetch): if we do not
+    // have a reading for this window, ask for one; when it lands, keep it in the
+    // cache so the next load is deterministic. A failure never clears a reading
+    // we already hold — a labeled-stale interpretation beats an empty slot.
+    const fetchInsight = useCallback((h: number) => {
+        const insightCtrl = new AbortController()
+        const insightTimer = setTimeout(() => insightCtrl.abort(), 25000)
+        fetch(`/api/v2/briefing/insight?hours=${h}`, { signal: insightCtrl.signal })
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => {
+                if (!d?.insight) return
+                setInsight(d.insight)
+                setInsightGeneratedAt(d.generated_at ?? null)
+                updateCachedInsight(h, d.insight, d.generated_at ?? null)
+            })
+            .catch(() => { /* best-effort; a held reading stays on screen, labeled */ })
+            .finally(() => clearTimeout(insightTimer))
+    }, [])
+
+    const fetchData = useCallback(async (h: number, options: { force?: boolean } = {}) => {
         setBriefError(null)
-        const cached = readBriefingCache(h, { allowStale: true })
+        if (options.force) clearBriefingCache()
+        const cached = options.force ? null : readBriefingCache(h, { allowStale: true })
         if (cached) {
             setData(cached.briefing as BriefingData)
             setInsight(cached.insight)
+            setInsightGeneratedAt(cached.insightGeneratedAt)
             setShowingStale(cached.isStale)
             setLoading(false)
+            // A cached payload that never got a reading must ASK for one, or the
+            // analysis stays missing for the rest of the TTL for no visible reason.
+            if (!cached.insight) fetchInsight(h)
             if (!cached.isStale) return
         } else {
             setLoading(true)
@@ -521,22 +583,16 @@ export function BriefNewspaper() {
             const briefing = await briefRes.json()
             setData(briefing)
             setShowingStale(false)
-            writeBriefingCache(h, briefing, cached?.insight ?? null)
+            writeBriefingCache(h, briefing, cached?.insight ?? null, cached?.insightGeneratedAt ?? null)
             setLoading(false)
             // Background, non-blocking: the insight fills the standfirst later.
-            const insightCtrl = new AbortController()
-            const insightTimer = setTimeout(() => insightCtrl.abort(), 25000)
-            fetch(`/api/v2/briefing/insight?hours=${h}`, { signal: insightCtrl.signal })
-                .then(r => (r.ok ? r.json() : null))
-                .then(d => { if (d?.insight) setInsight(d.insight) })
-                .catch(() => { /* insight is best-effort; standfirst has a factual fallback */ })
-                .finally(() => clearTimeout(insightTimer))
+            fetchInsight(h)
         } catch (e) {
             console.error(e)
             setBriefError('Live briefing unavailable — retry when the data service recovers.')
             setLoading(false)
         }
-    }, [])
+    }, [fetchInsight])
 
     // T5.1: /brief had ZERO telemetry (app_open only fires on /app) — the
     // consumer front door was invisible to the value-moment funnel.
@@ -634,6 +690,10 @@ export function BriefNewspaper() {
 
     const [countryEdition, setCountryEdition] = useState<CountryEdition | null>(null)
     const [countryEditionFailed, setCountryEditionFailed] = useState(false)
+    // C4: the door's failure state has to be re-openable. Bumping this re-runs
+    // the fetch without navigating away or reloading the whole edition.
+    const [countryEditionAttempt, setCountryEditionAttempt] = useState(0)
+    const retryCountryEdition = () => setCountryEditionAttempt(n => n + 1)
 
     useEffect(() => {
         if (!countryFilter) { setCountryEdition(null); setCountryEditionFailed(false); return }
@@ -644,7 +704,7 @@ export function BriefNewspaper() {
             if (ed) setCountryEdition(ed); else setCountryEditionFailed(true)
         })
         return () => { cancelled = true }
-    }, [countryFilter, hours])
+    }, [countryFilter, hours, countryEditionAttempt])
 
     useEffect(() => {
         if (watches.length === 0) return
@@ -875,10 +935,27 @@ export function BriefNewspaper() {
     const coverageGaps = data?.coverage_gaps ?? []
     const maxGapRaw = Math.max(1, ...coverageGaps.map(g => g.raw_signals))
 
+    // ---- C1: which lanes answered (lib/briefLanes.ts) --------------------------
+    // `briefUnavailable` covers the harder case the payload cannot report on
+    // itself: the briefing fetch rejected, timed out, or returned non-2xx, so
+    // there is no payload at all and EVERY count on the page would be invented.
+    // A sealed edition is its own assembled artifact — its emptiness is a real
+    // editorial verdict frozen at seal time, not a live lane failure.
+    const laneEvidence: LaneEvidence = {
+        degradedSegments: servedFromSeal ? [] : (data?.degraded_segments ?? []),
+        briefUnavailable: !servedFromSeal && (briefError !== null || !data),
+    }
+    const storiesUnanswered = laneState('stories', laneEvidence) === 'unanswered'
+    // The retry a reader needs when a lane died: go past the cache, ask again.
+    const retryLanes = () => { void fetchData(hours, { force: true }) }
+
     // Honest standfirst: AI insight when the service produced one; otherwise a
     // single factual line. No template essay variants — an editorial that
     // pretends to judge is worse than no editorial (surfaces review §1.4).
     const displayInsight = servedFromSeal ? null : insight
+    // C3(iii): a held reading is LABELED with the hour it was written rather
+    // than dropped — the empty slot is what read as random flicker.
+    const analysisAge = insightStaleness(insightGeneratedAt, now)
     const standfirstFallback = servedFromSeal && dailyEdition
         ? `${dailyEdition.package.title}. ${allThreads.length} measured story nodes, ${dailyEdition.package.receipts.length} frozen receipts; no LLM selected or ranked the edition.`
         : data
@@ -1629,23 +1706,56 @@ export function BriefNewspaper() {
                                     conversion with this window's own number. */}
                                 <div className="sub">{toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale)}</div>
                             </div>
-                            <div className="brief-vital">
-                                <div className="k">Tracked stories</div>
-                                <div className="v">{allThreads.length}</div>
-                                <div className="sub">ranked stories served this window</div>
-                            </div>
-                            <div className="brief-vital">
-                                {/* Same rationale as the sentiment tile above: "Coverage gaps"
-                                    alone is cryptic and its definition ("categories with
-                                    attention but zero verified rows") is only reachable via the
-                                    Under-the-Radar tab. */}
-                                <div className="k">
-                                    <span className="brief-vital-k-full">Coverage gaps</span>
-                                    <span className="brief-vital-k-mobile">Gaps · unverified</span>
-                                </div>
-                                <div className="v">{coverageGaps.length}</div>
-                                <div className="sub">categories with attention but zero verified rows</div>
-                            </div>
+                            {/* C1 — A TILE IS THE LOUDEST PLACE TO INVENT A NUMBER. It carries
+                                no prose to qualify itself, so "Tracked stories 0" and "Coverage
+                                gaps 0" read as measured findings even on a window where neither
+                                lane ran (judge §4.1/§4.7: the second contradicted the section
+                                right below it, which admitted the lane never answered). Both now
+                                print an em dash with the reason in the tip when their lane is
+                                down — unknown, never zero. */}
+                            {(() => {
+                                const reading = instrumentReading(
+                                    allThreads.length, 'stories', laneEvidence,
+                                    'Ranked stories served this window.',
+                                )
+                                return (
+                                    <div className="brief-vital">
+                                        <div className="k">Tracked stories</div>
+                                        <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
+                                            {reading.value}
+                                        </div>
+                                        <div className="sub">
+                                            {reading.unmeasured ? 'unknown — the story lane did not answer' : 'ranked stories served this window'}
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+                            {(() => {
+                                const reading = instrumentReading(
+                                    coverageGaps.length, 'gaps', laneEvidence,
+                                    'Categories with attention but zero verified rows.',
+                                )
+                                return (
+                                    <div className="brief-vital">
+                                        {/* Same rationale as the sentiment tile above: "Coverage gaps"
+                                            alone is cryptic and its definition ("categories with
+                                            attention but zero verified rows") is only reachable via the
+                                            Under-the-Radar tab. */}
+                                        <div className="k">
+                                            <span className="brief-vital-k-full">Coverage gaps</span>
+                                            <span className="brief-vital-k-mobile">Gaps · unverified</span>
+                                        </div>
+                                        <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
+                                            {reading.value}
+                                        </div>
+                                        <div className="sub">
+                                            {reading.unmeasured
+                                                ? 'unknown — the coverage-gap lane did not answer'
+                                                : 'categories with attention but zero verified rows'}
+                                        </div>
+                                    </div>
+                                )
+                            })()}
                         </section>
 
                         {/* ============ WORLD MARKETS BAND (full-width franja, top) ============
@@ -1730,17 +1840,26 @@ export function BriefNewspaper() {
                                             />
                                             {showCountryDropdown && suggestions.length > 0 && (
                                                 <div className="brief-country-dropdown">
-                                                    {suggestions.slice(0, 10).map(c => (
-                                                        <button
-                                                            key={c.code}
-                                                            className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
-                                                            onMouseDown={e => e.preventDefault()}
-                                                            onClick={() => selectCountry(c.code)}
-                                                        >
-                                                            <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                                            <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'not in top countries'}</span>
-                                                        </button>
-                                                    ))}
+                                                    {/* C4: this door does NOT eject — it opens the
+                                                        country's edition inside this newspaper. The
+                                                        judge could not tell which of the page's two
+                                                        country doors did which, so each one says. */}
+                                                    {suggestions.slice(0, 10).map(c => {
+                                                        const name = resolveCountryName(c.code, c.name)
+                                                        return (
+                                                            <button
+                                                                key={c.code}
+                                                                className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
+                                                                onMouseDown={e => e.preventDefault()}
+                                                                onClick={() => selectCountry(c.code)}
+                                                                data-tip={`Opens ${name}'s edition inside this newspaper — the chip beside "Country:" clears it.`}
+                                                                aria-label={`Open ${name}'s edition in this newspaper`}
+                                                            >
+                                                                <span><Flag code={c.code} /> {name}</span>
+                                                                <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'not in top countries'}</span>
+                                                            </button>
+                                                        )
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
@@ -1900,9 +2019,25 @@ export function BriefNewspaper() {
                                             </article>
                                         )
                                     ) : (
-                                        <article className="brief-lead brief-lead-empty">
-                                            <div className="reader-kicker"><span>Lead</span></div>
-                                            <p>No story cleared the quality gate in this window. Open the console to inspect raw coverage.</p>
+                                        // C1 — THE LAST N23 DEN. This slot printed a GATE VERDICT
+                                        // ("no story cleared…") from an empty array, whatever
+                                        // emptied it. On the day the judge read the page, the
+                                        // story lane was down and the console one click away was
+                                        // full of ranked stories: the honesty voice narrating an
+                                        // outage as an editorial finding. Which sentence appears
+                                        // is now decided by whether the lane ANSWERED, and the
+                                        // failure branch offers the only useful action — ask again.
+                                        <article className={`brief-lead brief-lead-empty${storiesUnanswered ? ' brief-lead-unanswered' : ''}`}>
+                                            <div className="reader-kicker">
+                                                <span>Lead</span>
+                                                {storiesUnanswered && <span className="cat">lane did not answer</span>}
+                                            </div>
+                                            <p>{deskEmptyCopy('world', laneState('stories', laneEvidence))}</p>
+                                            {storiesUnanswered && (
+                                                <button className="brief-theme-link" onClick={retryLanes}>
+                                                    Ask the story lane again ↻
+                                                </button>
+                                            )}
                                         </article>
                                     )}
 
@@ -1915,7 +2050,7 @@ export function BriefNewspaper() {
                                                         className="lab"
                                                         data-tip="AI-generated pattern reading based on signal volume, sentiment shifts, and narrative spread. Describes observable coverage patterns — does not reflect Atlas editorial opinion."
                                                     >
-                                                        Editor's analysis
+                                                        {ANALYSIS_LABEL}
                                                         {/* Council P1-4: the prose can be stale/generated — the chip
                                                             carries the SAME measured number the instrument strip
                                                             shows, so any sentiment figure inside the prose is
@@ -1927,6 +2062,20 @@ export function BriefNewspaper() {
                                                             {measuredSentimentChip(data.stats.avg_sentiment)}
                                                         </span>
                                                     </span>
+                                                    {/* C3(i)+(ii) — the page's ONLY interpretation, saying so.
+                                                        The judge read this paragraph to the end, believed it was
+                                                        the one claim about the world on the page, and then found
+                                                        its numbers apparently contradicting the tone table four
+                                                        inches below. Both were true of DIFFERENT populations on
+                                                        DIFFERENT scales; nothing said so. This line is computed by
+                                                        the surface, not promised by the model, so it stays true
+                                                        when the prose is stale, drifts, or changes provider. */}
+                                                    <p className="brief-analysis-nature">
+                                                        {ANALYSIS_NATURE} <span className="brief-analysis-basis">{ANALYSIS_BASIS}</span>
+                                                    </p>
+                                                    {analysisAge.note && (
+                                                        <p className="brief-analysis-stale">{analysisAge.note}</p>
+                                                    )}
                                                     {/* Fix round item 3: the chip anchors, but a STALE figure
                                                         inside the prose still co-rendered ("-0.1" under the
                                                         -0.53 strip). Numeric sentiment claims that disagree
@@ -2175,18 +2324,32 @@ export function BriefNewspaper() {
                                             >
                                                 Heating Up
                                             </h3>
+                                            {/* C4 — THE DOOR SAYS IT IS A DOOR. A bare tile with a
+                                                country and a number teleported the judge into the
+                                                analyst console with "no warning, no way back"
+                                                (§4.2). The destination is right — `?country=` sets
+                                                the scope, the console renders `World ▸ COUNTRY X`
+                                                and opens that country's panel — so the fix is to
+                                                announce the jump and NAME the way back, which is
+                                                the first crumb. Same voice as The Gap's already-
+                                                correct "Open Colombia →". */}
                                             <div className="brief-heat-row">
                                                 {heatStrip.map(h => {
                                                     const comp = dominantHeatComponent(h.components)
+                                                    const name = resolveCountryName(h.code, h.name)
+                                                    const door = countryDoorCopy(name, 'where this heat is measured')
                                                     return (
                                                         <button
                                                             key={h.code}
                                                             className="brief-heat-card"
                                                             onClick={() => goToAtlas(`country=${h.code}`, 'heating_up')}
+                                                            data-tip={door.tip}
+                                                            aria-label={door.ariaLabel}
                                                         >
-                                                            <span className="brief-heat-name"><Flag code={h.code} /> {resolveCountryName(h.code, h.name)}</span>
+                                                            <span className="brief-heat-name"><Flag code={h.code} /> {name}</span>
                                                             <span className="brief-heat-val">{Math.round(h.heat * 100)}</span>
                                                             {comp && <span className="brief-heat-comp">{comp}</span>}
+                                                            <span className="brief-heat-door">{door.cue}</span>
                                                         </button>
                                                     )
                                                 })}
@@ -2232,7 +2395,10 @@ export function BriefNewspaper() {
                                             </p>
                                         </>
                                     ) : (
-                                        <p className="brief-empty-note">No coverage gaps in this window — every scored category cleared at least one verified row.</p>
+                                        // C1: "no gaps" is a finding only when the lane ran.
+                                        <p className="brief-empty-note">
+                                            {deskEmptyCopy('gaps', laneState('gaps', laneEvidence))}
+                                        </p>
                                     )}
 
                                     {/* MEANWHILE, OFF THE FRONT PAGE — consequential stories
@@ -2265,10 +2431,19 @@ export function BriefNewspaper() {
                                             {cultureCards.map((t, i) => renderThreadCard(t, { wide: i === 0 }))}
                                         </div>
                                     ) : (
-                                        <p className="brief-empty-note">
-                                            No culture, sport or lifestyle thread cleared the quality gate in this window —
-                                            the section stays honestly empty rather than filled.
-                                        </p>
+                                        // C1: the culture desk is the SAME `top_threads` fetch as
+                                        // The World, so when that lane dies both desks are unknown
+                                        // — and neither may claim a gate ruled on them.
+                                        <>
+                                            <p className="brief-empty-note">
+                                                {deskEmptyCopy('culture', laneState('stories', laneEvidence))}
+                                            </p>
+                                            {storiesUnanswered && (
+                                                <button className="brief-theme-link" onClick={retryLanes}>
+                                                    Ask the story lane again ↻
+                                                </button>
+                                            )}
+                                        </>
                                     )}
                                 </section>
                             </>
@@ -2334,9 +2509,20 @@ export function BriefNewspaper() {
 
                                 {countryEditionFailed ? (
                                     <div className="brief-country-note">
-                                        <p>Atlas could not assemble this country's edition right now. Try a wider time range, or open it in the console.</p>
-                                        <button className="brief-theme-link" onClick={() => goToAtlas(`country=${countryFilter}`)}>
-                                            Open country in Atlas →
+                                        {/* C4: the wait is bounded now (COUNTRY_EDITION_TIMEOUT_MS)
+                                            — "Assembling…" can no longer run forever (judge §4.3:
+                                            30+ seconds, twice, never resolved). A dead end becomes
+                                            a state with two ways out. */}
+                                        <p>Atlas could not assemble this country's edition right now — the door did not answer, so nothing about this country's coverage is claimed either way.</p>
+                                        <button className="brief-theme-link" onClick={() => retryCountryEdition()}>
+                                            Try this country again ↻
+                                        </button>
+                                        <button
+                                            className="brief-theme-link"
+                                            onClick={() => goToAtlas(`country=${countryFilter}`, 'country_edition_failed')}
+                                            data-tip={countryDoorCopy(resolveCountryName(countryFilter, countryDetail?.name)).tip}
+                                        >
+                                            {countryDoorCopy(resolveCountryName(countryFilter, countryDetail?.name)).cue}
                                         </button>
                                     </div>
                                 ) : !countryEdition ? (
@@ -2345,7 +2531,10 @@ export function BriefNewspaper() {
                                     </p>
                                 ) : countryEdition.threads.length === 0 && countryEdition.coverage_gaps.length === 0 ? (
                                     <div className="brief-country-note">
-                                        <p>No coherent story cleared the quality gate for this country in the current window.</p>
+                                        {/* C1, one door deeper: a DEGRADED build reached no verdict
+                                            about this country — only a build that ran may say the
+                                            gate found nothing. */}
+                                        <p>{deskEmptyCopy('country', countryEdition.artifact?.degraded ? 'unanswered' : 'served')}</p>
                                         <button className="brief-theme-link" onClick={() => goToAtlas(`country=${countryFilter}`)}>
                                             Open country in Atlas →
                                         </button>
@@ -2377,6 +2566,14 @@ export function BriefNewspaper() {
                                     display:none, or the download still happens. The "Most Active"
                                     list beside it (a sibling column, not inside .brief-minimap)
                                     stays — it is real content, not a map render. */}
+                                {/* C1 (judge §4.5): the density map rendering as "a flat grey
+                                    landmass with no density shading at all" is the map's version
+                                    of empty furniture — indistinguishable from a world where
+                                    nothing happened. Say which it is BEFORE the shapes. */}
+                                {(() => {
+                                    const note = mapDensityNote(laneEvidence, signalMap.size)
+                                    return note ? <p className="brief-empty-note brief-map-note">{note}</p> : null
+                                })()}
                                 {!isMobile && (
                                     <ComposableMap
                                         projection="geoEqualEarth"
@@ -2417,16 +2614,27 @@ export function BriefNewspaper() {
                             </div>
                             <div className="brief-bottom-col brief-map-side">
                                 <h3 className="brief-bottom-heading">Most Active</h3>
-                                {data.top_countries.slice(0, 8).map(c => (
-                                    <button
-                                        key={c.code}
-                                        className="brief-bottom-country"
-                                        onClick={() => goToAtlas(`country=${c.code}`, 'most_active')}
-                                    >
-                                        <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                        <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
-                                    </button>
-                                ))}
+                                {data.top_countries.slice(0, 8).map(c => {
+                                    const name = resolveCountryName(c.code, c.name)
+                                    const door = countryDoorCopy(name, 'where its coverage is counted')
+                                    return (
+                                        <button
+                                            key={c.code}
+                                            className="brief-bottom-country"
+                                            onClick={() => goToAtlas(`country=${c.code}`, 'most_active')}
+                                            data-tip={door.tip}
+                                            aria-label={door.ariaLabel}
+                                        >
+                                            <span><Flag code={c.code} /> {name}</span>
+                                            <span className="brief-bottom-num">{c.signals.toLocaleString()}</span>
+                                        </button>
+                                    )
+                                })}
+                                {/* C1 §4.5: a heading over a void. */}
+                                {(() => {
+                                    const note = furnitureNote('countries', laneEvidence, data.top_countries.length)
+                                    return note ? <p className="brief-empty-note">{note}</p> : null
+                                })()}
                             </div>
                         </section>
 
@@ -2463,6 +2671,10 @@ export function BriefNewspaper() {
                                             key={c.code}
                                             className="brief-bottom-country"
                                             onClick={() => goToAtlas(`country=${c.code}`, lane === 'negative' ? 'most_negative' : 'most_positive')}
+                                            // C4: the row's NUMBER carries its own tone tip, so the
+                                            // door's promise rides on the accessible name (a visible
+                                            // second tip here would fight the tone hover).
+                                            aria-label={countryDoorCopy(resolveCountryName(c.code, c.name), 'where this tone is measured').ariaLabel}
                                         >
                                             <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
                                             <span
@@ -2502,6 +2714,14 @@ export function BriefNewspaper() {
                                         <span className="brief-source-count">{s.count}</span>
                                     </div>
                                 ))}
+                                {/* C1 §4.5 — the live witness for this fix: on 2026-08-13 the
+                                    briefing payload carried degraded_segments ["top_sources",
+                                    "theme_country"] and this column rendered as a heading over
+                                    nothing, with the page's 27,812-source vital right above it. */}
+                                {(() => {
+                                    const note = furnitureNote('sources', laneEvidence, data.top_sources.length)
+                                    return note ? <p className="brief-empty-note">{note}</p> : null
+                                })()}
                             </div>
                             <div className="brief-bottom-col">
                                 {(data.category_counts?.length ?? 0) > 0 ? (
@@ -2534,6 +2754,11 @@ export function BriefNewspaper() {
                                                 <span className="brief-bottom-num">{t.count.toLocaleString()}</span>
                                             </button>
                                         ))}
+                                        {/* C1 §4.5: BY THEME headed a void when the theme lane died. */}
+                                        {(() => {
+                                            const note = furnitureNote('themes', laneEvidence, data.top_themes.length)
+                                            return note ? <p className="brief-empty-note">{note}</p> : null
+                                        })()}
                                     </>
                                 )}
                             </div>
