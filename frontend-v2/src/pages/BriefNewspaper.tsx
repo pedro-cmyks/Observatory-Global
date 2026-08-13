@@ -53,6 +53,12 @@ import { EclipseStrip } from '../components/EclipseStrip'
 import { CoverageGapCard } from '../components/CoverageGapCard'
 import type { CoverageGap } from '../lib/coverageGaps'
 import { decodeEntities, eclipseTier, type EclipseData } from '../lib/attentionEclipse'
+// PRINTER'S MARKS — design exploration 2026-08-13, gated behind ?marks= (page
+// is byte-identical without the param). Nothing here ships without Pedro.
+import {
+    buildRegMarkData, buildVoiceMix, PMTrimWrap, RegistrationMark, VoiceMixStrip,
+    type MixableReceipt,
+} from '../components/PrintersMarks'
 import { BriefWorldMarketsBand, BriefCountryMarketsCard } from '../components/BriefMarkets'
 import {
     describePositiveColumn,
@@ -890,6 +896,30 @@ export function BriefNewspaper() {
         : null
     const allThreads = serving.serve === 'sealed' ? publicationThreads(dailyEdition) : (data?.top_threads ?? [])
 
+    // PRINTER'S MARKS exploration (?marks=reg|strip|crop|all, comma-separable;
+    // ?marksState=full|partial|live is a MOCKUP-ONLY state override for
+    // screenshots). Every mark renders data this block already computed —
+    // seal moment, grade, degradation, receipts — never ornament.
+    const marksOn = new Set((searchParams.get('marks') ?? '').split(',').filter(Boolean))
+    const marksAll = marksOn.has('all')
+    const marksReg = marksAll || marksOn.has('reg')
+    const marksStrip = marksAll || marksOn.has('strip')
+    const marksCrop = marksAll || marksOn.has('crop')
+    const regMark = (marksReg || marksCrop)
+        ? buildRegMarkData(dailyEdition, serving, {
+            ageLabel: staleBanner?.age ?? null,
+            liveReason: staleBanner?.why ?? null,
+            nextSeal: staleBanner?.nextAttempt ?? null,
+            force: searchParams.get('marksState'),
+        })
+        : null
+    const voiceMix = marksStrip
+        ? buildVoiceMix(
+            (allThreads as Array<{ evidence_samples?: MixableReceipt[] }>).flatMap(t => t.evidence_samples ?? []),
+            servedFromSeal ? 'sealed' : 'live',
+        )
+        : null
+
     // Council Phase 1 (+ R2 N2, lead-eligibility v2): on the LIVE brief the front
     // page may only present a thread as an assembled story (label-as-fact: lead
     // or desk card) when we trust its label — measured confidence >= floor AND
@@ -1566,6 +1596,7 @@ export function BriefNewspaper() {
                         <p className="reader-tagline">Narrative intelligence — measured from coverage, not editorialized.</p>
                     </div>
                     <div className="brief-masthead-right">
+                        {marksReg && regMark && <RegistrationMark data={regMark} />}
                         <div className="reader-dateline">
                             <span className="brief-dateline-full">{weekday}, <b>{dayLine}</b></span>
                             <span className="brief-dateline-short"><b>{dayLineShort}</b></span>
@@ -1616,6 +1647,8 @@ export function BriefNewspaper() {
                     </div>
                 ) : data ? (
                     <main className="brief-content">
+
+                        {marksStrip && voiceMix && <VoiceMixStrip mix={voiceMix} />}
 
                         {(showingStale || briefError) && (
                             <div className="brief-cache-note" role="status">
@@ -1926,7 +1959,17 @@ export function BriefNewspaper() {
 
                         {/* ===== GLOBAL EDITION — three color-coded sections ===== */}
                         {!countryFilter && (
-                            <>
+                            <PMTrimWrap
+                                mode={!marksCrop ? 'off' : (regMark?.state === 'live' ? 'live' : 'frame')}
+                                sealTime={regMark?.sealTime ?? null}
+                                gradeLine={regMark
+                                    ? (regMark.state === 'full'
+                                        ? 'FULL'
+                                        : `PARTIAL ${regMark.answered ?? '·'}/${regMark.total ?? '·'}`)
+                                    : null}
+                                reason={regMark?.reason ?? null}
+                                nextSeal={regMark?.nextSeal ?? null}
+                            >
                                 <div className="brief-tablist" role="tablist" aria-label="Sections of today's edition">
                                     {SECTIONS.map((s, i) => (
                                         <button
@@ -2532,7 +2575,7 @@ export function BriefNewspaper() {
                                         </>
                                     )}
                                 </section>
-                            </>
+                            </PMTrimWrap>
                         )}
 
                         {/* ===== COUNTRY EDITION ===== */}
