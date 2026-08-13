@@ -182,6 +182,16 @@ function normalizeInvestigation(inv: Investigation): Investigation {
   if (!Array.isArray(inv.citations)) inv.citations = []
   if (!Array.isArray(inv.claims)) inv.claims = []
   if (!Array.isArray(inv.pins)) inv.pins = []
+  // Sync adoption (investigationSync.adoptMerged) writes server payloads
+  // verbatim — a record from an older client can lack `trail`, and both the
+  // Workbench render and every trail.push mutation assume the array exists.
+  if (!Array.isArray(inv.trail)) inv.trail = []
+  // Missing timestamps default to "oldest" (epoch 0) so the list sort never
+  // throws and LWW sync lets any stamped copy win over the malformed one.
+  if (typeof inv.updatedAt !== 'string') {
+    inv.updatedAt = typeof inv.createdAt === 'string' ? inv.createdAt : '1970-01-01T00:00:00.000Z'
+  }
+  if (typeof inv.createdAt !== 'string') inv.createdAt = inv.updatedAt
   return inv
 }
 

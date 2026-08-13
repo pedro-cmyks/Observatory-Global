@@ -136,13 +136,28 @@ async function post<T>(path: string, body: unknown): Promise<T | null> {
   }
 }
 
+/** Contract arrays defaulted at the seam: a degraded 200 body (or an
+ *  intermediary error page as JSON) must never reach a render path that reads
+ *  .length/.slice/.map of undefined — that class of throw blanked the app. */
+function normalizeReading(r: Partial<Reading>): Reading {
+  return {
+    ...r,
+    claims: Array.isArray(r.claims) ? r.claims : [],
+    actors: Array.isArray(r.actors) ? r.actors : [],
+    numbers: Array.isArray(r.numbers) ? r.numbers : [],
+    gaps: Array.isArray(r.gaps) ? r.gaps : [],
+  }
+}
+
 export async function fetchReadings(urls: string[]): Promise<Map<string, Reading>> {
   const clean = urls.filter(u => (u ?? '').startsWith('http')).slice(0, 64)
   const out = new Map<string, Reading>()
   if (clean.length === 0) return out
-  const data = await post<{ readings: Record<string, Reading> }>(
+  const data = await post<{ readings: Record<string, Partial<Reading>> }>(
     '/api/v2/research/articles/read', { urls: clean })
-  for (const [url, r] of Object.entries(data?.readings ?? {})) out.set(url, r)
+  for (const [url, r] of Object.entries(data?.readings ?? {})) {
+    if (r) out.set(url, normalizeReading(r))
+  }
   return out
 }
 
@@ -155,7 +170,16 @@ export async function fetchCrossRead(urls: string[]): Promise<CrossRead | null> 
 export async function fetchLeads(urls: string[], pinnedIds: string[]): Promise<LeadsResult | null> {
   const clean = urls.filter(u => (u ?? '').startsWith('http')).slice(0, 64)
   if (clean.length === 0) return null
-  return post<LeadsResult>('/api/v2/research/leads', { urls: clean, pinned_ids: pinnedIds.slice(0, 128) })
+  const raw = await post<Partial<LeadsResult>>(
+    '/api/v2/research/leads', { urls: clean, pinned_ids: pinnedIds.slice(0, 128) })
+  if (!raw) return null
+  return {
+    ...raw,
+    leads: Array.isArray(raw.leads) ? raw.leads : [],
+    suppressed: Array.isArray(raw.suppressed) ? raw.suppressed : [],
+    articles_read: raw.articles_read ?? 0,
+    entities_considered: raw.entities_considered ?? 0,
+  }
 }
 
 /** Label for the AI-read provenance chip — model + date, never bare "AI". */

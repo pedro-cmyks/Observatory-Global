@@ -2915,14 +2915,20 @@ function AppContent() {
           </div>
           <div className="workbench-overlay-body">
             <div className="workbench-overlay-left">
-              <WorkbenchPanel
-                refreshToken={wbRefresh + wbVersion}
-                onOpenThread={handleResearchOpenThread}
-                onOpenCountry={handleResearchOpenCountry}
-                onOpenParams={handleOpenParams}
-                onStartInvestigation={(q) => setResearchQuery(q)}
-                onClose={() => setWorkbenchOpen(false)}
-              />
+              {/* Three-layer error architecture: a workbench throw (e.g. a
+                  malformed record or response field under a 429 storm) must
+                  degrade THIS panel, never reach RootErrorBoundary and blank
+                  the whole app. */}
+              <PanelErrorBoundary panelName="INVESTIGATION WORKBENCH">
+                <WorkbenchPanel
+                  refreshToken={wbRefresh + wbVersion}
+                  onOpenThread={handleResearchOpenThread}
+                  onOpenCountry={handleResearchOpenCountry}
+                  onOpenParams={handleOpenParams}
+                  onStartInvestigation={(q) => setResearchQuery(q)}
+                  onClose={() => setWorkbenchOpen(false)}
+                />
+              </PanelErrorBoundary>
             </div>
             {/* Task 10 (#236): the research plan ("Atlas suggests") is a
                 second, search-driven column — genuinely a desktop working
@@ -2940,14 +2946,16 @@ function AppContent() {
                       <span className="workbench-suggest-label">ATLAS SUGGESTS</span>
                       <span className="workbench-suggest-query">{researchQuery}</span>
                     </div>
-                    <ResearchPlanPanel
-                      query={researchQuery}
-                      hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
-                      onOpenThread={handleResearchOpenThread}
-                      onOpenCountry={handleResearchOpenCountry}
-                      onBranchQuery={(q) => setResearchQuery(q)}
-                      onPinsChanged={() => setWbRefresh(t => t + 1)}
-                    />
+                    <PanelErrorBoundary panelName="ATLAS SUGGESTS">
+                      <ResearchPlanPanel
+                        query={researchQuery}
+                        hours={RESEARCH_WINDOW_HOURS} /* research plans read the week (former 168h floor) */
+                        onOpenThread={handleResearchOpenThread}
+                        onOpenCountry={handleResearchOpenCountry}
+                        onBranchQuery={(q) => setResearchQuery(q)}
+                        onPinsChanged={() => setWbRefresh(t => t + 1)}
+                      />
+                    </PanelErrorBoundary>
                   </>
                 ) : (
                   <div className="workbench-overlay-hint">

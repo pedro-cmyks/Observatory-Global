@@ -340,6 +340,36 @@ describe('workbench citations (receipt-level pinning)', () => {
     expect(getInvestigation('inv-legacy')!.pins).toHaveLength(1) // still there
   })
 
+  it('migrates a record WITHOUT trail (sync-adopted foreign payload)', () => {
+    // adoptMerged (investigationSync.ts) writes server payloads verbatim, so a
+    // record from an older client can lack `trail`. The store must heal it on
+    // read: WorkbenchPanel renders active.trail unconditionally (a missing
+    // array threw 'reading slice' all the way to RootErrorBoundary) and every
+    // pin/citation/claim mutation pushes a trail step.
+    const foreign = {
+      investigations: [{
+        id: 'inv-notrail', title: 'Pulled case', createdAt: 'x', updatedAt: 'x',
+        pins: [], citations: [], claims: [],
+        // NOTE: no `trail` key
+      }],
+    }
+    localStorage.setItem('atlas.workbench.v1', JSON.stringify(foreign))
+    const got = getInvestigation('inv-notrail')!
+    expect(got.trail).toEqual([])
+    addPin('inv-notrail', PIN) // trail.push must not throw on the healed record
+    expect(getInvestigation('inv-notrail')!.trail.some(s => s.action === 'pin')).toBe(true)
+  })
+
+  it('lists records missing updatedAt without throwing (sort on foreign payloads)', () => {
+    // Two+ records make the sort comparator run; a foreign record without
+    // updatedAt threw 'reading localeCompare' inside the Workbench render.
+    const mk = (id: string) => ({ id, title: id, createdAt: 'x', pins: [], citations: [], claims: [], trail: [] })
+    localStorage.setItem('atlas.workbench.v1', JSON.stringify({ investigations: [mk('inv-a'), mk('inv-b')] }))
+    const got = listInvestigations()
+    expect(got).toHaveLength(2)
+    expect(got.every(i => typeof i.updatedAt === 'string')).toBe(true)
+  })
+
   it('citations survive JSON export', () => {
     const inv = createInvestigation('Greek traffic')
     addCitation(inv.id, RECEIPT)
