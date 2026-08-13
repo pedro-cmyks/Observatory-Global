@@ -381,6 +381,39 @@
     color: #f59e0b;
 }
 
+/* C9: a measured QUIET is neither live nor broken. It gets the settled grey of
+   a real answer and, crucially, no pulse — the pulse is what made an empty
+   stream read as "still arriving" when nothing was. */
+.stream-live-dot.quiet {
+    background: var(--color-text-muted, #64748b);
+    box-shadow: none;
+    animation: none;
+}
+.stream-live-dot.quiet + .stream-status-text {
+    color: var(--color-text-muted, #64748b);
+    font-weight: 500;
+}
+/* Not-answered-YET: hollow, and slow — connecting is a process, not a verdict. */
+.stream-live-dot.pending {
+    background: transparent;
+    border: 1px solid var(--color-text-muted, #64748b);
+    box-shadow: none;
+    animation: live-pulse 2.4s ease-in-out infinite;
+}
+.stream-live-dot.pending + .stream-status-text {
+    color: var(--color-text-muted, #64748b);
+    font-weight: 500;
+}
+/* The failure block carries two sentences now; keep them stacked and legible
+   rather than centred on one line. */
+.empty-state.stream-feed-error {
+    text-align: left;
+    align-items: flex-start;
+}
+.empty-state.stream-feed-error .stream-feed-error-dot {
+    margin-top: 5px;
+}
+
 /* ==========================================================================
    Event Cards (GDELT Events)
    ========================================================================== */

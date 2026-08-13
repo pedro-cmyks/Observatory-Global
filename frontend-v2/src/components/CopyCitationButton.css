@@ -1,0 +1,73 @@
+/* X5 · copy citation. Sized and coloured to sit beside the ◇ pin without
+   moving anything: fixed width so the ⧉ → ✓ / ⚠ swap causes zero reflow. */
+.copy-citation-btn {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 1.15em;
+  text-align: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0 1px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1;
+  color: var(--color-text-muted, #64748b);
+  opacity: 0.45;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+.copy-citation-btn:hover,
+.copy-citation-btn:focus-visible {
+  opacity: 1;
+  color: var(--color-accent, #10b981);
+  outline: none;
+}
+.copy-citation-btn--ok {
+  opacity: 1;
+  color: var(--color-accent, #10b981);
+}
+.copy-citation-btn--failed {
+  opacity: 1;
+  color: var(--color-severity-notable, #fbbf24);
+}
+
+/* Touch: no hover to reveal intent, so the affordance rests readable. */
+@media (hover: none) {
+  .copy-citation-btn { opacity: 0.7; }
+}
+
+/* Story / dossier level — a quiet text button in a section header. */
+.copy-source-list-btn {
+  background: transparent;
+  border: 1px solid var(--color-border, rgba(148, 163, 184, 0.35));
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  color: var(--color-text-muted, #64748b);
+  transition: color 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+}
+.copy-source-list-btn:hover,
+.copy-source-list-btn:focus-visible {
+  color: var(--color-accent, #10b981);
+  border-color: var(--color-accent, #10b981);
+  outline: none;
+}
+.copy-source-list-btn--ok {
+  color: var(--color-accent, #10b981);
+  border-color: var(--color-accent, #10b981);
+}
+.copy-source-list-btn--failed {
+  color: var(--color-severity-notable, #fbbf24);
+  border-color: var(--color-severity-notable, #fbbf24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copy-citation-btn,
+  .copy-source-list-btn { transition: none; }
+}

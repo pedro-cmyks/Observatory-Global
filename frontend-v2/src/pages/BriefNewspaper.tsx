@@ -38,6 +38,7 @@ import { LabelReviewChip } from '../lib/labelReviewChip'
 import { track, trackOnce } from '../lib/telemetry'
 import { TranslatableHeadline, shouldTranslate as shouldTranslateSignal } from '../components/TranslatableHeadline'
 import PinReceiptButton from '../components/PinReceiptButton'
+import CopyCitationButton from '../components/CopyCitationButton'
 import type { CitationGateStatus } from '../lib/workbench'
 import { resolveOriginChip, resolveTierChip } from '../lib/sourceProvenance'
 import { TranslatableText } from '../components/TranslatableText'
@@ -1267,6 +1268,18 @@ export function BriefNewspaper() {
                     ) : null
                 })()}
                 {ev.url && <span className="brief-receipt-ext" aria-hidden="true">↗</span>}
+                {/* X5 (estudiante): the receipts already carry outlet + original
+                    language + date + link — this copies that row as ONE citable
+                    line. Formats what is shown; measures nothing new. */}
+                <CopyCitationButton
+                    receipt={{
+                        headline,
+                        source: ev.source,
+                        url: ev.url,
+                        sourceLang: ev.source_lang,
+                        publishedDate: ev.timestamp,
+                    }}
+                />
                 <PinReceiptButton
                     contextLabel={ctx?.contextLabel || headline}
                     citation={{

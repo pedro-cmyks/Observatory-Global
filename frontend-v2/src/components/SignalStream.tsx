@@ -12,6 +12,7 @@ import {
 } from '../lib/streamTabs'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { hasLensContent, lensTopicParam } from '../lib/storyLens'
+import { streamLiveness, type StreamLaneState } from '../lib/streamLiveness'
 import type { StreamLevel } from '../contexts/FocusContext'
 import { Pin, PinOff } from '../lib/icons'
 import PinReceiptButton from './PinReceiptButton'
@@ -295,10 +296,17 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
         closeSeqSeen.current = closeSignalSeq
         setSelectedSignal(null)
     }, [closeSignalSeq])
-    // G5 (dataviz audit): distinguish a SERVICE FAILURE (fetch threw / non-2xx,
-    // e.g. the 503 db_busy the API now returns when the shared DB is contended)
-    // from an honest empty-200. A 500/503 must NOT read as "No signals found".
-    const [feedError, setFeedError] = useState(false)
+    // G5 (dataviz audit) + C9 (blind panel, 2026-08-13): distinguish a SERVICE
+    // FAILURE (fetch threw / non-2xx, e.g. the 503 db_busy the API returns when
+    // the shared DB is contended) from an honest empty-200 — AND from a lane
+    // that simply has not answered yet. A 500/503 must not read as "No signals
+    // found"; none of the three may wear the word LIVE. `streamLiveness` owns
+    // the table, this state owns the evidence it reads.
+    const [laneState, setLaneState] = useState<StreamLaneState>('pending')
+    // Newest signal timestamp observed for the CURRENT scope. Null = never
+    // measured here (a fresh scope, or a genuinely empty window) — the copy
+    // refuses to date a quiet it cannot date.
+    const [lastSignalAt, setLastSignalAt] = useState<number | null>(null)
     const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const retryAttemptRef = useRef(0)
     const isHoveredRef = useRef(false)
@@ -433,7 +441,7 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                 // screen, flag the feed as unavailable, and retry with backoff.
                 if (!sigRes.ok) {
                     if (!isMounted) return
-                    setFeedError(true)
+                    setLaneState('unanswered')
                     scheduleRetry()
                     return
                 }
@@ -445,8 +453,8 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
 
                 if (!isMounted) return
 
-                // Recovered: clear the error and reset the backoff.
-                setFeedError(false)
+                // A real 200: from here a zero is a MEASURED zero.
+                setLaneState('served')
                 retryAttemptRef.current = 0
                 if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null }
 
@@ -489,13 +497,15 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                     }
 
                     latestTimestampRef.current = fetchedSignals[0].timestamp
+                    // The one number that makes a quiet window legible later.
+                    setLastSignalAt(new Date(fetchedSignals[0].timestamp).getTime())
                 } else {
                     setVelocity({ signals_per_minute: '--', delta: '--', percentage_change: '--' })
                 }
             } catch (e) {
                 console.error('[SignalStream] Init fetch error', e)
                 if (!isMounted) return
-                setFeedError(true)   // network throw = service unavailable, not empty
+                setLaneState('unanswered')   // network throw = service unavailable, not empty
                 scheduleRetry()
             }
         }
@@ -504,6 +514,10 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
         dripQueueRef.current = []
         seenIdsRef.current = new Set()
         retryAttemptRef.current = 0
+        // A new scope has measured nothing yet: neither its liveness nor its
+        // last-seen carries over from the scope the reader just left.
+        setLaneState('pending')
+        setLastSignalAt(null)
         void fetchInitial()
 
         return () => {
@@ -544,11 +558,11 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                         .filter((s: Signal) => isValidHeadline(s.headline) && !seenIdsRef.current.has(s.id))
                         .map((s: Signal) => ({ ...s, type: 'signal' as const }))
                     newVelocity = data.velocity || null
-                    if (isMounted) setFeedError(false)   // a live poll recovered the feed
+                    if (isMounted) setLaneState('served')   // a live poll answered
                 } else if (isMounted) {
                     // 503 db_busy / 500 during a poll: surface unavailable but
                     // keep the current items; the init effect owns backoff retry.
-                    setFeedError(true)
+                    setLaneState('unanswered')
                 }
 
                 if (!isMounted) return
@@ -558,12 +572,13 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                 if (newSignals.length > 0) {
                     newSignals.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     latestTimestampRef.current = newSignals[0].timestamp
+                    setLastSignalAt(new Date(newSignals[0].timestamp).getTime())
                     newSignals.forEach(s => seenIdsRef.current.add(s.id))
                     dripQueueRef.current = mergeStreamItems(dripQueueRef.current, newSignals, 200)
                 }
             } catch (e) {
                 console.error('[SignalStream] Poll error', e)
-                if (isMounted) setFeedError(true)   // next poll (15s) re-checks
+                if (isMounted) setLaneState('unanswered')   // next poll (15s) re-checks
             }
         }
 
@@ -660,17 +675,31 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
         [filteredItems, topicParam])
     const rowEclipseClass = (tabModel.eclipse || tabModel.lens) ? streamRowEclipseClass(streamFilter) : ''
 
+    /* C9: the header's claim about itself, decided by the lane's own report —
+       never by emptiness. `items` is the pool this view filters, so a zero here
+       with a non-zero pool is a FILTERED view, not a quiet world. */
+    const liveness = streamLiveness({
+        lane: laneState,
+        visibleCount: visibleItems.length,
+        fetchedCount: items.length,
+        lastSignalAt,
+        now: nowTs,
+        hovered: isHovered,
+        velocityPerMinute: velocity ? velocity.signals_per_minute : null,
+        scoped: !!topicParam,
+    })
+
     return (
         <>
         <div className="signal-stream-container">
             {/* Stream Header: live status + filter tabs */}
             <div className="stream-header">
                 <div className="stream-status-bar">
-                    <span className={`stream-live-dot${feedError ? ' feed-error' : ''}${isHovered ? ' paused' : ''}`} />
-                    <span className="stream-status-text">
-                        {feedError ? 'feed unavailable · retrying' : isHovered ? 'paused · last 15 min' : '● LIVE'}
+                    <span className={`stream-live-dot${liveness.dotModifier ? ` ${liveness.dotModifier}` : ''}`} />
+                    <span className="stream-status-text" role="status" aria-live="polite">
+                        {liveness.statusText}
                     </span>
-                    {velocity && velocity.signals_per_minute !== '--' && !isHovered && (
+                    {liveness.showVelocity && velocity && velocity.signals_per_minute !== '--' && (
                         <span className="stream-velocity">
                             {velocity.signals_per_minute} sig/min
                             {velocity.delta !== '--' && Number(velocity.delta) !== 0 && (
@@ -731,18 +760,26 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                 onMouseLeave={() => { isHoveredRef.current = false; setIsHovered(false) }}
             >
                 {visibleItems.length === 0 ? (
-                    feedError ? (
+                    liveness.tone === 'unanswered' || liveness.tone === 'pending' ? (
+                        // The lane could not (or has not yet) answered: an
+                        // UNKNOWN window. It must never wear the settled grey of
+                        // "nothing matched" — that was the C9 defect's other half.
                         <div className="empty-state stream-feed-error" role="status" aria-live="polite">
                             <span className="stream-feed-error-dot" />
-                            Signal feed unavailable — retrying…
+                            <span>
+                                {liveness.emptyCopy}
+                                {liveness.emptyNote && (
+                                    <span className="stream-empty-note">{liveness.emptyNote}</span>
+                                )}
+                            </span>
                         </div>
-                    ) : topicParam ? (
+                    ) : topicParam && liveness.tone === 'quiet' ? (
                         // Honest empty for a scoped tab: the stories exist (the
                         // eclipse endpoint or the story-siblings walk measured
                         // them) but none of their member signals landed in this
                         // window. Say which, and never let it read as "nothing
                         // is happening".
-                        <div className="empty-state">
+                        <div className="empty-state" role="status" aria-live="polite">
                             No signals yet from {
                                 streamFilter === 'eclipse' ? 'the eclipsing story'
                                 : streamFilter === 'story' ? "this story's scope"
@@ -753,7 +790,15 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                             </span>
                         </div>
                     ) : (
-                        <div className="empty-state">No signals found</div>
+                        // A MEASURED zero (quiet), or a view that filtered a
+                        // non-empty pool. Both are real answers, and both name
+                        // themselves — "No signals found" named neither.
+                        <div className="empty-state" role="status" aria-live="polite">
+                            {liveness.emptyCopy}
+                            {liveness.emptyNote && (
+                                <span className="stream-empty-note">{liveness.emptyNote}</span>
+                            )}
+                        </div>
                     )
                 ) : (
                     visibleItems
