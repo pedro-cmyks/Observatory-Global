@@ -1344,6 +1344,48 @@
   50%       { opacity: 1;   transform: scale(1.1); }
 }
 
+/* The pill's colour must not outrun its words (streamLiveness discipline,
+   applied to the platform claim). Green + pulse exist ONLY in the default
+   (LIVE) state, which platformLiveness grants only on measured fresh ingest. */
+
+/* Checking: hollow and slow — a probe in flight, not a verdict. */
+.live-pill--checking {
+  border-color: rgba(var(--color-ink-rgb), 0.14);
+  background: rgba(var(--color-ink-rgb), 0.04);
+  color: var(--color-text-muted, #64748b);
+}
+.live-pill--checking .live-pill-dot {
+  background: transparent;
+  border: 1px solid var(--color-text-muted, #64748b);
+  box-shadow: none;
+  animation: live-pulse-pill 2.4s ease-in-out infinite;
+}
+
+/* Behind: amber, settled — the data is real but dated, and the pill says by
+   how much. No pulse: nothing is "arriving". */
+.live-pill--behind {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.08);
+  color: #f59e0b;
+}
+.live-pill--behind .live-pill-dot {
+  background: #f59e0b;
+  box-shadow: none;
+  animation: none;
+}
+
+/* Unknown: the check failed, so no colour gets to claim anything. */
+.live-pill--unknown {
+  border-color: rgba(var(--color-ink-rgb), 0.14);
+  background: rgba(var(--color-ink-rgb), 0.04);
+  color: var(--color-text-muted, #64748b);
+}
+.live-pill--unknown .live-pill-dot {
+  background: var(--color-text-muted, #64748b);
+  box-shadow: none;
+  animation: none;
+}
+
 .data-since-pill {
   display: inline-flex;
   align-items: center;

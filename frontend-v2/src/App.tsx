@@ -53,6 +53,7 @@ import { resolveThreadThemeTarget } from './lib/threadThemeTarget'
 import { buildHistoricalCoverageCue } from './lib/historicalCoverageCue'
 import { fieldCoverageReadout } from './lib/fieldCoverage'
 import { coverageStartIsStale, coverageStartLabel } from './lib/dataCoverageStart'
+import { platformLiveness, parseHealthPayload, livenessIsStale, type HealthLaneState, type HealthEvidence } from './lib/platformLiveness'
 import ResearchPlanPanel from './components/ResearchPlanPanel'
 import WorkbenchPanel from './components/WorkbenchPanel'
 import { UniverseView } from './components/UniverseView'
@@ -1771,6 +1772,52 @@ function AppContent() {
     return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
+  // The "LIVE DATA" pill used to be a hardcoded string — a present-tense claim
+  // about multi-lane ingest with no measurement behind it, sitting (on mobile)
+  // directly above a Live tab that honestly says "stream did not answer".
+  // Now it reads /health's measured ingest freshness (rows_ingested_last_15m +
+  // ingest_lag_minutes) and platformLiveness decides what may be claimed:
+  // fresh rows → LIVE DATA · dated lag → DATA · Nm BEHIND · health unreachable
+  // → STATUS UNKNOWN. Same fetch discipline as the coverage chip above: one
+  // fetch on mount, revalidate on foreground return once the answer has aged
+  // out — never a polling loop.
+  const [healthLane, setHealthLane] = useState<HealthLaneState>('pending')
+  const [healthEvidence, setHealthEvidence] = useState<HealthEvidence | null>(null)
+  const healthFetchedAt = useRef<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const load = () => {
+      if (!livenessIsStale(healthFetchedAt.current, Date.now())) return
+      fetch('/health')
+        .then(async r => {
+          const body = r.ok ? await r.json().catch(() => null) : null
+          if (cancelled) return
+          healthFetchedAt.current = Date.now()
+          const parsed = parseHealthPayload(body)
+          if (parsed) {
+            setHealthLane('served')
+            setHealthEvidence(parsed)
+          } else {
+            setHealthLane('unanswered')
+            setHealthEvidence(null)
+          }
+        })
+        .catch(() => {
+          if (cancelled) return
+          // Stamp the clock on failure too, so a dead endpoint is re-probed at
+          // the revalidation cadence instead of on every visibility flip.
+          healthFetchedAt.current = Date.now()
+          setHealthLane('unanswered')
+          setHealthEvidence(null)
+        })
+    }
+    load()
+    const onVisible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible) }
+  }, [])
+  const livePill = platformLiveness(healthLane, healthEvidence)
+
   // Prefetch briefing data so the modal opens instantly — the Brief and the
   // Briefing modal are both the DAY's edition (fixed 24h).
   const [prefetchedBriefing, setPrefetchedBriefing] = useState<any>(null)
@@ -1884,9 +1931,12 @@ function AppContent() {
       <header className="command-bar">
         <div className="command-bar-left">
           <h1 className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }} data-tip="Back to home"><Globe size={16} /> Atlas <span className="brand-tag">L2 · Analyst console</span></h1>
-          <span className="live-pill" data-tip="Live open signals from media, curated feeds, public attention, humanitarian sources, and NLP enrichment. Source cadences vary.">
+          <span
+            className={`live-pill${livePill.dotModifier ? ` live-pill--${livePill.dotModifier}` : ''}`}
+            data-tip={livePill.tip}
+          >
             <span className="live-pill-dot" />
-            LIVE DATA
+            {livePill.pillText}
           </span>
           {dataStartDate && (
             <span className="data-since-pill" data-tip={`Signal archive starts ${dataStartDate}. Historical coverage grows over time.`}>
