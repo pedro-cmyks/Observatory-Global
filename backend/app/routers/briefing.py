@@ -1108,19 +1108,59 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
         for r in top_countries
     ])
 
+    # C3(ii) — THE GLASS BOX, HARDENED (blind judge 2026-08-12 §5).
+    #
+    # The judge's charge against this paragraph was precise: "Western outlets are
+    # driving a narrative of instability or crisis" is a geopolitical
+    # INTERPRETATION asserted from tone averages, on a page whose masthead
+    # promises "measured from coverage, not editorialized". Two structural
+    # corrections, both in the prompt because that is where the claim is born:
+    #
+    #  1. The BASIS is now stated in the data lines rather than left implicit.
+    #     What this model receives is the FIVE most-covered countries with tone
+    #     on the normalized ±1 scale — a different population and a different
+    #     scale from the tone columns the reader sees below the paragraph (all
+    #     countries, raw −10…+10). Unlabelled, "Russia −0.20" beside a table
+    #     showing "Yemen −10.0" read as the page contradicting itself inside one
+    #     screen. The surface prints the same basis deterministically
+    #     (frontend-v2/src/lib/editorAnalysis.ts) — this is the belt to that
+    #     brace, so the prose does not describe a population it never saw.
+    #
+    #  2. Causal and motive claims are OUT OF SCOPE. Coverage tone measures how
+    #     something is being written about; it cannot support who is "driving" a
+    #     narrative, why an outlet frames something, or what a state intends.
+    #     Describable aggregates only — volumes, shares, tones, and where they
+    #     sit relative to each other.
+    top_n = len(top_countries)
     user_prompt = (
-        f"Summarize the global information landscape over the last {hours} hours.\n"
+        f"Describe the measured shape of press coverage over the last {hours} hours.\n"
         f"- Total coverage: {total:,} articles across {countries} countries\n"
-        f"- Global sentiment: {avg_sent:+.1f} (negative = concern/crisis, positive = stability/progress)\n"
-        f"- Dominant topics: {themes_str}\n"
-        f"- Most-covered countries (with their tone): {countries_str}\n\n"
-        "Write 2-3 sentences describing what the world's media is focused on right now, "
-        "what emotional tenor dominates, and any notable geographic patterns in coverage."
+        f"- Average tone across all coverage: {avg_sent:+.2f} on a normalized -1..+1 scale "
+        "(negative = critical/conflict-heavy wording, positive = supportive wording)\n"
+        f"- Most-covered themes: {themes_str}\n"
+        f"- The {top_n} MOST-COVERED countries only, with article count and their own "
+        f"average tone on the same -1..+1 scale: {countries_str}\n\n"
+        "Write 2-3 sentences describing: what the press is covering most, how the tone is "
+        "distributed across these countries, and any notable concentration in the volumes.\n"
+        "When you cite a country's tone, make clear it is among these most-covered countries "
+        "and on the -1..+1 scale — never call a figure the highest or lowest overall, because "
+        "you have not been shown the other countries."
     )
     system_prompt = (
-        "You are an intelligence analyst giving a morning media briefing. "
-        "Describe what the world's press is covering and how, using the data provided. "
-        "Be concise, neutral, and analytical. No markdown, no bullet points — flowing prose only."
+        "You describe measured aggregates of press coverage. You are NOT an analyst offering "
+        "a view of world events, and the surface you write for states plainly that this is "
+        "interpretation rather than measurement.\n"
+        "RULES:\n"
+        "1. Every claim must be supported by a number in the data given to you. If a number "
+        "is not there, the claim is not yours to make.\n"
+        "2. No causal or motive claims. Never say who is 'driving', 'shaping', 'pushing' or "
+        "'framing' a narrative, never attribute intent to outlets, governments or blocs, and "
+        "never explain WHY coverage looks as it does. Tone measures wording, not motive.\n"
+        "3. No geopolitical judgement: no bloc language ('Western media', 'state-aligned "
+        "media'), no claims about stability, legitimacy, or what any of this means for the "
+        "world. Describe the coverage, not the events behind it.\n"
+        "4. No superlatives beyond the rows you were given, and no forecasting.\n"
+        "Be concise and neutral. No markdown, no bullet points — flowing prose only."
     )
 
     # B0 (2026-07-05): provider chain Anthropic → DeepSeek — the Anthropic-only
