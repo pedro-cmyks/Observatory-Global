@@ -1,0 +1,37 @@
+/* W3 (2026-08-13): the section translate control gained a real pending state
+   and an honest failure note. Styles live here — self-imported by
+   TranslatedSection.tsx — so the control keeps working on any surface that
+   mounts it without the Brief stylesheet. The base .brief-translate-all pill
+   is still defined in BriefNewspaper.css; these are additive modifiers only. */
+
+.brief-translate-wrap {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Busy = the request is actually out. Dimmed + not clickable, never a
+   done-state. */
+.brief-translate-all.is-busy,
+.brief-translate-all:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.brief-translate-all.is-busy:hover {
+    color: var(--r-muted);
+    border-color: var(--r-line);
+}
+
+/* The measured-not-claimed sub-line. Same family as the other honesty notes
+   in the Brief: small, uppercase, muted — a statement of fact, not an alert. */
+.brief-translate-note {
+    font-family: var(--r-sans);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--r-muted);
+    opacity: 0.9;
+}

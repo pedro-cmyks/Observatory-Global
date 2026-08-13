@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { shouldTranslate } from '../lib/translatableText';
 import { usePageLanguage } from '../lib/pageLanguage';
-import { resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
-import { useSectionTranslation } from './TranslatedSection';
+import { type ChildTranslationStatus, resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
+import {
+    type TranslateFailure,
+    describeUnavailable,
+    translateFreeText,
+    translateRetryAfterSeconds,
+} from '../lib/translateQueue';
+import { useReportTranslationStatus, useSectionTranslation } from './TranslatedSection';
 import './TranslatableText.css';
 
 /**
@@ -29,11 +35,12 @@ const LABELS: Record<string, { original: string; translation: string }> = {
 };
 const labelsFor = (lang: string) => LABELS[lang] || LABELS.en;
 
-// Process-lifetime memo: string = translation, null = "no translation needed"
-// (same:true or degraded — don't re-ask this session).
+// Process-lifetime memo: string = translation, null = SETTLED "no translation
+// needed" (the server said same-language). A failure is never stored here —
+// before W3 a 429 landed in this map as `null` and pinned the untranslated
+// text for the rest of the session, which is precisely how "Translate all"
+// became a no-op even after the rate-limit window had passed.
 const memo = new Map<string, string | null>();
-// De-dupe concurrent requests for the same label (it renders in many rows).
-const inflight = new Map<string, Promise<string | null>>();
 
 const SS_PREFIX = 'atlas_ttext_v1:';
 
@@ -53,36 +60,28 @@ function ssSet(key: string, value: string | null): void {
     } catch { /* quota / privacy mode — memo Map still covers the session */ }
 }
 
-function fetchTranslation(text: string, cacheKey: string, targetLang: string): Promise<string | null> {
-    const existing = inflight.get(cacheKey);
-    if (existing) return existing;
-    const p = fetch('/api/v2/translate/text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, target_lang: targetLang }),
-    })
-        .then(r => (r.ok ? r.json() : null))
-        .then((d: { translated?: string; same?: boolean; degraded?: boolean } | null) => {
-            const t = d?.translated?.trim();
-            // same:true, degraded, or an echo of the input → keep the original.
-            if (!d || d.same || d.degraded || !t || t.toLowerCase() === text.trim().toLowerCase()) {
-                memo.set(cacheKey, null);
-                // Degraded = transient (provider down); don't pin it across the
-                // session store — only same/no-op results persist.
-                if (d && !d.degraded) ssSet(cacheKey, null);
-                return null;
-            }
-            memo.set(cacheKey, t);
-            ssSet(cacheKey, t);
-            return t;
-        })
-        .catch(() => {
-            memo.set(cacheKey, null); // don't retry-storm this session
-            return null;
-        })
-        .finally(() => inflight.delete(cacheKey));
-    inflight.set(cacheKey, p);
-    return p;
+type FetchResult =
+    | { kind: 'ok'; text: string }
+    | { kind: 'none' }
+    | { kind: 'unavailable'; reason: TranslateFailure };
+
+/**
+ * De-duped + circuit-broken by lib/translateQueue: identical text asked for by
+ * many rows costs one request, and while the shared translate circuit is open
+ * (a 429 on ANY translate lane) this resolves instantly without touching the
+ * network. Only SETTLED outcomes are cached; failures stay retryable.
+ */
+async function fetchTranslation(text: string, cacheKey: string, targetLang: string): Promise<FetchResult> {
+    const outcome = await translateFreeText(text, targetLang);
+    if (outcome.status === 'unavailable') return { kind: 'unavailable', reason: outcome.reason };
+    if (outcome.status === 'none' || outcome.text.toLowerCase() === text.trim().toLowerCase()) {
+        memo.set(cacheKey, null);
+        ssSet(cacheKey, null);
+        return { kind: 'none' };
+    }
+    memo.set(cacheKey, outcome.text);
+    ssSet(cacheKey, outcome.text);
+    return { kind: 'ok', text: outcome.text };
 }
 
 interface Props {
@@ -106,6 +105,13 @@ export interface TranslatableTextState {
     eligible: boolean;
     text: string;
     translated: string | null;
+    /** A request is out right now. */
+    loading: boolean;
+    /** Set when the last attempt could not be completed (429 / provider down /
+     *  offline) — never conflated with "nothing to translate". */
+    unavailable: TranslateFailure | null;
+    /** Reader-facing sentence for `unavailable`, only when they asked. */
+    unavailableNote: string | null;
     showOriginal: boolean;
     /** Text to show right now — mirrors the original `display` computation
      *  exactly, and falls back to the original while the fetch is in flight
@@ -140,34 +146,64 @@ export function useTranslatableText(text: string): TranslatableTextState {
     useEffect(() => { setLocalOriginal(null); }, [mode, epoch]);
     const showOriginal = resolveShowOriginal(localOriginal, mode);
 
-    // Explicit section Translate: retry even a memoized failure/no-op (the
-    // degraded pin) — the server Redis cache answers genuine no-ops cheaply.
+    const [loading, setLoading] = useState(false);
+    const [unavailable, setUnavailable] = useState<TranslateFailure | null>(null);
+
+    const run = (): (() => void) => {
+        let alive = true;
+        setLoading(true);
+        setUnavailable(null);
+        fetchTranslation(text, cacheKey, targetLang)
+            .then(r => {
+                if (!alive) return;
+                if (r.kind === 'ok') setTranslated(r.text);
+                else if (r.kind === 'unavailable') setUnavailable(r.reason);
+            })
+            .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
+    };
+
+    // Explicit section Translate: retry. Only a genuine no-op is memoized now
+    // (failures are not), so this re-asks exactly the things that failed.
     useEffect(() => {
         if (!shouldRetryFetch({ mode, epoch }) || !eligible || translated) return;
-        memo.delete(cacheKey);
-        let alive = true;
-        fetchTranslation(text, cacheKey, targetLang).then(t => { if (alive && t) setTranslated(t); });
-        return () => { alive = false; };
+        if (memo.get(cacheKey) === null) return; // settled: nothing to translate
+        return run();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode, epoch, eligible, cacheKey, text, targetLang, translated]);
 
     useEffect(() => {
         // cacheKey changes in place when the page language changes (Settings):
         // adopt the new language's cached value, or clear and re-fetch.
+        setUnavailable(null);
         if (!eligible) { setTranslated(null); return; }
         const m = memo.get(cacheKey);
         if (m !== undefined) { setTranslated(m); return; }
         const s = ssGet(cacheKey);
         if (s !== undefined) { memo.set(cacheKey, s); setTranslated(s); return; }
         setTranslated(null);
-        let alive = true;
-        fetchTranslation(text, cacheKey, targetLang).then(t => { if (alive && t) setTranslated(t); });
-        return () => { alive = false; };
+        return run();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [eligible, cacheKey, text, targetLang]);
+
+    // Report the REAL state to the enclosing section (inert no-op without one).
+    const status: ChildTranslationStatus = !eligible
+        ? 'none'
+        : translated ? 'done'
+        : loading ? 'pending'
+        : unavailable ? 'failed'
+        : 'none';
+    useReportTranslationStatus(status);
 
     return {
         eligible,
         text,
         translated,
+        loading,
+        unavailable,
+        unavailableNote: unavailable && mode === 'translated'
+            ? describeUnavailable(unavailable, translateRetryAfterSeconds())
+            : null,
         showOriginal,
         // While the fetch is in flight (translated === null) this is the
         // original — never blank, exactly as before.
@@ -186,23 +222,30 @@ export function useTranslatableText(text: string): TranslatableTextState {
  * hook instance, no drift between the two render sites.
  */
 export const TranslatableTextInline: React.FC<{ state: TranslatableTextState; className?: string }> = ({ state, className }) => {
-    // Not eligible / no translation (yet) → the original text, plain. While
-    // the fetch is in flight this branch shows the original — never blank.
-    if (!state.hasToggle) {
+    // Not eligible / no translation (yet) and nothing to declare → the original
+    // text, plain. While the fetch is in flight this branch shows the original
+    // — never blank.
+    if (!state.hasToggle && !state.unavailableNote) {
         return className ? <span className={className}>{state.text}</span> : <>{state.text}</>;
     }
 
     return (
         <span className={`translatable-headline${className ? ` ${className}` : ''}`}>
             {state.display}
-            <button
-                type="button"
-                className="th-toggle"
-                onClick={(e) => { e.stopPropagation(); state.toggle(); }}
-                data-tip={state.toggleTip}
-            >
-                {state.toggleLabel}
-            </button>
+            {state.hasToggle && (
+                <button
+                    type="button"
+                    className="th-toggle"
+                    onClick={(e) => { e.stopPropagation(); state.toggle(); }}
+                    data-tip={state.toggleTip}
+                >
+                    {state.toggleLabel}
+                </button>
+            )}
+            {/* Asked for, not delivered — said on the row, not swallowed. */}
+            {!state.hasToggle && state.unavailableNote && (
+                <span className="th-unavailable"> · {state.unavailableNote}</span>
+            )}
         </span>
     );
 };

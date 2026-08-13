@@ -13,3 +13,13 @@
     white-space: nowrap;
 }
 .translatable-headline .th-toggle:hover { opacity: 1; text-decoration: underline; }
+
+/* W3 (2026-08-13): "the reader asked, we could not deliver". Rendered ONLY
+   after an explicit section Translate — an ambient page never nags. Muted and
+   italic so it reads as a note about the row, not as content of the row. */
+.translatable-headline .th-unavailable {
+    font-size: 0.72em;
+    font-style: italic;
+    opacity: 0.7;
+    white-space: nowrap;
+}

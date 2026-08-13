@@ -1,7 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getPageLanguage, usePageLanguage } from '../lib/pageLanguage';
-import { resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
-import { useSectionTranslation } from './TranslatedSection';
+import { type ChildTranslationStatus, resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
+import {
+    type TranslateFailure,
+    describeUnavailable,
+    translateRetryAfterSeconds,
+    translateSignal,
+} from '../lib/translateQueue';
+import { useReportTranslationStatus, useSectionTranslation } from './TranslatedSection';
 
 /**
  * Instagram-style headline translation. A signal is stored in its ORIGINAL
@@ -10,8 +16,13 @@ import { useSectionTranslation } from './TranslatedSection';
  * "see translation" affordance — Pedro's ask). English-origin (or
  * same-as-viewer) headlines render plain, no network call.
  *
- * Translation is fetched lazily from /api/v2/translate (DeepSeek-backed,
- * cached server-side in signal_translations) and memoized per (id, lang) here.
+ * Translation is fetched through lib/translateQueue (W3, 2026-08-13): every
+ * headline mounting in the same tick joins ONE `POST /api/v2/translate/batch`
+ * instead of firing its own `GET /api/v2/translate?signal_id=`. Measured
+ * reason: a Brief load fired ~26 separate translate requests against a
+ * 20-per-5-minutes shared bucket, so the lane 429'd wholesale and the client
+ * rendered every 429 as "no translation needed". Results are memoized per
+ * (id, lang) here; the server caches them in signal_translations.
  *
  * Target language = the page-language setting (Settings → Page Language;
  * defaults to the browser language) via usePageLanguage() — changing it in
@@ -28,28 +39,34 @@ const labelsFor = (lang: string) => LABELS[lang] || LABELS.en;
 
 // Process-lifetime memo so repeat renders / re-opens don't re-fetch.
 const memo = new Map<string, string>();
+// Settled negatives (identity / same language / no such signal). Cached too:
+// re-asking is pure waste and, on a shared bucket, actively harmful. Failures
+// are NEVER pinned here — an unavailable answer is not an answer.
+const settledNone = new Set<string>();
 
-// One fetch shape for the initial lane and the section-Translate retry lane —
-// resolves the translation (memoized) or null; echoes of the original are
-// dropped so a no-op never shows a toggle.
-function fetchSignalTranslation(
+type FetchResult =
+    | { kind: 'ok'; text: string }
+    | { kind: 'none' }
+    | { kind: 'unavailable'; reason: TranslateFailure };
+
+// One fetch shape for the initial lane and the section-Translate retry lane.
+// An echo of the original counts as a no-op (nothing to toggle); a transport
+// or provider failure is reported as such and must never be dressed up as one.
+async function fetchSignalTranslation(
     signalId: number,
     targetLang: string,
     original: string,
     cacheKey: string,
-    signal: AbortSignal,
-): Promise<string | null> {
-    return fetch(`/api/v2/translate?signal_id=${signalId}&to=${targetLang}`, { signal })
-        .then(r => (r.ok ? r.json() : null))
-        .then((d: { translated?: string } | null) => {
-            const t = d?.translated?.trim();
-            if (t && t.toLowerCase() !== original.trim().toLowerCase()) {
-                memo.set(cacheKey, t);
-                return t;
-            }
-            return null;
-        })
-        .catch(() => null); // silent — fall back to original
+): Promise<FetchResult> {
+    const outcome = await translateSignal(signalId, targetLang);
+    if (outcome.status === 'unavailable') return { kind: 'unavailable', reason: outcome.reason };
+    if (outcome.status === 'none') { settledNone.add(cacheKey); return { kind: 'none' }; }
+    if (outcome.text.toLowerCase() === original.trim().toLowerCase()) {
+        settledNone.add(cacheKey);
+        return { kind: 'none' };
+    }
+    memo.set(cacheKey, outcome.text);
+    return { kind: 'ok', text: outcome.text };
 }
 
 // Typographic punctuation that is technically non-ASCII but says nothing about
@@ -106,6 +123,13 @@ export interface TranslatableHeadlineState {
     sourceLang?: string | null;
     translated: string | null;
     loading: boolean;
+    /** Set when the last attempt could not be completed (429 / provider down /
+     *  offline). Distinct from "no translation needed" — the whole point. */
+    unavailable: TranslateFailure | null;
+    /** Reader-facing sentence for `unavailable`, or null. Only rendered when
+     *  the reader explicitly asked (section mode 'translated'), so an ambient
+     *  page never nags. */
+    unavailableNote: string | null;
     showOriginal: boolean;
     /** Text to show right now — mirrors the original `display` computation
      *  exactly, valid whether or not there is anything to toggle. */
@@ -126,7 +150,7 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
     const cacheKey = `${signalId}:${targetLang}`;
     const [translated, setTranslated] = useState<string | null>(() => memo.get(cacheKey) ?? null);
     const [loading, setLoading] = useState(false);
-    const abortRef = useRef<AbortController | null>(null);
+    const [unavailable, setUnavailable] = useState<TranslateFailure | null>(null);
 
     // Per-item toggle rides ON TOP of the enclosing section's mode (default
     // context when no <TranslatedSection> above — behavior unchanged). null =
@@ -136,33 +160,56 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
     useEffect(() => { setLocalOriginal(null); }, [mode, epoch]);
     const showOriginal = resolveShowOriginal(localOriginal, mode);
 
+    // One request lane shared by the initial mount and the section-Translate
+    // retry. `alive` guards a late resolve after unmount / key change; the
+    // batch queue de-dupes concurrent asks for the same id, so a re-run costs
+    // nothing when one is already out.
+    const run = (): (() => void) => {
+        let alive = true;
+        setLoading(true);
+        setUnavailable(null);
+        fetchSignalTranslation(signalId, targetLang, original, cacheKey)
+            .then(r => {
+                if (!alive) return;
+                if (r.kind === 'ok') setTranslated(r.text);
+                else if (r.kind === 'unavailable') setUnavailable(r.reason);
+            })
+            .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
+    };
+
     useEffect(() => {
         // cacheKey changes in place when the page language changes (Settings):
         // adopt the new language's cached translation, or clear and re-fetch.
         const cached = memo.get(cacheKey);
-        if (cached !== undefined) { setTranslated(cached); return; }
+        if (cached !== undefined) { setTranslated(cached); setUnavailable(null); return; }
         setTranslated(null);
-        if (!eligible) return;
-        const controller = new AbortController();
-        abortRef.current = controller;
-        setLoading(true);
-        fetchSignalTranslation(signalId, targetLang, original, cacheKey, controller.signal)
-            .then(t => { if (t) setTranslated(t); })
-            .finally(() => setLoading(false));
-        return () => controller.abort();
+        setUnavailable(null);
+        if (!eligible || settledNone.has(cacheKey)) return;
+        return run();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [eligible, cacheKey, signalId, original, targetLang]);
 
-    // Explicit section Translate: retry a fetch that failed or was aborted
-    // (failures are never memoized here, so this is a plain re-ask).
+    // Explicit section Translate: retry a fetch that failed (failures are never
+    // memoized, so this is a plain re-ask). A settled no-op is not retried —
+    // there is nothing to get, and the shared bucket is finite.
     useEffect(() => {
         if (!shouldRetryFetch({ mode, epoch }) || !eligible || translated) return;
-        const controller = new AbortController();
-        setLoading(true);
-        fetchSignalTranslation(signalId, targetLang, original, cacheKey, controller.signal)
-            .then(t => { if (t) setTranslated(t); })
-            .finally(() => setLoading(false));
-        return () => controller.abort();
+        if (settledNone.has(cacheKey)) return;
+        return run();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode, epoch, eligible, cacheKey, signalId, original, targetLang, translated]);
+
+    // Report the REAL state up to the enclosing section so its control can be
+    // derived from what happened rather than from the click. Inert no-op
+    // outside a <TranslatedSection>.
+    const status: ChildTranslationStatus = !eligible
+        ? 'none'
+        : translated ? 'done'
+        : loading ? 'pending'
+        : unavailable ? 'failed'
+        : 'none';
+    useReportTranslationStatus(status);
 
     const display = translated && !showOriginal ? translated : original;
     const flag = showOriginal || !translated;
@@ -173,6 +220,10 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
         sourceLang,
         translated,
         loading,
+        unavailable,
+        unavailableNote: unavailable && mode === 'translated'
+            ? describeUnavailable(unavailable, translateRetryAfterSeconds())
+            : null,
         showOriginal,
         display,
         hasToggle: !!translated,
@@ -190,8 +241,9 @@ export function useTranslatableHeadline({ signalId, original, sourceLang }: Prop
  * hook instance, no drift between the two render sites.
  */
 export const TranslatableHeadlineInline: React.FC<{ state: TranslatableHeadlineState }> = ({ state }) => {
-    // No translation available / not eligible → plain original headline.
-    if (!state.eligible || (!state.translated && !state.loading)) {
+    // Not eligible, or nothing in flight and nothing to declare → plain
+    // original headline (unchanged for every ambient surface).
+    if (!state.eligible || (!state.translated && !state.loading && !state.unavailableNote)) {
         return <>{state.original}</>;
     }
 
@@ -209,6 +261,11 @@ export const TranslatableHeadlineInline: React.FC<{ state: TranslatableHeadlineS
                 </button>
             )}
             {!state.translated && state.loading && <span className="th-loading"> · {state.translatingLabel}</span>}
+            {/* The reader asked and we could not deliver — say so on the row
+                itself, next to the text that stayed foreign. */}
+            {!state.translated && !state.loading && state.unavailableNote && (
+                <span className="th-unavailable"> · {state.unavailableNote}</span>
+            )}
         </span>
     );
 };
