@@ -105,6 +105,18 @@ async def _cached(conn, signal_id: int, target_lang: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
+_PERSIST_SQL = """
+    INSERT INTO signal_translations
+        (signal_id, target_lang, translated, model, source_lang)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (signal_id, target_lang) DO UPDATE
+    SET translated  = EXCLUDED.translated,
+        model       = EXCLUDED.model,
+        source_lang = EXCLUDED.source_lang,
+        created_at  = NOW()
+"""
+
+
 async def _persist(
     conn,
     signal_id: int,
@@ -114,16 +126,7 @@ async def _persist(
     source_lang: Optional[str],
 ) -> None:
     await conn.execute(
-        """
-        INSERT INTO signal_translations
-            (signal_id, target_lang, translated, model, source_lang)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (signal_id, target_lang) DO UPDATE
-        SET translated  = EXCLUDED.translated,
-            model       = EXCLUDED.model,
-            source_lang = EXCLUDED.source_lang,
-            created_at  = NOW()
-        """,
+        _PERSIST_SQL,
         signal_id, target_lang, translated, model, source_lang,
     )
 
@@ -230,19 +233,118 @@ async def get_translate(
         return await _translate_one(conn, client, signal_id, target_lang, api_key)
 
 
+async def _cached_many(conn, signal_ids: list[int], target_lang: str) -> dict[int, dict]:
+    rows = await conn.fetch(
+        "SELECT signal_id, translated, model, source_lang "
+        "FROM signal_translations WHERE signal_id = ANY($1::bigint[]) AND target_lang = $2",
+        signal_ids, target_lang,
+    )
+    return {int(r["signal_id"]): dict(r) for r in rows}
+
+
+async def _signal_meta_many(conn, signal_ids: list[int]) -> dict[int, dict]:
+    rows = await conn.fetch(
+        "SELECT id, headline, source_lang FROM signals_v2 WHERE id = ANY($1::bigint[])",
+        signal_ids,
+    )
+    return {int(r["id"]): dict(r) for r in rows}
+
+
 @router.post("/api/v2/translate/batch")
 async def post_translate_batch(req: TranslateBatchRequest) -> dict:
+    """Translate many headlines in ONE request.
+
+    Set-based on purpose. The first version of this endpoint acquired a single
+    asyncpg connection and then handed it to five concurrent `gather` tasks;
+    asyncpg forbids concurrent use of a connection, so ANY request with more
+    than one id raised "another operation is in progress" and 500'd. It was
+    broken from birth, nothing ever called it, and the frontend compensated by
+    firing one HTTP request per receipt — ~26 per Brief load against a
+    20-per-5-minutes rate-limit bucket, which is how "⇄ Translate all" became a
+    silent no-op (2026-08-13 re-judge, W3).
+
+    Now the DB is touched sequentially and in sets — one cache SELECT, one
+    metadata SELECT, one write pass — while only the provider calls (which
+    touch no connection) run concurrently. A 32-id batch costs 2 queries
+    instead of 64, and cannot collide with itself.
+    """
     target_lang = req.to.lower()
     api_key = os.environ.get("DEEPSEEK_API_KEY")
-    async with db.pool.acquire() as conn, httpx.AsyncClient() as client:
-        sem = asyncio.Semaphore(5)
+    # Preserve request order, drop repeats: every id gets exactly one verdict.
+    ids = list(dict.fromkeys(req.signal_ids))
+    results: dict[int, dict] = {}
 
-        async def _task(sid: int) -> dict:
-            async with sem:
-                return await _translate_one(conn, client, sid, target_lang, api_key)
+    async with db.pool.acquire() as conn:
+        cached = await _cached_many(conn, ids, target_lang)
+        for sid, row in cached.items():
+            results[sid] = {
+                "signal_id": sid,
+                "target_lang": target_lang,
+                "translated": row["translated"],
+                "source_lang": row.get("source_lang"),
+                "cached": True,
+                "model": row.get("model"),
+            }
 
-        results = await asyncio.gather(*(_task(sid) for sid in req.signal_ids))
-    return {"target_lang": target_lang, "translations": results}
+        misses = [sid for sid in ids if sid not in results]
+        meta = await _signal_meta_many(conn, misses) if misses else {}
+
+        # Identity rows (already in the target language) and the honest
+        # negatives never reach the provider.
+        to_translate: list[tuple[int, str, Optional[str]]] = []
+        writes: list[tuple] = []
+        for sid in misses:
+            sig = meta.get(sid)
+            if not sig:
+                results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                                "translated": None, "error": "not_found"}
+                continue
+            raw = sig["headline"]
+            if not raw:
+                results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                                "translated": None, "error": "no_headline"}
+                continue
+            source_lang = sig["source_lang"]
+            cleaned = html.unescape(raw)
+            if source_lang and source_lang.lower() == target_lang:
+                results[sid] = {
+                    "signal_id": sid, "target_lang": target_lang, "translated": cleaned,
+                    "source_lang": source_lang, "cached": False, "model": "identity",
+                }
+                writes.append((sid, target_lang, cleaned, "identity", source_lang))
+                continue
+            if not api_key:
+                results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                                "translated": None, "error": "no_api_key"}
+                continue
+            to_translate.append((sid, cleaned, source_lang))
+
+        if to_translate:
+            # Provider fan-out only — no DB handle is captured here.
+            sem = asyncio.Semaphore(5)
+            async with httpx.AsyncClient() as client:
+                async def _task(headline: str) -> Optional[str]:
+                    async with sem:
+                        return await _deepseek_translate(client, headline, target_lang, api_key)
+
+                translated_list = await asyncio.gather(
+                    *(_task(headline) for _, headline, _ in to_translate)
+                )
+            for (sid, _cleaned, source_lang), translated in zip(to_translate, translated_list):
+                if not translated:
+                    results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                                    "translated": None, "error": "translate_failed"}
+                    continue
+                results[sid] = {
+                    "signal_id": sid, "target_lang": target_lang, "translated": translated,
+                    "source_lang": source_lang, "cached": False, "model": DEEPSEEK_MODEL,
+                }
+                writes.append((sid, target_lang, translated, DEEPSEEK_MODEL, source_lang))
+
+        if writes:
+            await conn.executemany(_PERSIST_SQL, writes)
+
+    return {"target_lang": target_lang, "translations": [results[sid] for sid in ids]}
 
 
 # --------------------------------------------------------------------------
