@@ -54,9 +54,39 @@ from app.services.coverage_gaps import (  # noqa: E402
     gap_status,
 )
 from app.services.brief_sections import fetch_gap, fetch_rising  # noqa: E402
+from app.services.insight_text import (  # noqa: E402
+    repair_scale_claims,
+    taxonomy_line,
+)
 
 
 TOP_THREADS_CONTRACT = "living-narrative-threads-v0"
+
+# #249 — Atlas's OWN R3.1 categories: the Brief's category chart and (since the
+# 2026-08-13 re-judge) the Editor's Analysis read THIS query, not two of their
+# own. Counts = current (latest-snapshot) volume per category over active
+# top-level stories. One lane, so the paragraph and the chart under it cannot
+# name two different populations on one screen.
+_CATEGORY_COUNTS_SQL = """
+    SELECT dt.category,
+           COUNT(DISTINCT dt.id)::int    AS topics,
+           COALESCE(SUM(x.n), 0)::bigint AS signals
+    FROM dynamic_topics dt
+    JOIN LATERAL (
+        SELECT SUM(ec.n_signals) AS n
+        FROM dynamic_topic_members m
+        JOIN emergent_clusters ec ON ec.id = m.emergent_cluster_id
+        WHERE m.dynamic_topic_id = dt.id
+          AND m.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members
+              WHERE dynamic_topic_id = dt.id)
+    ) x ON true
+    WHERE dt.state = 'active' AND dt.parent_id IS NULL
+      AND dt.category IS NOT NULL
+    GROUP BY dt.category
+    ORDER BY signals DESC
+    LIMIT 8
+"""
 TOP_THREADS_LIMIT = int(os.getenv("BRIEFING_TOP_THREADS_LIMIT", "10"))
 
 
@@ -98,22 +128,12 @@ def _build_theme_country_map(rows) -> list:
     ]
 
 
-def _clean_theme_label(theme_code: str) -> str:
-    """Convert theme code like WB_475_DIGITAL_GOVERNMENT to 'Digital Government'."""
-    label = (theme_code or "").upper()
-    prefixes = (
-        "WB_", "TAX_", "GDELT_", "CRISISLEX_", "USPEC_", "UN_",
-        "SOC_", "ENV_", "ECON_", "EPU_", "MIL_", "CRIME_", "HEALTH_",
-    )
-    for prefix in prefixes:
-        if label.startswith(prefix):
-            parts = label.split("_", 2)
-            label = parts[-1] if len(parts) >= 2 else label
-            break
-    parts = label.split("_", 1)
-    if parts[0].isdigit() and len(parts) == 2:
-        label = parts[1]
-    return label.replace("_", " ").title()
+# NOTE (re-judge 2026-08-13 §4a): `_clean_theme_label` used to live here —
+# strip a prefix, `.title()`, hand the result to the Editor's Analysis prompt.
+# It is what printed "Ungp Forests Rivers Oceans, Crisislexrec" as English on
+# the front page, and its last caller is gone, so it is gone with it. Prose
+# names come from app/services/theme_labels.human_theme_label, which returns
+# None (= leave it out of the sentence) for anything it cannot name.
 
 
 def _record_get(row, key: str, default=None):
@@ -272,29 +292,12 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             ORDER BY chosen_sentiment_raw DESC LIMIT 10
         """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE)
 
-        # #249: the Brief's back-matter index should be ATLAS categories (R3.1 —
-        # our own open category level), not the GDELT taxonomy. Counts = current
-        # (latest-snapshot) volume per category over active top-level stories.
-        category_counts = await _fetch_section(conn, degraded_segments, "category_counts", """
-            SELECT dt.category,
-                   COUNT(DISTINCT dt.id)::int    AS topics,
-                   COALESCE(SUM(x.n), 0)::bigint AS signals
-            FROM dynamic_topics dt
-            JOIN LATERAL (
-                SELECT SUM(ec.n_signals) AS n
-                FROM dynamic_topic_members m
-                JOIN emergent_clusters ec ON ec.id = m.emergent_cluster_id
-                WHERE m.dynamic_topic_id = dt.id
-                  AND m.snapshot_at = (
-                      SELECT MAX(snapshot_at) FROM dynamic_topic_members
-                      WHERE dynamic_topic_id = dt.id)
-            ) x ON true
-            WHERE dt.state = 'active' AND dt.parent_id IS NULL
-              AND dt.category IS NOT NULL
-            GROUP BY dt.category
-            ORDER BY signals DESC
-            LIMIT 8
-        """)
+        # #249: the Brief's back-matter index is ATLAS categories (R3.1 — our
+        # own open category level), not the GDELT taxonomy. The Editor's
+        # Analysis reads the SAME constant (see _CATEGORY_COUNTS_SQL).
+        category_counts = await _fetch_section(
+            conn, degraded_segments, "category_counts", _CATEGORY_COUNTS_SQL
+        )
 
         # B3 (L1 review 2026-07-05): the #225 gap box, finally fed — categories
         # where coverage EXISTS in the window but NOTHING clears the quality
@@ -1041,6 +1044,10 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
             if cached_raw:
                 data = json.loads(cached_raw)
                 data["cached"] = True
+                # A paragraph cached before this fix (TTL 30 min) must not
+                # outlive it — the guard runs on the way out, not only on the
+                # way in.
+                data["insight"] = repair_scale_claims(data.get("insight"))
                 return data
         except Exception:
             pass
@@ -1093,6 +1100,15 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
                     WHERE bucket > NOW() - ($1::int * INTERVAL '1 hour')
                     GROUP BY theme ORDER BY cnt DESC LIMIT 5
                 """, hours)
+
+            # Re-judge §4a: the paragraph named GDELT theme codes while the
+            # chart directly under it named Atlas R3 categories. Same constant
+            # as the chart (_CATEGORY_COUNTS_SQL) → same lane, same order; the
+            # GDELT rows above stay only as the fallback the chart itself uses
+            # when no category is live.
+            insight_categories = await _fetch_section(
+                conn, degraded_segments, "insight_categories", _CATEGORY_COUNTS_SQL
+            )
     except Exception as exc:
         logger.warning("briefing/insight db failed: %s", exc)
         return {"insight": None, "error": "db_error", "generated_at": generated_at}
@@ -1102,7 +1118,11 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
     total = int(stats["total"] or 0)
     countries = int(stats["countries"] or 0)
     avg_sent = float(stats["avg_sent"] or 0) / 10
-    themes_str = ", ".join([_clean_theme_label(r["theme"]) for r in top_themes])
+    # Re-judge §4a: `_clean_theme_label` (strip a prefix, .title()) is the code
+    # path that printed "Ungp Forests Rivers Oceans, Crisislexrec" as English.
+    # taxonomy_line reads the served CATEGORY lane first and drops any code it
+    # cannot name — a missing bullet, never a mangled one.
+    taxonomy_bullet = taxonomy_line(insight_categories, top_themes)
     countries_str = ", ".join([
         f"{r['name'] or r['country_code']} ({int(r['cnt'])} signals, {float(r['avg_s'] or 0) / 10:+.2f})"
         for r in top_countries
@@ -1131,14 +1151,26 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
     #     narrative, why an outlet frames something, or what a state intends.
     #     Describable aggregates only — volumes, shares, tones, and where they
     #     sit relative to each other.
+    #
+    #  3. (re-judge 2026-08-13 §4a) The TAXONOMY and the SCALE, the two things
+    #     this paragraph got visibly wrong in front of a reader:
+    #     - the theme bullet is now the served category lane, named, so the
+    #       paragraph and the chart under it cannot describe two populations;
+    #     - the scale bullet declares its bounds as CONSTANTS and separates
+    #       them from the measured figure. The model had filled "on the
+    #       X…Y scale" with the one number it had ("−0.48 on the −0.48…−0.48
+    #       scale"), so the bounds also get checked after generation
+    #       (repair_scale_claims) — wording alone cannot close a generative slip.
     top_n = len(top_countries)
     user_prompt = (
         f"Describe the measured shape of press coverage over the last {hours} hours.\n"
         f"- Total coverage: {total:,} articles across {countries} countries\n"
-        f"- Average tone across all coverage: {avg_sent:+.2f} on a normalized -1..+1 scale "
-        "(negative = critical/conflict-heavy wording, positive = supportive wording)\n"
-        f"- Most-covered themes: {themes_str}\n"
-        f"- The {top_n} MOST-COVERED countries only, with article count and their own "
+        "- Tone scale: -1.00 to +1.00, fixed bounds (negative = critical/conflict-heavy "
+        "wording, positive = supportive wording). Those two bounds are constants of the "
+        "scale; a measured tone is never one of them.\n"
+        f"- Average tone across all coverage: {avg_sent:+.2f} on that -1..+1 scale\n"
+        + (f"{taxonomy_bullet}\n" if taxonomy_bullet else "")
+        + f"- The {top_n} MOST-COVERED countries only, with article count and their own "
         f"average tone on the same -1..+1 scale: {countries_str}\n\n"
         "Write 2-3 sentences describing: what the press is covering most, how the tone is "
         "distributed across these countries, and any notable concentration in the volumes.\n"
@@ -1160,6 +1192,12 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
         "media'), no claims about stability, legitimacy, or what any of this means for the "
         "world. Describe the coverage, not the events behind it.\n"
         "4. No superlatives beyond the rows you were given, and no forecasting.\n"
+        "5. Name the taxonomy exactly as the data line labels it (say 'Atlas categories' or "
+        "'GDELT themes' as given), never rename or reinterpret a category, and never state a "
+        "volume for one — you were given their names, not their counts. If no such line is "
+        "present, do not mention themes or categories at all.\n"
+        "6. When you mention the tone scale, write its bounds exactly as given (-1 to +1). "
+        "Never restate a scale using a measured figure as one of its bounds.\n"
         "Be concise and neutral. No markdown, no bullet points — flowing prose only."
     )
 
@@ -1172,6 +1210,11 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
     )
     if insight_text is None:
         return {"insight": None, "error": error_code, "generated_at": generated_at}
+
+    # The bounds are constants, so they are enforced rather than requested:
+    # any range the model asserts as "the scale" that is not the real scale is
+    # rewritten to it. Healthy prose comes back byte-identical.
+    insight_text = repair_scale_claims(insight_text)
 
     result = {"insight": insight_text, "provider": provider, "generated_at": generated_at, "cached": False}
     if hasattr(app.state, "redis") and app.state.redis:

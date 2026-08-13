@@ -65,6 +65,54 @@ def test_every_claim_must_carry_a_number():
     assert "Every claim must be supported by a number" in INSIGHT_SECTION
 
 
+# --- re-judge 2026-08-13 §4a: the three defects in one 90-word paragraph ----
+
+
+def test_no_raw_taxonomy_code_can_reach_the_prompt():
+    """`_clean_theme_label` (strip a prefix, .title()) wrote the witness.
+
+    "Ungp Forests Rivers Oceans, Crisislexrec" — the mechanical cleaner is out
+    of the prompt entirely; naming goes through the guarded resolver, which
+    returns None (= omit) for anything it cannot name.
+    """
+    assert "_clean_theme_label(" not in INSIGHT_SECTION, (
+        "the mechanical title-caser is back in the Analysis prompt — it is the "
+        "code path that printed 'Crisislexrec' as English"
+    )
+    assert "taxonomy_line(" in INSIGHT_SECTION
+
+
+def test_the_analysis_reads_the_same_category_lane_as_the_chart():
+    """One taxonomy per screen: the paragraph and the chart share ONE query."""
+    assert "_CATEGORY_COUNTS_SQL" in INSIGHT_SECTION, (
+        "the Analysis stopped reading the category lane the chart under it "
+        "serves — the judge's 'contradicts its own category chart' is back"
+    )
+    # ... and the briefing payload's own chart must read that same constant.
+    payload_start = SOURCE.index("async def get_briefing")
+    payload = SOURCE[payload_start:SOURCE.index("async def get_briefing_insight")]
+    assert "_CATEGORY_COUNTS_SQL" in payload
+
+
+def test_the_scale_bounds_are_declared_fixed():
+    """"−0.48 on the −0.48…−0.48 scale" — the bounds are constants, and say so."""
+    assert "fixed bounds" in INSIGHT_SECTION
+    assert "a measured tone is never one of them" in INSIGHT_SECTION
+
+
+def test_the_served_paragraph_is_checked_against_the_real_bounds():
+    """Prompt wording is the belt; the post-generation repair is the brace."""
+    assert "repair_scale_claims(" in INSIGHT_SECTION
+    assert INSIGHT_SECTION.count("repair_scale_claims(") >= 2, (
+        "a paragraph cached before the fix must not outlive it — the cached "
+        "read path needs the same repair as the fresh one"
+    )
+
+
+def test_the_prompt_forbids_renaming_the_taxonomy_it_was_given():
+    assert "Name the taxonomy exactly as the data line labels it" in INSIGHT_SECTION
+
+
 def test_the_surface_disclosure_and_the_prompt_agree():
     """The page prints the basis deterministically; the prompt must not deny it.
 
