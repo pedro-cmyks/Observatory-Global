@@ -90,8 +90,35 @@
 }
 
 .brief-markets-asof {
-  white-space: nowrap;
+  /* W5: the stamp now carries its age (and, on a mixed basket, its oldest
+     member), so it must be allowed to wrap instead of shoving the divider into
+     a horizontal scroll at 375px. */
   opacity: 0.85;
+  cursor: help;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 4px;
+}
+
+/* Only the mixed clause recedes — the age itself reads at full strength. */
+.brief-markets-mixed {
+  opacity: 0.78;
+}
+
+/* A lag no market weekend explains is the one case that must be LOUD. */
+.brief-markets-asof--stale {
+  opacity: 1;
+  color: var(--r-warn, var(--color-warning, #d08324));
+}
+
+.brief-markets-stale-flag {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 4px;
+  margin-right: 4px;
 }
 
 /* the tiles: fill the band width evenly, squared, wrap on narrow screens. */
