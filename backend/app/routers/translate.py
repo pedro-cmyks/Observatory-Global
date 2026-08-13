@@ -264,16 +264,25 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
     silent no-op (2026-08-13 re-judge, W3).
 
     Now the DB is touched sequentially and in sets — one cache SELECT, one
-    metadata SELECT, one write pass — while only the provider calls (which
-    touch no connection) run concurrently. A 32-id batch costs 2 queries
-    instead of 64, and cannot collide with itself.
+    metadata SELECT, one write pass — while only the provider calls run
+    concurrently. A 32-id batch costs 2 queries instead of 64 and cannot
+    collide with itself.
+
+    The pool connection is RELEASED before the provider fan-out and re-acquired
+    to write. The old shape held one connection for the whole request, so a
+    32-headline batch pinned a connection for ~15s of DeepSeek latency; on a
+    10-connection pool a couple of concurrent readers were enough to starve
+    every other endpoint (reproduced locally while verifying this fix).
     """
     target_lang = req.to.lower()
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     # Preserve request order, drop repeats: every id gets exactly one verdict.
     ids = list(dict.fromkeys(req.signal_ids))
     results: dict[int, dict] = {}
+    writes: list[tuple] = []
+    to_translate: list[tuple[int, str, Optional[str]]] = []
 
+    # --- Phase 1: reads (connection held only for two set-based queries) ---
     async with db.pool.acquire() as conn:
         cached = await _cached_many(conn, ids, target_lang)
         for sid, row in cached.items():
@@ -285,63 +294,62 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
                 "cached": True,
                 "model": row.get("model"),
             }
-
         misses = [sid for sid in ids if sid not in results]
         meta = await _signal_meta_many(conn, misses) if misses else {}
 
-        # Identity rows (already in the target language) and the honest
-        # negatives never reach the provider.
-        to_translate: list[tuple[int, str, Optional[str]]] = []
-        writes: list[tuple] = []
-        for sid in misses:
-            sig = meta.get(sid)
-            if not sig:
-                results[sid] = {"signal_id": sid, "target_lang": target_lang,
-                                "translated": None, "error": "not_found"}
-                continue
-            raw = sig["headline"]
-            if not raw:
-                results[sid] = {"signal_id": sid, "target_lang": target_lang,
-                                "translated": None, "error": "no_headline"}
-                continue
-            source_lang = sig["source_lang"]
-            cleaned = html.unescape(raw)
-            if source_lang and source_lang.lower() == target_lang:
-                results[sid] = {
-                    "signal_id": sid, "target_lang": target_lang, "translated": cleaned,
-                    "source_lang": source_lang, "cached": False, "model": "identity",
-                }
-                writes.append((sid, target_lang, cleaned, "identity", source_lang))
-                continue
-            if not api_key:
-                results[sid] = {"signal_id": sid, "target_lang": target_lang,
-                                "translated": None, "error": "no_api_key"}
-                continue
-            to_translate.append((sid, cleaned, source_lang))
+    # Identity rows (already in the target language) and the honest negatives
+    # never reach the provider.
+    for sid in misses:
+        sig = meta.get(sid)
+        if not sig:
+            results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                            "translated": None, "error": "not_found"}
+            continue
+        raw = sig["headline"]
+        if not raw:
+            results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                            "translated": None, "error": "no_headline"}
+            continue
+        source_lang = sig["source_lang"]
+        cleaned = html.unescape(raw)
+        if source_lang and source_lang.lower() == target_lang:
+            results[sid] = {
+                "signal_id": sid, "target_lang": target_lang, "translated": cleaned,
+                "source_lang": source_lang, "cached": False, "model": "identity",
+            }
+            writes.append((sid, target_lang, cleaned, "identity", source_lang))
+            continue
+        if not api_key:
+            results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                            "translated": None, "error": "no_api_key"}
+            continue
+        to_translate.append((sid, cleaned, source_lang))
 
-        if to_translate:
-            # Provider fan-out only — no DB handle is captured here.
-            sem = asyncio.Semaphore(5)
-            async with httpx.AsyncClient() as client:
-                async def _task(headline: str) -> Optional[str]:
-                    async with sem:
-                        return await _deepseek_translate(client, headline, target_lang, api_key)
+    # --- Phase 2: provider fan-out, holding NO connection ---
+    if to_translate:
+        sem = asyncio.Semaphore(5)
+        async with httpx.AsyncClient() as client:
+            async def _task(headline: str) -> Optional[str]:
+                async with sem:
+                    return await _deepseek_translate(client, headline, target_lang, api_key)
 
-                translated_list = await asyncio.gather(
-                    *(_task(headline) for _, headline, _ in to_translate)
-                )
-            for (sid, _cleaned, source_lang), translated in zip(to_translate, translated_list):
-                if not translated:
-                    results[sid] = {"signal_id": sid, "target_lang": target_lang,
-                                    "translated": None, "error": "translate_failed"}
-                    continue
-                results[sid] = {
-                    "signal_id": sid, "target_lang": target_lang, "translated": translated,
-                    "source_lang": source_lang, "cached": False, "model": DEEPSEEK_MODEL,
-                }
-                writes.append((sid, target_lang, translated, DEEPSEEK_MODEL, source_lang))
+            translated_list = await asyncio.gather(
+                *(_task(headline) for _, headline, _ in to_translate)
+            )
+        for (sid, _cleaned, source_lang), translated in zip(to_translate, translated_list):
+            if not translated:
+                results[sid] = {"signal_id": sid, "target_lang": target_lang,
+                                "translated": None, "error": "translate_failed"}
+                continue
+            results[sid] = {
+                "signal_id": sid, "target_lang": target_lang, "translated": translated,
+                "source_lang": source_lang, "cached": False, "model": DEEPSEEK_MODEL,
+            }
+            writes.append((sid, target_lang, translated, DEEPSEEK_MODEL, source_lang))
 
-        if writes:
+    # --- Phase 3: one write pass ---
+    if writes:
+        async with db.pool.acquire() as conn:
             await conn.executemany(_PERSIST_SQL, writes)
 
     return {"target_lang": target_lang, "translations": [results[sid] for sid in ids]}

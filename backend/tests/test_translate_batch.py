@@ -93,17 +93,24 @@ class FakeConn:
 
 
 class FakePool:
+    """Records acquire/release so a test can prove the connection is not held
+    across the provider fan-out (a 32-id batch used to pin one of the pool's
+    10 connections for ~15s of DeepSeek latency)."""
+
     def __init__(self, conn):
         self.conn = conn
+        self.timeline: list[str] = []
 
     def acquire(self):
-        conn = self.conn
+        pool = self
 
         class _Ctx:
             async def __aenter__(self):
-                return conn
+                pool.timeline.append("acquire")
+                return pool.conn
 
             async def __aexit__(self, *a):
+                pool.timeline.append("release")
                 return False
 
         return _Ctx()
@@ -111,14 +118,20 @@ class FakePool:
 
 @pytest.fixture
 def wire(monkeypatch):
+    pool_ref: dict = {}
+
     def _wire(signals, cached=None, translator=None, api_key="k"):
         conn = FakeConn(signals, cached)
-        monkeypatch.setattr(db_mod, "pool", FakePool(conn))
+        pool = FakePool(conn)
+        pool_ref["p"] = pool
+        conn.pool = pool
+        monkeypatch.setattr(db_mod, "pool", pool)
         monkeypatch.setenv("DEEPSEEK_API_KEY", api_key)
         calls: list[str] = []
 
         async def _fake(client_, headline, target_lang, key):
             calls.append(headline)
+            pool_ref["p"].timeline.append("provider")
             await asyncio.sleep(0)
             if translator is not None:
                 return translator(headline)
@@ -242,3 +255,46 @@ def test_html_entities_are_unescaped_before_translating(wire):
 def test_batch_size_ceiling_is_enforced_by_the_contract():
     r = client.post(URL, json={"signal_ids": list(range(1, 100)), "to": "en"})
     assert r.status_code == 422
+
+
+def test_connection_is_released_before_the_provider_fan_out(wire):
+    """A pool connection must not be pinned across DeepSeek latency.
+
+    Reproduced live while verifying the W3 fix: a local API holding one
+    connection per in-flight batch starved every other endpoint on a
+    10-connection pool. Reads, then provider, then a single write pass.
+    """
+    signals = {i: (f"Titular {i}", "es") for i in range(1, 4)}
+    conn, calls = wire(signals)
+
+    r = client.post(URL, json={"signal_ids": list(signals), "to": "en"})
+    assert r.status_code == 200
+
+    tl = conn.pool.timeline
+    # The invariant, stated directly: no provider call ever happens while a
+    # connection is checked out.
+    held = False
+    for event in tl:
+        if event == "acquire":
+            assert not held, "connection acquired twice without release"
+            held = True
+        elif event == "release":
+            held = False
+        elif event == "provider":
+            assert not held, f"provider call ran while holding a pool connection: {tl}"
+    assert not held, "connection never released"
+
+    # And the shape is the intended three phases: read, provider, write.
+    assert tl[:2] == ["acquire", "release"]
+    assert "provider" in tl
+    assert tl[-2:] == ["acquire", "release"]
+
+
+def test_all_cached_batch_never_reacquires_for_a_write(wire):
+    signals = {1: ("Uno", "es")}
+    cached = {(1, "en"): ("One", "deepseek-chat", "es")}
+    conn, calls = wire(signals, cached)
+
+    client.post(URL, json={"signal_ids": [1], "to": "en"})
+
+    assert conn.pool.timeline == ["acquire", "release"]
