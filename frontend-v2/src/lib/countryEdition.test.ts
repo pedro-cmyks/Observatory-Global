@@ -41,6 +41,18 @@ describe('composeCountrySections', () => {
     for (const s of [today, radar, culture]) expect(s.empty_reason).toBeTruthy()
   })
 
+  // X1 (2026-08-13): an empty country section is a fact about Atlas's ingest,
+  // never about the country. "Quiet in the last 24h" read as a calm country
+  // when the truth was a thin domestic feed set — the inversion the veracity
+  // scorecard refuted on Colombia.
+  it('empty reasons name the ingest, never call the country quiet', () => {
+    const [today, radar, culture] = composeCountrySections([], [])
+    for (const s of [today, radar, culture]) {
+      expect(s.empty_reason).toContain('Atlas')
+    }
+    expect(today.empty_reason).not.toContain('quiet')
+  })
+
   it('present flag matches content presence', () => {
     const [today, radar] = composeCountrySections([worldA], [gap])
     expect(today.present).toBe(today.threads.length > 0)

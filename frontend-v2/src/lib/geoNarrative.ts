@@ -56,9 +56,17 @@ export function buildGeoNarrative(nodes: GeoNode[]): string | null {
 
     const top = sorted[0]
 
+    // X1 (2026-08-13). Every line below is computed from `signal_count` over
+    // Atlas's ingest, so none of them can speak for the world's press. The old
+    // arms did exactly that: "Limited elsewhere" pronounced other regions quiet
+    // when Atlas had simply ingested little from them, and "Global coverage"
+    // called a feed set's spread global. The shape is real; its subject is
+    // Atlas's ingest, and every arm now says whose shape it is.
+    const base = "Atlas's ingest"
+
     // Concentrated in one region
     if (top.pct >= 65) {
-        return `Coverage concentrated in ${top.region} (${top.pct}%)`
+        return `${base}: concentrated in ${top.region} (${top.pct}%)`
     }
 
     // Two dominant regions
@@ -66,15 +74,19 @@ export function buildGeoNarrative(nodes: GeoNode[]): string | null {
         const second = sorted[1]
         const combined = top.pct + second.pct
         if (combined >= 70) {
-            return `Predominantly ${top.region} and ${second.region} · Limited elsewhere`
+            // Not "limited elsewhere" — thin elsewhere IN THE INGEST, which is
+            // a statement about what Atlas reads, not about who published.
+            return `${base}: mostly ${top.region} and ${second.region} (${combined}%) · thin elsewhere`
         }
-        return `Led by ${top.region} (${top.pct}%) and ${second.region} (${second.pct}%)`
+        return `${base}: led by ${top.region} (${top.pct}%) and ${second.region} (${second.pct}%)`
     }
 
     // Wide spread across many regions
     if (sorted.length >= 4 && top.pct < 40) {
-        return `Global coverage across ${sorted.length} regions`
+        return `${base}: spread across ${sorted.length} regions`
     }
 
-    return `Strongest in ${top.region} (${top.pct}%) · ${nodes.length} countries reporting`
+    // "Present", not "reporting": presence in the ingest is what was measured;
+    // "reporting" attributes an act to newsrooms Atlas may never have read.
+    return `${base}: strongest in ${top.region} (${top.pct}%) · ${nodes.length} countries present`
 }

@@ -42,7 +42,9 @@ export function EclipseLens({ onOpenTopic, onInvestigate }: Props) {
       <div className="eclipse-lens eclipse-lens-empty">
         <p>
           {loaded
-            ? 'No attention eclipse right now. Coverage is spread across many stories — nothing is being drowned out by a single dominant event.'
+            // X1 (2026-08-13): the eclipse detector reads Atlas's own field, so
+            // the empty state describes that field, not the world's attention.
+            ? 'No attention eclipse right now. In what Atlas ingests, coverage is spread across many stories — no single event is drowning out the rest.'
             : 'Checking whether one event is eclipsing the rest…'}
         </p>
       </div>

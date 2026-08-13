@@ -97,10 +97,15 @@ export interface CountrySection<T> {
   empty_reason: string | null
 }
 
+// X1 (2026-08-13): an empty section is a fact about Atlas's ingest for this
+// country, never about the country. "Quiet in the last 24h" told readers a
+// place was calm when the truth was that Atlas's domestic feed set for it is
+// thin (the #235 class) — precisely the inversion the veracity scorecard
+// refuted on Colombia. Each reason now says whose silence it is.
 const EMPTY_REASONS: Record<CountrySectionKind, string> = {
-  country_today: 'quiet in the last 24h',
-  under_radar: 'nothing under the radar today',
-  culture_sport_life: 'no culture, sport or life in the last 24h',
+  country_today: 'nothing Atlas ingested in the last 24h',
+  under_radar: 'nothing under the radar in what Atlas ingests today',
+  culture_sport_life: 'no culture, sport or life in what Atlas ingested in the last 24h',
 }
 
 /**

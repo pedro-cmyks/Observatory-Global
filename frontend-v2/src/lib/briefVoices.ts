@@ -33,6 +33,8 @@
  * quotes keep rendering in the coverage-check block below the lead.
  */
 
+import { INGEST_POPULATION } from './ingestBasis'
+
 export interface VoiceReceipt {
   source?: string | null
   /** BCP-47-ish 2-letter code. `xx` is GDELT's UNKNOWN, never a language. */
@@ -152,8 +154,19 @@ function ownVoiceClause(input: VoicesInput, receipts: readonly VoiceReceipt[]): 
     : `the press of ${joinNames(names)}`
 
   if (domestic === 0) {
-    return { kind: 'ownVoice', text: `none of the ${denominator} come from ${owner}` }
+    // X1 (2026-08-13): this clause, read straight, told a blind panel that
+    // Colombia's press said nothing about Colombia's own 7.4 earthquake while
+    // El Tiempo, Caracol and El Colombiano were leading with it. The zero was
+    // real — of Atlas's receipts. So the refusal rides IN the clause: a reader
+    // must not have to reach the basis rail to learn what the zero is about.
+    return {
+      kind: 'ownVoice',
+      text: `none of the ${denominator} come from ${owner}`
+        + ' — a gap in what Atlas ingests, not a silent press',
+    }
   }
+  // A share is not a silence claim, so it takes no refusal — only the basis
+  // rail's denominator, which it already had.
   return { kind: 'ownVoice', text: `${owner}: ${domestic} of the ${denominator}` }
 }
 
@@ -182,9 +195,14 @@ function disputedClause(tension?: VoiceTension | null): VoiceClause | null {
 
 function basisLine(receiptCount: number, hasOutletTotal: boolean): string {
   const counted = `Voices counted from the ${receiptCount} receipt${receiptCount === 1 ? '' : 's'} carried with this story`
+  // The rail named the SAMPLE but never the POPULATION, so "48 outlets are
+  // carrying this" still read as 48 of the world's outlets (X1). Both lineages
+  // sit inside the same ingest, and the rail now says so — in the plural only
+  // when there are in fact two lineages to cover.
+  const over = `measured over what Atlas ingests (${INGEST_POPULATION}), not the whole press.`
   return hasOutletTotal
-    ? `${counted}; the outlet total is the story's own measured source count.`
-    : `${counted}.`
+    ? `${counted}; the outlet total is the story's own measured source count. Both are ${over}`
+    : `${counted}. That count is ${over}`
 }
 
 /**

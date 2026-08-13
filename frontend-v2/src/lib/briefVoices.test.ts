@@ -84,8 +84,47 @@ describe('weaveVoices — the voice bar as prose', () => {
     })
     const own = woven?.clauses.find(c => c.kind === 'ownVoice')
     expect(own?.text).toBe(
-      "none of the 2 receipts whose outlet home country is known come from Timor-Leste's own press",
+      "none of the 2 receipts whose outlet home country is known come from Timor-Leste's own press"
+      + ' — a gap in what Atlas ingests, not a silent press',
     )
+  })
+
+  // X1 (2026-08-13). This exact clause shape told a blind panel that Colombia
+  // had no domestic voices on its own earthquake while El Tiempo, Caracol and
+  // El Colombiano were leading with it. The zero is real; the silence was not.
+  it('refuses the silence reading in the clause itself, not in a footnote', () => {
+    const woven = weaveVoices({
+      subjectCountries: ['CO'],
+      subjectCountryNames: ['Colombia'],
+      receipts: [receipt({ source_origin_country: 'RO' }), receipt({ source_origin_country: 'RO' })],
+    })
+    const own = woven?.clauses.find(c => c.kind === 'ownVoice')?.text ?? ''
+    expect(own).toContain('a gap in what Atlas ingests')
+    expect(own).toContain('not a silent press')
+  })
+
+  it('leaves a non-zero share unqualified — a share is not a silence claim', () => {
+    const woven = weaveVoices({
+      subjectCountries: ['CO'],
+      subjectCountryNames: ['Colombia'],
+      receipts: [receipt({ source_origin_country: 'CO' }), receipt({ source_origin_country: 'RO' })],
+    })
+    const own = woven?.clauses.find(c => c.kind === 'ownVoice')?.text ?? ''
+    expect(own).not.toContain('silent press')
+  })
+
+  it('names the ingest population on the always-rendered basis rail', () => {
+    const woven = weaveVoices({
+      outlets: 48,
+      subjectCountries: ['SY'],
+      subjectCountryNames: ['Syria'],
+      receipts: [receipt({ source_origin_country: 'SY' })],
+    })
+    // The old rail named the SAMPLE ("counted from the N receipts") but never
+    // the POPULATION — so "48 outlets are carrying this" still read as 48 of
+    // the world's outlets rather than 48 of Atlas's.
+    expect(woven?.basis).toContain('what Atlas ingests')
+    expect(woven?.basis).toContain('not the whole press')
   })
 
   it('gives a name already ending in s the bare apostrophe', () => {
@@ -193,7 +232,8 @@ describe('weaveVoices — the voice bar as prose', () => {
     )
     expect(woven?.basis).toBe(
       'Voices counted from the 3 receipts carried with this story; the outlet total is the '
-      + "story's own measured source count.",
+      + "story's own measured source count. Both are measured over what Atlas ingests "
+      + '(~220 curated feeds plus the GDELT firehose), not the whole press.',
     )
   })
 
@@ -201,6 +241,10 @@ describe('weaveVoices — the voice bar as prose', () => {
     const woven = weaveVoices({
       receipts: [receipt({ source_lang: 'en' }), receipt({ source_lang: 'de' })],
     })
-    expect(woven?.basis).toBe('Voices counted from the 2 receipts carried with this story.')
+    // Singular: with no outlet total there is one lineage, not two.
+    expect(woven?.basis).toBe(
+      'Voices counted from the 2 receipts carried with this story. That count is measured '
+      + 'over what Atlas ingests (~220 curated feeds plus the GDELT firehose), not the whole press.',
+    )
   })
 })

@@ -38,6 +38,7 @@ import { LoadingMoment } from './LoadingMoment'
 import { CoverageBadge, type CoverageMeta } from './CoverageBadge'
 import type { PublicAttentionOrigin } from '../lib/publicAttention'
 import { buildThemeDetailEmptyState } from '../lib/themeDetailEmptyState'
+import { absenceCaveat, withBasisTip } from '../lib/ingestBasis'
 import { Flag } from './Flag'
 import { FocusTimeline } from './FocusTimeline'
 import './ThemeDetail.css'
@@ -1724,7 +1725,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <div className="theme-section thread-voice-section">
                                     <div className="section-label theme-section-title">
                                         VOICE MIX · WHO SPEAKS
-                                        <span className="sentiment-info-icon" data-tip="Who carries this story: languages and outlet home countries over the story's typed evidence members (a projection of the engine's member record, not all coverage). Self-voice is outlet OWNERSHIP, not language — a foreign outlet in the local language counts as soft power, never as a local voice.">?</span>
+                                        <span className="sentiment-info-icon" data-tip={withBasisTip("Who carries this story: languages and outlet home countries over the story's typed evidence members (a projection of the engine's member record, not all coverage). Self-voice is outlet OWNERSHIP, not language — a foreign outlet in the local language counts as soft power, never as a local voice.")}>?</span>
                                     </div>
                                     <div className="thread-voice-langs">
                                         {m.languages.slice(0, 6).map(l => (
@@ -1740,8 +1741,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         <div className="thread-voice-self">
                                             <div className="thread-voice-self-head" style={{ color: barColor || undefined }}>
                                                 {sv.pct}%
+                                                {/* X1 (2026-08-13): "0% own press" was
+                                                    served about Colombia's own earthquake
+                                                    while El Tiempo led with it — true of
+                                                    Atlas's feeds, false of Colombia. The
+                                                    label names its base. */}
                                                 <span className="thread-voice-self-sub">
-                                                    of attributable voices are {resolveCountryName(sv.subject, sv.subject)}&apos;s own press
+                                                    of the attributable voices Atlas ingests are {resolveCountryName(sv.subject, sv.subject)}&apos;s own press
                                                 </span>
                                                 {sv.thin && (
                                                     <span className="badge coverage-badge coverage-badge--thin" data-tip={`Only ${sv.attributable} voices carry a known outlet origin — treat this ratio as indicative only`}>
@@ -1755,13 +1761,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                             <div className="thread-voice-detail">
                                                 {sv.selfN} of {sv.attributable} attributable voices are domestic.
                                                 {sv.dominantOutsider && (
-                                                    <> Loudest outsider: <strong>{resolveCountryName(sv.dominantOutsider.origin, sv.dominantOutsider.origin)}</strong> ({sv.dominantOutsider.n}).</>
+                                                    <> Loudest outsider in the ingest: <strong>{resolveCountryName(sv.dominantOutsider.origin, sv.dominantOutsider.origin)}</strong> ({sv.dominantOutsider.n}).</>
                                                 )}
                                                 {sv.softPct > 0 && (
                                                     <> {sv.softPct}% is foreign media in the local language (soft power, not self-coverage).</>
                                                 )}
                                                 {sv.unattributed > 0 && (
                                                     <> {sv.unattributed} of {m.voicesTotal} voices carry no outlet origin — excluded from these ratios, never assumed.</>
+                                                )}
+                                                {/* The zero carries its own refusal. */}
+                                                {sv.selfN === 0 && (
+                                                    <> {absenceCaveat(resolveCountryName(sv.subject, sv.subject))}</>
                                                 )}
                                             </div>
                                         </div>

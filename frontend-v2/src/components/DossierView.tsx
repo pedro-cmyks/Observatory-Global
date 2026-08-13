@@ -1110,7 +1110,11 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                     <div className="dossier-pin">
                                         <div className="dossier-pin-head">
                                             <span className="dossier-pin-label">Coverage asymmetry</span>
-                                            <span className="dossier-pin-type">what the web emphasizes vs the pinned evidence</span>
+                                            {/* X1 (2026-08-13): "the web" is a
+                                                handful of retrieved titles, so the
+                                                label names them — the caveat below
+                                                arrived after the claim. */}
+                                            <span className="dossier-pin-type">what the retrieved titles emphasize vs the pinned evidence</span>
                                         </div>
                                         <div className="dossier-pin-summary">{corrob.coverage_asymmetry.note}</div>
                                         <p className="dossier-meta">phrased from the gathered titles only{corrob.coverage_asymmetry.provider ? ` · ${corrob.coverage_asymmetry.provider}` : ''}</p>

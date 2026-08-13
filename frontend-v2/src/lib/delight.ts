@@ -20,13 +20,16 @@ const STORE_KEY = 'atlas_delight_v1'
 const MAX_MEASURED_AGE_MS = 48 * 60 * 60 * 1000
 
 export const EVERGREEN_FACTS: DelightFact[] = [
-    { id: 'ev-silence', kind: 'evergreen', text: 'Atlas measures who says what — and who says nothing. Silence is data.' },
+    // X1 (2026-08-13): the old line claimed Atlas "measures who says nothing".
+    // The veracity scorecard refuted exactly that capability — a zero is a hole
+    // in Atlas's feed set, and press silence is not verifiable from this corpus.
+    { id: 'ev-silence', kind: 'evergreen', text: 'Atlas measures who says what, in what it ingests — and never mistakes its own blind spot for the world going quiet.' },
     { id: 'ev-gate', kind: 'evergreen', text: 'Every count you see is verified by the quality gate or labeled unverified. No middle ground.' },
     { id: 'ev-volume', kind: 'evergreen', text: 'Volume is not importance. Atlas heat blends velocity, surprise and voice diversity — not just noise.' },
     { id: 'ev-selfvoice', kind: 'evergreen', text: 'A story told only by outsiders reads differently. Atlas tracks how much a country covers itself.' },
     { id: 'ev-universe', kind: 'evergreen', text: 'On the universe map, positions are approximate; relations are exact. Atlas labels which is which.' },
     { id: 'ev-threads', kind: 'evergreen', text: 'Stories are grown from the data, not picked from a fixed list. New stories find their own name.' },
-    { id: 'ev-empty', kind: 'evergreen', text: 'When a country shows zero stories, that is an honest empty. Atlas never pads with filler.' },
+    { id: 'ev-empty', kind: 'evergreen', text: 'When a country shows zero stories, that is an honest empty of what Atlas ingests — not a claim that nobody published.' },
     { id: 'ev-languages', kind: 'evergreen', text: 'Atlas reads press in 30+ languages — and shows you when a story is only told in one.' },
     { id: 'ev-archive', kind: 'evergreen', text: 'The archive remembers: every story keeps its history, even after it leaves the front page.' },
     { id: 'ev-decay', kind: 'evergreen', text: 'Heat decays. What mattered yesterday must prove itself again today.' },

@@ -108,6 +108,7 @@ import {
     type CountryEdition,
     type CountrySection,
 } from '../lib/countryEdition'
+import { INGEST_NOTE, withBasisTip } from '../lib/ingestBasis'
 import '../styles/readerTheme.css'
 import './BriefNewspaper.css'
 
@@ -1542,8 +1543,10 @@ export function BriefNewspaper() {
             {gaps.map(g => (
                 <li key={g.slug} className="brief-coverage-gap">
                     <span className="brief-gap-label">{g.label}</span>
-                    <span className="brief-gap-meta">
-                        {g.raw_signals} signals · 0 cleared the gate
+                    {/* The gap is Atlas's gate on Atlas's ingest — not a claim
+                        that the country's press left the subject alone (X1). */}
+                    <span className="brief-gap-meta" data-tip={INGEST_NOTE}>
+                        {g.raw_signals} signals ingested · 0 cleared the gate
                     </span>
                 </li>
             ))}
@@ -2283,9 +2286,12 @@ export function BriefNewspaper() {
                                             {coverageCheck.findings!.map((f, i) => (
                                                 <div key={i} className={`brief-cc-finding brief-cc-finding--${f.kind}`}>
                                                     <span className="brief-cc-kind">{
-                                                        f.kind === 'tension' ? '⚠ outlets diverge'
+                                                        // The verdict is over the handful of lead
+                                                        // articles Atlas fetched and read, never
+                                                        // over "the outlets" at large (X1).
+                                                        f.kind === 'tension' ? '⚠ the outlets read here diverge'
                                                             : f.kind === 'shared_source' ? '⊘ same wire source'
-                                                            : '✓ independent outlets agree'
+                                                            : '✓ the outlets read here agree'
                                                     }</span>
                                                     <p className="brief-cc-note">{f.note}</p>
                                                     <blockquote dir="auto">“{f.a.quote}”{f.a.outlet ? <span className="brief-cc-src"> — {f.a.outlet}</span> : null}</blockquote>
@@ -2304,7 +2310,11 @@ export function BriefNewspaper() {
                                         (G-VACÍO-HONESTO). */}
                                     {gapSection && (
                                         <section className="brief-gap-section" aria-label="The Gap — today's measured blindspot">
-                                            <span className="reader-section-kicker brief-sub-kicker">The coverage nobody wrote</span>
+                                            {/* X1 (2026-08-13): "The coverage nobody wrote"
+                                                asserted a fact about the world from a hole
+                                                in Atlas's feed set. What is measurable is
+                                                the coverage Atlas did not see. */}
+                                            <span className="reader-section-kicker brief-sub-kicker" data-tip={INGEST_NOTE}>The coverage Atlas did not see</span>
                                             <h3 className="brief-section-subtitle">The Gap</h3>
                                             {gapCountry && gapMeasured ? (
                                                 <>
@@ -2348,14 +2358,14 @@ export function BriefNewspaper() {
                                                             && typeof gapMeasured.self_voice_ratio === 'number' ? (
                                                             <span
                                                                 className="reader-pill"
-                                                                data-tip={`Outlet OWNERSHIP, not language: ${gapMeasured.domestic_n ?? 0} of the ${gapMeasured.known_origin_n ?? 0} signals whose outlet home country is known are domestic${typeof gapMeasured.unattributed_n === 'number' ? `; ${gapMeasured.unattributed_n} carry no known origin` : ''}.`}
+                                                                data-tip={withBasisTip(`Outlet OWNERSHIP, not language: ${gapMeasured.domestic_n ?? 0} of the ${gapMeasured.known_origin_n ?? 0} signals whose outlet home country is known are domestic${typeof gapMeasured.unattributed_n === 'number' ? `; ${gapMeasured.unattributed_n} carry no known origin` : ''}.`)}
                                                             >
-                                                                own press {Math.round(gapMeasured.self_voice_ratio * 100)}%
+                                                                own press {Math.round(gapMeasured.self_voice_ratio * 100)}% of ingest
                                                             </span>
                                                         ) : (
                                                             <span
                                                                 className="reader-pill brief-sources-unmeasured"
-                                                                data-tip="Too few signals carry an attributable outlet home country to judge this country's own voice."
+                                                                data-tip={withBasisTip("Too few signals carry an attributable outlet home country to judge this country's own voice.")}
                                                             >
                                                                 own press not measurable
                                                             </span>

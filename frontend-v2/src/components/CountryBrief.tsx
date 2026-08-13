@@ -21,6 +21,7 @@ const SUBJECT_BADGE: Record<SubjectType, string> = {
 };
 import { buildCountryBriefMarkdown, sanitizeFilenamePart } from '../lib/exportFormatters';
 import { resolveCountryName } from '../lib/countryNames';
+import { INGEST_NOTE, absenceCaveat, withBasisTip } from '../lib/ingestBasis';
 import { useFocusData } from '../contexts/FocusDataContext';
 import { conflictsForCountry } from '../lib/conflictEvents';
 import {
@@ -1003,7 +1004,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                                 </a>
                             ))
                         ) : (
-                            <div className="cb-attention-empty">No forum discussion mentioning this country in the window.</div>
+                            <div className="cb-attention-empty">No forum discussion mentioning this country in the forums Atlas ingests, in this window.</div>
                         )}
                     </div>
                 </div>
@@ -1020,10 +1021,15 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                     <section className="brief-section">
                         <div className="section-label cb-section-label">
                             Voice Mix
-                            <span className="sentiment-info-icon" data-tip="Self-coverage is defined by outlet OWNERSHIP, not language: a domestic outlet covering its own country. Foreign outlets in the local language (e.g. BBC Persian) count as soft power, not self-coverage. Ratios are over signals whose outlet origin is known.">?</span>
+                            <span className="sentiment-info-icon" data-tip={withBasisTip("Self-coverage is defined by outlet OWNERSHIP, not language: a domestic outlet covering its own country. Foreign outlets in the local language (e.g. BBC Persian) count as soft power, not self-coverage. Ratios are over signals whose outlet origin is known.")}>?</span>
                         </div>
+                        {/* X1 (2026-08-13): this panel said "0% covered by its
+                            own press" about Colombia's own earthquake while El
+                            Tiempo, Caracol and El Colombiano led with it. The
+                            ratio was right about Atlas's feeds and wrong about
+                            Colombia, so the label now names its base. */}
                         <div style={{ fontSize: '1.4rem', fontWeight: 700, color: barColor }}>
-                            {selfPct}% <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-secondary, #9ca3af)' }}>covered by its own press</span>
+                            {selfPct}% <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-secondary, #9ca3af)' }}>of the voices Atlas ingests are its own press</span>
                         </div>
                         <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-tertiary, #1f2937)', margin: '6px 0 8px', overflow: 'hidden' }}>
                             <div style={{ width: `${selfPct}%`, height: '100%', background: barColor }} />
@@ -1031,10 +1037,16 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #9ca3af)', lineHeight: 1.5 }}>
                             {voiceMix.self_voice} of {voiceMix.attributable_voices} attributable voices are domestic.
                             {voiceMix.dominant_outsider && (
-                                <> Loudest outsider: <strong>{voiceMix.dominant_outsider.origin}</strong> ({voiceMix.dominant_outsider.n}).</>
+                                <> Loudest outsider in the ingest: <strong>{voiceMix.dominant_outsider.origin}</strong> ({voiceMix.dominant_outsider.n}).</>
                             )}
                             {softPct > 0 && (
                                 <> {softPct}% is foreign media in the local language (soft power, not self-coverage).</>
+                            )}
+                            {/* A zero is the shape that misled the panel, so it
+                                carries its own refusal rather than leaving the
+                                silence inference to the reader. */}
+                            {voiceMix.self_voice === 0 && (
+                                <> {absenceCaveat(displayCountryName)}</>
                             )}
                         </div>
                     </section>
@@ -1043,7 +1055,7 @@ export const CountryBrief: React.FC<CountryBriefProps> = ({
 
             {/* Top Sources */}
             <section className="brief-section" id="cb-sources">
-                <div className="section-label cb-section-label">Top Publishers <span className="cb-section-subcopy">who's covering this country</span></div>
+                <div className="section-label cb-section-label">Top Publishers <span className="cb-section-subcopy" data-tip={INGEST_NOTE}>who's covering it, of what Atlas ingests</span></div>
                 <div className="source-list">
                     {(showAllSources ? data.top_sources : data.top_sources.slice(0, 5)).map((source, i) => {
                         // Expand-in-place pattern (mirrors ThemeDetail): click a
