@@ -253,3 +253,12 @@ describe('pure classifiers', () => {
         expect(describeUnavailable('network', null)).toBe('translation unavailable — no connection')
     })
 })
+
+describe('X2 casualty-guard withholding is named, not blamed on the provider', () => {
+  it('translation_unverified maps to its own reason with honest copy', () => {
+    const out = classifyBatchRow({ signal_id: 1, translated: null, error: 'translation_unverified' } as never)
+    expect(out).toEqual({ status: 'unavailable', reason: 'unverified' })
+    expect(describeUnavailable('unverified', null)).toContain('withheld')
+    expect(describeUnavailable('unverified', null)).not.toContain('did not answer')
+  })
+})

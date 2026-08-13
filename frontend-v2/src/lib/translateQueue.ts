@@ -32,7 +32,7 @@
  * caught.
  */
 
-export type TranslateFailure = 'rate_limited' | 'provider' | 'network'
+export type TranslateFailure = 'rate_limited' | 'provider' | 'network' | 'unverified'
 
 export type TranslateOutcome =
     /** A real translation came back. */
@@ -72,6 +72,9 @@ export function classifyBatchRow(row: BatchRow | undefined | null): TranslateOut
     const t = (row.translated ?? '').trim()
     if (t) return { status: 'ok', text: t }
     if (row.error && PERMANENT_ROW_ERRORS.has(row.error)) return { status: 'none' }
+    // X2's casualty guard: WE withheld the translation because a casualty
+    // figure changed category — "translator did not answer" would be false.
+    if (row.error === 'translation_unverified') return UNAVAILABLE('unverified')
     return UNAVAILABLE('provider')
 }
 
@@ -91,6 +94,9 @@ export function classifyTextResponse(
 export function describeUnavailable(reason: TranslateFailure, retryAfterSeconds: number | null): string {
     if (reason === 'network') return 'translation unavailable — no connection'
     if (reason === 'provider') return 'translation unavailable — translator did not answer'
+    // X2: WE withheld it — the casualty guard measured a figure changing
+    // category. Saying "did not answer" here would be false.
+    if (reason === 'unverified') return 'translation withheld — a casualty figure did not match the source'
     if (retryAfterSeconds && retryAfterSeconds > 0) {
         const mins = Math.max(1, Math.round(retryAfterSeconds / 60))
         return `translation unavailable — rate limited, retry in ~${mins} min`
