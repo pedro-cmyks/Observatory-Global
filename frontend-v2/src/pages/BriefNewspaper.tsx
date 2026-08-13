@@ -32,7 +32,18 @@ import { CoverageGapCard } from '../components/CoverageGapCard'
 import type { CoverageGap } from '../lib/coverageGaps'
 import { decodeEntities, eclipseTier, type EclipseData } from '../lib/attentionEclipse'
 import { BriefWorldMarketsBand, BriefCountryMarketsCard } from '../components/BriefMarkets'
-import { formatSentimentPm1, formatTone10, measuredSentimentChip } from '../lib/sentimentScale'
+import {
+    describePositiveColumn,
+    describeToneBlend,
+    formatSentimentPm1,
+    formatTone10,
+    measuredSentimentChip,
+    toneBridgeNote,
+    toneLineageNote,
+    toneSaturationTip,
+    toneScaleFooter,
+} from '../lib/sentimentScale'
+import type { SentimentScale } from '../lib/sentimentScale'
 import { reconcileSentimentProse } from '../lib/reconcileSentimentProse'
 import { useReaderTheme, ReaderThemeToggle } from '../lib/readerTheme'
 import {
@@ -195,7 +206,14 @@ interface BriefingData {
         countries: number
         sources: number
         avg_sentiment: number
+        sentiment_source?: string
+        nlp_coverage?: number
     }
+    // C2: the scale every `sentiment` field here is on, plus the ×10 bridge to
+    // the tone panels and the range the fusion can actually serve (wider than
+    // the panels' legend). Optional — a cached/older payload degrades to the
+    // shipped defaults rather than to a blank scale.
+    sentiment_scale?: SentimentScale
     top_countries: { code: string; name: string; signals: number; sentiment: number; sentiment_source?: string; nlp_coverage?: number }[]
     // Same shape the dedicated /api/v2/attention/coverage-gaps endpoint
     // serves (contract coverage-gaps-v0) — reuse lib/coverageGaps' CoverageGap
@@ -1593,8 +1611,19 @@ export function BriefNewspaper() {
                                     <span className="brief-vital-k-full">Avg sentiment</span>
                                     <span className="brief-vital-k-mobile">Sentiment · ±1</span>
                                 </div>
-                                <div className="v">{formatSentimentPm1(data.stats.avg_sentiment)}</div>
-                                <div className="sub">normalized ±1 scale · window aggregate</div>
+                                <div className="v">
+                                    {formatSentimentPm1(data.stats.avg_sentiment)}
+                                    <SentimentSourceBadge
+                                        source={data.stats.sentiment_source}
+                                        coverage={data.stats.nlp_coverage}
+                                    />
+                                </div>
+                                {/* C2 (blind judge §4.8): this tile and the tone panels below
+                                    print the SAME fused aggregate — the strip on ±1, the panels
+                                    at ×10 — and the page offered no bridge, so "−0.49" and
+                                    "−10.0" read as two unrelated measurements. State the
+                                    conversion with this window's own number. */}
+                                <div className="sub">{toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale)}</div>
                             </div>
                             <div className="brief-vital">
                                 <div className="k">Tracked stories</div>
@@ -2400,53 +2429,67 @@ export function BriefNewspaper() {
                         <div className="brief-rule" />
 
                         <section className="brief-bottom-row">
-                            {/* B3 (dataviz audit): ONE user-facing tone scale everywhere — raw
-                                GDELT ±10 (the scale ThemeDetail already explains). The API serves
-                                ÷10 values for the internal ±0.1 thresholds; multiply back for
-                                display and label the unit. */}
-                            <div className="brief-bottom-col">
-                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's story detail.">Most Negative</h3>
-                                {data.negative_sentiment.slice(0, 4).map(c => {
+                            {/* B3 (dataviz audit): ONE user-facing tone scale everywhere — ±10,
+                                the scale ThemeDetail already explains. The API serves the ±1
+                                value; multiply back for display and label the unit.
+                                C2 (blind judge §4.9): the unit is NOT the lineage. These columns
+                                said "GDELT tone" in the footer while every row carried an "NLP
+                                nn%" chip — and the chip was the honest one (measured: 10/10 rows
+                                nlp_weighted). Source is chosen PER ROW by the fusion, so the
+                                footer states the measured mix instead of one source it can't
+                                claim, and a value clamped to the legend edge says so on its face
+                                rather than only in a hover. */}
+                            {(() => {
+                                const scale = data.sentiment_scale
+                                const negRows = data.negative_sentiment.slice(0, 4)
+                                const posRows = data.positive_sentiment.slice(0, 4)
+                                const posNote = describePositiveColumn(posRows.map(c => c.sentiment))
+                                const toneRow = (
+                                    c: { code: string; name: string; sentiment: number; signals: number; sentiment_source?: string; nlp_coverage?: number },
+                                    lane: 'negative' | 'positive',
+                                ) => {
                                     // Council P1-4: never print a value outside the legend
                                     // ("Gaza −10.3" under −10…+10) — clamp for display, keep
-                                    // the raw figure honest in the hover.
-                                    const tone = formatTone10(c.sentiment)
+                                    // the raw figure honest in the hover AND mark the clamp.
+                                    const tone = formatTone10(c.sentiment, scale)
+                                    const satTip = toneSaturationTip(tone, scale)
+                                    const blend = describeToneBlend([c.sentiment_source]).label
                                     return (
                                         <button
                                             key={c.code}
                                             className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`country=${c.code}`, 'most_negative')}
+                                            onClick={() => goToAtlas(`country=${c.code}`, lane === 'negative' ? 'most_negative' : 'most_positive')}
                                         >
                                             <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                            <span className="brief-bottom-num negative" data-tip={`Avg tone ${tone.display} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)${tone.clamped ? ` — raw value ${tone.raw} clamped to the printed scale` : ''}`}>
+                                            <span
+                                                className={`brief-bottom-num ${lane}`}
+                                                data-tip={`${blend} ${tone.display} on the tone scale (${c.signals.toLocaleString()} signals). ${satTip ?? 'Same fused aggregate as the strip above, ×10.'}`}
+                                            >
+                                                {tone.marker && (
+                                                    <span className="brief-tone-marker" aria-label="saturated at the legend edge">{tone.marker}</span>
+                                                )}
                                                 {tone.display}
                                                 <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
                                             </span>
                                         </button>
                                     )
-                                })}
-                                <div className="brief-scale-note">GDELT tone · −10…+10</div>
-                            </div>
-                            <div className="brief-bottom-col">
-                                <h3 className="brief-bottom-heading" data-tip="Avg GDELT tone, −10 (critical/conflict) to +10 (supportive). Scores rarely exceed ±3 in normal news — the same scale as the console's story detail.">Most Positive</h3>
-                                {data.positive_sentiment.slice(0, 4).map(c => {
-                                    const tone = formatTone10(c.sentiment)
-                                    return (
-                                        <button
-                                            key={c.code}
-                                            className="brief-bottom-country"
-                                            onClick={() => goToAtlas(`country=${c.code}`, 'most_positive')}
-                                        >
-                                            <span><Flag code={c.code} /> {resolveCountryName(c.code, c.name)}</span>
-                                            <span className="brief-bottom-num positive" data-tip={`Avg tone ${tone.display} on the GDELT −10…+10 scale (${c.signals.toLocaleString()} signals)${tone.clamped ? ` — raw value ${tone.raw} clamped to the printed scale` : ''}`}>
-                                                {tone.display}
-                                                <SentimentSourceBadge source={c.sentiment_source} coverage={c.nlp_coverage} />
-                                            </span>
-                                        </button>
-                                    )
-                                })}
-                                <div className="brief-scale-note">GDELT tone · −10…+10</div>
-                            </div>
+                                }
+                                return (
+                                    <>
+                                        <div className="brief-bottom-col">
+                                            <h3 className="brief-bottom-heading" data-tip={`Avg tone, −10 (critical/conflict) to +10 (supportive) — the same scale as the console's story detail, and the instrument strip's ±1 number ×10. Source per row: ${toneLineageNote(scale)}.`}>Most Negative</h3>
+                                            {negRows.map(c => toneRow(c, 'negative'))}
+                                            <div className="brief-scale-note">{toneScaleFooter(negRows.map(c => c.sentiment_source), scale)}</div>
+                                        </div>
+                                        <div className="brief-bottom-col">
+                                            <h3 className="brief-bottom-heading" data-tip={`Top of the tone distribution, −10 (critical/conflict) to +10 (supportive) — the same scale as the console's story detail. A ranking, not a promise that the rows are positive. Source per row: ${toneLineageNote(scale)}.`}>Most Positive</h3>
+                                            {posRows.map(c => toneRow(c, 'positive'))}
+                                            {posNote && <div className="brief-scale-note brief-scale-note--caveat">{posNote}</div>}
+                                            <div className="brief-scale-note">{toneScaleFooter(posRows.map(c => c.sentiment_source), scale)}</div>
+                                        </div>
+                                    </>
+                                )
+                            })()}
                             <div className="brief-bottom-col">
                                 <h3 className="brief-bottom-heading">Sources</h3>
                                 {data.top_sources.slice(0, 5).map(s => (

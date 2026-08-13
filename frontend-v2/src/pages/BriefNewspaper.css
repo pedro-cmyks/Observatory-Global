@@ -1200,6 +1200,26 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   margin-top: 8px;
 }
 
+/* C2: the caveat line sits ABOVE the scale footer and must not read as part of
+   it — "least negative" is a correction to the column heading, not a legend. */
+.brief-scale-note--caveat {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-style: italic;
+  margin-top: 8px;
+  margin-bottom: -4px;
+  color: var(--r-muted);
+}
+
+/* C2: an exact "−10.0" is the LEGEND EDGE, not a measurement floor (the fused
+   range reaches ±11.9). The marker puts that on the face of the number instead
+   of hiding it in a hover. */
+.brief-tone-marker {
+  font-family: var(--r-mono);
+  opacity: 0.72;
+  margin-right: 1px;
+}
+
 .brief-sentsrc {
   font-family: var(--r-mono);
   font-size: 0.56rem;

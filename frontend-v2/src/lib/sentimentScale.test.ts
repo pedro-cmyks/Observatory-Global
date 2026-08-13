@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { formatSentimentPm1, formatTone10, measuredSentimentChip } from './sentimentScale'
+import {
+    describePositiveColumn,
+    describeToneBlend,
+    formatSentimentPm1,
+    formatTone10,
+    measuredSentimentChip,
+    toneBridgeNote,
+    toneLineageNote,
+    toneSaturationTip,
+    toneScaleFooter,
+} from './sentimentScale'
 
 // Council P1-4: one sentiment scale per render. Every printed sentiment states
 // its scale, values never print outside the scale their legend declares
@@ -69,5 +79,168 @@ describe('measuredSentimentChip (prose companion, same number as the strip)', ()
     it('uses the identical formatter as the strip (sign + clamp semantics)', () => {
         expect(measuredSentimentChip(0.7)).toBe('measured +0.70 (±1 scale)')
         expect(measuredSentimentChip(-1.6)).toBe('measured -1.00 (±1 scale)')
+    })
+})
+
+// ── C2 (blind judge §4.8/§4.9/§5) ────────────────────────────────────────────
+// Three numbers on one screen with no bridge: strip "−0.49 · ±1", panels
+// "−10.0 · GDELT tone", Analysis "−0.20". MEASURED 2026-08-13: all three come
+// from ONE fused lineage (choose_sentiment_weighted → ±1), so the bridge is a
+// single ×10. And the panels' label was false — 100% of rendered rows were
+// NLP-weighted under a footer reading "GDELT tone".
+
+describe('signed zero (Jordan "−0.0" listed under MOST POSITIVE)', () => {
+    it('a tiny negative that rounds to zero never prints a minus sign', () => {
+        expect(formatTone10(-0.004).display).toBe('0.0')
+        expect(formatTone10(-0.0).display).toBe('0.0')
+    })
+
+    it('the ±1 formatter shares the rule', () => {
+        expect(formatSentimentPm1(-0.0004)).toBe('0.00')
+    })
+
+    it('values that still round away from zero keep their sign', () => {
+        expect(formatTone10(-0.006).display).toBe('-0.1')
+        expect(formatSentimentPm1(-0.006)).toBe('-0.01')
+    })
+})
+
+describe('saturation marker (Yemen/North Korea at exactly −10.0)', () => {
+    it('a clamped value carries a visible boundary marker, not a bare number', () => {
+        const out = formatTone10(-1.12)
+        expect(out.display).toBe('-10.0')
+        expect(out.marker).toBe('≤')   // ≤ — "at or beyond the floor"
+        expect(out.clamped).toBe(true)
+    })
+
+    it('the positive edge marks the ceiling', () => {
+        expect(formatTone10(1.27).marker).toBe('≥')
+    })
+
+    it('in-legend values carry no marker', () => {
+        expect(formatTone10(-0.32).marker).toBe('')
+    })
+
+    it('saturation tip names the clamp and the measured value', () => {
+        const tip = toneSaturationTip(formatTone10(-1.12))
+        expect(tip).toContain('saturated at the scale floor')
+        expect(tip).toContain('-11.2')
+    })
+
+    it('no tip for an unclamped value', () => {
+        expect(toneSaturationTip(formatTone10(-0.32))).toBeNull()
+    })
+})
+
+describe('describeToneBlend (the chip said NLP, the footer said GDELT)', () => {
+    it('all-NLP rows name the NLP lineage', () => {
+        const b = describeToneBlend(['nlp_weighted', 'nlp_weighted', 'nlp'])
+        expect(b.label).toBe('NLP-weighted tone')
+        expect(b.detail).toBe('3 of 3 rows')
+    })
+
+    it('all-GDELT rows name GDELT', () => {
+        const b = describeToneBlend(['gdelt', 'gdelt'])
+        expect(b.label).toBe('GDELT tone')
+        expect(b.detail).toBe('2 of 2 rows')
+    })
+
+    it('a mixed column never claims a single source', () => {
+        const b = describeToneBlend(['nlp_weighted', 'gdelt', 'gdelt'])
+        expect(b.label).toBe('Fused tone')
+        expect(b.detail).toBe('1 NLP-weighted · 2 GDELT')
+    })
+
+    it('missing provenance degrades to GDELT (the serializer fallback), never silence', () => {
+        expect(describeToneBlend([undefined, undefined]).label).toBe('GDELT tone')
+    })
+
+    it('an empty column states no rows rather than asserting a source', () => {
+        expect(describeToneBlend([]).detail).toBe('no rows')
+    })
+
+    it('the footer states the blend AND the legend together', () => {
+        expect(toneScaleFooter(['nlp_weighted'])).toBe(
+            'NLP-weighted tone · −10…+10 · 1 of 1 rows',
+        )
+    })
+})
+
+describe('toneBridgeNote (the missing bridge between strip and panels)', () => {
+    it('states the conversion with this window’s own number', () => {
+        expect(toneBridgeNote(-0.49)).toBe(
+            '±1 scale · ×10 = -4.9 on the tone panels below',
+        )
+    })
+
+    it('degrades honestly when the aggregate is missing', () => {
+        expect(toneBridgeNote(Number.NaN)).toBe('±1 scale · window aggregate')
+    })
+})
+
+describe('describePositiveColumn ("Jordan −0.0" as a most-positive entry)', () => {
+    it('says nothing when the column is genuinely positive', () => {
+        expect(describePositiveColumn([0.3, 0.2, 0.1])).toBeNull()
+    })
+
+    it('names the ranking when no rendered row is positive', () => {
+        expect(describePositiveColumn([-0.01, -0.02, -0.04])).toBe(
+            'least negative — no country in this window scored positive',
+        )
+    })
+
+    it('flags a partially-negative column instead of implying all are positive', () => {
+        expect(describePositiveColumn([0.3, -0.01])).toBe(
+            'ranked high-to-low — 1 of 2 rows is not positive',
+        )
+    })
+
+    it('no rows, no claim', () => {
+        expect(describePositiveColumn([])).toBeNull()
+    })
+})
+
+// The descriptor is SERVED (briefing `sentiment_scale`, derived from
+// sentiment_fusion's own constants) precisely so tuning
+// BRIEFING_NLP_SENTIMENT_SCALE can never leave the client's disclosure stale.
+describe('served scale descriptor drives the render (no client-side drift)', () => {
+    const wider = {
+        panel_multiplier: 10,
+        panel_bounds: [-20, 20] as [number, number],
+        served_abs_max: 1.185,
+        nlp_coverage_threshold: 0.5,
+    }
+
+    it('a wider served legend stops clamping a value the default would clip', () => {
+        expect(formatTone10(-1.12).clamped).toBe(true)
+        const out = formatTone10(-1.12, wider)
+        expect(out.display).toBe('-11.2')
+        expect(out.clamped).toBe(false)
+        expect(out.marker).toBe('')
+    })
+
+    it('the saturation tip quotes the SERVED range, not a baked constant', () => {
+        const narrow = { ...wider, panel_bounds: [-5, 5] as [number, number] }
+        const tip = toneSaturationTip(formatTone10(-1.12, narrow), narrow)
+        expect(tip).toContain('−5…+5')
+        expect(tip).toContain('±11.9')
+    })
+
+    it('the footer legend follows the served bounds', () => {
+        expect(toneScaleFooter(['gdelt'], wider)).toBe('GDELT tone · −20…+20 · 1 of 1 rows')
+    })
+
+    it('the bridge follows the served multiplier', () => {
+        const half = { ...wider, panel_multiplier: 100, panel_bounds: [-100, 100] as [number, number] }
+        expect(toneBridgeNote(-0.49, half)).toContain('×100 = -49.0')
+    })
+
+    it('lineage note quotes the served coverage threshold', () => {
+        expect(toneLineageNote(wider)).toContain('50%')
+    })
+
+    it('missing descriptor falls back to the shipped defaults, never to NaN', () => {
+        expect(formatTone10(-0.32, undefined).display).toBe('-3.2')
+        expect(toneLineageNote(undefined)).toContain('30%')
     })
 })
