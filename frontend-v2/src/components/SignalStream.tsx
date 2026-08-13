@@ -12,7 +12,7 @@ import {
 } from '../lib/streamTabs'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { hasLensContent, lensTopicParam } from '../lib/storyLens'
-import { streamLiveness, type StreamLaneState } from '../lib/streamLiveness'
+import { newestTimestamp, streamLiveness, type StreamLaneState } from '../lib/streamLiveness'
 import type { StreamLevel } from '../contexts/FocusContext'
 import { Pin, PinOff } from '../lib/icons'
 import PinReceiptButton from './PinReceiptButton'
@@ -447,6 +447,12 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                 }
 
                 const data = await sigRes.json()
+                // C9: the last-seen clock reads the RAW payload, not the
+                // renderable subset. When every row the lane returned is junk
+                // (a GDELT document id, a ticker line), nothing renders — but
+                // WHEN the last one landed is still measured, and that number
+                // is what turns "No signals found" into a legible quiet.
+                const rawNewest = newestTimestamp(data.signals)
                 const fetchedSignals: StreamItem[] = (data.signals || [])
                     .filter((s: Signal) => isValidHeadline(s.headline))
                     .map((s: Signal) => ({ ...s, type: 'signal' as const }))
@@ -455,6 +461,7 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
 
                 // A real 200: from here a zero is a MEASURED zero.
                 setLaneState('served')
+                if (rawNewest !== null) setLastSignalAt(rawNewest)
                 retryAttemptRef.current = 0
                 if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null }
 
@@ -497,8 +504,6 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                     }
 
                     latestTimestampRef.current = fetchedSignals[0].timestamp
-                    // The one number that makes a quiet window legible later.
-                    setLastSignalAt(new Date(fetchedSignals[0].timestamp).getTime())
                 } else {
                     setVelocity({ signals_per_minute: '--', delta: '--', percentage_change: '--' })
                 }
@@ -554,6 +559,12 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                 let newVelocity = null
                 if (sigRes.ok) {
                     const data = await sigRes.json()
+                    const rawNewest = newestTimestamp(data.signals)
+                    // Monotonic within a scope: a `since`-scoped poll that
+                    // returns nothing must never rewind the last-seen clock.
+                    if (rawNewest !== null && isMounted) {
+                        setLastSignalAt(prev => (prev === null ? rawNewest : Math.max(prev, rawNewest)))
+                    }
                     newSignals = (data.signals || [])
                         .filter((s: Signal) => isValidHeadline(s.headline) && !seenIdsRef.current.has(s.id))
                         .map((s: Signal) => ({ ...s, type: 'signal' as const }))
@@ -572,7 +583,6 @@ export const SignalStream: React.FC<SignalStreamProps> = ({ paused = false, onSi
                 if (newSignals.length > 0) {
                     newSignals.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     latestTimestampRef.current = newSignals[0].timestamp
-                    setLastSignalAt(new Date(newSignals[0].timestamp).getTime())
                     newSignals.forEach(s => seenIdsRef.current.add(s.id))
                     dripQueueRef.current = mergeStreamItems(dripQueueRef.current, newSignals, 200)
                 }

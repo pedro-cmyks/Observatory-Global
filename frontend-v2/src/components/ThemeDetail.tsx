@@ -12,6 +12,7 @@ import { NarrativeDrift } from './NarrativeDrift'
 import { NarrativeBiography } from './NarrativeBiography'
 import { TranslatableHeadline } from './TranslatableHeadline'
 import PinReceiptButton from './PinReceiptButton'
+import CopyCitationButton, { CopySourceListButton } from './CopyCitationButton'
 import { ShareThreadButton } from './ShareCard'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useScrollLock } from '../hooks/useScrollLock'
@@ -581,6 +582,16 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             ? <TranslatableHeadline signalId={sig.id} original={title} sourceLang={sig.source_lang} />
                             : <span className="coverage-article-headline--nolink">{title}</span>}
                     </span>
+                    {/* X5 (estudiante): this row, as one citable line. */}
+                    <CopyCitationButton
+                        receipt={{
+                            headline: title,
+                            source: sig.source,
+                            url: sig.url,
+                            sourceLang: sig.source_lang,
+                            publishedDate: sig.timestamp,
+                        }}
+                    />
                     <PinReceiptButton
                         contextLabel={displayLabel}
                         citation={{
@@ -1232,11 +1243,30 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     {showAllCoverage ? '▴ Hide' : '▾ Show'} all coverage ({data.signals.length})
                                 </button>
                                 {showAllCoverage && (
-                                    <div className="coverage-articles coverage-articles--all">
-                                        {data.signals.slice(0, 30).map((sig, i) => (
-                                            <div key={i}>{renderArticle(sig, { showSource: true })}</div>
-                                        ))}
-                                    </div>
+                                    <>
+                                        {/* X5 (estudiante): "the Ukraine page was genuinely a
+                                            one-stop source list" — this is the export it never
+                                            had. It emits exactly the rows RENDERED below (the
+                                            first 30), never the fuller count on the toggle:
+                                            one list, one number. */}
+                                        <div className="coverage-articles-tools">
+                                            <CopySourceListButton
+                                                title={displayLabel}
+                                                receipts={data.signals.slice(0, 30).map(sig => ({
+                                                    headline: sig.headline ? decodeEntities(sig.headline) : '',
+                                                    source: sig.source,
+                                                    url: sig.url,
+                                                    sourceLang: sig.source_lang,
+                                                    publishedDate: sig.timestamp,
+                                                }))}
+                                            />
+                                        </div>
+                                        <div className="coverage-articles coverage-articles--all">
+                                            {data.signals.slice(0, 30).map((sig, i) => (
+                                                <div key={i}>{renderArticle(sig, { showSource: true })}</div>
+                                            ))}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         )}

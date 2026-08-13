@@ -1268,6 +1268,14 @@
     color: #1D9E75;
 }
 
+/* X5 · the export the one-stop source list never had. Right-aligned above the
+   rendered rows so it reads as a tool for THAT list, not a section action. */
+.coverage-articles-tools {
+    display: flex;
+    justify-content: flex-end;
+    padding: 2px 0 6px;
+}
+
 /* ── Consumer MVP: full-screen readable thread on phones ──
    On a phone, opening a thread from the Brief lands in the desktop console;
    render the thread read full-screen over the cockpit so it reads like an

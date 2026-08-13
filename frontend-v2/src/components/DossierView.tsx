@@ -31,6 +31,9 @@ import { buildClaimTable, claimTableMarkdown } from '../lib/claimLedger'
 import { resolveLauncherVerbs } from '../lib/launcherVerbs'
 import { sourceMix, formatSourceMix } from '../lib/sourceTiers'
 import { TierChip } from './TierChip'
+import CopyCitationButton from './CopyCitationButton'
+import { formatSourceList } from '../lib/citationFormat'
+import { copyText } from '../lib/copyText'
 import {
     validateProse, joinValidatedText, corroborationBackedFrom, type MeasuredContext,
 } from '../lib/proseValidator'
@@ -138,6 +141,9 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
     const [copied, setCopied] = useState(false)
     // Export feedback (council wish 12): downloads must confirm themselves too.
     const [downloaded, setDownloaded] = useState(false)
+    // X5: the source-list copy reports its own outcome in place (idle → ok /
+    //     failed) — a blocked clipboard never reads as a success.
+    const [sourcesCopied, setSourcesCopied] = useState<'idle' | 'ok' | 'failed'>('idle')
     // Enrichment F1 (spec 2026-07-20): server-fetched full text per receipt.
     // Opening the dossier also BACKFILLS old pins (pre-F1 investigations, e.g.
     // NATO-Ankara) by enqueueing their evidence URLs; the states hook polls
@@ -501,6 +507,34 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
     const copy = async () => {
         try { await navigator.clipboard.writeText(markdown()); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* ignore */ }
     }
+
+    // X5 (colegio ciego, estudiante): "a copy citation / export source list
+    // button that gives outlet + headline + date + URL per story … would turn
+    // this into a bibliography machine." The report's receipts are BOTH the
+    // frozen per-pin evidence rows it renders and the receipt-level pins;
+    // formatSourceList dedupes them by link, so a receipt that is both is
+    // cited once — the button's count is what the clipboard will hold.
+    const sourceListText = useMemo(() => formatSourceList(
+        [
+            ...dossier.pins.flatMap(p => (p.snapshot?.evidence ?? []).map(e => ({
+                headline: e.headline, source: e.source, url: e.url, publishedDate: e.date,
+            }))),
+            ...investigation.citations.map(c => ({
+                headline: c.headline, source: c.source, url: c.url,
+                sourceLang: c.sourceLang, publishedDate: c.publishedDate,
+            })),
+        ],
+        { title: effectiveTitle, retrievedAt: new Date().toISOString().slice(0, 10) },
+    ), [dossier.pins, investigation.citations, effectiveTitle])
+    const sourceListCount = useMemo(
+        () => sourceListText.split('\n').filter(l => /^\d+\. /.test(l)).length,
+        [sourceListText],
+    )
+    const copySources = async () => {
+        const ok = await copyText(sourceListText)
+        setSourcesCopied(ok ? 'ok' : 'failed')
+        setTimeout(() => setSourcesCopied('idle'), 1600)
+    }
     const download = () => {
         const blob = new Blob([markdown()], { type: 'text/markdown' })
         const url = URL.createObjectURL(blob)
@@ -557,6 +591,13 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                             data-tip="AI-read the fetched source texts and map corroborations/tensions between their quote-backed claims. Labeled possible — every finding carries both verbatim quotes so you verify in one glance."
                         >{crossRunning ? 'Reading sources…' : crossRead ? 'Re-cross-read' : 'Cross-read'}</button>
                         <button className="dossier-btn" onClick={copy}>{copied ? 'Copied ✓' : 'Copy MD'}</button>
+                        {sourceListCount > 0 && (
+                            <button
+                                className="dossier-btn"
+                                onClick={copySources}
+                                data-tip="Every receipt in this report as a numbered source list — outlet, headline, original language, date and link. Deduped by link, so a syndicated repeat is cited once."
+                            >{sourcesCopied === 'ok' ? 'Copied ✓' : sourcesCopied === 'failed' ? 'Copy blocked' : `Copy sources (${sourceListCount})`}</button>
+                        )}
                         <button className="dossier-btn" onClick={download}>{downloaded ? 'Downloaded ✓' : 'Download'}</button>
                         <button className="dossier-close" onClick={onClose} aria-label="Close">×</button>
                     </div>
@@ -767,6 +808,17 @@ export function DossierView({ investigation, onClose, autoCorroborate, onMutate,
                                                     while the corroboration list marked it. Same
                                                     classifier, same chip; unknown renders nothing. */}
                                                 <TierChip source={e.source} />
+                                                {/* X5 (estudiante): the frozen receipt as one
+                                                    citable line — the report is where a citation
+                                                    is actually needed. */}
+                                                <CopyCitationButton
+                                                    receipt={{
+                                                        headline: e.headline,
+                                                        source: e.source,
+                                                        url: e.url,
+                                                        publishedDate: e.date,
+                                                    }}
+                                                />
                                                 {tag && <span className="dossier-ft-tag">{tag}</span>}
                                                 {/* Enrichment F1: excerpt + citation, never republished full text */}
                                                 {art?.status === 'ok' && art.excerpt && (
