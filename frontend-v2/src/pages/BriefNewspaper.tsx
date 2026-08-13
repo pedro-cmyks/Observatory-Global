@@ -936,14 +936,21 @@ export function BriefNewspaper() {
     const maxGapRaw = Math.max(1, ...coverageGaps.map(g => g.raw_signals))
 
     // ---- C1: which lanes answered (lib/briefLanes.ts) --------------------------
-    // `briefUnavailable` covers the harder case the payload cannot report on
-    // itself: the briefing fetch rejected, timed out, or returned non-2xx, so
-    // there is no payload at all and EVERY count on the page would be invented.
+    // `briefUnavailable` covers the case the payload cannot report on itself:
+    // there IS no payload, so every count on the page would be invented.
+    //
+    // Deliberately NOT keyed on `briefError`. A failed revalidation over a
+    // cached payload is a staleness fact, not a lane fact: the cached brief
+    // carries its own degraded_segments from the moment it was fetched, and the
+    // stale banner already tells the reader which moment that is. Blanking its
+    // tiles to "—" while the desks below render that same payload's stories
+    // would be a second inconsistency, not a repair of the first.
+    //
     // A sealed edition is its own assembled artifact — its emptiness is a real
     // editorial verdict frozen at seal time, not a live lane failure.
     const laneEvidence: LaneEvidence = {
         degradedSegments: servedFromSeal ? [] : (data?.degraded_segments ?? []),
-        briefUnavailable: !servedFromSeal && (briefError !== null || !data),
+        briefUnavailable: !servedFromSeal && !data,
     }
     const storiesUnanswered = laneState('stories', laneEvidence) === 'unanswered'
     // The retry a reader needs when a lane died: go past the cache, ask again.
