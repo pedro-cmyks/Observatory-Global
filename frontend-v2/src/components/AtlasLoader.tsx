@@ -7,8 +7,15 @@ interface AtlasLoaderProps {
 }
 
 export function AtlasLoader({ visible }: AtlasLoaderProps) {
-    const [hiding, setHiding] = useState(false)
-    const [gone, setGone] = useState(false)
+    // Seeded from `visible`, not from `false`: a loader that was never asked
+    // for must never paint. Mounting at `gone: false` meant the console's
+    // lazy first mount — a Lens or Live tab tap, which is not gated at all
+    // (lib/appLoaderGate) — still flashed "Aggregating global intelligence…"
+    // over the surface for the 700ms of the fade-out. Measured at 375px: the
+    // loader was in the DOM 400ms after the tap and gone by 1.5s, with the
+    // Lens rendered underneath it the whole time.
+    const [hiding, setHiding] = useState(!visible)
+    const [gone, setGone] = useState(!visible)
 
     useEffect(() => {
         if (!visible) {

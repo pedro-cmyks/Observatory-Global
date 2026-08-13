@@ -98,6 +98,7 @@ import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { setPageScrollLocksSuspended } from './lib/scrollLock'
 import { ChokepointPanel } from './components/ChokepointPanel'
 import { AtlasLoader } from './components/AtlasLoader'
+import { DOCUMENT_ENTRY_PATH, showAppLoader } from './lib/appLoaderGate'
 import { PanelHelpButton } from './components/PanelHelpDrawer'
 import { Legend } from './components/Legend'
 import { useUrlSync } from './hooks/useUrlSync'
@@ -1783,7 +1784,13 @@ function AppContent() {
     fetch(`/api/v2/briefing/insight?hours=${DAY_WINDOW_HOURS}`).then(r => r.json()).then(d => { if (d.insight) setPrefetchedInsight(d.insight) }).catch(() => { })
   }, [])
 
-  // Show loader until nodes AND map are ready; hard cap at 10s
+  // Show loader until nodes AND map are ready; hard cap at 10s.
+  // NOTE this readiness is NETWORK-GATED — `nodes.length > 0` is /api/v2/nodes
+  // answering — which is why it may only gate the document's first paint. See
+  // lib/appLoaderGate for the measured case (W1): the phone's front door is
+  // /brief, so the console's first mount is a Lens tab tap, and gating that on
+  // a backend that was returning 429 put an opaque lid over the tab bar for
+  // ~11 seconds.
   const [appReady, setAppReady] = useState(false)
   useEffect(() => {
     if (!loading && nodes.length > 0 && mapReady) setAppReady(true)
@@ -1872,7 +1879,7 @@ function AppContent() {
 
   return (
     <div className={`app ${crisisEnabled ? 'crisis-mode' : ''}`}>
-      <AtlasLoader visible={!appReady} />
+      <AtlasLoader visible={showAppLoader({ appReady, entryPath: DOCUMENT_ENTRY_PATH })} />
       {/* Command Bar */}
       <header className="command-bar">
         <div className="command-bar-left">

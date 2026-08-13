@@ -16,6 +16,21 @@
     visibility: hidden;
 }
 
+/* W1: stop above the phone's tab bar (.mobile-tabbar — fixed, bottom: 0,
+   56px + safe-area, z-index 9500), the same offset .install-toast and
+   .frame-sheet already take. This loader is `inset: 0` at z-index 9999 with an
+   opaque background, so a full-bleed lid covered the three tabs as well as the
+   console: measured on prod at 375px under a 429ing backend, `elementFromPoint`
+   over the Brief tab returned `DIV.atlas-loader` for ~11 seconds — the reader's
+   only way back to a working surface was gone and a reload was the sole exit.
+   The bar is rendered at the root, outside <Routes>, precisely so it outlives
+   whatever a pane does (C5); nothing a pane paints may cover it. */
+@media (max-width: 768px) {
+    .atlas-loader {
+        bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
 .atlas-loader-content {
     display: flex;
     flex-direction: column;
