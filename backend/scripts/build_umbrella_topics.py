@@ -58,6 +58,26 @@ except ImportError:  # pragma: no cover
     )
     from backend.scripts.ensemble.model_clients import call_llm
 
+# Per-statement budget (2026-08-13): this is Step 3 of the nightly, firing
+# IMMEDIATELY after the snapshot rewrites dynamic_topics — and the pooler's
+# effective statement_timeout is 2min (server config; the script previously
+# set no budget at all). The _LOAD scan is fast (137ms measured) but ships
+# ~3k centroid rows, and the write transaction below rewrites parent_id +
+# umbrella members under the same post-snapshot contention. SET LOCAL inside
+# each statement's transaction is the sanctioned pooler pattern
+# (cf. etl_topic_members).
+STMT_TIMEOUT = os.environ.get("ATLAS_UMBRELLA_STMT_TIMEOUT", "540s")
+
+
+async def _fetch_guarded(conn, sql: str, *args):
+    """One fetch in its own transaction with SET LOCAL statement_timeout."""
+    async with conn.transaction():
+        await conn.execute(
+            "SELECT set_config('statement_timeout', $1, true)", STMT_TIMEOUT
+        )
+        return await conn.fetch(sql, *args)
+
+
 # Children pool = the served set. Only active, non-umbrella topics with a centroid.
 _LOAD = """
     SELECT id, identity_key, label, agg_n_signals,
@@ -471,7 +491,7 @@ async def main() -> None:
 
     conn = await asyncpg.connect(db)
     try:
-        rows = await conn.fetch(_LOAD)
+        rows = await _fetch_guarded(conn, _LOAD)
         n = len(rows)
         if n < 2:
             print(f"only {n} active topic(s) — nothing to umbrella")
@@ -564,6 +584,11 @@ async def main() -> None:
 
         written = 0
         async with conn.transaction():
+            # SET LOCAL: every statement in this rebuild transaction gets the
+            # maintenance budget instead of the pooler's 2min default.
+            await conn.execute(
+                "SELECT set_config('statement_timeout', $1, true)", STMT_TIMEOUT
+            )
             # R3.3: STABLE umbrella identity (`umbrella:<min_child_id>`) — UPSERT instead
             # of delete-all+recreate, so ids survive nightly rebuilds (drill/pin links
             # don't churn). Children never deleted — only re-parented; umbrella MEMBERS

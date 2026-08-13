@@ -20,15 +20,35 @@ from scripts import bind_disaster_movement as bdm
 from scripts import compute_event_movement as cem
 
 
+class _FakeTxn:
+    def __init__(self, conn):
+        self.conn = conn
+
+    async def __aenter__(self):
+        self.conn.txn_depth += 1
+
+    async def __aexit__(self, *exc):
+        self.conn.txn_depth -= 1
+
+
 class FakeConn:
     def __init__(self, results=None, fail_times=0, exc=TimeoutError):
         self.calls: list[tuple] = []
+        self.exec_calls: list[tuple] = []  # (sql, args, txn_depth)
         self.results = results if results is not None else []
         self.fail_times = fail_times
         self.exc = exc
+        self.txn_depth = 0
+
+    def transaction(self):
+        return _FakeTxn(self)
+
+    async def execute(self, sql, *args):
+        self.exec_calls.append((sql, args, self.txn_depth))
+        return "SELECT 1"
 
     async def fetch(self, sql, *args, timeout=None):
-        self.calls.append((sql, args, timeout))
+        self.calls.append((sql, args, timeout, self.txn_depth))
         if self.fail_times > 0:
             self.fail_times -= 1
             raise self.exc()
@@ -58,8 +78,39 @@ def test_fetch_with_retry_exhausts_and_raises():
 def test_fetch_with_retry_passes_timeout_to_driver():
     conn = FakeConn(results=[])
     _run(fetch_with_retry(conn, "SELECT 1", "arg", timeout=42, attempts=1, backoff=0))
-    sql, args, timeout = conn.calls[0]
+    sql, args, timeout, _depth = conn.calls[0]
     assert timeout == 42 and args == ("arg",)
+
+
+# --- per-statement SET LOCAL guard (2026-08-13) ------------------------------
+# The pooler's effective statement_timeout is 2min; the 08-12 receipt logged
+# all_windows_timed_out because the client budget sat below the query's real
+# cost. Every attempt must now carry its own SET LOCAL inside a transaction.
+
+def test_fetch_with_retry_sets_local_timeout_inside_txn(monkeypatch):
+    import scripts.event_binding_util as ebu
+    monkeypatch.setattr(ebu, "STMT_TIMEOUT", "540s")
+    conn = FakeConn(results=[{"x": 1}])
+    _run(fetch_with_retry(conn, "SELECT 1", timeout=5, attempts=1, backoff=0))
+    (set_sql, set_args, set_depth), = conn.exec_calls
+    assert "set_config('statement_timeout', $1, true)" in set_sql
+    assert set_args == ("540s",) and set_depth == 1     # inside the txn
+    assert conn.calls[0][3] == 1                        # fetch in the SAME txn
+
+
+def test_fetch_with_retry_reissues_set_local_each_attempt():
+    conn = FakeConn(results=[{"x": 1}], fail_times=1)
+    _run(fetch_with_retry(conn, "SELECT 1", timeout=5, attempts=2, backoff=0))
+    set_calls = [c for c in conn.exec_calls if "set_config" in c[0]]
+    assert len(set_calls) == 2                          # one per attempt
+    assert conn.txn_depth == 0                          # txns all closed
+
+
+def test_client_backstop_sits_above_server_budget():
+    # server must cancel first (clean QueryCanceledError), never the client
+    import scripts.event_binding_util as ebu
+    server_s = float(ebu.STMT_TIMEOUT.rstrip("s"))
+    assert ebu.DEFAULT_QUERY_TIMEOUT > server_s
 
 
 # --- bounded _topic_country --------------------------------------------------
@@ -67,7 +118,7 @@ def test_fetch_with_retry_passes_timeout_to_driver():
 def test_topic_country_is_bounded_to_given_topics():
     conn = FakeConn(results=[])
     _run(bdm._topic_country(conn, ["dynamic-topic-1", "dynamic-topic-2"]))
-    sql, args, _ = conn.calls[0]
+    sql, args, _timeout, _depth = conn.calls[0]
     assert "= ANY($1" in sql, "must restrict to the disaster-topic ids, not all topics"
     assert args[0] == ["dynamic-topic-1", "dynamic-topic-2"]
 

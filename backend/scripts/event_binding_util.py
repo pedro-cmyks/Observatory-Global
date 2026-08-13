@@ -6,14 +6,28 @@ they read (dynamic_topic_members / emergent_clusters / topic_members), so they
 hit stale planner stats + cold cache + autovacuum and a 120s budget with zero
 retries — the 2026-07-12 silent-staleness incident. This module gives them:
 
-- fetch_with_retry: a real timeout budget with bounded retries + backoff
+- fetch_with_retry: per-statement SET LOCAL statement_timeout + bounded retries
 - apply_session_budget: session statement_timeout above the pooler 2min default
 - build_receipt: machine-readable freshness receipt (lag is a number, not a vibe)
+
+Timeout discipline (2026-08-13): the pooler's effective statement_timeout is
+2min (server config file — verified with SHOW), and the old client budget
+(240s) sat BELOW what the bind query needs under post-snapshot contention.
+The 2026-08-12 receipt logged `all_windows_timed_out` because the query's
+dominant cost — the dyn_sig membership materialization + ~129k signals_v2
+probes, measured 21s uncontended on 08-13 — is WINDOW-INDEPENDENT, so the
+half/quarter fallback windows died exactly like the full one. Every heavy
+fetch now runs inside its own transaction with a SET LOCAL statement_timeout
+(the sanctioned pooler pattern, cf. etl_topic_members/_execute_guarded), and
+the client backstop sits ABOVE the server budget so the server cancels first
+with a clean QueryCanceledError instead of asyncpg killing a statement the
+server would have finished.
 """
 from __future__ import annotations
 
 import asyncio
 import json
+import os
 from datetime import datetime
 from typing import Any, Sequence
 
@@ -23,13 +37,19 @@ try:  # asyncpg present in prod venvs; tests only need the fallback tuple
 except Exception:  # pragma: no cover
     _RETRYABLE = (TimeoutError,)
 
-DEFAULT_QUERY_TIMEOUT = 240.0  # seconds — measured cold runs are 3.6s/6.9s; 30x headroom
+# Per-statement server budget (SET LOCAL) — the authoritative guard.
+STMT_TIMEOUT = os.environ.get("ATLAS_EVENT_BIND_STMT_TIMEOUT", "540s")
+DEFAULT_QUERY_TIMEOUT = 560.0  # seconds — client backstop ABOVE the SET LOCAL budget
 DEFAULT_ATTEMPTS = 2
 DEFAULT_BACKOFF = 20.0
 
 
-async def apply_session_budget(conn: Any, seconds: int = 280) -> None:
-    """Lift the pooler's 2min statement_timeout for this maintenance session."""
+async def apply_session_budget(conn: Any, seconds: int = 540) -> None:
+    """Session statement_timeout above the pooler's 2min default.
+
+    Belt for the direct fetches outside fetch_with_retry (e.g. the receipt's
+    MAX(timestamp)); the per-statement SET LOCAL inside fetch_with_retry is
+    the authoritative guard for the heavy binds."""
     await conn.execute(f"SET statement_timeout = '{int(seconds)}s'")
 
 
@@ -41,11 +61,19 @@ async def fetch_with_retry(
     attempts: int = DEFAULT_ATTEMPTS,
     backoff: float = DEFAULT_BACKOFF,
 ) -> Sequence[Any]:
-    """conn.fetch with bounded retries on timeout/cancel; re-raises after the budget."""
+    """conn.fetch with a per-statement SET LOCAL statement_timeout + retries.
+
+    Each attempt runs in its own transaction so the SET LOCAL cannot leak past
+    the statement and is guaranteed to reach the backend executing THIS
+    statement under any pooling mode. Re-raises after the retry budget."""
     last_exc: BaseException | None = None
     for attempt in range(attempts):
         try:
-            return await conn.fetch(sql, *args, timeout=timeout)
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT set_config('statement_timeout', $1, true)", STMT_TIMEOUT
+                )
+                return await conn.fetch(sql, *args, timeout=timeout)
         except _RETRYABLE as exc:
             last_exc = exc
             if attempt + 1 < attempts and backoff > 0:

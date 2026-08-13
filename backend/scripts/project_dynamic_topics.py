@@ -993,10 +993,12 @@ def apply_new_clusters(
 # ---------- DB ----------
 
 # Bounded `id = ANY($1)` fetches (2026-07-19). ONE unbatched ANY() over every
-# sample_signal_id exceeded statement_timeout ('600s') under post-snapshot
-# contention and killed the WHOLE projection — the 07-12/13 "dynamic_topics
-# projection failed (non-fatal)" incidents left serving a night behind while
-# the snapshot itself was fresh. Same medicine as the writer's keyset
+# sample_signal_id exceeded statement_timeout under post-snapshot contention
+# and killed the WHOLE projection — the 07-12/13 "dynamic_topics projection
+# failed (non-fatal)" incidents left serving a night behind while the snapshot
+# itself was fresh. (The old '600s' note here was a stale assumption: this
+# script never issues a SET, so the effective budget is the pooler's 2min
+# server default — verified 2026-08-13.) Same medicine as the writer's keyset
 # pagination: no single statement may approach the timeout.
 ID_FETCH_CHUNK = int(os.environ.get("ATLAS_PROJECT_ID_FETCH_CHUNK", "10000") or "10000")
 

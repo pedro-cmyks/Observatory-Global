@@ -29,24 +29,36 @@ ENGINE_VERSION = "movement-kalman-v1"
 WINDOW_DAYS = 7
 BUCKET_HOURS = 3  # coarser than 1h → smoother, cheaper, less zero-noise
 
+# Per-statement budget for the one big aggregate below. The pooler's effective
+# statement_timeout is 2min (server config), and the aggregate measured 28.6s
+# uncontended at 169k topic_members (2026-08-13) — only ~4x headroom, and this
+# runs in the nightly right after the snapshot mass-rewrites topic_members
+# (cold cache + stale planner stats). SET LOCAL inside the statement's own
+# transaction is the sanctioned pooler pattern (cf. etl_topic_members).
+STMT_TIMEOUT = os.environ.get("ATLAS_MOVEMENT_STMT_TIMEOUT", "540s")
+
 
 async def _series_by_topic(conn) -> dict[str, list[Observation]]:
     """Hourly volume per topic over topic_members — the UNIFIED membership, so
     this covers atlas categories AND dynamic stories in one pass (movement is
     ONE field for the whole thread population, Pedro 2026-07-03)."""
-    rows = await conn.fetch(
-        f"""
-        SELECT tm.topic_id,
-               date_bin('{BUCKET_HOURS} hours', s.timestamp,
-                        TIMESTAMPTZ '2020-01-01') AS bucket,
-               COUNT(*) AS n
-        FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
-        WHERE tm.role = 'evidence'
-          AND s.timestamp > NOW() - INTERVAL '{WINDOW_DAYS} days'
-        GROUP BY tm.topic_id, bucket
-        ORDER BY tm.topic_id, bucket
-        """
-    )
+    async with conn.transaction():
+        await conn.execute(
+            "SELECT set_config('statement_timeout', $1, true)", STMT_TIMEOUT
+        )
+        rows = await conn.fetch(
+            f"""
+            SELECT tm.topic_id,
+                   date_bin('{BUCKET_HOURS} hours', s.timestamp,
+                            TIMESTAMPTZ '2020-01-01') AS bucket,
+                   COUNT(*) AS n
+            FROM topic_members tm JOIN signals_v2 s ON s.id = tm.signal_id
+            WHERE tm.role = 'evidence'
+              AND s.timestamp > NOW() - INTERVAL '{WINDOW_DAYS} days'
+            GROUP BY tm.topic_id, bucket
+            ORDER BY tm.topic_id, bucket
+            """
+        )
     out: dict[str, list[Observation]] = {}
     for r in rows:
         out.setdefault(r["topic_id"], []).append(
