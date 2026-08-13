@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
 import {
     describePositiveColumn,
@@ -242,5 +243,37 @@ describe('served scale descriptor drives the render (no client-side drift)', () 
     it('missing descriptor falls back to the shipped defaults, never to NaN', () => {
         expect(formatTone10(-0.32, undefined).display).toBe('-3.2')
         expect(toneLineageNote(undefined)).toContain('30%')
+    })
+})
+
+// The desktop bridge lives in the tile's ".sub" caption — which mobile CSS
+// hides for vertical space (BriefNewspaper.css, max-width:768px). Without a
+// mobile carrier the phone shows "−0.49" over panels reading "−10.0" with no
+// conversion anywhere: the exact defect, unfixed on half the surface. Mobile
+// therefore folds the bridge into its short label, the same trick the strip
+// already uses for the hidden sub (#236).
+describe('BriefNewspaper wiring — the bridge survives the mobile label swap', () => {
+    const src = readFileSync(
+        new URL('../pages/BriefNewspaper.tsx', import.meta.url), 'utf8',
+    )
+
+    it('the mobile sentiment label carries the ×10 conversion, not just the scale', () => {
+        const label = src.match(/brief-vital-k-mobile">([^<]*Sentiment[^<]*)</)?.[1] ?? ''
+        expect(label).toContain('±1')
+        expect(label).toContain('×10')
+    })
+
+    it('the desktop caption is the served bridge, not a hardcoded string', () => {
+        expect(src).toContain('toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale)')
+    })
+
+    it('the tone columns pass the served scale to every formatter', () => {
+        expect(src).toContain('formatTone10(c.sentiment, scale)')
+        expect(src).toContain('toneSaturationTip(tone, scale)')
+        expect(src).toMatch(/toneScaleFooter\(negRows\.map\(c => c\.sentiment_source\), scale\)/)
+    })
+
+    it('no column footer asserts a single source as a static string', () => {
+        expect(src).not.toMatch(/"GDELT tone · −10…\+10"|>GDELT tone · −10…\+10</)
     })
 })

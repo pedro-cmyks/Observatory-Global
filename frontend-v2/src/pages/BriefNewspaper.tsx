@@ -1609,7 +1609,11 @@ export function BriefNewspaper() {
                                     is two spans now, one per viewport, not a bare text node). */}
                                 <div className="k">
                                     <span className="brief-vital-k-full">Avg sentiment</span>
-                                    <span className="brief-vital-k-mobile">Sentiment · ±1</span>
+                                    {/* C2: mobile hides ".sub", which is where the desktop
+                                        bridge lives — so the short label carries the
+                                        conversion too, or the phone shows −0.49 above panels
+                                        reading −10.0 with nothing linking them. */}
+                                    <span className="brief-vital-k-mobile">Sentiment · ±1 · ×10 below</span>
                                 </div>
                                 <div className="v">
                                     {formatSentimentPm1(data.stats.avg_sentiment)}
