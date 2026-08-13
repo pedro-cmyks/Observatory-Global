@@ -24,6 +24,18 @@ tokens per headline; cache makes repeat reads free). Degrades to
 on the API process or DeepSeek itself fails — the frontend already
 falls back to the original headline in that case.
 
+CASUALTY GUARD (2026-08-13, veracity scorecard claim 2). Every translation
+served by any of the three lanes — fresh OR from cache — is checked against
+its original for casualty figures that changed category. The witness: a
+Romanian headline saying "224 de morţi şi peste 600 de răniţi" (INJURED)
+reached readers as "224 dead and over 600 dead". When the guard fires the
+translation is not served, not persisted and not cached; the lane returns the
+original text with `error: "translation_unverified"` plus a `guard` block
+naming the number and the two categories. Cache hits are checked too, on
+purpose: the poisoned row is already in prod's signal_translations, so a
+guard that only watched fresh provider calls would keep serving it forever.
+See app/services/casualty_guard.py.
+
 Spec: docs/superpowers/specs/2026-05-29-emergent-topic-discovery-design.md
 (Translation layer).
 """
@@ -42,9 +54,35 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from app import db
+from app.services import casualty_guard
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+UNVERIFIED = "translation_unverified"
+
+
+def _verify(original: Optional[str], translated: Optional[str], **context) -> Optional[dict]:
+    """None when the translation may be served; a `guard` block when it may not.
+
+    Fails CLOSED. If our own verifier raises we do not know whether the
+    number survived translation, and "we could not verify" is the honest
+    answer — the frontend already renders per-receipt unavailable states. The
+    lane still never 500s.
+    """
+    if not original or not translated:
+        return None
+    try:
+        verdict = casualty_guard.check_translation(original, translated)
+    except Exception:
+        logger.exception("casualty guard raised; refusing the translation")
+        return {"reason": "guard_error", "message": "translation could not be verified", "findings": []}
+    if not verdict.fired:
+        return None
+    casualty_guard.record_fire(
+        verdict, {**context, "original": original, "translated": translated}
+    )
+    return casualty_guard.guard_payload(verdict)
 
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 DEEPSEEK_MODEL = "deepseek-chat"
@@ -97,9 +135,13 @@ async def _deepseek_translate(
 
 
 async def _cached(conn, signal_id: int, target_lang: str) -> Optional[dict]:
+    # The join carries the ORIGINAL headline back with the cached translation
+    # so a cache hit can be guarded without a second query.
     row = await conn.fetchrow(
-        "SELECT translated, model, source_lang "
-        "FROM signal_translations WHERE signal_id=$1 AND target_lang=$2",
+        "SELECT t.translated, t.model, t.source_lang, s.headline "
+        "FROM signal_translations t "
+        "LEFT JOIN signals_v2 s ON s.id = t.signal_id "
+        "WHERE t.signal_id=$1 AND t.target_lang=$2",
         signal_id, target_lang,
     )
     return dict(row) if row else None
@@ -148,6 +190,26 @@ async def _translate_one(
 ) -> dict:
     cached = await _cached(conn, signal_id, target_lang)
     if cached:
+        original = html.unescape(cached.get("headline") or "")
+        guard = (
+            None
+            if cached.get("model") == "identity"
+            else _verify(
+                original, cached["translated"],
+                lane="signal", signal_id=signal_id, target_lang=target_lang, cached=True,
+            )
+        )
+        if guard:
+            return {
+                "signal_id": signal_id,
+                "target_lang": target_lang,
+                "translated": None,
+                "original": original,
+                "source_lang": cached.get("source_lang"),
+                "cached": True,
+                "error": UNVERIFIED,
+                "guard": guard,
+            }
         return {
             "signal_id": signal_id,
             "target_lang": target_lang,
@@ -206,6 +268,23 @@ async def _translate_one(
             "translated": None,
             "error": "translate_failed",
         }
+    guard = _verify(
+        cleaned, translated,
+        lane="signal", signal_id=signal_id, target_lang=target_lang, cached=False,
+    )
+    if guard:
+        # Not served AND not persisted: a refused translation must not become
+        # tomorrow's cache hit.
+        return {
+            "signal_id": signal_id,
+            "target_lang": target_lang,
+            "translated": None,
+            "original": cleaned,
+            "source_lang": source_lang,
+            "cached": False,
+            "error": UNVERIFIED,
+            "guard": guard,
+        }
     await _persist(conn, signal_id, target_lang, translated, DEEPSEEK_MODEL, source_lang)
     return {
         "signal_id": signal_id,
@@ -234,9 +313,13 @@ async def get_translate(
 
 
 async def _cached_many(conn, signal_ids: list[int], target_lang: str) -> dict[int, dict]:
+    # Joined to signals_v2 so the casualty guard can check cache hits without
+    # costing a second query (a 20-id all-cached batch stays at ONE round trip).
     rows = await conn.fetch(
-        "SELECT signal_id, translated, model, source_lang "
-        "FROM signal_translations WHERE signal_id = ANY($1::bigint[]) AND target_lang = $2",
+        "SELECT t.signal_id, t.translated, t.model, t.source_lang, s.headline "
+        "FROM signal_translations t "
+        "LEFT JOIN signals_v2 s ON s.id = t.signal_id "
+        "WHERE t.signal_id = ANY($1::bigint[]) AND t.target_lang = $2",
         signal_ids, target_lang,
     )
     return {int(r["signal_id"]): dict(r) for r in rows}
@@ -286,6 +369,27 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
     async with db.pool.acquire() as conn:
         cached = await _cached_many(conn, ids, target_lang)
         for sid, row in cached.items():
+            original = html.unescape(row.get("headline") or "")
+            guard = (
+                None
+                if row.get("model") == "identity"
+                else _verify(
+                    original, row["translated"],
+                    lane="signal", signal_id=sid, target_lang=target_lang, cached=True,
+                )
+            )
+            if guard:
+                results[sid] = {
+                    "signal_id": sid,
+                    "target_lang": target_lang,
+                    "translated": None,
+                    "original": original,
+                    "source_lang": row.get("source_lang"),
+                    "cached": True,
+                    "error": UNVERIFIED,
+                    "guard": guard,
+                }
+                continue
             results[sid] = {
                 "signal_id": sid,
                 "target_lang": target_lang,
@@ -341,6 +445,18 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
                 results[sid] = {"signal_id": sid, "target_lang": target_lang,
                                 "translated": None, "error": "translate_failed"}
                 continue
+            guard = _verify(
+                _cleaned, translated,
+                lane="signal", signal_id=sid, target_lang=target_lang, cached=False,
+            )
+            if guard:
+                # Refused rows are dropped from `writes` too — never cached.
+                results[sid] = {
+                    "signal_id": sid, "target_lang": target_lang, "translated": None,
+                    "original": _cleaned, "source_lang": source_lang, "cached": False,
+                    "error": UNVERIFIED, "guard": guard,
+                }
+                continue
             results[sid] = {
                 "signal_id": sid, "target_lang": target_lang, "translated": translated,
                 "source_lang": source_lang, "cached": False, "model": DEEPSEEK_MODEL,
@@ -394,6 +510,23 @@ class TranslateTextRequest(BaseModel):
     target_lang: str = Field(..., min_length=2, max_length=2)
 
 
+def _text_unverified(original: str, guard: dict) -> dict:
+    """Refusal for the free-text lane: the source text, plainly labelled.
+
+    `degraded` is what the client already reads as "we could not measure"
+    (classifyTextResponse), so an unverified translation lands in the same
+    honest state as a provider outage instead of masquerading as a no-op.
+    """
+    return {
+        "translated": original,
+        "same": True,
+        "cached": False,
+        "degraded": True,
+        "error": UNVERIFIED,
+        "guard": guard,
+    }
+
+
 @router.post("/api/v2/translate/text")
 async def post_translate_text(req: TranslateTextRequest) -> dict:
     target_lang = req.target_lang.lower()
@@ -406,6 +539,12 @@ async def post_translate_text(req: TranslateTextRequest) -> dict:
             cached = await redis.get(key)
             if cached:
                 data = _json.loads(cached)
+                guard = _verify(
+                    cleaned, data["translated"],
+                    lane="text", target_lang=target_lang, cached=True,
+                )
+                if guard:
+                    return _text_unverified(cleaned, guard)
                 return {
                     "translated": data["translated"],
                     "same": bool(data.get("same", data["translated"] == cleaned)),
@@ -430,6 +569,10 @@ async def post_translate_text(req: TranslateTextRequest) -> dict:
         return {"translated": cleaned, "same": True, "cached": False, "degraded": True}
 
     translated = html.unescape(translated).strip()
+    guard = _verify(cleaned, translated, lane="text", target_lang=target_lang, cached=False)
+    if guard:
+        return _text_unverified(cleaned, guard)
+
     same = translated == cleaned
     if redis:
         try:
