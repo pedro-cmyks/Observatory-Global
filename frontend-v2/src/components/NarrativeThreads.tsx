@@ -15,6 +15,7 @@ import { threadCountryPresentation } from '../lib/threadGeography'
 import { familyColor, familyGradient } from '../lib/categoryFamily'
 import { decodeEntities } from '../lib/decodeEntities'
 import { CountQualifierChip, countQualifier, formatCountWindow } from '../lib/countQualifier'
+import { resolveSourceCount, sourceCountClause } from '../lib/briefSourceCount'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
 import { TranslatableTextInline, useTranslatableText } from './TranslatableText'
@@ -59,6 +60,14 @@ interface Narrative {
     forum_sentiment?: number | null
     country_count: number
     source_count: number
+    /**
+     * Which receipt sample `source_count` was counted over. Rows whose served
+     * receipts saturate the list's 24-receipt slice are now counted over the
+     * frozen snapshot sample instead (lib/briefSourceCount), so the hint has to
+     * carry the population with the number.
+     */
+    source_count_basis?: 'receipt_sample' | 'snapshot_receipts' | null
+    source_sample_size?: number | null
     top_sources: string[]
     first_seen: string | null
     changed_10h: number
@@ -202,6 +211,8 @@ const normalizeThread = (thread: any): Narrative => {
     forum_sentiment: thread.forum_sentiment ?? null,
     country_count: thread.country_count || 0,
     source_count: thread.source_count || 0,
+    source_count_basis: thread.source_count_basis ?? null,
+    source_sample_size: thread.source_sample_size ?? null,
     top_sources: thread.top_sources || thread.source_mix?.top_sources || [],
     first_seen: thread.first_seen || null,
     changed_10h: thread.changed_10h || 0,
@@ -839,11 +850,17 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // T11 gate fix (L1): a synthesized row carries no measured
                 // count/source/country stats — say so honestly instead of
                 // printing the fabricated zeros the type defaults carry.
+                // The outlet count is a count over a receipt SAMPLE, and which
+                // sample now varies per row (the frozen snapshot one wins when
+                // the served slice saturates), so the clause carries its own
+                // population instead of this sentence assuming one.
+                const sourceBasis = resolveSourceCount(n)
+                const sourceClause = sourceBasis ? sourceCountClause(sourceBasis) : `${n.source_count} sources`
                 const rowHint = isSynthRow
                     ? 'From the measured walk — not in the current top stories. Click to open.'
                     : isCategoryRow
-                    ? `${n.label} is a CATEGORY, not a story — a lens over every story filed under it. ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources, summed over the whole category. Click to open it.`
-                    : `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified story detail.`
+                    ? `${n.label} is a CATEGORY, not a story — a lens over every story filed under it. ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${sourceClause}, summed over the whole category. Click to open it.`
+                    : `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${sourceClause}. Click to open the unified story detail.`
                 const domainLabel = (n.parent_domain || 'story').replace(/-/g, ' ')
                 const geography = threadCountryPresentation(n)
                 // Unified threads (Pedro 2026-06-24): no living/aggregate source

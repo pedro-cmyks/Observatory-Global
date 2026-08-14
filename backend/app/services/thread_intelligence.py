@@ -1303,6 +1303,39 @@ SELECT
         ORDER BY first_ord, code
         LIMIT 5
     ) AS top_country_codes,
+    -- [distinct outlets, receipts] over the FROZEN snapshot receipt sample
+    -- (mig 097 `sample_receipts`, written from in-memory rows at snapshot
+    -- time). The array below is capped at 24 for display, so a count over the
+    -- receipts we hydrate saturates there: the live front page served 23, 22,
+    -- 18, 21, 23, 23 for its top rows — pinned against the cap, which makes
+    -- the number useless for comparing stories. This lane is the SAME per-
+    -- cluster top-K population, unioned across an umbrella's member clusters,
+    -- so it is still a sample (never "every outlet that published") but it is
+    -- wider, it is frozen (the hydrated count decays as the 7-day retention
+    -- deletes rows) and it shares the latest-snapshot lineage `signal_count`
+    -- already uses. MEASURED before landing (prod, 4 interleaved EXPLAIN
+    -- ANALYZE runs on the 40-row list): 19-21ms -> 24-25ms warm, i.e. +5-6ms;
+    -- the correlated signals_v2 count is 2,143ms and the set-based rewrite
+    -- 1,185ms, both still rejected. DISTINCT on the id so an umbrella whose
+    -- member clusters share a receipt counts it once, matching the ids array.
+    (
+        SELECT ARRAY[
+            count(DISTINCT NULLIF(r->>'src', ''))::int,
+            count(DISTINCT r->>'id')::int
+        ]
+        FROM dynamic_topic_members dtm7
+        JOIN emergent_clusters ec7 ON ec7.id = dtm7.emergent_cluster_id
+        CROSS JOIN LATERAL jsonb_array_elements(
+            CASE WHEN jsonb_typeof(ec7.sample_receipts) = 'array'
+                 THEN ec7.sample_receipts
+                 ELSE '[]'::jsonb END
+        ) AS r
+        WHERE dtm7.dynamic_topic_id = dt.id
+          AND dtm7.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members
+              WHERE dynamic_topic_id = dt.id
+          )
+    ) AS snapshot_receipt_stats,
     ARRAY(
         SELECT DISTINCT sid
         FROM dynamic_topic_members dtm3
@@ -1476,6 +1509,27 @@ SELECT
         ORDER BY first_ord, code
         LIMIT 5
     ) AS top_country_codes,
+    -- Mirrors _DYNAMIC_TOPICS_SELECT's frozen-receipt stats: without it this
+    -- door would count the same story over a narrower population than the list
+    -- does (the N19 two-doors-two-numbers defect class).
+    (
+        SELECT ARRAY[
+            count(DISTINCT NULLIF(r->>'src', ''))::int,
+            count(DISTINCT r->>'id')::int
+        ]
+        FROM dynamic_topic_members dtm7
+        JOIN emergent_clusters ec7 ON ec7.id = dtm7.emergent_cluster_id
+        CROSS JOIN LATERAL jsonb_array_elements(
+            CASE WHEN jsonb_typeof(ec7.sample_receipts) = 'array'
+                 THEN ec7.sample_receipts
+                 ELSE '[]'::jsonb END
+        ) AS r
+        WHERE dtm7.dynamic_topic_id = dt.id
+          AND dtm7.snapshot_at = (
+              SELECT MAX(snapshot_at) FROM dynamic_topic_members
+              WHERE dynamic_topic_id = dt.id
+          )
+    ) AS snapshot_receipt_stats,
     ARRAY(
         SELECT DISTINCT sid
         FROM dynamic_topic_members dtm3
@@ -1642,6 +1696,78 @@ def _is_court_withheld(label_status: Any, label_court_model: Any, label_checked_
     return model.endswith(_WITHHELD_COURT_MODEL_SUFFIX)
 
 
+#: What a row's `source_count` was counted over. Both are SAMPLES — neither is
+#: ever "every outlet that published" — so the row always names which one.
+SOURCE_COUNT_BASIS_SERVED = "receipt_sample"      # the receipts this row renders
+SOURCE_COUNT_BASIS_SNAPSHOT = "snapshot_receipts"  # mig 097 frozen sample
+
+
+def _parse_snapshot_receipt_stats(raw: Any) -> tuple[int | None, int | None]:
+    """``[distinct_outlets, receipts]`` from the SQL, defensively.
+
+    The column is additive and read straight off a jsonb walk, so every
+    degenerate shape a fixture or a pre-097 row can produce (None, [], a
+    one-element array, NULL elements, a text element) has to fall through to
+    "no snapshot answer" rather than raise inside a serving path.
+    """
+    if raw is None:
+        return None, None
+    try:
+        values = list(raw)
+    except TypeError:
+        return None, None
+
+    def _as_int(value: Any) -> int | None:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    outlets = _as_int(values[0]) if len(values) >= 1 else None
+    receipts = _as_int(values[1]) if len(values) >= 2 else None
+    return outlets, receipts
+
+
+def resolve_thread_source_count(
+    *,
+    receipt_source_count: int,
+    receipt_sample_size: int,
+    snapshot_receipt_stats: Any,
+) -> tuple[int, str, int]:
+    """Pick the widest MEASURED outlet count for a row, and name its basis.
+
+    Two populations are available and both are samples:
+
+      * the receipts the row RENDERS (``sample_signal_ids`` -> live
+        ``signals_v2``), capped at 24 for display and decaying as the 7-day hot
+        retention deletes rows;
+      * the frozen ``sample_receipts`` of the same latest snapshot (mig 097) —
+        the same per-cluster top-K, unioned across an umbrella's member
+        clusters, so it is wider for exactly the rows the display cap binds.
+
+    The frozen lane wins only when it is STRICTLY wider. A reader can count the
+    domains under the row, so serving fewer than the rendered receipts show
+    would be visibly false — and a short/partial backfilled sample (223 of
+    2,747 latest-snapshot clusters froze nothing, 389 froze fewer than their
+    ids) must never be able to shrink a number that way.
+
+    Returns ``(count, basis, sample_size)`` where ``sample_size`` is the receipt
+    population THAT count was measured over — never a different lane's.
+    """
+    snapshot_outlets, snapshot_receipts = _parse_snapshot_receipt_stats(
+        snapshot_receipt_stats
+    )
+    if snapshot_outlets is not None and snapshot_outlets > receipt_source_count:
+        return (
+            snapshot_outlets,
+            SOURCE_COUNT_BASIS_SNAPSHOT,
+            snapshot_receipts if snapshot_receipts is not None else snapshot_outlets,
+        )
+    return receipt_source_count, SOURCE_COUNT_BASIS_SERVED, receipt_sample_size
+
+
 def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[str, Any]:
     topic_id = int(_record_get(topic_row, "id"))
     label_text = clean_thread_label(
@@ -1709,11 +1835,28 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         }
         for hour, vs in sorted(timeline.items())
     ]
-    source_count = len(sources)
+    # Distinct outlets among the receipts this row RENDERS, then widened to the
+    # frozen snapshot sample when that one is strictly wider (see
+    # resolve_thread_source_count). The basis rides along so no surface can
+    # present either sample as the story's outlet total.
+    source_count, source_count_basis, source_sample_size = resolve_thread_source_count(
+        receipt_source_count=len(sources),
+        receipt_sample_size=len(sample_signals),
+        snapshot_receipt_stats=_record_get(topic_row, "snapshot_receipt_stats"),
+    )
     # See assemble_emergent_thread: an EMPTY receipt sample makes this zero next
     # to a live `signal_count` from the snapshot lineage. Flag it so no surface
-    # can print that zero as "0 sources" (cold-user probe 2026-08-12).
-    source_count_measured = bool(sample_signals)
+    # can print that zero as "0 sources" (cold-user probe 2026-08-12). The
+    # frozen receipts are a second lane that can still answer after retention
+    # deleted the live rows — when they do, the count IS measured (of the
+    # snapshot), and only a row with neither lane stays unmeasured.
+    #
+    # NOTE this number is also an INPUT to `confidence_band` below (source_count
+    # <= 1 degrades; >= 3 / >= 6 lift the band). Widening can only raise it, and
+    # raising it is the point: the band is meant to read corroboration breadth,
+    # which the frozen sample measures — the served slice was reading the state
+    # of our 7-day hot table instead.
+    source_count_measured = bool(sample_signals) or source_count > 0
     country_count = len(country_codes)
     subject_geography = infer_receipt_subject_geography([
         {
@@ -1745,17 +1888,19 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "count_window_hours": count_window_hours,
         "source_count": source_count,
         "source_count_measured": source_count_measured,
-        # `source_count` is distinct outlets among the receipts we RESOLVED,
-        # not the story's outlet total: `sample_signal_ids` is capped at
-        # LIMIT 24, so the number saturates there (prod dt-13070 served 24
-        # while its own rendered evidence carried 84 distinct). A true count
-        # was measured and rejected as unaffordable for the list (2,143ms
-        # correlated / 1,185ms set-based / 278ms via sample_receipts, on a
-        # query already costing ~700-800ms — and the jsonb lane is itself a
-        # sample, so it would not have been "true" either). So the basis is
-        # declared instead, and surfaces render it as a sample count.
-        "source_count_basis": "receipt_sample",
-        "source_sample_size": len(sample_signals),
+        # `source_count` is a distinct count over a receipt SAMPLE, never the
+        # story's outlet total, and `source_count_basis` names which sample:
+        #   'receipt_sample'    — the receipts this row renders (capped at 24,
+        #                         so it saturates for busy stories);
+        #   'snapshot_receipts' — the frozen mig-097 sample of the same latest
+        #                         snapshot, which is wider exactly where the
+        #                         display cap binds (12 of 40 live front-page
+        #                         rows, avg 20 -> 28.2 outlets, max 132).
+        # A true window-scoped count over signals_v2 stays rejected on cost:
+        # 2,143ms correlated / 1,185ms set-based on the 40-row list request,
+        # against +5-6ms warm for the frozen lane (measured 2026-08-14).
+        "source_count_basis": source_count_basis,
+        "source_sample_size": source_sample_size,
         "country_count": country_count,
         "avg_confidence": (
             round(max(min(avg_conf, 1.0), 0.0), 3) if avg_conf is not None else None
@@ -2353,9 +2498,12 @@ def _merge_event_pair(keep: dict[str, Any], drop: dict[str, Any]) -> dict[str, A
     # 24 under max() while the evidence they now jointly render carries up to
     # 41 (prod dt-13070: source_count 24 beside 88 samples / 84 distinct).
     # The unioned receipts are the ground truth for the number this row will
-    # actually show, so recount over them. Only when neither side carries
-    # receipts — nothing to count — does the old max() stand, so a merge can
-    # never destroy a number it cannot replace.
+    # actually show, so recount over them — but a side may already carry a
+    # WIDER measured count over its frozen snapshot sample, and recounting only
+    # the rendered receipts would throw that away. So the fold keeps the widest
+    # measured candidate together with the basis and population it was measured
+    # over: the basis can never end up describing a different number, and a
+    # merge can never destroy a number it cannot replace.
     _merged_evidence = _union(
         keep.get("evidence_samples"), drop.get("evidence_samples")
     )
@@ -2364,13 +2512,31 @@ def _merge_event_pair(keep: dict[str, Any], drop: dict[str, Any]) -> dict[str, A
         for e in _merged_evidence
         if isinstance(e, dict) and e.get("source")
     }
+    _candidates: list[tuple[int, str, int]] = []
     if _merged_evidence:
-        keep["source_count"] = len(_merged_sources)
-        keep["source_sample_size"] = len(_merged_evidence)
-    else:
-        keep["source_count"] = max(
-            int(keep.get("source_count") or 0), int(drop.get("source_count") or 0)
-        )
+        _candidates.append((
+            len(_merged_sources),
+            SOURCE_COUNT_BASIS_SERVED,
+            len(_merged_evidence),
+        ))
+    for side in (keep, drop):
+        _side_count = int(side.get("source_count") or 0)
+        if _side_count <= 0:
+            continue
+        _candidates.append((
+            _side_count,
+            str(side.get("source_count_basis") or SOURCE_COUNT_BASIS_SERVED),
+            int(side.get("source_sample_size") or 0),
+        ))
+    if _candidates:
+        # Widest count wins; on a tie the larger population is the better
+        # description of the same number. The result is a lower bound on the
+        # merged coverage (an unmeasurable union of two samples), which is what
+        # every count on this row already is.
+        _count, _basis, _sample = max(_candidates, key=lambda c: (c[0], c[2]))
+        keep["source_count"] = _count
+        keep["source_count_basis"] = _basis
+        keep["source_sample_size"] = _sample
     keep["changed_10h"] = int(keep.get("changed_10h") or 0) + int(
         drop.get("changed_10h") or 0
     )

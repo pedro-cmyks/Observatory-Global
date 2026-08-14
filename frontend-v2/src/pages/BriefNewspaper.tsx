@@ -203,6 +203,9 @@ interface TopThread {
     signal_count: number
     lifetime_signal_count?: number
     source_count?: number
+    /** Which receipt sample `source_count` was counted over (see briefSourceCount). */
+    source_count_basis?: 'receipt_sample' | 'snapshot_receipts' | null
+    source_sample_size?: number | null
     country_count?: number
     changed_10h?: number
     trend?: string
@@ -322,7 +325,18 @@ interface CountryBriefData {
  * empty upstream field is logged once per thread.
  */
 function SourceCountSegment({ row, className, bold }: {
-    row: { thread_id?: string; signal_count?: number; source_count?: number | null; evidence_samples?: readonly unknown[] | null }
+    row: {
+        thread_id?: string
+        signal_count?: number
+        source_count?: number | null
+        // The backend may count over the frozen snapshot receipts instead of
+        // the ones this row renders (see lib/briefSourceCount). Passing the
+        // basis through is what lets the tip say which — without it the wider
+        // number would read as a count of the receipts on screen.
+        source_count_basis?: 'receipt_sample' | 'snapshot_receipts' | null
+        source_sample_size?: number | null
+        evidence_samples?: readonly unknown[] | null
+    }
     className?: string
     bold?: boolean
 }) {
@@ -336,8 +350,9 @@ function SourceCountSegment({ row, className, bold }: {
             </span>
         )
     }
+    const receiptsShown = (row.evidence_samples ?? []).length
     return (
-        <span className={className} data-tip={sourceCountTip(basis)}>
+        <span className={className} data-tip={sourceCountTip(basis, { receiptsShown })}>
             {bold ? <b>{basis.count.toLocaleString()}</b> : basis.count.toLocaleString()} sources
         </span>
     )
