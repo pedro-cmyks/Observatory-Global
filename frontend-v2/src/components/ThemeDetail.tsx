@@ -4,6 +4,7 @@ import { decodeEntities } from '../lib/decodeEntities'
 import { formatAttachSimilarity, laneTag, truncationNote } from '../lib/discussionHonesty'
 import { buildThreadVoiceModel, canHaveThreadVoice, type ThreadVoiceModel } from '../lib/threadVoice'
 import { CountQualifierChip, formatCountWindow } from '../lib/countQualifier'
+import { describeCumulativeCount, describeSourceCount } from '../lib/countMeasurement'
 import { resolveThemeCountMeta } from '../lib/themeDetailCount'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { TemporalSignatureChip, type TemporalSignatureMeta } from '../lib/temporalSignatureChip'
@@ -58,23 +59,43 @@ interface ThemeData {
     rawTotal?: number
     gated?: number
     /**
-     * Council R4 N19 — what `total` actually IS. For dynamic threads `total` is
-     * `agg_n_signals`, a LIFETIME aggregate, and the header used to stamp it
-     * with the requested window ("3,659 signals · Last 24h") while the thread
-     * row one click up read 88 for the same story.
+     * Council R4 N19 — what `total` actually IS — with the basis CORRECTED
+     * 2026-08-14. N19 stopped the header stamping the requested window onto
+     * `total`; measuring dt-242 then showed the NAME it shipped was wrong too.
      *
-     * `countBasis: 'lifetime'` names the basis so the header never has to infer
-     * it; `currentTotal` is the ROW'S OWN number (the latest snapshot's kept
-     * count) so the two surfaces agree by construction; `countWindowHours` is
-     * the MEASURED window that number was clustered over (168h in production —
-     * never the hardcoded 24 either surface used to print).
+     * `total` is `agg_n_signals`, which the projection ACCUMULATES per
+     * clustering pass, so dt-242's 17 passes sum to the 323 served and a signal
+     * surviving into later passes is counted once per pass. It is therefore
+     * `cumulative_snapshots`, never 'lifetime' (which a reader hears as
+     * "323 articles"). `snapshotCount` is how many passes were summed — without
+     * it the number is uninterpretable.
+     *
+     * `currentTotal` is the ROW'S OWN number so the two surfaces agree by
+     * construction, and `currentBasis: 'latest_snapshot'` names it as ONE pass
+     * (its window ended at `snapshotAt`), not a rolling 7d-to-now.
+     * `countWindowHours` is the MEASURED clustering window (168h in production
+     * — never the hardcoded 24 either surface used to print).
      *
      * All optional and honestly absent: a caller/topic without a snapshot
      * serves undefined, never 0 (a 0 would read as "nothing in the window").
      */
-    countBasis?: 'lifetime'
+    countBasis?: 'cumulative_snapshots' | 'lifetime'
+    snapshotCount?: number | null
     currentTotal?: number | null
+    currentBasis?: 'latest_snapshot'
     countWindowHours?: number | null
+    /** When the latest clustering pass ran — what dates `currentTotal`. */
+    snapshotAt?: string | null
+    /**
+     * Distinct outlets among the receipts this payload resolved — counted, and
+     * uncapped, unlike `topSources` which is a 20-item display slice. Prod
+     * dt-242 served 20 under "Sources" while its own 37 receipts carried 36
+     * distinct domains. `sourceCountBasis` is always 'receipt_sample' here:
+     * this is never the story's full outlet total and must not render as one.
+     */
+    sourceCount?: number | null
+    sourceCountBasis?: 'receipt_sample'
+    sourceSampleSize?: number | null
     verified?: number
     extended?: number
     extendedThreshold?: number
@@ -686,7 +707,22 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // carry the row's current-window number to show beside it? Both are
     // required — a lifetime basis with no current number would leave the header
     // with nothing windowed to print.
-    const lifetimeBasis = data?.countBasis === 'lifetime' && data?.currentTotal != null
+    const lifetimeBasis = data?.countBasis === 'cumulative_snapshots' && data?.currentTotal != null
+    // Wording for the two corrected bases lives in a pure, tested lib so the
+    // header, the tiles and their tips cannot drift apart again.
+    const cumulative = describeCumulativeCount({
+        total: data?.total,
+        snapshotCount: data?.snapshotCount,
+    })
+    const sourceMeta = describeSourceCount({
+        sourceCount: data?.sourceCount,
+        sourceSampleSize: data?.sourceSampleSize,
+        previewLength: data?.topSources.length ?? 0,
+    })
+    // The latest clustering pass is a MOMENT, not a rolling window: date it.
+    const snapshotDay = data?.snapshotAt
+        ? new Date(data.snapshotAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        : null
     // The measured window, or null. Never defaulted to '24h' — printing an
     // assumed window over a number counted across another one is the bug.
     const currentWindowLabel = formatCountWindow(data?.countWindowHours)
@@ -834,12 +870,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                        total as lifetime instead of stamping it "Last
                                        24h". When the window is unknown we say so rather
                                        than inventing one. */
-                                    <span data-tip={`${(data!.currentTotal ?? 0).toLocaleString()} signals in this story's serving membership${currentWindowLabel ? ` over the last ${currentWindowLabel}` : ''} — the number the Stories row shows. ${(data!.total || 0).toLocaleString()} is this story's all-time total since it first appeared, not a count for the current window.`}>
+                                    <span data-tip={`${(data!.currentTotal ?? 0).toLocaleString()} signals in this story's membership at the latest clustering pass${snapshotDay ? ` (${snapshotDay})` : ''}${currentWindowLabel ? `, which clustered a ${currentWindowLabel} window ending then` : ''} — the number the Stories row shows. ${cumulative.tip}`}>
                                         Global · {(data!.currentTotal ?? 0).toLocaleString()} signals
-                                        {currentWindowLabel
-                                            ? <> · last {currentWindowLabel}</>
-                                            : <> · window not reported</>}
-                                        {' · '}{(data!.total || 0).toLocaleString()} lifetime
+                                        {/* ONE pass, dated — not a rolling "last 7d". The
+                                            pass clustered a 168h window that ENDED at the
+                                            snapshot, so the window word alone was false. */}
+                                        {snapshotDay
+                                            ? <> · latest pass {snapshotDay}</>
+                                            : <> · latest pass</>}
+                                        {' · '}{(data!.total || 0).toLocaleString()} {cumulative.qualifier}
                                     </span>
                                 ) : countMeta.unmeasured ? (
                                     /* Degraded payload: the count query did not
@@ -909,7 +948,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     rawAssignedCount: data.rawTotal ?? data.total,
                                     verifiedCount: data.total,
                                     countryCount: data.countryBreakdown.length,
-                                    outletCount: data.topSources.length,
+                                    // Counted, not the 20-item preview length (same
+                                    // defect as the Sources tile).
+                                    outletCount: data.sourceCount ?? data.topSources.length,
                                     sourcedEvidenceCount: data.signals.length,
                                 })}
                                 onStepClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -1052,7 +1093,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         {/* Summary Stats */}
                         <div className="theme-stats-row">
                             <div className="theme-stat" data-tip={lifetimeBasis
-                                ? `${(data.total ?? 0).toLocaleString()} signals over this story's whole lifetime — an all-time total, not a count for the current window. ${(data.currentTotal ?? 0).toLocaleString()} are in the current serving membership${currentWindowLabel ? ` (last ${currentWindowLabel})` : ''}.`
+                                ? `${cumulative.tip} ${(data.currentTotal ?? 0).toLocaleString()} were in the membership at the latest pass${snapshotDay ? ` (${snapshotDay})` : ''}.`
                                 : data.rawTotal && data.rawTotal !== data.total
                                 ? `${data.total} precise signals kept by the relevance gate, of ${data.rawTotal} assigned to this story. The Stories list shows the assigned count.`
                                 : countMeta.unmeasured
@@ -1062,18 +1103,22 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     {/* Degraded: null total is NOT MEASURED — never
                                         render it as 0 or stamp a window chip on it. */}
                                     {countMeta.unmeasured ? '—' : data.total}
-                                    {/* N19: a lifetime total takes the 'lifetime' base, which
-                                        suppresses the window segment entirely — the old chip
-                                        stamped `${hours}h` on an all-time number. */}
-                                    {data.total != null && (
+                                    {/* N19 suppressed the window segment on this number (the
+                                        old chip stamped `${hours}h` on it). The 2026-08-14
+                                        pass corrects the BASE too: it is a per-pass cumulative
+                                        sum, so it takes the measured "across N passes"
+                                        qualifier rather than the false word "lifetime". */}
+                                    {data.total != null && (lifetimeBasis ? (
+                                        <span className="count-qualifier" data-tip={cumulative.tip}>
+                                            {cumulative.qualifier}
+                                        </span>
+                                    ) : (
                                         <CountQualifierChip
                                             count={data.total}
-                                            windowLabel={lifetimeBasis ? null : `${hours}h`}
-                                            base={lifetimeBasis
-                                                ? 'lifetime'
-                                                : data.rawTotal && data.rawTotal !== data.total ? 'verified' : 'raw'}
+                                            windowLabel={`${hours}h`}
+                                            base={data.rawTotal && data.rawTotal !== data.total ? 'verified' : 'raw'}
                                         />
-                                    )}
+                                    ))}
                                 </span>
                                 <span className="theme-stat-label">Signals</span>
                                 {countMeta.unmeasured && (
@@ -1081,7 +1126,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 )}
                                 {lifetimeBasis ? (
                                     <span className="theme-stat-subnote">
-                                        {(data.currentTotal ?? 0).toLocaleString()} in the last {currentWindowLabel ?? 'reported window'}
+                                        {(data.currentTotal ?? 0).toLocaleString()} at the latest pass{snapshotDay ? ` · ${snapshotDay}` : ''}
                                     </span>
                                 ) : data.rawTotal && data.rawTotal !== data.total ? (
                                     <span className="theme-stat-subnote">of {data.rawTotal.toLocaleString()} assigned</span>
@@ -1104,9 +1149,18 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 <span className="theme-stat-value">{countMeta.unmeasured ? '—' : data.countryBreakdown.length}</span>
                                 <span className="theme-stat-label">Countries</span>
                             </div>
-                            <div className="theme-stat" data-tip={countMeta.unmeasured ? 'Not measured — the data query did not complete.' : "Number of distinct media outlets (news sites, blogs, feeds) contributing signals"}>
-                                <span className="theme-stat-value">{countMeta.unmeasured ? '—' : data.topSources.length}</span>
+                            {/* The COUNT, counted. This tile used to print
+                                `topSources.length` — the length of a 20-item display
+                                slice — so prod dt-242 read "20" while the 37 receipts
+                                rendered below it carried 36 distinct outlets: the page
+                                disproved its own number. The subnote names the receipt
+                                basis so it is never read as the story's full total. */}
+                            <div className="theme-stat" data-tip={countMeta.unmeasured ? 'Not measured — the data query did not complete.' : sourceMeta.tip}>
+                                <span className="theme-stat-value">{countMeta.unmeasured ? '—' : sourceMeta.value}</span>
                                 <span className="theme-stat-label">Sources</span>
+                                {!countMeta.unmeasured && sourceMeta.subnote && (
+                                    <span className="theme-stat-subnote">{sourceMeta.subnote}</span>
+                                )}
                             </div>
                         </div>
 
