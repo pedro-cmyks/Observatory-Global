@@ -48,6 +48,13 @@ back-to-back runs throttle, and the second one measures nothing.
 
 Nothing is wired to cron here — that is Pedro's call.
 
+OPERATIONAL NOTE, measured while bringing this up against prod. One run makes
+6 protocol calls into a bucket of 20 per 300s, so runs are NOT back-to-back
+safe: a second run inside the same window returns all-SKIP (which is why exit
+2 exists). Leave ~5 minutes between runs, and do not "wait for the bucket" by
+polling the endpoint — the poll is itself a request and keeps the window
+permanently full. That mistake cost three false all-SKIP runs here.
+
 Run:
     python scripts/query_parity_check.py                      # prod
     python scripts/query_parity_check.py --base-url http://localhost:8000
