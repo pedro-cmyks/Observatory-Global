@@ -49,6 +49,8 @@ import { flashPinToast } from '../lib/pinToast'
 import { TranslatedSection } from '../components/TranslatedSection'
 import { shouldTranslate as shouldTranslateFree } from '../lib/translatableText'
 import { usePageLanguage } from '../lib/pageLanguage'
+import { useUiCopy } from '../lib/uiCopy'
+import { ReaderLanguagePicker } from '../components/ReaderLanguagePicker'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
@@ -476,7 +478,10 @@ export function BriefNewspaper() {
     // instead of silently disappearing between reloads.
     const [insightGeneratedAt, setInsightGeneratedAt] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
-    const [briefError, setBriefError] = useState<string | null>(null)
+    // A REASON CODE, not a sentence: the message is authored copy, so it must
+    // re-render in the reader's language when they switch — a string frozen at
+    // throw time would stay in whatever language the page was in when it failed.
+    const [briefError, setBriefError] = useState<'live_unavailable' | null>(null)
     const [showingStale, setShowingStale] = useState(false)
     const [countryFilter, setCountryFilter] = useState<string | null>(countryParam)
     const [countryDetail, setCountryDetail] = useState<CountryBriefData | null>(null)
@@ -496,6 +501,15 @@ export function BriefNewspaper() {
     // never a useState initializer keyed on isMobile, which would freeze the
     // wrong answer across a resize/orientation change (see bandStartsCollapsed).
     const isMobile = useIsMobile()
+
+    // UI-CHROME copy (lib/uiCopy). Reads the SAME language store as the
+    // content-translation target (pageLanguage), so one reader choice moves
+    // the interface and the translate lanes together. `tr` only ever resolves
+    // labels WE authored; anything measured (headlines, receipts, reason
+    // codes, outlet names) stays with the translate machinery, which says when
+    // it translated something. Declared up here with the other hooks because
+    // the dateline below needs the locale.
+    const { t: tr, lang: uiLangCode } = useUiCopy()
     const [userExpandedBands, setUserExpandedBands] = useState<Record<BriefBand, boolean>>({
         freshness: false,
         markets: false,
@@ -634,7 +648,7 @@ export function BriefNewspaper() {
             fetchInsight(h)
         } catch (e) {
             console.error(e)
-            setBriefError('Live briefing unavailable — retry when the data service recovers.')
+            setBriefError('live_unavailable')
             setLoading(false)
         }
     }, [fetchInsight])
@@ -899,16 +913,22 @@ export function BriefNewspaper() {
         goToAtlas(`theme=${encodeURIComponent(target.theme)}`, sectionName)
     }
 
-    const moodLabel = (s: number) => s > 0.15 ? 'POSITIVE' : s < -0.15 ? 'NEGATIVE' : 'NEUTRAL'
+    const moodLabel = (s: number) => s > 0.15
+        ? tr('brief.mood.positive')
+        : s < -0.15 ? tr('brief.mood.negative') : tr('brief.mood.neutral')
     const moodClass = (s: number) => s > 0.15 ? 'mood-positive' : s < -0.15 ? 'mood-negative' : 'mood-neutral'
 
-    const weekday = now.toLocaleDateString('en-US', { weekday: 'long' })
-    const dayLine = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    // Dateline in the reader's language: translating the labels but printing
+    // "Thursday, August 14, 2026" would leave the loudest line on the page in
+    // English. Same instant, same calendar — only the rendering is localized.
+    const dateLocale = uiLangCode === 'es' ? 'es' : 'en-US'
+    const weekday = now.toLocaleDateString(dateLocale, { weekday: 'long' })
+    const dayLine = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long', day: 'numeric' })
     // Task 5 (mobile IA #236): the weekday-name dateline was one more masthead
     // row on a phone. Same fact (the date), shorter form — CSS swaps which
     // span renders at the mobile breakpoint, no lost information (share-card
     // copy below keeps the full weekday form; that is a modal, not the door).
-    const dayLineShort = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const dayLineShort = now.toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', year: 'numeric' })
 
     // SERVING POLICY (T3.3, approved option b): FRESHNESS decides, not status.
     // A sealed edition under 26h old is served whatever it graded, with its
@@ -1076,10 +1096,19 @@ export function BriefNewspaper() {
     // C3(iii): a held reading is LABELED with the hour it was written rather
     // than dropped — the empty slot is what read as random flicker.
     const analysisAge = insightStaleness(insightGeneratedAt, now)
+    // The standfirst fallback is AUTHORED copy wrapped around measured numbers
+    // (the edition title and the lead label stay as served — they are content).
     const standfirstFallback = servedFromSeal && dailyEdition
-        ? `${dailyEdition.package.title}. ${allThreads.length} measured story nodes, ${dailyEdition.package.receipts.length} frozen receipts; no LLM selected or ranked the edition.`
+        ? `${dailyEdition.package.title}. ` + tr('brief.standfirst.sealed', {
+            nodes: allThreads.length,
+            receipts: dailyEdition.package.receipts.length,
+        })
         : data
-        ? `${data.stats.total_signals.toLocaleString()} signals across ${data.stats.countries} countries from ${data.stats.sources} sources${leadThread ? ` · lead: ${decodeEntities(leadThread.label)}` : ''}.`
+        ? tr('brief.standfirst.live', {
+            signals: data.stats.total_signals.toLocaleString(),
+            countries: data.stats.countries,
+            sources: data.stats.sources,
+        }) + (leadThread ? ` · ${tr('brief.standfirst.lead')}: ${decodeEntities(leadThread.label)}` : '') + '.'
         : null
 
     const historicalCoverage = data?.historical_coverage
@@ -1403,11 +1432,11 @@ export function BriefNewspaper() {
                 tabIndex={0}
                 className={`brief-save-btn ${saved ? 'saved' : ''}`}
                 // N37: the destination is legible BEFORE the click.
-                data-tip={saved ? 'Remove from investigation' : saveTargetTip(pinTarget)}
+                data-tip={saved ? tr('brief.card.savedTip') : saveTargetTip(pinTarget)}
                 onClick={e => toggleSaveThread(t, e)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); toggleSaveThread(t) } }}
             >
-                {saved ? '◆ Saved' : '◇ Save'}
+                {saved ? tr('brief.card.saved') : tr('brief.card.save')}
             </span>
         )
     }
@@ -1437,8 +1466,8 @@ export function BriefNewspaper() {
                 {(translateControl) => (
             <article className={`brief-card${opts?.wide ? ' wide' : ''}`}>
                 <div className="reader-kicker">
-                    <span>{category || 'Story'}</span>
-                    <span className="cat">{t.signal_count.toLocaleString()} signals</span>
+                    <span>{category || tr('brief.card.story')}</span>
+                    <span className="cat">{tr('brief.card.signals', { n: t.signal_count.toLocaleString() })}</span>
                 </div>
                 <h3 className="brief-card-headline">
                     <button className="brief-headline-btn" onClick={() => openThread(t, opts?.country)}>
@@ -1458,7 +1487,7 @@ export function BriefNewspaper() {
                 </div>
                 {receipts.length > 0 && (
                     <>
-                        <div className="brief-rc-lab">Receipts</div>
+                        <div className="brief-rc-lab">{tr('brief.card.receipts')}</div>
                         <div className="brief-receipts">{receipts.map((ev, i) => renderReceipt(ev, i, { contextLabel: t.label }))}</div>
                     </>
                 )}
@@ -1466,7 +1495,7 @@ export function BriefNewspaper() {
                     {renderCoverageChips(t, opts?.country, 2)}
                     <span className="brief-card-actions">
                         {renderSaveChip(t)}
-                        <button className="brief-theme-link" onClick={() => openThread(t, opts?.country)}>Open story →</button>
+                        <button className="brief-theme-link" onClick={() => openThread(t, opts?.country)}>{tr('brief.card.open')}</button>
                     </span>
                 </div>
             </article>
@@ -1577,8 +1606,8 @@ export function BriefNewspaper() {
         CountrySection<TopThread>['kind'],
         { title: string; kicker: string }
     > = {
-        country_today: { title: 'Today', kicker: 'The country now' },
-        under_radar: { title: 'Under the Radar', kicker: 'Domestic signal, not yet surfacing' },
+        country_today: { title: tr('brief.country.today'), kicker: tr('brief.country.todayKicker') },
+        under_radar: { title: tr('brief.section.radar'), kicker: tr('brief.country.radarKicker') },
         culture_sport_life: { title: 'Culture, Sport & Life', kicker: 'Where the rest of us live' },
     }
 
@@ -1631,7 +1660,10 @@ export function BriefNewspaper() {
     )
 
     return (
-        <div className={`atlas-reader brief-page${countryFilter ? '' : ` brief-sec-${SECTIONS[section].id}`}`} data-rtheme={readerTheme}>
+        // `lang` on the reader root: the chrome is authored in this language,
+        // so hyphenation, quotes and screen-reader voice follow it. Measured
+        // content nested inside carries its own lang via the translate lanes.
+        <div className={`atlas-reader brief-page${countryFilter ? '' : ` brief-sec-${SECTIONS[section].id}`}`} data-rtheme={readerTheme} lang={uiLangCode}>
             <OfflineBanner />
             <div className="brief-wrap">
                 <div className="brief-topbar" aria-hidden="true" />
@@ -1639,9 +1671,9 @@ export function BriefNewspaper() {
                 {/* ============ MASTHEAD ============ */}
                 <header className="reader-masthead brief-masthead">
                     <div className="brief-brand">
-                        <p className="reader-eyebrow"><AtlasMark size={13} />The Daily Instrument · Global Edition</p>
+                        <p className="reader-eyebrow"><AtlasMark size={13} />{tr('brief.masthead.eyebrow')}</p>
                         <h1 className="reader-wordmark">ATLAS<span className="dot">.</span></h1>
-                        <p className="reader-tagline">Narrative intelligence — measured from coverage, not editorialized.</p>
+                        <p className="reader-tagline">{tr('brief.masthead.tagline')}</p>
                     </div>
                     <div className="brief-masthead-right">
                         {regMark && <RegistrationMark data={regMark} />}
@@ -1651,33 +1683,37 @@ export function BriefNewspaper() {
                         </div>
                         <span
                             className="reader-chip"
-                            data-tip="The Brief is the day's edition — always the last 24 hours. For other time windows, open the console."
+                            data-tip={tr('brief.masthead.windowTip')}
                         >
-                            <span className="live" />Measured · Last 24 hours
+                            <span className="live" />{tr('brief.masthead.window')}
                         </span>
                         {eclipse?.eclipse && eclipseTier(eclipse) === 'total' && (
                             <button
                                 className="brief-eclipse-mark"
                                 onClick={() => goToAtlas(undefined, 'eclipse')}
-                                data-tip="A total attention eclipse is active — enter the console"
-                                aria-label="Enter the eclipse"
+                                data-tip={tr('brief.eclipse.tip')}
+                                aria-label={tr('brief.eclipse.aria')}
                             >◑</button>
                         )}
                         <div className="brief-masthead-actions">
-                            <button className="reader-chip" onClick={() => navigate('/')}>← Home</button>
+                            <button className="reader-chip" onClick={() => navigate('/')}>{tr('brief.action.home')}</button>
                             <button
                                 className="reader-chip"
                                 onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'masthead_console')}
                             >
-                                Open Console
+                                {tr('brief.action.console')}
                             </button>
                             <button
                                 className="reader-chip"
                                 onClick={openShare}
                                 aria-haspopup="dialog"
                             >
-                                ↑ Share
+                                {tr('brief.action.share')}
                             </button>
+                            {/* The language control lives HERE, in the masthead, because
+                                Settings → Page Language is inside the console: a reader
+                                who cannot read this page could never reach it. */}
+                            <ReaderLanguagePicker />
                             <ReaderThemeToggle theme={readerTheme} onToggle={toggleReaderTheme} />
                         </div>
                     </div>
@@ -1690,7 +1726,7 @@ export function BriefNewspaper() {
                                 <div key={i} className="brief-loading-line" style={{ width: `${w}%` }} />
                             ))}
                         </div>
-                        <p>Loading brief…</p>
+                        <p>{tr('brief.loading')}</p>
                         <LoadingMoment compact />
                     </div>
                 ) : data ? (
@@ -1702,10 +1738,10 @@ export function BriefNewspaper() {
                             <div className="brief-cache-note" role="status">
                                 <span>
                                     {showingStale
-                                        ? 'Showing cached brief while Atlas refreshes live data.'
-                                        : briefError}
+                                        ? tr('brief.cache.stale')
+                                        : tr('brief.error.unavailable')}
                                 </span>
-                                <button onClick={() => fetchData(hours)}>Retry live refresh</button>
+                                <button onClick={() => fetchData(hours)}>{tr('brief.action.retry')}</button>
                             </div>
                         )}
 
@@ -1714,7 +1750,7 @@ export function BriefNewspaper() {
                                 <button
                                     type="button"
                                     className="brief-band-summary"
-                                    aria-label="Daily edition freshness — tap to expand"
+                                    aria-label={tr('brief.freshness.ariaExpand')}
                                     onClick={() => expandBand('freshness')}
                                 >
                                     {freshnessCollapsedLine} ▸
@@ -1722,12 +1758,14 @@ export function BriefNewspaper() {
                             ) : (
                                 <section
                                     className={`brief-publication-state ${staleBanner.served === 'sealed' ? 'is-ready' : 'is-rebuilding'}`}
-                                    aria-label="Daily edition freshness"
+                                    aria-label={tr('brief.freshness.aria')}
                                     data-tone={staleBanner.tone}
                                 >
                                     <div>
                                         <span className="brief-publication-kicker">
-                                            {staleBanner.served === 'sealed' ? 'SEALED DAILY EDITION' : 'LIVE VIEW'}
+                                            {staleBanner.served === 'sealed'
+                                                ? tr('brief.freshness.sealed')
+                                                : tr('brief.freshness.live')}
                                         </span>
                                         <strong>{staleBanner.edition}</strong>
                                     </div>
@@ -1738,7 +1776,10 @@ export function BriefNewspaper() {
                                             staleBanner.served === 'live' ? staleBanner.liveNote : null,
                                             staleBanner.nextAttempt,
                                             editionYield && editionYield.attempted > 0
-                                                ? `full text ${editionYield.ok}/${editionYield.attempted} receipts`
+                                                ? tr('brief.freshness.receipts', {
+                                                    ok: editionYield.ok,
+                                                    attempted: editionYield.attempted,
+                                                })
                                                 : null,
                                         ].filter(Boolean).join(' · ')}
                                     </span>
@@ -1750,7 +1791,7 @@ export function BriefNewspaper() {
                                     {serving.degradation.length > 0 && (
                                         <span
                                             className="brief-publication-degraded"
-                                            data-tip="This edition sealed incomplete and is served anyway, labelled. Nothing here was invented to fill the gaps."
+                                            data-tip={tr('brief.freshness.degradedTip')}
                                         >
                                             {serving.degradation.map(label => (
                                                 <span key={label} className="brief-degrade-chip">{label}</span>
@@ -1762,7 +1803,7 @@ export function BriefNewspaper() {
                         )}
 
                         {servedFromSeal && dailyEdition && (
-                            <section className="brief-readiness-rail" aria-label="Editorial readiness">
+                            <section className="brief-readiness-rail" aria-label={tr('brief.readiness.aria')}>
                                 {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
                                     const item = dailyEdition.package.readiness[key]
                                     return (
@@ -1779,34 +1820,34 @@ export function BriefNewspaper() {
                         {historicalCoverage?.source === 'historical_processed' && (
                             <div
                                 className="brief-coverage-note"
-                                data-tip="This long-window brief is served from compact processed historical aggregates synced from the local archive, not from raw historical rows."
+                                data-tip={tr('brief.historical.tip')}
                             >
-                                <span>Historical processed</span>
+                                <span>{tr('brief.historical.label')}</span>
                                 {typeof historicalCoverage.topicCoverage === 'number' && (
-                                    <span>{Math.round(historicalCoverage.topicCoverage * 100)}% topic coverage</span>
+                                    <span>{tr('brief.historical.topicCoverage', { pct: Math.round(historicalCoverage.topicCoverage * 100) })}</span>
                                 )}
                                 {typeof historicalCoverage.sentimentCoverage === 'number' && (
-                                    <span>{Math.round(historicalCoverage.sentimentCoverage * 100)}% NLP sentiment</span>
+                                    <span>{tr('brief.historical.sentimentCoverage', { pct: Math.round(historicalCoverage.sentimentCoverage * 100) })}</span>
                                 )}
                             </div>
                         )}
 
                         {/* ============ INSTRUMENT STRIP — real vitals ============ */}
-                        <section className="brief-instrument" aria-label="Today's measured vitals">
+                        <section className="brief-instrument" aria-label={tr('brief.vitals.aria')}>
                             <div className="brief-vital">
-                                <div className="k">Signals</div>
+                                <div className="k">{tr('brief.vital.signals')}</div>
                                 <div className="v">{data.stats.total_signals.toLocaleString()}</div>
-                                <div className="sub">ingested in the last 24h</div>
+                                <div className="sub">{tr('brief.vital.signals.sub')}</div>
                             </div>
                             <div className="brief-vital">
-                                <div className="k">Countries</div>
+                                <div className="k">{tr('brief.vital.countries')}</div>
                                 <div className="v">{data.stats.countries}</div>
-                                <div className="sub">with coverage in-window</div>
+                                <div className="sub">{tr('brief.vital.countries.sub')}</div>
                             </div>
                             <div className="brief-vital">
-                                <div className="k">Sources</div>
+                                <div className="k">{tr('brief.vital.sources')}</div>
                                 <div className="v">{data.stats.sources.toLocaleString()}</div>
-                                <div className="sub">outlet domains · raw 24h feed</div>
+                                <div className="sub">{tr('brief.vital.sources.sub')}</div>
                             </div>
                             <div className="brief-vital">
                                 {/* Task 5 follow-up (#236): the "sub" caption below states this
@@ -1822,12 +1863,12 @@ export function BriefNewspaper() {
                                     (the .k rule itself is never edited by mobile CSS; its child
                                     is two spans now, one per viewport, not a bare text node). */}
                                 <div className="k">
-                                    <span className="brief-vital-k-full">Avg sentiment</span>
+                                    <span className="brief-vital-k-full">{tr('brief.vital.sentiment')}</span>
                                     {/* C2: mobile hides ".sub", which is where the desktop
                                         bridge lives — so the short label carries the
                                         conversion too, or the phone shows −0.49 above panels
                                         reading −10.0 with nothing linking them. */}
-                                    <span className="brief-vital-k-mobile">Sentiment · ±1 · ×10 below</span>
+                                    <span className="brief-vital-k-mobile">{tr('brief.vital.sentiment.mobile')}</span>
                                 </div>
                                 <div className="v">
                                     {formatSentimentPm1(data.stats.avg_sentiment)}
@@ -1841,7 +1882,7 @@ export function BriefNewspaper() {
                                     at ×10 — and the page offered no bridge, so "−0.49" and
                                     "−10.0" read as two unrelated measurements. State the
                                     conversion with this window's own number. */}
-                                <div className="sub">{toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale)}</div>
+                                <div className="sub">{toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale, uiLangCode)}</div>
                             </div>
                             {/* C1 — A TILE IS THE LOUDEST PLACE TO INVENT A NUMBER. It carries
                                 no prose to qualify itself, so "Tracked stories 0" and "Coverage
@@ -1853,16 +1894,18 @@ export function BriefNewspaper() {
                             {(() => {
                                 const reading = instrumentReading(
                                     allThreads.length, 'stories', laneEvidence,
-                                    'Ranked stories served this window.',
+                                    tr('brief.vital.stories.tip'), uiLangCode,
                                 )
                                 return (
                                     <div className="brief-vital">
-                                        <div className="k">Tracked stories</div>
+                                        <div className="k">{tr('brief.vital.stories')}</div>
                                         <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
                                             {reading.value}
                                         </div>
                                         <div className="sub">
-                                            {reading.unmeasured ? 'unknown — the story lane did not answer' : 'ranked stories served this window'}
+                                            {reading.unmeasured
+                                                ? tr('brief.vital.stories.unknown')
+                                                : tr('brief.vital.stories.sub')}
                                         </div>
                                     </div>
                                 )
@@ -1870,7 +1913,7 @@ export function BriefNewspaper() {
                             {(() => {
                                 const reading = instrumentReading(
                                     coverageGaps.length, 'gaps', laneEvidence,
-                                    'Categories with attention but zero verified rows.',
+                                    tr('brief.vital.gaps.tip'), uiLangCode,
                                 )
                                 return (
                                     <div className="brief-vital">
@@ -1879,16 +1922,16 @@ export function BriefNewspaper() {
                                             attention but zero verified rows") is only reachable via the
                                             Under-the-Radar tab. */}
                                         <div className="k">
-                                            <span className="brief-vital-k-full">Coverage gaps</span>
-                                            <span className="brief-vital-k-mobile">Gaps · unverified</span>
+                                            <span className="brief-vital-k-full">{tr('brief.vital.gaps')}</span>
+                                            <span className="brief-vital-k-mobile">{tr('brief.vital.gaps.mobile')}</span>
                                         </div>
                                         <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
                                             {reading.value}
                                         </div>
                                         <div className="sub">
                                             {reading.unmeasured
-                                                ? 'unknown — the coverage-gap lane did not answer'
-                                                : 'categories with attention but zero verified rows'}
+                                                ? tr('brief.vital.gaps.unknown')
+                                                : tr('brief.vital.gaps.sub')}
                                         </div>
                                     </div>
                                 )
@@ -1910,10 +1953,10 @@ export function BriefNewspaper() {
                             <button
                                 type="button"
                                 className="brief-band-summary"
-                                aria-label="World markets — live overlay, not part of the sealed edition — tap to expand"
+                                aria-label={tr('brief.markets.ariaExpand')}
                                 onClick={() => expandBand('markets')}
                             >
-                                World markets · live overlay, not sealed ▸
+                                {tr('brief.markets.collapsed')}
                             </button>
                         ) : (
                             <BriefWorldMarketsBand />
@@ -1951,7 +1994,7 @@ export function BriefNewspaper() {
 
                             return (
                                 <section className="brief-filter-row">
-                                    <span className="brief-filter-label">Country:</span>
+                                    <span className="brief-filter-label">{tr('brief.country.label')}</span>
                                     {activeCountry ? (
                                         <div className="brief-filter-active">
                                             <span className="reader-chip brief-filter-chip">
@@ -1969,7 +2012,7 @@ export function BriefNewspaper() {
                                             <input
                                                 ref={countryInputRef}
                                                 className="brief-filter-input"
-                                                placeholder="Search country…"
+                                                placeholder={tr('brief.country.search')}
                                                 value={countryQuery}
                                                 onChange={e => { setCountryQuery(e.target.value); setShowCountryDropdown(true) }}
                                                 onFocus={() => setShowCountryDropdown(true)}
@@ -2003,7 +2046,7 @@ export function BriefNewspaper() {
                                                                 aria-label={`Open ${name}'s edition in this newspaper`}
                                                             >
                                                                 <span><Flag code={c.code} /> {name}</span>
-                                                                <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : 'not in top countries'}</span>
+                                                                <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : tr('brief.country.notInTop')}</span>
                                                             </button>
                                                         )
                                                     })}
@@ -2016,7 +2059,7 @@ export function BriefNewspaper() {
                                             {showCountryDropdown && q.length > 0 && suggestions.length === 0 && (
                                                 <div className="brief-country-dropdown brief-country-dropdown--empty">
                                                     <p className="brief-country-empty">
-                                                        No country matches “{countryQuery.trim()}”.
+                                                        {tr('brief.country.noMatch', { query: countryQuery.trim() })}
                                                     </p>
                                                     {looksLikeNaturalQuestion(countryQuery) ? (
                                                         <button
@@ -2031,7 +2074,7 @@ export function BriefNewspaper() {
                                                         </button>
                                                     ) : (
                                                         <p className="brief-country-empty-hint">
-                                                            This box searches country names. Try one — or ask a full question and Atlas will read it across the stories.
+                                                            {tr('brief.country.searchHint')}
                                                         </p>
                                                     )}
                                                 </div>
@@ -2056,7 +2099,7 @@ export function BriefNewspaper() {
                                 reason={regMark?.reason ?? null}
                                 nextSeal={regMark?.nextSeal ?? null}
                             >
-                                <div className="brief-tablist" role="tablist" aria-label="Sections of today's edition">
+                                <div className="brief-tablist" role="tablist" aria-label={tr('brief.sections.aria')}>
                                     {SECTIONS.map((s, i) => (
                                         <button
                                             key={s.id}
@@ -2071,7 +2114,7 @@ export function BriefNewspaper() {
                                             onKeyDown={e => onTabKeyDown(e, i)}
                                         >
                                             <span className="swatch" aria-hidden="true" />
-                                            <span>{s.label}</span>
+                                            <span>{tr(`brief.section.${s.id}` as const)}</span>
                                             <span className="num">{String(i + 1).padStart(2, '0')}</span>
                                         </button>
                                     ))}
@@ -2086,12 +2129,10 @@ export function BriefNewspaper() {
                                     tabIndex={0}
                                     hidden={section !== 0}
                                 >
-                                    <span className="reader-section-kicker">{SECTIONS[0].kicker}</span>
-                                    <h2 className="brief-section-title">The World</h2>
+                                    <span className="reader-section-kicker">{tr('brief.section.world.kicker')}</span>
+                                    <h2 className="brief-section-title">{tr('brief.section.world')}</h2>
                                     <p className="brief-section-lede">
-                                        The day's hardest news, ranked by measured coverage. One lead, then the rest of
-                                        the desk — each with its own receipts. Coverage counts are the volume of press,
-                                        not a judgement of importance.
+                                        {tr('brief.section.world.lede')}
                                     </p>
 
                                     {/* LEAD */}
@@ -2100,9 +2141,10 @@ export function BriefNewspaper() {
                                             {(translateControl) => (
                                         <article className="brief-lead">
                                             <div className="reader-kicker">
-                                                <span>Lead{(leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}</span>
-                                                <span className="cat" data-tip="Top-ranked story in this window (movement, volume and coherence). Sample evidence headlines shown when available.">
-                                                    top-ranked thread · 24h window
+                                                {/* The category suffix is a backend slug — measured, left as served. */}
+                                                <span>{tr('brief.card.lead')}{(leadThread.category ?? leadThread.parent_domain) ? ` · ${leadThread.category ?? leadThread.parent_domain}` : ''}</span>
+                                                <span className="cat" data-tip={tr('brief.card.topRankedTip')}>
+                                                    {tr('brief.card.topRanked')}
                                                 </span>
                                             </div>
                                             <h3 className="brief-lead-headline">
@@ -2124,8 +2166,8 @@ export function BriefNewspaper() {
                                                         </span>
                                                     ) : null
                                                 })()}
-                                                <span className="reader-pill measured">Measured · last 24h</span>
-                                                <span className="reader-pill">{leadThread.signal_count.toLocaleString()} signals</span>
+                                                <span className="reader-pill measured">{tr('brief.card.measured')}</span>
+                                                <span className="reader-pill">{tr('brief.card.signals', { n: leadThread.signal_count.toLocaleString() })}</span>
                                                 <SourceCountSegment row={leadThread} className="reader-pill" />
                                             </div>
                                             {/* THE VOICES, AS PROSE (spec §3b.1) — who is telling
@@ -2136,14 +2178,14 @@ export function BriefNewspaper() {
                                                 came from. */}
                                             {leadVoices && (
                                                 <p className="brief-lead-voices">
-                                                    <span className="lab">Who is telling it</span>
+                                                    <span className="lab">{tr('brief.card.whoTellsIt')}</span>
                                                     <span className="brief-voices-sentence">{leadVoices.sentence}</span>
                                                     <span className="brief-voices-basis">{leadVoices.basis}</span>
                                                 </p>
                                             )}
                                             {leadThread.why_now && (
                                                 <p className="brief-whynow">
-                                                    <span className="lab">Why now</span>
+                                                    <span className="lab">{tr('brief.card.whyNow')}</span>
                                                     {decodeEntities(leadThread.why_now)}
                                                 </p>
                                             )}
@@ -2156,7 +2198,7 @@ export function BriefNewspaper() {
                                                     {/* N1: the receipt country chip is now the OUTLET's
                                                         recorded origin (absent when unknown) — the caption
                                                         matches what actually renders. */}
-                                                    <div className="brief-rc-lab">Receipts — real source · outlet origin when known</div>
+                                                    <div className="brief-rc-lab">{tr('brief.card.receiptsCaption')}</div>
                                                     <div className="brief-receipts">
                                                         {(leadThread.evidence_samples ?? []).slice(0, 3).map((ev, i) => renderReceipt(ev, i, { contextLabel: leadThread.label }))}
                                                     </div>
@@ -2165,7 +2207,7 @@ export function BriefNewspaper() {
                                             <div className="brief-card-foot">
                                                 <span className="brief-card-actions">
                                                     {renderSaveChip(leadThread)}
-                                                    <button className="brief-theme-link" onClick={() => openThread(leadThread)}>Open story →</button>
+                                                    <button className="brief-theme-link" onClick={() => openThread(leadThread)}>{tr('brief.card.open')}</button>
                                                 </span>
                                             </div>
                                         </article>
@@ -2179,28 +2221,25 @@ export function BriefNewspaper() {
                                         leadAwaiting ? (
                                             <article className="brief-lead brief-lead-empty brief-lead-belowbar">
                                                 <div className="reader-kicker">
-                                                    <span>Lead</span>
-                                                    <span className="cat">awaiting verification</span>
+                                                    <span>{tr('brief.card.lead')}</span>
+                                                    <span className="cat">{tr('brief.lead.awaiting')}</span>
                                                 </div>
-                                                <p>
-                                                    Today's top stories are awaiting verification — their labels
-                                                    have not yet been checked against their own receipts. Rather
-                                                    than lead with an unverified label, see the unassembled desk
-                                                    below for the raw receipts.
-                                                </p>
+                                                <p>{tr('brief.lead.awaitingBody')}</p>
                                             </article>
                                         ) : (
                                             <article className="brief-lead brief-lead-empty brief-lead-belowbar">
                                                 <div className="reader-kicker">
-                                                    <span>Lead</span>
-                                                    <span className="cat">no story clears the bar</span>
+                                                    <span>{tr('brief.card.lead')}</span>
+                                                    <span className="cat">{tr('brief.lead.belowBar')}</span>
                                                 </div>
-                                                <p>
-                                                    No assembled story clears the {Math.round(LEAD_CONFIDENCE_FLOOR * 100)}% confidence
-                                                    bar this window — {allThreads.length} tracked cluster{allThreads.length === 1 ? '' : 's'}{' '}
-                                                    sit{allThreads.length === 1 ? 's' : ''} below it. Rather than lead with a label we
-                                                    don't trust, see the unassembled desk below for the raw receipts.
-                                                </p>
+                                                {/* Plural handled by Intl.PluralRules inside the copy
+                                                    helper, not by appending an English "s". */}
+                                                <p>{tr(allThreads.length === 1
+                                                    ? 'brief.lead.belowBarBody.one'
+                                                    : 'brief.lead.belowBarBody.other', {
+                                                    pct: Math.round(LEAD_CONFIDENCE_FLOOR * 100),
+                                                    n: allThreads.length,
+                                                })}</p>
                                             </article>
                                         )
                                     ) : (
@@ -2214,13 +2253,13 @@ export function BriefNewspaper() {
                                         // failure branch offers the only useful action — ask again.
                                         <article className={`brief-lead brief-lead-empty${storiesUnanswered ? ' brief-lead-unanswered' : ''}`}>
                                             <div className="reader-kicker">
-                                                <span>Lead</span>
-                                                {storiesUnanswered && <span className="cat">lane did not answer</span>}
+                                                <span>{tr('brief.card.lead')}</span>
+                                                {storiesUnanswered && <span className="cat">{tr('brief.lead.laneFailed')}</span>}
                                             </div>
-                                            <p>{deskEmptyCopy('world', laneState('stories', laneEvidence))}</p>
+                                            <p>{deskEmptyCopy('world', laneState('stories', laneEvidence), uiLangCode)}</p>
                                             {storiesUnanswered && (
                                                 <button className="brief-theme-link" onClick={retryLanes}>
-                                                    Ask the story lane again ↻
+                                                    {tr('brief.lane.retry')}
                                                 </button>
                                             )}
                                         </article>
@@ -2329,13 +2368,13 @@ export function BriefNewspaper() {
                                         finding it SAYS which of the two silences it is
                                         (G-VACÍO-HONESTO). */}
                                     {gapSection && (
-                                        <section className="brief-gap-section" aria-label="The Gap — today's measured blindspot">
+                                        <section className="brief-gap-section" aria-label={tr('brief.gap.aria')}>
                                             {/* X1 (2026-08-13): "The coverage nobody wrote"
                                                 asserted a fact about the world from a hole
                                                 in Atlas's feed set. What is measurable is
                                                 the coverage Atlas did not see. */}
-                                            <span className="reader-section-kicker brief-sub-kicker" data-tip={INGEST_NOTE}>The coverage Atlas did not see</span>
-                                            <h3 className="brief-section-subtitle">The Gap</h3>
+                                            <span className="reader-section-kicker brief-sub-kicker" data-tip={INGEST_NOTE}>{tr('brief.gap.kicker')}</span>
+                                            <h3 className="brief-section-subtitle">{tr('brief.gap.title')}</h3>
                                             {gapCountry && gapMeasured ? (
                                                 <>
                                                     <div className="reader-kicker">
@@ -2418,7 +2457,7 @@ export function BriefNewspaper() {
                                                     )}
                                                     {gapReceipts.length > 0 && (
                                                         <>
-                                                            <div className="brief-rc-lab">Receipts — real source · outlet origin when known</div>
+                                                            <div className="brief-rc-lab">{tr('brief.card.receiptsCaption')}</div>
                                                             <div className="brief-receipts">
                                                                 {gapReceipts.map((ev, i) => renderReceipt(ev, i, { contextLabel: gapCountry.name }))}
                                                             </div>
@@ -2447,9 +2486,9 @@ export function BriefNewspaper() {
                                         forecast, and a story that cleared the bar but could not be
                                         printed is COUNTED below rather than dropped. */}
                                     {risingSection && (
-                                        <section className="brief-rising-section" aria-label="What is rising — measured acceleration">
-                                            <span className="reader-section-kicker brief-sub-kicker">Measured acceleration</span>
-                                            <h3 className="brief-section-subtitle">What Is Rising</h3>
+                                        <section className="brief-rising-section" aria-label={tr('brief.rising.aria')}>
+                                            <span className="reader-section-kicker brief-sub-kicker">{tr('brief.rising.kicker')}</span>
+                                            <h3 className="brief-section-subtitle">{tr('brief.rising.title')}</h3>
                                             {risingItems.length > 0 ? (
                                                 <div className="brief-rising-list">
                                                     {risingItems.map(item => {
@@ -2481,7 +2520,7 @@ export function BriefNewspaper() {
                                                                     if (!why.plain && !why.measured) return null
                                                                     return (
                                                                         <p className="brief-whynow">
-                                                                            <span className="lab">Why now</span>
+                                                                            <span className="lab">{tr('brief.card.whyNow')}</span>
                                                                             {why.plain && (
                                                                                 <span className="brief-whynow-plain">{why.plain}</span>
                                                                             )}
@@ -2512,7 +2551,7 @@ export function BriefNewspaper() {
                                                                             className="brief-theme-link"
                                                                             onClick={() => openStoryById(item.thread_id, item.label, 'rising')}
                                                                         >
-                                                                            Open story →
+                                                                            {tr('brief.card.open')}
                                                                         </button>
                                                                     </span>
                                                                 </div>
@@ -2580,17 +2619,16 @@ export function BriefNewspaper() {
                                     tabIndex={0}
                                     hidden={section !== 1}
                                 >
-                                    <span className="reader-section-kicker">{SECTIONS[1].kicker}</span>
-                                    <h2 className="brief-section-title">Under the Radar</h2>
+                                    <span className="reader-section-kicker">{tr('brief.section.radar.kicker')}</span>
+                                    <h2 className="brief-section-title">{tr('brief.section.radar')}</h2>
                                     <p className="brief-section-lede">
-                                        What the ranked front page leaves out: stories the pipeline <em>sees</em> but has
-                                        not verified, and stories eclipsed by the day's dominant coverage. Nothing is
-                                        deleted — it is surfaced with its honest status.
+                                        {tr('brief.section.radar.lede.a')} <em>{tr('brief.section.radar.lede.em')}</em>{' '}
+                                        {tr('brief.section.radar.lede.b')}
                                     </p>
 
                                     {coverageGaps.length > 0 ? (
                                         <>
-                                            <span className="reader-section-kicker brief-sub-kicker">What is missing</span>
+                                            <span className="reader-section-kicker brief-sub-kicker">{tr('brief.radar.missing')}</span>
                                             <div className="brief-gapgrid">
                                                 {coverageGaps.map(g => (
                                                     <CoverageGapCard
@@ -2609,7 +2647,7 @@ export function BriefNewspaper() {
                                     ) : (
                                         // C1: "no gaps" is a finding only when the lane ran.
                                         <p className="brief-empty-note">
-                                            {deskEmptyCopy('gaps', laneState('gaps', laneEvidence))}
+                                            {deskEmptyCopy('gaps', laneState('gaps', laneEvidence), uiLangCode)}
                                         </p>
                                     )}
 
@@ -2630,13 +2668,10 @@ export function BriefNewspaper() {
                                     tabIndex={0}
                                     hidden={section !== 2}
                                 >
-                                    <span className="reader-section-kicker">{SECTIONS[2].kicker}</span>
-                                    <h2 className="brief-section-title">Culture, Sport &amp; Life</h2>
+                                    <span className="reader-section-kicker">{tr('brief.section.culture.kicker')}</span>
+                                    <h2 className="brief-section-title">{tr('brief.section.culture')}</h2>
                                     <p className="brief-section-lede">
-                                        A celebrity obituary or a World Cup semifinal is not noise — someone is reading
-                                        it, and a soft label can hide a hard story folded inside it. Nothing here was
-                                        judged unimportant by a machine; it simply has its own section instead of
-                                        crowding out the front page. You decide what matters.
+                                        {tr('brief.section.culture.lede')}
                                     </p>
                                     {cultureCards.length > 0 ? (
                                         <div className="brief-cards">
@@ -2648,7 +2683,7 @@ export function BriefNewspaper() {
                                         // — and neither may claim a gate ruled on them.
                                         <>
                                             <p className="brief-empty-note">
-                                                {deskEmptyCopy('culture', laneState('stories', laneEvidence))}
+                                                {deskEmptyCopy('culture', laneState('stories', laneEvidence), uiLangCode)}
                                             </p>
                                             {/* W5 — THE CONTRADICTION THAT WAS NOT ONE. This desk
                                                 said "nothing cleared the gate" while the category
@@ -2664,7 +2699,7 @@ export function BriefNewspaper() {
                                             )}
                                             {storiesUnanswered && (
                                                 <button className="brief-theme-link" onClick={retryLanes}>
-                                                    Ask the story lane again ↻
+                                                    {tr('brief.lane.retry')}
                                                 </button>
                                             )}
                                         </>
@@ -2682,7 +2717,7 @@ export function BriefNewspaper() {
                                         className="brief-bottom-heading"
                                         data-tip="Countries with the strongest anomaly heat right now. The tag names the dominant component: velocity (volume acceleration), surprise (off-baseline), diversity (many themes), voice (source spread), polyphony (many actors). Live measurement — outside the sealed edition."
                                     >
-                                        Heating Up
+                                        {tr('brief.heat.title')}
                                     </h3>
                                     {/* C4 — THE DOOR SAYS IT IS A DOOR. A bare tile with a
                                         country and a number teleported the judge into the
@@ -2739,23 +2774,23 @@ export function BriefNewspaper() {
                                 {countryDetail && (
                                     <div className="brief-instrument brief-instrument-country">
                                         <div className="brief-vital">
-                                            <div className="k">Signals</div>
+                                            <div className="k">{tr('brief.country.signals')}</div>
                                             <div className="v">{countryDetail.totalSignals.toLocaleString()}</div>
-                                            <div className="sub">in the last 24h</div>
+                                            <div className="sub">{tr('brief.country.signalsSub')}</div>
                                         </div>
                                         <div className="brief-vital">
-                                            <div className="k">Stories</div>
+                                            <div className="k">{tr('brief.country.stories')}</div>
                                             <div className="v">{countryEdition?.threads.length ?? countryThreads?.length ?? 0}</div>
-                                            <div className="sub">country-scoped stories</div>
+                                            <div className="sub">{tr('brief.country.storiesSub')}</div>
                                         </div>
                                         <div className={`brief-vital ${moodClass(countryDetail.sentiment)}`}>
-                                            <div className="k">Country mood</div>
-                                            <div className="v" data-tip="Aggregate sentiment across this country's signals in the window.">{moodLabel(countryDetail.sentiment)}</div>
-                                            <div className="sub">window aggregate</div>
+                                            <div className="k">{tr('brief.country.mood')}</div>
+                                            <div className="v" data-tip={tr('brief.country.moodTip')}>{moodLabel(countryDetail.sentiment)}</div>
+                                            <div className="sub">{tr('brief.country.moodSub')}</div>
                                         </div>
                                     </div>
                                 )}
-                                <span className="reader-section-kicker brief-sub-kicker">Country edition</span>
+                                <span className="reader-section-kicker brief-sub-kicker">{tr('brief.country.kicker')}</span>
                                 <h2 className="brief-section-title">
                                     <Flag code={countryFilter} /> {resolveCountryName(countryFilter, countryDetail?.name)}
                                 </h2>
@@ -2785,7 +2820,7 @@ export function BriefNewspaper() {
                                     }).length
                                     return (
                                         <p className="brief-country-enrich" aria-live="polite">
-                                            {`full text ${enr.yield.ok}/${enr.yield.attempted} receipts`}
+                                            {tr('brief.freshness.receipts', { ok: enr.yield.ok, attempted: enr.yield.attempted })}
                                             {stillPending > 0 ? ` · enriching ${stillPending} more…` : ''}
                                         </p>
                                     )
@@ -2797,9 +2832,9 @@ export function BriefNewspaper() {
                                             — "Assembling…" can no longer run forever (judge §4.3:
                                             30+ seconds, twice, never resolved). A dead end becomes
                                             a state with two ways out. */}
-                                        <p>Atlas could not assemble this country's edition right now — the door did not answer, so nothing about this country's coverage is claimed either way.</p>
+                                        <p>{tr('brief.country.failed')}</p>
                                         <button className="brief-theme-link" onClick={() => retryCountryEdition()}>
-                                            Try this country again ↻
+                                            {tr('brief.country.retry')}
                                         </button>
                                         <button
                                             className="brief-theme-link"
@@ -2811,16 +2846,16 @@ export function BriefNewspaper() {
                                     </div>
                                 ) : !countryEdition ? (
                                     <p className="brief-country-note">
-                                        Assembling this country's edition for the last {hours}h…
+                                        {tr('brief.country.loading', { hours })}
                                     </p>
                                 ) : countryEdition.threads.length === 0 && countryEdition.coverage_gaps.length === 0 ? (
                                     <div className="brief-country-note">
                                         {/* C1, one door deeper: a DEGRADED build reached no verdict
                                             about this country — only a build that ran may say the
                                             gate found nothing. */}
-                                        <p>{deskEmptyCopy('country', countryEdition.artifact?.degraded ? 'unanswered' : 'served')}</p>
+                                        <p>{deskEmptyCopy('country', countryEdition.artifact?.degraded ? 'unanswered' : 'served', uiLangCode)}</p>
                                         <button className="brief-theme-link" onClick={() => goToAtlas(`country=${countryFilter}`)}>
-                                            Open country in Atlas →
+                                            {tr('brief.country.openInAtlas')}
                                         </button>
                                     </div>
                                 ) : (
@@ -2839,9 +2874,9 @@ export function BriefNewspaper() {
                             <div className="brief-minimap">
                                 <div
                                     className="brief-bottom-heading"
-                                    data-tip="Signal density: how many media signals Atlas captured per country in this window. Darker = more coverage. Coverage volume reflects media attention, not geopolitical importance."
+                                    data-tip={tr('brief.map.tip')}
                                 >
-                                    Signal density — last 24h
+                                    {tr('brief.map.title')}
                                 </div>
                                 {/* Task 5 (mobile IA #236): skip the choropleth on a phone — it
                                     was the 4th-heaviest block on the page and react-simple-maps
@@ -2855,7 +2890,7 @@ export function BriefNewspaper() {
                                     of empty furniture — indistinguishable from a world where
                                     nothing happened. Say which it is BEFORE the shapes. */}
                                 {(() => {
-                                    const note = mapDensityNote(laneEvidence, signalMap.size)
+                                    const note = mapDensityNote(laneEvidence, signalMap.size, uiLangCode)
                                     return note ? <p className="brief-empty-note brief-map-note">{note}</p> : null
                                 })()}
                                 {!isMobile && (
@@ -2897,7 +2932,7 @@ export function BriefNewspaper() {
                                 )}
                             </div>
                             <div className="brief-bottom-col brief-map-side">
-                                <h3 className="brief-bottom-heading">Most Active</h3>
+                                <h3 className="brief-bottom-heading">{tr('brief.mostActive.title')}</h3>
                                 {data.top_countries.slice(0, 8).map(c => {
                                     const name = resolveCountryName(c.code, c.name)
                                     const door = countryDoorCopy(name, 'where its coverage is counted')
@@ -2916,7 +2951,7 @@ export function BriefNewspaper() {
                                 })}
                                 {/* C1 §4.5: a heading over a void. */}
                                 {(() => {
-                                    const note = furnitureNote('countries', laneEvidence, data.top_countries.length)
+                                    const note = furnitureNote('countries', laneEvidence, data.top_countries.length, uiLangCode)
                                     return note ? <p className="brief-empty-note">{note}</p> : null
                                 })()}
                             </div>
@@ -2977,12 +3012,12 @@ export function BriefNewspaper() {
                                 return (
                                     <>
                                         <div className="brief-bottom-col">
-                                            <h3 className="brief-bottom-heading" data-tip={`Avg tone, −10 (critical/conflict) to +10 (supportive) — the same scale as the console's story detail, and the instrument strip's ±1 number ×10. Source per row: ${toneLineageNote(scale)}.`}>Most Negative</h3>
+                                            <h3 className="brief-bottom-heading" data-tip={`Avg tone, −10 (critical/conflict) to +10 (supportive) — the same scale as the console's story detail, and the instrument strip's ±1 number ×10. Source per row: ${toneLineageNote(scale)}.`}>{tr('brief.mostNegative.title')}</h3>
                                             {negRows.map(c => toneRow(c, 'negative'))}
                                             <div className="brief-scale-note">{toneScaleFooter(negRows.map(c => c.sentiment_source), scale)}</div>
                                         </div>
                                         <div className="brief-bottom-col">
-                                            <h3 className="brief-bottom-heading" data-tip={`Top of the tone distribution, −10 (critical/conflict) to +10 (supportive) — the same scale as the console's story detail. A ranking, not a promise that the rows are positive. Source per row: ${toneLineageNote(scale)}.`}>Most Positive</h3>
+                                            <h3 className="brief-bottom-heading" data-tip={`Top of the tone distribution, −10 (critical/conflict) to +10 (supportive) — the same scale as the console's story detail. A ranking, not a promise that the rows are positive. Source per row: ${toneLineageNote(scale)}.`}>{tr('brief.mostPositive.title')}</h3>
                                             {posRows.map(c => toneRow(c, 'positive'))}
                                             {posNote && <div className="brief-scale-note brief-scale-note--caveat">{posNote}</div>}
                                             <div className="brief-scale-note">{toneScaleFooter(posRows.map(c => c.sentiment_source), scale)}</div>
@@ -2991,7 +3026,7 @@ export function BriefNewspaper() {
                                 )
                             })()}
                             <div className="brief-bottom-col">
-                                <h3 className="brief-bottom-heading">Sources</h3>
+                                <h3 className="brief-bottom-heading">{tr('brief.sources.title')}</h3>
                                 {data.top_sources.slice(0, 5).map(s => (
                                     <div key={s.source} className="brief-source-row">
                                         <span className="brief-source-name">{s.source}</span>
@@ -3003,7 +3038,7 @@ export function BriefNewspaper() {
                                     "theme_country"] and this column rendered as a heading over
                                     nothing, with the page's 27,812-source vital right above it. */}
                                 {(() => {
-                                    const note = furnitureNote('sources', laneEvidence, data.top_sources.length)
+                                    const note = furnitureNote('sources', laneEvidence, data.top_sources.length, uiLangCode)
                                     return note ? <p className="brief-empty-note">{note}</p> : null
                                 })()}
                             </div>
@@ -3013,7 +3048,7 @@ export function BriefNewspaper() {
                                        taxonomy index retired once every story carries
                                        a category. Search opens the category term. */
                                     <>
-                                        <h3 className="brief-bottom-heading" data-tip="Atlas category index — every live story is typed into an open category (crisis anchors + emergent).">By Category</h3>
+                                        <h3 className="brief-bottom-heading" data-tip="Atlas category index — every live story is typed into an open category (crisis anchors + emergent).">{tr('brief.byCategory.title')}</h3>
                                         {/* W5: the index declares its base. Its numbers count the
                                             whole active-topic census, NOT the desks above — which
                                             is why a desk can be honestly empty while a row here
@@ -3038,7 +3073,7 @@ export function BriefNewspaper() {
                                     </>
                                 ) : (
                                     <>
-                                        <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Stories above are the editorial unit.">By Theme</h3>
+                                        <h3 className="brief-bottom-heading" data-tip="Taxonomy index — themes are a navigation aid, not the story model. Stories above are the editorial unit.">{tr('brief.byTheme.title')}</h3>
                                         {data.top_themes.slice(0, 6).map(t => (
                                             <button
                                                 key={t.theme}
@@ -3051,7 +3086,7 @@ export function BriefNewspaper() {
                                         ))}
                                         {/* C1 §4.5: BY THEME headed a void when the theme lane died. */}
                                         {(() => {
-                                            const note = furnitureNote('themes', laneEvidence, data.top_themes.length)
+                                            const note = furnitureNote('themes', laneEvidence, data.top_themes.length, uiLangCode)
                                             return note ? <p className="brief-empty-note">{note}</p> : null
                                         })()}
                                     </>
@@ -3063,7 +3098,7 @@ export function BriefNewspaper() {
                             <>
                                 <div className="brief-rule" />
                                 <section className="brief-watches">
-                                    <span className="reader-section-kicker brief-sub-kicker">Saved watches</span>
+                                    <span className="reader-section-kicker brief-sub-kicker">{tr('brief.watches.kicker')}</span>
                                     <div className="brief-watches-grid">
                                         {watches.map(w => {
                                             const parts: string[] = []
@@ -3110,8 +3145,8 @@ export function BriefNewspaper() {
                                                                 if (currentCount !== null) markSeen(w.id, currentCount)
                                                                 goToAtlas(atlasParams || undefined)
                                                             }}
-                                                        >Open in Atlas →</button>
-                                                        <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} data-tip="Remove watch">×</button>
+                                                        >{tr('brief.watches.open')}</button>
+                                                        <button className="brief-watch-remove" onClick={() => removeWatch(w.id)} data-tip={tr('brief.watches.remove')}>×</button>
                                                     </div>
                                                 </div>
                                             )
@@ -3125,30 +3160,26 @@ export function BriefNewspaper() {
                         <footer className="brief-method">
                             <div className="brief-method-text">
                                 <p>
-                                    <b>Positions and prominence are measured from coverage volume, languages and countries.</b>{' '}
-                                    Nothing is hidden — every story has a section. "Surging / fading" is the change in
-                                    signals versus the prior 10 hours of the raw feed; coverage-country is where an
-                                    outlet's row is geo-tagged, not necessarily the story's subject. Receipts link to
-                                    the source. Where a verification gate found no admissible row, we say so plainly
-                                    rather than fill the space.
+                                    <b>{tr('brief.method.lead')}</b>{' '}
+                                    {tr('brief.method.body')}
                                 </p>
                                 <button className="brief-cta-btn" onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'final_cta')}>
-                                    Enter Atlas — full intelligence terminal →
+                                    {tr('brief.footer.cta')}
                                 </button>
                             </div>
                             <div className="brief-method-meta">
                                 <div className="brief-wordmark-sm">ATLAS<span className="dot">.</span></div>
-                                <div>The Atlas Edition · L1</div>
-                                <div>Generated {dayLine}</div>
-                                <div>Measured · last 24 hours</div>
+                                <div>{tr('brief.colophon.edition')}</div>
+                                <div>{tr('brief.colophon.generated', { when: dayLine })}</div>
+                                <div>{tr('brief.colophon.window')}</div>
                             </div>
                         </footer>
 
                     </main>
                 ) : (
                     <div className="brief-error">
-                        <p>{briefError ?? 'Failed to load briefing data.'}</p>
-                        <button onClick={() => fetchData(hours)}>Retry briefing</button>
+                        <p>{briefError ? tr('brief.error.unavailable') : tr('brief.error.load')}</p>
+                        <button onClick={() => fetchData(hours)}>{tr('brief.error.retry')}</button>
                     </div>
                 )}
 

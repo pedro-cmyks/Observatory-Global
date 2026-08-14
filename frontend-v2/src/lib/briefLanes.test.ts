@@ -99,6 +99,56 @@ describe('THE FROZEN WITNESS — a lane that did not answer can never print a ga
   })
 })
 
+describe('Spanish — the honesty voice survives translation', () => {
+  it('every desk still refuses a gate verdict it did not reach', () => {
+    for (const desk of ALL_DESKS) {
+      expect(deskEmptyCopy(desk, 'unanswered', 'es')).not.toMatch(GATE_VERDICT)
+      // …and does not accidentally print the English one either.
+      expect(deskEmptyCopy(desk, 'unanswered', 'es')).toMatch(/no respondió|no se pudo/)
+    }
+  })
+
+  it('a served desk still prints a real verdict, in Spanish', () => {
+    for (const desk of ['world', 'culture', 'country'] as BriefDesk[]) {
+      expect(deskEmptyCopy(desk, 'served', 'es')).toMatch(/superó|pasó|cleared/)
+    }
+  })
+
+  it('served and unanswered copy stay DIFFERENT in Spanish (the distinction is the point)', () => {
+    for (const desk of ALL_DESKS) {
+      expect(deskEmptyCopy(desk, 'served', 'es')).not.toBe(deskEmptyCopy(desk, 'unanswered', 'es'))
+    }
+  })
+
+  it('every lane names itself in Spanish and still says it did not answer', () => {
+    for (const lane of ALL_LANES) {
+      const note = laneUnansweredNote(lane, 'es')
+      expect(note).toMatch(/no respondió/)
+      expect(note).not.toBe(laneUnansweredNote(lane))
+    }
+  })
+
+  it('an unmeasured tile tip is Spanish; a measured tip is whatever the caller passed', () => {
+    expect(instrumentReading(0, 'gaps', { degradedSegments: ['coverage_gaps'] }, 'x', 'es').tip)
+      .toMatch(/no respondió/)
+    expect(instrumentReading(4, 'gaps', { degradedSegments: [] }, 'consejo medido', 'es').tip)
+      .toBe('consejo medido')
+  })
+
+  it('furniture and the map speak Spanish too', () => {
+    expect(furnitureNote('themes', { degradedSegments: [] }, 0, 'es'))
+      .toBe('Nada medido en esta ventana.')
+    expect(mapDensityNote({ degradedSegments: ['top_countries'] }, 0, 'es'))
+      .toMatch(/no respondió/)
+  })
+
+  it('defaults to English when no language is passed — every existing caller is untouched', () => {
+    expect(deskEmptyCopy('world', 'served')).toBe(deskEmptyCopy('world', 'served', 'en'))
+    expect(laneUnansweredNote('gaps')).toBe(laneUnansweredNote('gaps', 'en'))
+    expect(furnitureNote('themes', {}, 0)).toBe(furnitureNote('themes', {}, 0, 'en'))
+  })
+})
+
 describe('instrumentReading — a tile never fabricates a zero', () => {
   it('prints the measured count and its own tip when the lane answered', () => {
     const reading = instrumentReading(4, 'gaps', { degradedSegments: [] }, 'categories with attention')

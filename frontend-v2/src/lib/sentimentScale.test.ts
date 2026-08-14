@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { UI_COPY } from './uiCopy'
 import { describe, it, expect } from 'vitest'
 import {
     describePositiveColumn,
@@ -258,13 +259,38 @@ describe('BriefNewspaper wiring — the bridge survives the mobile label swap', 
     )
 
     it('the mobile sentiment label carries the ×10 conversion, not just the scale', () => {
-        const label = src.match(/brief-vital-k-mobile">([^<]*Sentiment[^<]*)</)?.[1] ?? ''
-        expect(label).toContain('±1')
-        expect(label).toContain('×10')
+        // The label moved into the UI-copy catalogue (lib/uiCopy) when the Brief
+        // was translated. EVERY language must carry the bridge: a Spanish label
+        // that dropped "×10" would recreate the exact defect on half the
+        // readership, which the old English-only source grep could not see.
+        const entry = UI_COPY['brief.vital.sentiment.mobile']
+        for (const label of [entry.en, entry.es!]) {
+            expect(label).toContain('±1')
+            expect(label).toContain('×10')
+        }
+        expect(src).toContain("brief-vital-k-mobile\">{tr('brief.vital.sentiment.mobile')}")
     })
 
     it('the desktop caption is the served bridge, not a hardcoded string', () => {
-        expect(src).toContain('toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale)')
+        expect(src).toContain('toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale')
+    })
+
+    it('the bridge keeps its numbers in every language — only the words change', () => {
+        // Translating this caption must not drop the multiplier or the tone
+        // value; that would leave a Spanish reader with the very ±1-vs-×10
+        // ambiguity the caption exists to close.
+        // No scale argument: resolveScale supplies the served defaults, which
+        // is the shape the Brief actually renders.
+        const en = toneBridgeNote(-0.49, undefined, 'en')
+        const es = toneBridgeNote(-0.49, undefined, 'es')
+        expect(es).not.toBe(en)
+        for (const note of [en, es]) {
+            expect(note).toContain('±1')
+            expect(note).toContain('×10')
+            expect(note).toContain(formatTone10(-0.49).display)
+        }
+        // Unmeasured branch keeps its scale word in both languages.
+        expect(toneBridgeNote(NaN, undefined, 'es')).toContain('±1')
     })
 
     it('the tone columns pass the served scale to every formatter', () => {

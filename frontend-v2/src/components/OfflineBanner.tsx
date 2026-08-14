@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useUiCopy } from '../lib/uiCopy'
 import './OfflineBanner.css'
 
 /**
@@ -7,6 +8,7 @@ import './OfflineBanner.css'
  * makes the staleness honest (a spinner-into-the-void would not).
  */
 export function OfflineBanner() {
+  const { t } = useUiCopy()
   const [online, setOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   )
@@ -23,7 +25,7 @@ export function OfflineBanner() {
   if (online) return null
   return (
     <div className="offline-banner" role="status">
-      Offline — showing the last Brief you loaded.
+      {t('brief.offline')}
     </div>
   )
 }

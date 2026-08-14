@@ -1,0 +1,69 @@
+/* Masthead language chip.
+
+   The visible chip is the <label> (glyph + active language code); the real
+   control is a native <select> laid transparently over it. Native is the point
+   on a phone — it opens the OS language wheel, it is screen-reader complete,
+   and it needs no JS popover that could trap focus. */
+
+.reader-lang {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.reader-lang-glyph {
+    font-size: 0.95em;
+    line-height: 1;
+    opacity: 0.85;
+}
+
+.reader-lang-code {
+    /* The active code, not the stored choice: on 'auto' this still tells the
+       reader which language they are actually being served. */
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+}
+
+.reader-lang-select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    /* Never below 16px: iOS Safari zooms the whole page when a <select> or
+       input under 16px receives focus, which would fling a phone reader out of
+       the article they were in the middle of. */
+    font-size: 16px;
+    /* Some engines refuse a zero-size hit area for a transparent control. */
+    min-width: 100%;
+    appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: inherit;
+}
+
+/* The chip is a <label>, so the page's `button.reader-chip` touch floor does
+   not reach it — restate it here for the same phone-first reason. */
+@media (max-width: 768px) {
+    .brief-page .reader-lang {
+        min-height: 44px;
+    }
+}
+
+.reader-lang:focus-within {
+    outline: 2px solid var(--r-accent, currentColor);
+    outline-offset: 2px;
+}
+
+/* The option list is painted by the OS, which does not inherit the reader
+   palette — force a legible pair rather than letting a dark-theme chip hand
+   the popup white-on-white. */
+.reader-lang-select option {
+    color: #111;
+    background: #fff;
+}

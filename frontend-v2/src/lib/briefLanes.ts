@@ -82,6 +82,15 @@ const LANE_NOUN: Record<BriefLane, string> = {
   categories: 'category lane',
 }
 
+const LANE_NOUN_ES: Record<BriefLane, string> = {
+  stories: 'canal de historias',
+  gaps: 'canal de vacíos de cobertura',
+  countries: 'canal de países',
+  sources: 'canal de fuentes',
+  themes: 'canal de temas',
+  categories: 'canal de categorías',
+}
+
 /** What answered, read off the payload's own degradation report. */
 export function laneState(lane: BriefLane, evidence: LaneEvidence): LaneState {
   if (evidence.briefUnavailable) return 'unanswered'
@@ -96,8 +105,20 @@ export function isUnmeasured(lane: BriefLane, evidence: LaneEvidence): boolean {
   return laneState(lane, evidence) === 'unanswered'
 }
 
+/**
+ * The chrome language this module speaks. Defaults to English everywhere, so
+ * a caller that does not pass one (the whole console) is byte-identical.
+ * Spanish is authored here, beside the English, precisely because these are
+ * the sentences the honesty rules are written about — a translation of them
+ * belongs under the same tests, not in a copy table someone can drift.
+ */
+export type CopyLang = 'en' | 'es'
+
 /** The one-line reason, in the reader's words. Used under headings and in tips. */
-export function laneUnansweredNote(lane: BriefLane): string {
+export function laneUnansweredNote(lane: BriefLane, lang: CopyLang = 'en'): string {
+  if (lang === 'es') {
+    return `El ${LANE_NOUN_ES[lane]} no respondió en esta ventana, así que esto está sin medir — no es un cero medido.`
+  }
   return `The ${LANE_NOUN[lane]} did not answer for this window, so this is unmeasured — not a measured zero.`
 }
 
@@ -112,7 +133,8 @@ export type BriefDesk = 'world' | 'culture' | 'gaps' | 'country'
  * is the whole point: an absence of measurement is not a measurement of
  * absence (the 2026-07-22 silent-risk kill, applied to the front page itself).
  */
-export function deskEmptyCopy(desk: BriefDesk, state: LaneState): string {
+export function deskEmptyCopy(desk: BriefDesk, state: LaneState, lang: CopyLang = 'en'): string {
+  if (lang === 'es') return deskEmptyCopyEs(desk, state)
   if (state === 'unanswered') {
     switch (desk) {
       case 'world':
@@ -142,6 +164,45 @@ export function deskEmptyCopy(desk: BriefDesk, state: LaneState): string {
   }
 }
 
+/**
+ * The same two-state distinction in Spanish. The `unanswered` branch may never
+ * name a verdict ("superó/pasó la barra de calidad") — same frozen witness as
+ * the English, enforced by the same tests.
+ */
+function deskEmptyCopyEs(desk: BriefDesk, state: LaneState): string {
+  if (state === 'unanswered') {
+    switch (desk) {
+      case 'world':
+        return 'El canal de historias no respondió — el veredicto de la barra de calidad es '
+          + 'desconocido en esta ventana. No se afirma que ninguna historia haya fallado; '
+          + 'ninguna pudo ser juzgada.'
+      case 'culture':
+        return 'El canal de historias no respondió, así que la sección de cultura queda '
+          + 'desconocida en esta ventana — es un fallo al medir, no una sección vacía.'
+      case 'gaps':
+        return 'El canal de vacíos de cobertura no respondió, así que no se sabe si alguna '
+          + 'categoría quedó sin verificar en esta ventana — no se afirma que "no hay vacíos".'
+      case 'country':
+        return 'La edición de este país no se pudo ensamblar en esta ventana, así que el '
+          + 'veredicto de la barra para él no respondió — desconocido, no vacío.'
+    }
+  }
+  switch (desk) {
+    case 'world':
+      return 'Ninguna historia superó la barra de calidad en esta ventana. Abre la consola '
+        + 'para inspeccionar la cobertura en bruto.'
+    case 'culture':
+      return 'Ningún hilo de cultura, deporte o estilo de vida superó la barra de calidad en '
+        + 'esta ventana — la sección queda honestamente vacía en lugar de rellenada.'
+    case 'gaps':
+      return 'Sin vacíos de cobertura en esta ventana — cada categoría puntuada logró al '
+        + 'menos una fila verificada.'
+    case 'country':
+      return 'Ninguna historia coherente superó la barra de calidad para este país en la '
+        + 'ventana actual.'
+  }
+}
+
 /** An instrument tile's printed value, and the tip that explains it. */
 export interface InstrumentReading {
   /** What the big number slot prints. `—` whenever the lane did not answer. */
@@ -163,12 +224,15 @@ export function instrumentReading(
   lane: BriefLane,
   evidence: LaneEvidence,
   measuredTip: string,
+  lang: CopyLang = 'en',
 ): InstrumentReading {
   if (laneState(lane, evidence) === 'unanswered') {
-    return { value: '—', unmeasured: true, tip: laneUnansweredNote(lane) }
+    return { value: '—', unmeasured: true, tip: laneUnansweredNote(lane, lang) }
   }
   return {
-    value: (count ?? 0).toLocaleString(),
+    // Grouping separators follow the reader's language: 41.898 in es, 41,898
+    // in en. The DIGITS are the measurement and never change.
+    value: (count ?? 0).toLocaleString(lang === 'es' ? 'es' : 'en-US'),
     unmeasured: false,
     tip: measuredTip,
   }
@@ -187,16 +251,18 @@ export function furnitureNote(
   lane: BriefLane,
   evidence: LaneEvidence,
   rowCount: number,
+  lang: CopyLang = 'en',
 ): string | null {
   if (rowCount > 0) return null
-  if (laneState(lane, evidence) === 'unanswered') return laneUnansweredNote(lane)
-  return 'Nothing measured in this window.'
+  if (laneState(lane, evidence) === 'unanswered') return laneUnansweredNote(lane, lang)
+  return lang === 'es' ? 'Nada medido en esta ventana.' : 'Nothing measured in this window.'
 }
 
 /** The map's own version of the same sentence (its "rows" are lit countries). */
 export function mapDensityNote(
   evidence: LaneEvidence,
   litCountries: number,
+  lang: CopyLang = 'en',
 ): string | null {
-  return furnitureNote('countries', evidence, litCountries)
+  return furnitureNote('countries', evidence, litCountries, lang)
 }

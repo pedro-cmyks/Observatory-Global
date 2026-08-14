@@ -10,6 +10,7 @@ import {
   type MobileTab,
 } from '../lib/mobileNav'
 import { scopeTitle } from '../lib/lensScope'
+import { useUiCopy } from '../lib/uiCopy'
 import './MobileTabBar.css'
 
 /**
@@ -22,6 +23,7 @@ export function MobileTabBar() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { consoleTab, setConsoleTab, trail } = useMobileNav()
+  const { t: tr } = useUiCopy()
 
   const onTap = (tab: MobileTab) => {
     // null = Brief, which selects no console surface: the console keeps
@@ -36,7 +38,8 @@ export function MobileTabBar() {
   if (!showsMobileTabBar(pathname)) return null
 
   const active = tabForRoute(pathname, consoleTab)
-  const activeLabel = MOBILE_TABS.find((t) => t.id === active)?.label ?? ''
+  const activeDef = MOBILE_TABS.find((t) => t.id === active)
+  const activeLabel = activeDef ? tr(activeDef.copyKey) : ''
   // The Lens is the one tab whose name does not tell you what is on it, so it
   // announces its scope too. The trail's head is derived from the console's
   // focus state, so this can never name something the surface is not showing.
@@ -61,7 +64,7 @@ export function MobileTabBar() {
       <div className="mobile-tabbar-announce" role="status" aria-live="polite">
         {announced}
       </div>
-      <nav className="mobile-tabbar" aria-label="Atlas sections" data-tour="mobile-tabs">
+      <nav className="mobile-tabbar" aria-label={tr('nav.aria')} data-tour="mobile-tabs">
         {MOBILE_TABS.map((t) => (
           <button
             key={t.id}
@@ -74,7 +77,7 @@ export function MobileTabBar() {
             onClick={() => onTap(t.id)}
           >
             <span className="mobile-tab-glyph">{t.glyph}</span>
-            {t.label}
+            {tr(t.copyKey)}
           </button>
         ))}
       </nav>

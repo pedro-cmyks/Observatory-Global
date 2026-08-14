@@ -157,10 +157,23 @@ export function toneScaleFooter(sources: (string | undefined)[], scale?: Sentime
  * The bridge the page was missing. The instrument strip and the tone panels
  * print the SAME fused aggregate; only the scale differs, by exactly ×10.
  */
-export function toneBridgeNote(avgPm1: number, scale?: SentimentScale): string {
-    if (!Number.isFinite(avgPm1)) return '±1 scale · window aggregate'
+export function toneBridgeNote(
+    avgPm1: number,
+    scale?: SentimentScale,
+    lang: 'en' | 'es' = 'en',
+): string {
+    // The bridge is the rule "every printed value states its scale" made
+    // visible, so it has to survive translation intact: same numbers, same
+    // multiplier, same claim. Only the connecting words change.
+    const es = lang === 'es'
+    if (!Number.isFinite(avgPm1)) {
+        return es ? 'escala ±1 · agregado de la ventana' : '±1 scale · window aggregate'
+    }
     const s = resolveScale(scale)
-    return `±1 scale · ×${s.panel_multiplier} = ${formatTone10(avgPm1, s).display} on the tone panels below`
+    const tone = formatTone10(avgPm1, s).display
+    return es
+        ? `escala ±1 · ×${s.panel_multiplier} = ${tone} en los paneles de tono de abajo`
+        : `±1 scale · ×${s.panel_multiplier} = ${tone} on the tone panels below`
 }
 
 /**

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { UI_COPY } from './uiCopy'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { clearBriefingCache, readBriefingCache, updateCachedInsight, writeBriefingCache } from './briefingPrefetch'
 
@@ -129,7 +130,12 @@ describe('BriefNewspaper cache wiring', () => {
 
   it('keeps stale data visible while revalidating and offers retry on failure', () => {
     expect(source).toContain('readBriefingCache(h, { allowStale: true })')
-    expect(source).toContain('Showing cached brief')
+    // The notice itself now lives in the UI-copy catalogue (lib/uiCopy), so the
+    // witness follows it there — and checks BOTH languages say the same thing,
+    // which the bare English grep could not.
+    expect(source).toContain("tr('brief.cache.stale')")
+    expect(UI_COPY['brief.cache.stale'].en).toContain('cached brief')
+    expect(UI_COPY['brief.cache.stale'].es).toContain('en caché')
     expect(source).toContain('onClick={() => fetchData(hours)}')
   })
 

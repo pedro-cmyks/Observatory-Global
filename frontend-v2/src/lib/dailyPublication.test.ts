@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { UI_COPY } from './uiCopy'
 
 import {
   editionDegradationLabels,
@@ -102,7 +103,12 @@ describe('daily publication mapping', () => {
     expect(source).toContain("serving.serve === 'sealed' ? publicationThreads(dailyEdition)")
     // The staleness banner announces the live fallback honestly (sealed/live split).
     expect(source).toContain('buildStaleBanner')
-    expect(source).toContain('LIVE VIEW')
+    // The sealed/live kicker is catalogue copy now — witness the split there,
+    // in both languages, plus the page's branch on it.
+    expect(source).toContain("tr('brief.freshness.live')")
+    expect(source).toContain("tr('brief.freshness.sealed')")
+    expect(UI_COPY['brief.freshness.live'].en).toBe('LIVE VIEW')
+    expect(UI_COPY['brief.freshness.live'].es).not.toBe(UI_COPY['brief.freshness.sealed'].es)
   })
 })
 

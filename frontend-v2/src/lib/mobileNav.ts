@@ -21,14 +21,17 @@ export type MobileSurface = 'live' | 'lens-focused' | 'lens-field'
 
 export interface MobileTabDef {
   id: MobileTab
+  /** English name — also the fallback when a language has no chrome authored. */
   label: string
+  /** Key into the UI-copy catalogue (lib/uiCopy) for the translated name. */
+  copyKey: 'nav.brief' | 'nav.lens' | 'nav.live'
   glyph: string
 }
 
 export const MOBILE_TABS: MobileTabDef[] = [
-  { id: 'brief', label: 'Brief', glyph: '◈' },
-  { id: 'lens', label: 'Lens', glyph: '◎' },
-  { id: 'live', label: 'Live', glyph: '≋' },
+  { id: 'brief', label: 'Brief', copyKey: 'nav.brief', glyph: '◈' },
+  { id: 'lens', label: 'Lens', copyKey: 'nav.lens', glyph: '◎' },
+  { id: 'live', label: 'Live', copyKey: 'nav.live', glyph: '≋' },
 ]
 
 export function routeForTab(tab: MobileTab): string {
