@@ -883,6 +883,12 @@ def assemble_thread(
         # (one SQL pass over one row set), so its zero — unlike the
         # sample-derived paths below — is a real measurement.
         "source_count_measured": True,
+        # ...and for the same reason atlas is the one lane whose basis is the
+        # requested WINDOW rather than a receipt sample: COUNT(DISTINCT
+        # source_name) runs over every row in the window, uncapped. Surfaces
+        # may present this one as the story's outlet count.
+        "source_count_basis": "window",
+        "source_sample_size": None,
         "country_count": country_count,
         "avg_confidence": round(avg_confidence, 3),
         "confidence_measured": raw_avg_confidence is not None,
@@ -1121,6 +1127,10 @@ def assemble_emergent_thread(
         "gate_scored_count": signal_count,
         "source_count": source_count,
         "source_count_measured": source_count_measured,
+        # Emergent rows count over the persisted preview sample, same basis
+        # (and same saturation risk) as the dynamic lane.
+        "source_count_basis": "receipt_sample",
+        "source_sample_size": len(sample_signals),
         "country_count": country_count,
         "avg_confidence": None,
         "confidence_measured": False,
@@ -1735,6 +1745,17 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "count_window_hours": count_window_hours,
         "source_count": source_count,
         "source_count_measured": source_count_measured,
+        # `source_count` is distinct outlets among the receipts we RESOLVED,
+        # not the story's outlet total: `sample_signal_ids` is capped at
+        # LIMIT 24, so the number saturates there (prod dt-13070 served 24
+        # while its own rendered evidence carried 84 distinct). A true count
+        # was measured and rejected as unaffordable for the list (2,143ms
+        # correlated / 1,185ms set-based / 278ms via sample_receipts, on a
+        # query already costing ~700-800ms — and the jsonb lane is itself a
+        # sample, so it would not have been "true" either). So the basis is
+        # declared instead, and surfaces render it as a sample count.
+        "source_count_basis": "receipt_sample",
+        "source_sample_size": len(sample_signals),
         "country_count": country_count,
         "avg_confidence": (
             round(max(min(avg_conf, 1.0), 0.0), 3) if avg_conf is not None else None
@@ -2327,9 +2348,29 @@ def _merge_event_pair(keep: dict[str, Any], drop: dict[str, Any]) -> dict[str, A
     keep["signal_count"] = int(keep.get("signal_count") or 0) + int(
         drop.get("signal_count") or 0
     )
-    keep["source_count"] = max(
-        int(keep.get("source_count") or 0), int(drop.get("source_count") or 0)
+    # `source_count` is a DISTINCT count, so neither max() nor a sum is right
+    # for a union: two folded rows with disjoint outlet sets of 24 and 17 serve
+    # 24 under max() while the evidence they now jointly render carries up to
+    # 41 (prod dt-13070: source_count 24 beside 88 samples / 84 distinct).
+    # The unioned receipts are the ground truth for the number this row will
+    # actually show, so recount over them. Only when neither side carries
+    # receipts — nothing to count — does the old max() stand, so a merge can
+    # never destroy a number it cannot replace.
+    _merged_evidence = _union(
+        keep.get("evidence_samples"), drop.get("evidence_samples")
     )
+    _merged_sources = {
+        e.get("source")
+        for e in _merged_evidence
+        if isinstance(e, dict) and e.get("source")
+    }
+    if _merged_evidence:
+        keep["source_count"] = len(_merged_sources)
+        keep["source_sample_size"] = len(_merged_evidence)
+    else:
+        keep["source_count"] = max(
+            int(keep.get("source_count") or 0), int(drop.get("source_count") or 0)
+        )
     keep["changed_10h"] = int(keep.get("changed_10h") or 0) + int(
         drop.get("changed_10h") or 0
     )
@@ -2343,9 +2384,9 @@ def _merge_event_pair(keep: dict[str, Any], drop: dict[str, Any]) -> dict[str, A
     keep["top_entities"] = _union(
         keep.get("top_entities"), drop.get("top_entities")
     )[:10]
-    keep["evidence_samples"] = _union(
-        keep.get("evidence_samples"), drop.get("evidence_samples")
-    )
+    # Reuse the union the recount above already computed, so the rendered
+    # receipts and the number describing them cannot drift apart.
+    keep["evidence_samples"] = _merged_evidence
     # Record the fold so the merge is never a silent filter (project guardrail).
     merged_ids = list(keep.get("merged_thread_ids") or [])
     if drop.get("thread_id"):

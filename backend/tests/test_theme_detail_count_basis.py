@@ -22,8 +22,14 @@ THIRD number contradicting both.
 Contract under test — serve both bases, each labeled truthfully, and let the
 detail carry THE ROW'S OWN number so the two surfaces agree by construction:
   * `total`            unchanged — the lifetime gate-kept aggregate.
-  * `countBasis`       'lifetime' — names what `total` is, so no caller has to
-                       infer it from the window.
+  * `countBasis`       names what `total` is, so no caller has to infer it
+                       from the window. NOTE: this pass shipped the value
+                       'lifetime'; a later measurement (2026-08-14, dt-242)
+                       proved `agg_n_signals` is a SUM ACROSS CLUSTERING PASSES
+                       that double-counts, so the value is now
+                       'cumulative_snapshots'. See
+                       test_theme_detail_count_measurement.py — the N19
+                       mechanism below is unchanged and still under test.
   * `currentTotal`     the row's `recent_n_signals`.
   * `countWindowHours` the MEASURED window those members were clustered over
                        (`snapshot_window_h`), never a hardcoded 24.
@@ -101,18 +107,18 @@ def _detail(topic_row, *, sample_ids=None, hours=24):
     )
 
 
-class TestLifetimeTotalIsNamedNotWindowStamped:
-    def test_total_still_serves_the_lifetime_aggregate(self):
+class TestAggregateTotalIsNamedNotWindowStamped:
+    def test_total_still_serves_the_persisted_aggregate(self):
         """`total` is unchanged — existing consumers keep their number."""
         payload = _detail(_topic_row())
         assert payload["total"] == 3659
         assert payload["rawTotal"] == 3659
         assert payload["gated"] == 3659
 
-    def test_count_basis_names_total_as_lifetime(self):
+    def test_count_basis_names_the_total_explicitly(self):
         """The header must not have to infer the basis from the window."""
         payload = _detail(_topic_row())
-        assert payload["countBasis"] == "lifetime"
+        assert payload["countBasis"] == "cumulative_snapshots"
 
 
 class TestDetailCarriesTheRowsOwnNumber:
@@ -130,8 +136,8 @@ class TestDetailCarriesTheRowsOwnNumber:
         """The council's exact case: 88 on the row, 3,659 lifetime beneath."""
         payload = _detail(_topic_row(lifetime=3659, recent=88, window_h=168))
         assert payload["currentTotal"] == 88, "must match the row's 88"
-        assert payload["total"] == 3659, "lifetime stays available"
-        assert payload["countBasis"] == "lifetime"
+        assert payload["total"] == 3659, "the aggregate stays available"
+        assert payload["countBasis"] == "cumulative_snapshots"
         assert payload["countWindowHours"] == 168
 
 
@@ -141,7 +147,7 @@ class TestAbsenceIsHonestNeverFabricated:
         payload = _detail(_topic_row(include_window_cols=False))
         assert payload["currentTotal"] is None
         assert payload["countWindowHours"] is None
-        assert payload["total"] == 3659, "lifetime lane is independent"
+        assert payload["total"] == 3659, "the aggregate lane is independent"
 
     def test_null_columns_serve_none_not_zero(self):
         """COALESCE(...,0) upstream must not turn absence into a claim."""
@@ -152,7 +158,7 @@ class TestAbsenceIsHonestNeverFabricated:
     def test_basis_fields_survive_the_populated_path(self):
         """Not just the empty-sample early return — the full path too."""
         payload = _detail(_topic_row(), sample_ids=[1, 2, 3])
-        assert payload["countBasis"] == "lifetime"
+        assert payload["countBasis"] == "cumulative_snapshots"
         assert payload["currentTotal"] == 88
         assert payload["countWindowHours"] == 168
 

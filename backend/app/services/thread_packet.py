@@ -217,10 +217,34 @@ def build_thread_packet(rows: list, own_topic: str | None = None) -> dict:
             "archived": bool(_val(r, "archived")),
         }
 
+    # ------------------------------------------------------------------
+    # `topSources` is a PREVIEW (ranked, sliced at 20). Reading its length as
+    # the outlet count is the defect this pair of fields closes: prod dt-242
+    # served 20 under the label "Sources" while its own 37 receipts, printed
+    # directly beneath, carried 36 distinct domains — the page disproved its
+    # own number. The count is therefore counted over every row, uncapped, so
+    # it can never saturate at a display slice; `sourceSampleSize` names the
+    # receipt set it was counted over so the number reads as what it is (a
+    # count over the resolved receipts) and never as the story's total.
+    #
+    # Distinct DOMAINS, not raw source_name: the domain is what the preview
+    # renders and what a reader would count, so two source_name spellings of
+    # one outlet must not read as two outlets.
+    #
+    # None vs 0: no rows at all means no receipt lane answered — a degraded
+    # state, not the measured claim "no outlet covers this". Rows that exist
+    # but carry no attribution ARE a measured 0.
+    # ------------------------------------------------------------------
+    source_count = (
+        len({extract_domain(sn) for sn in source_counts if sn}) if rows else None
+    )
+
     return {
         "graphSignals": [_sig(r) for r in rows],
         "countryBreakdown": country_breakdown,
         "topSources": top_sources,
+        "sourceCount": source_count,
+        "sourceSampleSize": len(rows),
         "topPersons": top_persons,
         "timeline": timeline,
         "lanes": lanes,

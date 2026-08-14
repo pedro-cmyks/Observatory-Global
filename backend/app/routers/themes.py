@@ -910,30 +910,50 @@ async def _dynamic_topic_detail(
         "rawTotal": gated_total,
         "gated": gated_total,
         # ------------------------------------------------------------------
-        # Count basis (council R4 N19, the N8 residual): `total` is
-        # `agg_n_signals` — a LIFETIME aggregate — and the header used to
-        # stamp it with the requested window ("3,659 signals · Last 24h")
-        # while the thread row one click up showed 88 for the same story.
-        # Measured 2026-08-11: the row's number is `recent_n_signals` (the
-        # latest snapshot's kept count) and every cluster at that snapshot
-        # carries snapshot_window_h=168 — so NEITHER number was ever a 24h
-        # count and both surfaces' window word was false.
+        # Count basis (council R4 N19, the N8 residual; basis CORRECTED
+        # 2026-08-14). N19 stopped the header stamping the requested window
+        # onto `total` — right fix, wrong NAME. `total` is `agg_n_signals`,
+        # which the projection ACCUMULATES: project_dynamic_topics does
+        # `agg_n_signals += cluster["n_signals"]` on every attach and
+        # `+= other.agg_n_signals` on every absorb. Measured on dt-242
+        # (2026-08-14): its 17 passes carry 43 34 34 34 16 8 13 10 11 11 14 14
+        # 14 14 16 19 18, summing to exactly the 323 served. So `total` is a
+        # SUM OF PER-PASS CLUSTER SIZES, not a count of distinct signals — the
+        # four 06-25 passes re-counted one rolling 24h window four times. It
+        # therefore double-counts by construction and "lifetime" (which a
+        # reader hears as "articles, all-time") was a false claim.
+        #
+        # The true distinct lifetime figure is not recoverable here: the 7-day
+        # hot retention has deleted most member rows, and `topic_members` is
+        # only a PROJECTION for dynamic topics. So we name the number for what
+        # it is and ship `snapshotCount` beside it — 323 is meaningless without
+        # "across 17 passes", and with it the repetition is legible.
+        #
+        # `currentTotal` is the other half: SUM(n_signals) at the LATEST
+        # snapshot = ONE clustering pass, whose window ended at `snapshotAt`.
+        # It is not a rolling 7d-to-now, so `currentBasis` names it a snapshot
+        # and the surface dates it instead of stamping "last 7d".
         #
         # A truly window-scoped total was measured and rejected: the
         # signals_v2 join exceeded 120s and the assigned_at variant ran 19.4s
-        # cold against this handler's 15s statement_timeout, and
-        # `topic_members` is only a PROJECTION for dynamic topics (dt-11810:
-        # 125 rows vs 3,659 lifetime), so its count would have been a third
-        # number contradicting both. Instead the detail carries THE ROW'S OWN
-        # number (1.1s cold / ~101ms warm on the heaviest active topic) so the
-        # two surfaces agree by construction, and each number states its base.
+        # cold against this handler's 15s statement_timeout.
         #
         # Absence stays honest — None, never 0: a 0 reads as a measured
         # "nothing in the window", which is a claim we have not made.
         # ------------------------------------------------------------------
-        "countBasis": "lifetime",
+        "countBasis": "cumulative_snapshots",
+        "snapshotCount": _opt_int(_rec.get("n_snapshots")),
         "currentTotal": _opt_int(_rec.get("recent_n_signals")),
+        "currentBasis": "latest_snapshot",
         "countWindowHours": _opt_int(_rec.get("count_window_hours")),
+        # Distinct outlets among the receipts this payload actually resolved.
+        # The empty-receipt early return below serves None (degraded, not a
+        # measured "no outlets"); the populated path overwrites both from the
+        # packet. `receipt_sample` is the basis in BOTH cases — this is never
+        # the story's total outlet count, and must never be rendered as one.
+        "sourceCount": None,
+        "sourceCountBasis": "receipt_sample",
+        "sourceSampleSize": 0,
         "snapshotAt": topic_row["last_seen"].isoformat()
             if topic_row["last_seen"] else None,
         # X2/S2 (time-as-dimension): AGE is first-class — "active since".
@@ -1186,6 +1206,11 @@ async def _dynamic_topic_detail(
         "graphSignals": packet["graphSignals"],
         "countryBreakdown": packet["countryBreakdown"],
         "topSources": packet["topSources"],
+        # The COUNT, counted — not len(topSources), which is a 20-item display
+        # slice (prod dt-242 served "20 Sources" over 37 receipts carrying 36
+        # distinct domains). Basis stays `receipt_sample` from base_payload.
+        "sourceCount": packet["sourceCount"],
+        "sourceSampleSize": packet["sourceSampleSize"],
         "topPersons": packet["topPersons"],
         "timeline": packet["timeline"],
         "semanticMembers": semantic_members,
@@ -1651,6 +1676,10 @@ async def get_theme_details(
                             dt.label,
                             dt.category,
                             dt.agg_n_signals,
+                            -- How many clustering passes agg_n_signals summed.
+                            -- Without it "323" is uninterpretable; with it the
+                            -- per-pass repetition is legible to the reader.
+                            dt.n_snapshots,
                             dt.mean_cohesion,
                             dt.noise_rate,
                             dt.last_seen,
