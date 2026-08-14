@@ -35,8 +35,18 @@ VERDICTS
   SKIP      a precondition was missing (no subject topic, a lane degraded);
             never silently counted as a pass
 
-Exit status is non-zero on any FAIL, so this can become a cron with a ledger
-line later. Nothing is wired to cron here — that is Pedro's call.
+EXIT STATUS
+  0   every check that ran, agreed
+  1   at least one FAIL — the two paths disagree
+  2   NOTHING was measured (all SKIP)
+
+The 2 is deliberate and is the script applying its own rule to itself: an
+all-skip run exiting 0 would be an unmeasured run reported as a clean one,
+which is the precise failure mode this whole protocol exists to end. It
+happens for real — six protocol calls against a 20/300s bucket means two
+back-to-back runs throttle, and the second one measures nothing.
+
+Nothing is wired to cron here — that is Pedro's call.
 
 Run:
     python scripts/query_parity_check.py                      # prod
@@ -524,6 +534,10 @@ def _render(ledger: Ledger, base: str, topic_hint: Optional[str]) -> str:
     failed = len(ledger.failures)
     skipped = sum(1 for r in ledger.rows if r["verdict"] == SKIP)
     lines.append(f"{passed} pass / {failed} FAIL / {skipped} skip")
+    if not passed and not failed:
+        lines.append(
+            "NOTHING WAS MEASURED — this run is not a pass. Most often the "
+            "20/300s query bucket from a previous run; wait 5 minutes.")
     if ledger.control_failures:
         lines.append(
             "CONTROL FAILED — the harness itself is suspect; do not read the "
@@ -554,7 +568,10 @@ def main() -> int:
         print(_render(ledger, args.base_url,
                       f"{subject}{pinned}" if subject else None))
 
-    return 1 if ledger.failures else 0
+    if ledger.failures:
+        return 1
+    measured = any(r["verdict"] != SKIP for r in ledger.rows)
+    return 0 if measured else 2
 
 
 if __name__ == "__main__":
