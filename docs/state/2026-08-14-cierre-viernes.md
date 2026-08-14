@@ -111,6 +111,47 @@ dependen de que alguien los note en una pantalla.
 `exit 2` cuando NADA se midió: el instrumento aplicándose su propia regla. Un
 chequeo que no midió no es un chequeo que pasó.
 
+**Bucket propio `query`, 20/300s.** Se midió `read` primero (la instrucción) y NO
+encaja: `read` se justifica a ~1.0s/llamada, pero un request puede cargar 4
+verbos bajo deadline de 15s. Peor caso 300 connection-seconds (1.0 conexión
+sostenida, 10% de un pool de 10); típico ~40, bajo los 90 de `read`.
+Dimensionado por **connection-seconds, no por gasto** — ningún verbo llama a un
+LLM. La aritmética quedó escrita en `rate_limit.py`.
+
+Costo en prod (caliente): `identities_covering` 0.91s · `receipt_geography`
+0.65s · `unclustered_signals` 0.95s · `voice_mix` 0.64s topic / 1.05s país@24h.
+El frío de 12.8s es la clase de page-in de trigrama ya documentada en
+`focus_lanes` (576ms caliente / 14.5s frío); los presupuestos se dimensionaron
+contra ESO, no contra el caliente.
+
+### Lo que el protocolo encontró SOBRE SÍ MISMO
+
+- **`dynamic-topic-11581` tiene 28 miembros de evidencia y NINGUNA fila en
+  `dynamic_topics`.** Filas de miembros sobreviviendo a su identidad. De ahí
+  salió el campo `kind` (`dynamic_identity` / `atlas_category` / `orphan_members`)
+  — servir tres cosas distintas como una sola "identidad" habría repetido una
+  confusión ya zanjada. En un solo resultado de prod: 3 huérfanos y 6 categorías
+  atlas entre 100 identidades.
+- `voice_mix{country}` se degradaba DENTRO del protocolo mientras la llamada
+  directa idéntica respondía en 2.1s — contención auto-infligida por reusar un
+  endpoint servido que adquiere su propia conexión mientras yo sostenía una.
+  Ahora se difiere hasta soltarla. Ambos con test que los fija.
+
+### Lo que los verbos midieron el primer día
+
+- `receipt_geography{dt-12927}`: la historia insignia **"Colombia** Declares
+  Disaster After Deadly Earthquake" tiene recibos `DE:24, VE:24` y **CERO
+  colombianos**; idiomas `xx:28, de:18, es:2`. El chip VE de Pedro, explicado en
+  el sustrato.
+- `unclustered_signals{espriella, golán, ungrd, 24h}`: 84 señales, **77 sin
+  asignar (92%)**. Las 7 que aterrizaron cayeron en `earthquake-volcano-disaster`
+  (6) y `armed-conflict-escalation` (1). El hallazgo de la investigación,
+  reproducido por contrato.
+
+**Sin cron todavía** — es decisión tuya. El script ya es ledger-ready (0/1/2).
+Una corrida hace 6 llamadas contra un bucket de 20/300s, así que dos corridas
+seguidas no son seguras.
+
 ---
 
 ## Estado para el lunes
