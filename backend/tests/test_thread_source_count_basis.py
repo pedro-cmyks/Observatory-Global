@@ -24,13 +24,14 @@ Two separate defects produce that 24.
 A true window-scoped distinct-source count was measured and REJECTED as
 unaffordable for the list: over the 40 rows of one request, the correlated
 `signals_v2` join ran 2,143ms and the set-based rewrite 1,185ms, against a list
-query that already costs ~700-800ms; the `sample_receipts` jsonb lane (durable,
-join-free) still cost 278ms and, being itself a per-cluster sample, would not
-have produced a true total either. Every affordable number here is a count over
-a RECEIPT SAMPLE, so the fix is to make that basis explicit and to stop the
+query that already costs ~700-800ms. Every affordable number here is a count
+over a RECEIPT SAMPLE, so the fix is to make that basis explicit and to stop the
 number saturating below the receipts we actually serve.
 
-Contract under test:
+Contract under test (the SERVED-receipt basis; the follow-up that widens the
+count to the frozen mig-097 sample when that one is strictly wider, and its own
+measurements, live in test_thread_source_count_widening.py — the rows here carry
+no `snapshot_receipt_stats`, which is exactly the unwidened case):
   * ``source_count``        distinct outlets among the receipts SERVED — after
                             a merge, recounted over the unioned evidence.
   * ``source_count_basis``  'receipt_sample' — never presentable as the total.
