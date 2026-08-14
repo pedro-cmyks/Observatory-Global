@@ -6,7 +6,7 @@
 import React from 'react'
 import './countQualifier.css'
 
-export type CountBase = 'raw' | 'verified' | 'sourced' | 'lifetime' | 'frozen' | 'gated' | 'rollup'
+export type CountBase = 'raw' | 'verified' | 'sourced' | 'lifetime' | 'frozen' | 'gated' | 'rollup' | 'category'
 
 export interface CountQualifierResult {
   /** Full "N · <window> · <base>" line. */
@@ -43,6 +43,14 @@ const BASE_TIPS: Record<CountBase, (n: string, w: string | null) => string> = {
   // reconcile the two instead of reading a contradiction.
   rollup: (n, w) =>
     `${n} signals counted from the hourly aggregate${w ? ` over the last ${w}` : ''} — the same roll-up the map and the country density list read, so these numbers agree. It refreshes on a cycle, so it can trail the live count by up to an hour.`,
+  // Fix round 2026-08-14 (Pedro's live rail read): a CATEGORY row (the R3
+  // lens) sat flush against the stories beneath it, so its number read as a
+  // story's signal count. It is not — it is the signal total for the whole
+  // category, summed over every story filed under it. Naming the base is what
+  // stops one more "N here, M there" contradiction, the same way `gated` did
+  // for the dynamic rows.
+  category: (n, w) =>
+    `${n} signals filed under this CATEGORY${w ? ` in the last ${w}` : ''} — summed across every story in it, not one story's count. The category is a lens over stories; open it to see them individually.`,
 }
 
 const BASE_LABEL: Record<CountBase, string> = {
@@ -53,6 +61,7 @@ const BASE_LABEL: Record<CountBase, string> = {
   frozen: 'frozen',
   gated: 'gated',
   rollup: 'rollup',
+  category: 'category total',
 }
 
 /**

@@ -43,6 +43,49 @@
 
 /* Dimmed when another thread is the active focus, or when a country focus
    excludes this thread. Hover restores full opacity so it's still discoverable. */
+/* CATEGORY row (P1 vocabulary, Pedro's 2026-08-14 live read).
+   A category is the R3 lens OVER stories, so it must not render as a peer of
+   the stories beneath it. Three separable cues, none of them colour-only:
+     1. a dashed left rule — the row is a container, not a measured event;
+     2. a recessed tint + inset, so the stories sit visually INSIDE it;
+     3. the ◫ CATEGORY badge in the title line (markup, not CSS).
+   Deliberately NOT the family accent colour: `borderLeftColor` is set inline
+   per category family on every row, so colour alone could never carry this
+   distinction. */
+.narrative-row--category {
+    background: rgba(var(--color-ink-rgb), 0.035);
+    border-left-style: dashed;
+    padding-left: 10px;
+}
+
+.narrative-row--category:hover {
+    background: rgba(var(--color-ink-rgb), 0.06);
+}
+
+/* The title of a lens is a name, not a headline — de-emphasised relative to
+   the story titles it groups, so the eye reads the stories first. */
+.narrative-row--category .narrative-label-text {
+    font-weight: 600;
+    color: rgba(var(--color-neutral-rgb), 0.92);
+}
+
+.narrative-kind-badge {
+    flex-shrink: 0;
+    margin-right: 6px;
+    padding: 1px 6px;
+    border: 1px solid rgba(var(--color-neutral-rgb), 0.42);
+    border-radius: 3px;
+    background: rgba(var(--color-neutral-rgb), 0.1);
+    /* AA on both themes: --color-neutral at full opacity over the recessed
+       row tint, never a washed-out ghost chip (the #247 batch-A rule). */
+    color: rgba(var(--color-neutral-rgb), 0.95);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
 .narrative-row.dimmed {
     opacity: 0.38;
     transition: opacity 0.18s;

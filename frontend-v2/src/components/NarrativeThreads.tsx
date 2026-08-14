@@ -27,6 +27,7 @@ import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import { useStoryLens } from '../contexts/StoryLensContext'
 import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText, type StoryLensSibling } from '../lib/storyLens'
 import { buildThreadRelation } from '../lib/threadRelation'
+import { threadRowKind, storyTitle, rowCountBase, categoryRowTip } from '../lib/threadRowKind'
 import { visibleEntities } from '../lib/threadRowMobile'
 import { useIsMobile } from '../hooks/useIsMobile'
 import './NarrativeThreads.css'
@@ -164,9 +165,6 @@ const timeAgo = (isoString: string | null): string => {
     return `Started ${days}d ago`
 }
 
-const stripCountrySuffix = (label: string): string =>
-    label.replace(/\s+in\s+.+$/i, '').trim()
-
 const normalizeTrend = (trend: string): Narrative['trend'] => {
     if (trend === 'surging') return 'accelerating'
     if (trend === 'fading') return 'fading'
@@ -187,7 +185,13 @@ const normalizeThread = (thread: any): Narrative => {
     })
     return {
     thread_id: thread.thread_id,
-    label: stripCountrySuffix(decodeEntities(thread.label || thread.summary || thread.thread_id)),
+    // The title is shortened against the row's OWN category so it can never
+    // collapse into a restatement of the kicker printed beside it — see
+    // lib/threadRowKind.storyTitle for the three strips this refuses.
+    label: storyTitle(
+        decodeEntities(thread.label || thread.summary || thread.thread_id),
+        thread.category ?? thread.parent_domain ?? null,
+    ),
     anchor_topics: thread.anchor_topics || [],
     parent_domain: thread.parent_domain || null,
     signal_count: thread.signal_count || 0,
@@ -241,7 +245,9 @@ function buildSyntheticSiblingRow(s: StoryLensSibling): Narrative {
     const countries = s.countries || []
     return {
         thread_id: s.id,
-        label: stripCountrySuffix(decodeEntities(s.label)),
+        // Sibling payloads carry no category, so the kicker-collision guard
+        // has nothing to compare against — the word-count guards still apply.
+        label: storyTitle(decodeEntities(s.label), null),
         anchor_topics: [],
         parent_domain: null,
         signal_count: 0,
@@ -823,6 +829,11 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // !lensReason stays as a per-row belt-and-suspenders.
                 const siblingReason = (!lensReason && !lensSets && anyThreadRelation && !anyPersonMatch && !filter.country
                     && !isFocused && !isDimmed) ? relationReason(n) : null
+                // P1 vocabulary made visible (Pedro's live read, 2026-08-14): a
+                // CATEGORY row is the R3 lens over many stories, not a peer of
+                // the stories beneath it. Typed from the payload, never guessed.
+                const rowKind = threadRowKind(n)
+                const isCategoryRow = rowKind === 'category'
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
                 // T11 gate fix (L1): a synthesized row carries no measured
@@ -830,6 +841,8 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // printing the fabricated zeros the type defaults carry.
                 const rowHint = isSynthRow
                     ? 'From the measured walk — not in the current top stories. Click to open.'
+                    : isCategoryRow
+                    ? `${n.label} is a CATEGORY, not a story — a lens over every story filed under it. ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources, summed over the whole category. Click to open it.`
                     : `${n.label}: ${n.signal_count.toLocaleString()} signals across ${n.country_count} countries from ${n.source_count} sources. Click to open the unified story detail.`
                 const domainLabel = (n.parent_domain || 'story').replace(/-/g, ' ')
                 const geography = threadCountryPresentation(n)
@@ -870,7 +883,7 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                         )
                     )}
                     <div
-                        className={`narrative-row ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''} ${eclipseRole === 'eclipse' ? 'ecl-row-eclipse' : eclipseRole === 'shadow' ? 'ecl-row-shadow' : ''} ${lensRole === 'anchor' ? 'sl-row-anchor' : lensRole === 'sibling' ? 'sl-row-sibling' : ''} ${isSynthRow ? 'sl-row-synth' : ''}`}
+                        className={`narrative-row ${isCategoryRow ? 'narrative-row--category' : ''} ${isFocused ? 'focused' : ''} ${isDimmed ? 'dimmed' : ''} ${eclipseRole === 'eclipse' ? 'ecl-row-eclipse' : eclipseRole === 'shadow' ? 'ecl-row-shadow' : ''} ${lensRole === 'anchor' ? 'sl-row-anchor' : lensRole === 'sibling' ? 'sl-row-sibling' : ''} ${isSynthRow ? 'sl-row-synth' : ''}`}
                         data-tip={rowHint}
                         onClick={() => handleClick(n)}
                         style={{ borderLeftColor: threadAccent }}
@@ -880,6 +893,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                             <div className="narrative-label">
                                 <span className={`sentiment-dot ${n.sentiment_swing_10h && n.sentiment_swing_10h > 0.1 ? 'pos' : n.sentiment_swing_10h && n.sentiment_swing_10h < -0.1 ? 'neg' : 'neu'}`} data-tip={`10h sentiment swing: ${n.sentiment_swing_10h == null ? 'not available' : n.sentiment_swing_10h.toFixed(2)}`} />
                                 {!isSynthRow && <span className={`trend-arrow ${n.trend}`}>{trendArrow}</span>}
+                                {/* The category row's own affordance: a leading badge in the
+                                    TITLE line (not the kicker), so the level is legible before
+                                    the eye reaches the label — the kicker alone was what Pedro
+                                    read as the row's identity. */}
+                                {isCategoryRow && (
+                                    <span
+                                        className="badge narrative-kind-badge"
+                                        data-tip="A CATEGORY (Atlas theme) — the lens that groups every story of this kind. Its number, countries and entities describe the whole group, not a single story."
+                                    >◫ CATEGORY</span>
+                                )}
                                 <ThreadLabelText label={n.label} isMobile={isMobile} />
                                 {/* #236 review fix: this used to live INSIDE .narrative-label-text,
                                     which on mobile is a -webkit-line-clamp box — a long title could
@@ -938,7 +961,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                     walk {n.lensWeight != null ? n.lensWeight.toFixed(2) : '—'}
                                 </span>
                             ) : (() => {
-                                const rowBase = n.gated_signal_count != null ? 'raw' as const : 'gated' as const
+                                /* Fix round 2026-08-14: a CATEGORY row's number is the signal
+                                   total for the whole lens, summed over every story inside it —
+                                   a different question from a story's count, so it gets its own
+                                   base word and its own tip. Story/umbrella rows keep the
+                                   pre-existing raw/gated lineage split untouched. */
+                                const rowBase = rowCountBase(rowKind, n)
                                 /* N19: the window word must follow the row's engine path the
                                    same way `rowBase` already does. Dynamic rows count the
                                    latest snapshot (measured 168h → "7d"); atlas rows really
@@ -949,7 +977,9 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                 return (
                             <span
                                 className="narrative-count"
-                                data-tip={n.gate_scored_count && n.gated_signal_count != null && n.gated_signal_count !== n.signal_count
+                                data-tip={isCategoryRow
+                                    ? categoryRowTip(n.label, n.signal_count, rowWindow)
+                                    : n.gate_scored_count && n.gated_signal_count != null && n.gated_signal_count !== n.signal_count
                                     ? `${countQualifier(n.signal_count, rowWindow, 'raw').tip} ${(n.gated_signal_count ?? 0).toLocaleString()} verified by the relevance gate — the detail view shows the verified set.`
                                     : countQualifier(n.signal_count, rowWindow, rowBase).tip}
                             >
