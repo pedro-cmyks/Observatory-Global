@@ -5,7 +5,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { LabelReviewChip } from '../lib/labelReviewChip'
 import { decodeEntities } from '../lib/decodeEntities'
 import { resolveThreadTitle } from '../lib/themeLabels'
-import { siblingChipText, siblingKinshipSummary } from '../lib/storyLens'
+import { siblingChipText, siblingFamilySummary, siblingKinshipSummary } from '../lib/storyLens'
 import { threadPin } from '../lib/capturePayloads'
 import { getActiveInvestigationId, mergePinSnapshot, PIN_SIBLING_FREEZE_CAP } from '../lib/workbench'
 import './storyLens.css'
@@ -69,6 +69,7 @@ export function StoryLensBanner() {
   // flight this reads "Loading thread…"; once settled without a label it
   // falls back to the honest generic, never state.anchorId verbatim.
   const label = resolveThreadTitle(state.anchorId, knownLabel, loading)
+  const familySummary = siblingFamilySummary(data?.siblings ?? [])
   const pinId = state.anchorId ? `theme-${state.anchorId}` : null
   const alreadyPinned = Boolean(pinId && isPinned(pinId))
 
@@ -111,6 +112,20 @@ export function StoryLensBanner() {
         // carry.
         <span className="sl-banner-counts">
           {siblingKinshipSummary(data?.siblings ?? [])} · {anchor.countries.length} countries
+        </span>
+      ) : null}
+      {/* Z3 (2026-08-14): an R2 umbrella can now be in this neighborhood. It is
+          a CONTAINER of stories, not a peer — and the kinship split above
+          cannot say so, because level and directness are orthogonal (a family
+          can be a hermano). Its own note rather than a third word in that
+          split. Null when every sibling is a leaf, so a leaf-only lens looks
+          exactly as it did. */}
+      {familySummary ? (
+        <span
+          className="sl-banner-note sl-banner-flag"
+          data-tip="One or more neighbours is an R2 FAMILY — an umbrella rolling up several stories of one event. Their edges were measured against an aggregate centroid, a weaker claim than a match to a single story."
+        >
+          ◫ {familySummary}
         </span>
       ) : null}
       {/* T11 gate fix (M1): the payload's own measured caveats, made visible

@@ -9,6 +9,16 @@
 
 export interface StoryLensReason { basis: string; value: string }
 
+/** What LEVEL a lens row sits at (Z3, 2026-08-14 — docs/research/recall-229/
+ *  2026-08-14-duplicate-live-stories.md). R2 umbrellas were excluded from the
+ *  sibling universe by `NOT is_umbrella`, so dt-242 and the umbrella over its
+ *  own Colombian earthquake could never find each other despite a whitened
+ *  cosine (0.6489) above the anchor's then-#1 hermano. They are in now — and
+ *  the payload says what they are, because a family of N stories rendered as a
+ *  peer story is the exact misread the rail's `◫ CATEGORY` badge just fixed one
+ *  level up. */
+export type StoryLensKind = 'story' | 'family'
+
 export interface StoryLensSibling {
   id: string
   label: string
@@ -30,12 +40,28 @@ export interface StoryLensSibling {
   label_status?: string | null
   countries: string[]
   reasons: StoryLensReason[]
+  // Z3. Absent on any payload older than the change — treated as 'story',
+  // never guessed from the label or the id.
+  kind?: StoryLensKind
+  /** How many stories the family rolls up. `null` = the bounded child lookup
+   *  failed or found none; the row STAYS a family (story_siblings.
+   *  family_fields — an unknown count must not demote a container). */
+  child_count?: number | null
+  /** The children's category, only when they agree on one. */
+  family_category?: string | null
 }
 
 export interface StoryLensData {
   contract: string
   generated_at: string
-  anchor: { id: string; label: string; label_status?: string | null; countries: string[] } | null
+  anchor: {
+    id: string
+    label: string
+    label_status?: string | null
+    countries: string[]
+    kind?: StoryLensKind
+    child_count?: number | null
+  } | null
   siblings: StoryLensSibling[]
   notes: string[]
 }
@@ -178,6 +204,35 @@ export function siblingKinshipSummary(siblings: StoryLensSibling[]): string {
   if (primos > 0) parts.push(`${primos} primo${primos === 1 ? '' : 's'}`)
   if (!parts.length) parts.push('0 hermanos')
   return parts.join(' · ')
+}
+
+/** Z3: does the payload say this row is a FAMILY of stories? Explicit-only —
+ *  an unmarked row is a story, never inferred. */
+export function isFamilySibling(s: { kind?: StoryLensKind } | null | undefined): boolean {
+  return s?.kind === 'family'
+}
+
+/**
+ * The banner's family line, beside the hermano/primo split — or `null` when
+ * every sibling is a leaf.
+ *
+ * The kinship split answers "how directly measured"; this answers "what LEVEL
+ * am I looking at", and they are orthogonal (a family can be a hermano). Folded
+ * into one string they would read as a third kinship, so they stay two.
+ *
+ * Child counts are summed ONLY when every family reported one — a partial sum
+ * would print a total smaller than the truth and look measured.
+ */
+export function siblingFamilySummary(siblings: StoryLensSibling[]): string | null {
+  const fams = siblings.filter(isFamilySibling)
+  if (!fams.length) return null
+  const word = fams.length === 1 ? 'family' : 'families'
+  const counts = fams.map((f) => f.child_count)
+  if (counts.some((c) => c == null || !Number.isFinite(c as number))) {
+    return `${fams.length} ${word}`
+  }
+  const total = (counts as number[]).reduce((a, b) => a + b, 0)
+  return `${fams.length} ${word} · ${total} ${total === 1 ? 'story' : 'stories'}`
 }
 
 // User-facing copy for the siblings endpoint's closed reason-code set.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { threadRowKind, storyTitle, rowCountBase, categoryRowTip } from './threadRowKind'
+import { threadRowKind, storyTitle, rowCountBase, categoryRowTip, familyRowBadge, familyRowTip } from './threadRowKind'
 
 const row = (thread_id: string, anchor_topics: string[] = []) => ({ thread_id, anchor_topics })
 
@@ -120,5 +120,60 @@ describe('storyTitle — the title must never collapse into its own category kic
 
     it('trims surrounding whitespace like the helper it replaces', () => {
         expect(storyTitle('  Ebola Outbreak Congo  ', 'Disease outbreak')).toBe('Ebola Outbreak Congo')
+    })
+})
+
+// --------------------------------------------------------------------- Z3
+// docs/research/recall-229/2026-08-14-duplicate-live-stories.md: R2 umbrellas
+// may now come back as story-lens siblings. A family is a CONTAINER of N
+// stories and must never be rendered as a peer story — same affordance class
+// the category row just gained, not a second visual language.
+describe('threadRowKind — a FAMILY row is a container, not a peer story', () => {
+    it('types a lens sibling the payload marked kind=family as an umbrella', () => {
+        expect(threadRowKind({ thread_id: 'dynamic-topic-12927', anchor_topics: [], lens_kind: 'family' }))
+            .toBe('umbrella')
+    })
+
+    it('leaves a lens sibling marked kind=story a story', () => {
+        expect(threadRowKind({ thread_id: 'dynamic-topic-523', anchor_topics: [], lens_kind: 'story' }))
+            .toBe('story')
+    })
+
+    it('still reads the umbrella identity_key when no lens marker is present', () => {
+        expect(threadRowKind({ thread_id: 'dynamic-topic-12927', anchor_topics: ['umbrella:510'] }))
+            .toBe('umbrella')
+    })
+
+    it('never lets a family marker override an atlas category', () => {
+        // a category is a different LEVEL; the lens never marks one, but if a
+        // payload ever did, the id must win — categories are not families.
+        expect(threadRowKind({ thread_id: 'earthquake-volcano-disaster', anchor_topics: [], lens_kind: 'family' }))
+            .toBe('category')
+    })
+})
+
+describe('familyRowBadge / familyRowTip', () => {
+    it('names the count when it is known', () => {
+        expect(familyRowBadge(8)).toBe('◫ FAMILY · 8 stories')
+        expect(familyRowBadge(1)).toBe('◫ FAMILY · 1 story')
+    })
+
+    it('degrades to the bare marker when the count is unknown — never to a story', () => {
+        expect(familyRowBadge(null)).toBe('◫ FAMILY')
+        expect(familyRowBadge(undefined)).toBe('◫ FAMILY')
+    })
+
+    it('says it is a family, and that the relation was measured on an aggregate', () => {
+        const tip = familyRowTip('Colombia Declares Disaster After Deadly Earthquake', 8)
+        expect(tip).toContain('FAMILY')
+        expect(tip).toContain('8 stories')
+        expect(tip.toLowerCase()).toContain('aggregate')
+        expect(tip.toLowerCase()).toContain('weaker')
+    })
+
+    it('keeps the aggregate caveat even when the child count is unknown', () => {
+        const tip = familyRowTip('Some Umbrella', null)
+        expect(tip.toLowerCase()).toContain('aggregate')
+        expect(tip).not.toContain('null')
     })
 })

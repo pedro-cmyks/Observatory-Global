@@ -41,6 +41,11 @@ export interface ThreadRowKindInput {
     /** Dynamic rows carry `dynamic_topics.identity_key` here; an R2 umbrella's
      *  key is `umbrella:<largest active child id>` (R3.3 stable id). */
     anchor_topics?: string[] | null
+    /** The story-lens siblings payload states the level directly
+     *  (`story-siblings-v1` gained `kind` in Z3), because a lens row is
+     *  synthesized from that payload and carries no `identity_key` to read the
+     *  umbrella marker off. Never a guess: absent means "not stated". */
+    lens_kind?: 'story' | 'family' | null
 }
 
 /** An atlas topic slug: lowercase, hyphen-separated, at least two segments
@@ -62,6 +67,12 @@ export function threadRowKind(row: ThreadRowKindInput): ThreadRowKind {
     // the level of the row.
     const base = id.split('--', 1)[0]
     if (STORY_PREFIXES.some(p => base.startsWith(p))) {
+        // The lens states the level outright for rows it synthesized (Z3) —
+        // checked before the identity_key because a synthesized row has none.
+        // Only ever consulted inside the dynamic family: a family and a
+        // category are different LEVELS, and an atlas slug must stay a
+        // category even if some future payload marked it.
+        if (row.lens_kind === 'family') return 'umbrella'
         // Dynamic family: an R2 umbrella is still an EVENT (one real-world
         // story rolled up over its fragments), so it is deliberately NOT a
         // category — it just counts differently. Scan every anchor rather
@@ -106,6 +117,49 @@ export function categoryRowTip(
         `“${categoryLabel}”${w}, summed across every story in it — not one story's count. ` +
         `The countries and entities on this row describe the whole category too. ` +
         `Open it to see the individual stories.`
+    )
+}
+
+/**
+ * The FAMILY row's badge — same affordance class as `◫ CATEGORY`, deliberately
+ * not a second visual language (Pedro, Z3).
+ *
+ * An R2 umbrella can now be returned as a story-lens sibling
+ * (docs/research/recall-229/2026-08-14-duplicate-live-stories.md: `NOT
+ * is_umbrella` had excluded dt-12927 from dt-242's universe entirely, though
+ * their whitened cosine 0.6489 beat the anchor's then-#1 hermano). It is a
+ * CONTAINER of N stories, so its headline must not read like one story's.
+ *
+ * An unknown count degrades to the bare marker. It never degrades to silence:
+ * "how many" is the soft fact here, "this is a family" is the hard one.
+ */
+export function familyRowBadge(childCount?: number | null): string {
+    if (childCount == null || !Number.isFinite(childCount) || childCount <= 0) {
+        return '◫ FAMILY'
+    }
+    return `◫ FAMILY · ${childCount.toLocaleString('en-US')} ${childCount === 1 ? 'story' : 'stories'}`
+}
+
+/**
+ * The family row's tooltip. Two things, both load-bearing:
+ *
+ *  1. it is a family (opening it opens the family, not a leaf story), and
+ *  2. the measured relation was taken against the family's AGGREGATE centroid.
+ *
+ * (2) is the honesty rail. dt-12927's centroid averages two different
+ * earthquakes plus four Ebola rows (§2 of the measurement), so an edge to a
+ * family is a weaker claim than a leaf-to-leaf match — and the row says so
+ * rather than letting the number pass for the same kind of evidence.
+ */
+export function familyRowTip(label: string, childCount?: number | null): string {
+    const n = (childCount != null && Number.isFinite(childCount) && childCount > 0)
+        ? `${childCount.toLocaleString('en-US')} ${childCount === 1 ? 'story' : 'stories'}`
+        : 'several stories'
+    return (
+        `A FAMILY, not a story: “${label}” rolls up ${n} of the same event. ` +
+        `The measured relation was taken against the family's aggregate centroid, ` +
+        `so it is a weaker claim than a match to a single story. Open it to see ` +
+        `the stories inside.`
     )
 }
 

@@ -26,9 +26,9 @@ import { personPin } from '../lib/capturePayloads'
 import { useEclipseMode } from '../contexts/EclipseModeContext'
 import { buildEclipseSets, threadEclipseRole } from '../lib/eclipseSets'
 import { useStoryLens } from '../contexts/StoryLensContext'
-import { buildLensSets, threadLensRole, hasLensContent, siblingChipText, type SiblingChipText, type StoryLensSibling } from '../lib/storyLens'
+import { buildLensSets, threadLensRole, hasLensContent, isFamilySibling, siblingChipText, type SiblingChipText, type StoryLensKind, type StoryLensSibling } from '../lib/storyLens'
 import { buildThreadRelation } from '../lib/threadRelation'
-import { threadRowKind, storyTitle, rowCountBase, categoryRowTip } from '../lib/threadRowKind'
+import { threadRowKind, storyTitle, rowCountBase, categoryRowTip, familyRowBadge, familyRowTip } from '../lib/threadRowKind'
 import { visibleEntities } from '../lib/threadRowMobile'
 import { useIsMobile } from '../hooks/useIsMobile'
 import './NarrativeThreads.css'
@@ -127,6 +127,14 @@ interface Narrative {
     // composite walk weight (whitened cosine, product over hops). Rendered
     // verbatim ("walk 0.85"), never reformatted into a fabricated count.
     lensWeight?: number
+    // Z3 (2026-08-14): the LEVEL the siblings payload stated for this row. A
+    // synthesized row carries no `identity_key`, so `threadRowKind` cannot read
+    // the `umbrella:` marker off `anchor_topics` the way it does for a pool
+    // row — the payload has to say it, and this is where it says it.
+    lensKind?: StoryLensKind
+    // How many stories that family rolls up; null when the backend's bounded
+    // child lookup could not answer (the row stays a family regardless).
+    lensChildCount?: number | null
 }
 
 // Sparkline SVG component.
@@ -299,6 +307,8 @@ function buildSyntheticSiblingRow(s: StoryLensSibling): Narrative {
         subject_geography_status: null,
         synthesized: true,
         lensWeight: s.weight,
+        lensKind: s.kind,
+        lensChildCount: s.child_count ?? null,
     }
 }
 
@@ -428,6 +438,22 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
             const chip = siblingChipText(s)
             m.set(s.id, chip)
             for (const f of s.folded ?? []) m.set(f, chip)
+        }
+        return m
+    }, [storyLens.data])
+
+    // Z3: how many stories each FAMILY sibling rolls up, keyed the same way.
+    // A family that is ALSO in the panel's own /threads pool renders from the
+    // pool row, and `/threads` carries no child count — without this the
+    // witness (dt-12927, a pool row) would show the bare `◫ FAMILY` while the
+    // lens payload was holding "8" the whole time. Only ever a lookup of a
+    // measured number; a family with no count still renders as a family.
+    const lensFamilyCountById = useMemo(() => {
+        const m = new Map<string, number>()
+        for (const s of storyLens.data?.siblings ?? []) {
+            if (!isFamilySibling(s) || s.child_count == null) continue
+            m.set(s.id, s.child_count)
+            for (const f of s.folded ?? []) m.set(f, s.child_count)
         }
         return m
     }, [storyLens.data])
@@ -704,6 +730,16 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
         }
         return null
     }
+    // Z3: the row's own count (a synthesized lens row) first, then the lens
+    // payload's count for a pool row that happens to be the same family.
+    const familyCountFor = (n: Narrative): number | null => {
+        if (n.lensChildCount != null) return n.lensChildCount
+        for (const id of [n.thread_id, ...(n.anchor_topics ?? [])]) {
+            const c = lensFamilyCountById.get(id)
+            if (c != null) return c
+        }
+        return null
+    }
 
     const handleClick = (n: Narrative) => {
         onThreadSelect?.(n)
@@ -843,8 +879,18 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                 // P1 vocabulary made visible (Pedro's live read, 2026-08-14): a
                 // CATEGORY row is the R3 lens over many stories, not a peer of
                 // the stories beneath it. Typed from the payload, never guessed.
-                const rowKind = threadRowKind(n)
+                const rowKind = threadRowKind({
+                    thread_id: n.thread_id,
+                    anchor_topics: n.anchor_topics,
+                    lens_kind: n.lensKind,
+                })
                 const isCategoryRow = rowKind === 'category'
+                // Z3: an R2 umbrella — a FAMILY of stories. Same affordance
+                // class as the category badge (Pedro: reuse it, don't invent a
+                // second visual language), because it is the same misread one
+                // level down: a container rendered as a peer story.
+                const isFamilyRow = rowKind === 'umbrella'
+                const familyChildCount = isFamilyRow ? familyCountFor(n) : null
                 const trendArrow = n.trend === 'accelerating' ? '▲' : n.trend === 'fading' ? '▼' : '→'
                 // Plain-language hover hint; falls back to label when no description is available.
                 // T11 gate fix (L1): a synthesized row carries no measured
@@ -919,6 +965,12 @@ export const NarrativeThreads: React.FC<NarrativeThreadsProps> = ({ onCountrySel
                                         className="badge narrative-kind-badge"
                                         data-tip="A CATEGORY (Atlas theme) — the lens that groups every story of this kind. Its number, countries and entities describe the whole group, not a single story."
                                     >◫ CATEGORY</span>
+                                )}
+                                {isFamilyRow && (
+                                    <span
+                                        className="badge narrative-kind-badge"
+                                        data-tip={familyRowTip(n.label, familyChildCount)}
+                                    >{familyRowBadge(familyChildCount)}</span>
                                 )}
                                 <ThreadLabelText label={n.label} isMobile={isMobile} />
                                 {/* #236 review fix: this used to live INSIDE .narrative-label-text,

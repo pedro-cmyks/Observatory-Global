@@ -5,7 +5,9 @@ import {
   isLensAnchor,
   lensErrorCopy,
   lensTopicParam,
+  isFamilySibling,
   siblingChipText,
+  siblingFamilySummary,
   siblingKinshipSummary,
   threadLensRole,
   type StoryLensData,
@@ -153,5 +155,53 @@ describe('lensErrorCopy', () => {
     expect(lensErrorCopy('some_future_code_not_yet_mapped')).toBe('Neighborhood unavailable')
     expect(lensErrorCopy(null)).toBe('Neighborhood unavailable')
     expect(lensErrorCopy(undefined)).toBe('Neighborhood unavailable')
+  })
+})
+
+// --------------------------------------------------------------------- Z3
+// An R2 umbrella may now be a sibling (docs/research/recall-229/2026-08-14-
+// duplicate-live-stories.md). The payload marks it; the model must carry that
+// through without ever letting a family read as a peer story.
+const famSib: StoryLensSibling = {
+  id: 'dynamic-topic-12927',
+  label: 'Colombia Declares Disaster After Deadly Earthquake',
+  weight: 0.6489, degree: 1, kinship: 'hermano', through_blob: false, is_blob: false,
+  via_parent: null, folded: [], label_status: 'entailed', countries: ['DE'],
+  kind: 'family', child_count: 8, family_category: null,
+  reasons: [
+    { basis: 'whitened_cos', value: '0.65' },
+    { basis: 'aggregate_anchor', value: "measured against the family's aggregate centroid over 8 stories, not one story" },
+  ],
+}
+
+describe('isFamilySibling', () => {
+  it('is true only when the payload said so', () => {
+    expect(isFamilySibling(famSib)).toBe(true)
+    expect(isFamilySibling(data.siblings[0])).toBe(false)
+  })
+  it('an unmarked row (older payload) is never assumed to be a family', () => {
+    const { kind: _kind, ...unmarked } = famSib
+    expect(isFamilySibling(unmarked as StoryLensSibling)).toBe(false)
+  })
+})
+
+describe('siblingFamilySummary — the banner must say a container is in the list', () => {
+  it('is null when every sibling is a leaf story', () => {
+    expect(siblingFamilySummary(data.siblings)).toBeNull()
+  })
+  it('names one family with its child count', () => {
+    expect(siblingFamilySummary([famSib, ...data.siblings])).toBe('1 family · 8 stories')
+  })
+  it('counts families without summing counts it does not have', () => {
+    const other = { ...famSib, id: 'dynamic-topic-777', child_count: null }
+    expect(siblingFamilySummary([famSib, other])).toBe('2 families')
+  })
+})
+
+describe('siblingChipText on a family row', () => {
+  it('keeps the measured cosine as the headline receipt', () => {
+    // the aggregate-anchor caveat rides the badge/tooltip, never by displacing
+    // the number the ranking actually used
+    expect(siblingChipText(famSib).text).toBe('whitened_cos 0.65')
   })
 })
