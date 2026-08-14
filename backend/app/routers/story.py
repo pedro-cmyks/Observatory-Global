@@ -189,10 +189,17 @@ async def _confirm_ui_blob_flags(
 # Umbrella fallback (T10 follow-up, 2026-07-29): /threads serves R2 UMBRELLAS
 # at the top level (build_umbrella_topics.py, mig 058 `parent_id`/`is_umbrella`
 # — same `dynamic-topic-<id>` prefix as a story-level topic), and the lens
-# auto-enter fires on whatever id the front page shows. An umbrella row has no
-# centroid_vec of its own and is deliberately excluded from `_TOPICS_SQL`, so
-# without this fallback exactly the BIGGEST stories (the ones an umbrella
-# collapses) would 100% miss into "seed_not_found_or_no_centroid". Resolve to
+# auto-enter fires on whatever id the front page shows. An umbrella row DOES
+# carry a centroid_vec of its own (measured 2026-08-14, docs/research/
+# recall-229/2026-08-14-duplicate-live-stories.md §1: all 176 umbrella rows
+# hold a 768-dim unit-norm vector, dt-12927 `umbrella:510` among them — the
+# "no centroid of its own" claim previously written here was FALSE). What
+# actually keeps umbrellas out of the walk is the `AND NOT is_umbrella`
+# predicate in `_TOPICS_SQL` above: it drops them from the candidate universe
+# entirely, as walk SEEDS and as returnable SIBLINGS alike. So without this
+# fallback exactly the BIGGEST stories (the ones an umbrella collapses) would
+# 100% miss into "seed_not_found_or_no_centroid" despite holding a perfectly
+# usable centroid. Resolve to
 # the umbrella's largest ACTIVE child that carries a centroid (state='active'
 # is a WHERE clause, not a tiebreak — a retired-but-largest child must never
 # win LIMIT 1 and then hard-fail seed_not_found while a smaller active child
