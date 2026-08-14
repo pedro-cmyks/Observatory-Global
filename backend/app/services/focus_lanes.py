@@ -196,10 +196,17 @@ class LaneRunner:
     """
 
     def __init__(self, conn: Any, *, deadline_ms: int = GLOBAL_DEADLINE_MS,
-                 clock: Any = time.monotonic, started_at: Optional[float] = None):
+                 clock: Any = time.monotonic, started_at: Optional[float] = None,
+                 budgets: Optional[dict[str, int]] = None):
         self._conn = conn
         self._deadline_ms = deadline_ms
         self._clock = clock
+        # Per-lane budgets, defaulting to /api/v2/focus's measured table. The
+        # Atlas Query Protocol (`services/query_verbs.py`) runs its own lanes
+        # with their own measured budgets through this SAME runner rather than
+        # growing a second bounded-lane mechanism — the "one predicate, not
+        # three" rule of this module applied to the runner itself.
+        self._budgets = budgets if budgets is not None else LANE_BUDGETS_MS
         # `started_at` lets the caller start the clock at REQUEST ENTRY
         # rather than here. That difference is load-bearing: time spent
         # queueing for a pool connection is time the user is staring at a
@@ -222,7 +229,7 @@ class LaneRunner:
         remains of the global deadline, so a late lane cannot overrun the
         handler's total bound.
         """
-        budget = LANE_BUDGETS_MS.get(lane, 2000)
+        budget = self._budgets.get(lane, 2000)
         remaining = self.remaining_ms()
         if remaining <= 0:
             # Deadline already spent — do not even issue the query. This is

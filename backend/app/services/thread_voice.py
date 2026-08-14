@@ -25,7 +25,13 @@ from app.services.voice_mix import UNKNOWN_LANGS, primary_langs, relation
 logger = logging.getLogger(__name__)
 
 # The thread's evidence members in the window, with the speaker fields.
-_THREAD_VOICE_SQL = """
+#
+# Public because the Atlas Query Protocol's `voice_mix {topic_id}` verb runs
+# THIS statement (under its own bounded lane) rather than a copy of it. The
+# protocol exists partly to double-check the serving path, and a check that
+# asked a subtly different question would report differences that are its own
+# fault. `_THREAD_VOICE_SQL` is kept as an alias for existing callers.
+THREAD_VOICE_SQL = """
     SELECT s.source_lang, s.source_origin_country, s.country_code
     FROM topic_members tm
     JOIN signals_v2 s ON s.id = tm.signal_id
@@ -35,6 +41,8 @@ _THREAD_VOICE_SQL = """
       AND tm.engine_version = $2
       AND tm.assigned_at >= NOW() - ($3::int * INTERVAL '1 hour')
 """
+
+_THREAD_VOICE_SQL = THREAD_VOICE_SQL
 
 
 def _norm_lang(raw: Any) -> str | None:

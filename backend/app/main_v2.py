@@ -170,6 +170,7 @@ from app.routers import (
     corroborate, research_articles, edges, focus_timeline, markets,
 )
 from app.routers import story
+from app.routers import query as query_router
 
 app.include_router(stats.router)
 app.include_router(archive_search.router)
@@ -207,3 +208,4 @@ app.include_router(delight.router)
 app.include_router(edges.router)
 app.include_router(focus_timeline.router)
 app.include_router(story.router)
+app.include_router(query_router.router)

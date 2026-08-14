@@ -19,6 +19,8 @@ an endpoint belongs to the one whose per-call cost it actually carries TODAY:
                 (translation)                       default 120 / 5 min
   - "read"      artifact / Redis / indexed DB reads that used to sit in "paid"
                                                     default 90 / 5 min
+  - "query"     Atlas Query Protocol verbs over the substrate
+                                                      default 20 / 5 min
   - "slow"      external-depth (holds a DB conn ~25s)  default  8 / 5 min
   - "write"     anonymous DB writes (telemetry/events) default 60 / 1 min
   - "global"    everything else                        default 600 / 1 min
@@ -58,6 +60,23 @@ Limit math (stated so the next person can re-derive rather than re-guess):
                     At the cap, worst case (100% misses) = 120 x ~65 tokens
                     ~= $0.003 per IP per 5 min; the per-(signal,lang) cache
                     means a repeat caller converges on free DB reads.
+  query 20/300s     POST /api/v3/query (2026-08-14). It was measured against
+                    "read" first, as the cheaper option, and does not fit:
+                    "read" is sized around ~1.0s per call, while one query
+                    request may carry 4 verbs x up to 3 bounded lanes under a
+                    15s global deadline (services/query_verbs.QUERY_DEADLINE_MS).
+                    Measured warm on prod, a single verb runs 0.3-1.5s, but a
+                    bucket is sized by the worst case it PERMITS, and that is
+                    15s -- 15x what "read" was justified against. At 20/300s:
+                    worst case 20 x 15s = 300 connection-seconds per window
+                    (1.0 sustained connection, 10% of the pool=10 from one IP);
+                    typical 20 x ~2s = 40, under "read"'s 90. Twenty queries
+                    per five minutes is generous against the real workload --
+                    the investigation that motivated the protocol answered the
+                    whole Colombia question in about six. Sized by
+                    CONNECTION-SECONDS, not spend: no verb calls an LLM or any
+                    external service, so it shares "paid"'s numbers for an
+                    entirely different reason.
 
 Kill switch: ATLAS_RATE_LIMIT_ENABLED=false disables all limiting.
 
@@ -121,6 +140,7 @@ def _limits() -> dict[str, tuple[int, int]]:
             _int_env("ATLAS_RL_MICRO_LLM_MAX", 120),
             _int_env("ATLAS_RL_MICRO_LLM_WINDOW", 300),
         ),
+        "query": (_int_env("ATLAS_RL_QUERY_MAX", 20), _int_env("ATLAS_RL_QUERY_WINDOW", 300)),
         "slow": (_int_env("ATLAS_RL_SLOW_MAX", 8), _int_env("ATLAS_RL_SLOW_WINDOW", 300)),
         "write": (_int_env("ATLAS_RL_WRITE_MAX", 60), _int_env("ATLAS_RL_WRITE_WINDOW", 60)),
         "global": (_int_env("ATLAS_RL_GLOBAL_MAX", 600), _int_env("ATLAS_RL_GLOBAL_WINDOW", 60)),
@@ -134,6 +154,10 @@ def _llm_flag(request: Request) -> bool:
 # (compiled path regex, bucket, optional predicate). First match wins.
 # Predicate lets us throttle a path only for a specific query flag.
 _RULE_SPECS: list[tuple[str, str, object]] = [
+    # Atlas Query Protocol — its own bucket, sized by connection-seconds. See
+    # the "query 20/300s" paragraph in the module docstring for the arithmetic
+    # and for why "read" was measured and rejected.
+    (r"^/api/v3/query$", "query", None),
     (r"^/api/v2/theme/[^/]+/external-depth$", "slow", None),
     (r"^/api/v2/research/plan$", "paid", None),
     # W4: the door a reader opens. Since mig 098 this is an ARTIFACT read —
