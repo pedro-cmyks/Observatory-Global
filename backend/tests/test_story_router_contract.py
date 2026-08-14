@@ -155,3 +155,39 @@ def test_blob_confirm_degrades_never_silently_cleaner():
     is_blob, basis = blob_basis_for_ui(degraded)
     assert is_blob is True
     assert basis == "candidate_unconfirmed"
+
+
+# ------------------------------------------------------------------ Z3 (families)
+# docs/research/recall-229/2026-08-14-duplicate-live-stories.md §1: `NOT
+# is_umbrella` removed R2 umbrellas from the candidate array entirely — as walk
+# seeds AND as returnable siblings — so dt-242 and the umbrella over its own
+# earthquake could never find each other at whitened 0.6489. Behaviour is
+# covered in tests/test_story_siblings_family_router.py; these freeze the
+# structural facts a regex CAN see.
+def test_umbrella_not_excluded_from_the_candidate_universe():
+    sql = ROUTER[ROUTER.index("_TOPICS_SQL = "):ROUTER.index("_FAMILY_SQL = ")]
+    assert "NOT is_umbrella" not in sql
+    assert "is_umbrella" in sql, "the flag is still SELECTed — rows must be markable"
+    assert "state = 'active'" in sql and "centroid_vec IS NOT NULL" in sql
+
+
+def test_family_marker_reaches_both_siblings_and_anchor():
+    assert "family_fields(sib_is_family" in ROUTER
+    assert "family_fields(anchor_is_family" in ROUTER
+
+
+def test_family_edge_carries_the_aggregate_anchor_receipt():
+    assert "aggregate_anchor_reason(families.get(s.topic_key))" in ROUTER
+
+
+def test_umbrella_anchor_cannot_be_its_own_sibling():
+    assert "s.topic_key != topic_key" in ROUTER
+
+
+def test_family_lookup_bounded_and_degrades_independently():
+    # the child COUNT rides its own nested try inside the country acquire, so a
+    # family fault never blanks the country receipts (or the reverse)
+    assert "_FAMILY_SQL" in ROUTER
+    assert "parent_id = ANY($1::int[])" in ROUTER
+    block = ROUTER[ROUTER.index("frows = []"):ROUTER.index("for cr in crows:")]
+    assert "try:" in block and "except Exception" in block

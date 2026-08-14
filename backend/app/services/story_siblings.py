@@ -27,6 +27,61 @@ DEFAULT_CAP = 11
 
 
 @dataclass(frozen=True)
+class FamilyInfo:
+    """What an R2 umbrella row rolls up. Filled by a bounded child lookup at
+    the router; `None` where that lookup found nothing or failed."""
+
+    child_count: int
+    # The children's category only when they AGREE on one — a "shared" field
+    # that reported the modal value would assert an agreement that isn't there.
+    category: str | None = None
+
+
+def family_fields(is_family: bool, info: FamilyInfo | None) -> dict:
+    """The payload fields that mark a row as a FAMILY of stories rather than a
+    story (Z3, 2026-08-14 — docs/research/recall-229/2026-08-14-duplicate-live-
+    stories.md). Umbrellas were excluded from the sibling universe entirely by
+    `NOT is_umbrella`, so dt-242 and the umbrella over its own event could
+    never find each other; letting them in is only honest if the payload says
+    WHAT they are.
+
+    `is_family` comes from `dynamic_topics.is_umbrella` — the row's own
+    lifecycle fact, always known. `info` comes from a SEPARATE bounded child
+    lookup, so it may be absent; when it is, the count degrades to `None` and
+    the row STAYS a family. A missing count must never quietly demote a
+    container back into a peer story (that is the exact misread this fixes).
+    """
+    if not is_family:
+        return {"kind": "story", "child_count": None, "family_category": None}
+    return {
+        "kind": "family",
+        "child_count": info.child_count if info else None,
+        "family_category": info.category if info else None,
+    }
+
+
+def aggregate_anchor_reason(info: FamilyInfo | None) -> dict[str, str]:
+    """The honesty receipt every family row carries alongside its cosine.
+
+    The measured edge was taken against the UMBRELLA'S centroid, which is an
+    aggregate over its children — dt-12927 carries two different earthquakes
+    plus four Ebola rows (§2 of the measurement). An aggregated anchor is a
+    weaker claim than a leaf-to-leaf match, and the receipt says so rather
+    than letting a family edge read like an ordinary one.
+    """
+    if info is None:
+        value = "measured against the family's aggregate centroid, not one story"
+    else:
+        n = info.child_count
+        noun = "story" if n == 1 else "stories"
+        value = (
+            f"measured against the family's aggregate centroid over {n} {noun}, "
+            "not one story"
+        )
+    return {"basis": "aggregate_anchor", "value": value}
+
+
+@dataclass(frozen=True)
 class Sibling:
     topic_key: str
     label: str

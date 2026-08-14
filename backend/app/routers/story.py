@@ -36,7 +36,13 @@ from app.services.constellation_walk import (
     build_knn_graph,
     confirm_blob_candidates,
 )
-from app.services.story_siblings import DEFAULT_CAP, rank_siblings
+from app.services.story_siblings import (
+    DEFAULT_CAP,
+    FamilyInfo,
+    aggregate_anchor_reason,
+    family_fields,
+    rank_siblings,
+)
 from app.services.whitening import apply_whitening, load_whitening
 
 logger = logging.getLogger(__name__)
@@ -66,14 +72,51 @@ _TOPICS_CACHE: dict = {}
 # attempts, embedded whitespace) is rejected here, cheaply, up front.
 _TOPIC_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
-# Mirrors routers/dossier.py `_WALK_TOPICS_SQL` EXACTLY (state/is_umbrella/
-# centroid filters are the walk's serving-universe contract — story-level,
-# not umbrella, active only) + label_status (Label Court verdict) added to
-# the select so the sibling payload can carry it as a receipt.
+# The walk's serving universe: active rows that carry a centroid, PLUS — since
+# Z3 (2026-08-14) — R2 umbrellas.
+#
+# This used to mirror routers/dossier.py `_WALK_TOPICS_SQL` verbatim, including
+# its `AND NOT is_umbrella`. That predicate was measured to be the whole reason
+# two live identities of one event could not see each other (docs/research/
+# recall-229/2026-08-14-duplicate-live-stories.md §1): dt-242 "7.4-Magnitude
+# Earthquake Kills Dozens in Colombia" and dt-12927, the R2 umbrella over the
+# same quake, sit at whitened cosine 0.6489 — ABOVE dt-242's then-#1 hermano
+# (0.6360) — yet the umbrella was removed from the candidate array outright, so
+# it could neither seed nor ever be RETURNED as anyone's sibling. Not a ranking
+# miss: exclusion from the universe.
+#
+# Umbrellas do carry their own centroid (all 176 rows measured unit-norm, 768d),
+# so nothing else is needed to rank them. What IS needed is that the payload
+# never passes one off as a peer story — `is_umbrella` is selected here so every
+# row can be marked `kind: 'family'` downstream (Pedro's decision Z3: an
+# umbrella may be a sibling, but only rendered as the family of N stories it is,
+# and its edge carries the aggregate-anchor caveat, story_siblings.
+# aggregate_anchor_reason).
+#
+# The ANCHOR path is deliberately unchanged: an umbrella asked about by id still
+# walks from its largest active child (_resolve_umbrella_anchor below), keeping
+# the `umbrella_resolved_via_child` note honest. This change is about who may be
+# FOUND, not about how an umbrella anchor is measured.
 _TOPICS_SQL = """
-    SELECT id, label, category, label_status, centroid_vec
+    SELECT id, label, category, label_status, is_umbrella, centroid_vec
     FROM dynamic_topics
-    WHERE state = 'active' AND NOT is_umbrella AND centroid_vec IS NOT NULL
+    WHERE state = 'active' AND centroid_vec IS NOT NULL
+"""
+
+# Bounded family lookup for the umbrella ids THIS response actually shows (the
+# anchor plus returned siblings — never the whole umbrella population). Counts
+# every child row the umbrella rolls up, in any lifecycle state, because that is
+# what the family IS; the category is reported only when the children AGREE on
+# one (COUNT(DISTINCT …) = 1), since a modal value would assert an agreement
+# that was never measured.
+_FAMILY_SQL = """
+    SELECT parent_id,
+           COUNT(*) AS n_children,
+           COUNT(DISTINCT category) FILTER (WHERE category IS NOT NULL) AS n_cats,
+           MIN(category) FILTER (WHERE category IS NOT NULL) AS a_cat
+    FROM dynamic_topics
+    WHERE parent_id = ANY($1::int[])
+    GROUP BY parent_id
 """
 
 # Country footprints for the anchor + returned siblings only (one bounded
@@ -365,6 +408,7 @@ async def get_story_siblings(thread_id: str) -> dict:
         labels: list[str] = cached_topics["labels"]
         cats: list[str | None] = cached_topics["cats"]
         statuses: list[str | None] = cached_topics["statuses"]
+        umbrella_flags: list[bool] = cached_topics["umbrellas"]
         whitened_arr: np.ndarray = cached_topics["whitened"]
         graph = cached_topics["graph"]
         blobs: set[int] = cached_topics["blobs"]
@@ -382,6 +426,7 @@ async def get_story_siblings(thread_id: str) -> dict:
         labels = []
         cats = []
         statuses = []
+        umbrella_flags = []
         vecs: list[list[float]] = []
         for r in rows:
             v = r["centroid_vec"]
@@ -392,6 +437,7 @@ async def get_story_siblings(thread_id: str) -> dict:
             labels.append(r["label"] or f"dynamic-topic-{tid}")
             cats.append(r["category"])
             statuses.append(r["label_status"])
+            umbrella_flags.append(bool(r["is_umbrella"]))
             vecs.append([float(x) for x in v])
 
         if not keys:
@@ -413,6 +459,7 @@ async def get_story_siblings(thread_id: str) -> dict:
         _TOPICS_CACHE.clear()
         _TOPICS_CACHE.update(
             at=now, keys=keys, labels=labels, cats=cats, statuses=statuses,
+            umbrellas=umbrella_flags,
             vecs=vecs_arr, whitened=whitened_arr, graph=graph, blobs=blobs,
             params=walk_params,
         )
@@ -434,7 +481,14 @@ async def get_story_siblings(thread_id: str) -> dict:
     anchor_label: str | None = None
     anchor_status: str | None = None
     try:
-        if topic_key not in keys:
+        anchor_idx = keys.index(topic_key) if topic_key in keys else None
+        # Z3: umbrellas now live in `keys`, so "is it in the matrix?" no longer
+        # answers "is it an umbrella?". The stand-in-child resolution is kept
+        # for umbrella ANCHORS on purpose — seeding an umbrella on its own
+        # aggregate centroid would silently retire the measured, labeled
+        # `umbrella_resolved_via_child` path; this change is about who can be
+        # FOUND, not about re-basing how an umbrella anchor is measured.
+        if anchor_idx is None or umbrella_flags[anchor_idx]:
             resolved = await _resolve_umbrella_anchor(topic_key)
             if resolved is None:
                 return _empty("seed_not_found_or_no_centroid")
@@ -443,7 +497,7 @@ async def get_story_siblings(thread_id: str) -> dict:
                 return _empty("seed_not_found_or_no_centroid")
             seed = keys.index(child_key)
         else:
-            seed = keys.index(topic_key)
+            seed = anchor_idx
 
         siblings = rank_siblings(
             seed, whitened_arr, keys, labels, cats, walk_params, cap=DEFAULT_CAP,
@@ -452,7 +506,14 @@ async def get_story_siblings(thread_id: str) -> dict:
         if child_key is not None:
             # The child is the anchor's stand-in for the walk, not a sibling
             # of itself — it must never appear in the returned neighborhood.
-            siblings = [s for s in siblings if s.topic_key != child_key]
+            # Neither may the UMBRELLA the caller actually asked about: now
+            # that umbrellas are walkable candidates, the anchor sits one edge
+            # from its own stand-in child and would otherwise be served as its
+            # own sibling.
+            siblings = [
+                s for s in siblings
+                if s.topic_key != child_key and s.topic_key != topic_key
+            ]
     except ValueError as exc:
         logger.error("story siblings contract violation: %s", exc, exc_info=True)
         return _empty("internal_error")
@@ -490,15 +551,55 @@ async def get_story_siblings(thread_id: str) -> dict:
     # repeatedly: attention_eclipse.py's degraded branch also never setex's,
     # attention_eclipse.py:262-265).
     want = [topic_key] + [s.topic_key for s in siblings]
+
+    # Which of the rows this response shows are FAMILIES (Z3). Read off the
+    # matrix — a lifecycle fact that is always known — so the `kind` marker
+    # never depends on the child lookup below succeeding. The anchor is a
+    # family exactly when it resolved through a stand-in child. (`key_to_idx`
+    # is the index map the blob-confirm step above already built.)
+
+    def _is_family(tk: str) -> bool:
+        idx = key_to_idx.get(tk)
+        return idx is not None and umbrella_flags[idx]
+
+    anchor_is_family = child_key is not None
+    family_keys = [tk for tk in want if _is_family(tk)]
+    if anchor_is_family and topic_key not in family_keys:
+        family_keys.append(topic_key)
+    family_ids: list[int] = []
+    for tk in family_keys:
+        try:
+            family_ids.append(int(tk[len("dynamic-topic-"):]))
+        except ValueError:
+            continue
+
     foot: dict[str, list[tuple[str, int]]] = {}
+    families: dict[str, FamilyInfo] = {}
     country_receipts_degraded = False
     try:
         async with db.pool.acquire() as conn:
             await conn.execute("SET statement_timeout = 8000")
             crows = await conn.fetch(_COUNTRIES_SQL, want)
+            # Nested so a family-lookup fault costs only the child COUNT (the
+            # row stays a family with `child_count: null`) instead of also
+            # blanking the country receipts — two lanes, two honest degrades.
+            frows = []
+            if family_ids:
+                try:
+                    frows = await conn.fetch(_FAMILY_SQL, family_ids)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "story siblings family lookup failed (child counts degrade "
+                        "to null; rows stay families): %s", exc, exc_info=True,
+                    )
         for cr in crows:
             foot.setdefault(cr["topic_id"], []).append(
                 (cr["country_code"], int(cr["n"]))
+            )
+        for fr in frows:
+            families[f"dynamic-topic-{int(fr['parent_id'])}"] = FamilyInfo(
+                child_count=int(fr["n_children"]),
+                category=fr["a_cat"] if int(fr["n_cats"] or 0) == 1 else None,
             )
     except Exception as exc:  # noqa: BLE001
         logger.warning("story siblings country footprint failed: %s", exc, exc_info=True)
@@ -516,6 +617,13 @@ async def get_story_siblings(thread_id: str) -> dict:
         shared = sorted(set(_countries(s.topic_key)) & set(anchor_countries))
         if shared:
             reasons.append({"basis": "shared_country", "value": ",".join(shared)})
+        # Z3: a family's edge was measured against an AGGREGATE centroid — a
+        # weaker claim than a leaf-to-leaf match, and the receipt says so on
+        # the row itself rather than only in the render. Appended (never
+        # first) so the chip's headline receipt stays the cosine.
+        sib_is_family = _is_family(s.topic_key)
+        if sib_is_family:
+            reasons.append(aggregate_anchor_reason(families.get(s.topic_key)))
         # C2: `is_blob` now reads CONFIRMED-only (membership multimodality),
         # never the raw entropy candidate flag — `blob_ui` degrades honestly
         # to 'candidate_unconfirmed' rather than silently reading as cleaner.
@@ -535,6 +643,7 @@ async def get_story_siblings(thread_id: str) -> dict:
                 "label_status": status_by_key.get(s.topic_key),
                 "countries": _countries(s.topic_key),
                 "reasons": reasons,
+                **family_fields(sib_is_family, families.get(s.topic_key)),
             }
         )
 
@@ -561,6 +670,10 @@ async def get_story_siblings(thread_id: str) -> dict:
             # "cleared". C2, same confirmer as the siblings above.
             "is_blob": anchor_is_blob,
             "blob_basis": anchor_blob_basis,
+            # Z3: the anchor carries the same marker its siblings do — an
+            # umbrella opened directly is a FAMILY, and the reader must see
+            # that on the banner, not only on rows.
+            **family_fields(anchor_is_family, families.get(topic_key)),
         },
         "siblings": sib_payload,
         "notes": notes,
