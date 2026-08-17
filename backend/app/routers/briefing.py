@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query
@@ -98,7 +99,12 @@ async def _fetch_section(
     *args,
     row: bool = False,
     timeout_seconds: float | None = None,
+    timings: dict | None = None,
 ):
+    # T1 profiler (spec §9): time the WHOLE body in a finally — a degraded
+    # section must still report its cost (a 14.9s degrade is exactly what we
+    # are hunting). Milliseconds, rounded to 1 decimal, keyed by segment name.
+    _t0 = time.perf_counter()
     try:
         if row and timeout_seconds is None:
             return await conn.fetchrow(query, *args, timeout=BRIEFING_DB_TIMEOUT_SECONDS)
@@ -111,6 +117,9 @@ async def _fetch_section(
         degraded_segments.append(segment)
         logger.warning("briefing section degraded: %s: %s", segment, exc)
         return None if row else []
+    finally:
+        if timings is not None:
+            timings[segment] = round((time.perf_counter() - _t0) * 1000, 1)
 
 def _build_theme_country_map(rows) -> list:
     """Group theme_country_hourly rows into [{theme, countries: [{code, name, count}]}]."""
@@ -149,11 +158,18 @@ def _use_historical_processed(hours: int) -> bool:
 
 
 @router.get("/api/v2/briefing")
-async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
+async def get_briefing(
+    hours: int = Query(24, ge=1, le=8760),
+    profile: bool = Query(False),
+):
     """Get morning briefing summary."""
     cache_key = f"briefing_data:{hours}"
     cache_ttl = 900 if hours <= 24 else 1800
-    if hasattr(app.state, "redis") and app.state.redis:
+    # T1 profiler (spec §9): collected ALWAYS (one log line per compute);
+    # served in the payload only under ?profile=1, which bypasses the cache
+    # read AND write — a profiled payload never poisons the cache.
+    timings: dict[str, float] = {}
+    if not profile and hasattr(app.state, "redis") and app.state.redis:
         try:
             cached = await app.state.redis.get(cache_key)
             if cached:
@@ -164,6 +180,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 15000")
         degraded_segments: list[str] = []
+        _t0 = time.perf_counter()
         has_theme_country_hourly = await conn.fetchval(
             "SELECT to_regclass('theme_country_hourly_v2') IS NOT NULL"
         )
@@ -173,6 +190,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         has_historical_source_daily = await conn.fetchval(
             "SELECT to_regclass('historical_source_daily') IS NOT NULL"
         )
+        timings["schema_probes"] = round((time.perf_counter() - _t0) * 1000, 1)
         # Use pre-agg tables for every window. Sentiment payload selects NLP
         # transformer-normalized values when bucket NLP coverage clears the
         # threshold, otherwise falls back to GDELT V2Tone. chosen_sentiment_raw
@@ -206,7 +224,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                    (nlp_total::float / NULLIF(sig_total, 0))  AS nlp_coverage
             FROM agg
             ORDER BY total DESC LIMIT 10
-        """, hours)
+        """, hours, timings=timings)
         negative_sentiment = await _fetch_section(conn, degraded_segments, "negative_sentiment", """
             WITH agg AS (
                 SELECT h.country_code, c.name,
@@ -248,7 +266,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                    END                                         AS chosen_sentiment_raw
             FROM agg
             ORDER BY chosen_sentiment_raw ASC LIMIT 10
-        """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE)
+        """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE, timings=timings)
         positive_sentiment = await _fetch_section(conn, degraded_segments, "positive_sentiment", """
             WITH agg AS (
                 SELECT h.country_code, c.name,
@@ -290,13 +308,13 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                    END                                         AS chosen_sentiment_raw
             FROM agg
             ORDER BY chosen_sentiment_raw DESC LIMIT 10
-        """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE)
+        """, hours, NLP_COVERAGE_THRESHOLD, NLP_SENTIMENT_SCALE, timings=timings)
 
         # #249: the Brief's back-matter index is ATLAS categories (R3.1 — our
         # own open category level), not the GDELT taxonomy. The Editor's
         # Analysis reads the SAME constant (see _CATEGORY_COUNTS_SQL).
         category_counts = await _fetch_section(
-            conn, degraded_segments, "category_counts", _CATEGORY_COUNTS_SQL
+            conn, degraded_segments, "category_counts", _CATEGORY_COUNTS_SQL, timings=timings
         )
 
         # B3 (L1 review 2026-07-05): the #225 gap box, finally fed — categories
@@ -306,16 +324,18 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # gate_pending (scored=0) is labeled, never conflated with rejected.
         coverage_gaps = await _fetch_section(
             conn, degraded_segments, "coverage_gaps",
-            GLOBAL_GAPS_SQL, hours, GLOBAL_GAP_FLOOR,
+            GLOBAL_GAPS_SQL, hours, GLOBAL_GAP_FLOOR, timings=timings,
         )
 
         # Gap-box extended receipts (measured 2026-07-16, docs/research/gap-pool):
         # the 2-3 most newsworthy hits in a gap category sit above its extended
         # (~75%) threshold and are recoverable now — max K=3, tier-labeled.
         # Guarded per gap inside the shared helper.
+        _t0 = time.perf_counter()
         gap_receipts_by_slug = await fetch_extended_receipts_by_slug(
             conn, [g["slug"] for g in coverage_gaps], hours
         )
+        timings["gap_extended_receipts"] = round((time.perf_counter() - _t0) * 1000, 1)
 
         # Long windows should use compact processed historical tables, not raw
         # historical scans. For hot windows, theme_hourly_v2 remains the live
@@ -335,7 +355,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                   AND model_version = $2::text
                 GROUP BY topic_slug
                 ORDER BY count DESC LIMIT 10
-            """, hours, HISTORICAL_PROCESSED_MODEL_VERSION)
+            """, hours, HISTORICAL_PROCESSED_MODEL_VERSION, timings=timings)
             top_themes_source = "historical_topic_country_daily"
         else:
             top_themes = await _fetch_section(conn, degraded_segments, "top_themes", """
@@ -348,7 +368,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 FROM theme_hourly_v2
                 WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
                 GROUP BY theme ORDER BY count DESC LIMIT 10
-            """, hours)
+            """, hours, timings=timings)
             top_themes_source = "theme_hourly_v2"
         # Long-window source rankings use compact processed history. Hot windows
         # keep the bounded raw scan so same-day sources reflect current ingestion
@@ -368,7 +388,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 ORDER BY count DESC
                 LIMIT 5
             """, hours, HISTORICAL_PROCESSED_MODEL_VERSION,
-                timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS)
+                timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS, timings=timings)
             top_sources_source = "historical_source_daily"
         else:
             top_sources = await _fetch_section(conn, degraded_segments, "top_sources", """
@@ -383,7 +403,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 GROUP BY source_name
                 ORDER BY count DESC
                 LIMIT 5
-            """, hours, timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS)
+            """, hours, timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS, timings=timings)
             top_sources_source = "signals_v2"
         # Heat ranking (#149): atlas_heat from country_heat_v2 ranks countries by
         # what is heating up right now (velocity + surprise + source diversity +
@@ -397,8 +417,13 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # routers/heat.py). No consumer reads it today. The `gap` section
         # further down deliberately does NOT read this column: it counts outlet
         # ownership itself so an unjudgeable country comes back null + reason.
+        _t0 = time.perf_counter()
         has_country_heat = await conn.fetchval(
             "SELECT to_regclass('country_heat_v2') IS NOT NULL"
+        )
+        timings["schema_probes"] = round(
+            timings.get("schema_probes", 0.0)
+            + (time.perf_counter() - _t0) * 1000, 1
         )
         if has_country_heat:
             heat_countries = await _fetch_section(conn, degraded_segments, "heat_countries", """
@@ -419,7 +444,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                   AND h.atlas_heat IS NOT NULL
                 ORDER BY h.atlas_heat DESC
                 LIMIT 10
-            """)
+            """, timings=timings)
             # Hot AND voluminous (#187): filter heat to countries whose volume
             # clears the configurable percentile, then re-rank by atlas_heat.
             # Surfaces stories big enough to matter and surprising enough to
@@ -453,7 +478,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                   AND h.volume_now >= (SELECT v FROM volume_floor)
                 ORDER BY h.atlas_heat DESC
                 LIMIT 10
-            """, HEAT_VOLUMINOUS_PERCENTILE)
+            """, HEAT_VOLUMINOUS_PERCENTILE, timings=timings)
         else:
             heat_countries = []
             heat_voluminous_countries = []
@@ -468,6 +493,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # signal per (topic, version), so COUNT(*) == COUNT(DISTINCT signal_id)
         # within each group — the cheap COUNT avoids a 200ms sort.
         # Hot path measured at ~40 ms on 33k assignments (24h window).
+        _t0 = time.perf_counter()
         has_atlas_assignments = await conn.fetchval(
             "SELECT to_regclass('signal_topic_assignments') IS NOT NULL"
         )
@@ -479,6 +505,10 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         )
         has_emergent_clusters = await conn.fetchval(
             "SELECT to_regclass('emergent_clusters') IS NOT NULL"
+        )
+        timings["schema_probes"] = round(
+            timings.get("schema_probes", 0.0)
+            + (time.perf_counter() - _t0) * 1000, 1
         )
 
         # Topic surface: prefer the self-curated dynamic_topics lifecycle when
@@ -542,13 +572,17 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                         LIMIT 4
                     ) h
                 ) sh ON TRUE
-            """, hours)
+            """, hours, timings=timings)
 
         if not top_atlas_topics and has_emergent_clusters:
+            _t0 = time.perf_counter()
             snap_row = await conn.fetchrow(
                 "SELECT MAX(snapshot_at) AS snap FROM emergent_clusters "
                 "WHERE snapshot_at > NOW() - ($1::int * INTERVAL '1 hour')",
                 hours,
+            )
+            timings["top_atlas_topics_snap_probe"] = round(
+                (time.perf_counter() - _t0) * 1000, 1
             )
             snap = snap_row["snap"] if snap_row else None
             if snap is not None:
@@ -575,7 +609,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                     WHERE snapshot_at = $1
                     ORDER BY velocity DESC NULLS LAST, n_signals DESC
                     LIMIT 10
-                """, snap)
+                """, snap, timings=timings)
 
         if not top_atlas_topics and has_atlas_assignments:
             # Fallback: original static atlas_topics ranking. Same contract.
@@ -600,7 +634,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 GROUP BY t.slug, t.label, t.parent_domain, a.model_version
                 ORDER BY signal_count DESC
                 LIMIT 10
-            """, hours)
+            """, hours, timings=timings)
 
         # Living Narrative Threads (Milestone 2): assemble the same product
         # contract that /api/v2/threads serves so Brief leads with natural
@@ -610,6 +644,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # briefing payload still ships.
         top_threads: list = []
         if has_atlas_assignments:
+            _t0 = time.perf_counter()
             try:
                 top_threads = await fetch_threads(
                     hours=hours,
@@ -621,6 +656,8 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 degraded_segments.append("top_threads")
                 logger.warning("briefing section degraded: top_threads: %s", exc)
                 top_threads = []
+            finally:
+                timings["top_threads"] = round((time.perf_counter() - _t0) * 1000, 1)
 
         # LO QUE SUBE + EL VACÍO (T3.2, spec §3b): the two sections that make the
         # Brief the diary of the COVERAGE rather than a late wire front page.
@@ -628,14 +665,18 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
         # SAME functions run inside the nightly seal, so the front page and the
         # sealed artifact can never say different things. Both degrade into a
         # served reason; neither can 500 the briefing.
+        _t0 = time.perf_counter()
         rising_section = await fetch_rising(
             conn, hours=hours, timeout=BRIEF_SECTION_DB_TIMEOUT_SECONDS,
         )
+        timings["rising"] = round((time.perf_counter() - _t0) * 1000, 1)
         if rising_section.get("status") == "unavailable":
             degraded_segments.append("rising")
+        _t0 = time.perf_counter()
         gap_section = await fetch_gap(
             conn, computed_by="live", timeout=BRIEF_SECTION_DB_TIMEOUT_SECONDS,
         )
+        timings["gap"] = round((time.perf_counter() - _t0) * 1000, 1)
         if gap_section.get("status") == "unavailable":
             degraded_segments.append("gap")
 
@@ -680,7 +721,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 FROM per_topic
                 GROUP BY parent_domain
                 ORDER BY domain_signal_count DESC
-            """, hours)
+            """, hours, timings=timings)
             related_topics = await _fetch_section(
                 conn, degraded_segments, "related_topics", """
                 WITH pairs AS (
@@ -743,7 +784,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 FROM ranked
                 WHERE rnk <= 3
                 GROUP BY topic_slug
-            """, hours)
+            """, hours, timings=timings)
         else:
             topics_by_domain = []
             related_topics = []
@@ -766,7 +807,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                        / NULLIF(SUM(signal_count), 0))                AS nlp_coverage
             FROM country_hourly_v2
             WHERE hour > NOW() - ($1::int * INTERVAL '1 hour')
-        """, hours, row=True)
+        """, hours, row=True, timings=timings)
 
         # Theme-country: always use 24h window — fast index lookup, "right now" framing
         top_theme_codes = [r['theme'] for r in top_themes[:6]]
@@ -781,7 +822,7 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
                 GROUP BY tc.theme, tc.country_code, c.name
                 ORDER BY tc.theme, cnt DESC
             """, top_theme_codes,
-                timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS)
+                timeout_seconds=BRIEFING_OPTIONAL_DB_TIMEOUT_SECONDS, timings=timings)
         else:
             theme_country_rows = []
 
@@ -1024,7 +1065,20 @@ async def get_briefing(hours: int = Query(24, ge=1, le=8760)):
             "top_sources_source": top_sources_source,
             "theme_country": _build_theme_country_map(theme_country_rows)
         }
-    if hasattr(app.state, "redis") and app.state.redis:
+    # T1 profiler: ALWAYS log the breakdown (descending — the culprit leads);
+    # attach it to the payload only under ?profile=1, and never cache a
+    # profiled payload (it bypassed the cache read, it must bypass the write).
+    total_ms = round(sum(timings.values()), 1)
+    logger.info(
+        "briefing sections total=%sms breakdown=%s", total_ms,
+        dict(sorted(timings.items(), key=lambda kv: -kv[1])),
+    )
+    if profile:
+        result["meta_profile"] = {
+            "section_timings_ms": timings,
+            "sections_total_ms": total_ms,
+        }
+    if not profile and hasattr(app.state, "redis") and app.state.redis:
         try:
             await app.state.redis.setex(cache_key, cache_ttl, json.dumps(result))
         except Exception:
