@@ -302,9 +302,14 @@ fi
 # the cache for everyone after. This build runs OFF the request path with full
 # section budgets (8s/15s) + an honest retry, and upserts one JSONB row the
 # handler serves on a Redis miss while it is <=75 min old (2.5 cycles of this
-# cron — one missed run never degrades the reader). Runs on backend/.venv
-# (fastapi lives there, not in mlvenv). Guarded by atlas_step: non-fatal to
-# the run but VISIBLE + counted (the L1 lesson — non-fatal must never mean
+# cron — one missed run never degrades the reader). Runs on $BACKEND_DIR/.venv
+# — under launchd that is the ALW backend tree's venv, which carries
+# fastapi+httpx+numpy+redis+aiohttp for the app.main_v2 import (installed
+# 2026-08-17; mlvenv has torch but NO fastapi). SYNC RULE: on any change to
+# app/routers/briefing.py or scripts/build_briefing_artifact.py, re-copy both
+# into /Users/pedro/AtlasLocalWorker/backend/ (same rule as the other engine
+# scripts this runner executes). Guarded by atlas_step: non-fatal to the run
+# but VISIBLE + counted (the L1 lesson — non-fatal must never mean
 # invisible). Reverse: ATLAS_BRIEFING_ARTIFACT=off (handler falls back to the
 # live assembly on its own once the stored row ages past 75 min).
 if [[ "${ATLAS_BRIEFING_ARTIFACT:-on}" == "on" ]]; then
