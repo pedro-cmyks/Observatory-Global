@@ -332,6 +332,25 @@ export const UI_COPY = {
         es: 'Señal doméstica, aún sin aflorar',
     },
 
+    // ---------------- day anatomy (reader) ----------------
+    // Segment kickers for the near → changed → odd → world anatomy (spec
+    // 2026-08-17 §3). `changedSince` renders only when hoursSince() returns
+    // non-null — a first visit gets the plain kicker, never "0h ago". The
+    // proposed-place hint is the §6 "never silent" obligation made visible.
+    'anatomy.kicker.near': { en: 'Near you · {place}', es: 'Cerca de ti · {place}' },
+    'anatomy.kicker.changed': { en: 'What changed', es: 'Qué cambió' },
+    'anatomy.kicker.changedSince': {
+        en: 'What changed · since your last read, {h}h ago',
+        es: 'Qué cambió · desde tu última lectura, hace {h}h',
+    },
+    'anatomy.kicker.odd': { en: 'What is odd', es: 'Qué está raro' },
+    'anatomy.kicker.world': { en: 'The world', es: 'El mundo' },
+    'anatomy.place.change': { en: 'change', es: 'cambiar' },
+    'anatomy.place.proposed': {
+        en: 'guessed from your device — tap to change',
+        es: 'propuesto por tu dispositivo — toca para cambiar',
+    },
+
     // ---------------- footer / colophon / error ----------------
     'brief.method.lead': {
         en: 'Positions and prominence are measured from coverage volume, languages and countries.',
