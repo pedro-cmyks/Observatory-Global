@@ -54,6 +54,8 @@ import asyncpg  # noqa: E402
 from fastapi.encoders import jsonable_encoder  # noqa: E402
 
 from app import db  # noqa: E402
+import app.main_v2  # noqa: E402,F401 — the router imports the app; import it
+# first or the circular import leaves briefing.router undefined at line 188
 from app.routers.briefing import get_briefing  # noqa: E402
 
 logger = logging.getLogger("build_briefing_artifact")
