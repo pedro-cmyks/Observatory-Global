@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query
+from fastapi.encoders import jsonable_encoder
 from app import db
 from app.main_v2 import app
 from app.utils import _is_valid_person, extract_domain
@@ -1082,7 +1083,14 @@ async def get_briefing(
         }
     if not profile and hasattr(app.state, "redis") and app.state.redis:
         try:
-            await app.state.redis.setex(cache_key, cache_ttl, json.dumps(result))
+            # jsonable_encoder = the EXACT transform FastAPI applies to the
+            # fresh response (Decimal→float, datetime→isoformat), so a cache
+            # hit serves byte-parity with a fresh serve. Plain json.dumps
+            # choked on Postgres SUM() Decimals and the old bare `except`
+            # swallowed it — the cache was dead, every reader paid the full
+            # 15-18s serialized fill (measured 2026-08-17).
+            await app.state.redis.setex(
+                cache_key, cache_ttl, json.dumps(jsonable_encoder(result)))
         except Exception as exc:
             # 2026-08-17: was a bare `pass`. Measured consequence of the
             # silence: three back-to-back "warm" requests each recomputed the
@@ -1287,9 +1295,12 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
     result = {"insight": insight_text, "provider": provider, "generated_at": generated_at, "cached": False}
     if hasattr(app.state, "redis") and app.state.redis:
         try:
-            await app.state.redis.setex(cache_key, 1800, json.dumps(result))
-        except Exception:
-            pass
+            # Same parity rule as the briefing cache: encode what FastAPI
+            # would serve, and a failed write is logged, never swallowed.
+            await app.state.redis.setex(
+                cache_key, 1800, json.dumps(jsonable_encoder(result)))
+        except Exception as exc:
+            logger.warning("insight cache WRITE failed (%s): %s", cache_key, exc)
     return result
 
 
