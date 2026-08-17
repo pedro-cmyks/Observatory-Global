@@ -174,8 +174,10 @@ async def get_briefing(
             cached = await app.state.redis.get(cache_key)
             if cached:
                 return json.loads(cached)
-        except Exception:
-            pass
+        except Exception as exc:
+            # 2026-08-17: was a bare `pass` — the L1-blackout class. A broken
+            # cache read must not break the response, but it must be SEEN.
+            logger.warning("briefing cache READ failed (%s): %s", cache_key, exc)
 
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 15000")
@@ -1081,8 +1083,12 @@ async def get_briefing(
     if not profile and hasattr(app.state, "redis") and app.state.redis:
         try:
             await app.state.redis.setex(cache_key, cache_ttl, json.dumps(result))
-        except Exception:
-            pass
+        except Exception as exc:
+            # 2026-08-17: was a bare `pass`. Measured consequence of the
+            # silence: three back-to-back "warm" requests each recomputed the
+            # full 15-18s serialized fill — the 900s cache had been dead with
+            # nobody watching. Same rule as the read: degrade, but say so.
+            logger.warning("briefing cache WRITE failed (%s): %s", cache_key, exc)
     return result
 
 
