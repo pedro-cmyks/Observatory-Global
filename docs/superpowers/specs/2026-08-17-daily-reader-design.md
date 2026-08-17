@@ -38,6 +38,30 @@ Cuatro huecos concretos, medidos contra el producto de hoy:
 | No hay veredicto | Lo raro se sirve como *chips* | Lo que hizo bacano el reporte era exactamente eso, contado |
 | No hay retorno | Lees, clicas, te vas | Nada de eso vuelve a la edición de mañana |
 
+## 2.1 · La voz — editorializar la selección, nunca la opinión
+
+**Regla de Pedro (2026-08-17): Atlas no puede presentar un punto de vista.**
+Menciona hechos, muestra relaciones medidas. El conflicto aparente con «el
+Brief como argumento» se resuelve separando dos cosas que la prensa mezcla:
+
+- **Editorializar = elegir.** Qué lidera, en qué orden, qué relación se
+  muestra. Eso SÍ lo hace Atlas — y lo hace por regla declarada (§4), no por
+  criterio oculto. Elegir contar primero «48/48 recibos extranjeros» es la
+  única editorialización permitida.
+- **Opinar = juzgar.** Adjetivos de valor («preocupante», «escandaloso»),
+  causalidad no medida («esto explica aquello»), recomendaciones de postura.
+  Eso NO existe en ninguna superficie del lector.
+
+**Test mecánico, no aspiracional**: toda frase del lead debe ser trazable a
+una medición servida — cada claim carga su número o no entra. El «por qué
+lidera» es un reason-code, no un argumento persuasivo. Las relaciones se
+sirven como el caminante ya las sirve: *asociación medida con recibo, nunca
+causación* — la causa la pone la mente del lector, no la voz de Atlas.
+
+La «tesis» del §2 queda re-nombrada por esta regla: no es una opinión, es
+**la anomalía medida más fuerte del día, dicha en una frase**. Si el día no
+tiene anomalía que pase la barra, no hay tesis (§4).
+
 ## 3 · La anatomía del día — **un lead, luego las capas**
 
 *(Elegida sobre «capas fijas» y «el día manda».)*
@@ -320,6 +344,10 @@ diez veredictos, incluidos los que mataron trabajo hecho.
   perfil. El cortafuegos se verifica, no se promete.
 - **G-ESPEJO** — todo interés servido carga procedencia y evidencia; quitar un
   chip cambia la edición siguiente de forma observable.
+- **G-SIN-OPINIÓN** — auditoría sobre 14 leads reales: cada frase servida es
+  trazable a una medición del payload (número, percentil o relación con
+  recibo). Una frase que no puede nombrar su medición es un FAIL del lead
+  entero, no una nota de estilo.
 
 **Un KILL con evidencia limpia vale más que un pase de cortesía.**
 
