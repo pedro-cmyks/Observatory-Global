@@ -246,3 +246,23 @@ def test_build_once_trims_meta_profile_and_reports_cost(monkeypatch):
     assert "meta_profile" not in run["payload"]
     assert isinstance(run["build_ms"], (int, float))
     assert isinstance(run["degraded_segments"], list)
+
+
+def test_should_publish_the_kiosk_rule():
+    """Never replace a good edition with a worse one just because it is newer —
+    unless the good one has gone stale (measured motive: the 22:06 cron build
+    with 4 degraded overwrote the 21:47 edition that had 2)."""
+    from scripts.build_briefing_artifact import should_publish
+
+    # empty kiosk: anything measured beats nothing
+    assert should_publish(4, None, None) is True
+    # worse than a FRESH stored edition -> withheld
+    assert should_publish(4, 2, 30.0) is False
+    # equal quality -> fresher wins
+    assert should_publish(2, 2, 30.0) is True
+    # better -> publish
+    assert should_publish(1, 2, 30.0) is True
+    # worse, but the stored edition went stale -> freshness wins over quality
+    assert should_publish(4, 2, 91.0) is True
+    # boundary: exactly at the window the stored edition still outranks
+    assert should_publish(4, 2, 90.0) is False

@@ -88,6 +88,30 @@ def pick_publish(first: dict[str, Any], second: dict[str, Any] | None) -> dict[s
     return second
 
 
+# How long a BETTER stored edition outranks a WORSE fresh build. 3 cron
+# cycles: past that, freshness wins even over quality — a permanently
+# degraded section must never freeze the kiosk on an ever-aging edition.
+KEEP_BETTER_MINUTES = 90.0
+
+
+def should_publish(new_degraded: int, stored_degraded: int | None,
+                   stored_age_minutes: float | None,
+                   keep_better_minutes: float = KEEP_BETTER_MINUTES) -> bool:
+    """The kiosk rule: never replace a good edition with a worse one just
+    because it is newer — unless the good one has gone stale.
+
+    Measured motive (2026-08-17): the 22:06 cron build ran right after the
+    classifier steps with the pooler hot, came out with FOUR degraded
+    sections, and overwrote the 21:47 edition that had two. The fill-lottery
+    had moved from the readers to the kiosk.
+    """
+    if stored_degraded is None or stored_age_minutes is None:
+        return True  # empty kiosk: anything measured beats nothing
+    if stored_age_minutes > keep_better_minutes:
+        return True  # freshness wins over a stale edition, however good
+    return new_degraded <= stored_degraded
+
+
 async def _build_once(hours: int) -> dict[str, Any]:
     """One full live assembly through the router's own code path."""
     payload = await get_briefing(hours=hours, profile=True)
@@ -132,7 +156,28 @@ async def _run(*, execute: bool, hours: int) -> dict[str, Any]:
         payload["served_from"] = "artifact"
         payload["artifact_generated_at"] = generated_at.isoformat()
 
+        withheld = False
         if execute:
+            async with db.pool.acquire() as conn:
+                stored = await conn.fetchrow(
+                    "SELECT COALESCE(array_length(degraded_segments, 1), 0) AS n,"
+                    "       EXTRACT(EPOCH FROM (now() - generated_at)) / 60.0 AS age_min"
+                    "  FROM briefing_artifacts WHERE window_hours = $1",
+                    int(hours),
+                )
+                if not should_publish(
+                    len(chosen["degraded_segments"]),
+                    stored["n"] if stored else None,
+                    float(stored["age_min"]) if stored else None,
+                ):
+                    withheld = True
+                    logger.warning(
+                        "kiosk keeps the stored edition: new build has %d degraded "
+                        "vs stored %d (age %.0f min < %.0f) — publish WITHHELD",
+                        len(chosen["degraded_segments"]), stored["n"],
+                        float(stored["age_min"]), KEEP_BETTER_MINUTES,
+                    )
+        if execute and not withheld:
             async with db.pool.acquire() as conn:
                 await conn.execute(
                     _UPSERT_SQL,
@@ -158,6 +203,7 @@ async def _run(*, execute: bool, hours: int) -> dict[str, Any]:
                 for r in ([first] + ([second] if second else []))
             ],
             "retried": second is not None,
+            "publish_withheld": withheld,
             "published": {
                 "build_ms": chosen["build_ms"],
                 "degraded_segments": chosen["degraded_segments"],
