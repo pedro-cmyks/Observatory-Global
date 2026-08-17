@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Query
 from fastapi.encoders import jsonable_encoder
@@ -34,6 +34,14 @@ HEAT_VOLUMINOUS_PERCENTILE = float(os.getenv("BRIEFING_HEAT_VOLUMINOUS_PERCENTIL
 HISTORICAL_PROCESSED_MODEL_VERSION = os.getenv(
     "BRIEFING_HISTORICAL_MODEL_VERSION",
     "atlas-hist-v1",
+)
+# Precompute-and-serve (mig 101, 2026-08-17): a Redis miss reads the
+# precomputed artifact before ever paying the 15-18s serial live fill
+# (docs/research/perf/2026-08-17-briefing-profile.md). Fresh = 2.5 cycles of
+# the 30-min builder cron: one missed cron never degrades the reader; two and
+# a half do — honestly, by falling through to the live assembly.
+BRIEFING_ARTIFACT_MAX_AGE_MINUTES = int(
+    os.getenv("BRIEFING_ARTIFACT_MAX_AGE_MINUTES", "75")
 )
 
 from app.services.sentiment_fusion import (  # noqa: E402 — kept here to group briefing config
@@ -158,6 +166,58 @@ def _use_historical_processed(hours: int) -> bool:
     return hours > 24
 
 
+async def _read_briefing_artifact(hours: int) -> dict | None:
+    """Fresh precomputed payload for this window (mig 101), or None.
+
+    Never raises: this read sits IN FRONT of the 15-18s live fill, so a
+    missing table, a cold pool or a timeout must fall THROUGH to the live
+    assembly — and be SEEN (logged, never a silent `pass`: the L1-blackout
+    except class, commit 8b8078d4).
+
+    Freshness is enforced twice on purpose: the SQL predicate is the primary
+    filter, and the Python check is the belt to that brace — it keeps the
+    75-minute bound testable without a database clock and guards against the
+    two drifting apart.
+    """
+    if db.pool is None:
+        return None
+    try:
+        async with db.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT payload, generated_at
+                FROM briefing_artifacts
+                WHERE window_hours = $1
+                  AND generated_at > now() - ($2::int * interval '1 minute')
+                """,
+                hours, BRIEFING_ARTIFACT_MAX_AGE_MINUTES, timeout=5,
+            )
+    except Exception as exc:  # noqa: BLE001 — the artifact read is best-effort
+        logger.warning(
+            "briefing artifact read failed (hours=%s): %s: %s",
+            hours, type(exc).__name__, str(exc)[:200],
+        )
+        return None
+    if row is None:
+        return None
+    generated_at = row["generated_at"]
+    if generated_at is None or (
+        datetime.now(timezone.utc) - generated_at
+        > timedelta(minutes=BRIEFING_ARTIFACT_MAX_AGE_MINUTES)
+    ):
+        return None
+    payload = row["payload"]
+    if isinstance(payload, (str, bytes)):
+        try:
+            payload = json.loads(payload)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "briefing artifact payload unparseable (hours=%s): %s", hours, exc
+            )
+            return None
+    return payload if isinstance(payload, dict) else None
+
+
 @router.get("/api/v2/briefing")
 async def get_briefing(
     hours: int = Query(24, ge=1, le=8760),
@@ -179,6 +239,26 @@ async def get_briefing(
             # 2026-08-17: was a bare `pass` — the L1-blackout class. A broken
             # cache read must not break the response, but it must be SEEN.
             logger.warning("briefing cache READ failed (%s): %s", cache_key, exc)
+
+    # ORDER OF TRUTH (mig 101): Redis hit (above) -> fresh precomputed
+    # artifact -> live assembly. The artifact is built off the request path
+    # with full section budgets + retry, so serving it beats paying the
+    # 15-18s serial fill AND inheriting the fill-lottery's frozen
+    # degradations (perf profile 2026-08-17 §2). ?profile=1 NEVER reads it:
+    # profile stays the measuring instrument of the live path.
+    if not profile:
+        artifact = await _read_briefing_artifact(hours)
+        if artifact is not None:
+            if hasattr(app.state, "redis") and app.state.redis:
+                try:
+                    # The payload comes from jsonb and was jsonable-encoded at
+                    # build time, so a plain dumps is already parity-safe.
+                    await app.state.redis.setex(
+                        cache_key, cache_ttl, json.dumps(artifact))
+                except Exception as exc:
+                    logger.warning(
+                        "briefing cache WRITE failed (%s): %s", cache_key, exc)
+            return artifact
 
     async with db.pool.acquire() as conn:
         await conn.execute("SET statement_timeout = 15000")
@@ -854,6 +934,11 @@ async def get_briefing(
         result = {
             "period_hours": hours,
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            # Which path produced this payload. The live assembly says so
+            # BEFORE its cache write; the builder overwrites it to "artifact"
+            # (+ artifact_generated_at) before the upsert, so a reader can
+            # always tell what they were served.
+            "served_from": "live",
             "degraded": bool(degraded_segments),
             "degraded_segments": degraded_segments,
             "stats": {

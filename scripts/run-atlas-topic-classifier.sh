@@ -28,6 +28,10 @@ set -euo pipefail
 #   thread cannot lead, so the stamp must land on the SAME cadence topics are
 #   promoted on). Bounded --limit 40 catches every newly-promoted topic within
 #   one cycle; steady-state = 0 DeepSeek calls (~cents when it fires).
+# Step 6: build_briefing_artifact --execute (mig 101, 2026-08-17): precompute
+#   the /api/v2/briefing payload with full section budgets + retry so a Redis
+#   miss serves the artifact instead of the 15-18s serial live fill. Kill
+#   switch: ATLAS_BRIEFING_ARTIFACT=off.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -d "$SCRIPT_DIR/backend" ]]; then
@@ -289,6 +293,25 @@ if [[ "${ATLAS_LABEL_COURT_ENABLED:-true}" == "true" \
   fi
 else
   echo "[atlas-topic] skip label court (disabled, DEEPSEEK_API_KEY or mlvenv missing)" >&2
+fi
+
+# Step 6 (2026-08-17): PRECOMPUTE the /api/v2/briefing artifact (mig 101).
+# Profiled 2026-08-17 (docs/research/perf/2026-08-17-briefing-profile.md): the
+# live fill is 15-18s of serial sections, a reader pays it on every 900s TTL
+# expiry, and the fill-lottery freezes that reader's degraded sections into
+# the cache for everyone after. This build runs OFF the request path with full
+# section budgets (8s/15s) + an honest retry, and upserts one JSONB row the
+# handler serves on a Redis miss while it is <=75 min old (2.5 cycles of this
+# cron — one missed run never degrades the reader). Runs on backend/.venv
+# (fastapi lives there, not in mlvenv). Guarded by atlas_step: non-fatal to
+# the run but VISIBLE + counted (the L1 lesson — non-fatal must never mean
+# invisible). Reverse: ATLAS_BRIEFING_ARTIFACT=off (handler falls back to the
+# live assembly on its own once the stored row ages past 75 min).
+if [[ "${ATLAS_BRIEFING_ARTIFACT:-on}" == "on" ]]; then
+  atlas_step "briefing artifact build" "$BACKEND_DIR" \
+    "$BACKEND_DIR/.venv/bin/python" -m scripts.build_briefing_artifact --execute
+else
+  echo "[atlas-topic] skip briefing artifact (ATLAS_BRIEFING_ARTIFACT=off)" >&2
 fi
 
 # The run's verdict. A provider outage or a majority-failed run now exits
