@@ -286,6 +286,63 @@ FIPS_NO_ISO = frozenset({
 })
 
 
+# ---------------------------------------------------------------------------
+# Counting countries over a MIXED FIPS∪ISO column (vagón 4, panel ciego
+# 2026-08-18 §5: the Brief tile said "228 COUNTRIES" over ~195 real ones).
+#
+# Stored country_code columns (signals_v2 / country_hourly_v2) mix lanes:
+# post-2026-07-28 the GDELT lane converts FIPS→ISO at ingest, RSS always wrote
+# ISO — but historical rows and stray lanes can still carry raw FIPS, and a
+# FIPS spelling beside its ISO twin double-counts one country (HO+HN, EI+IE,
+# SW+SE…). The ONLY codes safe to auto-normalize in such a column are the
+# FIPS codes that are NOT themselves valid ISO codes: an ambiguous code
+# ('CH' = ISO Switzerland / FIPS China) must be assumed ISO, because remapping
+# it is exactly the silent-corruption class this module warns about above.
+# ---------------------------------------------------------------------------
+from app.core.iso_country_names import ISO_COUNTRY_NAMES  # noqa: E402
+
+# Divergent FIPS codes that are unambiguous in a mixed column (the key spells
+# no valid ISO country). Derived from the audited table — never hand-edited.
+# NOTE: GZ is deliberately absent (ISO_COUNTRY_NAMES carries the project's
+# Gaza code), so Gaza never folds into PS here.
+FIPS_ONLY_TO_ISO: dict[str, str] = {
+    fips: iso
+    for fips, iso in FIPS_TO_ISO.items()
+    if fips not in ISO_COUNTRY_NAMES and fips != iso
+}
+
+
+def canonical_country_code(code: str | None) -> str | None:
+    """Collapse ONE stored (mixed-lane) country code to canonical ISO.
+
+    - a valid ISO code (incl. the project's GZ) -> itself, ALWAYS — ambiguous
+      codes that are also FIPS keys for another country are never remapped;
+    - a FIPS-only code with an audited ISO equivalent -> that ISO code;
+    - anything else (placeholders like XX, junk like OS/OC/NT/YI, malformed
+      input) -> None: it names no country and must not count as one.
+    """
+    if not code:
+        return None
+    c = code.strip().upper()
+    if len(c) != 2 or not c.isalpha():
+        return None
+    if c in ISO_COUNTRY_NAMES:
+        return c
+    return FIPS_ONLY_TO_ISO.get(c)
+
+
+def count_distinct_countries(codes) -> int:
+    """COUNT(DISTINCT country) over stored mixed FIPS∪ISO codes.
+
+    The honest replacement for COUNT(DISTINCT country_code) on serving
+    surfaces: FIPS spellings collapse onto their ISO twins and non-country
+    codes are not counted. Accepts any iterable (or None).
+    """
+    if not codes:
+        return 0
+    return len({canonical_country_code(c) for c in codes} - {None})
+
+
 def fips_to_iso(fips_code: str) -> str:
     """
     Convert a FIPS 10-4 code to ISO 3166-1 alpha-2.

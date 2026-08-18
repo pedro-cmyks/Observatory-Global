@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter
 from app import db
+from app.services.country_codes import count_distinct_countries
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -146,11 +147,20 @@ async def get_system_stats():
             FROM country_hourly_v2
             WHERE hour > NOW() - INTERVAL '7 days'
         """)
-        unique_countries = await safe_fetchval("unique_countries", """
-            SELECT COUNT(DISTINCT country_code)
+        # Vagón 4 (panel 2026-08-18): count COUNTRIES, not the FIPS∪ISO union
+        # of stored codes. The distinct codes come back as an array and are
+        # normalized in Python (FIPS-only spellings collapse onto their ISO
+        # twins; placeholders like XX are not countries). A degraded query
+        # stays None — never a fabricated count.
+        country_code_list = await safe_fetchval("unique_countries", """
+            SELECT array_agg(DISTINCT country_code)
             FROM country_hourly_v2
             WHERE hour > NOW() - INTERVAL '24 hours'
-        """)
+        """, default=[])
+        unique_countries = (
+            count_distinct_countries(country_code_list)
+            if country_code_list is not None else None
+        )
         unique_sources = await safe_fetchval("unique_sources", """
             SELECT COUNT(DISTINCT source_name)
             FROM signals_v2

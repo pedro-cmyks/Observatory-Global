@@ -18,7 +18,14 @@ from app.routers import briefing as B
 
 WITNESS_OUT = "The overall average tone was −0.48 on the −0.48…−0.48 scale."
 
-STATS = {"total": 65481, "countries": 205, "avg_sent": -4.8}
+# Vagón 4: the endpoint now fetches the distinct code list and normalizes it
+# (FIPS twins collapse, placeholders don't count) — HO folds into HN, XX is
+# not a country, so this list counts as 3 countries in the prompt.
+STATS = {
+    "total": 65481,
+    "country_code_list": ["US", "RU", "HO", "HN", "XX"],
+    "avg_sent": -4.8,
+}
 TOP_COUNTRIES = [
     {"country_code": "US", "name": "United States", "cnt": 9000, "avg_s": -3.1},
     {"country_code": "RU", "name": "Russia", "cnt": 4000, "avg_s": -2.0},

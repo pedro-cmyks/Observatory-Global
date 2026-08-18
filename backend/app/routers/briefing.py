@@ -10,6 +10,7 @@ from app import db
 from app.main_v2 import app
 from app.utils import _is_valid_person, extract_domain
 from app.core.gdelt_taxonomy import classify_source
+from app.services.country_codes import count_distinct_countries
 import httpx
 
 router = APIRouter()
@@ -874,7 +875,7 @@ async def get_briefing(
 
         stats = await _fetch_section(conn, degraded_segments, "stats", """
             SELECT SUM(signal_count)::bigint                          AS total_signals,
-                   COUNT(DISTINCT country_code)                       AS countries,
+                   array_agg(DISTINCT country_code)                   AS country_code_list,
                    SUM(unique_sources)::bigint                        AS sources,
                    SUM(signal_count)::bigint                          AS signal_count,
                    SUM(nlp_signal_count)::bigint                      AS nlp_signal_count,
@@ -911,7 +912,7 @@ async def get_briefing(
 
         stats = stats or {
             "total_signals": 0,
-            "countries": 0,
+            "country_code_list": [],
             "sources": 0,
             "gdelt_sentiment": 0,
             "nlp_sentiment": None,
@@ -943,7 +944,11 @@ async def get_briefing(
             "degraded_segments": degraded_segments,
             "stats": {
                 "total_signals": stats['total_signals'] or 0,
-                "countries": stats['countries'] or 0,
+                # Vagón 4 (panel 2026-08-18): the "PAÍSES" tile counts
+                # COUNTRIES, not the FIPS∪ISO union of stored codes — FIPS
+                # spellings collapse onto their ISO twins and placeholders
+                # (XX/OS/OC/NT/YI…) are not countries.
+                "countries": count_distinct_countries(stats['country_code_list']),
                 "sources": stats['sources'] or 0,
                 "avg_sentiment": global_sentiment,
                 "sentiment_source": global_source,
@@ -1216,7 +1221,7 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
             # Stats + top_countries come from country_hourly_v2 (same fast path as /briefing).
             stats = await _fetch_section(conn, degraded_segments, "insight_stats", """
                 SELECT SUM(signal_count)::bigint AS total,
-                       COUNT(DISTINCT country_code) AS countries,
+                       array_agg(DISTINCT country_code) AS country_code_list,
                        CASE WHEN SUM(signal_count) > 0
                             THEN (SUM(avg_sentiment * signal_count) / SUM(signal_count))::float
                             ELSE 0::float END AS avg_sent
@@ -1266,10 +1271,12 @@ async def get_briefing_insight(hours: int = Query(24, ge=1, le=8760)):
         logger.warning("briefing/insight db failed: %s", exc)
         return {"insight": None, "error": "db_error", "generated_at": generated_at}
 
-    stats = stats or {"total": 0, "countries": 0, "avg_sent": 0}
+    stats = stats or {"total": 0, "country_code_list": [], "avg_sent": 0}
 
     total = int(stats["total"] or 0)
-    countries = int(stats["countries"] or 0)
+    # Same normalization as the /briefing stats tile — the insight prose must
+    # not claim more countries than the tile shows.
+    countries = count_distinct_countries(stats["country_code_list"])
     avg_sent = float(stats["avg_sent"] or 0) / 10
     # Re-judge §4a: `_clean_theme_label` (strip a prefix, .title()) is the code
     # path that printed "Ungp Forests Rivers Oceans, Crisislexrec" as English.
