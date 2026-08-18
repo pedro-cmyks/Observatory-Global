@@ -2484,6 +2484,42 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
    T3.3 — THE COVERAGE DIARY: woven voices, THE GAP, WHAT IS RISING
    ==========================================================================*/
 
+/* --- vagón 3 (panel ciego 2026-08-18): the method strip folds on a phone --- */
+
+/* Only ever rendered under useIsMobile (≤768px), so no media query needed.
+   Same one-line anatomy as .brief-band-summary — the fold reads as one more
+   collapsed honesty band, not a new widget. Default disclosure marker
+   suppressed; the ▸/▾ state marker is drawn at the right edge. */
+.brief-method-fold {
+    margin: var(--brief-mobile-gap-sm, 2px) 0;
+}
+.brief-method-fold-summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--r-line);
+    border-radius: 6px;
+    font-family: var(--r-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--r-ink-soft, var(--r-ink));
+    cursor: pointer;
+}
+.brief-method-fold-summary::-webkit-details-marker {
+    display: none;
+}
+.brief-method-fold-summary::after {
+    content: '▸';
+    margin-left: auto;
+    padding-left: 12px;
+}
+.brief-method-fold[open] > .brief-method-fold-summary::after {
+    content: '▾';
+}
+
 /* --- vagón 1 (panel ciego 2026-08-18): the grab-bag mark on the cards --- */
 
 /* Same visual family as the shared LabelReviewChip (.badge +

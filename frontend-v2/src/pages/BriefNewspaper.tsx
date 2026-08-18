@@ -1922,6 +1922,19 @@ export function BriefNewspaper() {
                             </div>
                         )}
 
+                        {/* ---- Vagón 3 (panel ciego 2026-08-18): the method strip folds
+                            on a phone. Julián met ~1.5 screens of seal/readiness/vitals
+                            jargon BEFORE the first headline and almost closed the tab.
+                            The honesty is NOT deleted — it folds: on mobile the
+                            freshness band, the 5W+H readiness rail, the historical-
+                            coverage note and the vitals strip collapse into ONE closed
+                            <details> line at the same spot in the DOM (the option that
+                            reorders nothing). Desktop renders the exact same nodes bare
+                            — the fragment adds no DOM node, byte-identical. The open
+                            state is deliberately not persisted: each day folds again. */}
+                        {(() => {
+                            const methodStrip = (
+                                <>
                         {dailyEdition && staleBanner && (
                             !isBandOpen('freshness') ? (
                                 <button
@@ -2114,6 +2127,17 @@ export function BriefNewspaper() {
                                 )
                             })()}
                         </section>
+                                </>
+                            )
+                            return isMobile ? (
+                                <details className="brief-method-fold">
+                                    <summary className="brief-method-fold-summary">
+                                        {tr('brief.methodFold.label')}
+                                    </summary>
+                                    {methodStrip}
+                                </details>
+                            ) : methodStrip
+                        })()}
 
                         {/* ============ WORLD MARKETS BAND (full-width franja, top) ============
                             Global bellwethers — NOT the country's data, so it never swaps on

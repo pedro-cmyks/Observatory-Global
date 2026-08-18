@@ -107,6 +107,12 @@ export const UI_COPY = {
         es: 'texto completo {ok}/{attempted} recibos',
     },
 
+    // ---------------- method fold (mobile) ----------------
+    // Vagón 3 (panel ciego 2026-08-18): the one-line summary the folded
+    // seal/readiness/vitals strip collapses to on a phone. Chrome label only —
+    // the facts live inside the fold, none of them deleted.
+    'brief.methodFold.label': { en: 'Method & measurement', es: 'Método y medición' },
+
     // ---------------- markets band ----------------
     'brief.markets.collapsed': {
         en: 'World markets · live overlay, not sealed ▸',
