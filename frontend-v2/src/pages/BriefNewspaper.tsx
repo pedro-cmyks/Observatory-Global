@@ -1891,7 +1891,13 @@ export function BriefNewspaper() {
                                 onSelect={(p) => {
                                     saveDialPosition(p)
                                     track('dial_change', { to: p, from: 'leer' })
-                                    const t = dialTarget(p, countryFilter ? `?country=${countryFilter}` : '')
+                                    // El país que viaja (invariante 4): la edición
+                                    // país explícita gana; si no hay, el LUGAR
+                                    // declarado — el lector que lee «Cerca de ti ·
+                                    // Colombia» está mirando a Colombia y sube el
+                                    // dial sin perderla (G-FOCO).
+                                    const carry = countryFilter ?? placeCountry
+                                    const t = dialTarget(p, carry ? `?country=${carry}` : '')
                                     navigate(`${t.path}${t.search}`)
                                 }}
                             />
