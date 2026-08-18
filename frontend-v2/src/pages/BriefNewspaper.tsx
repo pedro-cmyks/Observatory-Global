@@ -2367,9 +2367,20 @@ export function BriefNewspaper() {
                                                 </span>
                                             </div>
                                             <h3 className="brief-lead-headline">
-                                                <button className="brief-headline-btn" onClick={() => openThread(leadThread)}>
+                                                {/* role=button, not <button>: TranslatableText renders its own
+                                                    toggle <button> inside — button-in-button hydration error
+                                                    (same fix as the card headline, a0e9fc7c). */}
+                                                <span
+                                                    className="brief-headline-btn"
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => openThread(leadThread)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openThread(leadThread) }
+                                                    }}
+                                                >
                                                     <TranslatableText text={decodeEntities(leadThread.label)} />
-                                                </button>
+                                                </span>
                                                 {/* leadThread is TopThread | sealed DailyPublicationThread; the
                                                     sealed row carries no trust columns, so read through the
                                                     LabelTrustRow shape (missing fields → no chip). */}
@@ -2715,12 +2726,19 @@ export function BriefNewspaper() {
                                                         return (
                                                             <article key={item.thread_id} className="brief-rising-item">
                                                                 <h4 className="brief-rising-headline">
-                                                                    <button
+                                                                    {/* role=button: same button-in-button class as the
+                                                                        lead/card headlines (TranslatableText toggle). */}
+                                                                    <span
                                                                         className="brief-headline-btn"
+                                                                        role="button"
+                                                                        tabIndex={0}
                                                                         onClick={() => openStoryById(item.thread_id, item.label, 'rising')}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openStoryById(item.thread_id, item.label, 'rising') }
+                                                                        }}
                                                                     >
                                                                         <TranslatableText text={decodeEntities(item.label)} />
-                                                                    </button>
+                                                                    </span>
                                                                     {/* failed / partial / too_broad are MARKED, not hidden
                                                                         — the backend passes the court's verdict through
                                                                         for exactly this chip. */}
