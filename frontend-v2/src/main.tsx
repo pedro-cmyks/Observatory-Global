@@ -1,4 +1,4 @@
-import { Component, StrictMode, useEffect, useState, type ReactNode } from 'react'
+import { Component, StrictMode, Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { installWarmCache, bumpWarmCacheGeneration } from './lib/fetchWarmCache'
@@ -29,6 +29,17 @@ function WarmCacheRouteReset() {
   return null
 }
 
+// Suspense fallback for the lazy panes: full-viewport LoadingMoment (the same
+// honest loading surface the Brief/universe already use — zero new bundle cost,
+// it ships in the entry chunk via BriefNewspaper).
+function PaneChunkLoading() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <LoadingMoment />
+    </div>
+  )
+}
+
 // #239 slice 2 — keep-alive shell. Route switches used to UNMOUNT the whole
 // console/Brief tree (all state + the EE map died on every Brief↔App hop).
 // With MapLibre deprecated (2026-07-04) the display:none crash class is gone:
@@ -57,7 +68,12 @@ function AppBriefKeepAlive() {
       {(appOn || isApp) && (
         <div style={isApp ? { display: 'contents' } : { display: 'none' }}>
           <PaneErrorBoundary paneName="The console" resetKey={pathname}>
-            <App />
+            {/* Suspense sits INSIDE the boundary so a failed chunk fetch (dead
+                network mid-session) lands on the pane's own error card, and the
+                route-keyed reset makes leaving+returning the retry. */}
+            <Suspense fallback={<PaneChunkLoading />}>
+              <App />
+            </Suspense>
           </PaneErrorBoundary>
         </div>
       )}
@@ -86,10 +102,22 @@ import './components/storyLens.css'
 import { MobileNavProvider } from './contexts/MobileNavContext'
 import { MobileTabBar } from './components/MobileTabBar.tsx'
 import { PaneErrorBoundary } from './components/PaneErrorBoundary.tsx'
-import App from './App.tsx'
+import { LoadingMoment } from './components/LoadingMoment.tsx'
 import { Landing } from './pages/Landing.tsx'
-import { Docs } from './pages/Docs.tsx'
 import { BriefNewspaper } from './pages/BriefNewspaper.tsx'
+
+// Bundle split (2026-08-18, brief-input-blocking §residuo): the console (App —
+// maps, panels, d3) used to be a STATIC import here, so /brief on a phone
+// parsed+evaluated ~1.2MB of console code it would never mount (the keep-alive
+// only mounts it on the first /app visit). React.lazy moves that entire subtree
+// into its own chunk, fetched+evaluated on the first /app navigation instead of
+// blocking the Brief masthead. Keep-alive semantics are untouched: the lazy
+// component resolves once, mounts once, and then lives hidden forever — the
+// Suspense fallback only ever shows during the one-time chunk load. Docs gets
+// the same treatment (named export → default shim). Landing/Brief stay static:
+// they ARE the entry surfaces ('/' and the PWA start_url).
+const App = lazy(() => import('./App.tsx'))
+const Docs = lazy(() => import('./pages/Docs.tsx').then((m) => ({ default: m.Docs })))
 import { InstallPrompt } from './components/InstallPrompt.tsx'
 
 class RootErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean; message: string }> {
@@ -138,8 +166,8 @@ createRoot(document.getElementById('root')!).render(
                     <Route path="/" element={<Landing />} />
                     <Route path="/app" element={null} />
                     <Route path="/brief" element={null} />
-                    <Route path="/docs" element={<Docs />} />
-                    <Route path="/docs/*" element={<Docs />} />
+                    <Route path="/docs" element={<Suspense fallback={<PaneChunkLoading />}><Docs /></Suspense>} />
+                    <Route path="/docs/*" element={<Suspense fallback={<PaneChunkLoading />}><Docs /></Suspense>} />
                     <Route path="*" element={<Landing />} />
                   </Routes>
                   {/* The phone's Brief ◈ · Lens ◎ · Live ≋ bar. One instance for

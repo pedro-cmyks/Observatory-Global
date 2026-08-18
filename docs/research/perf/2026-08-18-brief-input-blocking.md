@@ -158,6 +158,79 @@ errores JS (solo 503s best-effort del API prod, degrade diseñado).
   del masthead (~150-240ms M1 ≈ 0.6-1.5s teléfono) y este cambio no lo toca —
   partir el bundle (React.lazy sobre App en main.tsx o manualChunks) es un
   chip aparte, territorio compartido con quien posea main.tsx.
+  **→ EJECUTADO — ver addendum abajo.**
+
+## Addendum 2026-08-18 — bundle split ejecutado (el chip del residuo)
+
+`React.lazy` sobre `App` y `Docs` en `main.tsx` (Docs es named export →
+shim `{ default: m.Docs }`). Landing y BriefNewspaper quedan estáticos: SON
+las superficies de entrada (`/` y el start_url de la PWA). `manualChunks` no
+hizo falta — el lazy solo ya parte el grafo limpio (Rollup separa lo
+compartido automáticamente).
+
+### Chunks ANTES → DESPUÉS (`npm run build`, misma rama)
+
+| chunk | antes | después |
+|---|---|---|
+| JS entrada (`index-*.js`) | **1,754.70 kB (557.22 gz)** | **598.33 kB (198.51 gz)** −66% |
+| JS consola (`App-*.js`) | — (dentro del único) | 1,126.65 kB (350.97 gz), carga al primer /app |
+| JS docs (`Docs-*.js`) | — | 26.53 kB (9.10 gz) |
+| CSS entrada | 855.77 kB (160.51 gz) | 526.37 kB (107.32 gz) |
+| CSS consola (`App-*.css`) | — | 319.71 kB (52.38 gz) |
+
+Suma JS 598+1,127+27 ≈ 1,751 ≈ el baseline: partición sin duplicación.
+
+### Semántica keep-alive PRESERVADA (verificada en browser, build prod)
+
+- El lazy resuelve UNA vez; el `Suspense` (fallback = `LoadingMoment`, que ya
+  vive en el chunk de entrada vía BriefNewspaper — costo extra cero) solo se
+  ve durante la carga única del chunk. `Suspense` va DENTRO de
+  `PaneErrorBoundary`: un chunk-fetch fallido (red muerta a mitad de sesión)
+  cae en la error card del pane y salir+volver es el retry (resetKey=ruta).
+- Round-trip medido Brief→App→Brief→App (client-side, mismo documento):
+  `App-*.js` se fetchea exactamente 1 vez; la consola queda montada oculta
+  (`display:none`) y el segundo hop es instantáneo; el Brief sigue montado
+  durante todo el viaje.
+- Los long tasks del eval de consola ahora ocurren EN el hop, no en /brief:
+  87+66+170ms (M1 dist) al primer OPEN CONSOLE — exactamente el costo que
+  antes bloqueaba /brief pre-masthead, movido a donde el usuario lo pidió.
+
+### /brief DESPUÉS (dist, sesión fría, sessionStorage limpio)
+
+- JS cargado: SOLO `index-*.js` + `registerSW.js` — el chunk de consola no se
+  fetchea nunca en /brief. **0 long tasks** en toda la carga (antes del
+  split el banco dist-M1 mostraba 1×67ms = eval del bundle único). Caveat:
+  el pane del browser reportó `visibilityState:'hidden'` en la colección —
+  el eval de módulos corre igual en background, pero la cifra 0 no es
+  estrictamente comparable al banco foreground del doc principal; la
+  evidencia fuerte es estructural (el chunk no llega al documento).
+- Masthead + 45 recibos renderizados con data real (proxy a prod).
+
+### Deep-link + PWA (verificados)
+
+- `/app` directo (carga completa): consola bootea entera (mapa EE + heat,
+  Stories, Signal stream, dock). `/docs` carga su chunk y renderiza.
+- SW: precache 29→33 entradas en build; en runtime `workbox-precache-v2`
+  contiene `App-*.js`, `index-*.js` y `Docs-*.js` → el hop /brief→/app
+  offline se sirve del precache (los globPatterns `**/*.js` cubren los
+  chunks nuevos por construcción).
+- Consola del browser: cero errores JS propios (solo 503/500 best-effort del
+  API prod + AbortError de fetch cancelado en navegación — pre-existentes).
+
+### Gate
+
+- vitest 1976/1976 verde · `npm run build` verde (5.2s).
+- Lo que el teléfono deja de pagar en /brief: ~66% del JS (y 52KB gz de CSS
+  de consola) — la porción del eval pre-masthead atribuida al residuo
+  (~150-240ms M1 ≈ 0.6-1.5s teléfono) sale del critical path por
+  construcción: ese código ya no llega al documento.
+- Residuo nuevo honesto: el PRIMER hop a /app paga fetch+eval del chunk
+  (~323ms M1 dist con precache local; en teléfono primera visita sin SW,
+  red + eval ≈ 1-3s) con LoadingMoment visible — después es instantáneo de
+  por vida (keep-alive). Si duele, el siguiente lever es un
+  `import('./App.tsx')` en idle DESPUÉS del load de /brief (warm sin
+  bloquear el masthead) — deliberadamente NO incluido para mantener /brief
+  limpio de verdad.
 - El costo por-render del componente único sigue existiendo (transición ≠
   gratis: se troceó, no se achicó). Si el panel ciego vuelve a reportar
   lentitud (no sordera), el siguiente lever es React.memo por sección.
