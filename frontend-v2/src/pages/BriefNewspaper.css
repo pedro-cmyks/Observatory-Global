@@ -638,6 +638,44 @@
   margin: 6px 0 12px;
 }
 
+/* ---- Day anatomy (T2, spec 2026-08-17 §3) ----------------------------------
+   Kickers reuse .reader-section-kicker/.brief-sub-kicker; rows reuse
+   .brief-bottom-country/.brief-bottom-num. Tokens only — no new palette. */
+.brief-anatomy-seg { margin: 4px 0 20px; }
+.brief-anatomy-rows { max-width: 74ch; }
+.brief-anatomy-odd {
+  border-top: 1px dashed var(--r-line);
+  padding-top: 14px;
+}
+.brief-anatomy-world { margin-bottom: 2px; }
+
+/* Declared place control (spec §6), masthead. font-size 16px is deliberate:
+   below 16px iOS Safari zooms the whole page when the select gets focus. */
+.brief-place-control {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+.brief-place-select {
+  font-family: var(--r-mono);
+  font-size: 16px;
+  color: var(--r-ink);
+  background: var(--r-chip);
+  border: 1px solid var(--r-line);
+  border-radius: 999px;
+  padding: 2px 10px;
+  max-width: 180px;
+}
+.brief-place-proposed {
+  font-family: var(--r-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--r-muted);
+}
+
 .brief-empty-note {
   font-family: var(--r-sans);
   font-size: 0.82rem;

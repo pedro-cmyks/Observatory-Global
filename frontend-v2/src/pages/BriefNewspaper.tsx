@@ -56,7 +56,7 @@ import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
 import { CoverageGapCard } from '../components/CoverageGapCard'
 import type { CoverageGap } from '../lib/coverageGaps'
-import { decodeEntities, eclipseTier, type EclipseData } from '../lib/attentionEclipse'
+import { decodeEntities, eclipseDominantLabel, eclipseDominantLine, eclipseTier, type EclipseData } from '../lib/attentionEclipse'
 // PRINTER'S MARKS — design exploration 2026-08-13, gated behind ?marks= (page
 // is byte-identical without the param). Nothing here ships without Pedro.
 import {
@@ -116,6 +116,12 @@ import {
     type CountrySection,
 } from '../lib/countryEdition'
 import { INGEST_NOTE, withBasisTip } from '../lib/ingestBasis'
+// Day anatomy (T2, spec 2026-08-17): pure libs wired here, decisions live there.
+// READER_ANATOMY=false must reproduce the pre-anatomy Brief byte-for-byte — no
+// fetch added, no storage write, no wrapper applied.
+import { READER_ANATOMY, composeDayAnatomy, changedRowsFromThreads } from '../lib/dayAnatomy'
+import { loadReaderPlace, saveReaderPlace, type ReaderPlace } from '../lib/readerPlace'
+import { touchLastRead, hoursSince } from '../lib/lastRead'
 import '../styles/readerTheme.css'
 import './BriefNewspaper.css'
 
@@ -239,6 +245,10 @@ interface TopThread {
     // does (see LabelTrustRow below).
     court_withheld?: boolean
     edition_role?: string
+    // mig 085 (served by fetch_threads): new/continuous/recurrent/resurrected,
+    // NULL = unclassified. The day anatomy's "changed" segment reads it via
+    // changedRowsFromThreads (lib/dayAnatomy) — new/resurrected only.
+    temporal_signature?: string | null
 }
 
 interface HeatCountry {
@@ -765,6 +775,41 @@ export function BriefNewspaper() {
         return () => { cancelled = true }
     }, [countryFilter, hours, countryEditionAttempt])
 
+    // ---- Day anatomy state (T2, spec 2026-08-17 §6/§7) -------------------------
+    // Everything gated on READER_ANATOMY: with the switch off, no storage is
+    // read or written and no fetch fires — the pre-anatomy page, byte-for-byte.
+    //
+    // Place is a DECLARED fact (lib/readerPlace): the locale may PROPOSE the
+    // initial country, but the proposal is flagged and rendered as changeable
+    // in the masthead — never inferred in silence.
+    const [readerPlace, setReaderPlace] = useState<ReaderPlace>(() =>
+        READER_ANATOMY ? loadReaderPlace(navigator.language) : { country: null, proposed: false })
+    const placeCountry = READER_ANATOMY ? readerPlace.country : null
+    // Last-read mark (lib/lastRead): touched ONCE per mount. The ref guard
+    // matters — a second call in the same visit would read back the mark this
+    // visit just wrote and eat the previous one (and React StrictMode re-runs
+    // mount effects). A null previous mark is a first visit, reported as null.
+    const lastReadTouchedRef = useRef(false)
+    const [readHoursAgo, setReadHoursAgo] = useState<number | null>(null)
+    useEffect(() => {
+        if (!READER_ANATOMY || lastReadTouchedRef.current) return
+        lastReadTouchedRef.current = true
+        const nowMs = Date.now()
+        setReadHoursAgo(hoursSince(touchLastRead(nowMs), nowMs))
+    }, [])
+    // "Near you" = the declared place's country edition, through the SAME door
+    // fetch the country filter uses (fetchCountryEdition — the backend serves
+    // the warm artifact first). Failure degrades to an absent segment.
+    const [nearEdition, setNearEdition] = useState<CountryEdition | null>(null)
+    useEffect(() => {
+        if (!placeCountry) { setNearEdition(null); return }
+        let cancelled = false
+        fetchCountryEdition(placeCountry, hours).then(ed => {
+            if (!cancelled && ed) setNearEdition(ed)
+        })
+        return () => { cancelled = true }
+    }, [placeCountry, hours])
+
     useEffect(() => {
         if (watches.length === 0) return
         let cancelled = false
@@ -1199,6 +1244,35 @@ export function BriefNewspaper() {
     const gapMeasured = gapSection?.measured ?? null
     const gapConfidence = gapConfidenceChip(gapSection)
     const gapReceipts = sectionReceipts(gapSection?.receipts)
+
+    // ---- Day anatomy composition (lib/dayAnatomy, T2) --------------------------
+    // Segments are VIEWS over data this page already serves — nothing fetched
+    // beyond the near edition above, nothing invented:
+    //   near    = the declared place's country edition, top 3 threads
+    //   changed = the rising rows + threads whose SERVED temporal_signature is
+    //             new/resurrected (deduped against rising, so a story never
+    //             appears twice inside the segment)
+    //   odd     = the coverage-gap rows (+ the eclipse row when one is active)
+    //   world   = the three existing sections below, whose render code does not
+    //             change — the §6.2 firewall is structural, not a promise.
+    const nearThreads: TopThread[] = READER_ANATOMY && placeCountry
+        ? ((nearEdition?.threads ?? []) as unknown as TopThread[]).slice(0, 3)
+        : []
+    const risingIds = new Set(risingItems.map(i => i.thread_id))
+    const changedThreads = READER_ANATOMY
+        ? changedRowsFromThreads(
+            (allThreads as unknown as Array<{ thread_id: string; label: string; temporal_signature?: string | null }>)
+                .map(t => ({ thread_id: t.thread_id, label: t.label, temporal_signature: t.temporal_signature ?? null })),
+        ).filter(t => !risingIds.has(t.thread_id))
+        : []
+    const eclipseActive = READER_ANATOMY && eclipseTier(eclipse) !== 'none'
+    const daySegments = READER_ANATOMY
+        ? composeDayAnatomy({
+            nearCount: nearThreads.length,
+            changedCount: risingItems.length + changedThreads.length,
+            oddCount: coverageGaps.length + (eclipseActive ? 1 : 0),
+        })
+        : []
 
     // THE LEAD'S VOICES, as prose (spec §3b.1). Every clause is measured or
     // absent — see lib/briefVoices.ts. The subject-country clause is gated on
@@ -1726,6 +1800,35 @@ export function BriefNewspaper() {
                                 Settings → Page Language is inside the console: a reader
                                 who cannot read this page could never reach it. */}
                             <ReaderLanguagePicker />
+                            {/* Declared reader place (spec §6): country-grain, a
+                                native select over the existing country list. The
+                                locale may propose it, but the proposal is NAMED
+                                (hint below) until the reader declares — never a
+                                silently inferred place. 16px font on the control
+                                (CSS) so iOS Safari does not zoom on focus. */}
+                            {READER_ANATOMY && (
+                                <span className="brief-place-control">
+                                    <select
+                                        className="brief-place-select"
+                                        value={readerPlace.country ?? ''}
+                                        aria-label={tr('anatomy.place.change')}
+                                        onChange={e => {
+                                            saveReaderPlace(e.target.value || null)
+                                            setReaderPlace(loadReaderPlace(navigator.language))
+                                        }}
+                                    >
+                                        <option value="">—</option>
+                                        {COUNTRY_OPTIONS.map(c => (
+                                            <option key={c.code} value={c.code}>
+                                                {resolveCountryName(c.code, c.name)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {readerPlace.proposed && (
+                                        <span className="brief-place-proposed">{tr('anatomy.place.proposed')}</span>
+                                    )}
+                                </span>
+                            )}
                             <ReaderThemeToggle theme={readerTheme} onToggle={toggleReaderTheme} />
                         </div>
                     </div>
@@ -2100,6 +2203,110 @@ export function BriefNewspaper() {
                         {/* ===== GLOBAL EDITION — three color-coded sections ===== */}
                         {!countryFilter && (
                             <>
+                            {/* ===== DAY ANATOMY (T2, spec 2026-08-17 §3) =====
+                                near → changed → odd → world, composed by
+                                composeDayAnatomy over data already on this page.
+                                An empty segment is ABSENT — no hole, no apology.
+                                `world` renders only its kicker: the three existing
+                                sections directly below are the segment's body,
+                                UNTOUCHED (the §6.2 firewall by construction). */}
+                            {READER_ANATOMY && daySegments.map(seg => {
+                                if (seg.id === 'near' && placeCountry) {
+                                    return (
+                                        <section key="anatomy-near" className="brief-anatomy-seg brief-anatomy-near">
+                                            <span className="reader-section-kicker brief-sub-kicker">
+                                                {tr('anatomy.kicker.near', {
+                                                    place: resolveCountryName(placeCountry, nearEdition?.country_name),
+                                                })}
+                                            </span>
+                                            <div className="brief-cards">
+                                                {nearThreads.map(t => renderThreadCard(t, { country: placeCountry }))}
+                                            </div>
+                                        </section>
+                                    )
+                                }
+                                if (seg.id === 'changed') {
+                                    return (
+                                        <section key="anatomy-changed" className="brief-anatomy-seg brief-anatomy-changed">
+                                            <span className="reader-section-kicker brief-sub-kicker">
+                                                {/* changedSince only with a real previous mark —
+                                                    a first visit (null) or a same-moment revisit
+                                                    (0) gets the plain kicker, never "0h ago". */}
+                                                {readHoursAgo != null && readHoursAgo > 0
+                                                    ? tr('anatomy.kicker.changedSince', { h: readHoursAgo })
+                                                    : tr('anatomy.kicker.changed')}
+                                            </span>
+                                            <div className="brief-anatomy-rows">
+                                                {risingItems.map(item => {
+                                                    const why = whyNowParts(item)
+                                                    return (
+                                                        <button
+                                                            key={`rising-${item.thread_id}`}
+                                                            className="brief-bottom-country"
+                                                            onClick={() => openStoryById(item.thread_id, item.label, 'anatomy_changed')}
+                                                            data-tip={why.measured ?? tr('brief.rising.kicker')}
+                                                        >
+                                                            <span>{decodeEntities(item.label)}</span>
+                                                            <span className="brief-bottom-num">▲</span>
+                                                        </button>
+                                                    )
+                                                })}
+                                                {changedThreads.map(t => (
+                                                    <button
+                                                        key={`signature-${t.thread_id}`}
+                                                        className="brief-bottom-country"
+                                                        onClick={() => openStoryById(t.thread_id, t.label, 'anatomy_changed')}
+                                                    >
+                                                        <span>{decodeEntities(t.label)}</span>
+                                                        {/* the SERVED temporal signature, verbatim
+                                                            (mig 085: new | resurrected) */}
+                                                        <span className="brief-bottom-num">{t.temporal_signature}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )
+                                }
+                                if (seg.id === 'odd') {
+                                    return (
+                                        <section key="anatomy-odd" className="brief-anatomy-seg brief-anatomy-odd">
+                                            <span className="reader-section-kicker brief-sub-kicker">{tr('anatomy.kicker.odd')}</span>
+                                            <div className="brief-anatomy-rows">
+                                                {eclipseActive && eclipse && (
+                                                    <button
+                                                        className="brief-bottom-country"
+                                                        onClick={() => goToAtlas(undefined, 'eclipse')}
+                                                        data-tip={eclipseDominantLine(eclipse)}
+                                                    >
+                                                        <span>◑ {eclipseDominantLabel(eclipse)}</span>
+                                                        <span className="brief-bottom-num">
+                                                            {Math.round(((eclipse.dominant?.share ?? eclipse.window?.top1_share) ?? 0) * 100)}%
+                                                        </span>
+                                                    </button>
+                                                )}
+                                                {coverageGaps.map(g => (
+                                                    <button
+                                                        key={g.slug}
+                                                        className="brief-bottom-country"
+                                                        onClick={() => goToAtlas(`theme=${encodeURIComponent(g.slug)}`, 'anatomy_odd')}
+                                                        data-tip={`${g.raw_signals.toLocaleString()} signals ingested · ${g.verified} cleared the gate`}
+                                                    >
+                                                        <span>{g.label}</span>
+                                                        <span className="brief-bottom-num">{g.raw_signals.toLocaleString()}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )
+                                }
+                                // world — kicker only; the three sections below ARE
+                                // the body, byte-identical to the pre-anatomy page.
+                                return (
+                                    <div key="anatomy-world" className="brief-anatomy-seg brief-anatomy-world">
+                                        <span className="reader-section-kicker brief-sub-kicker">{tr('anatomy.kicker.world')}</span>
+                                    </div>
+                                )
+                            })}
                             <PMTrimWrap
                                 mode={!regMark ? 'off' : (regMark.state === 'live' ? 'live' : 'frame')}
                                 sealTime={regMark?.sealTime ?? null}
