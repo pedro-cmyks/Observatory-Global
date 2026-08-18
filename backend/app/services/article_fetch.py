@@ -238,11 +238,120 @@ def _extract(body: bytes, ctype: str, url: str) -> dict | None:
     text = (doc.get("text") or "").strip()
     if not text:
         return None
+    # Vagón 6: never let a consent banner / subscription wall open (or BE)
+    # the article. An extraction that is pure boilerplate is a wall — return
+    # None so the status machine reports it honestly (paywall /
+    # no_extractable_text) instead of serving the banner as content.
+    text = strip_leading_boilerplate(text)
+    if not text:
+        return None
     return {
         "title": (doc.get("title") or "").strip() or None,
         "text": text,
         "lang": (doc.get("language") or None),
     }
+
+
+# ---------------------------------------------------------------------------
+# Portal-boilerplate filter (vagón 6, panel ciego 2026-08-18 §5): the
+# eltiempo.com receipt served the portal's COOKIE BANNER as if it were the
+# article. trafilatura sometimes extracts the consent/login/subscription
+# furniture ahead of (or instead of) the article body; the excerpt is the
+# first 60 words, so the banner becomes the receipt.
+#
+# Conservative by construction — a false positive loses real content:
+#   - every phrase is unequivocal first/second-person banner/portal speak
+#     ("utilizamos cookies", "subscribe now for unlimited access") that no
+#     news lead uses; single risky words ("cookies") never match alone;
+#   - only the LEADING run of paragraphs is scanned; the scan stops forever
+#     at the first real paragraph, so mid-article text — including quotes
+#     ABOUT cookie banners — is byte-identical;
+#   - tiny stubs ("aquí", "Noticia", "Error 505") are dropped only inside an
+#     already-matched boilerplate run, so a short real lead survives.
+#
+# Measured base 2026-08-18: 726 stored excerpts, 2 consent-class witnesses
+# (eltiempo.com, ansa.it) + 6 subscription-wall (ACM syndication). The
+# phrase list is calibrated on those verbatim witnesses (es/en/pt + the
+# measured Italian one), frozen in test_article_boilerplate_filter.py.
+# ---------------------------------------------------------------------------
+
+_BOILERPLATE_PHRASES = (
+    # consent / cookies — Spanish
+    "utilizamos datos de navegación", "usamos datos de navegación",
+    "utilizamos cookies", "usamos cookies",
+    "si continúa navegando", "si continúas navegando",
+    "para más información continua navegando",
+    "acepta el uso de cookies", "aceptar todas las cookies",
+    "aceptas los términos", "acepta los términos",
+    # portal login / limit / upsell furniture — Spanish (eltiempo witness)
+    "ya tienes una cuenta",
+    "has alcanzado tu límite", "haz excedido el máximo", "has excedido el máximo",
+    "quieres seguir disfrutando",
+    "adquiere el plan de suscripción",
+    "todas las funcionalidades que ofrecemos",
+    "inténtalo nuevamente más tarde",
+    "procesando tu pregunta",
+    "registrándote en nuestro portal",
+    "no es posible responder a las preguntas",
+    # consent / cookies — English
+    "we use cookies", "this website uses cookies", "this site uses cookies",
+    "by continuing to browse", "accept all cookies", "accept the use of cookies",
+    "consent to the use of cookies", "cookie preferences",
+    # subscription wall — English (ACM witness)
+    "subscribe now for unlimited access",
+    "signup to continue reading", "sign up to continue reading",
+    # consent / cookies — Portuguese
+    "utilizamos dados de navegação", "usamos dados de navegação",
+    "ao continuar a navegar", "aceitar todos os cookies",
+    "aceita o uso de cookies",
+    # consent / subscription — Italian (ansa.it witness)
+    "cookie di profilazione", "consenso ai cookie",
+    "accetti tutti i cookie", "accettare i cookie",
+    "informativa privacy",
+    "puoi leggere tutti i titoli", "contenuti ogni 30 giorni",
+    "contattarci inviando una mail",
+)
+
+# Inside a matched boilerplate run, paragraphs this short are furniture
+# ("aquí", "Error 505", "a €16,99/anno", wrap fragments). Never applied
+# before the first phrase match, so a short real lead is safe.
+_BOILERPLATE_STUB_MAX_WORDS = 4
+
+
+def _is_boilerplate_paragraph(paragraph: str) -> bool:
+    low = paragraph.lower()
+    return any(phrase in low for phrase in _BOILERPLATE_PHRASES)
+
+
+def strip_leading_boilerplate(text: str) -> str:
+    """Drop the LEADING run of portal boilerplate from an extraction.
+
+    Returns the text from the first real paragraph on; unchanged when no
+    boilerplate phrase matches before the first real paragraph; "" when the
+    whole extraction was boilerplate (the caller must then report the honest
+    wall state, never serve the banner).
+    """
+    if not text:
+        return text
+    lines = text.split("\n")
+    i = 0
+    matched = False
+    while i < len(lines):
+        p = lines[i].strip()
+        if not p:
+            i += 1
+            continue
+        if _is_boilerplate_paragraph(p):
+            matched = True
+            i += 1
+            continue
+        if matched and len(p.split()) <= _BOILERPLATE_STUB_MAX_WORDS:
+            i += 1
+            continue
+        break
+    if not matched:
+        return text
+    return "\n".join(lines[i:]).strip()
 
 
 def _excerpt(text: str) -> str:
