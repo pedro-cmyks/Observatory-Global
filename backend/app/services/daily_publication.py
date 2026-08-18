@@ -45,6 +45,11 @@ from app.services.publication_synthesis import (
     SynthesizeRequest,
     synthesize_publication_article,
 )
+# ONE withhold predicate for live and sealed lanes — the sealed edition must
+# never grow its own reading of the court's '#withheld' marker (the live
+# serializer's mirror-comment discipline covers both consumers through this
+# single import).
+from app.services.thread_intelligence import _is_court_withheld
 from app.core.iso_country_names import ISO_COUNTRY_NAMES
 from app.services.country_codes import fips_to_iso
 
@@ -419,6 +424,82 @@ ORDER BY requested_id, timestamp DESC, id DESC
 """
 
 
+# Label Court state per candidate topic, read AT the seal (panel ciego
+# 2026-08-18: the sealed "Ceuta Migrant Crisis" card was chip-blind because the
+# frozen `live` dict carried zero court fields while the court had failed that
+# very label). Column meanings mirror thread_intelligence's serving SQL:
+#   label_status      court verdict on dt.label (entailed/partial/failed, NULL=unchecked)
+#   label_proposed    receipt-derived neutral label on 'failed' (advisory, never auto-served)
+#   label_court_model carries the '#withheld' suffix _is_court_withheld reads
+#   label_checked_at  when the court last tried this row
+_COURT_STATE_SQL = """
+SELECT id, label_status, label_proposed, label_court_model, label_checked_at
+FROM dynamic_topics
+WHERE id = ANY($1::bigint[])
+"""
+
+
+def _normalize_court_label(label: Any) -> str:
+    """Mirror of the frontend's ``normalizeWarningLabel`` (cardWarnings.ts):
+    collapse whitespace, trim, lowercase — so the sealed-side identity join and
+    the frontend's live-side join agree on what "the same sentence" means."""
+    return re.sub(r"\s+", " ", str(label or "")).strip().casefold()
+
+
+def frozen_court_fields(
+    *,
+    identity_label: str | None,
+    edition_label: str | None,
+    court_state: dict[str, Any] | None,
+    noise_rate: float | None,
+) -> dict[str, Any]:
+    """The Label Court fields a sealed story node freezes, live-serializer names.
+
+    Parity target: ``thread_intelligence.assemble_dynamic_thread`` serves
+    ``label_status`` / ``label_proposed`` / ``court_withheld`` /
+    ``avg_confidence`` / ``confidence_measured`` / ``confidence_source`` on the
+    live row; the sealed card's chip join (``lib/cardWarnings.ts``) reads the
+    same names, treating absence/NULL as "no chip".
+
+    Honesty rules:
+      * The court's verdict is about ONE sentence — the identity label it
+        judged. When the edition relabels the card onto the current cluster's
+        fresh sentence (``choose_current_edition_label``), the verdict is NOT
+        transferred: court fields freeze as NULL, exactly the frontend's strict
+        identity join, applied seal-side.
+      * A topic without a verdict (or a failed court-state fetch) freezes NULL,
+        never a default.
+      * ``avg_confidence`` is a THREAD property (the live lane's
+        ``1 - noise_rate``, clamped, 3 decimals), not a court output — it
+        freezes regardless of relabel, and ``confidence_measured`` says whether
+        it was measured at all.
+    """
+    avg_conf = 1.0 - float(noise_rate) if noise_rate is not None else None
+    state = court_state or {}
+    edition_sentence = _normalize_court_label(edition_label)
+    verdict_applies = bool(edition_sentence) and (
+        edition_sentence == _normalize_court_label(identity_label)
+    )
+    label_status = state.get("label_status") if verdict_applies else None
+    return {
+        "label_status": label_status,
+        "label_proposed": state.get("label_proposed") if verdict_applies else None,
+        "court_withheld": (
+            _is_court_withheld(
+                label_status,
+                state.get("label_court_model"),
+                state.get("label_checked_at"),
+            )
+            if verdict_applies else False
+        ),
+        "avg_confidence": (
+            round(max(min(avg_conf, 1.0), 0.0), 3) if avg_conf is not None else None
+        ),
+        "confidence_measured": avg_conf is not None,
+        "confidence_source": "noise_rate" if avg_conf is not None else None,
+    }
+
+
 def build_lead_synthesis_payload(
     label: str,
     receipts: list[dict[str, Any]],
@@ -619,6 +700,33 @@ async def fetch_daily_publication(
                 if len(by_topic.setdefault(topic_id, [])) < 6:
                     by_topic[topic_id].append(dict(row))
 
+        # LABEL-COURT FREEZE (panel ciego 2026-08-18): the topic's court state
+        # AT the seal, one indexed PK read over the whole candidate universe.
+        # Best-effort by the 2026-07-27 seal law — a dead court query degrades
+        # to honest NULL court fields on every node, never a voided night.
+        court_state_by_topic: dict[str, dict[str, Any]] = {}
+        court_numeric_ids = [
+            int(thread_id.removeprefix("dynamic-topic-"))
+            for thread_id in ranked_ids
+            if thread_id.removeprefix("dynamic-topic-").isdigit()
+        ]
+        if court_numeric_ids:
+            try:
+                court_rows = await conn.fetch(
+                    _COURT_STATE_SQL, court_numeric_ids,
+                    timeout=12 if serving_budget else 30,
+                )
+                court_state_by_topic = {
+                    f"dynamic-topic-{dict(row)['id']}": dict(row)
+                    for row in court_rows
+                }
+            except Exception as exc:
+                logger.warning(
+                    "daily-publication court-state fetch skipped "
+                    "(sealing NULL court fields): %s: %s",
+                    type(exc).__name__, str(exc)[:200],
+                )
+
         # LO QUE SUBE + EL VACÍO (T3.2) — the SAME functions the live briefing
         # calls, on the SAME connection, inside the sealed window. Template
         # prose over measured fields: no provider, no network, so G-SELLO holds
@@ -746,6 +854,17 @@ async def fetch_daily_publication(
                 "observations": candidate.kalman_observations,
                 "prediction_claim": False,
             },
+            # Label Court verdict, frozen AT the seal (live-serializer names —
+            # the sealed card's LabelReviewChip reads these directly). NOTE:
+            # `candidate.label` was already rewritten to the edition label
+            # (current_labeled_candidates above), so the sentence the court
+            # judged is `label_receipt["identity_label"]`, never candidate.label.
+            **frozen_court_fields(
+                identity_label=label_receipt.get("identity_label"),
+                edition_label=edition_label,
+                court_state=court_state_by_topic.get(thread_id),
+                noise_rate=candidate.noise_rate,
+            ),
         }
 
         async def _frozen_thread_fetcher(*, thread_id: str, hours: int, _live=live):
