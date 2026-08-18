@@ -48,6 +48,14 @@ desmonta al deslizar:
    sigues en Colombia con más instrumentos.
 5. **La voz editorial (spec daily-reader §2.1) rige en toda posición** — el
    dial cambia vocabulario, nunca añade opinión.
+6. **El tiempo es una variable del dial (Pedro, 2026-08-18)** — el contrato
+   temporal ya construido (arco time-as-dimension S1–S4) mapea uno a uno:
+   **LEER = el día** (24h fijo, el sello — el periódico de la mañana) ·
+   **OBSERVAR = el tiempo como dimensión** — se desbloquea el scrubber del
+   mundo que ya existe (map/replay 30d, replay del globo, view-span del
+   selector) · **CONSTRUIR = el tiempo congelado** (pins con snapshot,
+   dossier inmutable). El dial no inventa tiempo: hereda el contrato
+   L1=día / L2=dimensión / L3=congelado y lo vuelve posiciones.
 
 ## 3 · Integración con el daily reader recién construido
 
