@@ -62,7 +62,8 @@ export const UI_COPY = {
         es: 'El Diario es la edición del día — siempre las últimas 24 horas. Para otras ventanas de tiempo, abre la consola.',
     },
     'brief.action.home': { en: '← Home', es: '← Inicio' },
-    'brief.action.console': { en: 'Open Console', es: 'Abrir consola' },
+    // 'brief.action.console' retirada (dial P1): el chip «Abrir consola» del
+    // masthead es ahora el DepthDial — grep confirmó cero usos restantes.
     'brief.action.share': { en: '↑ Share', es: '↑ Compartir' },
     'brief.action.retry': { en: 'Retry live refresh', es: 'Reintentar actualización' },
     'brief.eclipse.tip': {

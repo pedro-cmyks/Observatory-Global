@@ -58,6 +58,8 @@ import { shouldTranslate as shouldTranslateFree } from '../lib/translatableText'
 import { usePageLanguage } from '../lib/pageLanguage'
 import { useUiCopy } from '../lib/uiCopy'
 import { ReaderLanguagePicker } from '../components/ReaderLanguagePicker'
+import { DepthDial } from '../components/DepthDial'
+import { dialFromUrl, dialTarget, saveDialPosition } from '../lib/depthDial'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
@@ -585,6 +587,24 @@ export function BriefNewspaper() {
         if (location.pathname !== '/brief') return
         setCountryFilter(countryParam)
     }, [location.pathname, countryParam])
+
+    // Deep link `?depth=` (dial P1, spec §7): un link que NOMBRA posición
+    // manda. Solo observar/construir navegan (leer YA es esta página). Un
+    // solo disparo al montar — un deep link real entra con documento nuevo;
+    // el guard evita re-disparos bajo los rewrites de params del shell
+    // keep-alive. replace:true para no dejar el /brief?depth= en el back.
+    const depthLinkHandledRef = useRef(false)
+    useEffect(() => {
+        if (depthLinkHandledRef.current) return
+        depthLinkHandledRef.current = true
+        if (location.pathname !== '/brief') return
+        const p = dialFromUrl(location.search)
+        if (p && p !== 'leer') {
+            const t = dialTarget(p, location.search)
+            navigate(`${t.path}${t.search}`, { replace: true })
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     // Pedro (2026-07-05): the Brief is the DAY's edition — always 24h. Other
     // windows live in the console; time-as-dimension belongs to L2 scrubbers.
@@ -1862,12 +1882,19 @@ export function BriefNewspaper() {
                         )}
                         <div className="brief-masthead-actions">
                             <button className="reader-chip" onClick={() => navigate('/')}>{tr('brief.action.home')}</button>
-                            <button
-                                className="reader-chip"
-                                onClick={() => goToAtlas(countryFilter ? `country=${countryFilter}` : undefined, 'masthead_console')}
-                            >
-                                {tr('brief.action.console')}
-                            </button>
+                            {/* El dial de profundidad (P1) reemplaza el chip
+                                «Abrir consola»: LEER es esta página; OBSERVAR/
+                                CONSTRUIR viajan al console con el foco país
+                                acarreado (invariante 4). */}
+                            <DepthDial
+                                active="leer"
+                                onSelect={(p) => {
+                                    saveDialPosition(p)
+                                    track('dial_change', { to: p, from: 'leer' })
+                                    const t = dialTarget(p, countryFilter ? `?country=${countryFilter}` : '')
+                                    navigate(`${t.path}${t.search}`)
+                                }}
+                            />
                             <button
                                 className="reader-chip"
                                 onClick={openShare}
