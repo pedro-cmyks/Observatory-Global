@@ -543,6 +543,22 @@ else
   echo "[scoped-snapshot] skip feed freshness watchdog (ATLAS_FEED_WATCHDOG=off)" >&2
 fi
 
+# Step 10 (2026-08-18, mig 102 / panel-ciego DEV-2): SUBJECT-COHERENCE store —
+# measures per-topic receipt geography (the grab-bag detector, same measurement
+# the seal runs) over ALL active topics and stores the glass-box result in
+# dynamic_topic_subject_coherence, which live /threads rows serve as
+# `subject_geography_grab_bag`. Full pass ~13min over WAN (measured — too
+# heavy for the 30-min runner; the seal still measures fresh at 02:30, so the
+# live chip is at most a night stale, declared). First fill 2026-08-18:
+# 2,930 measured · 166 grab-bags (5.7%) · 975 sample-starved -> honest null.
+# Non-fatal: a skipped pass leaves yesterday's rows serving, never a 500.
+if [[ "${ATLAS_SUBJECT_COHERENCE:-on}" == "on" ]]; then
+  atlas_step "subject-coherence store" "$ROOT_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.compute_subject_coherence --execute
+else
+  echo "[scoped-snapshot] skip subject-coherence store (ATLAS_SUBJECT_COHERENCE=off)" >&2
+fi
+
 # The run's verdict. A provider outage or a majority-failed run now exits
 # non-zero — launchd records the failure instead of a plausible success. The
 # heavy-lock EXIT trap still fires on this exit, so the mutex is released.
