@@ -116,6 +116,16 @@ import {
     type CountrySection,
 } from '../lib/countryEdition'
 import { INGEST_NOTE, withBasisTip } from '../lib/ingestBasis'
+// Panel ciego 2026-08-18 (vagón 1): the measured marks the payload already
+// serves about a story — grab-bag geography, court verdicts frozen out of the
+// sealed graph — joined to the rendered cards. Pure join, zero client-side
+// measurement (lib/cardWarnings).
+import {
+    buildCardWarningIndex,
+    isMixedGeography,
+    sealedCourtTrust,
+    type CardWarningIndex,
+} from '../lib/cardWarnings'
 // Day anatomy (T2, spec 2026-08-17): pure libs wired here, decisions live there.
 // READER_ANATOMY=false must reproduce the pre-anatomy Brief byte-for-byte — no
 // fetch added, no storage write, no wrapper applied.
@@ -1076,6 +1086,41 @@ export function BriefNewspaper() {
     const worldCards = servedFromSeal ? worldRest : worldRest.slice(0, 8)
     const cultureCards = servedFromSeal ? cultureRest : cultureRest.slice(0, 6)
 
+    // ---- Vagón 1 (panel ciego 2026-08-18): the served marks reach the cards ----
+    // The sealed payload ALREADY flags grab-bag stories — `package.gaps` carries
+    // `subject_geography_grab_bag:<label>` and each demoted node carries
+    // `snapshot.spine_layout_reason` — and the front page printed the story
+    // bare ("Wildfires in France and Spain", the page's biggest story). Pure
+    // join (lib/cardWarnings), active only when the sealed edition is served:
+    // the marks describe THAT edition's rows. The live lane serves no grab-bag
+    // coherence measurement at all (payload hole, reported upstream) — nothing
+    // is guessed client-side in its place.
+    const cardWarningIndex: CardWarningIndex = buildCardWarningIndex(servedFromSeal
+        ? {
+            packageGaps: dailyEdition?.package?.gaps ?? null,
+            storyNodes: (dailyEdition?.graph?.nodes ?? [])
+                .filter(n => n.node_type === 'story')
+                .map(n => ({
+                    threadId: n.snapshot?.live?.thread_id ?? n.live_ref?.id ?? null,
+                    label: n.label,
+                    // Served on the wire (daily_publication.py stamps it into the
+                    // node snapshot); the lib's declared snapshot type predates it.
+                    spineLayoutReason: (n.snapshot as { spine_layout_reason?: string | null } | undefined)
+                        ?.spine_layout_reason ?? null,
+                })),
+        }
+        : {})
+
+    // Sealed rows freeze NO court fields (daily_publication.py's `live` dict —
+    // the reason a sealed card never showed a LabelReviewChip). Recover the
+    // live verdict ONLY under the strict identity join (same thread_id AND
+    // same label — lib/cardWarnings.sealedCourtTrust); rows that carry their
+    // own trust columns keep them untouched.
+    const trustRowFor = (t: { thread_id?: string; label?: string } & LabelTrustRow): LabelTrustRow =>
+        ('label_status' in t || 'avg_confidence' in t || 'confidence_measured' in t)
+            ? t
+            : (sealedCourtTrust(t, liveThreads) ?? {})
+
     // ---- W5: front page ↔ console coherence -----------------------------------
     // The judge opened the console and found "DR Congo Ebola Outbreak" and
     // "SpaceX Rocket Moon Crash" — stories that appear nowhere here — and
@@ -1497,6 +1542,19 @@ export function BriefNewspaper() {
         return false
     }
 
+    // Vagón 1: the grab-bag mark, rendered in the LabelReviewChip's visual
+    // family (same .badge/.label-review-chip anatomy, own data-reason). The
+    // measurement is the backend's (atlas-subject-coherence-v1: the story's
+    // significant countries do not co-occur in the same receipts) — this chip
+    // only reports that it was served.
+    const renderMixedGeoChip = () => (
+        <span
+            className="badge label-review-chip brief-geo-chip"
+            data-reason="mixed-geography"
+            data-tip={tr('brief.warn.mixedGeo.tip')}
+        >◈ {tr('brief.warn.mixedGeo')}</span>
+    )
+
     const renderSaveChip = (t: TopThread) => {
         const theme = resolveThreadThemeTarget(t)?.theme
         const saved = savedIds.has(`theme-${theme}`)
@@ -1559,7 +1617,11 @@ export function BriefNewspaper() {
                     >
                         <TranslatableText text={decodeEntities(t.label)} />
                     </span>
-                    <LabelReviewChip {...labelReviewChipProps(t)} />
+                    {/* Vagón 1: sealed rows recover their court verdict through the
+                        strict identity join (they freeze no trust columns); live
+                        rows pass through unchanged. */}
+                    <LabelReviewChip {...labelReviewChipProps(trustRowFor(t))} />
+                    {isMixedGeography(t, cardWarningIndex) && renderMixedGeoChip()}
                 </h3>
                 {translateControl && <div className="brief-translate-row">{translateControl}</div>}
                 <div className="brief-vitals-line">
@@ -2381,10 +2443,13 @@ export function BriefNewspaper() {
                                                 >
                                                     <TranslatableText text={decodeEntities(leadThread.label)} />
                                                 </span>
-                                                {/* leadThread is TopThread | sealed DailyPublicationThread; the
-                                                    sealed row carries no trust columns, so read through the
-                                                    LabelTrustRow shape (missing fields → no chip). */}
-                                                <LabelReviewChip {...labelReviewChipProps(leadThread as LabelTrustRow)} />
+                                                {/* leadThread is TopThread | sealed DailyPublicationThread; a
+                                                    sealed row carries no trust columns of its own, so it goes
+                                                    through the identity join (trustRowFor) — the court's veto
+                                                    reaches the lead only when the live payload carries the SAME
+                                                    thread_id + label (vagón 1). */}
+                                                <LabelReviewChip {...labelReviewChipProps(trustRowFor(leadThread as { thread_id?: string; label?: string } & LabelTrustRow))} />
+                                                {isMixedGeography(leadThread, cardWarningIndex) && renderMixedGeoChip()}
                                             </h3>
                                             {translateControl && <div className="brief-translate-row">{translateControl}</div>}
                                             <div className="brief-metarow">

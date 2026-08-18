@@ -2484,6 +2484,16 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
    T3.3 — THE COVERAGE DIARY: woven voices, THE GAP, WHAT IS RISING
    ==========================================================================*/
 
+/* --- vagón 1 (panel ciego 2026-08-18): the grab-bag mark on the cards --- */
+
+/* Same visual family as the shared LabelReviewChip (.badge +
+   .label-review-chip base classes apply — amber caveat anatomy, help cursor).
+   Only the casing is local: the copy is authored sentence-case in uiCopy
+   (en+es) and displayed in the family's uppercase voice. */
+.brief-geo-chip {
+    text-transform: uppercase;
+}
+
 /* --- the lead's voices, as prose (spec §3b.1) --- */
 
 /* Same shape as .brief-whynow (both are measured prose under the lead) so the

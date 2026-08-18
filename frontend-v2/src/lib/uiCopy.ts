@@ -249,6 +249,13 @@ export const UI_COPY = {
     'brief.card.save': { en: '◇ Save', es: '◇ Guardar' },
     'brief.card.saved': { en: '◆ Saved', es: '◆ Guardada' },
     'brief.card.savedTip': { en: 'Remove from investigation', es: 'Quitar de la investigación' },
+    // Vagón 1 (panel ciego 2026-08-18): the grab-bag mark the payload already
+    // carries, worded as the measurement it is — no judgment, no adjective.
+    'brief.warn.mixedGeo': { en: 'Mixed geography', es: 'Geografía mezclada' },
+    'brief.warn.mixedGeo.tip': {
+        en: 'The measurement found receipts from more than one distinct event/geography filed under this story — its significant countries do not appear together in the same receipts. Read the receipts, not only the label.',
+        es: 'La medición detectó recibos de más de un evento/geografía distinto archivados bajo esta historia — sus países significativos no aparecen juntos en los mismos recibos. Lee los recibos, no solo la etiqueta.',
+    },
     'brief.lane.retry': { en: 'Ask the story lane again ↻', es: 'Preguntar de nuevo al canal de historias ↻' },
     'brief.lead.laneFailed': { en: 'lane did not answer', es: 'el canal no respondió' },
     'brief.lead.awaiting': { en: 'awaiting verification', es: 'esperando verificación' },
