@@ -1470,9 +1470,21 @@ export function BriefNewspaper() {
                     <span className="cat">{tr('brief.card.signals', { n: t.signal_count.toLocaleString() })}</span>
                 </div>
                 <h3 className="brief-card-headline">
-                    <button className="brief-headline-btn" onClick={() => openThread(t, opts?.country)}>
+                    {/* role=button, not <button>: TranslatableText renders its own
+                        "See original" <button> toggle inside, and button-in-button
+                        is invalid HTML (React hydration error). The toggle already
+                        stopPropagation()s, so it never opens the thread. */}
+                    <span
+                        className="brief-headline-btn"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openThread(t, opts?.country)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openThread(t, opts?.country) }
+                        }}
+                    >
                         <TranslatableText text={decodeEntities(t.label)} />
-                    </button>
+                    </span>
                     <LabelReviewChip {...labelReviewChipProps(t)} />
                 </h3>
                 {translateControl && <div className="brief-translate-row">{translateControl}</div>}

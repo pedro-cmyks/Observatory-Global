@@ -1693,12 +1693,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             <div className="theme-section" id="td-sources">
                                 <h3 className="section-label">Top Sources</h3>
                                 <div className="source-list">
-                                    {data.topSources.map(s => {
+                                    {data.topSources.map((s, si) => {
                                         const family = getSourceFamilyMeta(s.family)
                                         const isOpen = selectedSource === s.name
                                         const srcSigs = isOpen ? data.signals.filter(sig => sig.source === s.name) : []
+                                        // name-index key, not bare name: two sources can share a
+                                        // name across families, and React's duplicate-key warning
+                                        // fired live (the id-rank lesson).
                                         return (
-                                            <div key={s.name} className="source-group">
+                                            <div key={`${s.name}-${si}`} className="source-group">
                                                 <div
                                                     className={`source-item ${isOpen ? 'source-active' : ''}`}
                                                     onClick={() => setSelectedSource(isOpen ? null : s.name)}
