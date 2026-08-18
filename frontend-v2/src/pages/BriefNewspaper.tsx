@@ -1877,6 +1877,12 @@ export function BriefNewspaper() {
                                         onChange={e => {
                                             saveReaderPlace(e.target.value || null)
                                             setReaderPlace(loadReaderPlace(navigator.language))
+                                            // Vagón 5a (panel ciego 2026-08-18): a select that
+                                            // keeps focus after the choice turns the next
+                                            // PageDown/arrow into a country change — the
+                                            // reviewer's page-scroll set their place to Cook
+                                            // Islands. Choosing is the end of the interaction.
+                                            e.target.blur()
                                         }}
                                     >
                                         <option value="">—</option>

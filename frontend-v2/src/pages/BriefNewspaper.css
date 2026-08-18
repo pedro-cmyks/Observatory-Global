@@ -986,9 +986,29 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   font-size: 0.66rem;
   white-space: nowrap;
   flex: 0 0 auto;
+  /* Vagón 5b (panel ciego 2026-08-18): this row was the page's horizontal
+     overflow at 375px. `flex: 0 0 auto` sizes the item at max-content, so a
+     long outlet name (`lagazzettadelmezzogiorno.it` + LOCAL + IT + copy/pin
+     buttons = 343px min) could never wrap and pushed the layout viewport to
+     418px — text clipped off the left edge after any horizontal drift
+     ("olombia"). House rule: wide content wraps or scrolls INSIDE its
+     container, the body never scrolls horizontally. Capping at the container
+     lets the chip row break into a second line; when it fits, nothing
+     changes. */
+  max-width: 100%;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
-.brief-receipt-src { color: var(--r-ink-soft); }
+.brief-receipt-src {
+  color: var(--r-ink-soft);
+  /* Part of the same fix: the outlet name is the one arbitrarily-long token in
+     the row — allow it to break instead of setting the row's minimum width.
+     (white-space: normal re-enables wrapping that the row's `nowrap` — kept so
+     chips never break internally — would otherwise inherit onto it.) */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 /* Coarse source-credibility tier (#217) on Brief receipts. */
 .brief-receipt-tier {
