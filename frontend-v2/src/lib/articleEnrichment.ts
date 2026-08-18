@@ -7,7 +7,7 @@
  *  Partial yield is a normal state: paywall/robots/error are product statuses,
  *  not failures to hide. Every network call here degrades silently — a pin or
  *  a dossier never waits on, or breaks over, enrichment. */
-import { useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useRef, useState } from 'react'
 import type { PinSnapshot } from './workbench'
 
 export interface ArticleState {
@@ -83,20 +83,47 @@ export async function fetchArticleStates(urls: string[]): Promise<Map<string, Ar
 const POLL_MS = 4000
 const MAX_POLLS = 8   // bounded wait ≈ 32s, then whatever landed stands
 
+/** Render-relevant equality between two polls: same URLs, and per URL the same
+ *  fields a consumer can display (status/via/excerpt/word_count). Polls that
+ *  change nothing used to setState anyway — on the Brief that re-rendered a
+ *  3,600-line page once per idle poll (measured 2026-08-18, input-blocking
+ *  artifact). Two identical polls now bail out without a render. */
+function sameStates(a: Map<string, ArticleState>, b: Map<string, ArticleState>): boolean {
+  if (a.size !== b.size) return false
+  for (const [url, sb] of b) {
+    const sa = a.get(url)
+    if (!sa) return false
+    if (sa.status !== sb.status || sa.via !== sb.via || sa.excerpt !== sb.excerpt
+      || sa.word_count !== sb.word_count) return false
+  }
+  return true
+}
+
 /** Display states for a URL set; polls while fetches are in flight (bounded).
- *  Pass stable url arrays (memoized by caller) to avoid refetch churn. */
+ *  Pass stable url arrays (memoized by caller) to avoid refetch churn.
+ *
+ *  Input-blocking guard (2026-08-18): a poll result commits inside
+ *  startTransition — enrichment badges are never urgent, so React keeps the
+ *  main thread interruptible by taps/scroll while the page re-renders — and
+ *  a result identical to the last one bails out entirely (functional set
+ *  returning the previous reference skips the render). */
 export function useArticleStates(urls: string[]): Map<string, ArticleState> {
   const [states, setStates] = useState<Map<string, ArticleState>>(new Map())
   const key = urls.join('\n')
   const pollsRef = useRef(0)
   useEffect(() => {
-    if (urls.length === 0) { setStates(new Map()); return }
+    if (urls.length === 0) {
+      setStates(prev => (prev.size === 0 ? prev : new Map()))
+      return
+    }
     let alive = true
     pollsRef.current = 0
     const tick = async () => {
       const next = await fetchArticleStates(urls)
       if (!alive) return
-      setStates(next)
+      startTransition(() => {
+        setStates(prev => (sameStates(prev, next) ? prev : next))
+      })
       pollsRef.current += 1
       if (!statesSettled(urls, next) && pollsRef.current < MAX_POLLS) {
         timer = window.setTimeout(tick, POLL_MS)

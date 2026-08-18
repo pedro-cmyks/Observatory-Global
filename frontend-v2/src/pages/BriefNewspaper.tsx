@@ -1,4 +1,11 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+// startTransition: every network arrival below commits through a transition —
+// the payload/insight/eclipse/edition renders of this 3,600-line page were
+// measured blocking taps for 100-400ms each during the first seconds
+// (docs/research/perf/2026-08-18-brief-input-blocking.md). A transition render
+// yields to input between fibers, so a tap on the place selector lands in
+// milliseconds even while the page is re-rendering. Content is NEVER dropped —
+// the same renders happen, interruptibly.
+import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from 'react'
 import { useSavedWatches, fetchWatchCount } from '../hooks/useSavedWatches'
 import { enqueueUrls, useArticleStates } from '../lib/articleEnrichment'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
@@ -603,8 +610,10 @@ export function BriefNewspaper() {
             .then(r => (r.ok ? r.json() : null))
             .then(d => {
                 if (!d?.insight) return
-                setInsight(d.insight)
-                setInsightGeneratedAt(d.generated_at ?? null)
+                startTransition(() => {
+                    setInsight(d.insight)
+                    setInsightGeneratedAt(d.generated_at ?? null)
+                })
                 updateCachedInsight(h, d.insight, d.generated_at ?? null)
             })
             .catch(() => { /* best-effort; a held reading stays on screen, labeled */ })
@@ -616,11 +625,13 @@ export function BriefNewspaper() {
         if (options.force) clearBriefingCache()
         const cached = options.force ? null : readBriefingCache(h, { allowStale: true })
         if (cached) {
-            setData(cached.briefing as BriefingData)
-            setInsight(cached.insight)
-            setInsightGeneratedAt(cached.insightGeneratedAt)
-            setShowingStale(cached.isStale)
-            setLoading(false)
+            startTransition(() => {
+                setData(cached.briefing as BriefingData)
+                setInsight(cached.insight)
+                setInsightGeneratedAt(cached.insightGeneratedAt)
+                setShowingStale(cached.isStale)
+                setLoading(false)
+            })
             // A cached payload that never got a reading must ASK for one, or the
             // analysis stays missing for the rest of the TTL for no visible reason.
             if (!cached.insight) fetchInsight(h)
@@ -660,10 +671,12 @@ export function BriefNewspaper() {
             }
             if (!briefRes.ok) throw new Error(`Briefing request failed: ${briefRes.status}`)
             const briefing = await briefRes.json()
-            setData(briefing)
-            setShowingStale(false)
+            startTransition(() => {
+                setData(briefing)
+                setShowingStale(false)
+                setLoading(false)
+            })
             writeBriefingCache(h, briefing, cached?.insight ?? null, cached?.insightGeneratedAt ?? null)
-            setLoading(false)
             // Background, non-blocking: the insight fills the standfirst later.
             fetchInsight(h)
         } catch (e) {
@@ -702,7 +715,7 @@ export function BriefNewspaper() {
         const timer = setTimeout(() => ctrl.abort(), 12000)
         fetch('/api/v2/investigation/daily-publication', { signal: ctrl.signal })
             .then(response => response.ok ? response.json() : null)
-            .then(edition => { if (edition) setDailyEdition(edition as DailyPublicationArtifact) })
+            .then(edition => { if (edition) startTransition(() => setDailyEdition(edition as DailyPublicationArtifact)) })
             .catch(() => { /* legacy Brief remains the explicit fallback */ })
             .finally(() => clearTimeout(timer))
         return () => { clearTimeout(timer); ctrl.abort() }
@@ -716,7 +729,7 @@ export function BriefNewspaper() {
         const timer = setTimeout(() => ctrl.abort(), 12000)
         fetch(`/api/v2/attention/eclipse?hours=${hours}`, { signal: ctrl.signal })
             .then(response => response.ok ? response.json() : null)
-            .then(payload => { if (payload) setEclipse(payload as EclipseData) })
+            .then(payload => { if (payload) startTransition(() => setEclipse(payload as EclipseData)) })
             .catch(() => { /* no strip when unavailable */ })
             .finally(() => clearTimeout(timer))
         return () => { clearTimeout(timer); ctrl.abort() }
@@ -749,14 +762,16 @@ export function BriefNewspaper() {
                 if (cancelled) return
                 const node = nodeData.nodes?.[0]
                 const threads: TopThread[] = threadData.threads ?? []
-                setCountryDetail({
-                    countryCode: countryFilter,
-                    name: node?.name ?? resolveCountryName(countryFilter),
-                    totalSignals: node?.signalCount ?? 0,
-                    sentiment: node?.sentiment ?? 0,
-                    sources: node?.sourceCount ?? 0,
+                startTransition(() => {
+                    setCountryDetail({
+                        countryCode: countryFilter,
+                        name: node?.name ?? resolveCountryName(countryFilter),
+                        totalSignals: node?.signalCount ?? 0,
+                        sentiment: node?.sentiment ?? 0,
+                        sources: node?.sourceCount ?? 0,
+                    })
+                    setCountryThreads(threads)
                 })
-                setCountryThreads(threads)
             })
             .catch(() => {
                 if (cancelled) return
@@ -780,7 +795,9 @@ export function BriefNewspaper() {
         setCountryEdition(null); setCountryEditionFailed(false)
         fetchCountryEdition(countryFilter, hours).then(ed => {
             if (cancelled) return
-            if (ed) setCountryEdition(ed); else setCountryEditionFailed(true)
+            startTransition(() => {
+                if (ed) setCountryEdition(ed); else setCountryEditionFailed(true)
+            })
         })
         return () => { cancelled = true }
     }, [countryFilter, hours, countryEditionAttempt])
@@ -815,7 +832,7 @@ export function BriefNewspaper() {
         if (!placeCountry) { setNearEdition(null); return }
         let cancelled = false
         fetchCountryEdition(placeCountry, hours).then(ed => {
-            if (!cancelled && ed) setNearEdition(ed)
+            if (!cancelled && ed) startTransition(() => setNearEdition(ed))
         })
         return () => { cancelled = true }
     }, [placeCountry, hours])
@@ -827,7 +844,7 @@ export function BriefNewspaper() {
             const entries = await Promise.all(
                 watches.map(async w => [w.id, await fetchWatchCount(w.filter)] as [string, number])
             )
-            if (!cancelled) setWatchCounts(Object.fromEntries(entries))
+            if (!cancelled) startTransition(() => setWatchCounts(Object.fromEntries(entries)))
         })()
         return () => { cancelled = true }
     }, [watches])

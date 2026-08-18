@@ -89,6 +89,19 @@ export default defineConfig({
     }
   },
   preview: {
-    port: 3000
+    port: 3000,
+    // Same /api proxy as dev so `npm run preview` (the production-bundle
+    // bench used for perf measurement, e.g. 2026-08-18 brief input-blocking)
+    // renders real data instead of 404 empty states.
+    proxy: {
+      '/api': {
+        target: process.env.VITE_LOCAL_API || 'https://atlas-api-pedro.fly.dev',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: process.env.VITE_LOCAL_API || 'https://atlas-api-pedro.fly.dev',
+        changeOrigin: true,
+      },
+    },
   }
 })
