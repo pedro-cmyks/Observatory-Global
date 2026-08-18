@@ -43,6 +43,8 @@ import { FrameSheet } from './components/FrameSheet'
 import { SearchSheet } from './components/SearchSheet'
 import { maxReplayDays, farEdgeKind, positionForDaysBack, snapDaysBack, isoDayForDaysBack, REPLAY_ENDPOINT_CAP_DAYS } from './lib/scrubberScale'
 import { Globe, ClipboardList, HelpCircle, BookmarkPlus, MoreHorizontal, Settings, Sun, Moon } from './lib/icons'
+import { DepthDial } from './components/DepthDial'
+import { dialTarget, saveDialPosition } from './lib/depthDial'
 import { useTheme } from './contexts/ThemeContext'
 import { CHOKEPOINTS, haversineKm, getChokepointVesselCounts, getCountryChokepoints, type Chokepoint } from './lib/chokepoints'
 import { resolveCountryName } from './lib/countryNames'
@@ -472,6 +474,24 @@ function AppContent() {
     if (p.get('lens') === 'story' && theme && isLensAnchor(theme) && !storyLens.state.active) {
       storyLens.enter(theme)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, location.pathname])
+  // Dial P1: `?workbench=1` = la parada CONSTRUIR llegando desde /brief.
+  // Misma forma que el deep-link del lens de arriba (guard de ruta + ref de
+  // procesado), y el param se STRIPPEA de inmediato con replace:true — la
+  // lección de stripLensParam: mergeFocusIntoParams preserva los params que
+  // no posee, así que un `workbench=1` vivo re-abriría el Workbench en cada
+  // rewrite de foco después de que el analista lo cierre.
+  const workbenchLinkProcessedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (location.pathname !== '/app') return
+    if (workbenchLinkProcessedRef.current === location.search) return
+    workbenchLinkProcessedRef.current = location.search
+    const p = new URLSearchParams(location.search)
+    if (p.get('workbench') !== '1') return
+    setWorkbenchOpen(true)
+    p.delete('workbench')
+    navigate({ pathname: location.pathname, search: p.toString() }, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, location.pathname])
   // const [timeWindow, setTimeWindow] = useState(24) // Replaced by context
@@ -2006,6 +2026,27 @@ function AppContent() {
             >
               <BookmarkPlus size={13} /> <span className="cmd-btn-label">WATCH</span>
             </button>
+          )}
+          {/* El dial de profundidad (P1): la posición se DERIVA del estado
+              real del console (workbenchOpen), nunca de un estado paralelo.
+              LEER viaja a /brief con el foco país acarreado (invariante 4).
+              El botón BRIEF de al lado se queda: no era solo navegación —
+              es el ancla del tour (data-tour), lleva carry-context
+              theme/label/q (buildBriefParams) y el badge de watches; misma
+              redundancia deliberada que WORKBENCH↔CONSTRUIR. Móvil: la tab
+              shell es el proto-dial (spec §6) — aquí no se monta. */}
+          {!isMobile && (
+            <DepthDial
+              active={workbenchOpen ? 'construir' : 'observar'}
+              onSelect={(p) => {
+                saveDialPosition(p)
+                track('dial_change', { to: p, from: workbenchOpen ? 'construir' : 'observar' })
+                if (p === 'construir') { setWorkbenchOpen(true); return }
+                if (p === 'observar') { setWorkbenchOpen(false); return }
+                const t = dialTarget('leer', location.search)
+                navigate(`${t.path}${t.search}`)
+              }}
+            />
           )}
           <button className="cmd-btn" data-tour="brief-button" onClick={openBrief} data-tip="Open the intelligence brief">
             <ClipboardList size={13} /> <span className="cmd-btn-label">BRIEF</span>
