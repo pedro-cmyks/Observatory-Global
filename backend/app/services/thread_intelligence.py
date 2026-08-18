@@ -1768,7 +1768,91 @@ def resolve_thread_source_count(
     return receipt_source_count, SOURCE_COUNT_BASIS_SERVED, receipt_sample_size
 
 
-def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[str, Any]:
+# ── Subject-geography coherence mark on LIVE rows (#257 serving half) ─────────
+# `measure_subject_geography_coherence` (atlas-subject-coherence-v1) ran only
+# at seal time, so the live Brief/console could not mark a mixed-geography
+# story until the nightly publication (the payload hole lib/cardWarnings.ts
+# documents). MEASURED 2026-08-18 before choosing this lane: running the
+# measurement inline here costs ~3.4 ms/row (24 receipts; the full
+# _COUNTRY_PATTERNS + _NATIVE_COUNTRY_PATTERNS regex tables per headline,
+# uncached) = ~137 ms median on a 40-row list — ~2.7x the 50 ms serving
+# budget. So it runs OFF-REQUEST (scripts/compute_subject_coherence.py, on
+# the receipts this lane renders) into `dynamic_topic_subject_coherence`
+# (mig 102) and serving is this pure guarded read. A topic without a stored
+# measurement serves null — never false-by-default.
+
+_SUBJECT_COHERENCE_SQL = """
+SELECT topic_id, result
+FROM dynamic_topic_subject_coherence
+WHERE topic_id = ANY($1::bigint[])
+"""
+
+
+def _grab_bag_flag(stored: Any) -> bool | None:
+    """Derive the served ``subject_geography_grab_bag`` bool from a stored
+    atlas-subject-coherence-v1 result.
+
+    ``None`` = honestly unmeasured: no stored row, malformed storage, or the
+    measurement itself abstained (``no_subject_geography_signal`` — zero
+    receipts carried country evidence, so "not a grab-bag" was never claimed).
+    ``single_dominant_subject`` and ``coherent_multi_country`` ARE measured
+    determinations -> False; ``grab_bag`` -> True.
+    """
+    if isinstance(stored, str):
+        try:
+            stored = json.loads(stored)
+        except (ValueError, TypeError):
+            return None
+    if not isinstance(stored, dict):
+        return None
+    if stored.get("status") == "no_subject_geography_signal":
+        return None
+    flag = stored.get("grab_bag")
+    return flag if isinstance(flag, bool) else None
+
+
+async def _fetch_subject_coherence_map(
+    conn: Any, topic_ids: list[int]
+) -> dict[int, dict[str, Any]]:
+    """Batched pure read of the stored coherence results, keyed by topic id.
+
+    Guarded like the rest of this lane: a missing table (mig 102 not applied —
+    the mig-087 crash class) or any DB error degrades to ``{}`` = every row
+    serves null, and the thread lane never 500s over an optional mark.
+    """
+    if not topic_ids:
+        return {}
+    try:
+        has_table = await conn.fetchval(
+            "SELECT to_regclass('dynamic_topic_subject_coherence') IS NOT NULL"
+        )
+        if not has_table:
+            return {}
+        rows = await conn.fetch(
+            _SUBJECT_COHERENCE_SQL, list(topic_ids), timeout=query_timeout(3),
+        )
+    except Exception:
+        logger.warning("subject-coherence read degraded; rows serve null", exc_info=True)
+        return {}
+    out: dict[int, dict[str, Any]] = {}
+    for row in rows:
+        raw = row["result"]
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except (ValueError, TypeError):
+                continue
+        if isinstance(raw, dict):
+            out[int(row["topic_id"])] = raw
+    return out
+
+
+def assemble_dynamic_thread(
+    topic_row: Any,
+    sample_signals: list[Any],
+    *,
+    subject_coherence: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     topic_id = int(_record_get(topic_row, "id"))
     label_text = clean_thread_label(
         _record_get(topic_row, "label"), sample_signals, f"dynamic topic {topic_id}",
@@ -1922,6 +2006,12 @@ def assemble_dynamic_thread(topic_row: Any, sample_signals: list[Any]) -> dict[s
         "subject_geography_reason_codes": list(
             subject_geography.get("reason_codes") or []
         ),
+        # #257 serving half: the stored coherence measurement (grab-bag vs
+        # coherent multi-country — a DIFFERENT contract from the verification
+        # status above). True = measured mixed-geography grab-bag; False =
+        # measured not-a-grab-bag; None = no stored measurement (honest null,
+        # never false-by-default). Computed off-request; see _grab_bag_flag.
+        "subject_geography_grab_bag": _grab_bag_flag(subject_coherence),
         "top_sources": top_sources,
         "top_people": [],
         "top_entities": top_entities,
@@ -2017,6 +2107,12 @@ async def _fetch_dynamic_threads_with_conn(
         topic_rows = await conn.fetch(
             _DYNAMIC_TOPICS_SQL, hours, limit, timeout=query_timeout(15),
         )
+    # One batched guarded read for the whole list (measured on the PK: a
+    # single ANY($1) lookup, ~1 round-trip) — the off-request home of the
+    # coherence measurement that costs ~137 ms if run inline here.
+    coherence_map = await _fetch_subject_coherence_map(
+        conn, [int(t["id"]) for t in topic_rows]
+    )
     threads: list[dict[str, Any]] = []
     for topic in topic_rows:
         sample_ids = list(topic["sample_signal_ids"] or [])
@@ -2026,7 +2122,10 @@ async def _fetch_dynamic_threads_with_conn(
                 _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids,
                 timeout=query_timeout(8),
             )
-        thread = assemble_dynamic_thread(topic, list(sample_signals))
+        thread = assemble_dynamic_thread(
+            topic, list(sample_signals),
+            subject_coherence=coherence_map.get(int(topic["id"])),
+        )
         # #238: the SQL pre-filters candidates by coverage (latest-snapshot codes,
         # any position — the exact pre-image of this check's coverage arm); re-key
         # each on its verified SUBJECT geography and keep it only when the
@@ -2127,7 +2226,11 @@ async def _fetch_dynamic_thread_detail(
         sample_signals = await conn.fetch(
             _EMERGENT_SAMPLE_SIGNALS_SQL, sample_ids, timeout=8,
         )
-    detail = assemble_dynamic_thread(topic, list(sample_signals))
+    coherence_map = await _fetch_subject_coherence_map(conn, [dynamic_topic_id])
+    detail = assemble_dynamic_thread(
+        topic, list(sample_signals),
+        subject_coherence=coherence_map.get(dynamic_topic_id),
+    )
     packet_rows = [
         {**dict(r), "sentiment": (r["nlp_sentiment"] if "nlp_sentiment" in r else r["sentiment"])}
         for r in sample_signals
