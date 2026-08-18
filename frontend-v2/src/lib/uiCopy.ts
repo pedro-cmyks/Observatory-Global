@@ -83,6 +83,40 @@ export const UI_COPY = {
         es: 'Profundidad: cuánto instrumento ves. Tu lugar, tu foco y las advertencias viajan contigo.',
     },
 
+    // ---------------- depth strip (P1.5 — el dial viste la página en sitio) ---
+    // Bloques que OBSERVAR/CONSTRUIR SUMAN a cada tarjeta (lib/cardDepth).
+    // Solo chrome: los datos (sujetos, países, conteos) son medidos y se
+    // imprimen como el payload los sirve. Banco R1: prosa con base, cero
+    // sigma crudo.
+    'brief.depth.subjects': { en: 'Key subjects', es: 'Sujetos clave' },
+    'brief.depth.coverage': { en: 'Also in coverage', es: 'También en cobertura' },
+    'brief.depth.conf.high': { en: 'high confidence', es: 'confianza alta' },
+    'brief.depth.conf.medium': { en: 'medium confidence', es: 'confianza media' },
+    'brief.depth.conf.low': { en: 'low confidence', es: 'confianza baja' },
+    'brief.depth.discussion': {
+        en: '{n} forum posts · unverified',
+        es: '{n} publicaciones en foros · no verificado',
+    },
+    'brief.depth.discussionTip': {
+        en: 'Forum discussion attached to this story — people-side attention, never evidence.',
+        es: 'Discusión de foros asociada a esta historia — atención del público, jamás evidencia.',
+    },
+
+    // ---------------- workbench en /brief (P1.5 — CONSTRUIR) ----------------
+    'brief.workbench.strip': { en: 'Your investigation', es: 'Tu investigación' },
+    'brief.workbench.open': { en: 'Open the workbench', es: 'Abrir el workbench' },
+    'brief.workbench.title': { en: 'INVESTIGATION WORKBENCH', es: 'WORKBENCH DE INVESTIGACIÓN' },
+    'brief.workbench.close': { en: 'Close the workbench', es: 'Cerrar el workbench' },
+    'brief.workbench.pins': { en: '{n} pinned', es: '{n} guardados' },
+    'brief.workbench.empty': {
+        en: 'No pins yet — ◇ Save on any story starts your investigation.',
+        es: 'Aún no hay pins — ◇ Guardar en cualquier historia inicia tu investigación.',
+    },
+    'brief.workbench.overTip': {
+        en: 'Opens OVER this page — you never leave the Brief. Pins freeze what you saw.',
+        es: 'Abre SOBRE esta página — nunca sales del Diario. Los pins congelan lo que viste.',
+    },
+
     // ---------------- language control ----------------
     'brief.lang.label': { en: 'Language', es: 'Idioma' },
     'brief.lang.auto': { en: 'Auto (browser)', es: 'Automático (navegador)' },

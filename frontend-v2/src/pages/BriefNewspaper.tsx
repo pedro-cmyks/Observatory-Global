@@ -5,7 +5,7 @@
 // yields to input between fibers, so a tap on the place selector lands in
 // milliseconds even while the page is re-rendering. Content is NEVER dropped —
 // the same renders happen, interruptibly.
-import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, startTransition, lazy, Suspense } from 'react'
 import { useSavedWatches, fetchWatchCount } from '../hooks/useSavedWatches'
 import { enqueueUrls, useArticleStates } from '../lib/articleEnrichment'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
@@ -56,10 +56,16 @@ import { flashPinToast } from '../lib/pinToast'
 import { TranslatedSection } from '../components/TranslatedSection'
 import { shouldTranslate as shouldTranslateFree } from '../lib/translatableText'
 import { usePageLanguage } from '../lib/pageLanguage'
-import { useUiCopy } from '../lib/uiCopy'
+import { useUiCopy, type UiCopyKey } from '../lib/uiCopy'
 import { ReaderLanguagePicker } from '../components/ReaderLanguagePicker'
 import { DepthDial } from '../components/DepthDial'
-import { dialFromUrl, dialTarget, saveDialPosition } from '../lib/depthDial'
+import { dialFromUrl, loadDialPosition, saveDialPosition, type DialPosition } from '../lib/depthDial'
+// P1.5 (dial en sitio): la lib pura que decide QUÉ bloques suma cada
+// profundidad a una tarjeta — el componente solo renderiza (lib/cardDepth).
+import { depthBlocksForRow, type DepthCardRow } from '../lib/cardDepth'
+import { TemporalSignatureChip } from '../lib/temporalSignatureChip'
+import { countQualifier, formatCountWindow } from '../lib/countQualifier'
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { LoadingMoment } from '../components/LoadingMoment'
 import { EclipseStrip } from '../components/EclipseStrip'
@@ -162,6 +168,14 @@ const BRIEF_FETCH_TIMEOUT_MS = 25000
  * this becomes conservative (under-claiming), never a false claim.
  */
 const BRIEF_STORY_CAP = 10
+
+// P1.5 CONSTRUIR — el Workbench abre como overlay ENCIMA de /brief, sin
+// navegar (opción b del plan: React.lazy del panel). El chunk del workbench
+// (panel + dossier + constelación) se descarga SOLO cuando construir lo abre
+// — jamás entra al critical path del Brief (respeta el bundle split
+// 2026-08-18). El panel lee lib/workbench (localStorage) directamente y usa
+// AuthContext, que vive en el root — cero providers nuevos que levantar.
+const BriefWorkbenchPanel = lazy(() => import('../components/WorkbenchPanel'))
 
 // Natural Earth 110m with ISO_A2 country properties
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
@@ -522,6 +536,20 @@ export function BriefNewspaper() {
     const [dailyEdition, setDailyEdition] = useState<DailyPublicationArtifact | null>(null)
     const [eclipse, setEclipse] = useState<EclipseData | null>(null)
 
+    // P1.5 (dial en sitio — spec 2026-08-18-depth-dial §6, corrección de
+    // Pedro sobre el P1): en /brief el dial ya NO navega — fija un estado de
+    // profundidad que VISTE esta página (OrcaSlicer: la misma barra crece
+    // opciones al deslizar). LEER = el Brief de hoy exacto; OBSERVAR y
+    // CONSTRUIR SUMAN (G-ADITIVO). Arranque: ?depth= del link manda (spec
+    // §7); sin él, la posición persistida del lector (patrón pageLanguage).
+    const [depth, setDepth] = useState<DialPosition>(() => {
+        try { return dialFromUrl(window.location.search) ?? loadDialPosition() } catch { return 'leer' }
+    })
+    // CONSTRUIR: visibilidad del overlay del Workbench sobre /brief. El
+    // estado sobrevive al deslizar (volver a construir lo reencuentra), pero
+    // el overlay solo RENDERIZA en construir — leer/observar quedan limpios.
+    const [briefWorkbenchOpen, setBriefWorkbenchOpen] = useState(false)
+
     // Task 5 (mobile IA #236): the Brief buried its news under ~1707px of
     // chrome — the freshness box and the markets band are honesty surfaces
     // (staleness truth / "not part of the sealed edition"), not chrome to
@@ -588,23 +616,23 @@ export function BriefNewspaper() {
         setCountryFilter(countryParam)
     }, [location.pathname, countryParam])
 
-    // Deep link `?depth=` (dial P1, spec §7): un link que NOMBRA posición
-    // manda. Solo observar/construir navegan (leer YA es esta página). Un
-    // solo disparo al montar — un deep link real entra con documento nuevo;
-    // el guard evita re-disparos bajo los rewrites de params del shell
-    // keep-alive. replace:true para no dejar el /brief?depth= en el back.
-    const depthLinkHandledRef = useRef(false)
+    // Deep link `?depth=` (P1.5, spec §7): un link que NOMBRA posición fija
+    // el estado EN SITIO — el redirect one-shot del P1 murió con el
+    // conmutador (el dial ya viste esta página, no viaja). Guard por search:
+    // se aplica una vez por valor del param, así los rewrites del shell
+    // keep-alive no re-imponen un ?depth= viejo sobre lo que el lector ya
+    // deslizó. Un link sin posición respeta la del lector (localStorage).
+    const depthLinkRef = useRef<string | null>(null)
     useEffect(() => {
-        if (depthLinkHandledRef.current) return
-        depthLinkHandledRef.current = true
         if (location.pathname !== '/brief') return
+        if (depthLinkRef.current === location.search) return
+        depthLinkRef.current = location.search
         const p = dialFromUrl(location.search)
-        if (p && p !== 'leer') {
-            const t = dialTarget(p, location.search)
-            navigate(`${t.path}${t.search}`, { replace: true })
+        if (p) {
+            setDepth(p)
+            saveDialPosition(p)
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [location.pathname, location.search])
 
     // Pedro (2026-07-05): the Brief is the DAY's edition — always 24h. Other
     // windows live in the console; time-as-dimension belongs to L2 scrubbers.
@@ -1626,10 +1654,108 @@ export function BriefNewspaper() {
         )
     }
 
+    // P1.5 — la franja de profundidad: los bloques que OBSERVAR/CONSTRUIR
+    // SUMAN a una tarjeta, decididos por la lib pura (cardDepth) sobre datos
+    // YA SERVIDOS en la fila — un campo ausente no renderiza, jamás un
+    // placeholder. Registro de prosa (banco R1): bandas, chips y conteos con
+    // base — cero sigma/velocity crudos (esos son de Developer, que no
+    // existe). En LEER devuelve null siempre (G-ADITIVO).
+    const renderDepthStrip = (
+        row: DepthCardRow,
+        opts?: { omitCoverage?: string[]; sealed?: boolean },
+    ) => {
+        const blocks = depthBlocksForRow(row, depth, opts)
+        if (blocks.length === 0) return null
+        return (
+            <div className="brief-depth-strip">
+                {blocks.map(b => {
+                    switch (b.kind) {
+                        case 'subjects':
+                            return (
+                                <span key="subjects" className="brief-depth-block">
+                                    <span className="brief-depth-lab">{tr('brief.depth.subjects')}</span>
+                                    {/* top_entities es contenido MEDIDO (NER/GDELT) —
+                                        se imprime como llega, igual que el rail. */}
+                                    {b.entities.map(e => (
+                                        <span key={e} className="brief-thread-chip brief-depth-subject">{e}</span>
+                                    ))}
+                                </span>
+                            )
+                        case 'coverage':
+                            return (
+                                <span key="coverage" className="brief-depth-block">
+                                    <span className="brief-depth-lab">{tr('brief.depth.coverage')}</span>
+                                    {b.codes.map(cc => {
+                                        const name = resolveCountryName(cc, cc)
+                                        return (
+                                            <span key={cc} className="brief-thread-chip" data-tip={coverageChipTip(name)}>
+                                                {name}
+                                            </span>
+                                        )
+                                    })}
+                                </span>
+                            )
+                        case 'temporal':
+                            // El chip existente del rail — mismo vocabulario,
+                            // misma honestidad (continuous/NULL ya no llegan
+                            // aquí: la lib los filtró).
+                            return (
+                                <TemporalSignatureChip
+                                    key="temporal"
+                                    signature={b.signature}
+                                    meta={b.meta}
+                                    className="brief-depth-temporal"
+                                />
+                            )
+                        case 'confidence':
+                            // Banda, jamás un dígito (N14) — el tip existente
+                            // dice de qué capa salió el bucket.
+                            return (
+                                <span
+                                    key="confidence"
+                                    className="brief-depth-conf"
+                                    data-conf={b.bucket}
+                                    data-tip={confidenceBucketTip(b.bucket, b.source)}
+                                >
+                                    {tr(`brief.depth.conf.${b.bucket}` as UiCopyKey)}
+                                </span>
+                            )
+                        case 'count': {
+                            // El contrato del conteo (council P1-5): N · ventana ·
+                            // base, con el tip que explica la base. Sellado =
+                            // frozen (sin ventana viva).
+                            const q = countQualifier(b.count, formatCountWindow(b.windowHours), b.base)
+                            return (
+                                <span key="count" className="brief-depth-count" data-tip={q.tip}>
+                                    {q.label}
+                                </span>
+                            )
+                        }
+                        case 'discussion':
+                            return (
+                                <span
+                                    key="discussion"
+                                    className="brief-depth-discussion"
+                                    data-tip={tr('brief.depth.discussionTip')}
+                                >
+                                    {tr('brief.depth.discussion', { n: b.n.toLocaleString() })}
+                                </span>
+                            )
+                    }
+                })}
+            </div>
+        )
+    }
+
     const renderThreadCard = (t: TopThread, opts?: { country?: string | null; wide?: boolean }) => {
         const arrow = trendArrow(t.trend, t.changed_10h)
         const receipts = (t.evidence_samples ?? []).slice(0, opts?.wide ? 3 : 2)
         const category = t.category ?? t.parent_domain
+        // P1.5: qué chips de cobertura muestra YA esta tarjeta en LEER (el
+        // foot renderiza máx 2, filtrando el país del scope) — la franja de
+        // profundidad solo suma el RESTO, nunca duplica.
+        const shownCoverage = (t.top_countries ?? []).filter(cc => cc !== opts?.country).slice(0, 2)
+        const depthOmit = opts?.country ? [opts.country, ...shownCoverage] : shownCoverage
         return (
             <TranslatedSection key={t.thread_id} active={threadHasTranslatable(t)}>
                 {(translateControl) => (
@@ -1670,6 +1796,14 @@ export function BriefNewspaper() {
                     )}
                     <Sparkline timeline={t.hourly_timeline} />
                 </div>
+                {/* P1.5: OBSERVAR/CONSTRUIR visten la tarjeta con lo que la
+                    fila YA sirve — null en LEER (G-ADITIVO). Filas de la
+                    edición país son siempre vivas; las globales heredan el
+                    estado sellado de la edición. */}
+                {depth !== 'leer' && renderDepthStrip(t as DepthCardRow, {
+                    omitCoverage: depthOmit,
+                    sealed: servedFromSeal && !opts?.country,
+                })}
                 {receipts.length > 0 && (
                     <>
                         <div className="brief-rc-lab">{tr('brief.card.receipts')}</div>
@@ -1848,7 +1982,9 @@ export function BriefNewspaper() {
         // `lang` on the reader root: the chrome is authored in this language,
         // so hyphenation, quotes and screen-reader voice follow it. Measured
         // content nested inside carries its own lang via the translate lanes.
-        <div className={`atlas-reader brief-page${countryFilter ? '' : ` brief-sec-${SECTIONS[section].id}`}`} data-rtheme={readerTheme} lang={uiLangCode}>
+        // P1.5: la clase de profundidad SOLO existe fuera de LEER — en leer el
+        // DOM es byte-idéntico al Brief de hoy (G-ADITIVO, mecánico).
+        <div className={`atlas-reader brief-page${countryFilter ? '' : ` brief-sec-${SECTIONS[section].id}`}${depth !== 'leer' ? ` brief-depth-${depth}` : ''}`} data-rtheme={readerTheme} lang={uiLangCode}>
             <OfflineBanner />
             <div className="brief-wrap">
                 <div className="brief-topbar" aria-hidden="true" />
@@ -1882,23 +2018,19 @@ export function BriefNewspaper() {
                         )}
                         <div className="brief-masthead-actions">
                             <button className="reader-chip" onClick={() => navigate('/')}>{tr('brief.action.home')}</button>
-                            {/* El dial de profundidad (P1) reemplaza el chip
-                                «Abrir consola»: LEER es esta página; OBSERVAR/
-                                CONSTRUIR viajan al console con el foco país
-                                acarreado (invariante 4). */}
+                            {/* P1.5 — el dial ya NO navega: viste ESTA página
+                                en sitio (G-EN-SITIO: la URL no cambia al
+                                deslizar). LEER = el Brief de hoy exacto;
+                                OBSERVAR/CONSTRUIR SUMAN bloques por tarjeta
+                                (lib/cardDepth). El foco no puede perderse:
+                                nunca sales de la página (invariante 4 por
+                                construcción). Persiste como el idioma. */}
                             <DepthDial
-                                active="leer"
+                                active={depth}
                                 onSelect={(p) => {
                                     saveDialPosition(p)
-                                    track('dial_change', { to: p, from: 'leer' })
-                                    // El país que viaja (invariante 4): la edición
-                                    // país explícita gana; si no hay, el LUGAR
-                                    // declarado — el lector que lee «Cerca de ti ·
-                                    // Colombia» está mirando a Colombia y sube el
-                                    // dial sin perderla (G-FOCO).
-                                    const carry = countryFilter ?? placeCountry
-                                    const t = dialTarget(p, carry ? `?country=${carry}` : '')
-                                    navigate(`${t.path}${t.search}`)
+                                    track('dial_change', { to: p, from: depth, in_situ: true })
+                                    setDepth(p)
                                 }}
                             />
                             <button
@@ -2186,13 +2318,61 @@ export function BriefNewspaper() {
                                 </>
                             )
                             return isMobile ? (
-                                <details className="brief-method-fold">
+                                // P1.5 CONSTRUIR: la franja de método salta a
+                                // ABIERTA también en móvil (quien construye
+                                // quiere el método a la vista). El key fuerza
+                                // el remount al cruzar de posición para que
+                                // `open` aplique aunque el lector la hubiera
+                                // plegado antes; en leer/observar no hay
+                                // atributo open — DOM idéntico al de hoy
+                                // (G-ADITIVO).
+                                <details
+                                    key={depth === 'construir' ? 'construir-open' : 'folded'}
+                                    className="brief-method-fold"
+                                    open={depth === 'construir' || undefined}
+                                >
                                     <summary className="brief-method-fold-summary">
                                         {tr('brief.methodFold.label')}
                                     </summary>
                                     {methodStrip}
                                 </details>
                             ) : methodStrip
+                        })()}
+
+                        {/* ============ TU INVESTIGACIÓN (P1.5 — solo CONSTRUIR) ====
+                            La franja del workbench: investigación activa + pins +
+                            la puerta al overlay que abre ENCIMA de esta página
+                            (sin navegar — G-EN-SITIO). En leer/observar no
+                            renderiza nada (G-ADITIVO). */}
+                        {depth === 'construir' && (() => {
+                            void wbTick
+                            const activeInvId = getActiveInvestigationId()
+                            const activeInv = activeInvId ? getInvestigation(activeInvId) : null
+                            return (
+                                <section className="brief-workbench-strip" aria-label={tr('brief.workbench.strip')}>
+                                    <span className="brief-depth-lab">{tr('brief.workbench.strip')}</span>
+                                    {activeInv ? (
+                                        <>
+                                            <span className="brief-workbench-name">{activeInv.title}</span>
+                                            <span className="brief-workbench-count">
+                                                {tr('brief.workbench.pins', { n: activeInv.pins.length })}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span className="brief-workbench-emptynote">{tr('brief.workbench.empty')}</span>
+                                    )}
+                                    <button
+                                        className="brief-theme-link brief-workbench-openbtn"
+                                        data-tip={tr('brief.workbench.overTip')}
+                                        onClick={() => {
+                                            track('workbench_open', { via: 'brief_dial' })
+                                            setBriefWorkbenchOpen(true)
+                                        }}
+                                    >
+                                        {tr('brief.workbench.open')}
+                                    </button>
+                                </section>
+                            )
                         })()}
 
                         {/* ============ WORLD MARKETS BAND (full-width franja, top) ============
@@ -2568,6 +2748,13 @@ export function BriefNewspaper() {
                                                 <Sparkline timeline={leadThread.hourly_timeline} />
                                                 {renderCoverageChips(leadThread, null, 4)}
                                             </div>
+                                            {/* P1.5: la franja de profundidad del lead — un lead
+                                                sellado trae menos campos y por eso viste menos
+                                                (honesto por construcción, base frozen). */}
+                                            {depth !== 'leer' && renderDepthStrip(leadThread as DepthCardRow, {
+                                                omitCoverage: (leadThread.top_countries ?? []).slice(0, 4),
+                                                sealed: servedFromSeal,
+                                            })}
                                             {(leadThread.evidence_samples ?? []).length > 0 && (
                                                 <>
                                                     {/* N1: the receipt country chip is now the OUTLET's
@@ -3648,6 +3835,54 @@ export function BriefNewspaper() {
                         )}
                     </div>
                 </dialog>
+
+                {/* ============ WORKBENCH OVERLAY (P1.5 — CONSTRUIR) ============
+                    El Workbench ENCIMA de /brief, sin navegar: el mismo panel
+                    del console (lib/workbench = un solo store), cargado lazy —
+                    su chunk jamás toca el critical path del Brief. Solo existe
+                    en construir Y abierto; cerrar te deja exactamente donde
+                    estabas leyendo. */}
+                {depth === 'construir' && briefWorkbenchOpen && (
+                    <div
+                        className="brief-workbench-overlay"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={tr('brief.workbench.title')}
+                    >
+                        <div className="brief-workbench-head">
+                            <span className="brief-workbench-title">{tr('brief.workbench.title')}</span>
+                            <button
+                                className="brief-workbench-close"
+                                onClick={() => setBriefWorkbenchOpen(false)}
+                                aria-label={tr('brief.workbench.close')}
+                            >×</button>
+                        </div>
+                        <div className="brief-workbench-body">
+                            <PanelErrorBoundary panelName="INVESTIGATION WORKBENCH">
+                                <Suspense fallback={<LoadingMoment compact />}>
+                                    <BriefWorkbenchPanel
+                                        refreshToken={wbTick}
+                                        onOpenThread={(id: string, label: string) => {
+                                            setBriefWorkbenchOpen(false)
+                                            openStoryById(id, label, 'workbench')
+                                        }}
+                                        onOpenCountry={(cc: string) => {
+                                            setBriefWorkbenchOpen(false)
+                                            selectCountry(cc)
+                                        }}
+                                        onOpenParams={(params: string) => {
+                                            // Restaurar la vista L2 de un pin SÍ viaja al
+                                            // console — es el verbo del pin (acción explícita
+                                            // del lector), no el dial (G-EN-SITIO intacto).
+                                            navigate(`/app${params.startsWith('?') ? params : `?${params}`}`)
+                                        }}
+                                        onClose={() => setBriefWorkbenchOpen(false)}
+                                    />
+                                </Suspense>
+                            </PanelErrorBoundary>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

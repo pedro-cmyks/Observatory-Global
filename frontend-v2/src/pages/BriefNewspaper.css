@@ -2724,3 +2724,169 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
         max-width: none;
     }
 }
+
+/* ============ P1.5 — EL DIAL VISTE LA PÁGINA (profundidad en sitio) ============
+   Todo lo de abajo SOLO pinta fuera de LEER: los selectores cuelgan de
+   .brief-depth-observar / .brief-depth-construir o de nodos que solo se
+   renderizan a esas profundidades — en LEER el DOM y el CSS aplicado son los
+   de hoy (G-ADITIVO). */
+
+/* La franja de profundidad de cada tarjeta: prosa y chips medidos, registro
+   pequeño — suma sin gritar (la tarjeta de LEER sigue mandando). */
+.brief-depth-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 8px 0 2px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--r-line);
+}
+
+.brief-depth-block {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.brief-depth-lab {
+    font-family: var(--r-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--r-muted);
+    margin-right: 2px;
+}
+
+/* Sujetos: contenido medido (NER/GDELT) — mismo chip que cobertura, tinte
+   propio para que no se lea como país. */
+.brief-depth-subject {
+    text-transform: capitalize;
+}
+
+/* Banda de confianza: palabra, jamás dígito (N14). */
+.brief-depth-conf {
+    font-family: var(--r-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--r-line);
+    color: var(--r-ink-soft);
+    background: var(--r-chip);
+}
+
+.brief-depth-conf[data-conf='high'] { border-color: var(--r-sec); }
+.brief-depth-conf[data-conf='low'] { opacity: 0.75; }
+
+/* Conteo con ventana y base — el contrato countQualifier, en el registro de
+   la franja. */
+.brief-depth-count,
+.brief-depth-discussion {
+    font-family: var(--r-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.05em;
+    color: var(--r-muted);
+}
+
+.brief-depth-temporal {
+    /* el chip trae su propia identidad (temporalSignatureChip.css); solo el
+       encaje de la franja */
+    align-self: center;
+}
+
+/* CONSTRUIR: el ◇ Save se vuelve el afordance primario de la tarjeta. */
+.brief-depth-construir .brief-save-btn {
+    border-color: var(--r-sec);
+    color: var(--r-sec);
+    font-weight: 600;
+}
+
+.brief-depth-construir .brief-save-btn.saved {
+    color: var(--r-on-accent);
+    background: var(--r-sec);
+}
+
+/* La franja "Tu investigación" (solo construir). */
+.brief-workbench-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    border: 1px solid var(--r-line);
+    border-left: 3px solid var(--r-sec);
+    background: var(--r-chip);
+}
+
+.brief-workbench-name {
+    font-weight: 600;
+    color: var(--r-ink);
+}
+
+.brief-workbench-count,
+.brief-workbench-emptynote {
+    font-family: var(--r-mono);
+    font-size: 0.68rem;
+    color: var(--r-muted);
+}
+
+.brief-workbench-openbtn {
+    margin-left: auto;
+}
+
+/* El overlay del Workbench ENCIMA de /brief (sin navegar). Debajo del tab
+   bar móvil (9500) para que las tres pestañas sigan siendo la salida. */
+.brief-workbench-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9300;
+    display: flex;
+    flex-direction: column;
+    background: var(--r-paper);
+    color: var(--r-ink);
+}
+
+.brief-workbench-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--r-line);
+}
+
+.brief-workbench-title {
+    font-family: var(--r-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    color: var(--r-ink-soft);
+}
+
+.brief-workbench-close {
+    appearance: none;
+    cursor: pointer;
+    border: 1px solid var(--r-line);
+    border-radius: 999px;
+    background: var(--r-chip);
+    color: var(--r-ink-soft);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 6px 12px;
+}
+
+.brief-workbench-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 720px) {
+    .brief-workbench-body {
+        /* el tab bar móvil flota encima — que el final de la lista no quede
+           debajo de él */
+        padding-bottom: 96px;
+    }
+}
