@@ -5,6 +5,7 @@ import { getThemeLabel, getThemeIcon } from '../lib/themeLabels'
 import { resolveCountryName } from '../lib/countryNames'
 import { getSourceFamilyMeta } from '../lib/sourceFamily'
 import { threadCountryPresentation } from '../lib/threadGeography'
+import { translationTarget } from '../lib/pageLanguage'
 import {
     confidenceBucketTip,
     confidenceBucketWord,
@@ -117,10 +118,13 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
     }, [thread, hours])
 
     // Lazy translation: when evidence samples land, ask the backend for
-    // English versions. Backend caches per (signal_id, target_lang) so
-    // repeat opens of the same panel are free. Renders original
-    // headline regardless; the translation appears in italic underneath
-    // when ready and only when it differs from the source.
+    // versions in the reader's translation target (picker choice → browser
+    // language — translationTarget(), the one source of truth; this lane
+    // hardcoded 'en' until the 2026-08-18 panel-ciego caught targets
+    // diverging from the picker). Backend caches per (signal_id,
+    // target_lang) so repeat opens of the same panel are free. Renders
+    // original headline regardless; the translation appears in italic
+    // underneath when ready and only when it differs from the source.
     useEffect(() => {
         const samples = detail?.evidence_samples
         if (!samples || samples.length === 0) return
@@ -132,7 +136,7 @@ export function ThreadFocusPanel({ thread, hours, onClose, onCountrySelect, onSo
         fetch('/api/v2/translate/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ signal_ids: ids, to: 'en' }),
+            body: JSON.stringify({ signal_ids: ids, to: translationTarget() }),
             signal: controller.signal,
         })
             .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
