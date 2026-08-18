@@ -9,8 +9,12 @@
     position: relative;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     cursor: pointer;
+    /* Tap = tap: no double-tap-zoom arbitration delay on the one control a
+       reader who cannot read the page MUST be able to hit first try. */
+    touch-action: manipulation;
 }
 
 .reader-lang-glyph {
@@ -45,13 +49,21 @@
     margin: 0;
     background: transparent;
     color: inherit;
+    touch-action: manipulation;
 }
 
 /* The chip is a <label>, so the page's `button.reader-chip` touch floor does
-   not reach it — restate it here for the same phone-first reason. */
-@media (max-width: 768px) {
-    .brief-page .reader-lang {
+   not reach it — the component owns its own floor instead. Unscoped on
+   purpose (`.reader-lang` renders nowhere but this component — grepped, not
+   assumed): the panel-ciego reviewer's dead tap (2026-08-18) happened on a
+   floor that only applied under `.brief-page`. Both axes: the chip's visible
+   content (◍ + a two-letter code) is narrower than it is tall, so a
+   height-only floor still left a sliver of a target. `(pointer: coarse)`
+   joins the width query so a phone in landscape (>768px) keeps the floor. */
+@media (max-width: 768px), (pointer: coarse) {
+    .reader-lang {
         min-height: 44px;
+        min-width: 44px;
     }
 }
 
