@@ -73,9 +73,28 @@ export function getStoredPageLanguage(): string | null {
     }
 }
 
-/** The effective translation target right now. */
-export function getPageLanguage(): string {
+/**
+ * THE translation target — the single source of truth for every translate
+ * lane (headline batch, free-text, excerpt, any future one).
+ *
+ * Resolution: the reader's explicit picker choice when one exists;
+ * `navigator.language` ONLY as the initial default (that is exactly the
+ * picker's own 'auto' semantics). No lane may read `navigator.language`
+ * directly or hardcode a target — the panel-ciego reviewer (2026-08-18,
+ * §"El idioma es un callejón sin salida") got English headlines over an
+ * es choice precisely because a lane derived its own target.
+ *
+ * Non-reactive callers (queue defaults, event handlers) use this; mounted
+ * components use `usePageLanguage()`, the reactive form of the same value.
+ */
+export function translationTarget(): string {
     return getStoredPageLanguage() ?? browserLanguage()
+}
+
+/** The effective translation target right now (alias of translationTarget —
+ *  kept for the chrome/i18n consumers that predate the canonical name). */
+export function getPageLanguage(): string {
+    return translationTarget()
 }
 
 /** Set the page language; null = back to auto (browser language). */
@@ -102,7 +121,8 @@ export function subscribePageLanguage(cb: () => void): () => void {
     }
 }
 
-/** Reactive page language — re-renders the consumer when Settings changes it. */
+/** Reactive translation target — re-renders the consumer when the picker
+ *  (masthead ReaderLanguagePicker or Settings → Page Language) changes it. */
 export function usePageLanguage(): string {
-    return useSyncExternalStore(subscribePageLanguage, getPageLanguage, () => 'en')
+    return useSyncExternalStore(subscribePageLanguage, translationTarget, () => 'en')
 }

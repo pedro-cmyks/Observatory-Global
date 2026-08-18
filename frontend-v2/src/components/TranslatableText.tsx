@@ -22,9 +22,10 @@ import './TranslatableText.css';
  * per (text, lang) in a module Map + sessionStorage so repeat renders and
  * route round-trips don't re-fetch.
  *
- * Target language = the page-language setting (Settings → Page Language;
- * defaults to the browser language) via usePageLanguage() — changing it in
- * Settings re-targets every mounted label without a reload.
+ * Target language = the reader's translation target (masthead picker /
+ * Settings → Page Language choice; browser language only as the initial
+ * default) via usePageLanguage(), the reactive form of translationTarget() —
+ * changing the picker re-targets every mounted label without a reload.
  */
 
 const LABELS: Record<string, { original: string; translation: string }> = {

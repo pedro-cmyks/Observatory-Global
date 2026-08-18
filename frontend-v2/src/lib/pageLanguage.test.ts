@@ -6,6 +6,7 @@ import {
     getStoredPageLanguage,
     normalizeLang,
     setPageLanguage,
+    translationTarget,
 } from './pageLanguage'
 
 // vitest runs in the node env: navigator/localStorage/window are undefined, so
@@ -59,6 +60,32 @@ describe('page language store', () => {
         setPageLanguage('es')
         setPageLanguage('!!')
         expect(getStoredPageLanguage()).toBe(null)
+    })
+})
+
+describe('translationTarget — the single source of truth for translate lanes', () => {
+    it('follows the browser language when the reader has not chosen', () => {
+        expect(getStoredPageLanguage()).toBe(null)
+        expect(translationTarget()).toBe(browserLanguage())
+    })
+
+    it('the picker choice WINS over the browser language (the panel-ciego rule)', () => {
+        // navigator is en (node fallback); an es choice must aim every lane at es.
+        setPageLanguage('es')
+        expect(translationTarget()).toBe('es')
+    })
+
+    it('clearing the choice (auto) falls back to the browser language, not to the last choice', () => {
+        setPageLanguage('es')
+        setPageLanguage(null)
+        expect(translationTarget()).toBe(browserLanguage())
+    })
+
+    it('getPageLanguage is an alias of translationTarget — one value, never two', () => {
+        expect(getPageLanguage()).toBe(translationTarget())
+        setPageLanguage('tr')
+        expect(getPageLanguage()).toBe(translationTarget())
+        expect(translationTarget()).toBe('tr')
     })
 })
 

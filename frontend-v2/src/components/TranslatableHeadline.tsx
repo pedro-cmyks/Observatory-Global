@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getPageLanguage, usePageLanguage } from '../lib/pageLanguage';
+import { translationTarget, usePageLanguage } from '../lib/pageLanguage';
 import { type ChildTranslationStatus, resolveShowOriginal, shouldRetryFetch } from '../lib/sectionTranslation';
 import {
     type TranslateFailure,
@@ -24,9 +24,10 @@ import { useReportTranslationStatus, useSectionTranslation } from './TranslatedS
  * rendered every 429 as "no translation needed". Results are memoized per
  * (id, lang) here; the server caches them in signal_translations.
  *
- * Target language = the page-language setting (Settings → Page Language;
- * defaults to the browser language) via usePageLanguage() — changing it in
- * Settings re-targets every mounted headline without a reload.
+ * Target language = the reader's translation target (masthead picker /
+ * Settings → Page Language choice; browser language only as the initial
+ * default) via usePageLanguage(), the reactive form of translationTarget() —
+ * changing the picker re-targets every mounted headline without a reload.
  */
 
 const LABELS: Record<string, { original: string; translation: string; translating: string }> = {
@@ -85,7 +86,7 @@ function isClearlyNonEnglish(text: string): boolean {
 export function shouldTranslate(
     sourceLang: string | null | undefined,
     original: string,
-    targetLang: string = getPageLanguage(),
+    targetLang: string = translationTarget(),
     /** `explicit` = the reader pressed "Translate all" on this section. The
      *  ASCII guard below is a COST heuristic, not a measurement: a GDELT
      *  receipt filed source_lang='xx' whose German headline happens to carry no

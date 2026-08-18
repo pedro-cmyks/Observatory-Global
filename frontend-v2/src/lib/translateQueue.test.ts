@@ -12,6 +12,7 @@ import {
     translateSignal,
     translateRetryAfterSeconds,
 } from './translateQueue'
+import { browserLanguage, setPageLanguage } from './pageLanguage'
 
 type FetchMock = ReturnType<typeof vi.fn>
 
@@ -100,6 +101,37 @@ describe('signal lane — coalescing (the fix for the 20/300s paid bucket)', () 
         const out = await p
         expect(fetchMock).toHaveBeenCalledTimes(3)
         expect(out.every(o => o.status === 'ok')).toBe(true)
+    })
+})
+
+describe('default target — every lane aims at translationTarget() (panel-ciego 2026-08-18)', () => {
+    afterEach(() => setPageLanguage(null))
+
+    it('signal lane without an explicit target posts the PICKER choice, not the browser language', async () => {
+        setPageLanguage('es') // navigator (node fallback) is en — es must win
+        fetchMock.mockResolvedValue(jsonResponse(batchRows([11])))
+        const p = translateSignal(11)
+        await flushTranslateQueue()
+        await p
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ signal_ids: [11], to: 'es' })
+    })
+
+    it('free-text lane without an explicit target posts the picker choice too', async () => {
+        setPageLanguage('es')
+        fetchMock.mockResolvedValue(jsonResponse({ translated: 'hola' }))
+        await translateFreeText('bonjour tout le monde')
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+            text: 'bonjour tout le monde',
+            target_lang: 'es',
+        })
+    })
+
+    it('with no choice stored, the default target is the browser language (auto)', async () => {
+        fetchMock.mockResolvedValue(jsonResponse(batchRows([12])))
+        const p = translateSignal(12)
+        await flushTranslateQueue()
+        await p
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body).to).toBe(browserLanguage())
     })
 })
 

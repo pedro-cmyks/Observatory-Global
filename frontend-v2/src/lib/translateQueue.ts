@@ -30,7 +30,15 @@
  * translation needed) from `unavailable` (we could not measure). Callers must
  * never render the second as the first — that is exactly the lie the judge
  * caught.
+ *
+ * TARGET LANGUAGE (2026-08-18, panel-ciego §idioma): the target defaults to
+ * `translationTarget()` — the reader's picker choice, browser language only
+ * as the initial default. A caller may still pass one explicitly (the React
+ * lanes pass the reactive `usePageLanguage()` value, which is the same store),
+ * but no lane may hardcode a language or read `navigator.language` itself.
  */
+
+import { translationTarget } from './pageLanguage'
 
 export type TranslateFailure = 'rate_limited' | 'provider' | 'network' | 'unverified'
 
@@ -207,9 +215,10 @@ export async function flushTranslateQueue(): Promise<void> {
 
 /**
  * Translate one signal headline. Joins the current batch window; resolves
- * instantly (no request) while the shared circuit is open.
+ * instantly (no request) while the shared circuit is open. Target defaults to
+ * the reader's translation target (picker choice → browser language).
  */
-export function translateSignal(signalId: number, targetLang: string): Promise<TranslateOutcome> {
+export function translateSignal(signalId: number, targetLang: string = translationTarget()): Promise<TranslateOutcome> {
     if (isTranslateCircuitOpen()) return Promise.resolve(UNAVAILABLE(circuitReason))
     const lang = targetLang.toLowerCase()
     let waiters = pending.get(lang)
@@ -226,7 +235,7 @@ export function translateSignal(signalId: number, targetLang: string): Promise<T
 // Free-text lane (de-duped; no server batch endpoint exists for it)
 // ---------------------------------------------------------------------------
 
-export function translateFreeText(text: string, targetLang: string): Promise<TranslateOutcome> {
+export function translateFreeText(text: string, targetLang: string = translationTarget()): Promise<TranslateOutcome> {
     if (isTranslateCircuitOpen()) return Promise.resolve(UNAVAILABLE(circuitReason))
     const lang = targetLang.toLowerCase()
     const key = `${text}::${lang}`
