@@ -30,11 +30,17 @@ export const COUNTRY_NAMES: Record<string, string> = {
     UA: 'Ukraine', AE: 'UAE', GB: 'United Kingdom', US: 'United States', UY: 'Uruguay',
     UZ: 'Uzbekistan', VE: 'Venezuela', VN: 'Vietnam', YE: 'Yemen', ZM: 'Zambia',
     ZW: 'Zimbabwe', XK: 'Kosovo', ME: 'Montenegro', CW: 'Curaçao', PS: 'Palestine',
-    // GDELT/FIPS codes that differ from ISO
-    VQ: 'Virgin Islands', EI: 'Ireland', GM: 'Gambia', SW: 'Sweden',
+    // 2026-08-18 (panel ciego, vagón 4): the FIPS-only twins are GONE from this
+    // map — the hot base serves ZERO FIPS-only codes (post-b7ab7def ingest
+    // converts at the edge; measured 228 codes, all ISO or junk), so entries
+    // like EI/SW/HO only duplicated the dropdown (two Irelands, two Swedens)
+    // and two carried WRONG names (FIPS RI is Serbia, not Indonesia; ISO KN is
+    // St. Kitts, not North Korea). GM stays: ISO GM = Gambia (the FIPS-Germany
+    // reading is the ambiguous class the audited table refuses to remap).
+    GM: 'Gambia',
     // Territories and regions commonly in GDELT data
     GZ: 'Gaza Strip', LS: 'Lesotho', SC: 'Seychelles', AC: 'Ascension Island',
-    WB: 'West Bank', KN: 'North Korea', KS: 'South Korea',
+    KN: 'St. Kitts & Nevis',
     MV: 'Maldives', BT: 'Bhutan', TL: 'East Timor', GQ: 'Eq. Guinea',
     ST: 'São Tomé', CV: 'Cape Verde', DJ: 'Djibouti', KM: 'Comoros',
     PW: 'Palau', FM: 'Micronesia', MH: 'Marshall Islands', NR: 'Nauru',
@@ -44,10 +50,9 @@ export const COUNTRY_NAMES: Record<string, string> = {
     BB: 'Barbados', BS: 'Bahamas', GD: 'Grenada', LC: 'Saint Lucia',
     VC: 'St. Vincent', AG: 'Antigua', DM: 'Dominica',
     TT: 'Trinidad', SR: 'Suriname', GY: 'Guyana',
-    // GDELT/FIPS-specific codes (no duplicates with above)
-    CJ: 'Cayman Islands', RQ: 'Puerto Rico',
-    WE: 'West Bank', YM: 'Yemen', RI: 'Indonesia', RB: 'Serbia',
-    HO: 'Honduras', PC: 'Pitcairn Islands', NF: 'Norfolk Island',
+    // ISO-keyed territories (CJ→KY and PC→PN were FIPS keys for places whose
+    // ISO twin was missing from the map — renamed, not duplicated)
+    KY: 'Cayman Islands', PN: 'Pitcairn Islands', NF: 'Norfolk Island',
     AN: 'Antilles', RE: 'Réunion', PM: 'St. Pierre', BQ: 'Bonaire',
     SX: 'Sint Maarten', AW: 'Aruba', TC: 'Turks & Caicos',
     BM: 'Bermuda', VI: 'Virgin Islands', GU: 'Guam',
