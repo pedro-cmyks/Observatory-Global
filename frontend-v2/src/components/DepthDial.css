@@ -1,0 +1,39 @@
+/* El dial de profundidad (P1). Tokens de la casa, cero paleta nueva.
+   Piso táctil 44px EN AMBOS EJES bajo coarse/≤768 — la lección del chip de
+   idioma (panel ciego 2026-08-18): un floor que no cubre ambos ejes deja
+   taps muertos. */
+.depth-dial {
+    display: inline-flex;
+    gap: 2px;
+    border: 1px solid var(--border, rgba(128, 128, 128, .4));
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.depth-dial-stop {
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    padding: 4px 10px;
+    cursor: pointer;
+    color: inherit;
+    opacity: .65;
+    touch-action: manipulation;
+}
+
+.depth-dial-stop.active {
+    opacity: 1;
+    background: var(--surface-2, rgba(128, 128, 128, .15));
+    font-weight: 600;
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+    .depth-dial-stop {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}

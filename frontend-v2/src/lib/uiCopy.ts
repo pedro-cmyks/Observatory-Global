@@ -71,6 +71,17 @@ export const UI_COPY = {
     },
     'brief.eclipse.aria': { en: 'Enter the eclipse', es: 'Entrar al eclipse' },
 
+    // ---------------- depth dial (P1) ----------------
+    // El conmutador LEER·OBSERVAR·CONSTRUIR (spec 2026-08-18-depth-dial §6).
+    // El tip es honesto por construcción: el dial cambia vestuario, no datos.
+    'dial.leer': { en: 'Read', es: 'Leer' },
+    'dial.observar': { en: 'Observe', es: 'Observar' },
+    'dial.construir': { en: 'Build', es: 'Construir' },
+    'dial.tip': {
+        en: 'Depth: how much instrument you see. Your place, focus and warnings travel with you.',
+        es: 'Profundidad: cuánto instrumento ves. Tu lugar, tu foco y las advertencias viajan contigo.',
+    },
+
     // ---------------- language control ----------------
     'brief.lang.label': { en: 'Language', es: 'Idioma' },
     'brief.lang.auto': { en: 'Auto (browser)', es: 'Automático (navegador)' },
