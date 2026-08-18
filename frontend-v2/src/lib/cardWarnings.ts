@@ -28,13 +28,14 @@
  *     why a sealed card never showed a court chip. sealedCourtTrust below
  *     recovers the chip ONLY where a pure identity join permits it.
  *
- *   LIVE briefing (/api/v2/briefing top_threads)
+ *   LIVE briefing (/api/v2/briefing top_threads) and /threads rows
  *   - rows carry the court fields (label_status/label_proposed/
- *     court_withheld/avg_confidence) and `subject_geography_status`
- *     ('verified'|'partial'|'unavailable'|'missing' — the subject-country
- *     VERIFICATION contract), but the grab-bag COHERENCE measurement is not
- *     served on live rows. That is a payload hole, reported upstream — this
- *     module must not paper over it with a client-side guess.
+ *     court_withheld/avg_confidence), `subject_geography_status` (the
+ *     subject-country VERIFICATION contract), and — since mig 102
+ *     (2026-08-18) — `subject_geography_grab_bag`, the stored COHERENCE
+ *     measurement (true/false measured, null unmeasured). The former payload
+ *     hole is closed; this module still never guesses client-side: null
+ *     renders no chip.
  */
 
 /** The gap-string prefix the publication package uses for grab-bag stories. */
@@ -93,9 +94,18 @@ export function buildCardWarningIndex(input: {
  * label second (the key `package.gaps` carries).
  */
 export function isMixedGeography(
-  row: { thread_id?: string | null; label?: string | null },
+  row: {
+    thread_id?: string | null
+    label?: string | null
+    // 2026-08-18 (DEV-2, mig 102): live /threads rows now carry the stored
+    // measurement directly — true/false measured, null/undefined unmeasured.
+    // The direct field wins when present; the sealed-payload index remains
+    // the join for sealed cards, which freeze no such field.
+    subject_geography_grab_bag?: boolean | null
+  },
   index: CardWarningIndex,
 ): boolean {
+  if (row.subject_geography_grab_bag === true) return true
   if (row.thread_id && index.grabBagThreadIds.has(row.thread_id)) return true
   const label = normalizeWarningLabel(row.label)
   return label.length > 0 && index.grabBagLabels.has(label)
