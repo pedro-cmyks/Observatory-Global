@@ -56,9 +56,17 @@ Qué está raro · El mundo), el lugar declarado, el idioma elegido, el método
 plegado, las marcas medidas — todo eso ES la posición LEER. El dial no
 deshace nada del arco 2026-08-17/18: lo adopta como su primera posición.
 
-**ABIERTA-1 (banco): dónde vive el mundo en LEER.** Hoy el Brief lleva el
-mapa de densidad abajo (demoted); la visión lo pone arriba/centro «poco
-pintado». Ambas respetan la anatomía; cuál lee mejor lo decide el banco.
+**ABIERTA-1 — RESUELTA por el banco R2 (2026-08-18, unánime, orden
+cruzado)**: en LEER el mundo vive ABAJO (colofón consultable — «un mapa
+decorativo arriba es un peaje que cobra todos los días»); **al deslizar a
+OBSERVAR el mundo ASCIENDE al centro** y gana sus capas. El dial no solo
+viste la habitación: promueve el mundo. La respuesta de «¿dónde se concentra
+hoy?» puede vivir arriba como UNA FRASE del masthead (la leyenda demostró
+cargar el dato mejor que el gráfico — R1 y R2). Reglas anexas del veredicto:
+jamás doble codificación sin definir ambas; un claim del mapa no puede
+contradecir el ranking; el gráfico se gana el centro con interactividad
+real, que es la de OBSERVAR. Artefacto:
+`docs/research/ux-council/2026-08-18-banco-r2-mundo-en-leer.md`.
 
 ## 4 · El periódico como modelo de navegación (idea de Pedro)
 
