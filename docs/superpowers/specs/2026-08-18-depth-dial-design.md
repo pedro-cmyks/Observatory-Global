@@ -116,6 +116,18 @@ por el dial real: LEER=Brief · OBSERVAR=console con el foco intacto ·
 CONSTRUIR=console+workbench abierto. Una puerta PERCIBIDA desde el día uno,
 cero cirugía.
 
+**P1.5 — el dial viste /brief EN SITIO (construido 2026-08-18, corrección de
+Pedro al conmutador: «en OrcaSlicer la misma barra te crece opciones»).** En
+/brief el dial ya NO navega: fija profundidad en la página (URL quieta,
+`?depth=` fija estado en sitio). ADITIVO: LEER = byte-idéntico (G-ADITIVO
+mecánico: 1350 nodos exactos en round-trip); OBSERVAR suma bloques por
+tarjeta desde datos YA servidos (`lib/cardDepth.ts` pura: sujetos, cobertura
+no-duplicada, firma temporal, banda de confianza en prosa, conteo con base
+—vivo `gated·7d`, sellado `frozen`—, discusión); CONSTRUIR = Save prominente
++ franja YOUR INVESTIGATION + **Workbench como overlay lazy encima de /brief
+sin navegar** (chunk propio 160KB que solo baja al abrirlo; entrada +3.9KB
+gzip, console −165KB). Chips de honestidad idénticos en las 3 profundidades.
+
 **P2 — OBSERVAR se vuelve mundo-céntrico.** Preset «world-first» del grid del
 console (RGL ya persiste presets por bucket): mundo al centro, stream al
 lado, hilos abajo. Aquí entra la **medición de capas** (`layer_toggle` ya se
