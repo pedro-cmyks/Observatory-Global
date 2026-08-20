@@ -11,7 +11,7 @@ set -euo pipefail
 # and add it to the worker env as CLAUDE_CODE_OAUTH_TOKEN=... — this installer
 # copies that key through if present in the source .env.
 
-ROOT_DIR="${ATLAS_REPO_DIR:-/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal}"
+ROOT_DIR="${ATLAS_REPO_DIR:-/Users/pedro/ObservatorioGlobal}"
 WORKER_HOME="${ATLAS_LOCAL_WORKER_HOME:-/Users/pedro/AtlasLocalWorker}"
 PLIST_NAME="com.atlas.relabel-topics.plist"
 SOURCE_PLIST="$ROOT_DIR/infra/launchd/$PLIST_NAME"

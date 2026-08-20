@@ -6,7 +6,7 @@ set -euo pipefail
 # scripts synced into /Users/pedro/AtlasLocalWorker, credentials read from
 # the worker .env (never the Desktop repo).
 
-ROOT_DIR="${ATLAS_REPO_DIR:-/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal}"
+ROOT_DIR="${ATLAS_REPO_DIR:-/Users/pedro/ObservatorioGlobal}"
 WORKER_HOME="${ATLAS_LOCAL_WORKER_HOME:-/Users/pedro/AtlasLocalWorker}"
 PLIST_NAME="com.atlas.embed-hot-corpus.plist"
 SOURCE_PLIST="$ROOT_DIR/infra/launchd/$PLIST_NAME"

@@ -5,7 +5,7 @@ set -euo pipefail
 # Additive on the worker .env: it appends only missing keys and never
 # clobbers existing ones (unlike a full rewrite).
 
-ROOT_DIR="${ATLAS_REPO_DIR:-/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal}"
+ROOT_DIR="${ATLAS_REPO_DIR:-/Users/pedro/ObservatorioGlobal}"
 WORKER_HOME="${ATLAS_LOCAL_WORKER_HOME:-/Users/pedro/AtlasLocalWorker}"
 PLIST_NAME="com.atlas.threevendor-calibration.plist"
 LABEL="com.atlas.threevendor-calibration"

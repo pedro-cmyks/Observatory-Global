@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal/infra
+cd /Users/pedro/ObservatorioGlobal/infra
 
 while true; do
     echo "$(date): Running ingestion..."

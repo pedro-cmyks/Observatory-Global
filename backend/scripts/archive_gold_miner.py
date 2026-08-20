@@ -87,7 +87,7 @@ def main() -> None:
     ap.add_argument("--lexicons", type=Path, default=Path("/tmp/goldgrowth/hard-topic-lexicons.json"))
     ap.add_argument("--state-dir", type=Path, default=Path.home() / "AtlasLocalWorker" / "goldgrowth")
     ap.add_argument("--corpus-5k", type=Path, default=Path(
-        "/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal/docs/research/atlas-paper/"
+        "/Users/pedro/ObservatorioGlobal/docs/research/atlas-paper/"
         "phase-1-validation/labels/consensus/2026-05-28-3vendor-5k-consensus-corpus.jsonl"))
     ap.add_argument("--per-topic", type=int, default=520)
     ap.add_argument("--out", type=Path, default=Path("/tmp/goldgrowth/archive-candidates.jsonl"))

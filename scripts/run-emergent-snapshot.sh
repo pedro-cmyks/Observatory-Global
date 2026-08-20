@@ -70,7 +70,7 @@ load_env_file "$LOCAL_ENV"
 # Explicit manual escape hatch for interactive debugging only. It is disabled
 # for launchd by default because Desktop paths are privacy-protected.
 if [[ "${ATLAS_ALLOW_DESKTOP_ENV:-0}" == "1" ]]; then
-  load_env_file "${ATLAS_DEBUG_ENV_PATH:-/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal/.env}"
+  load_env_file "${ATLAS_DEBUG_ENV_PATH:-/Users/pedro/ObservatorioGlobal/.env}"
 fi
 
 if [[ -z "${DATABASE_URL:-}" ]]; then

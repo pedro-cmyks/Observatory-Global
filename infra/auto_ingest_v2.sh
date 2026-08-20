@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPT_DIR=/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal
+SCRIPT_DIR=/Users/pedro/ObservatorioGlobal
 
 while true; do
     echo "$(date): Running v2 ingestion..."

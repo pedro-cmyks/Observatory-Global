@@ -181,7 +181,7 @@ WHAT YOU GET
 6. DATA_SOURCES_README.md
    Overview, quick comparison, getting started checklist
 
-Location: /Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal/infra/
+Location: /Users/pedro/ObservatorioGlobal/infra/
 
 ================================================================================
 NEXT STEPS (TODAY)
@@ -230,4 +230,4 @@ STATUS: READY TO IMPLEMENT
 RECOMMENDATION: PROCEED WITH PHASE 1 (HN MVP)
 ================================================================================
 
-Files ready at: /Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal/infra/
+Files ready at: /Users/pedro/ObservatorioGlobal/infra/

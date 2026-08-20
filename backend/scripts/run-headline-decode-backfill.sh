@@ -26,7 +26,7 @@ ROOT_DIR="${ATLAS_LOCAL_WORKER_DIR:-$DEFAULT_ROOT_DIR}"
 BACKEND_DIR="$ROOT_DIR/backend"
 LOG_DIR="${ATLAS_LOCAL_LOG_DIR:-$ROOT_DIR/logs}"
 LOCAL_ENV="${ATLAS_LOCAL_ENV:-$ROOT_DIR/.env}"
-VENV="${ATLAS_BACKEND_VENV:-/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal/backend/.venv}"
+VENV="${ATLAS_BACKEND_VENV:-/Users/pedro/ObservatorioGlobal/backend/.venv}"
 
 BATCH="${ATLAS_HEADLINE_DECODE_BATCH:-2000}"
 # Unbounded by default (drain to completion). Set a small value to smoke-test

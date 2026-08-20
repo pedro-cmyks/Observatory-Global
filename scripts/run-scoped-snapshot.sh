@@ -198,7 +198,7 @@ atlas_run_verdict() {
 # nightly). git archive is atomic-per-file via tar; the runner .sh itself is
 # NOT in this set (it is synced by hand with tmp+mv). Non-fatal: a broken or
 # absent repo must never kill the nightly — it just runs the last-synced code.
-REPO_DIR="${ATLAS_REPO_DIR:-/Users/pedro/Desktop/PEDRO/Cursos/ObservatorioGlobal}"
+REPO_DIR="${ATLAS_REPO_DIR:-/Users/pedro/ObservatorioGlobal}"
 if [[ "$ROOT_DIR" != "$REPO_DIR" && -d "$REPO_DIR/.git" ]]; then
   if _synced_sha="$(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null)" \
      && git -C "$REPO_DIR" archive HEAD backend/app backend/scripts 2>/dev/null \
