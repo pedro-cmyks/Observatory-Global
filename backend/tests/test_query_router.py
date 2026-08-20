@@ -29,7 +29,13 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-NOW = datetime(2026, 8, 14, 12, 0, tzinfo=timezone.utc)
+# NOW must track the real clock: the router computes the retention shortfall
+# against datetime.now(), so a FROZEN date here is a time bomb — the original
+# datetime(2026, 8, 14) passed until the real 14-day window slid past the
+# fake OLDEST, then `fully_covered` flipped and the test failed by calendar
+# (caught 2026-08-20, first run in the new repo home). Relative dates keep
+# the fixture meaning what its comment says: "9 days of hot corpus".
+NOW = datetime.now(timezone.utc)
 OLDEST = NOW - timedelta(days=9)
 
 
