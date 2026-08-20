@@ -142,7 +142,12 @@ export function editionDegradationLabels(artifact: DailyPublicationArtifact | nu
   if (!artifact) return []
   const labels: string[] = []
 
-  if (artifact.status !== 'ready') {
+  // 2026-08-19 (dev click-parity F3-a): the backend now grades a complete
+  // seal `sealed_full` (graded-status migration 100). This check only knew
+  // `ready`, so a FULL seal printed "PARTIAL EDITION" on the masthead — a
+  // perfect edition presenting itself as lame (the blind judge read it as
+  // fact). Both spellings mean "not degraded".
+  if (artifact.status !== 'ready' && artifact.status !== 'sealed_full') {
     const readiness = artifact.package?.readiness
     const cells = readiness ? Object.values(readiness) : []
     // `partial` is counted separately rather than folded into "answered" — a
