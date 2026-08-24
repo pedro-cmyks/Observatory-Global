@@ -2833,7 +2833,7 @@ function AppContent() {
                 MARKETS
               </button>
             </div>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="dock-meta">
               {dockTab === 'anomaly' && <span className="honesty-chip" data-tip="Alerts are deviations vs each country's own 7-day baseline — never a raw volume ranking.">MEASURED · VS 7-DAY BASELINE</span>}
               {dockTab === 'anomaly' && <PanelHelpButton panel="anomaly-attention" />}
               {dockTab === 'sources' && <PanelHelpButton panel="source-integrity" />}

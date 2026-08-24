@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { getThemeLabel, getThemeIcon, resolveThreadTitle } from '../lib/themeLabels'
 import { decodeEntities } from '../lib/decodeEntities'
 import { formatAttachSimilarity, laneTag, truncationNote } from '../lib/discussionHonesty'
@@ -804,8 +805,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         setKitFallbackOpen(false)
         const dlg = kitDialogRef.current
         if (!dlg) return
-        if (typeof dlg.showModal === 'function') dlg.showModal()
-        else dlg.setAttribute('open', '')
+        // try/catch: showModal() throws InvalidStateError when the dialog is
+        // already in the open state — fall back to the attribute instead of
+        // dying in the click handler. The dialog is portaled to <body>, so the
+        // fallback covers the viewport too (see the portal note at the JSX).
+        if (typeof dlg.showModal === 'function') {
+            try { dlg.showModal() } catch { dlg.setAttribute('open', '') }
+        } else {
+            dlg.setAttribute('open', '')
+        }
     }
     const closeKit = () => {
         const dlg = kitDialogRef.current
@@ -2008,7 +2016,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                 )}
 
                 {/* ============ LINKEDIN STORY KIT ============ */}
-                {data && (
+                {/* Portaled to <body> (franja bug, 2026-08-24): ThemeDetail can sit
+                    inside an RGL grid slot, which positions with a CSS transform — a
+                    transformed ancestor becomes the containing block for position:
+                    fixed, so any non-top-layer render of this dialog (the open-
+                    attribute fallback below, or a browser without showModal) pinned
+                    it to the PANEL's box: a strip over the stream instead of the
+                    full-screen overlay. showModal()'s top layer escapes the
+                    transform; the portal makes the fallback path escape it too. */}
+                {data && createPortal(
                     <dialog
                         ref={kitDialogRef}
                         className="story-kit-dialog"
@@ -2102,7 +2118,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 onFocus={e => e.currentTarget.select()}
                             />
                         </div>
-                    </dialog>
+                    </dialog>,
+                    document.body,
                 )}
             </div>
         </div>

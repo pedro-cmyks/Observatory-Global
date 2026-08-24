@@ -1661,11 +1661,33 @@
 /* ===== Bottom dock tabs (#228 §3) ===== */
 .dock-header {
   cursor: default;
+  /* Narrow dock (big-preset column ≥2400 / user-resized slot, 2026-08-24):
+     four tabs + the MEASURED chip no longer fit one row — before this, the
+     meta cluster overflowed past the panel edge (clipped mid-text) while the
+     tab labels squashed into two-line lumps pressed flush against it. Wrap
+     instead: the header has min-height only, so it grows and pushes
+     .panel-content down — nothing overlaps, nothing gets hidden. */
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
 
 .dock-tabs {
   display: flex;
+  /* Buttons wrap as whole units onto the next row… */
+  flex-wrap: wrap;
   gap: 2px;
+  min-width: 0;
+}
+
+/* …and the meta cluster (MEASURED chip + panel help) right-aligns whether it
+   shares the tabs' row or wraps onto its own; min-width lets the chip's
+   ellipsis engage instead of the whole cluster overflowing the panel. */
+.dock-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  min-width: 0;
 }
 
 .dock-tab {
@@ -1678,6 +1700,8 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  /* A label never line-breaks inside its own button — the ROW wraps. */
+  white-space: nowrap;
   padding: 6px 10px 4px;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;

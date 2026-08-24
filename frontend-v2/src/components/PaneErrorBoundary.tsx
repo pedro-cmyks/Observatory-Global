@@ -1,5 +1,18 @@
 import { Component, type ReactNode } from 'react'
 import './PaneErrorBoundary.css'
+import {
+  forceReloadForChunkError,
+  installChunkPreloadRecovery,
+  isChunkLoadError,
+  maybeAutoReloadForChunkError,
+} from '../lib/chunkReload'
+
+// Global net for Vite's `vite:preloadError` (fired before the failed dynamic
+// import rethrows): after a deploy the stale index/SW references dead-hash
+// chunks and a guarded document reload is the only cure. Installed from here —
+// this component IS the recovery surface for both keep-alive panes, and it
+// ships in the entry chunk (main.tsx renders it directly). Idempotent.
+installChunkPreloadRecovery()
 
 interface Props {
   /** What failed, in the reader's words: "the console", "the Brief". */
@@ -48,6 +61,23 @@ export class PaneErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     console.error(`[PaneErrorBoundary:${this.props.paneName}]`, error)
+    // Stale-chunk class (post-deploy: "Unable to preload CSS…", "Failed to
+    // fetch dynamically imported module…"): React.lazy caches the rejected
+    // import, so the state-reset retry below can never recover — re-rendering
+    // rethrows the same error. A document reload against the fresh index/SW is
+    // the cure; sessionStorage-guarded so a reload that does NOT cure (offline)
+    // stops cycling and lands on the card, where TRY AGAIN reloads manually.
+    maybeAutoReloadForChunkError(error.message)
+  }
+
+  private retry = () => {
+    if (isChunkLoadError(this.state.message)) {
+      // Reader-initiated: bypass the auto-reload guard — a click per attempt
+      // can never cycle. Also nudges the SW to update before reloading.
+      forceReloadForChunkError()
+      return
+    }
+    this.setState({ crashed: false, message: '' })
   }
 
   render() {
@@ -64,11 +94,7 @@ export class PaneErrorBoundary extends Component<Props, State> {
           below still work.
         </p>
         {this.state.message && <div className="pane-error-detail">{this.state.message}</div>}
-        <button
-          type="button"
-          className="pane-error-retry"
-          onClick={() => this.setState({ crashed: false, message: '' })}
-        >
+        <button type="button" className="pane-error-retry" onClick={this.retry}>
           TRY AGAIN
         </button>
       </div>
