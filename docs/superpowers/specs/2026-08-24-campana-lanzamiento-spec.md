@@ -11,6 +11,14 @@ al final hay un tablero que apunta a todo.
 
 ---
 
+## 0b · Directiva de lenguaje (Pedro, 2026-08-24, tarde)
+
+**Todo el inglés reader-facing de Atlas — incluido el caption del kit v2 —
+sigue ASD-STE100 adaptado**: frases ≤20 palabras, voz activa, una idea por
+frase, sin modismos, tabla de términos una-palabra-un-concepto. Guía:
+`docs/design/2026-08-24-atlas-ste-style.md`. El generador de captions de la
+pieza A produce STE por construcción.
+
 ## 1 · La tesis del arco
 
 Atlas ya mide bien y sirve honesto; lo que no existe es el CIRCUITO PÚBLICO:
