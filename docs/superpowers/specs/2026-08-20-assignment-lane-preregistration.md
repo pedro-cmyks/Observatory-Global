@@ -69,3 +69,45 @@ del A0 antes de tocar serving.
 1. G-SALUD-PREVIA (esta noche + mañana: ¿la nocturna escribió?).
 2. Veredicto de Pedro sobre la familia.
 3. Fix en sombra → las 6 barras → solo entonces serving.
+
+---
+
+## Addendum 2026-08-24 — familia elegida, precondición cumplida, calibración previa
+
+Las barras de arriba quedan CONGELADAS como están; esto registra estado, no
+las mueve.
+
+- **Familia elegida: ① coseno + confirmación barata** (veredicto de Pedro,
+  2026-08-24 — "empecemos con el voto de la familia del coseno").
+- **G-SALUD-PREVIA: CUMPLIDA con margen** — 4/4 nocturnas post-reindex
+  escribieron R1 sin timeout (snapshots 2026-08-21..24 verificados en
+  `emergent_clusters` con conteos idénticos a los `R1 DONE` del log; 0
+  QueryCanceledError; duración R1 9029s→5660s). Auditoría
+  `docs/state/2026-08-24-health-audit.md`.
+- **Calibración previa del confirmador** (el "costo por señal a medir ANTES"
+  que la familia exigía): `backend/scripts/m1_confirmation_calibration.py`
+  sobre la muestra A0 (n=40, seed 229, juicios a mano del 08-20) →
+  - el juez DeepSeek "¿misma historia específica?" **no aceptó NINGÚN
+    vecino falso** (0 de los 26 "no" a mano) y confirmó 3/40 del argmax
+    único (2 sí + 1 dudoso);
+  - las señales léxicas (P-NUEVO headline↔label, cobertura de tokens,
+    entidades compartidas) casi no disparan solas — labels cortos y
+    cross-language;
+  - costo: 40 juicios en 8.7s, ~194 tokens/juicio ≈ **$0.0001/señal** —
+    el costo NO es la barrera.
+  Artefacto: `2026-08-24-m1-confirmation-calibration.json`.
+- **La variante de la familia que va a sombra: top-K propone, el juez
+  elige** (K=5, floor cos 0.80 sobre centroides activos — la mecánica del
+  build u2). El confirmador sobre argmax-único hereda la dispersión de
+  argmax (el juez rechaza correctamente al vecino falso y el adjunto se
+  pierde); ofrecerle los K vecinos ataca la dispersión de raíz. Sonda:
+  `backend/scripts/m1_topk_judge_probe.py`, artefacto
+  `2026-08-24-m1-topk-judge-probe.json`.
+- **G-TESTIGOS — nota de medibilidad (la barra no cambia)**: la poda de
+  retención estuvo parada 08-20..24 (cascada del lock nocturno, ver
+  auditoría) y eso PRESERVÓ a los 86 testigos; sus filas quedaron
+  congeladas en `fixtures/2026-08-24-m1-shadow-fixture.json.gz` ANTES de
+  destrabar el catchup que los podará. La barra se mide en sombra por
+  replay del fixture (re-embed e5 del headline, determinístico; los
+  testigos ya no tienen fila en `signal_embeddings`). El fixture también
+  congela la muestra A0 con sus 40 embeddings.

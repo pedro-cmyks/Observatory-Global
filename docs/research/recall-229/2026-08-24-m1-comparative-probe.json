@@ -1,0 +1,1968 @@
+{
+ "measured_at": "2026-08-24T11:50:03Z",
+ "mandate": "M1 familia ① — sonda A1c comparativa (pre-shadow)",
+ "k": 5,
+ "cos_floor": 0.8,
+ "pool": "active+candidate",
+ "stats": {
+  "calls": 40,
+  "picked": 12,
+  "null": 28,
+  "failed": 0
+ },
+ "wall_s": 7.5,
+ "rows": [
+  {
+   "id": 18733854,
+   "headline": "Solar project costs may rise 20% over next 6-8 months due to domestic sourcing, West Asia conflict: ICRA",
+   "cc": "IN",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-14956",
+   "frozen_label": "Emerging: UN Says Only 3% of Gaza Cropland Accessible and Undamaged",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-14956",
+     "tnum": 14956,
+     "label": "Emerging: UN Says Only 3% of Gaza Cropland Accessible and Undamaged",
+     "state": "candidate",
+     "cos": 0.8937
+    },
+    {
+     "topic_id": "dynamic-topic-14480",
+     "tnum": 14480,
+     "label": "Emerging: August 24, 2026 Deadline Approaching: Join Class Action Against First ...",
+     "state": "candidate",
+     "cos": 0.8857
+    },
+    {
+     "topic_id": "dynamic-topic-13088",
+     "tnum": 13088,
+     "label": "Healthcare Cost Concerns",
+     "state": "active",
+     "cos": 0.8828
+    },
+    {
+     "topic_id": "dynamic-topic-11964",
+     "tnum": 11964,
+     "label": "FMCG Price Hikes Amid Strong Demand",
+     "state": "active",
+     "cos": 0.8809
+    },
+    {
+     "topic_id": "dynamic-topic-4598",
+     "tnum": 4598,
+     "label": "Trump's $100K Student Work Fee",
+     "state": "active",
+     "cos": 0.8796
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18733923,
+   "headline": "Hiring Locally Vs. Hiring Globally​: What Businesses Should Consider",
+   "cc": "PH",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-14957",
+   "frozen_label": "Emerging: Wie sichern Unternehmen digitale Zahlungen gegen Betrug?",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-14951",
+     "tnum": 14951,
+     "label": "Emerging: PNG's declining agricultural output requires a return to commercial production",
+     "state": "candidate",
+     "cos": 0.8905
+    },
+    {
+     "topic_id": "dynamic-topic-13096",
+     "tnum": 13096,
+     "label": "Indian Education System",
+     "state": "active",
+     "cos": 0.8832
+    },
+    {
+     "topic_id": "dynamic-topic-4755",
+     "tnum": 4755,
+     "label": "CVS Services and Costs 2024",
+     "state": "active",
+     "cos": 0.8831
+    },
+    {
+     "topic_id": "dynamic-topic-13598",
+     "tnum": 13598,
+     "label": "Emerging: What To Do If Floodwater Gets Into Your Home",
+     "state": "candidate",
+     "cos": 0.8819
+    },
+    {
+     "topic_id": "dynamic-topic-7279",
+     "tnum": 7279,
+     "label": "Emerging: What should universities teach when AI teaches?",
+     "state": "candidate",
+     "cos": 0.8785
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18736225,
+   "headline": "Sudan Conflict: 200,000 Newly Displaced by War, Floods",
+   "cc": "SD",
+   "source_family": "gdelt",
+   "hand_argmax": "dudoso",
+   "frozen_topic": "dynamic-topic-9000",
+   "frozen_label": "Sudan Child Soldiers",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-14980",
+     "tnum": 14980,
+     "label": "Sudan Displacement Crisis",
+     "state": "active",
+     "cos": 0.9567
+    },
+    {
+     "topic_id": "dynamic-topic-1487",
+     "tnum": 1487,
+     "label": "ECOWAS Flood Aid",
+     "state": "candidate",
+     "cos": 0.9126
+    },
+    {
+     "topic_id": "dynamic-topic-1526",
+     "tnum": 1526,
+     "label": "Myanmar Conflict Death Toll",
+     "state": "candidate",
+     "cos": 0.906
+    },
+    {
+     "topic_id": "dynamic-topic-7816",
+     "tnum": 7816,
+     "label": "Afghan Repatriation from Pakistan",
+     "state": "candidate",
+     "cos": 0.9033
+    },
+    {
+     "topic_id": "dynamic-topic-9000",
+     "tnum": 9000,
+     "label": "Sudan Child Soldiers",
+     "state": "active",
+     "cos": 0.9007
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-14980",
+    "tnum": 14980,
+    "label": "Sudan Displacement Crisis",
+    "state": "active",
+    "cos": 0.9567
+   }
+  },
+  {
+   "id": 18736838,
+   "headline": "Nicoletto's Pasta Co. announces new restaurant in Mt. Juliet | Lebanon",
+   "cc": "IT",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-5626",
+   "frozen_label": "Emerging: Street murals of Virgin of Guadalupe get glow-up in new book",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-5626",
+     "tnum": 5626,
+     "label": "Emerging: Street murals of Virgin of Guadalupe get glow-up in new book",
+     "state": "candidate",
+     "cos": 0.8942
+    },
+    {
+     "topic_id": "dynamic-topic-159",
+     "tnum": 159,
+     "label": "Food Product Recalls",
+     "state": "candidate",
+     "cos": 0.8924
+    },
+    {
+     "topic_id": "dynamic-topic-13089",
+     "tnum": 13089,
+     "label": "Emerging: Lunch outside? Most workers say that's the ideal workday | National",
+     "state": "candidate",
+     "cos": 0.891
+    },
+    {
+     "topic_id": "dynamic-topic-5322",
+     "tnum": 5322,
+     "label": "Emerging: Adidas Opening New Location in the Mall of America this Fall",
+     "state": "candidate",
+     "cos": 0.8909
+    },
+    {
+     "topic_id": "dynamic-topic-16052",
+     "tnum": 16052,
+     "label": "Emerging: DU formally opens direct admission pathway to PhD, details here",
+     "state": "candidate",
+     "cos": 0.8906
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18739318,
+   "headline": "West Nile in Italia, contagi aumentati del 60% in una settimana. Primo decesso in Veneto, le vittime salgono a 7",
+   "cc": "IT",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-1430",
+   "frozen_label": "Italian Headlines: Mixed Local and War News",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-2775",
+     "tnum": 2775,
+     "label": "Grillo Attacks M5S",
+     "state": "candidate",
+     "cos": 0.95
+    },
+    {
+     "topic_id": "dynamic-topic-508",
+     "tnum": 508,
+     "label": "Drug Arrests and Seizures",
+     "state": "candidate",
+     "cos": 0.9464
+    },
+    {
+     "topic_id": "dynamic-topic-4935",
+     "tnum": 4935,
+     "label": "Marcinelle Controversy",
+     "state": "candidate",
+     "cos": 0.9458
+    },
+    {
+     "topic_id": "dynamic-topic-397",
+     "tnum": 397,
+     "label": "Father Dies Saving Children",
+     "state": "active",
+     "cos": 0.9458
+    },
+    {
+     "topic_id": "dynamic-topic-4285",
+     "tnum": 4285,
+     "label": "Incendi in Italia",
+     "state": "active",
+     "cos": 0.945
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18741811,
+   "headline": "“Do të rezistojmë derisa ta shembim këtë sistem!”/ Protesta në ditën e 81-të, aktivisti nga Gjermania, Tafaj: Rama s’ka asnjë shans, do të përballet me drejtësinë",
+   "cc": "AL",
+   "source_family": "independent",
+   "hand_argmax": "si",
+   "frozen_topic": "dynamic-topic-9844",
+   "frozen_label": "Emerging: “Poshtë patronazhistët”/ Qytetarët në revoltë kundër klasës politikë, marshimi n",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-245",
+     "tnum": 245,
+     "label": "Albanian Anti-Government Protests",
+     "state": "candidate",
+     "cos": 0.9536
+    },
+    {
+     "topic_id": "dynamic-topic-9844",
+     "tnum": 9844,
+     "label": "Emerging: “Poshtë patronazhistët”/ Qytetarët në revoltë kundër klasës politikë, marshimi n",
+     "state": "candidate",
+     "cos": 0.9321
+    },
+    {
+     "topic_id": "dynamic-topic-820",
+     "tnum": 820,
+     "label": "Croatia News Roundup",
+     "state": "candidate",
+     "cos": 0.906
+    },
+    {
+     "topic_id": "dynamic-topic-1476",
+     "tnum": 1476,
+     "label": "Crime and Tragedy",
+     "state": "active",
+     "cos": 0.9038
+    },
+    {
+     "topic_id": "dynamic-topic-4164",
+     "tnum": 4164,
+     "label": "Celebrity Health and Personal Updates",
+     "state": "active",
+     "cos": 0.895
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-245",
+    "tnum": 245,
+    "label": "Albanian Anti-Government Protests",
+    "state": "candidate",
+    "cos": 0.9536
+   }
+  },
+  {
+   "id": 18742378,
+   "headline": "Indiana shifts $130M to replace road funding lost during gas tax holiday",
+   "cc": "US",
+   "source_family": "gdelt",
+   "hand_argmax": "dudoso",
+   "frozen_topic": "dynamic-topic-4030",
+   "frozen_label": "Funding and Grants",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-4587",
+     "tnum": 4587,
+     "label": "Financial Penalties and Legal Actions",
+     "state": "active",
+     "cos": 0.896
+    },
+    {
+     "topic_id": "dynamic-topic-15259",
+     "tnum": 15259,
+     "label": "Q2 Corporate Earnings",
+     "state": "active",
+     "cos": 0.8936
+    },
+    {
+     "topic_id": "dynamic-topic-279",
+     "tnum": 279,
+     "label": "Governors Veto Budget Items",
+     "state": "candidate",
+     "cos": 0.8934
+    },
+    {
+     "topic_id": "dynamic-topic-227",
+     "tnum": 227,
+     "label": "Snowflake Hacker Pleads Guilty",
+     "state": "candidate",
+     "cos": 0.8905
+    },
+    {
+     "topic_id": "dynamic-topic-10150",
+     "tnum": 10150,
+     "label": "Lottery and Prize Wins",
+     "state": "candidate",
+     "cos": 0.8903
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18742433,
+   "headline": "Woodlands County shows support to Eastlink Park Whitecourt ski hill",
+   "cc": "CA",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-15343",
+   "frozen_label": "Emerging: Chinese vice premier meets Chilean FM-Xinhua",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-2649",
+     "tnum": 2649,
+     "label": "Green Flag Awards",
+     "state": "candidate",
+     "cos": 0.9148
+    },
+    {
+     "topic_id": "dynamic-topic-10772",
+     "tnum": 10772,
+     "label": "Emerging: Minnesota's Prairie Correctional Facility sold to federal government",
+     "state": "candidate",
+     "cos": 0.8977
+    },
+    {
+     "topic_id": "dynamic-topic-15341",
+     "tnum": 15341,
+     "label": "Emerging: Amazon's Prime Air is taking off in nearly 500 U.S. cities",
+     "state": "candidate",
+     "cos": 0.8964
+    },
+    {
+     "topic_id": "dynamic-topic-15343",
+     "tnum": 15343,
+     "label": "Emerging: Chinese vice premier meets Chilean FM-Xinhua",
+     "state": "active",
+     "cos": 0.8939
+    },
+    {
+     "topic_id": "dynamic-topic-16052",
+     "tnum": 16052,
+     "label": "Emerging: DU formally opens direct admission pathway to PhD, details here",
+     "state": "candidate",
+     "cos": 0.8936
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18745789,
+   "headline": "Micron Technology Aktie: Bank of America hebt Kursziel auf 1.550 Dollar",
+   "cc": "TW",
+   "source_family": "gdelt",
+   "hand_argmax": "si",
+   "frozen_topic": "dynamic-topic-2181",
+   "frozen_label": "Price Target Changes",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-7360",
+     "tnum": 7360,
+     "label": "Analyst Ratings Updates",
+     "state": "candidate",
+     "cos": 0.9164
+    },
+    {
+     "topic_id": "dynamic-topic-16361",
+     "tnum": 16361,
+     "label": "Emerging: Insider Selling: Serve Robotics (NASDAQ:SERV) CFO Sells $132,257.60 in Stock",
+     "state": "candidate",
+     "cos": 0.8966
+    },
+    {
+     "topic_id": "dynamic-topic-15554",
+     "tnum": 15554,
+     "label": "Emerging: Ichor (NASDAQ:ICHR) CEO Philip Ryan Sr. Barros Sells 1,314 Shares",
+     "state": "candidate",
+     "cos": 0.8962
+    },
+    {
+     "topic_id": "dynamic-topic-2181",
+     "tnum": 2181,
+     "label": "Price Target Changes",
+     "state": "active",
+     "cos": 0.8934
+    },
+    {
+     "topic_id": "dynamic-topic-16066",
+     "tnum": 16066,
+     "label": "Emerging: Insider Selling: Illumina (NASDAQ:ILMN) Director Sells 95,000 Shares of Stock",
+     "state": "candidate",
+     "cos": 0.8924
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-2181",
+    "tnum": 2181,
+    "label": "Price Target Changes",
+    "state": "active",
+    "cos": 0.8934
+   }
+  },
+  {
+   "id": 18747789,
+   "headline": "DNCS 2026 leva serviços e lazer a trabalhadores neste sábado",
+   "cc": "BR",
+   "source_family": "independent",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-3032",
+   "frozen_label": "Final PIS/Pasep 2026 Payment Released",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-3032",
+     "tnum": 3032,
+     "label": "IR 2026 Third Refund Batch",
+     "state": "active",
+     "cos": 0.9645
+    },
+    {
+     "topic_id": "dynamic-topic-15",
+     "tnum": 15,
+     "label": "Brazil News Roundup",
+     "state": "candidate",
+     "cos": 0.9605
+    },
+    {
+     "topic_id": "dynamic-topic-1267",
+     "tnum": 1267,
+     "label": "Brazil Fiscal Data June",
+     "state": "candidate",
+     "cos": 0.9557
+    },
+    {
+     "topic_id": "dynamic-topic-1266",
+     "tnum": 1266,
+     "label": "Exam Grading Controversy",
+     "state": "active",
+     "cos": 0.9555
+    },
+    {
+     "topic_id": "dynamic-topic-3036",
+     "tnum": 3036,
+     "label": "Guaíba River Flood Alert",
+     "state": "candidate",
+     "cos": 0.954
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18747932,
+   "headline": "Larry Dean: Hellbent review – SNL UK star’s cheery riffs on romance and royalty",
+   "cc": "GB",
+   "source_family": "independent",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-15334",
+   "frozen_label": "Emerging: Yami Gautam's Nayyi Navelli first look out; actress plays a bride with a spooky ",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-15360",
+     "tnum": 15360,
+     "label": "Emerging: Khalifa Audience Review: Prithviraj Sukumaran's Film is a 'Clichéd, Below-Averag",
+     "state": "candidate",
+     "cos": 0.8845
+    },
+    {
+     "topic_id": "dynamic-topic-6663",
+     "tnum": 6663,
+     "label": "Emerging: Charli xcx: Music, Fashion, Film review – slippery search into selfhood that hit",
+     "state": "candidate",
+     "cos": 0.8845
+    },
+    {
+     "topic_id": "dynamic-topic-1879",
+     "tnum": 1879,
+     "label": "Emerging: Rocky, Rambo, Action, Gehstock: Sylvester Stallone wird 80",
+     "state": "candidate",
+     "cos": 0.8829
+    },
+    {
+     "topic_id": "dynamic-topic-1939",
+     "tnum": 1939,
+     "label": "Irish Life and Culture",
+     "state": "active",
+     "cos": 0.8817
+    },
+    {
+     "topic_id": "dynamic-topic-1878",
+     "tnum": 1878,
+     "label": "Celebrity Feuds and Drama",
+     "state": "candidate",
+     "cos": 0.8811
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18750785,
+   "headline": "A semanas del regreso a clases, proponen reforzar educación vial desde las aulas",
+   "cc": "MX",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-784",
+   "frozen_label": "Jared Leto Sexual Assault Allegations",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-784",
+     "tnum": 784,
+     "label": "Jared Leto Sexual Assault Allegations",
+     "state": "active",
+     "cos": 0.9153
+    },
+    {
+     "topic_id": "dynamic-topic-15552",
+     "tnum": 15552,
+     "label": "Emerging: ¡HACIA UNA MEJOR SALUD PARA NATALES!: MUNICIPIO DE NATALES DESTINA TERRENO PARA ",
+     "state": "candidate",
+     "cos": 0.9108
+    },
+    {
+     "topic_id": "dynamic-topic-4344",
+     "tnum": 4344,
+     "label": "Colombia: University Strike and Power Outages",
+     "state": "active",
+     "cos": 0.9078
+    },
+    {
+     "topic_id": "dynamic-topic-3962",
+     "tnum": 3962,
+     "label": "Bachillerato Expansion Plan",
+     "state": "candidate",
+     "cos": 0.9031
+    },
+    {
+     "topic_id": "dynamic-topic-3134",
+     "tnum": 3134,
+     "label": "Luís Neves Controversy",
+     "state": "candidate",
+     "cos": 0.9013
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18751093,
+   "headline": "Ген короткого сна ADRB1: что известно о мутации, позволяющей спать меньше 6 часов",
+   "cc": "RU",
+   "source_family": "gdelt",
+   "hand_argmax": "dudoso",
+   "frozen_topic": "dynamic-topic-12179",
+   "frozen_label": "Health Risks and Warnings",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-8006",
+     "tnum": 8006,
+     "label": "Health Expert Advice",
+     "state": "candidate",
+     "cos": 0.9199
+    },
+    {
+     "topic_id": "dynamic-topic-16510",
+     "tnum": 16510,
+     "label": "Health Risks and Warnings",
+     "state": "active",
+     "cos": 0.9166
+    },
+    {
+     "topic_id": "dynamic-topic-3749",
+     "tnum": 3749,
+     "label": "German Domestic Issues",
+     "state": "candidate",
+     "cos": 0.915
+    },
+    {
+     "topic_id": "dynamic-topic-2742",
+     "tnum": 2742,
+     "label": "Health Risks and Warnings",
+     "state": "active",
+     "cos": 0.9147
+    },
+    {
+     "topic_id": "dynamic-topic-2730",
+     "tnum": 2730,
+     "label": "Central Bank and Fuel Prices",
+     "state": "candidate",
+     "cos": 0.9097
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18753360,
+   "headline": "Приговор Шлосбергу: тюремный срок вместо политической дискусии",
+   "cc": "DE",
+   "source_family": "wire",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-2738",
+   "frozen_label": "Stepfather Gets Life for Killing Stepson in Kaliningrad",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-6174",
+     "tnum": 6174,
+     "label": "Health Myths Debunked",
+     "state": "candidate",
+     "cos": 0.9136
+    },
+    {
+     "topic_id": "dynamic-topic-2732",
+     "tnum": 2732,
+     "label": "Blogger Remeslo Arrested for Army Fakes",
+     "state": "active",
+     "cos": 0.9117
+    },
+    {
+     "topic_id": "dynamic-topic-2738",
+     "tnum": 2738,
+     "label": "Russian Courts Rule on Murder Cases",
+     "state": "active",
+     "cos": 0.9066
+    },
+    {
+     "topic_id": "dynamic-topic-6709",
+     "tnum": 6709,
+     "label": "Ukrainian Strikes on Russia",
+     "state": "candidate",
+     "cos": 0.9061
+    },
+    {
+     "topic_id": "dynamic-topic-3615",
+     "tnum": 3615,
+     "label": "Journalist Shipacheva Sentenced",
+     "state": "candidate",
+     "cos": 0.9009
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-3615",
+    "tnum": 3615,
+    "label": "Journalist Shipacheva Sentenced",
+    "state": "candidate",
+    "cos": 0.9009
+   }
+  },
+  {
+   "id": 18755263,
+   "headline": "Will tenants in Germany get the right to install air conditioning?",
+   "cc": "DE",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-14959",
+   "frozen_label": "Emerging: How are the Bathrooms at the Denver Airport?",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-14959",
+     "tnum": 14959,
+     "label": "Emerging: How are the Bathrooms at the Denver Airport?",
+     "state": "candidate",
+     "cos": 0.88
+    },
+    {
+     "topic_id": "dynamic-topic-1889",
+     "tnum": 1889,
+     "label": "Germany's Social and Policy Issues",
+     "state": "candidate",
+     "cos": 0.8786
+    },
+    {
+     "topic_id": "dynamic-topic-9577",
+     "tnum": 9577,
+     "label": "Emerging: What are legal rights when neighbour's dog barks all day and night",
+     "state": "candidate",
+     "cos": 0.8785
+    },
+    {
+     "topic_id": "dynamic-topic-13598",
+     "tnum": 13598,
+     "label": "Emerging: What To Do If Floodwater Gets Into Your Home",
+     "state": "candidate",
+     "cos": 0.8731
+    },
+    {
+     "topic_id": "dynamic-topic-15052",
+     "tnum": 15052,
+     "label": "German Drought Impact",
+     "state": "active",
+     "cos": 0.8718
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-1889",
+    "tnum": 1889,
+    "label": "Germany's Social and Policy Issues",
+    "state": "candidate",
+    "cos": 0.8786
+   }
+  },
+  {
+   "id": 18756244,
+   "headline": "Sunita Ahuja Withdraws Divorce Case Against Govinda",
+   "cc": "IN",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-6683",
+   "frozen_label": "Liberia Governance and Accountability",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-9133",
+     "tnum": 9133,
+     "label": "Omar Abdullah Divorce",
+     "state": "candidate",
+     "cos": 0.9275
+    },
+    {
+     "topic_id": "dynamic-topic-12287",
+     "tnum": 12287,
+     "label": "Sunita Ahuja Divorce Case",
+     "state": "candidate",
+     "cos": 0.9219
+    },
+    {
+     "topic_id": "dynamic-topic-6683",
+     "tnum": 6683,
+     "label": "Liberia Governance and Accountability",
+     "state": "candidate",
+     "cos": 0.9171
+    },
+    {
+     "topic_id": "dynamic-topic-3261",
+     "tnum": 3261,
+     "label": "Election Livestream Dispute",
+     "state": "candidate",
+     "cos": 0.9126
+    },
+    {
+     "topic_id": "dynamic-topic-2339",
+     "tnum": 2339,
+     "label": "Armenian Opposition Crackdown",
+     "state": "candidate",
+     "cos": 0.9096
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-12287",
+    "tnum": 12287,
+    "label": "Sunita Ahuja Divorce Case",
+    "state": "candidate",
+    "cos": 0.9219
+   }
+  },
+  {
+   "id": 18756536,
+   "headline": "Lake Powell Drops to Record Low, Threatening Water and Power for 40 Million People",
+   "cc": "US",
+   "source_family": "gdelt",
+   "hand_argmax": "dudoso",
+   "frozen_topic": "dynamic-topic-11136",
+   "frozen_label": "Lake Mead Record Low",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-11136",
+     "tnum": 11136,
+     "label": "Lake Mead Record Low",
+     "state": "active",
+     "cos": 0.9446
+    },
+    {
+     "topic_id": "dynamic-topic-5120",
+     "tnum": 5120,
+     "label": "Deadly Storms in France",
+     "state": "candidate",
+     "cos": 0.9036
+    },
+    {
+     "topic_id": "dynamic-topic-1723",
+     "tnum": 1723,
+     "label": "Storms Cause Power Outages",
+     "state": "active",
+     "cos": 0.9014
+    },
+    {
+     "topic_id": "dynamic-topic-14960",
+     "tnum": 14960,
+     "label": "Emerging: Save LBI Notifies U.S. Department of Commerce of Intent to Sue for Failure to Pr",
+     "state": "candidate",
+     "cos": 0.8975
+    },
+    {
+     "topic_id": "dynamic-topic-4849",
+     "tnum": 4849,
+     "label": "Clacton Beach Emergency",
+     "state": "candidate",
+     "cos": 0.892
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-11136",
+    "tnum": 11136,
+    "label": "Lake Mead Record Low",
+    "state": "active",
+    "cos": 0.9446
+   }
+  },
+  {
+   "id": 18756711,
+   "headline": "Indices continue decline amid rising crude prices, global bond yields",
+   "cc": "IR",
+   "source_family": "gdelt",
+   "hand_argmax": "dudoso",
+   "frozen_topic": "dynamic-topic-3322",
+   "frozen_label": "PSX Market Volatility",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-3322",
+     "tnum": 3322,
+     "label": "PSX Market Volatility",
+     "state": "active",
+     "cos": 0.9154
+    },
+    {
+     "topic_id": "dynamic-topic-1376",
+     "tnum": 1376,
+     "label": "Dollar Weakens Against Yen",
+     "state": "candidate",
+     "cos": 0.9059
+    },
+    {
+     "topic_id": "dynamic-topic-8152",
+     "tnum": 8152,
+     "label": "South Korean Chip Stocks Plunge",
+     "state": "candidate",
+     "cos": 0.9035
+    },
+    {
+     "topic_id": "dynamic-topic-12107",
+     "tnum": 12107,
+     "label": "Japan Q2 GDP Miss",
+     "state": "active",
+     "cos": 0.8963
+    },
+    {
+     "topic_id": "dynamic-topic-15052",
+     "tnum": 15052,
+     "label": "German Drought Impact",
+     "state": "active",
+     "cos": 0.8908
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18757241,
+   "headline": "Ruski Il-76 stiže u Srbiju: Moskva šalje pomoć u borbi protiv požara",
+   "cc": "RU",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-10263",
+   "frozen_label": "Russia Ukraine Strikes",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-2104",
+     "tnum": 2104,
+     "label": "Mass Drone Attack on Moscow",
+     "state": "active",
+     "cos": 0.9192
+    },
+    {
+     "topic_id": "dynamic-topic-5849",
+     "tnum": 5849,
+     "label": "Russian Missile Incidents",
+     "state": "candidate",
+     "cos": 0.9124
+    },
+    {
+     "topic_id": "dynamic-topic-3736",
+     "tnum": 3736,
+     "label": "Russia Ukraine Drone Attacks",
+     "state": "candidate",
+     "cos": 0.9106
+    },
+    {
+     "topic_id": "dynamic-topic-10263",
+     "tnum": 10263,
+     "label": "Russia Ukraine Strikes",
+     "state": "active",
+     "cos": 0.9073
+    },
+    {
+     "topic_id": "dynamic-topic-9442",
+     "tnum": 9442,
+     "label": "Cvijan Death Claims Denied",
+     "state": "candidate",
+     "cos": 0.9026
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18759974,
+   "headline": "Az egész annyira túlmutat a személyes tragédián, hogy lehetetlen nem odafigyelni rá",
+   "cc": "HU",
+   "source_family": "independent",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-2504",
+   "frozen_label": "Heatwaves and Wildfires in France",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-2504",
+     "tnum": 2504,
+     "label": "Heatwaves and Wildfires in France",
+     "state": "candidate",
+     "cos": 0.9191
+    },
+    {
+     "topic_id": "dynamic-topic-7444",
+     "tnum": 7444,
+     "label": "University Admission Score Thresholds",
+     "state": "candidate",
+     "cos": 0.9119
+    },
+    {
+     "topic_id": "dynamic-topic-814",
+     "tnum": 814,
+     "label": "Hungarian News Roundup",
+     "state": "candidate",
+     "cos": 0.9102
+    },
+    {
+     "topic_id": "dynamic-topic-1668",
+     "tnum": 1668,
+     "label": "Ukraine War Escalation",
+     "state": "active",
+     "cos": 0.9039
+    },
+    {
+     "topic_id": "dynamic-topic-5053",
+     "tnum": 5053,
+     "label": "US Airstrikes on Iran",
+     "state": "candidate",
+     "cos": 0.8915
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18760590,
+   "headline": "Con prisa y mediando pocas palabras, Roosevelt Hernández llega a los juzgados",
+   "cc": "HN",
+   "source_family": "independent",
+   "hand_argmax": "si",
+   "frozen_topic": "dynamic-topic-7817",
+   "frozen_label": "Hernández Trial in Honduras",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-7817",
+     "tnum": 7817,
+     "label": "Hernández Trial in Honduras",
+     "state": "active",
+     "cos": 0.9068
+    },
+    {
+     "topic_id": "dynamic-topic-892",
+     "tnum": 892,
+     "label": "Judge Pedraz Orders New Phone Extraction in Leire Case",
+     "state": "active",
+     "cos": 0.8915
+    },
+    {
+     "topic_id": "dynamic-topic-418",
+     "tnum": 418,
+     "label": "Travel Ban on Adorni",
+     "state": "candidate",
+     "cos": 0.89
+    },
+    {
+     "topic_id": "dynamic-topic-833",
+     "tnum": 833,
+     "label": "Harvey Colchado Prosecution",
+     "state": "active",
+     "cos": 0.8887
+    },
+    {
+     "topic_id": "dynamic-topic-3285",
+     "tnum": 3285,
+     "label": "Maradona Trial Scandal Over Mixed Medical Records",
+     "state": "active",
+     "cos": 0.8882
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-7817",
+    "tnum": 7817,
+    "label": "Hernández Trial in Honduras",
+    "state": "active",
+    "cos": 0.9068
+   }
+  },
+  {
+   "id": 18761680,
+   "headline": "BTS Toronto 2026: Ticket prices, guide for Rogers Stadium",
+   "cc": "CA",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-6873",
+   "frozen_label": "2026 Sports Predictions and Analysis",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-6944",
+     "tnum": 6944,
+     "label": "August 2026 Streaming Guide",
+     "state": "candidate",
+     "cos": 0.946
+    },
+    {
+     "topic_id": "dynamic-topic-9567",
+     "tnum": 9567,
+     "label": "WWE SummerSlam 2026 Coverage",
+     "state": "active",
+     "cos": 0.9377
+    },
+    {
+     "topic_id": "dynamic-topic-1955",
+     "tnum": 1955,
+     "label": "2026 Half-Year Financial Reports",
+     "state": "candidate",
+     "cos": 0.9318
+    },
+    {
+     "topic_id": "dynamic-topic-51",
+     "tnum": 51,
+     "label": "2026 Events and Reports",
+     "state": "candidate",
+     "cos": 0.9219
+    },
+    {
+     "topic_id": "dynamic-topic-2097",
+     "tnum": 2097,
+     "label": "Best of 2026 Lists",
+     "state": "candidate",
+     "cos": 0.9169
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18762923,
+   "headline": "Öko-Verbände gründen „Taskforce Dürre\" wegen Futtermangel",
+   "cc": "DE",
+   "source_family": "gdelt",
+   "hand_argmax": "dudoso",
+   "frozen_topic": "dynamic-topic-8468",
+   "frozen_label": "Waldbrandrisiko Südeuropa",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-6931",
+     "tnum": 6931,
+     "label": null,
+     "state": "candidate",
+     "cos": 0.9099
+    },
+    {
+     "topic_id": "dynamic-topic-8468",
+     "tnum": 8468,
+     "label": "Waldbrandrisiko Südeuropa",
+     "state": "active",
+     "cos": 0.9099
+    },
+    {
+     "topic_id": "dynamic-topic-13093",
+     "tnum": 13093,
+     "label": "Emerging: Deras vattenskotrar ska byggas om till havsdrönare",
+     "state": "candidate",
+     "cos": 0.9036
+    },
+    {
+     "topic_id": "dynamic-topic-5724",
+     "tnum": 5724,
+     "label": "Eichenprozessionsspinner Höllenraupen Nordic",
+     "state": "candidate",
+     "cos": 0.9016
+    },
+    {
+     "topic_id": "dynamic-topic-14038",
+     "tnum": 14038,
+     "label": "Emerging: চা শিল্পের উন্নয়নে মনিটরিং ও পরামর্শক কমিটি",
+     "state": "candidate",
+     "cos": 0.8999
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18763178,
+   "headline": "«Kui lapsed ei kuula, pole võimalik õpetada» – piirilinna uus koolijuht lubab Valga põhikoolis korra ja rahu taastada",
+   "cc": "EE",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-2503",
+   "frozen_label": "Bolle Jos Convictions",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-844",
+     "tnum": 844,
+     "label": "Finnish News Roundup",
+     "state": "candidate",
+     "cos": 0.9456
+    },
+    {
+     "topic_id": "dynamic-topic-2503",
+     "tnum": 2503,
+     "label": "Bolle Jos Convictions",
+     "state": "candidate",
+     "cos": 0.924
+    },
+    {
+     "topic_id": "dynamic-topic-304",
+     "tnum": 304,
+     "label": "Health and Lifestyle Advice",
+     "state": "candidate",
+     "cos": 0.9229
+    },
+    {
+     "topic_id": "dynamic-topic-4853",
+     "tnum": 4853,
+     "label": "Russian News Headlines",
+     "state": "candidate",
+     "cos": 0.9229
+    },
+    {
+     "topic_id": "dynamic-topic-836",
+     "tnum": 836,
+     "label": "Czech News Roundup",
+     "state": "candidate",
+     "cos": 0.9197
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18763467,
+   "headline": "Ulah Pecandu Judol Bakar Enam Rumah di Ogan Ilir Sumsel, Bantuan untuk Korban Berdatangan",
+   "cc": "ID",
+   "source_family": "gdelt",
+   "hand_argmax": "si",
+   "frozen_topic": "dynamic-topic-3922",
+   "frozen_label": "Fire Incidents and Losses",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-3922",
+     "tnum": 3922,
+     "label": "House Fires in Indonesia",
+     "state": "active",
+     "cos": 0.9501
+    },
+    {
+     "topic_id": "dynamic-topic-611",
+     "tnum": 611,
+     "label": "TNI, Citilink, Samsung, and KPK news lack common cluster",
+     "state": "active",
+     "cos": 0.9431
+    },
+    {
+     "topic_id": "dynamic-topic-10951",
+     "tnum": 10951,
+     "label": "KMP Mutiara Sentosa 2 Fire",
+     "state": "active",
+     "cos": 0.9401
+    },
+    {
+     "topic_id": "dynamic-topic-3729",
+     "tnum": 3729,
+     "label": "Mob Killing Over Chicken Theft",
+     "state": "candidate",
+     "cos": 0.9359
+    },
+    {
+     "topic_id": "dynamic-topic-615",
+     "tnum": 615,
+     "label": "DIY Home Decor Ideas",
+     "state": "candidate",
+     "cos": 0.9358
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18764287,
+   "headline": "LIVE TEXT/ Ucraina aduce acasă 103 soldați din captivitatea rusă. Război în Ucraina, ziua 1638",
+   "cc": "UA",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-439",
+   "frozen_label": "Ukrainian Drone Attacks on Russia",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-3747",
+     "tnum": 3747,
+     "label": "Russian Attacks on Ukraine",
+     "state": "active",
+     "cos": 0.9691
+    },
+    {
+     "topic_id": "dynamic-topic-439",
+     "tnum": 439,
+     "label": "Russian Strikes Kill Dozens Across Ukraine",
+     "state": "active",
+     "cos": 0.9597
+    },
+    {
+     "topic_id": "dynamic-topic-22",
+     "tnum": 22,
+     "label": "Romanian News Roundup",
+     "state": "candidate",
+     "cos": 0.9462
+    },
+    {
+     "topic_id": "dynamic-topic-415",
+     "tnum": 415,
+     "label": "Italy News and Events",
+     "state": "candidate",
+     "cos": 0.9448
+    },
+    {
+     "topic_id": "dynamic-topic-662",
+     "tnum": 662,
+     "label": "Black Sea Drone Attacks",
+     "state": "candidate",
+     "cos": 0.9431
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18770000,
+   "headline": "Kerala HC grants six weeks to govt to fill waqf board vacancies",
+   "cc": "IN",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-1578",
+   "frozen_label": "Ketan Agarwal Murder Case",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-13268",
+     "tnum": 13268,
+     "label": "Teacher Protests Resolved",
+     "state": "candidate",
+     "cos": 0.9141
+    },
+    {
+     "topic_id": "dynamic-topic-1128",
+     "tnum": 1128,
+     "label": "Kerala Teacher Suspended Over Savarkar Quiz Row",
+     "state": "candidate",
+     "cos": 0.8974
+    },
+    {
+     "topic_id": "dynamic-topic-1578",
+     "tnum": 1578,
+     "label": "Calcutta HC deadlines for Bengal govt, LoP",
+     "state": "active",
+     "cos": 0.8964
+    },
+    {
+     "topic_id": "dynamic-topic-2603",
+     "tnum": 2603,
+     "label": "Hyderabad School Religious Homework Controversy",
+     "state": "candidate",
+     "cos": 0.896
+    },
+    {
+     "topic_id": "dynamic-topic-16052",
+     "tnum": 16052,
+     "label": "Emerging: DU formally opens direct admission pathway to PhD, details here",
+     "state": "candidate",
+     "cos": 0.8958
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18770190,
+   "headline": "Catholic Sabha Delegation Seeks SIT Probe into Cauvery Wildlife Sanctuary Firing",
+   "cc": "IN",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-2604",
+   "frozen_label": "KPSC Recruitment Scam Probes",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-1128",
+     "tnum": 1128,
+     "label": "Kerala Teacher Suspended Over Savarkar Quiz Row",
+     "state": "candidate",
+     "cos": 0.9171
+    },
+    {
+     "topic_id": "dynamic-topic-14960",
+     "tnum": 14960,
+     "label": "Emerging: Save LBI Notifies U.S. Department of Commerce of Intent to Sue for Failure to Pr",
+     "state": "candidate",
+     "cos": 0.915
+    },
+    {
+     "topic_id": "dynamic-topic-12014",
+     "tnum": 12014,
+     "label": "Cauvery Water Dispute",
+     "state": "active",
+     "cos": 0.9129
+    },
+    {
+     "topic_id": "dynamic-topic-3230",
+     "tnum": 3230,
+     "label": "Canberra Facilities Under Scrutiny",
+     "state": "candidate",
+     "cos": 0.9125
+    },
+    {
+     "topic_id": "dynamic-topic-3380",
+     "tnum": 3380,
+     "label": "Tinubu Condemns Kaduna Attack",
+     "state": "candidate",
+     "cos": 0.9104
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-12014",
+    "tnum": 12014,
+    "label": "Cauvery Water Dispute",
+    "state": "active",
+    "cos": 0.9129
+   }
+  },
+  {
+   "id": 18771344,
+   "headline": "Σίφνος: «Τα σώματά τους ήταν ακέραια» - Συγκλονίζει ο γιατρός που έφτασε πρώτος στο σημείο της τραγωδίας (βίντεο)",
+   "cc": "GR",
+   "source_family": "gdelt",
+   "hand_argmax": "si",
+   "frozen_topic": "dynamic-topic-12191",
+   "frozen_label": "Sifnos Helicopter Crash: New Video Evidence",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-4457",
+     "tnum": 4457,
+     "label": "Paros Taxi Assault",
+     "state": "active",
+     "cos": 0.9733
+    },
+    {
+     "topic_id": "dynamic-topic-530",
+     "tnum": 530,
+     "label": "Serres Fatal Crash",
+     "state": "active",
+     "cos": 0.9705
+    },
+    {
+     "topic_id": "dynamic-topic-90",
+     "tnum": 90,
+     "label": "Trump FIFA World Cup Scandal",
+     "state": "candidate",
+     "cos": 0.969
+    },
+    {
+     "topic_id": "dynamic-topic-370",
+     "tnum": 370,
+     "label": "Viral News and Controversies",
+     "state": "candidate",
+     "cos": 0.9685
+    },
+    {
+     "topic_id": "dynamic-topic-476",
+     "tnum": 476,
+     "label": "Salamina Fire Tragedy",
+     "state": "candidate",
+     "cos": 0.9666
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18775487,
+   "headline": "TJX Q2 earnings beat expectations with strong margins",
+   "cc": "CA",
+   "source_family": "gdelt",
+   "hand_argmax": "si",
+   "frozen_topic": "dynamic-topic-11168",
+   "frozen_label": "Earnings and Forecasts Beat",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-11168",
+     "tnum": 11168,
+     "label": "Earnings and Forecasts Beat",
+     "state": "candidate",
+     "cos": 0.9234
+    },
+    {
+     "topic_id": "dynamic-topic-3429",
+     "tnum": 3429,
+     "label": "Q2 2026 Earnings Reports",
+     "state": "candidate",
+     "cos": 0.9161
+    },
+    {
+     "topic_id": "dynamic-topic-9829",
+     "tnum": 9829,
+     "label": "Auto Earnings and Upgrades",
+     "state": "active",
+     "cos": 0.9124
+    },
+    {
+     "topic_id": "dynamic-topic-9056",
+     "tnum": 9056,
+     "label": "Aramco Profit Surge",
+     "state": "candidate",
+     "cos": 0.9109
+    },
+    {
+     "topic_id": "dynamic-topic-9376",
+     "tnum": 9376,
+     "label": "Q2 Earnings Calls",
+     "state": "candidate",
+     "cos": 0.9048
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-9376",
+    "tnum": 9376,
+    "label": "Q2 Earnings Calls",
+    "state": "candidate",
+    "cos": 0.9048
+   }
+  },
+  {
+   "id": 18775694,
+   "headline": "BBC Radio Scotland launches new music sessions",
+   "cc": "GB",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-14481",
+   "frozen_label": "Emerging: Threesixty Architecture promotes three new directors",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-14481",
+     "tnum": 14481,
+     "label": "Emerging: Threesixty Architecture promotes three new directors",
+     "state": "candidate",
+     "cos": 0.8944
+    },
+    {
+     "topic_id": "dynamic-topic-10765",
+     "tnum": 10765,
+     "label": "Emerging: Dialogue highlights Hongshan culture protection",
+     "state": "candidate",
+     "cos": 0.8836
+    },
+    {
+     "topic_id": "dynamic-topic-15352",
+     "tnum": 15352,
+     "label": "Emerging: Celebrate fresh produce in the kitchen",
+     "state": "candidate",
+     "cos": 0.8789
+    },
+    {
+     "topic_id": "dynamic-topic-5373",
+     "tnum": 5373,
+     "label": "Fatty Liver Drug Approvals",
+     "state": "candidate",
+     "cos": 0.8739
+    },
+    {
+     "topic_id": "dynamic-topic-9581",
+     "tnum": 9581,
+     "label": "Emerging: Nationwide training programme begins to equip youth with AI skills",
+     "state": "candidate",
+     "cos": 0.8734
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18776915,
+   "headline": "Former Michigan QB Davis Warren wins the starting job at Stanford after 2025 injury",
+   "cc": "US",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-14967",
+   "frozen_label": "Emerging: University of Michigan regents select Vanderbilt provost as 17th university pres",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-14967",
+     "tnum": 14967,
+     "label": "Emerging: University of Michigan regents select Vanderbilt provost as 17th university pres",
+     "state": "candidate",
+     "cos": 0.8858
+    },
+    {
+     "topic_id": "dynamic-topic-9575",
+     "tnum": 9575,
+     "label": "Christopher Vargas Commits to Ohio State",
+     "state": "active",
+     "cos": 0.8817
+    },
+    {
+     "topic_id": "dynamic-topic-7627",
+     "tnum": 7627,
+     "label": "Emerging: 49ers coach Kyle Shanahan to miss full training camp duties after car crash",
+     "state": "candidate",
+     "cos": 0.8768
+    },
+    {
+     "topic_id": "dynamic-topic-16052",
+     "tnum": 16052,
+     "label": "Emerging: DU formally opens direct admission pathway to PhD, details here",
+     "state": "candidate",
+     "cos": 0.8767
+    },
+    {
+     "topic_id": "dynamic-topic-14973",
+     "tnum": 14973,
+     "label": "Emerging: Buckeyes and Ducks out to supplant defending champion Hoosiers in Big Ten and be",
+     "state": "candidate",
+     "cos": 0.875
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18780211,
+   "headline": "Crown fight mushroom killer's 'inadequate' sentence",
+   "cc": "AU",
+   "source_family": "gdelt",
+   "hand_argmax": "si",
+   "frozen_topic": "dynamic-topic-1627",
+   "frozen_label": "Murder Convictions and Sentences",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-6384",
+     "tnum": 6384,
+     "label": "Mushroom Murder Appeal",
+     "state": "active",
+     "cos": 0.9278
+    },
+    {
+     "topic_id": "dynamic-topic-1115",
+     "tnum": 1115,
+     "label": "Insanity Defense in Murder Cases",
+     "state": "candidate",
+     "cos": 0.9247
+    },
+    {
+     "topic_id": "dynamic-topic-1627",
+     "tnum": 1627,
+     "label": "Murder Convictions and Sentences",
+     "state": "active",
+     "cos": 0.9054
+    },
+    {
+     "topic_id": "dynamic-topic-4848",
+     "tnum": 4848,
+     "label": "Violence Against Women",
+     "state": "active",
+     "cos": 0.9039
+    },
+    {
+     "topic_id": "dynamic-topic-5693",
+     "tnum": 5693,
+     "label": "Anthony Long Assault Charges",
+     "state": "candidate",
+     "cos": 0.9033
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-6384",
+    "tnum": 6384,
+    "label": "Mushroom Murder Appeal",
+    "state": "active",
+    "cos": 0.9278
+   }
+  },
+  {
+   "id": 18780769,
+   "headline": "Azur Air возобновляет прямые чартерные рейсы на Шри-Ланку",
+   "cc": "RU",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-11182",
+   "frozen_label": "Aeroflot Resumes Abu Dhabi Flights",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-11182",
+     "tnum": 11182,
+     "label": "Aeroflot Resumes Abu Dhabi Flights",
+     "state": "active",
+     "cos": 0.9081
+    },
+    {
+     "topic_id": "dynamic-topic-4862",
+     "tnum": 4862,
+     "label": "Russian Airport Flight Restrictions",
+     "state": "active",
+     "cos": 0.9076
+    },
+    {
+     "topic_id": "dynamic-topic-2532",
+     "tnum": 2532,
+     "label": "Telegram Users Impact",
+     "state": "candidate",
+     "cos": 0.9065
+    },
+    {
+     "topic_id": "dynamic-topic-5061",
+     "tnum": 5061,
+     "label": "Trump Announces US Strikes on Iran",
+     "state": "active",
+     "cos": 0.9061
+    },
+    {
+     "topic_id": "dynamic-topic-2732",
+     "tnum": 2732,
+     "label": "Blogger Remeslo Arrested for Army Fakes",
+     "state": "active",
+     "cos": 0.904
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18782016,
+   "headline": "El retiro de Messi marcaría el fin de una era en el fútbol",
+   "cc": "AR",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-6764",
+   "frozen_label": "Neymar Retires from Brazil",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-6764",
+     "tnum": 6764,
+     "label": "Neymar Retires from Brazil",
+     "state": "active",
+     "cos": 0.9202
+    },
+    {
+     "topic_id": "dynamic-topic-6055",
+     "tnum": 6055,
+     "label": "Ronaldo Retirement Hint",
+     "state": "candidate",
+     "cos": 0.917
+    },
+    {
+     "topic_id": "dynamic-topic-5007",
+     "tnum": 5007,
+     "label": "Messi's First Public Appearance",
+     "state": "candidate",
+     "cos": 0.9143
+    },
+    {
+     "topic_id": "dynamic-topic-1335",
+     "tnum": 1335,
+     "label": "FIFA Disciplinary Action",
+     "state": "candidate",
+     "cos": 0.9088
+    },
+    {
+     "topic_id": "dynamic-topic-1344",
+     "tnum": 1344,
+     "label": "FIFA Leadership Crisis",
+     "state": "candidate",
+     "cos": 0.9045
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18782961,
+   "headline": "Louisiana deputy fired for abusing FLOCK cameras | Crime/Police",
+   "cc": "IT",
+   "source_family": "gdelt",
+   "hand_argmax": "dudoso",
+   "frozen_topic": "dynamic-topic-1977",
+   "frozen_label": "Local Crime Sentencing",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-5491",
+     "tnum": 5491,
+     "label": "Ipswich Explosion Arrest",
+     "state": "candidate",
+     "cos": 0.9049
+    },
+    {
+     "topic_id": "dynamic-topic-8654",
+     "tnum": 8654,
+     "label": "Flock Camera Privacy Backlash",
+     "state": "candidate",
+     "cos": 0.9034
+    },
+    {
+     "topic_id": "dynamic-topic-4114",
+     "tnum": 4114,
+     "label": "Bathurst Crime and Accidents",
+     "state": "candidate",
+     "cos": 0.9024
+    },
+    {
+     "topic_id": "dynamic-topic-1977",
+     "tnum": 1977,
+     "label": "Local Crime Sentencing",
+     "state": "active",
+     "cos": 0.9004
+    },
+    {
+     "topic_id": "dynamic-topic-2387",
+     "tnum": 2387,
+     "label": "Racially Aggravated Assaults",
+     "state": "candidate",
+     "cos": 0.8985
+    }
+   ],
+   "pick": {
+    "topic_id": "dynamic-topic-8654",
+    "tnum": 8654,
+    "label": "Flock Camera Privacy Backlash",
+    "state": "candidate",
+    "cos": 0.9034
+   }
+  },
+  {
+   "id": 18783430,
+   "headline": "HSK, Yargı Hizmetlerinin Etkinliği Büroları Rehberini yayımladı",
+   "cc": "TR",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-10948",
+   "frozen_label": "Turkey Reports Fatal Crimean-Congo Hemorrhagic Fever Cases",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-7739",
+     "tnum": 7739,
+     "label": "YKS Results and Preferences Guide",
+     "state": "candidate",
+     "cos": 0.9188
+    },
+    {
+     "topic_id": "dynamic-topic-16498",
+     "tnum": 16498,
+     "label": "Ahbap Investigation Testimonies",
+     "state": "active",
+     "cos": 0.9047
+    },
+    {
+     "topic_id": "dynamic-topic-9290",
+     "tnum": 9290,
+     "label": "Emerging: Şehirlerarası yolculuklarda ikram kültürü değişiyor",
+     "state": "candidate",
+     "cos": 0.9035
+    },
+    {
+     "topic_id": "dynamic-topic-10948",
+     "tnum": 10948,
+     "label": "Tahir Sarıkaya Detained",
+     "state": "active",
+     "cos": 0.9023
+    },
+    {
+     "topic_id": "dynamic-topic-3836",
+     "tnum": 3836,
+     "label": "Irregular Migration Spain Morocco",
+     "state": "candidate",
+     "cos": 0.9003
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18784547,
+   "headline": "U vra me thikë në Ksamil pas sherrit për një vajzë, ky është turisti portugez që humbi jetën!",
+   "cc": "AL",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-15331",
+   "frozen_label": "Emerging: Talibani mučili djevojčicu (14) jer nije htela da se uda za vojnog komandanta (7",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-4456",
+     "tnum": 4456,
+     "label": "Spain Gang Shooting",
+     "state": "candidate",
+     "cos": 0.9171
+    },
+    {
+     "topic_id": "dynamic-topic-3305",
+     "tnum": 3305,
+     "label": "Berlin Pride Vehicle Attack",
+     "state": "candidate",
+     "cos": 0.9164
+    },
+    {
+     "topic_id": "dynamic-topic-8600",
+     "tnum": 8600,
+     "label": "Japan Earthquake Disaster",
+     "state": "candidate",
+     "cos": 0.915
+    },
+    {
+     "topic_id": "dynamic-topic-8144",
+     "tnum": 8144,
+     "label": "Turkish National Arrested for Murder",
+     "state": "candidate",
+     "cos": 0.9113
+    },
+    {
+     "topic_id": "dynamic-topic-15331",
+     "tnum": 15331,
+     "label": "Emerging: Talibani mučili djevojčicu (14) jer nije htela da se uda za vojnog komandanta (7",
+     "state": "candidate",
+     "cos": 0.9096
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18784793,
+   "headline": "\"海誓逢七夕 巨峰缔良缘\" 2026年青岛市新时代集体婚礼在崂山巨峰圆满举行-半岛网",
+   "cc": "CN",
+   "source_family": "gdelt",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-3418",
+   "frozen_label": "Emerging: &#x56FD;&#x5185;&#x9996;&#x6B3E;&#x82F9;&#x679C; MFi &#x8BA4;&#x8BC1;&#x5F00;&#x",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-2171",
+     "tnum": 2171,
+     "label": "Mixed: Auto and Tech Product Launches",
+     "state": "candidate",
+     "cos": 0.8964
+    },
+    {
+     "topic_id": "dynamic-topic-16567",
+     "tnum": 16567,
+     "label": "Kumamoto Earthquake",
+     "state": "active",
+     "cos": 0.8896
+    },
+    {
+     "topic_id": "dynamic-topic-3418",
+     "tnum": 3418,
+     "label": "Emerging: &#x56FD;&#x5185;&#x9996;&#x6B3E;&#x82F9;&#x679C; MFi &#x8BA4;&#x8BC1;&#x5F00;&#x",
+     "state": "active",
+     "cos": 0.8837
+    },
+    {
+     "topic_id": "dynamic-topic-6301",
+     "tnum": 6301,
+     "label": "Kumamoto 7.1 Earthquake",
+     "state": "active",
+     "cos": 0.8812
+    },
+    {
+     "topic_id": "dynamic-topic-6672",
+     "tnum": 6672,
+     "label": "Macau Daily News",
+     "state": "candidate",
+     "cos": 0.8757
+    }
+   ],
+   "pick": null
+  },
+  {
+   "id": 18785273,
+   "headline": "미 국가부채 사상 첫 40조달러 돌파…장기 국채 바이백 확대",
+   "cc": "KR",
+   "source_family": "independent",
+   "hand_argmax": "no",
+   "frozen_topic": "dynamic-topic-8283",
+   "frozen_label": "Q2 Earnings Reports",
+   "candidates": [
+    {
+     "topic_id": "dynamic-topic-8283",
+     "tnum": 8283,
+     "label": "Q2 Earnings Reports",
+     "state": "candidate",
+     "cos": 0.9316
+    },
+    {
+     "topic_id": "dynamic-topic-229",
+     "tnum": 229,
+     "label": "Ceuta Migrant Crisis",
+     "state": "candidate",
+     "cos": 0.9309
+    },
+    {
+     "topic_id": "dynamic-topic-1326",
+     "tnum": 1326,
+     "label": "Q2 Earnings Reports",
+     "state": "candidate",
+     "cos": 0.9306
+    },
+    {
+     "topic_id": "dynamic-topic-5057",
+     "tnum": 5057,
+     "label": "Thailand School Shooting",
+     "state": "candidate",
+     "cos": 0.9284
+    },
+    {
+     "topic_id": "dynamic-topic-8555",
+     "tnum": 8555,
+     "label": "Samsung Q2 Earnings",
+     "state": "active",
+     "cos": 0.9266
+    }
+   ],
+   "pick": null
+  }
+ ]
+}
