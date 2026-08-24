@@ -285,6 +285,23 @@ atlas_step "non-crisis domains" "$ROOT_DIR" \
 atlas_step "label court" "$ROOT_DIR" \
   $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.label_court --write
 
+# Step 2.7 (2026-08-24): CORTE-CON-CUERPOS MONÓTONO — zona gris only.
+# Mini-prereg: docs/superpowers/specs/2026-08-24-court-bodies-monotone-
+# preregistration.md (run 1 midió: cuerpos endurecen 4/4 correcto, ablandan
+# 0/2 — solo la dirección endurecedora escribe: partial→failed,
+# partial/failed→too_broad, NULL→failed/too_broad; entailed jamás entra).
+# Cap 120/noche (~$0.06 + ~20min, la zona ~533 cicla en 4-5 noches), ledger
+# reversible por corrida (--revert). Chequeo de barras a las 3 noches
+# (~08-27): flips-mono ≥80% a mano · churn con la corte titular ≤30% ·
+# testigos endurecidos se quedan. Kill-switch abajo. Non-fatal.
+if [[ "${ATLAS_COURT_BODIES_MONOTONE:-on}" == "on" ]]; then
+  atlas_step "court-bodies monotone (Step 2.7)" "$ROOT_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.court_bodies_monotone \
+      --cap 120 --execute
+else
+  echo "[scoped-snapshot] skip court-bodies monotone (ATLAS_COURT_BODIES_MONOTONE=off)" >&2
+fi
+
 # Step 3: R2 — rebuild the umbrella hierarchy (centroid-of-centroids) over the fresh
 # active set. Cheap (~hundreds of centroids, seconds). Collapses same-EVENT
 # cross-country dups into parent umbrellas so the global list stays de-duped + gives
