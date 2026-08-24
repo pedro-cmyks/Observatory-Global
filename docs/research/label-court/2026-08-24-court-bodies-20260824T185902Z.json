@@ -1,0 +1,1028 @@
+{
+ "run_id": "20260824T185902Z",
+ "prereg": "2026-08-12-court-with-bodies",
+ "params": {
+  "n_cap": 2,
+  "excerpt_cap": 500,
+  "bodies_per_topic": 4,
+  "receipts_headline_arm": 8,
+  "seed": 42
+ },
+ "gray_zone_total": 533,
+ "wall_s": 227.1,
+ "internet_arm": "not_run (opcional del prereg; se declara)",
+ "summary_gray": {
+  "name": "gray",
+  "n": 2,
+  "judged_paired": 2,
+  "unfetchable": 0,
+  "fetch_yield": 1.0,
+  "flips": 1,
+  "flip_matrix": {
+   "partial→failed": 1
+  },
+  "tokens_total": 2283
+ },
+ "summary_condemned": {
+  "name": "condemned",
+  "n": 15,
+  "judged_paired": 11,
+  "unfetchable": 4,
+  "fetch_yield": 0.733,
+  "flips": 1,
+  "flip_matrix": {
+   "partial→failed": 1
+  },
+  "tokens_total": 13829
+ },
+ "ledger": "/Users/pedro/ObservatorioGlobal/backend/../docs/research/label-court/2026-08-24-court-bodies-20260824T185902Z.jsonl",
+ "hand_check_sample": [
+  {
+   "id": 16167,
+   "label": "Trump Threatens Iran Over Hormuz",
+   "label_status": null,
+   "cohort": "gray",
+   "n_receipts": 8,
+   "verdict_h": "partial",
+   "reason_h": "Most headlines focus on Trump's Iran threat, but two are about the Ukraine-Russia conflict, making a large minority off-topic.",
+   "usage_h": {
+    "input_tokens": 379,
+    "output_tokens": 39
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.rte.ie/news/ukraine/2026/0818/1588307-ukraine-russia/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.hindustantimes.com/india-news/economic-d-day-donald-trump-threatens-tremendous-consequences-for-any-country-",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.yahoo.com/news/politics/articles/iran-warns-further-defeat-trump-132457227.html",
+     "status": "http_error",
+     "why": "429"
+    },
+    {
+     "url": "https://attackofthefanboy.com/news/trump-pledged-economic-d-day-attack-on-tehran-iranian-foreign-minster-warns-it-will-o",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.cnn.com/2026/08/21/world/live-news/iran-war-trump",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.lbc.co.uk/article/iran-vows-devastating-response-as-trump-threatens-economic-d-day-5HjdgMm_2/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.dailysabah.com/world/europe/moscow-faces-ukraine-drone-blitz-after-its-strike-kills-10-in-kharkiv",
+     "status": "ok",
+     "chars": 2730
+    },
+    {
+     "url": "https://www.dailysabah.com/world/europe/moscow-faces-ukraine-drone-blitz-after-its-strikes-kill-10-in-kharkiv",
+     "status": "ok",
+     "chars": 2730
+    }
+   ],
+   "bodies_ok": 2,
+   "verdict_b": "failed",
+   "reason_b": "The headlines are about the Ukraine-Russia drone war, not Trump or Iran.",
+   "usage_b": {
+    "input_tokens": 474,
+    "output_tokens": 28
+   },
+   "flip": true,
+   "outcome": "judged"
+  }
+ ],
+ "results_gray": [
+  {
+   "id": 16167,
+   "label": "Trump Threatens Iran Over Hormuz",
+   "label_status": null,
+   "cohort": "gray",
+   "n_receipts": 8,
+   "verdict_h": "partial",
+   "reason_h": "Most headlines focus on Trump's Iran threat, but two are about the Ukraine-Russia conflict, making a large minority off-topic.",
+   "usage_h": {
+    "input_tokens": 379,
+    "output_tokens": 39
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.rte.ie/news/ukraine/2026/0818/1588307-ukraine-russia/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.hindustantimes.com/india-news/economic-d-day-donald-trump-threatens-tremendous-consequences-for-any-country-",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.yahoo.com/news/politics/articles/iran-warns-further-defeat-trump-132457227.html",
+     "status": "http_error",
+     "why": "429"
+    },
+    {
+     "url": "https://attackofthefanboy.com/news/trump-pledged-economic-d-day-attack-on-tehran-iranian-foreign-minster-warns-it-will-o",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.cnn.com/2026/08/21/world/live-news/iran-war-trump",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.lbc.co.uk/article/iran-vows-devastating-response-as-trump-threatens-economic-d-day-5HjdgMm_2/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.dailysabah.com/world/europe/moscow-faces-ukraine-drone-blitz-after-its-strike-kills-10-in-kharkiv",
+     "status": "ok",
+     "chars": 2730
+    },
+    {
+     "url": "https://www.dailysabah.com/world/europe/moscow-faces-ukraine-drone-blitz-after-its-strikes-kill-10-in-kharkiv",
+     "status": "ok",
+     "chars": 2730
+    }
+   ],
+   "bodies_ok": 2,
+   "verdict_b": "failed",
+   "reason_b": "The headlines are about the Ukraine-Russia drone war, not Trump or Iran.",
+   "usage_b": {
+    "input_tokens": 474,
+    "output_tokens": 28
+   },
+   "flip": true,
+   "outcome": "judged"
+  },
+  {
+   "id": 16488,
+   "label": "Iran Missiles Strike UAE; Ship Hit in Strait of Hormuz",
+   "label_status": "failed",
+   "cohort": "gray",
+   "n_receipts": 8,
+   "verdict_h": "partial",
+   "reason_h": "The label mentions Iran and UAE, but the headlines focus solely on a Greek-owned ship hit in the Strait of Hormuz, with no mention of Iran or the UAE.",
+   "usage_h": {
+    "input_tokens": 578,
+    "output_tokens": 46
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.protothema.gr/economy/article/1866299/minoan-dignity-nekros-o-a-mihanikos-tou-ellinoktitou-ploiou-meta-apo-e",
+     "status": "ok",
+     "chars": 337
+    },
+    {
+     "url": "https://www.in.gr/2026/08/18/world/ukmto-ploio-xtypithike-apo-agnosto-vlima-sta-stena-tou-ormouz-enas-nekros/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.lifo.gr/now/world/agnosto-blima-eplixe-ellinoktito-ploio-sta-stena-toy-ormoyz-nekros-o-arhimihanikos",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.tanea.gr/2026/08/18/world/elliniko-ploio-dextike-epithesi-sta-stena-ormouz-ena-thyma-anamesa-sta-meli-tou-pl",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.inewsgr.com/184/ellinoktito-ploio-dechtike-epithesi-sta-stena-tou-ormouz--nekros-enas-naftikos.htm",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.enikos.gr/international/ellinoktito-ploio-chtypithike-apo-vlima-sta-stena-tou-ormouz-nekros-enas-naftikos/26",
+     "status": "ok",
+     "chars": 586
+    },
+    {
+     "url": "https://www.news247.gr/kosmos/ellinoktito-ploio-xtipithike-sta-stena-tou-ormouz-anafores-gia-ena-thima/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.businessnews.gr/kosmos/item/344362-ellinoktito-ploio-xtypithike-sta-stena-tou-ormoyz-enas-naftikos-exase-ti-",
+     "status": "http_error",
+     "why": "403"
+    }
+   ],
+   "bodies_ok": 2,
+   "verdict_b": "partial",
+   "reason_b": "The label mentions Iran missiles striking UAE, but the headlines describe a Greek-owned ship hit by an unknown projectile near Oman in the Strait of Hormuz, with no mention of the UAE.",
+   "usage_b": {
+    "input_tokens": 690,
+    "output_tokens": 49
+   },
+   "flip": false,
+   "outcome": "judged"
+  }
+ ],
+ "results_condemned": [
+  {
+   "id": 167,
+   "label": "Helicopter Crash in San Juan",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 6,
+   "verdict_h": "failed",
+   "reason_h": "The headlines are about drone/missile attacks and bus crashes in Ukraine, Colombia, and Brazil, not a helicopter crash in San Juan.",
+   "usage_h": {
+    "input_tokens": 393,
+    "output_tokens": 40
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.eltiempo.com/mundo/europa/ucrania-sufre-nuevo-ataque-nocturno-ruso-masivo-bombardeo-con-misiles-y-drones-dej",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://laverdad.com.mx/2026/08/tercer-ataque-con-drones-en-una-semana-deja-un-militar-muerto-en-colombia/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.nuevodiarioweb.com.ar/el-mundo/info-santiago-estero-diez-mujeres-murieron-en-un-brutal-vuelco-de-un-colectiv",
+     "status": "ok",
+     "chars": 2023
+    },
+    {
+     "url": "https://www.agenciafe.com/nota/401226-Tragedia-en-Brasil-volc-un-micro-turstico-en-Petrpolis-y-murieron-al-menos-10-pers",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.cronica.com.ar/mundo/tragedia-en-brasil-volco-un-micro-y-murieron-10-mujeres/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.rionegro.com.ar/mundo/tragico-accidente-en-brasil-al-menos-diez-muertos-y-decenas-de-heridos-por-el-vuelco-d",
+     "status": "no_extract"
+    }
+   ],
+   "bodies_ok": 1,
+   "verdict_b": "failed",
+   "reason_b": "The headline describes a bus rollover in Brazil, not a helicopter crash in San Juan.",
+   "usage_b": {
+    "input_tokens": 387,
+    "output_tokens": 30
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 732,
+   "label": "Coal Plants and Brussels",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines cover diverse topics (Romanian politics, EU funding, Belgian auto industry, Black Sea grain exports, EU drone policy) with no majority focus on coal plants or Brussels.",
+   "usage_h": {
+    "input_tokens": 578,
+    "output_tokens": 48
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.romaniatv.net/traian-basescu-crede-ca-nicusor-dan-a-chemat-degeaba-partidele-la-discutii-privind-legea-salar",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://hnonline.sk/slovensko/96297875-o-peniaze-z-bruselu-sa-bojuje-do-poslednej-chvile-slovensko-este-nema-splnene-vse",
+     "status": "ok",
+     "chars": 497
+    },
+    {
+     "url": "https://www.promptmedia.ro/2026/08/oferta-de-nerefuzat-a-lui-pislaru-transmisa-pe-sest-la-bruxelles-a-fost-refuzata/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://hnonline.sk/finweb/zahranicna-ekonomika/96297467-posledna-automobilka-v-belgicku-ma-zarucenu-buducnost-volvo-zac",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://news.yam.md/ro/story/55992474",
+     "status": "ok",
+     "chars": 24815
+    },
+    {
+     "url": "https://stirileprotv.ro/stiri/international/comoara-de-9-milioane-de-euro-din-belgia-a-declansat-un-fenomen-internationa",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://incomemagazine.ro/grindeanu-psd-va-sustine-o-lege-a-salarizarii-clara-bazata-pe-echitate-iar-angajatii-nu-pierd-",
+     "status": "ok",
+     "chars": 2275
+    },
+    {
+     "url": "https://www.digi24.ro/stiri/externe/ue/dronele-noua-arma-a-ue-impotriva-daunatorilor-riscurile-si-avantajele-reformei-pr",
+     "status": "ok",
+     "chars": 6363
+    }
+   ],
+   "bodies_ok": 4,
+   "verdict_b": "failed",
+   "reason_b": "Most headlines concern EU recovery funds and unrelated topics, not coal plants or Brussels specifically.",
+   "usage_b": {
+    "input_tokens": 1090,
+    "output_tokens": 29
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 863,
+   "label": "Anti-Corruption Campaign in Iraq",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines are all about Qatar-related topics (finance, sports, diplomacy), not Iraq or anti-corruption.",
+   "usage_h": {
+    "input_tokens": 436,
+    "output_tokens": 34
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.mubasher.info/news/4660679/%D8%A8%D9%88%D8%B1%D8%B5%D8%A9-%D9%82%D8%B7%D8%B1-%D8%AA%D9%86%D8%AE%D9%81%D8%B6-",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.raya.com/2026/08/19/%D9%87%D8%A7%D9%86%D9%83%D9%88%D9%83-%D8%AA%D9%86%D8%B6%D9%85-%D8%A5%D9%84%D9%89-%D8%B1%",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://sana.sy/international/2555695/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.alquds.co.uk/%D8%A7%D9%84%D8%A3%D9%86%D8%B5%D8%A7%D8%B1%D9%8A-%D9%82%D8%B7%D8%B1-%D8%AA%D8%B1%D9%8A%D8%AF-%D",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.shorouknews.com/news/view.aspx?cdate=18082026&id=f97ad8e8-0562-40f7-a79c-d31b6851dec9",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://arabic.rt.com/middle_east/1822523-%D8%A7%D9%84%D8%AE%D8%A7%D8%B1%D8%AC%D9%8A%D8%A9-%D8%A7%D9%84%D9%82%D8%B7%D8%B",
+     "status": "thin",
+     "chars": 90
+    },
+    {
+     "url": "https://royanews.tv/news/392680",
+     "status": "ok",
+     "chars": 903
+    },
+    {
+     "url": "https://arabic.rt.com/sport/1822510-%D8%AA%D8%B5%D8%B9%D9%8A%D8%AF-%D8%AC%D8%AF%D9%8A%D8%AF-%D9%81%D9%8A-%D8%A7%D9%84%D9",
+     "status": "thin",
+     "chars": 90
+    }
+   ],
+   "bodies_ok": 1,
+   "verdict_b": "failed",
+   "reason_b": "The headline is about gold prices in Qatar, not an anti-corruption campaign in Iraq.",
+   "usage_b": {
+    "input_tokens": 474,
+    "output_tokens": 30
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 445,
+   "label": "SBU Detains Russian Agents",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "partial",
+   "reason_h": "The label fits the first three headlines about an SBU-detained FSB agent, but the remaining five headlines concern a separate, unrelated incident in Odesa involving a military enlistment officer and a teenager.",
+   "usage_h": {
+    "input_tokens": 581,
+    "output_tokens": 54
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://glavcom.ua/country/criminal/hotuvav-vbivstva-vijskovikh-u-rivnenskij-oblasti-zatrimano-ahenta-fsb-1137512.html",
+     "status": "ok",
+     "chars": 2042
+    },
+    {
+     "url": "https://www.dsnews.ua/ukr/politics/koriguvav-udari-po-zahidnih-regionah-ta-gotuvav-vbivstva-viyskovih-na-rivnenshchini-z",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.volynnews.com/news/all/na-rivnenshchyni-zatrymaly-ahenta-fsb-iakyy-koryhuvav-vorozhi-udary-ta-hotuvavsia-do-",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.dsnews.ua/ukr/politics/v-odesi-pracivnik-tck-pochav-biyku-z-pidlitkom-policiya-zavela-spravu-19082026-465749",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://tsn.ua/ukrayina/zalamav-i-dushyv-politsiia-odesy-vzialasia-za-napad-viyskovoho-na-pidlitka-3151406.html",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://viknaodessa.od.ua/news/?news=164000",
+     "status": "ok",
+     "chars": 947
+    },
+    {
+     "url": "https://unn.ua/news/v-odesi-spivrobitnyk-ttsk-vdaryv-13-richnoho-khloptsia-politsiia-vidkryla-spravu",
+     "status": "ok",
+     "chars": 1000
+    },
+    {
+     "url": "https://www.rbc.ua/rus/news/konflikt-iz-13-richnim-hloptsem-odesi-viyskovomu-1787124436.html",
+     "status": "http_error",
+     "why": "403"
+    }
+   ],
+   "bodies_ok": 3,
+   "verdict_b": "failed",
+   "reason_b": "Only one headline concerns an SBU detention of an FSB agent; the other two are about an unrelated incident in Odesa involving a military enlistment officer and a teenager.",
+   "usage_b": {
+    "input_tokens": 983,
+    "output_tokens": 48
+   },
+   "flip": true,
+   "outcome": "judged"
+  },
+  {
+   "id": 1432,
+   "label": "Q2 2026 Financial Results",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines are about Tajikistan's economy, infrastructure, and social issues, not Q2 2026 financial results.",
+   "usage_h": {
+    "input_tokens": 374,
+    "output_tokens": 36
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.trend.az/casia/tajikistan/4216612.html",
+     "status": "ok",
+     "chars": 2064
+    },
+    {
+     "url": "https://asiaplus.news/en/2026/08/22/tajikistan-and-turkmenistan-agreed-on-a-foreign-ministry-cooperation-program-for-202",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.resilience.org/stories/2026-08-20/from-seeds-to-survival-a-farmers-story-from-darshay-village-tajikistan/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://asiaplus.news/en/2026/08/18/cop17-in-mongolia-tajikistans-chance-to-attract-funds-for-land-restoration/",
+     "status": "thin",
+     "chars": 82
+    },
+    {
+     "url": "https://asiaplus.news/en/2026/08/19/left-behind-by-social-protection-who-in-tajikistan-is-worst-protected-by-the-system/",
+     "status": "thin",
+     "chars": 74
+    },
+    {
+     "url": "https://www.trend.az/casia/tajikistan/4216778.html",
+     "status": "ok",
+     "chars": 2395
+    },
+    {
+     "url": "https://asiaplus.news/en/2026/08/21/emomali-rahmon-instructed-to-raise-the-rogun-hpp-dam-by-another-30-meters-within-a-y",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://asiaplus.news/en/2026/08/19/more-than-60-of-gdp-from-abroad-tajikistan-warned-about-risks-of-dependence-on-remit",
+     "status": "no_extract"
+    }
+   ],
+   "bodies_ok": 2,
+   "verdict_b": "failed",
+   "reason_b": "The headlines are about Tajikistan's Rogun HPP construction, not financial results for Q2 2026.",
+   "usage_b": {
+    "input_tokens": 501,
+    "output_tokens": 35
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 2722,
+   "label": "US Congress Ties Turkey Aid to Human Rights",
+   "label_status": "entailed",
+   "cohort": "condemned",
+   "n_receipts": 4,
+   "verdict_h": "failed",
+   "reason_h": "The headlines cover Saudi-Turkey-Pakistan deals, North Korean soldiers in Ukraine, and Putin training Kim's army, none of which match the label's US Congress Turkey aid human rights topic.",
+   "usage_h": {
+    "input_tokens": 474,
+    "output_tokens": 52
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.topontiki.gr/2026/08/20/simfonia-tis-mekkas-giati-i-saoudiki-aravia-i-tourkia-ke-to-pakistan-enosan-tis-dina",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.inewsgr.com/182/tourkia--saoudiki-aravia--pakistan-mia-symfonia-me-adiefkrinistes-ypochreoseis--ta-psila-gra",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.tanea.gr/2026/08/18/epikairotita/lavrof-voreiokoreates-stratiotes-polemoun-sto-pleyro-tis-rosias-enantia-sti",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.bankingnews.gr/diethni/articles/894320/o-putin-ekpaideyei-ton-strato-tou-kim-jong-un-to-paixnidi-tou-piemont",
+     "status": "no_extract"
+    }
+   ],
+   "bodies_ok": 0,
+   "outcome": "unfetchable"
+  },
+  {
+   "id": 2726,
+   "label": "Russian Strikes on Ukrainian Ports",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines focus on Russian casualties and Zelensky's response to an attack, not specifically on strikes on Ukrainian ports.",
+   "usage_h": {
+    "input_tokens": 592,
+    "output_tokens": 35
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.achaianews.gr/index.php/%CF%8C%CE%BB%CE%B1-%CF%84%CE%B1-%CE%BD%CE%AD%CE%B1-h/%CE%BA%CF%8C%CF%83%CE%BC%CE%BF%",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.inewsgr.com/227/erevna-tou-BBC-pano-apo-240000-rosoi-echoun-skotothei-ston-polemo-me-tin-oukrania--ethelonte",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://athina984.gr/2026/08/18/zelesnki-yposchetai-apantisi-gia-ti-rosiki-epithesi-sti-notianatoliki-oykrania-me-10-nek",
+     "status": "ok",
+     "chars": 2677
+    },
+    {
+     "url": "https://www.sigmalive.com/news/international/1326410/bbc-stis-241088-oi-rosikes-apwleies-apo-ton-polemo-stin-oykrania",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.news.gr/kosmos/article/4196937/o-zelenski-orkistike-apantisi-gia-tin-rosiki-epithesi-stin-oukrania-me-tous-1",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.capital.gr/diethni/4011259/xarkib-10-nekroi-apo-rosiki-epithesi-tha-apantisoume-leei-o-zelenski/",
+     "status": "http_error",
+     "why": "500"
+    },
+    {
+     "url": "https://www.philenews.com/kosmos/article/1761642/polemos-stin-oukrania-taftopiithikan-241-088-nekri-rosi-stratiotes-simf",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.inewsgr.com/93/polemos-stin-oukrania-o-zelenski-etoimazei-antipoina-gia-to-chtypima-tis-rosias-me-28-nekrous",
+     "status": "http_error",
+     "why": "403"
+    }
+   ],
+   "bodies_ok": 1,
+   "verdict_b": "failed",
+   "reason_b": "The headline describes a Russian missile attack on a village in the Kharkiv region, not on Ukrainian ports.",
+   "usage_b": {
+    "input_tokens": 524,
+    "output_tokens": 33
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 4821,
+   "label": "Police Appeals for Assaults",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "partial",
+   "reason_h": "The label fits the three assault-related headlines and the four Maldon bar appeal duplicates, but the cocaine arrest and abuse-of-police items are off-topic.",
+   "usage_h": {
+    "input_tokens": 361,
+    "output_tokens": 44
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.bucksfreepress.co.uk/news/26483296.aylesbury-man-arrested-suspicion-cocaine-crimes/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.thenorthernecho.co.uk/news/26479317.peterlee-man-admits-assault-public-order-offences/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.northwaleschronicle.co.uk/news/26476150.holyhead-man-assaulted-officers-attempt-resist-arrest/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.eastlothiancourier.com/news/26452192.musselburgh-man-admits-abusing-police-arrested/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.braintreeandwithamtimes.co.uk/news/26478979.police-appeal-witnesses-assault-outside-maldon-bar/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.clactonandfrintongazette.co.uk/news/26478979.police-appeal-witnesses-assault-outside-maldon-bar/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.harwichandmanningtreestandard.co.uk/news/26478979.police-appeal-witnesses-assault-outside-maldon-bar/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.maldonandburnhamstandard.co.uk/news/26478979.police-appeal-witnesses-assault-outside-maldon-bar/",
+     "status": "http_error",
+     "why": "403"
+    }
+   ],
+   "bodies_ok": 0,
+   "outcome": "unfetchable"
+  },
+  {
+   "id": 5051,
+   "label": "Trump Iran Chess Metaphor",
+   "label_status": "entailed",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines focus on Trump's 'economic D-Day' threat against Iran and its trade partners, not a chess metaphor.",
+   "usage_h": {
+    "input_tokens": 634,
+    "output_tokens": 36
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.iefimerida.gr/kosmos/o-tramp-anakoinose-oikonomiki-d-day-kata-toy-iran",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.protothema.gr/world/article/1867470/reuters-i-tourkia-ki-oi-alloi-okto-eborikoi-etairoi-tou-iran-pou-apeilou",
+     "status": "ok",
+     "chars": 15234
+    },
+    {
+     "url": "https://www.newsit.gr/kosmos/reuters-oi-xores-pou-kindyneyoun-apo-tis-apeiles-tramp-sto-iran-gia-oikonomiko-d-day/475476",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.inewsgr.com/97/i-tourkia-ki-oi-alloi-okto-eborikoi-etairoi-tou-iran-pou-apeilountai-apo-tin-D-Day-tou-trab.h",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.voria.gr/article/o-tramp-anakoinose-oikonomiki-d-day-kata-toy-iran-oi-9-etairoi-tis-teheranis-poy",
+     "status": "ok",
+     "chars": 138
+    },
+    {
+     "url": "https://www.lykavitos.gr/news/planet/o-tramp-apeilei-me-oikonomiki-d-day-to-iran-sto-stoxastro-kai-oi-xores-pou-stirizou",
+     "status": "thin",
+     "chars": 101
+    },
+    {
+     "url": "https://www.reporter.gr/diethnh/diethneis-eidhseis/683289-o-tramp-apeilei-to-iran-me-oikonomiki-d-day-alla-den-diefkrini",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.topontiki.gr/2026/08/20/trab-se-polemo-dio-metopon-ikonomiki-d-day-kata-tou-iran-ke-ton-simmachon-tou-to-chr",
+     "status": "no_extract"
+    }
+   ],
+   "bodies_ok": 2,
+   "verdict_b": "failed",
+   "reason_b": "The headlines focus on Trump's economic pressure campaign against Iran and its trading partners, not a chess metaphor.",
+   "usage_b": {
+    "input_tokens": 650,
+    "output_tokens": 33
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 5060,
+   "label": "Trump Slashes US-South Korea Military Drills",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 4,
+   "verdict_h": "entailed",
+   "reason_h": "Three of the four headlines directly concern Trump reducing US-South Korea military drills and related North Korea engagement, with only one unrelated Canada tariff headline.",
+   "usage_h": {
+    "input_tokens": 371,
+    "output_tokens": 42
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.france24.com/ar/%D9%81%D9%8A%D8%AF%D9%8A%D9%88/20260820-%D8%AA%D8%B1%D8%A7%D9%85%D8%A8-%D9%8A%D8%B9%D8%AA%D8",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.france24.com/ar/%D8%A3%D9%85%D8%B1%D9%8A%D9%83%D8%A7/20260819-%D8%AA%D8%B1%D8%A7%D9%85%D8%A8-%D8%B1%D8%B3%D9",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.france24.com/ar/%D9%81%D9%8A%D8%AF%D9%8A%D9%88/20260818-%D8%AA%D8%B1%D8%A7%D9%85%D8%A8-%D9%8A%D8%AB%D9%8A%D8",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.france24.com/ar/%D8%A2%D8%B3%D9%8A%D8%A7/20260819-%D8%AA%D9%82%D9%84%D9%8A%D8%B5-%D9%85%D8%AF%D8%A9-%D8%A7%D",
+     "status": "no_extract"
+    }
+   ],
+   "bodies_ok": 0,
+   "outcome": "unfetchable"
+  },
+  {
+   "id": 4375,
+   "label": "Japan Earthquake Disaster",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines cover unrelated crime, drought, protests, and drowning stories, none about a Japan earthquake disaster.",
+   "usage_h": {
+    "input_tokens": 625,
+    "output_tokens": 33
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://ziare.com/crima/dubla-sotie-cumnata-sinucidere-2030228",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://stirileprotv.ro/stiri/actualitate/criminalul-din-bacau-s-a-predat-vecinilor-dupa-ce-si-a-ucis-sotia-si-cumnata-n",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://news.yam.md/ro/story/55402892",
+     "status": "ok",
+     "chars": 26004
+    },
+    {
+     "url": "https://www.antena3.ro/externe/mapamond/apa-scade-scheletele-ies-la-suprafata-descoperire-macabra-in-cel-mai-mare-rezerv",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.antena3.ro/externe/mapamond/titanicul-de-pe-sava-a-iesit-la-suprafata-in-serbia-seceta-extrema-a-dezvaluit-e",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://news.yam.md/ro/story/55378325",
+     "status": "ok",
+     "chars": 18966
+    },
+    {
+     "url": "https://ziare.com/udmr/istvan-katai-renunta-politica-rival-kelemen-hunor-2030453",
+     "status": "ok",
+     "chars": 1447
+    },
+    {
+     "url": "https://stirileprotv.ro/stiri/actualitate/mi-au-rupt-sufletul-marturia-surorii-celor-doi-frati-morti-in-olimp-ce-planuri",
+     "status": "http_error",
+     "why": "403"
+    }
+   ],
+   "bodies_ok": 3,
+   "verdict_b": "failed",
+   "reason_b": "The headlines cover unrelated local news (courier theft, teacher protests, Hungarian politics) with no mention of Japan or an earthquake.",
+   "usage_b": {
+    "input_tokens": 929,
+    "output_tokens": 38
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 4033,
+   "label": "Washington Wildfires",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines are about a fatal car crash in Ireland involving teenagers and social media challenges, not wildfires in Washington.",
+   "usage_h": {
+    "input_tokens": 571,
+    "output_tokens": 34
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://e-thessalia.gr/odigoyn-anapoda-gia-ta-likes-sokarismeni-i-irlandia-apo-trochaio-me-pente-efivoys-nekroys/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.thebest.gr/article/841987-irlandia-5-efiboi-skotothikan-se-trochaio-odigoun-anapoda-gia-ta-likes",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.philenews.com/kosmos/article/1760171/polinekro-trocheo-stin-irlandia-i-apokalipsis-gia-tous-5-efivous-pou-sk",
+     "status": "ok",
+     "chars": 3192
+    },
+    {
+     "url": "https://www.enikos.gr/international/irlandia-pente-zoes-chathikan-gia-liga-likes-i-skoteini-plevra-ton-social-media-ston",
+     "status": "ok",
+     "chars": 9025
+    },
+    {
+     "url": "https://www.inewsgr.com/227/irlandia-pente-zoes-chathikan-gia-liga-likes--i-skoteini-plevra-ton-social-media-ston-dromo.",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.inewsgr.com/351/irlandia-pos-ena-challenge-sta-social-media-odigise-sto-polynekro-trochaio--nekroi-5-efivoi.",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.businessnews.gr/kosmos/item/344289-irlandia-ta-thanatifora-epikindyna-kolpa-se-aftokinitodromous-ginontai-gi",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.tanea.gr/2026/08/17/world/riskaroun-tis-zoes-olon-gia-merika-likes-salos-stin-irlandia-me-neous-pou-odigoun-",
+     "status": "no_extract"
+    }
+   ],
+   "bodies_ok": 2,
+   "verdict_b": "failed",
+   "reason_b": "The headlines are about a fatal car crash in Ireland, not wildfires in Washington.",
+   "usage_b": {
+    "input_tokens": 732,
+    "output_tokens": 28
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 13169,
+   "label": "France Legalizes Assisted Dying",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "partial",
+   "reason_h": "Most headlines concern France's assisted dying law, but several are about defense spending or military service, making a large minority off-topic.",
+   "usage_h": {
+    "input_tokens": 427,
+    "output_tokens": 39
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://aif.ru/money/economy/makron-podpisal-zakon-ob-uvelichenii-oboronnyh-rashodov-francii",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://ria.ru/20260817/makron-2111457150.html",
+     "status": "ok",
+     "chars": 127
+    },
+    {
+     "url": "https://profile.ru/news/abroad/makron-podpisal-obnovlennyj-zakon-o-voennom-programmirovanii-francii-1892163/",
+     "status": "ok",
+     "chars": 1588
+    },
+    {
+     "url": "https://anlatilaninotesi.com.tr/20260819/fransada-olumcul-hastalar-icin-yardimli-olum-yasasi-yururluge-girdi-1108101936.",
+     "status": "ok",
+     "chars": 3718
+    },
+    {
+     "url": "https://kazpravda.kz/n/vo-frantsii-legalizovali-evtanaziyu/",
+     "status": "ok",
+     "chars": 838
+    }
+   ],
+   "bodies_ok": 4,
+   "verdict_b": "partial",
+   "reason_b": "Two headlines concern France's military budget law, while two concern assisted dying, making the label fit only half the cluster.",
+   "usage_b": {
+    "input_tokens": 863,
+    "output_tokens": 36
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 1661,
+   "label": "UK fire crews tackle multiple blazes",
+   "label_status": "entailed",
+   "cohort": "condemned",
+   "n_receipts": 4,
+   "verdict_h": "entailed",
+   "reason_h": "Three of four headlines are about UK fire crews tackling field or farmland blazes, with the fourth being a warehouse fire in the same country, so the label fits the majority.",
+   "usage_h": {
+    "input_tokens": 299,
+    "output_tokens": 48
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.readingchronicle.co.uk/news/26481748.crews-tackle-farmland-fire-swallowfield-near-reading/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.basingstokegazette.co.uk/news/26476593.fire-breaks-farmers-field-wootton-st-lawrence/",
+     "status": "http_error",
+     "why": "403"
+    },
+    {
+     "url": "https://www.fenlandcitizen.co.uk/news/field-deliberately-set-alight-9478866/",
+     "status": "ok",
+     "chars": 563
+    },
+    {
+     "url": "https://www.braintreeandwithamtimes.co.uk/news/26485540.harwich-firm-devastated-fire-destroys-warehouse/",
+     "status": "http_error",
+     "why": "403"
+    }
+   ],
+   "bodies_ok": 1,
+   "verdict_b": "entailed",
+   "reason_b": "The single headline is about UK firefighters tackling a deliberate field blaze, which the label accurately describes in subject and geography.",
+   "usage_b": {
+    "input_tokens": 373,
+    "output_tokens": 36
+   },
+   "flip": false,
+   "outcome": "judged"
+  },
+  {
+   "id": 1932,
+   "label": "Osun Election Tensions",
+   "label_status": "partial",
+   "cohort": "condemned",
+   "n_receipts": 8,
+   "verdict_h": "failed",
+   "reason_h": "The headlines are about sexual abuse, ritual attempts, and narcotics in Ghana, not Osun State election tensions.",
+   "usage_h": {
+    "input_tokens": 393,
+    "output_tokens": 35
+   },
+   "fetch_outcomes": [
+    {
+     "url": "https://www.myjoyonline.com/police-arrest-two-watchmen-over-alleged-defilement-of-14-year-old-student/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.myjoyonline.com/education-ministry-condemns-alleged-sexual-abuse-of-bogiss-student-orders-reinstatement-to-b",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.myjoyonline.com/27-year-old-spiritualist-arrested-over-alleged-attempt-to-use-11-year-old-girl-for-ritual/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://pidgin.informationng.com/?p=35762",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.myjoyonline.com/14-arrested-over-suspected-narcotics-cultivation-distribution-in-upper-east/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://ghanaiantimes.com.gh/education-ministry-orders-reinstatement-of-bogiss-student-after-alleged-sexual-abuse/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.myjoyonline.com/bogiss-alleged-sexual-assault-case-dr-apaak-demands-protection-for-autism-victim/",
+     "status": "no_extract"
+    },
+    {
+     "url": "https://www.myjoyonline.com/eduwatch-demands-review-of-bogiss-decision-against-14-year-old-alleged-sexual-abuse-victim/",
+     "status": "no_extract"
+    }
+   ],
+   "bodies_ok": 0,
+   "outcome": "unfetchable"
+  }
+ ]
+}
