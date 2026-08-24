@@ -17,7 +17,9 @@ import PinReceiptButton from './PinReceiptButton'
 import CopyCitationButton, { CopySourceListButton } from './CopyCitationButton'
 import { ShareThreadButton } from './ShareCard'
 import { withTimeout } from '../lib/shareCard'
-import { buildStoryShareCaption, buildStoryFirstComment } from '../lib/storyShare'
+import { buildStoryShareCaption, buildStoryFirstComment, computeShareFinding } from '../lib/storyShare'
+import { resolveTierChip } from '../lib/sourceProvenance'
+import { translateSignal } from '../lib/translateQueue'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { ExportMenu } from './ExportMenu'
@@ -398,6 +400,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const kitCommentRef = useRef<HTMLTextAreaElement>(null)
     const [kitCommentCopied, setKitCommentCopied] = useState('')
     const [kitCommentFallbackOpen, setKitCommentFallbackOpen] = useState(false)
+    // Kit v2 (campaign spec §2.1): receipt CURATION + quote-gated lede.
+    const [kitOpen, setKitOpen] = useState(false)
+    const [kitSelected, setKitSelected] = useState<number[]>([])
+    // signal id → English translation ({text, from}) | null = asked, none came
+    // (unavailable/none — the original renders, honestly untranslated).
+    const [kitTranslations, setKitTranslations] = useState<Record<number, { text: string; from: string } | null>>({})
+    const [kitLede, setKitLede] = useState<
+        | { status: 'idle' | 'loading' }
+        | { status: 'ok'; lede: string }
+        | { status: 'error'; message: string }
+    >({ status: 'idle' })
     const { pinItem, unpinItem, isPinned } = useWorkspace()
     // #232 UX slice: when this thread is country-scoped, surface how many
     // conflict events sit in that country this window. GEOGRAPHY-JOIN ONLY —
@@ -785,17 +798,76 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         : !countMeta.unmeasured && data?.total != null
             ? { count: data.total, window: `last ${hours} hours` }
             : null
-    const kitReceipts = (data?.signals ?? [])
-        .filter(s => !!s.headline)
-        .slice(0, 3)
-        .map(s => ({
+    // v2 curation pool: the served receipts the analyst can pick from. Picking
+    // among REAL receipts is honest; the card carries only the picked ones.
+    // 30 deep because on an M1-diseased story the on-story receipts can sit
+    // well below the first rows (the exact disease the curation exists for).
+    const kitPool = (data?.signals ?? []).filter(s => !!s.headline).slice(0, 30)
+    const kitSelectedRows = kitSelected
+        .map(i => kitPool[i])
+        .filter((s): s is (typeof kitPool)[number] => !!s)
+
+    // English translations for the picked receipts — the existing /translate
+    // signal lane (server-cached per (signal_id, lang), batched, circuit-broken).
+    // A missing translation renders the ORIGINAL, never a blank or a guess.
+    useEffect(() => {
+        if (!kitOpen) return
+        for (const i of kitSelected) {
+            const s = kitPool[i]
+            if (!s || s.id == null) continue
+            const sid = s.id
+            const lang = (s.source_lang || '').trim().toLowerCase()
+            // 'en' never needs the lane; unknown ('xx'/absent) still ATTEMPTS —
+            // the server answers `none` for an already-English headline, and a
+            // real translation without a known source lang is marked plain
+            // "(translated)" rather than inventing a language code.
+            if (lang === 'en') continue
+            if (kitTranslations[sid] !== undefined) continue
+            const from = lang && lang !== 'xx' ? lang : null
+            translateSignal(sid, 'en').then(out => {
+                setKitTranslations(prev => ({
+                    ...prev,
+                    [sid]: out.status === 'ok' ? { text: out.text, from: from ?? '' } : null,
+                }))
+            })
+        }
+        // kitPool is rebuilt per render from data; the per-id `!== undefined`
+        // guard makes re-runs free, so looser deps are safe here.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kitOpen, kitSelected, data])
+
+    const toggleKitReceipt = (i: number) => {
+        // The lede was generated FROM a specific curation — keeping it over a
+        // different one would caption receipts it never read. Reset to idle.
+        setKitLede({ status: 'idle' })
+        setKitSelected(prev =>
+            prev.includes(i) ? prev.filter(x => x !== i) : prev.length >= 3 ? prev : [...prev, i],
+        )
+    }
+
+    const kitReceipts = kitSelectedRows.map(s => {
+        const t = s.id != null ? kitTranslations[s.id] : undefined
+        return {
             headline: decodeEntities(s.headline as string),
             outlet: s.source || null,
             lang: s.source_lang || null,
-        }))
+            translated: t ? decodeEntities(t.text) : null,
+            translatedFrom: t && t.from ? t.from : null,
+        }
+    })
+    // The measured hook — math over the FULL served sample + country tone
+    // (computeShareFinding: language spread / state-media share / tone split).
+    const kitFinding = data
+        ? computeShareFinding({
+            receipts: (data.signals ?? []).map(s => ({ outlet: s.source, lang: s.source_lang })),
+            countries: data.countryBreakdown,
+        })
+        : null
     const kitCaption = data
         ? buildStoryShareCaption({
             label: displayLabel,
+            lede: kitLede.status === 'ok' ? kitLede.lede : null,
+            finding: kitFinding,
             signals: kitSignals?.count ?? null,
             signalsWindow: kitSignals?.window ?? null,
             countries: data.countryBreakdown.length > 0 ? data.countryBreakdown.length : null,
@@ -809,11 +881,57 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // fewer people, so the caption stays link-free and this text is posted
     // as the first comment.
     const kitFirstComment = buildStoryFirstComment(kitDeepLink)
+
+    // One chain LLM call, on-click only; the endpoint quote-gates every
+    // sentence against the picked receipts and caches the exact curation 7d.
+    const generateKitLede = async () => {
+        if (kitSelectedRows.length === 0 || kitLede.status === 'loading') return
+        setKitLede({ status: 'loading' })
+        try {
+            const receipts = kitSelectedRows.map(s => ({
+                headline: decodeEntities(s.headline as string).slice(0, 300),
+                outlet: s.source || null,
+                lang: s.source_lang || null,
+                country: s.country || null,
+                state_media: resolveTierChip(s.source, undefined).tier === 'state',
+            }))
+            const res = await fetch(`/api/v2/story/${encodeURIComponent(theme)}/share-editorial`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: displayLabel, receipts }),
+            })
+            if (!res.ok) {
+                if (res.status === 429) {
+                    const retry = Number(res.headers.get('Retry-After')) || 300
+                    setKitLede({ status: 'error', message: `Editor rate-limited — retry in ~${Math.max(1, Math.round(retry / 60))} min.` })
+                } else {
+                    setKitLede({ status: 'error', message: 'Editor unavailable — the caption stays on the measured template.' })
+                }
+                return
+            }
+            const body = await res.json()
+            if (body?.lede) {
+                setKitLede({ status: 'ok', lede: String(body.lede) })
+            } else if (body?.error === 'quote_gate_failed') {
+                setKitLede({ status: 'error', message: 'The editor could not ground a lede in these receipts (quote gate dropped every sentence) — caption stays on the measured template.' })
+            } else {
+                setKitLede({ status: 'error', message: 'Editor unavailable — the caption stays on the measured template.' })
+            }
+        } catch {
+            setKitLede({ status: 'error', message: 'Editor unreachable — no connection.' })
+        }
+    }
+
     const openKit = () => {
         setKitCopied('')
         setKitFallbackOpen(false)
         setKitCommentCopied('')
         setKitCommentFallbackOpen(false)
+        // Default curation = the first 3 served receipts (v1's exact set);
+        // a stale lede from a previous open never survives a re-open.
+        setKitSelected([0, 1, 2].filter(i => i < kitPool.length))
+        setKitLede({ status: 'idle' })
+        setKitOpen(true)
         const dlg = kitDialogRef.current
         if (!dlg) return
         // try/catch: showModal() throws InvalidStateError when the dialog is
@@ -827,6 +945,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         }
     }
     const closeKit = () => {
+        setKitOpen(false)
         const dlg = kitDialogRef.current
         if (!dlg) return
         if (typeof dlg.close === 'function') dlg.close()
@@ -2062,7 +2181,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         className="story-kit-dialog"
                         aria-labelledby="story-kit-title"
                         onClick={e => { if (e.target === kitDialogRef.current) closeKit() }}
-                        onClose={() => { setKitCopied(''); setKitCommentCopied('') }}
+                        onClose={() => { setKitCopied(''); setKitCommentCopied(''); setKitOpen(false) }}
                     >
                         <div className="story-kit-shell">
                             <div className="story-kit-top">
@@ -2085,17 +2204,29 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         </span>
                                     </div>
                                     <p className="skc-kicker">Story · measured coverage</p>
-                                    <p className="skc-headline">{displayLabel}</p>
+                                    <p className={`skc-headline${kitLede.status === 'ok' ? ' skc-headline--with-lede' : ''}`}>{displayLabel}</p>
+                                    {kitLede.status === 'ok' && (
+                                        <p className="skc-lede">{kitLede.lede}</p>
+                                    )}
+                                    {kitFinding && (
+                                        <p className="skc-finding"><span className="skc-finding-lab">MEASURED</span>{kitFinding}</p>
+                                    )}
                                     {kitReceipts.length > 0 && (
                                         <div className="skc-receipts">
-                                            <p className="skc-lab">Receipts — sampled coverage</p>
+                                            <p className="skc-lab">
+                                                {kitLede.status === 'ok'
+                                                    ? 'Receipts — the lede is synthesized only from these'
+                                                    : 'Receipts — sampled coverage'}
+                                            </p>
                                             {kitReceipts.map((r, i) => (
                                                 <p className="skc-receipt" key={i}>
-                                                    <span className="skc-receipt-head">“{r.headline}”</span>
+                                                    <span className="skc-receipt-head">“{r.translated ?? r.headline}”</span>
                                                     {r.outlet && (
                                                         <span className="skc-receipt-meta">
                                                             {r.outlet}
-                                                            {r.lang && <span className="skc-receipt-lang">{r.lang}</span>}
+                                                            {r.translated
+                                                                ? <span className="skc-receipt-lang">{r.translatedFrom ? `translated from ${r.translatedFrom}` : 'translated'}</span>
+                                                                : r.lang && <span className="skc-receipt-lang">{r.lang}</span>}
                                                             <TierChip source={r.outlet} />
                                                         </span>
                                                     )}
@@ -2128,6 +2259,59 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 </div>
                             </div>
 
+                            {kitPool.length > 0 && (
+                                <div className="story-kit-curate">
+                                    <p className="story-kit-curate-lab">
+                                        Receipts on the card — pick up to 3. Real, served receipts only; non-English
+                                        ones translate to English and say so.
+                                    </p>
+                                    <div className="story-kit-curate-list">
+                                        {kitPool.map((s, i) => {
+                                            const checked = kitSelected.includes(i)
+                                            const disabled = !checked && kitSelected.length >= 3
+                                            const isState = resolveTierChip(s.source, undefined).tier === 'state'
+                                            return (
+                                                <label key={i} className={`story-kit-curate-row${disabled ? ' is-disabled' : ''}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        disabled={disabled}
+                                                        onChange={() => toggleKitReceipt(i)}
+                                                    />
+                                                    <span className="skcu-body">
+                                                        <span className="skcu-head">{decodeEntities(s.headline as string)}</span>
+                                                        <span className="skcu-meta">
+                                                            {s.source}
+                                                            {s.source_lang ? ` · ${s.source_lang}` : ''}
+                                                            {isState ? ' · STATE MEDIA' : ''}
+                                                            {s.archived ? ' · from the archive' : ''}
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            )
+                                        })}
+                                    </div>
+                                    <div className="story-kit-editorial">
+                                        <button
+                                            type="button"
+                                            className="story-kit-generate"
+                                            onClick={generateKitLede}
+                                            disabled={kitLede.status === 'loading' || kitSelectedRows.length === 0}
+                                        >
+                                            ✎ {kitLede.status === 'ok' ? 'Regenerate' : 'Generate'} editorial lede
+                                        </button>
+                                        <span className="story-kit-editorial-note" role="status" aria-live="polite">
+                                            {kitLede.status === 'loading'
+                                                ? `Synthesizing from ${kitSelectedRows.length} receipt${kitSelectedRows.length === 1 ? '' : 's'}…`
+                                                : kitLede.status === 'error'
+                                                    ? kitLede.message
+                                                    : kitLede.status === 'ok'
+                                                        ? 'Lede grounded — every sentence quote-checked against a picked receipt.'
+                                                        : 'Optional: a 2-3 sentence English lede synthesized ONLY from the picked receipts (quote-gated — nothing invented).'}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                             <p className="story-kit-hint">
                                 <b>Screenshot the card.</b> Copy the caption. Publish the post. Do not put the link
                                 in the post. Then copy the first comment. Post it as your first comment.

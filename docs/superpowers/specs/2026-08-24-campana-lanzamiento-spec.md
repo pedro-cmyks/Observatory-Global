@@ -26,7 +26,7 @@ una pieza semanal que muestre el producto → un link que aterrice en una
 puerta legible → una cuenta gratis que retenga al que llegó. Tres piezas, en
 este orden, porque cada una alimenta la siguiente.
 
-## 2 · Pieza A — el ritual semanal LinkedIn (CONSTRUIDA, en verificación)
+## 2 · Pieza A — el ritual semanal LinkedIn (v2 CONSTRUIDA — editorial quote-gated + curación)
 
 - **Selector**: `backend/scripts/pick_story_of_week.py` — ranking read-only
   de historias publicables (active · no-junk · court entailed; score
@@ -38,16 +38,69 @@ este orden, porque cada una alimenta la siguiente.
   con su ventana, state-media marcado) + "first comment" aparte con el
   deep link (`buildStoryFirstComment`).
 - **Ritual (5 min/semana)**: correr el selector → abrir el deep link →
-  LinkedIn kit → screenshot card + copy caption → publicar el post SIN
-  link en el cuerpo (card/fotos + caption + screenshots de paneles que
-  apoyen: mapa, historia, voice mix) → copiar el "first comment" del kit
-  y pegarlo como PRIMER COMENTARIO del post (ahí vive el link). Por qué:
-  el algoritmo de LinkedIn castiga posts con link en el cuerpo (consejo
-  de marketing 08-24, aceptado por Pedro).
-- **Estado**: mergeado (`44805443`); Pedro lo intentó y no le funcionó — la
-  consola estaba rota por el bug de chunks post-deploy (§4.1), no el kit;
-  el diálogo-franja (§4.2) es del mismo pase de verificación. Hasta que
-  ambos cierren, la pieza A no está "entregada".
+  LinkedIn kit → curar recibos (checkbox, cap 3) → generar lede →
+  screenshot card + copy caption → publicar el post SIN link en el cuerpo
+  (card + caption + screenshots de paneles que apoyen: mapa, historia, voice
+  mix) → copiar el "first comment" del kit y pegarlo como PRIMER COMENTARIO
+  del post (ahí vive el link). Por qué: el algoritmo de LinkedIn castiga
+  posts con link en el cuerpo (consejo de marketing 08-24, aceptado por
+  Pedro).
+- **Estado v1**: mergeado (`44805443`) + bugs §4 arreglados (`dd706612`) +
+  link-en-primer-comentario (`f235850c`). **Veredicto de Pedro en vivo
+  (2026-08-24): "cero tratamiento editorial, solo una foto de datos crudos,
+  nada dice"** — y los recibos auto-muestreados salían en cualquier idioma y
+  con adjuntos falsos (la enfermedad M1: en Ukraine War Updates 2/3 recibos
+  off-story; en Colombia Earthquake 1 de Guinea). → v2.
+- **Estado v2 (2026-09-11)**: construido y verificado el 08-24 en la rama de
+  sesión pero **NUNCA mergeado a v3** — 3 semanas sin publicar, con prod
+  sirviendo el v1 que Pedro ya había rechazado. Rebasado sobre v3 (STE +
+  primer comentario) el 09-11; ver §2.2 para el calendario de campaña.
+
+### 2.1 · Kit v2 — mini-editorial quote-gated + curación de recibos (2026-08-24)
+
+Tres movimientos, cada uno con su riel de honestidad:
+
+1. **Lede editorial (backend)** — `POST /api/v2/story/{id}/share-editorial`
+   (`app/services/story_editorial.py` + handler en `routers/story.py`,
+   contract `story-share-editorial-v1`): 2-3 frases en inglés con la voz de
+   Atlas (reglas destiladas de `publication_synthesis`), sintetizadas SOLO de
+   los recibos curados que viajan en el body. Una llamada por generación vía
+   la cadena `insight_llm` (Anthropic→DeepSeek, cost-ledger
+   `story-share-editorial`), bucket `paid`, Redis 7d sobre la curación exacta
+   (solo se cachea un lede servido — outage/gate-fail quedan retryables).
+   Rieles MECÁNICOS (server, no prompt-hope):
+   - **Quote gate** (patrón AI-read): cada frase cita un recibo y trae quote
+     VERBATIM de ese headline; substring normalizado o se DROPEA. Todo
+     dropeado ⇒ `quote_gate_failed` honesto, lede null — nunca prosa suelta.
+   - **Guard de números**: todo dígito de la frase debe existir en el
+     headline citado.
+   - **STATE MEDIA IS NEVER NEUTRAL**: frase apoyada en recibo state-media
+     debe nombrar el outlet en la frase o se dropea; el flag state del
+     cliente solo puede AGREGAR — el server lo OR-ea con su clasificador
+     (`classify_source_tier`), nunca lo limpia.
+2. **Curación de recibos (diálogo)**: checklist de hasta 30 recibos SERVIDOS
+   (checkbox, cap 3, chips outlet/lang/STATE/archive). Elegir entre recibos
+   reales es honesto — inventar o esconder no. Los no-ingleses se traducen a
+   inglés vía el lane `/api/v2/translate` existente (batch + caché server) y
+   el card/caption marcan "(translated from es)" — nunca se hace pasar la
+   traducción por original. Cambiar la curación RESETEA el lede (un lede
+   generado sobre otros recibos sería mentira).
+3. **Hallazgo MEDIDO (puro, sin LLM)**: `computeShareFinding` en
+   `storyShare.ts` — math sobre campos servidos, con base declarada:
+   spread de idiomas del sample (≥3), share state-media del sample (≥1),
+   split de tono por país (countryBreakdown, piso 3 señales y gap ≥0.5).
+   Nada califica ⇒ sin línea (ausencia sobre gancho fabricado).
+
+**Card/caption v2**: label → lede (si existe; el tagline STE "measurement,
+not opinion" solo aparece SIN lede — sería falso sobre un editorial) →
+`Measured: <hallazgo>` → vitals con ventana → recibos curados traducidos con
+outlet+tier ("Receipts — the lede above is synthesized only from these,
+quote-checked:"). SIN link: el link vive en el primer comentario
+(`buildStoryFirstComment`).
+
+Tests: `backend/tests/test_story_editorial.py` (18 — gate/guards/contract/
+handler) + `storyShare.test.ts` (13 — caption v2 + hallazgos + primer
+comentario).
 
 ## 3 · Pieza B — la puerta: registro con correo+clave (CONSTRUIDA — `d214e2ba`; E2E real: el correo llegó y el link verificó)
 

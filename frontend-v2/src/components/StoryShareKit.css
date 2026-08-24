@@ -363,6 +363,146 @@
   overflow-x: auto;
 }
 
+/* ── kit v2: editorial lede + measured finding on the card ─────────────── */
+
+/* With a lede on the card the headline yields a line so the 1200×627 frame
+   still closes (overflow:hidden is the last resort, not the layout). */
+.skc-headline--with-lede {
+  -webkit-line-clamp: 2;
+  font-size: 3cqw;
+}
+
+.skc-lede {
+  font-family: var(--font-serif, Georgia, serif);
+  color: var(--color-text-primary);
+  font-size: 1.6cqw;
+  line-height: 1.3;
+  margin: 0 0 0.9cqw;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.skc-finding {
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text-secondary);
+  font-size: 1.15cqw;
+  line-height: 1.3;
+  margin: 0 0 0.9cqw;
+  display: flex;
+  align-items: baseline;
+  gap: 0.9cqw;
+}
+
+.skc-finding-lab {
+  color: var(--color-accent-primary);
+  letter-spacing: 0.18em;
+  font-size: 1cqw;
+  flex: none;
+}
+
+/* With a lede, receipts tighten to one line each so all three keep their
+   outlet/translation meta inside the 1200×627 frame. */
+.story-kit-card:has(.skc-lede) .skc-receipt-head {
+  -webkit-line-clamp: 1;
+}
+.story-kit-card:has(.skc-lede) .skc-receipts { gap: 0.55cqw; padding-top: 0.9cqw; }
+.story-kit-card:has(.skc-lede) .skc-headline { margin-bottom: 1cqw; }
+
+/* ── kit v2: curation checklist + generate row (dialog chrome, not card) ── */
+
+.story-kit-curate {
+  max-width: 640px;
+  margin: 14px auto 0;
+}
+
+.story-kit-curate-lab {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 8px;
+}
+
+.story-kit-curate-list {
+  display: grid;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid rgba(var(--color-ink-rgb), 0.12);
+  border-radius: 4px;
+  padding: 6px;
+  background: var(--color-bg-secondary);
+}
+
+.story-kit-curate-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.story-kit-curate-row:hover { background: rgba(var(--color-ink-rgb), 0.05); }
+.story-kit-curate-row.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.story-kit-curate-row input { margin-top: 3px; flex: none; }
+
+.skcu-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.skcu-head {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.skcu-meta {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.story-kit-editorial {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.story-kit-generate {
+  appearance: none;
+  cursor: pointer;
+  font-family: var(--font-sans, sans-serif);
+  font-weight: 650;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-accent-primary);
+  background: transparent;
+  color: var(--color-accent-primary);
+  transition: filter 0.16s ease, background 0.16s ease;
+}
+
+.story-kit-generate:hover:not(:disabled) { background: rgba(var(--color-ink-rgb), 0.06); }
+.story-kit-generate:disabled { opacity: 0.5; cursor: default; }
+
+.story-kit-editorial-note {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  flex: 1;
+  min-width: 200px;
+}
+
 @media (max-width: 540px) {
   .story-kit-shell { padding: 12px; }
   .story-kit-card { border-radius: 4px; }

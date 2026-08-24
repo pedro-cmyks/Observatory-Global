@@ -19,6 +19,7 @@ the pool caps at 10).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -27,8 +28,11 @@ from datetime import datetime, timezone
 
 import numpy as np
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from app import db
+from app.services import story_editorial as _story_editorial
+from app.services.source_tiers import classify_source_tier
 from app.services.constellation_walk import (
     WalkParams,
     blob_basis_for_ui,
@@ -685,3 +689,105 @@ async def get_story_siblings(thread_id: str) -> dict:
         except Exception as exc:  # noqa: BLE001
             logger.warning("story siblings cache write failed: %s", exc, exc_info=True)
     return payload
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Share editorial — the quote-gated LinkedIn lede (campaign piece A v2).
+# POST because the CURATED receipt set travels in the body; "paid" bucket
+# (explicit analyst click, one LLM call — never fired on story open).
+# ─────────────────────────────────────────────────────────────────────────────
+
+_EDITORIAL_CACHE_TTL_S = 7 * 24 * 3600  # a weekly ritual: same curation, same lede
+
+
+class ShareEditorialReceiptIn(BaseModel):
+    headline: str = Field(min_length=1, max_length=300)
+    outlet: str | None = Field(default=None, max_length=120)
+    lang: str | None = Field(default=None, max_length=8)
+    country: str | None = Field(default=None, max_length=8)
+    # The client's tier verdict travels along, but it can only ADD the state
+    # flag — the server's own name classifier is OR'd in below, so a client
+    # omitting the flag never launders a known state outlet into neutral.
+    state_media: bool = False
+
+
+class ShareEditorialRequest(BaseModel):
+    label: str = Field(min_length=1, max_length=200)
+    receipts: list[ShareEditorialReceiptIn] = Field(min_length=1, max_length=4)
+
+
+def _editorial_envelope(topic_key: str | None, body: dict, *, cached: bool) -> dict:
+    return {
+        "contract": "story-share-editorial-v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "story": topic_key,
+        "prompt_version": _story_editorial.PROMPT_VERSION,
+        "cached": cached,
+        **body,
+    }
+
+
+def _editorial_error(topic_key: str | None, error: str) -> dict:
+    return _editorial_envelope(
+        topic_key,
+        {"lede": None, "sentences": [], "dropped": 0, "provider": None, "error": error},
+        cached=False,
+    )
+
+
+@router.post("/api/v2/story/{thread_id}/share-editorial")
+async def post_story_share_editorial(thread_id: str, req: ShareEditorialRequest) -> dict:
+    """Synthesize a 2-3 sentence English lede from the CURATED receipts the
+    analyst picked in the LinkedIn kit. Quote-gated (story_editorial.py):
+    every sentence carries a verbatim quote from one receipt headline, numbers
+    must exist in the cited receipt, state-media sentences must attribute the
+    outlet. All-dropped is an honest `quote_gate_failed`, never a fabricated
+    line. Successful results cache in Redis for 7 days keyed on the exact
+    curation, so regenerating never re-pays the provider."""
+    topic_key = _normalize_thread_id(thread_id)
+    if not topic_key:
+        return _editorial_error(None, "invalid_thread_id")
+
+    receipts = [
+        _story_editorial.EditorialReceipt(
+            headline=r.headline.strip(),
+            outlet=(r.outlet or None),
+            lang=(r.lang or None),
+            country=(r.country or None),
+            # Server classifier ORs in: the client can flag state, never clear it.
+            state_media=bool(r.state_media) or classify_source_tier(r.outlet).tier == 5,
+        )
+        for r in req.receipts
+    ]
+
+    fingerprint = json.dumps(
+        [
+            _story_editorial.PROMPT_VERSION,
+            topic_key,
+            req.label,
+            [[r.headline, r.outlet or "", r.state_media] for r in receipts],
+        ],
+        ensure_ascii=False,
+    )
+    cache_key = "story_edit:v1:" + hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()[:40]
+
+    redis = _redis_client()
+    if redis is not None:
+        try:
+            cached = await redis.get(cache_key)
+            if cached:
+                return _editorial_envelope(topic_key, json.loads(cached), cached=True)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("share-editorial cache read failed: %s", exc, exc_info=True)
+
+    body = await _story_editorial.run_share_editorial(req.label, receipts)
+
+    # Cache ONLY a served lede — a provider outage or an all-dropped gate must
+    # stay retryable, not pinned for a week (the house never-cache-degraded rule).
+    if redis is not None and body.get("lede"):
+        try:
+            await redis.setex(cache_key, _EDITORIAL_CACHE_TTL_S, json.dumps(body, ensure_ascii=False))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("share-editorial cache write failed: %s", exc, exc_info=True)
+
+    return _editorial_envelope(topic_key, body, cached=False)

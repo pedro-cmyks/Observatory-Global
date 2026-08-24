@@ -206,6 +206,10 @@ _RULE_SPECS: list[tuple[str, str, object]] = [
     # their own — "global" (600/60s) — since the siblings call always
     # accompanies one of those on a normal open.
     (r"^/api/v2/story/[^/]+/siblings$", "global", None),
+    # LinkedIn kit v2 lede: one chain LLM call, fired ONLY by the explicit
+    # "Generate editorial" click in the share dialog (Redis-cached 7d on the
+    # exact curation) — the analyst-action profile "paid" is sized for.
+    (r"^/api/v2/story/[^/]+/share-editorial$", "paid", None),
     (r"^/api/v2/telemetry$", "write", None),
     (r"^/api/v2/research/events$", "write", None),
 ]
