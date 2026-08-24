@@ -114,6 +114,31 @@ más? **La respuesta honesta tiene dos mitades**:
 después de las piezas A-D, o después del M1-sombra? (Mi voto: después del
 M1-sombra — es superficie, y el motor está a mitad de gate.)
 
+## 6b · Programa: subir el output de señales PROCESADAS (Pedro, 2026-08-24 tarde)
+
+Origen: al armar el post #1, Pedro preguntó qué significa "0 verified
+stories" en un gap. Respuesta honesta: el gap mezcla dos cosas que hoy no
+separamos — silencio real de prensa Y nuestro propio recall (93% de las
+señales servibles no se adjuntan a ninguna historia; gate 24.9% kept). Por
+eso el bullet salió de la nota: no publicamos un número que aún no sabemos
+leer. El programa para subir el output procesado ya existe por partes;
+aquí queda unificado con su métrica:
+
+1. **M1 familia ① en sombra** (prereg + calibración 08-24): objetivo
+   G-RECALL 7%→≥20% servible-con-historia SIN bajar de 90% precisión. La
+   palanca más grande.
+2. **Gate recall** (programa existente: two-tier/extended, umbrales por
+   topic): el 24.9% kept es la banda actual; las clases duras (election)
+   tienen su historial medido.
+3. **Ingesta cruda** (chip `task_1f96ad0c` corriendo): backfill de buckets
+   GDELT saltados — más señales entran, más se procesan.
+4. NLP NO es el cuello (100% sentiment / 99.6% NER medido hoy).
+
+**Métrica semanal del programa** (una línea en el weekly read): señales/día
+ingestadas · % gate kept · % servible-con-historia. Cuando (1) aterrice,
+el gap vuelve a ser publicable — separado en "silencio real" vs "aún no
+procesado".
+
 ## 7 · Tablero de frentes (2026-08-24, estado al cierre de sesión)
 
 | frente | estado | doc/commit |
