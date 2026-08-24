@@ -36,7 +36,7 @@ este orden, porque cada una alimenta la siguiente.
   el diálogo-franja (§4.2) es del mismo pase de verificación. Hasta que
   ambos cierren, la pieza A no está "entregada".
 
-## 3 · Pieza B — la puerta: registro con correo+clave (EN CONSTRUCCIÓN)
+## 3 · Pieza B — la puerta: registro con correo+clave (CONSTRUIDA — `d214e2ba`; E2E real: el correo llegó y el link verificó)
 
 Verificado contra el Supabase vivo (2026-08-24): `POST /auth/v1/signup`
 crea usuario + despacha correo de verificación — el server-side YA está.
@@ -55,7 +55,7 @@ construye encima, aditivo:
 - Google OAuth: descartado por ahora (se intentó, no salió). No se retoma
   en este arco.
 
-## 4 · Pieza C — la puerta debe abrir: bugs que bloquean (EN ARREGLO)
+## 4 · Pieza C — la puerta debe abrir: bugs que bloquean (ARREGLADOS — `dd706612`)
 
 1. **Consola muerta post-deploy**: "Unable to preload CSS for /assets/App-…"
    + TRY AGAIN muerto. Clase: React.lazy (split `8fd1f578`) + PWA SW viejo
@@ -68,7 +68,7 @@ construye encima, aditivo:
 3. **Dock montado**: las tabs ANOMALY/SOURCE INTEGRITY/UNDER THE RADAR/
    MARKETS se superponen al contenido vecino en desktop ancho.
 
-## 5 · Pieza D — el Brief legible: preguntas EN el texto + noticia primero (EN CONSTRUCCIÓN)
+## 5 · Pieza D — el Brief legible: preguntas EN el texto + noticia primero (CONSTRUIDA — `ba1b2592`)
 
 Directiva textual de Pedro. Dos movimientos:
 
@@ -111,14 +111,14 @@ M1-sombra — es superficie, y el motor está a mitad de gate.)
 | frente | estado | doc/commit |
 |---|---|---|
 | M4 cirugía del lock (suelta tras R1) | **HECHO** — estrena esta noche 22:00; vigilar mañana catchup+goldgrowth+embed y clase timeout-serving | `dfa26e73` |
-| Catchup backlog 502K (archivo+poda) | corriendo hoy (waiter reintenta hasta agarrar lock) | auditoría §3 |
+| Catchup backlog 502K (archivo+poda) | agarró lock 07:53, archivando (69K filas del d17 ya en Ext) | auditoría §3 |
 | Ingesta GDELT al 30% | causa = INSERTs lentos por base gorda; re-medir 24-48h post-poda | `docs/state/2026-08-24-health-audit.md` |
 | M1 familia ① calibrada (3 sondas) | HECHO — sigue: fix en sombra vs 6 barras | `b649d30c` · prereg addendum |
-| Kit LinkedIn (pieza A) | construido; bloqueado por bugs §4 hasta verificar en prod | `44805443` |
-| Registro+clave+CTA (pieza B) | agente construyendo | este spec §3 |
-| Bugs consola/diálogo/dock (pieza C) | agente arreglando | este spec §4 |
-| Brief tejido + noticia-primero (pieza D) | agente construyendo | este spec §5 |
-| threevendor leg anthropic | **HECHO por chip** — κ 0→0.611/0.727, cron mañana ya por CLI | `b1fc0dc2` (rama chip, pendiente merge) |
+| Kit LinkedIn (pieza A) | construido; bugs §4 arreglados — verificar ritual en prod post-deploy | `44805443` + `dd706612` |
+| Registro+clave+CTA (pieza B) | HECHO — pendiente dashboard Supabase (Pedro, §3) | `d214e2ba` |
+| Bugs consola/diálogo/dock (pieza C) | HECHO — chunk auto-reload + kit portal + dock wrap | `dd706612` |
+| Brief tejido + noticia-primero (pieza D) | HECHO — eyeball de Pedro en prod pendiente | `ba1b2592` |
+| threevendor leg anthropic | **HECHO** — κ 0→0.611/0.727; mergeado a la rama principal (Step -1 ya no lo revierte) | `ed84c9d4` |
 | Archivo-al-frente (más historia en superficies) | decisión de Pedro (§6) | — |
 | Feed rot (~25 feeds/día) | abierto, crónico | auditoría §4.4 |
 | M5 lectores humanos | la campaña ES el reclutamiento; sigue siendo decisión/ejecución de Pedro | plan motor M5 |
