@@ -35,7 +35,7 @@ export function AuthCallback() {
     body = (
       <div className="auth-result">
         <div className="auth-result-glyph auth-result-glyph--warn">!</div>
-        <h1 className="auth-title">This link didn’t work</h1>
+        <h1 className="auth-title">This link did not work</h1>
         <p className="auth-sub">{describeCallbackError(params.error)}</p>
         <div className="auth-result-cta">
           <button className="auth-btn" onClick={() => navigate('/register')}>Create account / sign in</button>
@@ -48,7 +48,7 @@ export function AuthCallback() {
       <div className="auth-result">
         <div className="auth-result-glyph">✓</div>
         <h1 className="auth-title">Account verified</h1>
-        <p className="auth-sub">You’re signed in{session.user?.email ? ` as ${session.user.email}` : ''} — your investigations now sync across devices. Atlas is all yours.</p>
+        <p className="auth-sub">You are signed in{session.user?.email ? ` as ${session.user.email}` : ''}. Your investigations now sync across devices.</p>
         <div className="auth-result-cta">
           <button className="auth-btn" onClick={() => navigate('/brief')}>Read the Brief</button>
           <button className="auth-btn auth-btn--ghost" onClick={() => navigate('/app')}>Open the console</button>
@@ -60,7 +60,7 @@ export function AuthCallback() {
       <div className="auth-result">
         <div className="auth-result-glyph">…</div>
         <h1 className="auth-title">Verifying</h1>
-        <p className="auth-sub">Confirming your email with the account service…</p>
+        <p className="auth-sub">We are confirming your email with the account service…</p>
       </div>
     )
   } else {
@@ -68,7 +68,7 @@ export function AuthCallback() {
       <div className="auth-result">
         <div className="auth-result-glyph auth-result-glyph--warn">!</div>
         <h1 className="auth-title">No session arrived</h1>
-        <p className="auth-sub">This page expected a verification link from an Atlas email, but no valid session came with it. The link may have expired or been used already.</p>
+        <p className="auth-sub">This page expected a verification link from an Atlas email. No valid session arrived. Email links work only one time, and they expire quickly.</p>
         <div className="auth-result-cta">
           <button className="auth-btn" onClick={() => navigate('/register')}>Create account / sign in</button>
         </div>

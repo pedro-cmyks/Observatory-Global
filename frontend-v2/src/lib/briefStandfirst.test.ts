@@ -31,8 +31,8 @@ describe('composeEditionStandfirst — all Ready', () => {
     const sf = composeEditionStandfirst(payload, 'en')
     expect(sf.hasProse).toBe(true)
     expect(proseOf(sf)).toBe(
-      'Today’s lead: Cargo Ship Sinks Off India — measured across CA · IN coverage, '
-      + 'Aug 23–24, led by abc15.com and arabic.rt.com. '
+      'Today’s lead: Cargo Ship Sinks Off India. Atlas measured coverage in CA · IN. '
+      + 'Coverage window: Aug 23–24. Lead outlets: abc15.com and arabic.rt.com. '
       + 'At the center: Canada, Donald Trump and India. '
       + '2 more stories met today’s measured bar.',
     )
@@ -65,8 +65,8 @@ describe('composeEditionStandfirst — all Ready', () => {
   it('speaks Spanish when asked', () => {
     const sf = composeEditionStandfirst(payload, 'es')
     expect(proseOf(sf)).toBe(
-      'La nota del día: Cargo Ship Sinks Off India — medida en cobertura CA · IN, '
-      + '23–24 ago, encabezada por abc15.com y arabic.rt.com. '
+      'La nota del día: Cargo Ship Sinks Off India. Atlas midió la cobertura en CA · IN. '
+      + 'Ventana de cobertura: 23–24 ago. Medios principales: abc15.com y arabic.rt.com. '
       + 'Al centro: Canada, Donald Trump y India. '
       + '2 historias más pasaron la barra medida de hoy.',
     )
@@ -88,8 +88,8 @@ describe('composeEditionStandfirst — mixed Ready/Partial (the live 2026-08-24 
     const sf = composeEditionStandfirst(payload, 'en')
     const prose = proseOf(sf)
     expect(prose).toBe(
-      'Today’s lead: Cargo Ship Sinks Off India — Aug 23–24, '
-      + 'led by abc15.com, arabic.rt.com and 1 more outlet. '
+      'Today’s lead: Cargo Ship Sinks Off India. Coverage window: Aug 23–24. '
+      + 'Lead outlets: abc15.com, arabic.rt.com and 1 more outlet. '
       + '1 more story met today’s measured bar.',
     )
     // partial WHO / WHERE values are absent from the woven text
@@ -134,7 +134,7 @@ describe('composeEditionStandfirst — absent fields and degraded payloads', () 
       what: partial(['X']),
       how: ready(['reuters.com']),
     }, 'en')
-    expect(proseOf(sf)).toBe('Today’s coverage — led by reuters.com.')
+    expect(proseOf(sf)).toBe('Today’s coverage. Lead outlets: reuters.com.')
     expect(sf.belowBar).toEqual(['what'])
   })
 

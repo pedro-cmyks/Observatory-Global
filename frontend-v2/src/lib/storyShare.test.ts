@@ -18,11 +18,11 @@ describe('buildStoryShareCaption', () => {
       ],
       deepLink: DEEP_LINK,
     })
-    expect(caption).toContain('Caspian Pipeline Standoff — measured, not editorialized.')
+    expect(caption).toContain('Caspian Pipeline Standoff — measurement, not opinion.')
     expect(caption).toContain('1,234 signals (last 24 hours)')
     expect(caption).toContain('12 countries')
-    expect(caption).toContain('36 sources (distinct outlets among sampled receipts)')
-    expect(caption).toContain('Receipts (sampled coverage):')
+    expect(caption).toContain('36 sources (distinct outlets in the sampled receipts)')
+    expect(caption).toContain('Receipts — sampled coverage:')
     expect(caption).toContain('• “Pipeline halted after talks collapse” — Reuters (en)')
     expect(caption).toContain('• “Los mercados reaccionan al cierre” — El País (es)')
     expect(caption).toContain(`Open the measured story on Atlas → ${DEEP_LINK}`)
@@ -55,7 +55,7 @@ describe('buildStoryShareCaption', () => {
     // Nothing measured → no coverage line at all, label + link remain.
     const bare = buildStoryShareCaption({ label: 'Story', deepLink: DEEP_LINK })
     expect(bare).not.toContain('Measured coverage')
-    expect(bare).toContain('Story — measured, not editorialized.')
+    expect(bare).toContain('Story — measurement, not opinion.')
     expect(bare).toContain(DEEP_LINK)
   })
 

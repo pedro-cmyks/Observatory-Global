@@ -20,25 +20,25 @@ const MODE_COPY: Record<Mode, { kicker: string; title: string; sub: string; cta:
   register: {
     kicker: 'Create your account',
     title: 'Atlas, on every device.',
-    sub: 'Free. Your account syncs your investigations across devices. Reading the Brief never requires signing in.',
+    sub: 'Free. Your account syncs your investigations across devices. You do not need an account to read the Brief.',
     cta: 'Create free account',
   },
   login: {
-    kicker: 'Welcome back',
+    kicker: 'Existing account',
     title: 'Sign in to Atlas.',
-    sub: 'Your investigations pick up where you left them, on any device.',
+    sub: 'Your investigations continue on any device.',
     cta: 'Sign in',
   },
   magic: {
-    kicker: 'Passwordless',
+    kicker: 'Sign in without a password',
     title: 'Get a sign-in link.',
-    sub: 'We email you a one-time link — no password needed.',
+    sub: 'We email you a one-time link. You do not need a password.',
     cta: 'Email me a sign-in link',
   },
   forgot: {
     kicker: 'Reset password',
     title: 'Forgot your password?',
-    sub: 'We email you a link to set a new one.',
+    sub: 'We email you a link to set a new password.',
     cta: 'Send reset link',
   },
 }
@@ -132,8 +132,8 @@ export function Register() {
           {!configured ? (
             <div className="auth-result">
               <div className="auth-result-glyph auth-result-glyph--warn">!</div>
-              <h1 className="auth-title">Accounts aren’t available here</h1>
-              <p className="auth-sub">This deployment has no account backend configured. Atlas still works fully without an account — investigations stay on this device.</p>
+              <h1 className="auth-title">Accounts are not available here</h1>
+              <p className="auth-sub">This deployment has no account service. Atlas works fully without an account. Your investigations stay on this device.</p>
               <div className="auth-result-cta">
                 <button className="auth-btn" onClick={() => navigate('/brief')}>Read the Brief</button>
               </div>
@@ -143,7 +143,7 @@ export function Register() {
               <div className="auth-result-glyph">✉</div>
               <h1 className="auth-title">{sent.title}</h1>
               <p className="auth-sub">{sent.body}</p>
-              <p className="auth-fine">Nothing arriving? Check spam, or wait a minute — the mailer sends at most a few emails per hour.</p>
+              <p className="auth-fine">If no email arrives, check your spam folder. The mailer sends only a few emails per hour.</p>
               <div className="auth-links">
                 <button className="auth-link" onClick={() => setSent(null)}>← Back</button>
               </div>
@@ -156,7 +156,7 @@ export function Register() {
 
               {alreadySignedIn && (
                 <p className="auth-note auth-note--ok">
-                  You’re already signed in{sessionEmail ? ` as ${sessionEmail}` : ''}. <button className="auth-link" onClick={() => navigate('/brief')}>Go to the Brief →</button>
+                  You are already signed in{sessionEmail ? ` as ${sessionEmail}` : ''}. <button className="auth-link" onClick={() => navigate('/brief')}>Go to the Brief →</button>
                 </p>
               )}
 
@@ -172,7 +172,7 @@ export function Register() {
                     <label className="auth-label" htmlFor="auth-pass">Password</label>
                     <input id="auth-pass" className="auth-input" type="password"
                            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                           placeholder={mode === 'register' ? 'At least 8 characters' : 'Your password'}
+                           placeholder={mode === 'register' ? '8 characters or more' : 'Your password'}
                            value={password} onChange={e => setPassword(e.target.value)} />
                   </div>
                 )}
@@ -195,20 +195,20 @@ export function Register() {
 
               <div className="auth-links">
                 {mode !== 'register' && (
-                  <button className="auth-link" onClick={() => swapMode('register')}>New here? Create a free account</button>
+                  <button className="auth-link" onClick={() => swapMode('register')}>No account yet? Create a free account</button>
                 )}
                 {mode !== 'login' && (
-                  <button className="auth-link" onClick={() => swapMode('login')}>Already have an account? Sign in</button>
+                  <button className="auth-link" onClick={() => swapMode('login')}>Have an account? Sign in</button>
                 )}
                 {mode === 'login' && (
                   <button className="auth-link" onClick={() => swapMode('forgot')}>Forgot your password?</button>
                 )}
                 {mode !== 'magic' && (
-                  <button className="auth-link" onClick={() => swapMode('magic')}>Prefer no password? Get a sign-in link by email</button>
+                  <button className="auth-link" onClick={() => swapMode('magic')}>No password? Get a sign-in link by email</button>
                 )}
               </div>
               {mode === 'register' && (
-                <p className="auth-fine">We’ll email you a verification link. No ads, no tracking, nothing paywalled — the account only syncs your work.</p>
+                <p className="auth-fine">We will email you a verification link. No ads, no tracking, no paywall. The account only syncs your work.</p>
               )}
             </>
           )}

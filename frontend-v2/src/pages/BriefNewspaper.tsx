@@ -3836,7 +3836,7 @@ export function BriefNewspaper() {
                                 </p>
                                 {/* The share card refuses to freeze a lead we don't trust: when no
                                     thread clears the confidence bar there is no headline to publish. */}
-                                <p className="sc-headline">{leadThread ? decodeEntities(leadThread.label) : 'Story under assembly — check back'}</p>
+                                <p className="sc-headline">{leadThread ? decodeEntities(leadThread.label) : 'Story under assembly — come back later'}</p>
                                 {leadThread?.why_now && <p className="sc-stand">{decodeEntities(leadThread.why_now)}</p>}
                                 {worldCards.length > 0 && (
                                     <div className="sc-secondaries">
@@ -3861,7 +3861,7 @@ export function BriefNewspaper() {
                         </div>
 
                         <p className="brief-share-hint">
-                            <b>Screenshot the card</b>, or copy the caption — then paste both into your LinkedIn post.
+                            <b>Screenshot the card.</b> Copy the caption. Paste both into your LinkedIn post.
                             Replace <span className="mono">&lt;your link&gt;</span> with the link to the full edition.
                         </p>
                         <div className="brief-share-actions">

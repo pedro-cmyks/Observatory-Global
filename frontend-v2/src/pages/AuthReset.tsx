@@ -54,7 +54,7 @@ export function AuthReset() {
     body = (
       <div className="auth-result">
         <div className="auth-result-glyph auth-result-glyph--warn">!</div>
-        <h1 className="auth-title">This reset link didn’t work</h1>
+        <h1 className="auth-title">This reset link did not work</h1>
         <p className="auth-sub">{describeCallbackError(params.error)}</p>
         <div className="auth-result-cta">
           <button className="auth-btn" onClick={() => navigate('/register?mode=forgot')}>Request a new reset email</button>
@@ -66,7 +66,7 @@ export function AuthReset() {
       <div className="auth-result">
         <div className="auth-result-glyph">✓</div>
         <h1 className="auth-title">Password updated</h1>
-        <p className="auth-sub">You’re signed in{email ? ` as ${email}` : ''}. Use the new password next time.</p>
+        <p className="auth-sub">You are signed in{email ? ` as ${email}` : ''}. Use the new password for your next sign-in.</p>
         <div className="auth-result-cta">
           <button className="auth-btn" onClick={() => navigate('/brief')}>Read the Brief</button>
         </div>
@@ -76,13 +76,13 @@ export function AuthReset() {
     body = (
       <>
         <p className="auth-kicker">Reset password</p>
-        <h1 className="auth-title">Choose a new password.</h1>
+        <h1 className="auth-title">Set a new password.</h1>
         <p className="auth-sub">For {email ?? 'your account'}.</p>
         <form className="auth-form" onSubmit={submit}>
           <div className="auth-field">
             <label className="auth-label" htmlFor="reset-pass">New password</label>
             <input id="reset-pass" className="auth-input" type="password" autoComplete="new-password"
-                   placeholder="At least 8 characters" value={password}
+                   placeholder="8 characters or more" value={password}
                    onChange={e => setPassword(e.target.value)} />
           </div>
           <div className="auth-field">
@@ -103,7 +103,7 @@ export function AuthReset() {
       <div className="auth-result">
         <div className="auth-result-glyph">…</div>
         <h1 className="auth-title">Checking your link</h1>
-        <p className="auth-sub">Opening the recovery session from your email link…</p>
+        <p className="auth-sub">We are opening the recovery session from your email link…</p>
       </div>
     )
   } else {
@@ -111,7 +111,7 @@ export function AuthReset() {
       <div className="auth-result">
         <div className="auth-result-glyph auth-result-glyph--warn">!</div>
         <h1 className="auth-title">No recovery session</h1>
-        <p className="auth-sub">This page expected a password-reset link from an Atlas email, but no valid recovery session came with it. The link may have expired or been used already.</p>
+        <p className="auth-sub">This page expected a password-reset link from an Atlas email. No valid recovery session arrived. Email links work only one time, and they expire quickly.</p>
         <div className="auth-result-cta">
           <button className="auth-btn" onClick={() => navigate('/register?mode=forgot')}>Request a new reset email</button>
         </div>

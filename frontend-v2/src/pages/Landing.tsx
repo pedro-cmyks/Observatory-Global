@@ -538,9 +538,9 @@ export function Landing() {
                 <RevealSection id="account" className="lp-sect lp-account" labelledBy="lp-ac">
                     <div className="lp-accountbox">
                         <div>
-                            <p className="lp-kicker">Make it yours</p>
+                            <p className="lp-kicker">Your account</p>
                             <h2 className="lp-account-h" id="lp-ac">Free. Your account syncs your investigations across devices.</h2>
-                            <p className="lp-account-p">Reading Atlas never requires signing in. An account adds one thing: the investigations you pin in the workbench follow you from laptop to phone. No ads, no paywalls — start today.</p>
+                            <p className="lp-account-p">You do not need an account to read Atlas. An account adds one thing: the investigations you pin in the workbench sync from laptop to phone. No ads, no paywalls.</p>
                         </div>
                         <div className="lp-account-cta">
                             <button className="lp-btn lp-btn-primary" onClick={() => navigate('/register')}>Create your free account<ArrowRight /></button>

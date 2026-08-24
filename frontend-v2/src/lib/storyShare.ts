@@ -56,7 +56,7 @@ function statsLine({ signals, signalsWindow, countries, sources, sourcesBasis }:
     parts.push(`${countries.toLocaleString('en-US')} ${countries === 1 ? 'country' : 'countries'}`)
   }
   if (sources != null) {
-    const basis = sourcesBasis === 'receipt_sample' ? ' (distinct outlets among sampled receipts)' : ''
+    const basis = sourcesBasis === 'receipt_sample' ? ' (distinct outlets in the sampled receipts)' : ''
     parts.push(`${sources.toLocaleString('en-US')} sources${basis}`)
   }
   return parts.length > 0 ? `Measured coverage: ${parts.join(' · ')}.` : null
@@ -76,14 +76,14 @@ function receiptLine(r: StoryShareReceipt): string {
 
 /** The LinkedIn caption for one story: label, measured vitals, receipts, link. */
 export function buildStoryShareCaption(input: StoryShareInput): string {
-  const blocks: string[] = [`${input.label} — measured, not editorialized.`]
+  const blocks: string[] = [`${input.label} — measurement, not opinion.`]
 
   const stats = statsLine(input)
   if (stats) blocks.push(stats)
 
   const receipts = (input.receipts ?? []).filter(r => !!r.headline).slice(0, MAX_RECEIPTS)
   if (receipts.length > 0) {
-    blocks.push(['Receipts (sampled coverage):', ...receipts.map(receiptLine)].join('\n'))
+    blocks.push(['Receipts — sampled coverage:', ...receipts.map(receiptLine)].join('\n'))
   }
 
   blocks.push(`Open the measured story on Atlas → ${input.deepLink}`)

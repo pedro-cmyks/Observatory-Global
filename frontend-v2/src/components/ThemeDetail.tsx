@@ -893,7 +893,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 type="button"
                                 className="share-thread-btn"
                                 onClick={openKit}
-                                data-tip="LinkedIn kit — screenshotable card + ready caption for this story"
+                                data-tip="LinkedIn kit — a share card and a ready caption for this story"
                             >
                                 ⧉ LinkedIn kit
                             </button>
@@ -2083,7 +2083,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                 {data.sourceCount != null && (
                                                     <span
                                                         data-tip={data.sourceCountBasis === 'receipt_sample'
-                                                            ? 'Distinct outlets among the sampled receipts — not the story’s full outlet total'
+                                                            ? 'Distinct outlets in the sampled receipts — not the story’s full outlet total'
                                                             : undefined}
                                                     >
                                                         <b>{data.sourceCount.toLocaleString('en-US')}</b> sources
@@ -2097,7 +2097,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
 
                             <p className="story-kit-hint">
-                                <b>Screenshot the card</b>, then copy the caption — paste both into your LinkedIn post.
+                                <b>Screenshot the card.</b> Copy the caption. Paste both into your LinkedIn post.
                             </p>
                             <div className="story-kit-actions">
                                 <button className="story-kit-copy" type="button" onClick={copyKitCaption}>

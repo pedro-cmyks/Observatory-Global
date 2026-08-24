@@ -59,8 +59,9 @@ const COPY = {
   en: {
     todaysLead: 'Today’s lead: ',
     coverageOpen: 'Today’s coverage',
-    measuredAcross: (codes: string) => `measured across ${codes} coverage`,
-    ledBy: 'led by ',
+    measuredAcross: (codes: string) => `Atlas measured coverage in ${codes}`,
+    coverageWindow: (range: string) => `Coverage window: ${range}`,
+    ledBy: 'Lead outlets: ',
     and: ' and ',
     listComma: ', ',
     moreOutlets: (n: number) => (n === 1 ? ' and 1 more outlet' : ` and ${n} more outlets`),
@@ -74,8 +75,9 @@ const COPY = {
   es: {
     todaysLead: 'La nota del día: ',
     coverageOpen: 'La cobertura de hoy',
-    measuredAcross: (codes: string) => `medida en cobertura ${codes}`,
-    ledBy: 'encabezada por ',
+    measuredAcross: (codes: string) => `Atlas midió la cobertura en ${codes}`,
+    coverageWindow: (range: string) => `Ventana de cobertura: ${range}`,
+    ledBy: 'Medios principales: ',
     and: ' y ',
     listComma: ', ',
     moreOutlets: (n: number) => (n === 1 ? ' y 1 medio más' : ` y ${n} medios más`),
@@ -228,7 +230,7 @@ export function composeEditionStandfirst(
     const codes = shown.join(' · ') + (rem > 0 ? ` +${rem}` : '')
     clauses.push([text(c.measuredAcross(codes))])
   }
-  if (whenRange) clauses.push([text(whenRange)])
+  if (whenRange) clauses.push([text(c.coverageWindow(whenRange))])
   if (howOutlets.length > 0) {
     const shown = howOutlets.slice(0, OUTLET_CAP)
     const rem = howOutlets.length - shown.length
@@ -243,8 +245,10 @@ export function composeEditionStandfirst(
 
   if (whatValues.length > 0 || clauses.length > 0) {
     parts.push(text(whatValues.length > 0 ? `${c.todaysLead}${whatValues[0]}` : c.coverageOpen))
-    clauses.forEach((clause, i) => {
-      parts.push(text(i === 0 ? ' — ' : ', '))
+    // STE (2026-08-24): each measured fact is its own short sentence — never
+    // one long clause chain ("— measured across …, led by …").
+    clauses.forEach(clause => {
+      parts.push(text('. '))
       parts.push(...clause)
     })
     parts.push(text('.'))

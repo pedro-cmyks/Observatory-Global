@@ -24,7 +24,7 @@ export function validateEmail(email: string): string | null {
   const e = email.trim()
   if (!e) return 'Enter your email address.'
   // one @, something on both sides, a dot in the domain — no RFC cosplay
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return 'That doesn’t look like an email address.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return 'The email address is not valid — check it and try again.'
   return null
 }
 
@@ -35,11 +35,11 @@ export const MIN_PASSWORD_LENGTH = 8
  * an old account may predate the policy and the server is the judge there.
  */
 export function validateNewPassword(password: string, confirm: string): string | null {
-  if (!password) return 'Choose a password.'
+  if (!password) return 'Enter a password.'
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`
+    return `The password is too short — use ${MIN_PASSWORD_LENGTH} characters or more.`
   }
-  if (password !== confirm) return 'The two passwords don’t match.'
+  if (password !== confirm) return 'The two passwords do not match — enter the same password in both fields.'
   return null
 }
 
@@ -53,19 +53,19 @@ export function mapAuthError(raw: string): MappedAuthError {
   if (m.includes('invalid login credentials')) {
     return {
       code: 'invalid_credentials',
-      message: 'Wrong email or password. If you signed up with a magic link only, use “Forgot password” to set one.',
+      message: 'The email or password is not correct. If your account has no password, select “Forgot password” to set one.',
     }
   }
   if (m.includes('email not confirmed')) {
     return {
       code: 'email_not_confirmed',
-      message: 'This account’s email hasn’t been verified yet — open the verification link we emailed you, then sign in.',
+      message: 'This email is not verified. Open the verification link in your email. Then sign in.',
     }
   }
   if (m.includes('already registered') || m.includes('already exists')) {
     return {
       code: 'user_exists',
-      message: 'An account with this email already exists — sign in instead, or use “Forgot password”.',
+      message: 'An account with this email already exists. Sign in, or select “Forgot password”.',
     }
   }
   // "For security purposes, you can only request this after N seconds."
@@ -73,13 +73,13 @@ export function mapAuthError(raw: string): MappedAuthError {
   if (m.includes('for security purposes') && cooldown) {
     return {
       code: 'rate_limited',
-      message: `Too soon — you can request this again in ${cooldown[1]} seconds.`,
+      message: `Security cooldown — try again in ${cooldown[1]} seconds.`,
     }
   }
   if (m.includes('rate limit')) {
     return {
       code: 'rate_limited',
-      message: 'Email rate limit reached — the mailer only sends a few per hour. Try again later.',
+      message: 'Email rate limit reached — the mailer sends only a few emails per hour. Try again later.',
     }
   }
   if (m.includes('password should be')) {
@@ -89,7 +89,7 @@ export function mapAuthError(raw: string): MappedAuthError {
   if (m.includes('auth session missing')) {
     return {
       code: 'session_missing',
-      message: 'No active session — open the link from your email again, or request a new one.',
+      message: 'No active session — open the link from your email again, or request a new link.',
     }
   }
   return { code: 'unknown', message: raw }
@@ -119,16 +119,16 @@ export function interpretSignUpResult(data: SignUpUserSlice, email: string): Sig
     return {
       ok: false,
       code: 'user_exists',
-      message: 'An account with this email already exists — sign in instead, or use “Forgot password”.',
+      message: 'An account with this email already exists. Sign in, or select “Forgot password”.',
     }
   }
   if (data.session) {
     // confirmation disabled server-side: signed in immediately
-    return { ok: true, message: 'Account created — you’re signed in.' }
+    return { ok: true, message: 'Account created — you are signed in.' }
   }
   return {
     ok: true,
-    message: `Almost there — we sent a verification link to ${email}. Open it to activate your account.`,
+    message: `We sent a verification link to ${email}. Open the link to activate your account.`,
   }
 }
 
@@ -173,11 +173,11 @@ export function parseAuthCallbackParams(hash: string, search: string): AuthCallb
 /** Honest copy for a failed email-link landing. */
 export function describeCallbackError(p: NonNullable<AuthCallbackParams['error']>): string {
   if (p.code === 'otp_expired' || /expired/i.test(p.description)) {
-    return 'This link has expired — email links are single-use and short-lived. Request a new one below.'
+    return 'This link expired. Email links work only one time, and they expire quickly. Request a new link below.'
   }
   if (p.code === 'access_denied' && !p.description) {
-    return 'This link was rejected — it may have been used already. Request a new one below.'
+    return 'The account service rejected this link. A link stops working after one use. Request a new link below.'
   }
   // pass the server's own description through — never a generic
-  return p.description || `The link could not be processed (${p.code}). Request a new one below.`
+  return p.description || `The account service could not accept the link (${p.code}). Request a new link below.`
 }
