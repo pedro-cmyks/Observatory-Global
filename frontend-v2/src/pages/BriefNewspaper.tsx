@@ -32,7 +32,7 @@ import { countryDoorCopy } from '../lib/countryDoor'
 import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { isLeadEligible, leadBlockReason, selectLiveLead, LEAD_CONFIDENCE_FLOOR } from '../lib/leadConfidence'
 import { confidenceBucketLabel, confidenceBucketTip, resolveConfidenceBucket } from '../lib/threadConfidence'
-import { splitEditionThreads, buildShareCaption } from '../lib/briefEdition'
+import { splitEditionThreads, buildShareCaption, buildEditionFirstComment } from '../lib/briefEdition'
 import { composeEditionStandfirst, standfirstChrome } from '../lib/briefStandfirst'
 import {
     frontPageScope,
@@ -605,6 +605,11 @@ export function BriefNewspaper() {
     const shareFallbackRef = useRef<HTMLTextAreaElement>(null)
     const [shareCopied, setShareCopied] = useState('')
     const [shareFallbackOpen, setShareFallbackOpen] = useState(false)
+    // First comment (LinkedIn split): the edition link ships as the post's
+    // first comment, never in the caption — its own copy button + fallback.
+    const shareCommentRef = useRef<HTMLTextAreaElement>(null)
+    const [shareCommentCopied, setShareCommentCopied] = useState('')
+    const [shareCommentFallbackOpen, setShareCommentFallbackOpen] = useState(false)
 
     // #239 keep-alive: the Brief stays mounted across App↔Brief switches, so
     // URL params must keep driving state after mount (the useState initializers
@@ -1289,11 +1294,17 @@ export function BriefNewspaper() {
             sources: data.stats.sources,
         })
         : ''
+    // The link lives ONLY here — LinkedIn shows posts with a body link to
+    // fewer people, so the caption stays link-free and this text is posted
+    // as the first comment. Real origin, real route: never a placeholder.
+    const shareFirstComment = buildEditionFirstComment(`${window.location.origin}/brief`)
 
     const openShare = () => {
         track('brief_section_click', { section: 'share_open' })
         setShareCopied('')
         setShareFallbackOpen(false)
+        setShareCommentCopied('')
+        setShareCommentFallbackOpen(false)
         const dlg = shareDialogRef.current
         if (!dlg) return
         if (typeof dlg.showModal === 'function') dlg.showModal()
@@ -1305,6 +1316,7 @@ export function BriefNewspaper() {
         if (typeof dlg.close === 'function') dlg.close()
         else dlg.removeAttribute('open')
         setShareCopied('')
+        setShareCommentCopied('')
     }
     const showShareFallback = () => {
         setShareFallbackOpen(true)
@@ -1321,6 +1333,23 @@ export function BriefNewspaper() {
             )
         } else {
             showShareFallback()
+        }
+    }
+    const showShareCommentFallback = () => {
+        setShareCommentFallbackOpen(true)
+        setTimeout(() => {
+            shareCommentRef.current?.focus()
+            shareCommentRef.current?.select()
+        }, 0)
+    }
+    const copyShareComment = () => {
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(shareFirstComment).then(
+                () => setShareCommentCopied('First comment copied ✓'),
+                showShareCommentFallback,
+            )
+        } else {
+            showShareCommentFallback()
         }
     }
 
@@ -3809,7 +3838,7 @@ export function BriefNewspaper() {
                     className="brief-share-dialog"
                     aria-labelledby="brief-share-title"
                     onClick={e => { if (e.target === shareDialogRef.current) closeShare() }}
-                    onClose={() => setShareCopied('')}
+                    onClose={() => { setShareCopied(''); setShareCommentCopied('') }}
                 >
                     <div className="brief-share-shell">
                         <div className="brief-share-top">
@@ -3861,8 +3890,8 @@ export function BriefNewspaper() {
                         </div>
 
                         <p className="brief-share-hint">
-                            <b>Screenshot the card.</b> Copy the caption. Paste both into your LinkedIn post.
-                            Replace <span className="mono">&lt;your link&gt;</span> with the link to the full edition.
+                            <b>Screenshot the card.</b> Copy the caption. Publish the post. Do not put the link
+                            in the post. Then copy the first comment. Post it as your first comment.
                         </p>
                         <div className="brief-share-actions">
                             <button className="brief-share-copy" type="button" onClick={copyShareCaption}>
@@ -3884,6 +3913,34 @@ export function BriefNewspaper() {
                                 />
                             </>
                         )}
+                        {/* First comment (LinkedIn split): the link lives here, never in
+                            the caption — the algorithm shows body-link posts to fewer people. */}
+                        <div className="brief-share-comment">
+                            <p
+                                className="brief-share-comment-lab"
+                                data-tip="LinkedIn shows posts with a link in the body to fewer people — the link goes in the first comment"
+                            >
+                                First comment — the link goes here
+                            </p>
+                            <div className="brief-share-actions">
+                                <button className="brief-share-copy" type="button" onClick={copyShareComment}>
+                                    ⧉ Copy first comment
+                                </button>
+                                <span className="brief-share-copied" role="status" aria-live="polite">{shareCommentCopied}</span>
+                            </div>
+                            {shareCommentFallbackOpen && (
+                                <p className="brief-share-fallback-lab">Clipboard blocked — select and copy the comment below</p>
+                            )}
+                            <textarea
+                                ref={shareCommentRef}
+                                className="brief-share-fallback brief-share-comment-text"
+                                readOnly
+                                rows={1}
+                                value={shareFirstComment}
+                                aria-label="First comment text, select all and copy"
+                                onFocus={e => e.currentTarget.select()}
+                            />
+                        </div>
                     </div>
                 </dialog>
 

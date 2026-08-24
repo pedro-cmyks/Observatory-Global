@@ -335,6 +335,34 @@
   margin: 0 0 8px;
 }
 
+/* First comment (LinkedIn split): compact section under the caption — the
+   deep link lives here, posted as the post's first comment. */
+.story-kit-comment {
+  width: 100%;
+  max-width: 640px;
+  margin: 14px auto 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--color-ink-rgb), 0.14);
+}
+
+.story-kit-comment-lab {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+.story-kit-comment-text {
+  min-height: 0;
+  height: auto;
+  resize: none;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
 @media (max-width: 540px) {
   .story-kit-shell { padding: 12px; }
   .story-kit-card { border-radius: 4px; }

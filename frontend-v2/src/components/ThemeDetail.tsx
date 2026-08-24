@@ -17,7 +17,7 @@ import PinReceiptButton from './PinReceiptButton'
 import CopyCitationButton, { CopySourceListButton } from './CopyCitationButton'
 import { ShareThreadButton } from './ShareCard'
 import { withTimeout } from '../lib/shareCard'
-import { buildStoryShareCaption } from '../lib/storyShare'
+import { buildStoryShareCaption, buildStoryFirstComment } from '../lib/storyShare'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { ExportMenu } from './ExportMenu'
@@ -393,6 +393,11 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     const kitFallbackRef = useRef<HTMLTextAreaElement>(null)
     const [kitCopied, setKitCopied] = useState('')
     const [kitFallbackOpen, setKitFallbackOpen] = useState(false)
+    // First comment (LinkedIn split): the deep link ships as the post's first
+    // comment, never in the caption — its own copy button + fallback.
+    const kitCommentRef = useRef<HTMLTextAreaElement>(null)
+    const [kitCommentCopied, setKitCommentCopied] = useState('')
+    const [kitCommentFallbackOpen, setKitCommentFallbackOpen] = useState(false)
     const { pinItem, unpinItem, isPinned } = useWorkspace()
     // #232 UX slice: when this thread is country-scoped, surface how many
     // conflict events sit in that country this window. GEOGRAPHY-JOIN ONLY —
@@ -800,9 +805,15 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             deepLink: kitDeepLink,
         })
         : ''
+    // The link lives ONLY here — LinkedIn shows posts with a body link to
+    // fewer people, so the caption stays link-free and this text is posted
+    // as the first comment.
+    const kitFirstComment = buildStoryFirstComment(kitDeepLink)
     const openKit = () => {
         setKitCopied('')
         setKitFallbackOpen(false)
+        setKitCommentCopied('')
+        setKitCommentFallbackOpen(false)
         const dlg = kitDialogRef.current
         if (!dlg) return
         // try/catch: showModal() throws InvalidStateError when the dialog is
@@ -821,6 +832,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         if (typeof dlg.close === 'function') dlg.close()
         else dlg.removeAttribute('open')
         setKitCopied('')
+        setKitCommentCopied('')
     }
     const showKitFallback = () => {
         setKitFallbackOpen(true)
@@ -841,6 +853,26 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         )
         if (ok) setKitCopied('Caption copied ✓')
         else showKitFallback()
+    }
+    const showKitCommentFallback = () => {
+        setKitCommentFallbackOpen(true)
+        setTimeout(() => {
+            kitCommentRef.current?.focus()
+            kitCommentRef.current?.select()
+        }, 0)
+    }
+    const copyKitComment = async () => {
+        if (!navigator.clipboard?.writeText) {
+            showKitCommentFallback()
+            return
+        }
+        const ok = await withTimeout(
+            navigator.clipboard.writeText(kitFirstComment).then(() => true).catch(() => false),
+            2000,
+            false,
+        )
+        if (ok) setKitCommentCopied('First comment copied ✓')
+        else showKitCommentFallback()
     }
 
     const handlePin = () => {
@@ -2030,7 +2062,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                         className="story-kit-dialog"
                         aria-labelledby="story-kit-title"
                         onClick={e => { if (e.target === kitDialogRef.current) closeKit() }}
-                        onClose={() => setKitCopied('')}
+                        onClose={() => { setKitCopied(''); setKitCommentCopied('') }}
                     >
                         <div className="story-kit-shell">
                             <div className="story-kit-top">
@@ -2097,7 +2129,8 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                             </div>
 
                             <p className="story-kit-hint">
-                                <b>Screenshot the card.</b> Copy the caption. Paste both into your LinkedIn post.
+                                <b>Screenshot the card.</b> Copy the caption. Publish the post. Do not put the link
+                                in the post. Then copy the first comment. Post it as your first comment.
                             </p>
                             <div className="story-kit-actions">
                                 <button className="story-kit-copy" type="button" onClick={copyKitCaption}>
@@ -2117,6 +2150,34 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 aria-label="LinkedIn caption text, select all and copy"
                                 onFocus={e => e.currentTarget.select()}
                             />
+                            {/* First comment (LinkedIn split): the link lives here, never in
+                                the caption — the algorithm shows body-link posts to fewer people. */}
+                            <div className="story-kit-comment">
+                                <p
+                                    className="story-kit-comment-lab"
+                                    data-tip="LinkedIn shows posts with a link in the body to fewer people — the link goes in the first comment"
+                                >
+                                    First comment — the link goes here
+                                </p>
+                                <div className="story-kit-actions">
+                                    <button className="story-kit-copy" type="button" onClick={copyKitComment}>
+                                        ⧉ Copy first comment
+                                    </button>
+                                    <span className="story-kit-copied" role="status" aria-live="polite">{kitCommentCopied}</span>
+                                </div>
+                                {kitCommentFallbackOpen && (
+                                    <p className="story-kit-fallback-lab">Clipboard blocked — select and copy the comment below</p>
+                                )}
+                                <textarea
+                                    ref={kitCommentRef}
+                                    className="story-kit-caption story-kit-comment-text"
+                                    readOnly
+                                    rows={1}
+                                    value={kitFirstComment}
+                                    aria-label="First comment text, select all and copy"
+                                    onFocus={e => e.currentTarget.select()}
+                                />
+                            </div>
                         </div>
                     </dialog>,
                     document.body,

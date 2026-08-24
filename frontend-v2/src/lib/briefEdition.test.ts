@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isCultureThread, splitEditionThreads, buildShareCaption } from './briefEdition'
+import { isCultureThread, splitEditionThreads, buildShareCaption, buildEditionFirstComment } from './briefEdition'
 
 describe('isCultureThread', () => {
     it('trusts a served culture category', () => {
@@ -44,7 +44,7 @@ describe('splitEditionThreads', () => {
 })
 
 describe('buildShareCaption', () => {
-    it('carries the lead and the measured base', () => {
+    it('carries the lead and the measured base — and NO link', () => {
         const caption = buildShareCaption({
             leadLabel: 'Coalition force for Ukraine',
             signals: 150927,
@@ -55,12 +55,22 @@ describe('buildShareCaption', () => {
         expect(caption).toContain('Coalition force for Ukraine')
         expect(caption).toContain('150,927 signals')
         expect(caption).toContain('223 countries')
-        expect(caption).toContain('<your link>')
+        // LinkedIn split: the caption never carries a link or placeholder —
+        // the link goes in the first comment (buildEditionFirstComment).
+        expect(caption).not.toContain('<your link>')
+        expect(caption).not.toContain('Read today')
     })
 
     it('degrades honestly with no lead', () => {
         const caption = buildShareCaption({ leadLabel: null, signals: 10, countries: 2, sources: 3 })
         expect(caption).not.toContain('leads with')
         expect(caption).toContain('10 signals')
+    })
+})
+
+describe('buildEditionFirstComment', () => {
+    it('carries the caller-supplied link — the one place the link appears', () => {
+        const comment = buildEditionFirstComment('https://atlas.example/brief')
+        expect(comment).toBe('Read today\'s full Atlas Edition (free): https://atlas.example/brief')
     })
 })

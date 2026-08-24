@@ -48,8 +48,9 @@ export interface ShareCaptionInput {
 
 /**
  * LinkedIn caption for the share dialog. Honest framing: measured coverage,
- * explicit base, no editorial verdict. `<your link>` stays a placeholder the
- * user replaces — we never fabricate a URL.
+ * explicit base, no editorial verdict. NO link in the caption — LinkedIn
+ * shows posts with a body link to fewer people (marketing 2026-08-24,
+ * accepted by Pedro); the link ships via buildEditionFirstComment instead.
  */
 export function buildShareCaption({ leadLabel, signals, countries, sources }: ShareCaptionInput): string {
     const leadLine = leadLabel
@@ -58,7 +59,15 @@ export function buildShareCaption({ leadLabel, signals, countries, sources }: Sh
     return (
         `The news of the world, measured — not editorialized.${leadLine}\n\n` +
         `Measured from ${signals.toLocaleString()} signals across ${countries} countries` +
-        ` and ${sources.toLocaleString()} sources, in the last 24 hours.\n\n` +
-        `Read today's full Atlas Edition → <your link>`
+        ` and ${sources.toLocaleString()} sources, in the last 24 hours.`
     )
+}
+
+/**
+ * The post's first comment — the only place the edition link appears (STE).
+ * The caller supplies the link (the Brief passes its real origin + /brief);
+ * this module never fabricates a URL.
+ */
+export function buildEditionFirstComment(link: string): string {
+    return `Read today's full Atlas Edition (free): ${link}`
 }

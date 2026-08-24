@@ -12,6 +12,11 @@
 //     classifier the receipt rows render; council R3 P0: state media is never
 //     presented as neutral).
 //
+// LinkedIn split (marketing 2026-08-24, accepted by Pedro): LinkedIn shows
+// posts with a link in the body to fewer people. The caption therefore
+// carries NO link; the deep link ships separately via buildStoryFirstComment,
+// posted as the post's first comment.
+//
 // Pure: no window/DOM. The deep link arrives pre-built by the caller.
 
 import { resolveTierChip } from './sourceProvenance'
@@ -41,7 +46,8 @@ export interface StoryShareInput {
   sourcesBasis?: 'receipt_sample' | null
   /** Up to 3 render; extras are dropped, receipts without a headline too. */
   receipts?: StoryShareReceipt[]
-  /** Pre-built absolute link (window.location.origin + /app?theme=<id>). */
+  /** Pre-built absolute link (window.location.origin + /app?theme=<id>).
+   *  NOT printed in the caption — feed it to buildStoryFirstComment. */
   deepLink: string
 }
 
@@ -74,7 +80,8 @@ function receiptLine(r: StoryShareReceipt): string {
   return line
 }
 
-/** The LinkedIn caption for one story: label, measured vitals, receipts, link. */
+/** The LinkedIn caption for one story: label, measured vitals, receipts.
+ *  No link — the link goes in the first comment (buildStoryFirstComment). */
 export function buildStoryShareCaption(input: StoryShareInput): string {
   const blocks: string[] = [`${input.label} — measurement, not opinion.`]
 
@@ -86,6 +93,10 @@ export function buildStoryShareCaption(input: StoryShareInput): string {
     blocks.push(['Receipts — sampled coverage:', ...receipts.map(receiptLine)].join('\n'))
   }
 
-  blocks.push(`Open the measured story on Atlas → ${input.deepLink}`)
   return blocks.join('\n\n')
+}
+
+/** The post's first comment — the only place the deep link appears (STE). */
+export function buildStoryFirstComment(deepLink: string): string {
+  return `Read the full measured story on Atlas (free): ${deepLink}`
 }

@@ -2123,6 +2123,35 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   margin: 12px 0 0;
 }
 
+/* First comment (LinkedIn split): compact section under the caption — the
+   edition link lives here, posted as the post's first comment. */
+.brief-share-comment {
+  width: 100%;
+  max-width: 640px;
+  margin: 14px auto 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--r-line);
+}
+
+.brief-share-comment-lab {
+  font-family: var(--r-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--r-muted);
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+.brief-share-comment-text {
+  min-height: 0;
+  height: auto;
+  margin-top: 8px;
+  resize: none;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
 @media (max-width: 540px) {
   .brief-share-shell { padding: 12px; }
   .brief-share-card { border-radius: 4px; }

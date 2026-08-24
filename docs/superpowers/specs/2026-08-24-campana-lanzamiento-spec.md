@@ -33,12 +33,17 @@ este orden, porque cada una alimenta la siguiente.
   transparente vol+geo+lang). **Imprime a TERMINAL** (tabla + deep link por
   fila); no genera archivos — lo publicable se genera EN el app.
 - **Kit**: botón `⧉ LinkedIn kit` en el detalle de la historia → card
-  1200×627 screenshoteable + caption honesto copy-paste
+  1200×627 screenshoteable + caption honesto copy-paste SIN link
   (`lib/storyShare.ts`, puro: campo ausente = línea ausente, conteos solo
-  con su ventana, state-media marcado).
+  con su ventana, state-media marcado) + "first comment" aparte con el
+  deep link (`buildStoryFirstComment`).
 - **Ritual (5 min/semana)**: correr el selector → abrir el deep link →
-  LinkedIn kit → screenshot card + copy caption → pegar en LinkedIn +
-  screenshots de paneles que apoyen (mapa, historia, voice mix).
+  LinkedIn kit → screenshot card + copy caption → publicar el post SIN
+  link en el cuerpo (card/fotos + caption + screenshots de paneles que
+  apoyen: mapa, historia, voice mix) → copiar el "first comment" del kit
+  y pegarlo como PRIMER COMENTARIO del post (ahí vive el link). Por qué:
+  el algoritmo de LinkedIn castiga posts con link en el cuerpo (consejo
+  de marketing 08-24, aceptado por Pedro).
 - **Estado**: mergeado (`44805443`); Pedro lo intentó y no le funcionó — la
   consola estaba rota por el bug de chunks post-deploy (§4.1), no el kit;
   el diálogo-franja (§4.2) es del mismo pase de verificación. Hasta que
