@@ -15,6 +15,8 @@ import { TranslatableHeadline } from './TranslatableHeadline'
 import PinReceiptButton from './PinReceiptButton'
 import CopyCitationButton, { CopySourceListButton } from './CopyCitationButton'
 import { ShareThreadButton } from './ShareCard'
+import { withTimeout } from '../lib/shareCard'
+import { buildStoryShareCaption } from '../lib/storyShare'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { ExportMenu } from './ExportMenu'
@@ -43,6 +45,7 @@ import { absenceCaveat, withBasisTip } from '../lib/ingestBasis'
 import { Flag } from './Flag'
 import { FocusTimeline } from './FocusTimeline'
 import './ThemeDetail.css'
+import './StoryShareKit.css'
 
 
 interface ThemeData {
@@ -383,6 +386,12 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         initialDrillCountry ? (originCountryName || initialDrillCountry) : null
     )
     const detailRef = useRef<HTMLDivElement>(null)
+    // LinkedIn story kit (weekly ritual): card + caption dialog, Brief-share
+    // pattern (dialogRef + showModal/close, clipboard with manual fallback).
+    const kitDialogRef = useRef<HTMLDialogElement>(null)
+    const kitFallbackRef = useRef<HTMLTextAreaElement>(null)
+    const [kitCopied, setKitCopied] = useState('')
+    const [kitFallbackOpen, setKitFallbackOpen] = useState(false)
     const { pinItem, unpinItem, isPinned } = useWorkspace()
     // #232 UX slice: when this thread is country-scoped, surface how many
     // conflict events sit in that country this window. GEOGRAPHY-JOIN ONLY —
@@ -751,6 +760,81 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             })))
         : []
 
+    // ---- LinkedIn story kit ----
+    // The caption and card share exactly the vitals the header prints — same
+    // bases, resolved once here, never re-derived. Absent field = absent line.
+    const kitDeepLink = `${window.location.origin}/app?theme=${encodeURIComponent(theme)}`
+    // The signal count follows the header's basis: lifetime-cumulative payloads
+    // print the latest pass's own number with its real clustering window;
+    // plain payloads print `total` over the requested window; an unmeasured
+    // count (degraded/loading) prints nothing.
+    const kitSignals = lifetimeBasis
+        ? {
+            count: data!.currentTotal as number,
+            window: [
+                `latest clustering pass${snapshotDay ? ` ${snapshotDay}` : ''}`,
+                currentWindowLabel ? `${currentWindowLabel} window` : null,
+            ].filter(Boolean).join(', '),
+        }
+        : !countMeta.unmeasured && data?.total != null
+            ? { count: data.total, window: `last ${hours} hours` }
+            : null
+    const kitReceipts = (data?.signals ?? [])
+        .filter(s => !!s.headline)
+        .slice(0, 3)
+        .map(s => ({
+            headline: decodeEntities(s.headline as string),
+            outlet: s.source || null,
+            lang: s.source_lang || null,
+        }))
+    const kitCaption = data
+        ? buildStoryShareCaption({
+            label: displayLabel,
+            signals: kitSignals?.count ?? null,
+            signalsWindow: kitSignals?.window ?? null,
+            countries: data.countryBreakdown.length > 0 ? data.countryBreakdown.length : null,
+            sources: data.sourceCount ?? null,
+            sourcesBasis: data.sourceCountBasis ?? null,
+            receipts: kitReceipts,
+            deepLink: kitDeepLink,
+        })
+        : ''
+    const openKit = () => {
+        setKitCopied('')
+        setKitFallbackOpen(false)
+        const dlg = kitDialogRef.current
+        if (!dlg) return
+        if (typeof dlg.showModal === 'function') dlg.showModal()
+        else dlg.setAttribute('open', '')
+    }
+    const closeKit = () => {
+        const dlg = kitDialogRef.current
+        if (!dlg) return
+        if (typeof dlg.close === 'function') dlg.close()
+        else dlg.removeAttribute('open')
+        setKitCopied('')
+    }
+    const showKitFallback = () => {
+        setKitFallbackOpen(true)
+        setTimeout(() => {
+            kitFallbackRef.current?.focus()
+            kitFallbackRef.current?.select()
+        }, 0)
+    }
+    const copyKitCaption = async () => {
+        if (!navigator.clipboard?.writeText) {
+            showKitFallback()
+            return
+        }
+        const ok = await withTimeout(
+            navigator.clipboard.writeText(kitCaption).then(() => true).catch(() => false),
+            2000,
+            false,
+        )
+        if (ok) setKitCopied('Caption copied ✓')
+        else showKitFallback()
+    }
+
     const handlePin = () => {
         if (pinned) {
             unpinItem(pinnedId)
@@ -797,6 +881,14 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 }}
                                 evidence={data.signals.map(s => s.headline).filter((h): h is string => !!h)}
                             />
+                            <button
+                                type="button"
+                                className="share-thread-btn"
+                                onClick={openKit}
+                                data-tip="LinkedIn kit — screenshotable card + ready caption for this story"
+                            >
+                                ⧉ LinkedIn kit
+                            </button>
                             <ExportMenu
                                 themeName={displayLabel}
                                 data={data}
@@ -1913,6 +2005,104 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
 
 
                     </>
+                )}
+
+                {/* ============ LINKEDIN STORY KIT ============ */}
+                {data && (
+                    <dialog
+                        ref={kitDialogRef}
+                        className="story-kit-dialog"
+                        aria-labelledby="story-kit-title"
+                        onClick={e => { if (e.target === kitDialogRef.current) closeKit() }}
+                        onClose={() => setKitCopied('')}
+                    >
+                        <div className="story-kit-shell">
+                            <div className="story-kit-top">
+                                <h2 className="story-kit-title" id="story-kit-title">Share this story</h2>
+                                <button className="story-kit-close" type="button" onClick={closeKit} aria-label="Close share panel">
+                                    ✕ Close
+                                </button>
+                            </div>
+
+                            <div className="story-kit-cardwrap">
+                                <div
+                                    className="story-kit-card"
+                                    role="img"
+                                    aria-label={`Shareable preview card: ATLAS story — ${displayLabel}. Atlas — the news of the world, measured.`}
+                                >
+                                    <div className="skc-head">
+                                        <span className="skc-mark">ATLAS<span className="dot">.</span></span>
+                                        <span className="skc-date">
+                                            {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <p className="skc-kicker">Story · measured coverage</p>
+                                    <p className="skc-headline">{displayLabel}</p>
+                                    {kitReceipts.length > 0 && (
+                                        <div className="skc-receipts">
+                                            <p className="skc-lab">Receipts — sampled coverage</p>
+                                            {kitReceipts.map((r, i) => (
+                                                <p className="skc-receipt" key={i}>
+                                                    <span className="skc-receipt-head">“{r.headline}”</span>
+                                                    {r.outlet && (
+                                                        <span className="skc-receipt-meta">
+                                                            {r.outlet}
+                                                            {r.lang && <span className="skc-receipt-lang">{r.lang}</span>}
+                                                            <TierChip source={r.outlet} />
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className="skc-bottom">
+                                        {(kitSignals || data.countryBreakdown.length > 0 || data.sourceCount != null) && (
+                                            <div className="skc-vitals">
+                                                {kitSignals && (
+                                                    <span><b>{kitSignals.count.toLocaleString('en-US')}</b> signals · {kitSignals.window}</span>
+                                                )}
+                                                {data.countryBreakdown.length > 0 && (
+                                                    <span><b>{data.countryBreakdown.length}</b> {data.countryBreakdown.length === 1 ? 'country' : 'countries'}</span>
+                                                )}
+                                                {data.sourceCount != null && (
+                                                    <span
+                                                        data-tip={data.sourceCountBasis === 'receipt_sample'
+                                                            ? 'Distinct outlets among the sampled receipts — not the story’s full outlet total'
+                                                            : undefined}
+                                                    >
+                                                        <b>{data.sourceCount.toLocaleString('en-US')}</b> sources
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className="skc-foot">Atlas<span className="dot"> — </span>the news of the world, measured</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="story-kit-hint">
+                                <b>Screenshot the card</b>, then copy the caption — paste both into your LinkedIn post.
+                            </p>
+                            <div className="story-kit-actions">
+                                <button className="story-kit-copy" type="button" onClick={copyKitCaption}>
+                                    ⧉ Copy caption
+                                </button>
+                                <span className="story-kit-copied" role="status" aria-live="polite">{kitCopied}</span>
+                            </div>
+                            {kitFallbackOpen && (
+                                <p className="story-kit-fallback-lab">Clipboard blocked — select and copy the caption below</p>
+                            )}
+                            <textarea
+                                ref={kitFallbackRef}
+                                className="story-kit-caption"
+                                readOnly
+                                rows={8}
+                                value={kitCaption}
+                                aria-label="LinkedIn caption text, select all and copy"
+                                onFocus={e => e.currentTarget.select()}
+                            />
+                        </div>
+                    </dialog>
                 )}
             </div>
         </div>

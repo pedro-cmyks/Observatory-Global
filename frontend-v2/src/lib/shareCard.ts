@@ -16,8 +16,9 @@ type Result = 'shared' | 'copied' | 'failed'
 
 // Safety net: never let a share attempt hang the UI (e.g. clipboard.writeText
 // can hang in an unfocused/headless context). Resolves to the fallback if the
-// promise doesn't settle in time.
-function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+// promise doesn't settle in time. Exported for the other clipboard writers
+// (ThemeDetail's LinkedIn kit) so none of them can hang a button either.
+export function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([p, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))])
 }
 
