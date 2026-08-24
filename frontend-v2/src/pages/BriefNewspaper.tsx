@@ -33,6 +33,7 @@ import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { isLeadEligible, leadBlockReason, selectLiveLead, LEAD_CONFIDENCE_FLOOR } from '../lib/leadConfidence'
 import { confidenceBucketLabel, confidenceBucketTip, resolveConfidenceBucket } from '../lib/threadConfidence'
 import { splitEditionThreads, buildShareCaption } from '../lib/briefEdition'
+import { composeEditionStandfirst, standfirstChrome } from '../lib/briefStandfirst'
 import {
     frontPageScope,
     deskCensusNote,
@@ -2110,19 +2111,13 @@ export function BriefNewspaper() {
                             </div>
                         )}
 
-                        {/* ---- Vagón 3 (panel ciego 2026-08-18): the method strip folds
-                            on a phone. Julián met ~1.5 screens of seal/readiness/vitals
-                            jargon BEFORE the first headline and almost closed the tab.
-                            The honesty is NOT deleted — it folds: on mobile the
-                            freshness band, the 5W+H readiness rail, the historical-
-                            coverage note and the vitals strip collapse into ONE closed
-                            <details> line at the same spot in the DOM (the option that
-                            reorders nothing). Desktop renders the exact same nodes bare
-                            — the fragment adds no DOM node, byte-identical. The open
-                            state is deliberately not persisted: each day folds again. */}
-                        {(() => {
-                            const methodStrip = (
-                                <>
+                        {/* ---- News-first reorder (Pedro 2026-08-24): "el orden en el
+                            que está el brief no está funcionando". The seal status stays
+                            up top as the edition's dateline (already a compact one-line
+                            band on mobile via its own collapse), followed by the WOVEN
+                            standfirst; the method instrumentation (historical-coverage
+                            note + vitals) moved BELOW the day's stories — see the method
+                            strip further down. Nothing deleted, only reordered. */}
                         {dailyEdition && staleBanner && (
                             !isBandOpen('freshness') ? (
                                 <button
@@ -2180,164 +2175,65 @@ export function BriefNewspaper() {
                             )
                         )}
 
-                        {servedFromSeal && dailyEdition && (
-                            <section className="brief-readiness-rail" aria-label={tr('brief.readiness.aria')}>
-                                {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
-                                    const item = dailyEdition.package.readiness[key]
-                                    return (
-                                        <div key={key} className={`brief-readiness-cell is-${item.status}`}>
-                                            <span>{key}</span>
-                                            <strong>{item.status}</strong>
-                                            <small>{item.values.slice(0, 2).join(' · ') || item.reason_codes.join(' · ').replaceAll('_', ' ')}</small>
-                                        </div>
-                                    )
-                                })}
-                            </section>
-                        )}
-
-                        {historicalCoverage?.source === 'historical_processed' && (
-                            <div
-                                className="brief-coverage-note"
-                                data-tip={tr('brief.historical.tip')}
-                            >
-                                <span>{tr('brief.historical.label')}</span>
-                                {typeof historicalCoverage.topicCoverage === 'number' && (
-                                    <span>{tr('brief.historical.topicCoverage', { pct: Math.round(historicalCoverage.topicCoverage * 100) })}</span>
-                                )}
-                                {typeof historicalCoverage.sentimentCoverage === 'number' && (
-                                    <span>{tr('brief.historical.sentimentCoverage', { pct: Math.round(historicalCoverage.sentimentCoverage * 100) })}</span>
-                                )}
-                            </div>
-                        )}
-
-                        {/* ============ INSTRUMENT STRIP — real vitals ============ */}
-                        <section className="brief-instrument" aria-label={tr('brief.vitals.aria')}>
-                            <div className="brief-vital">
-                                <div className="k">{tr('brief.vital.signals')}</div>
-                                <div className="v">{data.stats.total_signals.toLocaleString()}</div>
-                                <div className="sub">{tr('brief.vital.signals.sub')}</div>
-                            </div>
-                            <div className="brief-vital">
-                                <div className="k">{tr('brief.vital.countries')}</div>
-                                <div className="v">{data.stats.countries}</div>
-                                <div className="sub">{tr('brief.vital.countries.sub')}</div>
-                            </div>
-                            <div className="brief-vital">
-                                <div className="k">{tr('brief.vital.sources')}</div>
-                                <div className="v">{data.stats.sources.toLocaleString()}</div>
-                                <div className="sub">{tr('brief.vital.sources.sub')}</div>
-                            </div>
-                            <div className="brief-vital">
-                                {/* Task 5 follow-up (#236): the "sub" caption below states this
-                                    tile's scale (±1) — the ONLY other place on the page that
-                                    restates it is measuredSentimentChip, which renders only when
-                                    the AI insight is present (this project's insight lane has a
-                                    documented multi-day-outage history). Hiding "sub" on mobile
-                                    (below) would leave a bare signed number with no scale
-                                    anywhere on the page, breaking sentimentScale.ts's own rule
-                                    ("every printed value states its scale"). The mobile-only
-                                    label swap keeps that promise without the vertical cost of
-                                    keeping "sub" visible — desktop's RENDERED label is unchanged
-                                    (the .k rule itself is never edited by mobile CSS; its child
-                                    is two spans now, one per viewport, not a bare text node). */}
-                                <div className="k">
-                                    <span className="brief-vital-k-full">{tr('brief.vital.sentiment')}</span>
-                                    {/* C2: mobile hides ".sub", which is where the desktop
-                                        bridge lives — so the short label carries the
-                                        conversion too, or the phone shows −0.49 above panels
-                                        reading −10.0 with nothing linking them. */}
-                                    <span className="brief-vital-k-mobile">{tr('brief.vital.sentiment.mobile')}</span>
-                                </div>
-                                <div className="v">
-                                    {formatSentimentPm1(data.stats.avg_sentiment)}
-                                    <SentimentSourceBadge
-                                        source={data.stats.sentiment_source}
-                                        coverage={data.stats.nlp_coverage}
-                                    />
-                                </div>
-                                {/* C2 (blind judge §4.8): this tile and the tone panels below
-                                    print the SAME fused aggregate — the strip on ±1, the panels
-                                    at ×10 — and the page offered no bridge, so "−0.49" and
-                                    "−10.0" read as two unrelated measurements. State the
-                                    conversion with this window's own number. */}
-                                <div className="sub">{toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale, uiLangCode)}</div>
-                            </div>
-                            {/* C1 — A TILE IS THE LOUDEST PLACE TO INVENT A NUMBER. It carries
-                                no prose to qualify itself, so "Tracked stories 0" and "Coverage
-                                gaps 0" read as measured findings even on a window where neither
-                                lane ran (judge §4.1/§4.7: the second contradicted the section
-                                right below it, which admitted the lane never answered). Both now
-                                print an em dash with the reason in the tip when their lane is
-                                down — unknown, never zero. */}
-                            {(() => {
-                                const reading = instrumentReading(
-                                    allThreads.length, 'stories', laneEvidence,
-                                    tr('brief.vital.stories.tip'), uiLangCode,
-                                )
-                                return (
-                                    <div className="brief-vital">
-                                        <div className="k">{tr('brief.vital.stories')}</div>
-                                        <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
-                                            {reading.value}
-                                        </div>
-                                        <div className="sub">
-                                            {reading.unmeasured
-                                                ? tr('brief.vital.stories.unknown')
-                                                : tr('brief.vital.stories.sub')}
-                                        </div>
-                                    </div>
-                                )
-                            })()}
-                            {(() => {
-                                const reading = instrumentReading(
-                                    coverageGaps.length, 'gaps', laneEvidence,
-                                    tr('brief.vital.gaps.tip'), uiLangCode,
-                                )
-                                return (
-                                    <div className="brief-vital">
-                                        {/* Same rationale as the sentiment tile above: "Coverage gaps"
-                                            alone is cryptic and its definition ("categories with
-                                            attention but zero verified rows") is only reachable via the
-                                            Under-the-Radar tab. */}
-                                        <div className="k">
-                                            <span className="brief-vital-k-full">{tr('brief.vital.gaps')}</span>
-                                            <span className="brief-vital-k-mobile">{tr('brief.vital.gaps.mobile')}</span>
-                                        </div>
-                                        <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
-                                            {reading.value}
-                                        </div>
-                                        <div className="sub">
-                                            {reading.unmeasured
-                                                ? tr('brief.vital.gaps.unknown')
-                                                : tr('brief.vital.gaps.sub')}
-                                        </div>
-                                    </div>
-                                )
-                            })()}
-                        </section>
-                                </>
+                        {/* ============ EDITION STANDFIRST (Pedro 2026-08-24) ============
+                            The six measured questions WOVEN into prose: only fields the
+                            seal served `ready` become sentences (composeEditionStandfirst
+                            — pure, tested); `partial` fields are declared by name in ONE
+                            honest closing line, never woven; a HOW outlet classified
+                            STATE by sourceTiers is marked inline. The tiles are NOT
+                            deleted: they fold under "See the six measured questions",
+                            verbatim, so the raw measurement stays inspectable. This is
+                            EDITION furniture, not a card block — it renders at all three
+                            dial depths (READ's zero-extra-blocks contract is per CARD). */}
+                        {servedFromSeal && dailyEdition && dailyEdition.package?.readiness && (() => {
+                            const standfirst = composeEditionStandfirst(dailyEdition.package.readiness, uiLangCode)
+                            const sfChrome = standfirstChrome(uiLangCode)
+                            return (
+                                <section className="brief-edition-standfirst" aria-label={sfChrome.aria}>
+                                    {standfirst.hasProse && (
+                                        <p className="brief-edition-standfirst-prose">
+                                            {standfirst.parts.map((part, i) =>
+                                                part.kind === 'text' ? (
+                                                    <span key={i}>{part.text}</span>
+                                                ) : (
+                                                    <span key={i} className="brief-standfirst-outlet">
+                                                        {part.name}
+                                                        {part.state && (
+                                                            <span
+                                                                className="brief-standfirst-state"
+                                                                data-tip={sfChrome.stateTip}
+                                                            >
+                                                                {sfChrome.stateChip}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                )
+                                            )}
+                                        </p>
+                                    )}
+                                    {standfirst.belowBarLine && (
+                                        <p className="brief-edition-standfirst-partial">{standfirst.belowBarLine}</p>
+                                    )}
+                                    <details className="brief-readiness-fold">
+                                        <summary className="brief-readiness-fold-summary">{sfChrome.seeQuestions}</summary>
+                                        <section className="brief-readiness-rail" aria-label={tr('brief.readiness.aria')}>
+                                            {(['who', 'what', 'when', 'where', 'how', 'why'] as const).map(key => {
+                                                const item = dailyEdition.package.readiness[key]
+                                                if (!item) return null
+                                                return (
+                                                    <div key={key} className={`brief-readiness-cell is-${item.status}`}>
+                                                        <span>{key}</span>
+                                                        <strong>{item.status}</strong>
+                                                        <small>{item.values.slice(0, 2).join(' · ') || item.reason_codes.join(' · ').replaceAll('_', ' ')}</small>
+                                                    </div>
+                                                )
+                                            })}
+                                        </section>
+                                    </details>
+                                </section>
                             )
-                            return isMobile ? (
-                                // P1.5 CONSTRUIR: la franja de método salta a
-                                // ABIERTA también en móvil (quien construye
-                                // quiere el método a la vista). El key fuerza
-                                // el remount al cruzar de posición para que
-                                // `open` aplique aunque el lector la hubiera
-                                // plegado antes; en leer/observar no hay
-                                // atributo open — DOM idéntico al de hoy
-                                // (G-ADITIVO).
-                                <details
-                                    key={depth === 'construir' ? 'construir-open' : 'folded'}
-                                    className="brief-method-fold"
-                                    open={depth === 'construir' || undefined}
-                                >
-                                    <summary className="brief-method-fold-summary">
-                                        {tr('brief.methodFold.label')}
-                                    </summary>
-                                    {methodStrip}
-                                </details>
-                            ) : methodStrip
                         })()}
+
 
                         {/* ============ TU INVESTIGACIÓN (P1.5 — solo CONSTRUIR) ====
                             La franja del workbench: investigación activa + pins +
@@ -2375,152 +2271,6 @@ export function BriefNewspaper() {
                             )
                         })()}
 
-                        {/* ============ WORLD MARKETS BAND (full-width franja, top) ============
-                            Global bellwethers — NOT the country's data, so it never swaps on
-                            country focus; the country's own instruments live in the country
-                            edition below (BriefCountryMarketsCard). Collapses to a one-line
-                            summary on mobile (Task 5). Follow-up review: "descriptive" alone
-                            only let the reader INFER not-sealed (the instrument strip above is
-                            equally "descriptive" and IS part of the measured edition) — the
-                            honesty rule here is the disclaimer may never be hidden OR weakened,
-                            so the line now STATES it, echoing BriefMarkets.tsx's own "Live
-                            overlay — not part of the sealed edition" rather than paraphrasing
-                            around it (same fix already applied to the freshness band below). */}
-                        {!isBandOpen('markets') ? (
-                            <button
-                                type="button"
-                                className="brief-band-summary"
-                                aria-label={tr('brief.markets.ariaExpand')}
-                                onClick={() => expandBand('markets')}
-                            >
-                                {tr('brief.markets.collapsed')}
-                            </button>
-                        ) : (
-                            <BriefWorldMarketsBand />
-                        )}
-
-                        {/* ============ COUNTRY FILTER ============ */}
-                        {(() => {
-                            const signalCounts = new Map(data.top_countries.map(c => [c.code, c.signals]))
-                            if (countryFilter && countryDetail) {
-                                signalCounts.set(countryFilter, countryDetail.totalSignals)
-                            }
-                            const apiNames = new Map(data.top_countries.map(c => [c.code, c.name]))
-                            if (countryFilter && countryDetail) {
-                                apiNames.set(countryFilter, countryDetail.name)
-                            }
-                            const allCountries = COUNTRY_OPTIONS.map(c => ({
-                                code: c.code,
-                                name: resolveCountryName(c.code, apiNames.get(c.code) ?? c.name),
-                                signals: signalCounts.get(c.code) ?? 0,
-                            }))
-                            const q = countryQuery.toLowerCase().trim()
-                            const suggestions = q
-                                ? allCountries.filter(c =>
-                                    resolveCountryName(c.code, c.name).toLowerCase().includes(q) ||
-                                    c.code.toLowerCase().includes(q)
-                                  )
-                                : allCountries
-                            suggestions.sort((a, b) => {
-                                if (b.signals !== a.signals) return b.signals - a.signals
-                                return a.name.localeCompare(b.name)
-                            })
-                            const activeCountry = countryFilter
-                                ? allCountries.find(c => c.code === countryFilter)
-                                : null
-
-                            return (
-                                <section className="brief-filter-row">
-                                    <span className="brief-filter-label">{tr('brief.country.label')}</span>
-                                    {activeCountry ? (
-                                        <div className="brief-filter-active">
-                                            <span className="reader-chip brief-filter-chip">
-                                                {resolveCountryName(activeCountry.code, activeCountry.name)}
-                                            </span>
-                                            <button
-                                                className="brief-filter-clear"
-                                                onClick={() => selectCountry(null)}
-                                            >
-                                                x
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="brief-filter-search-wrap">
-                                            <input
-                                                ref={countryInputRef}
-                                                className="brief-filter-input"
-                                                placeholder={tr('brief.country.search')}
-                                                value={countryQuery}
-                                                onChange={e => { setCountryQuery(e.target.value); setShowCountryDropdown(true) }}
-                                                onFocus={() => setShowCountryDropdown(true)}
-                                                onBlur={() => setTimeout(() => setShowCountryDropdown(false), 150)}
-                                                // X5: Enter used to do literally nothing. It now
-                                                // carries a QUESTION to the lane that can read it;
-                                                // a country-shaped query still belongs to the list
-                                                // below, so Enter stays inert for those.
-                                                onKeyDown={e => {
-                                                    if (e.key !== 'Enter') return
-                                                    if (suggestions.length > 0 || !looksLikeNaturalQuestion(countryQuery)) return
-                                                    e.preventDefault()
-                                                    askAtlas(countryQuery)
-                                                }}
-                                            />
-                                            {showCountryDropdown && suggestions.length > 0 && (
-                                                <div className="brief-country-dropdown">
-                                                    {/* C4: this door does NOT eject — it opens the
-                                                        country's edition inside this newspaper. The
-                                                        judge could not tell which of the page's two
-                                                        country doors did which, so each one says. */}
-                                                    {suggestions.slice(0, 10).map(c => {
-                                                        const name = resolveCountryName(c.code, c.name)
-                                                        return (
-                                                            <button
-                                                                key={c.code}
-                                                                className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
-                                                                onMouseDown={e => e.preventDefault()}
-                                                                onClick={() => selectCountry(c.code)}
-                                                                data-tip={`Opens ${name}'s edition inside this newspaper — the chip beside "Country:" clears it.`}
-                                                                aria-label={`Open ${name}'s edition in this newspaper`}
-                                                            >
-                                                                <span><Flag code={c.code} /> {name}</span>
-                                                                <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : tr('brief.country.notInTop')}</span>
-                                                            </button>
-                                                        )
-                                                    })}
-                                                </div>
-                                            )}
-                                            {/* X5: a zero-match lexical box must SAY so, and when
-                                                what was typed reads like a question it must name
-                                                the lane that can answer it. Silence was the whole
-                                                defect — "no message, no 'try a country name'". */}
-                                            {showCountryDropdown && q.length > 0 && suggestions.length === 0 && (
-                                                <div className="brief-country-dropdown brief-country-dropdown--empty">
-                                                    <p className="brief-country-empty">
-                                                        {tr('brief.country.noMatch', { query: countryQuery.trim() })}
-                                                    </p>
-                                                    {looksLikeNaturalQuestion(countryQuery) ? (
-                                                        <button
-                                                            className="brief-country-ask"
-                                                            onMouseDown={e => e.preventDefault()}
-                                                            onClick={() => askAtlas(countryQuery)}
-                                                            data-tip="Reads your question across the live stories — matching threads, who says what, and where coverage is missing."
-                                                            aria-label={`Ask Atlas: ${countryQuery.trim()}`}
-                                                        >
-                                                            <span className="brief-country-ask-label">{askAtlasLabel(countryQuery)}</span>
-                                                            <span className="brief-country-ask-hint">reads it across the live stories →</span>
-                                                        </button>
-                                                    ) : (
-                                                        <p className="brief-country-empty-hint">
-                                                            {tr('brief.country.searchHint')}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </section>
-                            )
-                        })()}
 
                         {/* ===== GLOBAL EDITION — three color-coded sections ===== */}
                         {!countryFilter && (
@@ -3435,6 +3185,307 @@ export function BriefNewspaper() {
                                 )}
                             </section>
                         )}
+
+                        {/* ---- Vagón 3 (mobile method fold), post-reorder: the method
+                            instrumentation (historical-coverage note + vitals) now sits
+                            BELOW the day's stories; on a phone it still folds into ONE
+                            closed <details> line at this same spot (open by default in
+                            CONSTRUIR — P1.5, same remount-key trick). The honesty is not
+                            deleted: same nodes, lower on the page. Desktop renders the
+                            exact same nodes bare. */}
+                        {(() => {
+                            const methodStrip = (
+                                <>
+                        {historicalCoverage?.source === 'historical_processed' && (
+                            <div
+                                className="brief-coverage-note"
+                                data-tip={tr('brief.historical.tip')}
+                            >
+                                <span>{tr('brief.historical.label')}</span>
+                                {typeof historicalCoverage.topicCoverage === 'number' && (
+                                    <span>{tr('brief.historical.topicCoverage', { pct: Math.round(historicalCoverage.topicCoverage * 100) })}</span>
+                                )}
+                                {typeof historicalCoverage.sentimentCoverage === 'number' && (
+                                    <span>{tr('brief.historical.sentimentCoverage', { pct: Math.round(historicalCoverage.sentimentCoverage * 100) })}</span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ============ INSTRUMENT STRIP — real vitals ============ */}
+                        <section className="brief-instrument" aria-label={tr('brief.vitals.aria')}>
+                            <div className="brief-vital">
+                                <div className="k">{tr('brief.vital.signals')}</div>
+                                <div className="v">{data.stats.total_signals.toLocaleString()}</div>
+                                <div className="sub">{tr('brief.vital.signals.sub')}</div>
+                            </div>
+                            <div className="brief-vital">
+                                <div className="k">{tr('brief.vital.countries')}</div>
+                                <div className="v">{data.stats.countries}</div>
+                                <div className="sub">{tr('brief.vital.countries.sub')}</div>
+                            </div>
+                            <div className="brief-vital">
+                                <div className="k">{tr('brief.vital.sources')}</div>
+                                <div className="v">{data.stats.sources.toLocaleString()}</div>
+                                <div className="sub">{tr('brief.vital.sources.sub')}</div>
+                            </div>
+                            <div className="brief-vital">
+                                {/* Task 5 follow-up (#236): the "sub" caption below states this
+                                    tile's scale (±1) — the ONLY other place on the page that
+                                    restates it is measuredSentimentChip, which renders only when
+                                    the AI insight is present (this project's insight lane has a
+                                    documented multi-day-outage history). Hiding "sub" on mobile
+                                    (below) would leave a bare signed number with no scale
+                                    anywhere on the page, breaking sentimentScale.ts's own rule
+                                    ("every printed value states its scale"). The mobile-only
+                                    label swap keeps that promise without the vertical cost of
+                                    keeping "sub" visible — desktop's RENDERED label is unchanged
+                                    (the .k rule itself is never edited by mobile CSS; its child
+                                    is two spans now, one per viewport, not a bare text node). */}
+                                <div className="k">
+                                    <span className="brief-vital-k-full">{tr('brief.vital.sentiment')}</span>
+                                    {/* C2: mobile hides ".sub", which is where the desktop
+                                        bridge lives — so the short label carries the
+                                        conversion too, or the phone shows −0.49 above panels
+                                        reading −10.0 with nothing linking them. */}
+                                    <span className="brief-vital-k-mobile">{tr('brief.vital.sentiment.mobile')}</span>
+                                </div>
+                                <div className="v">
+                                    {formatSentimentPm1(data.stats.avg_sentiment)}
+                                    <SentimentSourceBadge
+                                        source={data.stats.sentiment_source}
+                                        coverage={data.stats.nlp_coverage}
+                                    />
+                                </div>
+                                {/* C2 (blind judge §4.8): this tile and the tone panels below
+                                    print the SAME fused aggregate — the strip on ±1, the panels
+                                    at ×10 — and the page offered no bridge, so "−0.49" and
+                                    "−10.0" read as two unrelated measurements. State the
+                                    conversion with this window's own number. */}
+                                <div className="sub">{toneBridgeNote(data.stats.avg_sentiment, data.sentiment_scale, uiLangCode)}</div>
+                            </div>
+                            {/* C1 — A TILE IS THE LOUDEST PLACE TO INVENT A NUMBER. It carries
+                                no prose to qualify itself, so "Tracked stories 0" and "Coverage
+                                gaps 0" read as measured findings even on a window where neither
+                                lane ran (judge §4.1/§4.7: the second contradicted the section
+                                right below it, which admitted the lane never answered). Both now
+                                print an em dash with the reason in the tip when their lane is
+                                down — unknown, never zero. */}
+                            {(() => {
+                                const reading = instrumentReading(
+                                    allThreads.length, 'stories', laneEvidence,
+                                    tr('brief.vital.stories.tip'), uiLangCode,
+                                )
+                                return (
+                                    <div className="brief-vital">
+                                        <div className="k">{tr('brief.vital.stories')}</div>
+                                        <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
+                                            {reading.value}
+                                        </div>
+                                        <div className="sub">
+                                            {reading.unmeasured
+                                                ? tr('brief.vital.stories.unknown')
+                                                : tr('brief.vital.stories.sub')}
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+                            {(() => {
+                                const reading = instrumentReading(
+                                    coverageGaps.length, 'gaps', laneEvidence,
+                                    tr('brief.vital.gaps.tip'), uiLangCode,
+                                )
+                                return (
+                                    <div className="brief-vital">
+                                        {/* Same rationale as the sentiment tile above: "Coverage gaps"
+                                            alone is cryptic and its definition ("categories with
+                                            attention but zero verified rows") is only reachable via the
+                                            Under-the-Radar tab. */}
+                                        <div className="k">
+                                            <span className="brief-vital-k-full">{tr('brief.vital.gaps')}</span>
+                                            <span className="brief-vital-k-mobile">{tr('brief.vital.gaps.mobile')}</span>
+                                        </div>
+                                        <div className={`v${reading.unmeasured ? ' brief-vital-unmeasured' : ''}`} data-tip={reading.tip}>
+                                            {reading.value}
+                                        </div>
+                                        <div className="sub">
+                                            {reading.unmeasured
+                                                ? tr('brief.vital.gaps.unknown')
+                                                : tr('brief.vital.gaps.sub')}
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+                        </section>
+                                </>
+                            )
+                            return isMobile ? (
+                                // P1.5 CONSTRUIR: la franja de método salta a
+                                // ABIERTA también en móvil (quien construye
+                                // quiere el método a la vista). El key fuerza
+                                // el remount al cruzar de posición para que
+                                // `open` aplique aunque el lector la hubiera
+                                // plegado antes; en leer/observar no hay
+                                // atributo open — DOM idéntico al de hoy
+                                // (G-ADITIVO).
+                                <details
+                                    key={depth === 'construir' ? 'construir-open' : 'folded'}
+                                    className="brief-method-fold"
+                                    open={depth === 'construir' || undefined}
+                                >
+                                    <summary className="brief-method-fold-summary">
+                                        {tr('brief.methodFold.label')}
+                                    </summary>
+                                    {methodStrip}
+                                </details>
+                            ) : methodStrip
+                        })()}
+
+                        {/* ============ WORLD MARKETS BAND (full-width franja, top) ============
+                            Global bellwethers — NOT the country's data, so it never swaps on
+                            country focus; the country's own instruments live in the country
+                            edition below (BriefCountryMarketsCard). Collapses to a one-line
+                            summary on mobile (Task 5). Follow-up review: "descriptive" alone
+                            only let the reader INFER not-sealed (the instrument strip above is
+                            equally "descriptive" and IS part of the measured edition) — the
+                            honesty rule here is the disclaimer may never be hidden OR weakened,
+                            so the line now STATES it, echoing BriefMarkets.tsx's own "Live
+                            overlay — not part of the sealed edition" rather than paraphrasing
+                            around it (same fix already applied to the freshness band below). */}
+                        {!isBandOpen('markets') ? (
+                            <button
+                                type="button"
+                                className="brief-band-summary"
+                                aria-label={tr('brief.markets.ariaExpand')}
+                                onClick={() => expandBand('markets')}
+                            >
+                                {tr('brief.markets.collapsed')}
+                            </button>
+                        ) : (
+                            <BriefWorldMarketsBand />
+                        )}
+
+                        {/* ============ COUNTRY FILTER ============ */}
+                        {(() => {
+                            const signalCounts = new Map(data.top_countries.map(c => [c.code, c.signals]))
+                            if (countryFilter && countryDetail) {
+                                signalCounts.set(countryFilter, countryDetail.totalSignals)
+                            }
+                            const apiNames = new Map(data.top_countries.map(c => [c.code, c.name]))
+                            if (countryFilter && countryDetail) {
+                                apiNames.set(countryFilter, countryDetail.name)
+                            }
+                            const allCountries = COUNTRY_OPTIONS.map(c => ({
+                                code: c.code,
+                                name: resolveCountryName(c.code, apiNames.get(c.code) ?? c.name),
+                                signals: signalCounts.get(c.code) ?? 0,
+                            }))
+                            const q = countryQuery.toLowerCase().trim()
+                            const suggestions = q
+                                ? allCountries.filter(c =>
+                                    resolveCountryName(c.code, c.name).toLowerCase().includes(q) ||
+                                    c.code.toLowerCase().includes(q)
+                                  )
+                                : allCountries
+                            suggestions.sort((a, b) => {
+                                if (b.signals !== a.signals) return b.signals - a.signals
+                                return a.name.localeCompare(b.name)
+                            })
+                            const activeCountry = countryFilter
+                                ? allCountries.find(c => c.code === countryFilter)
+                                : null
+
+                            return (
+                                <section className="brief-filter-row">
+                                    <span className="brief-filter-label">{tr('brief.country.label')}</span>
+                                    {activeCountry ? (
+                                        <div className="brief-filter-active">
+                                            <span className="reader-chip brief-filter-chip">
+                                                {resolveCountryName(activeCountry.code, activeCountry.name)}
+                                            </span>
+                                            <button
+                                                className="brief-filter-clear"
+                                                onClick={() => selectCountry(null)}
+                                            >
+                                                x
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="brief-filter-search-wrap">
+                                            <input
+                                                ref={countryInputRef}
+                                                className="brief-filter-input"
+                                                placeholder={tr('brief.country.search')}
+                                                value={countryQuery}
+                                                onChange={e => { setCountryQuery(e.target.value); setShowCountryDropdown(true) }}
+                                                onFocus={() => setShowCountryDropdown(true)}
+                                                onBlur={() => setTimeout(() => setShowCountryDropdown(false), 150)}
+                                                // X5: Enter used to do literally nothing. It now
+                                                // carries a QUESTION to the lane that can read it;
+                                                // a country-shaped query still belongs to the list
+                                                // below, so Enter stays inert for those.
+                                                onKeyDown={e => {
+                                                    if (e.key !== 'Enter') return
+                                                    if (suggestions.length > 0 || !looksLikeNaturalQuestion(countryQuery)) return
+                                                    e.preventDefault()
+                                                    askAtlas(countryQuery)
+                                                }}
+                                            />
+                                            {showCountryDropdown && suggestions.length > 0 && (
+                                                <div className="brief-country-dropdown">
+                                                    {/* C4: this door does NOT eject — it opens the
+                                                        country's edition inside this newspaper. The
+                                                        judge could not tell which of the page's two
+                                                        country doors did which, so each one says. */}
+                                                    {suggestions.slice(0, 10).map(c => {
+                                                        const name = resolveCountryName(c.code, c.name)
+                                                        return (
+                                                            <button
+                                                                key={c.code}
+                                                                className={`brief-country-option${c.signals === 0 ? ' empty' : ''}`}
+                                                                onMouseDown={e => e.preventDefault()}
+                                                                onClick={() => selectCountry(c.code)}
+                                                                data-tip={`Opens ${name}'s edition inside this newspaper — the chip beside "Country:" clears it.`}
+                                                                aria-label={`Open ${name}'s edition in this newspaper`}
+                                                            >
+                                                                <span><Flag code={c.code} /> {name}</span>
+                                                                <span className="brief-country-option-count">{c.signals > 0 ? c.signals.toLocaleString() : tr('brief.country.notInTop')}</span>
+                                                            </button>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                            {/* X5: a zero-match lexical box must SAY so, and when
+                                                what was typed reads like a question it must name
+                                                the lane that can answer it. Silence was the whole
+                                                defect — "no message, no 'try a country name'". */}
+                                            {showCountryDropdown && q.length > 0 && suggestions.length === 0 && (
+                                                <div className="brief-country-dropdown brief-country-dropdown--empty">
+                                                    <p className="brief-country-empty">
+                                                        {tr('brief.country.noMatch', { query: countryQuery.trim() })}
+                                                    </p>
+                                                    {looksLikeNaturalQuestion(countryQuery) ? (
+                                                        <button
+                                                            className="brief-country-ask"
+                                                            onMouseDown={e => e.preventDefault()}
+                                                            onClick={() => askAtlas(countryQuery)}
+                                                            data-tip="Reads your question across the live stories — matching threads, who says what, and where coverage is missing."
+                                                            aria-label={`Ask Atlas: ${countryQuery.trim()}`}
+                                                        >
+                                                            <span className="brief-country-ask-label">{askAtlasLabel(countryQuery)}</span>
+                                                            <span className="brief-country-ask-hint">reads it across the live stories →</span>
+                                                        </button>
+                                                    ) : (
+                                                        <p className="brief-country-empty-hint">
+                                                            {tr('brief.country.searchHint')}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </section>
+                            )
+                        })()}
 
                         <div className="brief-rule" />
 

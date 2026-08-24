@@ -267,6 +267,91 @@
   .brief-readiness-rail { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* ---------- EDITION STANDFIRST (Pedro 2026-08-24: the questions IN the text) ----------
+   The six measured questions woven as newspaper prose under the seal status.
+   Only `ready` fields are woven (briefStandfirst.ts, pure + tested); partials
+   are declared in one closing line; the raw tiles fold underneath, verbatim. */
+
+.brief-edition-standfirst {
+  margin: 4px 0 18px;
+}
+
+.brief-edition-standfirst-prose {
+  font-family: var(--r-serif);
+  font-size: 1.04rem;
+  line-height: 1.55;
+  color: var(--r-ink);
+  max-width: 72ch;
+  margin: 0 0 6px;
+}
+
+/* Woven outlet names read as prose, not as chips — only the STATE mark is a chip. */
+.brief-standfirst-outlet {
+  white-space: nowrap;
+}
+
+.brief-standfirst-state {
+  font-family: var(--r-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--r-accent-2);
+  border: 1px solid color-mix(in srgb, var(--r-accent-2) 45%, var(--r-line));
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 5px;
+  vertical-align: 0.12em;
+  cursor: help;
+}
+
+/* The one honest line naming every below-bar (partial) question. */
+.brief-edition-standfirst-partial {
+  font-family: var(--r-sans);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--r-muted);
+  margin: 0 0 6px;
+}
+
+/* The measurement stays inspectable: the six tiles fold, never deleted. */
+.brief-readiness-fold {
+  margin: 2px 0 0;
+}
+
+.brief-readiness-fold-summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--r-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--r-muted);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.brief-readiness-fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.brief-readiness-fold-summary::after {
+  content: '▸';
+}
+
+.brief-readiness-fold[open] > .brief-readiness-fold-summary::after {
+  content: '▾';
+}
+
+.brief-readiness-fold-summary:hover {
+  color: var(--r-ink-soft);
+}
+
+.brief-readiness-fold > .brief-readiness-rail {
+  margin: 8px 0 4px;
+}
+
 .brief-coverage-note {
   display: inline-flex;
   flex-wrap: wrap;
