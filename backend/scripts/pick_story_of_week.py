@@ -46,6 +46,11 @@ async def main() -> int:
     ap = argparse.ArgumentParser(description="Rank publishable stories for the weekly share ritual (read-only)")
     ap.add_argument("--days", type=int, default=7, help="Recency window in days (default 7)")
     ap.add_argument("--limit", type=int, default=10, help="Rows to print (default 10)")
+    ap.add_argument("--country", default=None,
+                    help="Comma-separated ISO2 codes — only stories with member "
+                         "signals in these countries (e.g. CO,MX)")
+    ap.add_argument("--region", choices=["latam"], default=None,
+                    help="Preset country set; combines with --country")
     args = ap.parse_args()
 
     import asyncpg
@@ -119,6 +124,31 @@ async def main() -> int:
             if measure_langs else "NULL::bigint"
         )
 
+        # Optional country/region scoping (Pedro 08-24: "quisiera poner algo de
+        # Colombia o de Latinoamérica"). A story qualifies when >=1 member
+        # signal carries one of the requested subject countries; the matched
+        # codes and in-set member count are printed, never inferred.
+        LATAM = ["CO", "VE", "EC", "PE", "BO", "BR", "AR", "CL", "PY", "UY",
+                 "MX", "GT", "HN", "SV", "NI", "CR", "PA", "CU", "DO", "HT",
+                 "GY", "SR", "BZ", "PR"]
+        cc_set: list[str] = []
+        if args.region == "latam":
+            cc_set += LATAM
+        if args.country:
+            cc_set += [c.strip().upper() for c in args.country.split(",") if c.strip()]
+        cc_set = sorted(set(cc_set))
+        if cc_set and not measure_countries:
+            raise SystemExit("--country/--region need signals_v2.country_code")
+
+        region_select = (
+            ",\n                   count(tm.signal_id) FILTER (WHERE s.country_code = ANY($2::text[])) AS region_members"
+            ",\n                   array_remove(array_agg(DISTINCT s.country_code) FILTER (WHERE s.country_code = ANY($2::text[])), NULL) AS region_ccs"
+            if cc_set else ""
+        )
+        region_having = (
+            "HAVING count(tm.signal_id) FILTER (WHERE s.country_code = ANY($2::text[])) > 0"
+            if cc_set else ""
+        )
         sql = f"""
             WITH c AS (
                 SELECT id, label, {court_select.replace('c.', '')} AS court
@@ -128,13 +158,15 @@ async def main() -> int:
             SELECT c.id, c.label, c.court,
                    count(tm.signal_id) AS members,
                    {country_expr} AS countries,
-                   {lang_expr} AS langs
+                   {lang_expr} AS langs{region_select}
             FROM c
             LEFT JOIN topic_members tm ON {' AND '.join(mem_where)}
             LEFT JOIN signals_v2 s ON s.id = tm.signal_id
             GROUP BY c.id, c.label, c.court
+            {region_having}
         """
-        rows = await conn.fetch(sql, args.days)
+        rows = (await conn.fetch(sql, args.days, cc_set)
+                if cc_set else await conn.fetch(sql, args.days))
     finally:
         await conn.close()
 
@@ -151,6 +183,8 @@ async def main() -> int:
             "id": r["id"], "label": r["label"] or "(unlabeled)", "court": r["court"],
             "members": members, "countries": countries, "langs": langs,
             "vol": vol, "geo": geo, "lang": lang, "score": vol + geo + lang,
+            "region_members": r["region_members"] if "region_members" in r.keys() else None,
+            "region_ccs": list(r["region_ccs"] or []) if "region_ccs" in r.keys() else None,
         })
     scored.sort(key=lambda x: x["score"], reverse=True)
 
@@ -171,9 +205,14 @@ async def main() -> int:
         ctry = str(s["countries"]) if s["countries"] is not None else "n/m"
         lng = str(s["langs"]) if s["langs"] is not None else "n/m"
         label = s["label"][:56]
+        region = ""
+        if s.get("region_members") is not None:
+            region = (f"  [{s['region_members']} in "
+                      f"{','.join(s['region_ccs'][:4])}"
+                      f"{'…' if len(s['region_ccs']) > 4 else ''}]")
         print(f"{i:>2}  {s['score']:>6.3f}  {s['vol']:>5.2f} {s['geo']:>5.2f} {s['lang']:>5.2f}  "
               f"{s['members']:>7} {ctry:>4} {lng:>4}  {(s['court'] or 'n/m'):<8} "
-              f"dynamic-topic-{s['id']:<5}  {label}")
+              f"dynamic-topic-{s['id']:<5}  {label}{region}")
     print()
     print("deep links:")
     for i, s in enumerate(scored[: args.limit], 1):
