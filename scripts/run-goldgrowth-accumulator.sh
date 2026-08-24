@@ -19,7 +19,9 @@ mkdir -p "$LOG_DIR"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -r "$SCRIPT_DIR/heavy-job-lock.sh" ]; then
   . "$SCRIPT_DIR/heavy-job-lock.sh"
-  atlas_heavy_lock "goldgrowth" wait 120 120 || exit 0
+  # 180m wait (era 120): con el release post-fold del M4 (~03:15) el fire de
+  # 00:50 alcanza a agarrar turno; a 120m se rendía a las 02:50, 25min corto.
+  atlas_heavy_lock "goldgrowth" wait 120 180 || exit 0
 else
   echo "[goldgrowth] heavy-job-lock.sh missing — running UNSERIALIZED" >&2
 fi

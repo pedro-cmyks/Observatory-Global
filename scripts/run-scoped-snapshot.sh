@@ -249,6 +249,22 @@ else
   echo "[scoped-snapshot] student model missing ($STUDENT_JSON) — skip projection" >&2
 fi
 
+# M4 — SUELTA TRAS R1 (Pedro, 2026-08-24). El mutex existe para que dos jobs
+# PESADOS de DB no se apilen; la cadena crítica (Step 0 embed → Step 1 R1 →
+# Step 2 fold a serving) ya terminó aquí. La cola de abajo (typing/court =
+# LLM-bound, umbrella/ETL/lineage/robot/seal/universe/warm/coherence) retenía
+# el lock ~4h más cada noche y mató de hambre al catchup 4 noches seguidas
+# (auditoría docs/state/2026-08-24-health-audit.md: 502K filas sin podar →
+# base 13GB → INSERTs de ingesta a 12-16 filas/s → GDELT al 30%). Al soltar:
+# catchup/embed/goldgrowth/matview (serializados ENTRE SÍ por el mismo lock)
+# corren en paralelo con la cola — concurrencia grado 2, no el apilamiento
+# grado 4 del incidente de julio. Si la clase timeout-en-serving reaparece,
+# la reversión es mover esta línea más abajo.
+if command -v atlas_heavy_lock_release >/dev/null 2>&1; then
+  atlas_heavy_lock_release
+  echo "[scoped-snapshot] M4: heavy lock RELEASED post-fold — la cola corre sin mutex" >&2
+fi
+
 # Step 2.5: R3.1 — category typing (anchored-emergent + crisis-relevance lens) via
 # DeepSeek, then emergent super-categories + open non-crisis domains. BEFORE the umbrella
 # build so umbrellas inherit category/crisis_relevant. DeepSeek = cheap API, off-peak.
