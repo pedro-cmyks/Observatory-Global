@@ -575,6 +575,22 @@ else
   echo "[scoped-snapshot] skip subject-coherence store (ATLAS_SUBJECT_COHERENCE=off)" >&2
 fi
 
+# Step 11 (2026-08-24, Z1): CONDEMNATION CADENCE — el reloj despertador del
+# re-run de los gates 7-9 (prereg 2026-08-03-condemnation-trigger: cada 3
+# noches, 60 juicios ≈ centavos, semilla=fecha, ledger append-only). La
+# cadencia manual murió el 08-11 (13 días sin lectura); aquí se vuelve
+# estructural. Trigger congelado: tasa <=15% => re-run mecánico del 8º/9º
+# con barras intactas (eso NO pasa aquí — el runner solo mide y anota; el
+# re-run es una decisión humana leyendo el ledger). Historial: 38.7 (08-03)
+# -> 28.3 -> 21.7 -> 33.3 (08-11) -> 25.0 (08-24). Non-fatal siempre.
+if [[ "${ATLAS_CONDEMNATION_CADENCE:-on}" == "on" ]] \
+   && (( $(date +%j | sed 's/^0*//') % 3 == 0 )); then
+  atlas_step "condemnation rate (Z1 cadence)" "$ROOT_DIR" \
+    $TASKPOLICY "$MLVENV/bin/python" -m backend.scripts.measure_condemnation_rate
+else
+  echo "[scoped-snapshot] condemnation cadence: not tonight (day%3) or off" >&2
+fi
+
 # The run's verdict. A provider outage or a majority-failed run now exits
 # non-zero — launchd records the failure instead of a plausible success. The
 # heavy-lock EXIT trap still fires on this exit, so the mutex is released.
