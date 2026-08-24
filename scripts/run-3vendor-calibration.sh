@@ -36,7 +36,8 @@ mkdir -p "$LOG_DIR" "$OUT_DIR"
 load_env_file() {
   local env_file="$1" key value
   [[ -r "$env_file" ]] || return 0
-  for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY ANTHROPIC_API_KEY; do
+  for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY ANTHROPIC_API_KEY \
+             ATLAS_CLAUDE_CLI ATLAS_CLAUDE_CLI_BIN ATLAS_ANNOTATOR_CLI_MODEL; do
     if [[ -z "${!key:-}" ]]; then
       value="$(grep -E "^${key}=" "$env_file" | tail -n 1 | sed -E "s/^${key}=//" | tr -d '\r' || true)"
       [[ -n "$value" ]] && export "$key=$value"
@@ -45,12 +46,19 @@ load_env_file() {
 }
 load_env_file "$LOCAL_ENV"
 
-for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY ANTHROPIC_API_KEY; do
+for key in DATABASE_URL DEEPSEEK_API_KEY OPENAI_API_KEY; do
   if [[ -z "${!key:-}" ]]; then
     echo "$(date -u +%FT%TZ) FATAL: $key not set" >&2
     exit 2
   fi
 done
+
+# Anthropic leg = the claude CLI subscription (2026-07-29: API not re-funded).
+# ANTHROPIC_API_KEY only matters as the fallback when the CLI leg is off.
+if [[ "${ATLAS_CLAUDE_CLI:-off}" != "on" && -z "${ANTHROPIC_API_KEY:-}" ]]; then
+  echo "$(date -u +%FT%TZ) FATAL: neither ATLAS_CLAUDE_CLI=on nor ANTHROPIC_API_KEY set" >&2
+  exit 2
+fi
 
 DATE="$(date -u +%F)"
 SAMPLE="$OUT_DIR/$DATE-calib-sample.jsonl"

@@ -14,8 +14,16 @@ Schema version: atlas-llm-annotator-v1
 Provenance label: defaults to `sonnet46_initial` (single LLM annotator,
 initial pass, NOT consensus / NOT calibrated).
 
+Anthropic routing (2026-08-24): the API balance is dry and per the
+2026-07-29 decision it will NOT be re-funded — the local `claude` CLI
+subscription (insight_llm's claude_cli leg) IS the anthropic provider.
+When ATLAS_CLAUDE_CLI=on and the binary is on PATH, claude-* models run
+through the CLI; the direct API is only a fallback when the CLI leg is
+not configured (and then ANTHROPIC_API_KEY is required).
+
 Required env:
-  ANTHROPIC_API_KEY
+  DEEPSEEK_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY per model, except
+  claude-* with ATLAS_CLAUDE_CLI=on which needs no key.
 """
 
 from __future__ import annotations
@@ -24,16 +32,25 @@ import argparse
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.services.insight_llm import (  # noqa: E402
+    ClaudeCliError,
+    classify_cli_failure,
+    parse_cli_envelope,
+)
+
 try:
     import anthropic
-except ImportError as exc:  # pragma: no cover
-    print(f"missing dependency: {exc}", file=sys.stderr)
-    sys.exit(2)
+except ImportError:  # pragma: no cover — not needed on the CLI leg
+    anthropic = None
 
 try:
     import openai
@@ -43,6 +60,73 @@ except ImportError:  # pragma: no cover
 
 def _is_openai_model(model: str) -> bool:
     return model.startswith(("gpt", "o1", "o3", "o4", "chatgpt"))
+
+
+def _is_claude_model(model: str) -> bool:
+    return model.startswith("claude")
+
+
+def _claude_cli_available() -> bool:
+    """Same eligibility contract as insight_llm.claude_cli_available: the flag
+    must be on, never on a Fly machine, and the binary must resolve."""
+    if os.getenv("ATLAS_CLAUDE_CLI", "off").strip().lower() not in ("on", "1", "true"):
+        return False
+    if os.getenv("FLY_APP_NAME") or os.getenv("FLY_MACHINE_ID"):
+        return False
+    return shutil.which(os.getenv("ATLAS_CLAUDE_CLI_BIN", "claude")) is not None
+
+
+class AnnotatorExhausted(Exception):
+    """The provider account itself is refused (usage cap / dead auth / dry
+    balance). Retrying per-row is waste — the caller stops the run and leaves
+    the remaining rows unwritten so --resume can fill them later."""
+
+
+class ClaudeCliClient:
+    """Anthropic leg over the local `claude` CLI subscription. Mirrors the
+    measured insight_llm contract: --safe-mode keeps keychain OAuth working,
+    --tools "" disables tool use (pure judgment), --output-format json gives
+    a parseable envelope. The CLI has no max-tokens flag; the system prompt
+    bounds the answer (strict JSON, one short notes sentence)."""
+
+    def __init__(self) -> None:
+        self.bin = os.getenv("ATLAS_CLAUDE_CLI_BIN", "claude")
+        self.cli_model = os.getenv("ATLAS_ANNOTATOR_CLI_MODEL", "sonnet")
+        self.timeout = float(os.getenv("ATLAS_CLAUDE_CLI_TIMEOUT", "120"))
+
+    @property
+    def model_label(self) -> str:
+        return f"claude-cli/{self.cli_model}"
+
+    def complete(self, system: str, user: str) -> str:
+        cmd = [
+            self.bin, "-p", user,
+            "--system-prompt", system,
+            "--output-format", "json",
+            "--model", self.cli_model,
+            "--safe-mode",
+            "--no-session-persistence",
+            "--tools", "",
+        ]
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=self.timeout,
+                stdin=subprocess.DEVNULL,
+            )
+        except subprocess.TimeoutExpired:
+            raise ClaudeCliError(f"claude CLI timeout after {self.timeout:.0f}s") from None
+        envelope = parse_cli_envelope(proc.stdout)
+        if envelope is None:
+            raise ClaudeCliError(
+                f"unparseable CLI output (rc={proc.returncode}): "
+                f"{proc.stdout[:160] or proc.stderr[:160]}"
+            )
+        if proc.returncode != 0 or envelope.get("is_error"):
+            raise classify_cli_failure(envelope, proc.stderr)
+        text = str(envelope.get("result") or "").strip()
+        if not text:
+            raise ClaudeCliError("empty CLI result")
+        return text
 
 
 def _is_deepseek_model(model: str) -> bool:
@@ -245,6 +329,15 @@ def _call_llm(
     last_error: str | None = None
     for attempt in range(1, retries + 1):
         try:
+            if isinstance(client, ClaudeCliClient):
+                try:
+                    text = client.complete(SYSTEM_PROMPT, user_prompt)
+                except ClaudeCliError as exc:
+                    if exc.exhausted:
+                        # Account-level refusal: no per-row retry can help.
+                        raise AnnotatorExhausted(exc.reason) from exc
+                    raise
+                return text, attempt, None
             if is_chat:
                 create_kwargs: dict[str, Any] = {
                     "model": model,
@@ -273,6 +366,8 @@ def _call_llm(
                 block.text for block in response.content if getattr(block, "type", None) == "text"
             )
             return text, attempt, None
+        except AnnotatorExhausted:
+            raise
         except Exception as exc:  # noqa: BLE001
             last_error = f"{type(exc).__name__}: {exc}"
             if attempt < retries:
@@ -283,7 +378,7 @@ def _call_llm(
 def annotate_row(
     row: dict[str, Any],
     *,
-    client: "anthropic.Anthropic",
+    client: Any,
     model: str,
     provenance: str,
     max_tokens: int,
@@ -353,6 +448,10 @@ def _append_jsonl(path: Path, row: dict[str, Any]) -> None:
 
 
 def _existing_signal_ids(path: Path) -> set[int]:
+    """signal_ids already carrying a usable decision. Rows written with a
+    null decision (provider error, parse failure) do NOT count, so --resume
+    retries them; the agreement reader is last-wins per signal_id, so the
+    retried append supersedes the failed row."""
     if not path.exists():
         return set()
     seen: set[int] = set()
@@ -361,7 +460,8 @@ def _existing_signal_ids(path: Path) -> set[int]:
         if not line:
             continue
         row = json.loads(line)
-        seen.add(int(row.get("signal_id", -1)))
+        if row.get("annotator_decision") is not None:
+            seen.add(int(row.get("signal_id", -1)))
     return seen
 
 
@@ -411,30 +511,61 @@ def main() -> None:
             print("OPENAI_API_KEY not set", file=sys.stderr)
             sys.exit(2)
         client = openai.OpenAI(api_key=api_key, timeout=60.0)
+    elif _is_claude_model(args.model) and _claude_cli_available():
+        # The anthropic provider IS the claude CLI subscription (2026-07-29:
+        # the API balance is dry and will not be re-funded).
+        client = ClaudeCliClient()
+        print(
+            f"anthropic leg via claude CLI ({client.model_label})",
+            file=sys.stderr,
+        )
     else:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            print("ANTHROPIC_API_KEY not set", file=sys.stderr)
+            print(
+                "ANTHROPIC_API_KEY not set and claude CLI leg not available "
+                "(need ATLAS_CLAUDE_CLI=on + binary on PATH)",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        if anthropic is None:
+            print("anthropic SDK not installed", file=sys.stderr)
             sys.exit(2)
         client = anthropic.Anthropic(api_key=api_key)
 
     temperature = None if args.no_temperature else args.temperature
 
+    model_label = client.model_label if isinstance(client, ClaudeCliClient) else args.model
+
     written = 0
+    exhausted: str | None = None
     for row in rows:
         sid = int(row.get("signal_id", -1))
         if sid in skip:
             continue
-        annotated = annotate_row(
-            row,
-            client=client,
-            model=args.model,
-            provenance=args.provenance,
-            max_tokens=args.max_tokens,
-            temperature=temperature,
-            retries=args.retries,
-            backoff_seconds=args.backoff_seconds,
-        )
+        try:
+            annotated = annotate_row(
+                row,
+                client=client,
+                model=model_label,
+                provenance=args.provenance,
+                max_tokens=args.max_tokens,
+                temperature=temperature,
+                retries=args.retries,
+                backoff_seconds=args.backoff_seconds,
+            )
+        except AnnotatorExhausted as exc:
+            # Account-level refusal (usage cap / dead auth / dry balance):
+            # stop here, leave remaining rows UNWRITTEN so --resume fills
+            # them once the account recovers. Exit 0 so the calibration
+            # pipeline still computes agreement over what succeeded.
+            exhausted = str(exc)
+            print(
+                f"PROVIDER EXHAUSTED at signal_id={sid}: {exhausted} — "
+                "stopping; remaining rows left for --resume",
+                file=sys.stderr,
+            )
+            break
         _append_jsonl(args.output, annotated)
         written += 1
         print(
@@ -448,8 +579,9 @@ def main() -> None:
         "input": str(args.input),
         "output": str(args.output),
         "rows_written": written,
-        "model": args.model,
+        "model": model_label,
         "provenance": args.provenance,
+        "provider_exhausted": exhausted,
     }, indent=2))
 
 

@@ -109,3 +109,96 @@ def test_build_user_prompt_includes_atlas_label():
     assert "disease-outbreak" in prompt
     assert "Disease outbreak" in prompt
     assert "MEDICAL" in prompt
+
+
+# --- claude-CLI anthropic leg (2026-08-24: API dry, CLI IS the provider) ---
+
+
+def test_claude_cli_available_gating(monkeypatch):
+    monkeypatch.delenv("ATLAS_CLAUDE_CLI", raising=False)
+    assert ann._claude_cli_available() is False
+
+    monkeypatch.setenv("ATLAS_CLAUDE_CLI", "on")
+    monkeypatch.setattr(ann.shutil, "which", lambda _: "/usr/local/bin/claude")
+    assert ann._claude_cli_available() is True
+
+    # Fly machines must never spawn the CLI.
+    monkeypatch.setenv("FLY_APP_NAME", "atlas-api-pedro")
+    assert ann._claude_cli_available() is False
+    monkeypatch.delenv("FLY_APP_NAME")
+
+    monkeypatch.setattr(ann.shutil, "which", lambda _: None)
+    assert ann._claude_cli_available() is False
+
+
+def _cli_client(monkeypatch) -> "ann.ClaudeCliClient":
+    monkeypatch.setenv("ATLAS_CLAUDE_CLI_BIN", "claude")
+    return ann.ClaudeCliClient()
+
+
+def test_call_llm_cli_branch_returns_text(monkeypatch):
+    client = _cli_client(monkeypatch)
+    monkeypatch.setattr(client, "complete", lambda system, user: '{"decision": "correct"}')
+    text, attempts, error = ann._call_llm(
+        client, model="claude-cli/sonnet", user_prompt="p",
+        max_tokens=100, temperature=0.0, retries=3, backoff_seconds=0.0,
+    )
+    assert text == '{"decision": "correct"}'
+    assert attempts == 1
+    assert error is None
+
+
+def test_call_llm_cli_exhausted_fails_fast(monkeypatch):
+    client = _cli_client(monkeypatch)
+    calls = {"n": 0}
+
+    def _boom(system, user):
+        calls["n"] += 1
+        raise ann.ClaudeCliError("usage limit reached", exhausted=True)
+
+    monkeypatch.setattr(client, "complete", _boom)
+    try:
+        ann._call_llm(
+            client, model="claude-cli/sonnet", user_prompt="p",
+            max_tokens=100, temperature=0.0, retries=3, backoff_seconds=0.0,
+        )
+        raise AssertionError("expected AnnotatorExhausted")
+    except ann.AnnotatorExhausted:
+        pass
+    # Account-level refusal: exactly one attempt, no per-row retries.
+    assert calls["n"] == 1
+
+
+def test_call_llm_cli_transient_error_retries(monkeypatch):
+    client = _cli_client(monkeypatch)
+    calls = {"n": 0}
+
+    def _flaky(system, user):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ann.ClaudeCliError("claude CLI timeout after 120s")
+        return '{"decision": "incorrect"}'
+
+    monkeypatch.setattr(client, "complete", _flaky)
+    text, attempts, error = ann._call_llm(
+        client, model="claude-cli/sonnet", user_prompt="p",
+        max_tokens=100, temperature=0.0, retries=3, backoff_seconds=0.0,
+    )
+    assert text == '{"decision": "incorrect"}'
+    assert attempts == 3
+    assert error is None
+
+
+def test_existing_signal_ids_skips_only_decided(tmp_path):
+    """--resume must retry rows that were written with a null decision
+    (provider error): only decided rows enter the skip set."""
+    import json as _json
+
+    out = tmp_path / "annot.jsonl"
+    rows = [
+        {"signal_id": 1, "annotator_decision": None,
+         "annotator_error": "BadRequestError: credit balance too low"},
+        {"signal_id": 2, "annotator_decision": "correct"},
+    ]
+    out.write_text("\n".join(_json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    assert ann._existing_signal_ids(out) == {2}
