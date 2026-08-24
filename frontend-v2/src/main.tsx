@@ -118,6 +118,15 @@ import { BriefNewspaper } from './pages/BriefNewspaper.tsx'
 // they ARE the entry surfaces ('/' and the PWA start_url).
 const App = lazy(() => import('./App.tsx'))
 const Docs = lazy(() => import('./pages/Docs.tsx').then((m) => ({ default: m.Docs })))
+// Account lane (2026-08-24): the campaign registration door + the two pages
+// Supabase emails land on. Ordinary <Routes> entries — they mount/unmount
+// normally and never touch the App/Brief keep-alive shell. Lazy like Docs so
+// the entry chunk stays lean; supabase-js already ships in the entry via
+// AuthProvider, so the email-link token in the URL is consumed at root
+// regardless of which chunk is still loading.
+const Register = lazy(() => import('./pages/Register.tsx').then((m) => ({ default: m.Register })))
+const AuthCallback = lazy(() => import('./pages/AuthCallback.tsx').then((m) => ({ default: m.AuthCallback })))
+const AuthReset = lazy(() => import('./pages/AuthReset.tsx').then((m) => ({ default: m.AuthReset })))
 import { InstallPrompt } from './components/InstallPrompt.tsx'
 
 class RootErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean; message: string }> {
@@ -168,6 +177,9 @@ createRoot(document.getElementById('root')!).render(
                     <Route path="/brief" element={null} />
                     <Route path="/docs" element={<Suspense fallback={<PaneChunkLoading />}><Docs /></Suspense>} />
                     <Route path="/docs/*" element={<Suspense fallback={<PaneChunkLoading />}><Docs /></Suspense>} />
+                    <Route path="/register" element={<Suspense fallback={<PaneChunkLoading />}><Register /></Suspense>} />
+                    <Route path="/auth/callback" element={<Suspense fallback={<PaneChunkLoading />}><AuthCallback /></Suspense>} />
+                    <Route path="/auth/reset" element={<Suspense fallback={<PaneChunkLoading />}><AuthReset /></Suspense>} />
                     <Route path="*" element={<Landing />} />
                   </Routes>
                   {/* The phone's Brief ◈ · Lens ◎ · Live ≋ bar. One instance for

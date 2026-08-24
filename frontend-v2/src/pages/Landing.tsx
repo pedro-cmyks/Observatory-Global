@@ -237,6 +237,7 @@ const PILLARS = [
 const NAV_LINKS: Array<{ label: string; to: string }> = [
     { label: 'Console', to: '/app' },
     { label: 'Docs', to: '/docs' },
+    { label: 'Create account', to: '/register' },
 ]
 
 const DATA_SOURCES: Array<[string, string]> = [
@@ -530,6 +531,21 @@ export function Landing() {
                             <button className="lp-btn lp-btn-ghost" onClick={() => navigate('/app')}>Open the console</button>
                         </div>
                         <p className="lp-entry-sub">or <a href="/docs" onClick={e => { e.preventDefault(); navigate('/docs') }}>read the docs</a> to see how the measuring is done.</p>
+                    </div>
+                </RevealSection>
+
+                {/* ============ ACCOUNT CTA (campaign door) ============ */}
+                <RevealSection id="account" className="lp-sect lp-account" labelledBy="lp-ac">
+                    <div className="lp-accountbox">
+                        <div>
+                            <p className="lp-kicker">Make it yours</p>
+                            <h2 className="lp-account-h" id="lp-ac">Free. Your account syncs your investigations across devices.</h2>
+                            <p className="lp-account-p">Reading Atlas never requires signing in. An account adds one thing: the investigations you pin in the workbench follow you from laptop to phone. No ads, no paywalls — start today.</p>
+                        </div>
+                        <div className="lp-account-cta">
+                            <button className="lp-btn lp-btn-primary" onClick={() => navigate('/register')}>Create your free account<ArrowRight /></button>
+                            <button className="lp-btn lp-btn-ghost" onClick={() => navigate('/register?mode=login')}>Sign in</button>
+                        </div>
                     </div>
                 </RevealSection>
 

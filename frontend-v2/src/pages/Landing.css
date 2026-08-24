@@ -219,6 +219,18 @@
 .lp-entry-sub a { color: var(--r-ink-soft); text-underline-offset: 3px; }
 .lp-entry-sub a:hover { color: var(--r-accent); }
 
+/* ----------------------------------------------------------------- account */
+/* Campaign CTA (2026-08-24): same box language as support, accent-forward —
+   the section a LinkedIn arrival is meant to land on (#account). */
+.lp-accountbox {
+    background: var(--r-surface); border: 1px solid var(--r-line); border-left: 3px solid var(--r-accent);
+    border-radius: 5px; padding: clamp(20px, 3vw, 30px);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 30px;
+}
+.lp-account-h { font-family: var(--r-serif); font-weight: 700; font-size: clamp(1.2rem, 2.6vw, 1.5rem); letter-spacing: -0.01em; margin: 0 0 6px; color: var(--r-ink); max-width: 30ch; }
+.lp-account-p { font-family: var(--r-sans); font-size: 0.86rem; color: var(--r-ink-soft); margin: 0; max-width: 52ch; line-height: 1.5; }
+.lp-account-cta { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-width: 220px; }
+
 /* ----------------------------------------------------------------- support */
 .lp-supportbox {
     background: var(--r-surface); border: 1px solid var(--r-line); border-left: 3px solid var(--r-accent);
