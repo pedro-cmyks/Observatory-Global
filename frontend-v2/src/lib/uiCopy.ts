@@ -49,9 +49,45 @@ export const UI_COPY = {
         en: 'The Daily Instrument · Global Edition',
         es: 'El Instrumento Diario · Edición Global',
     },
+    // 2026-08-24 championship (winner "Today's Number", jury graft #1): the
+    // tagline answers the reader's real question — "qué hace, para quién es"
+    // — in three STE sentences. The third sentence is the jury's graft.
     'brief.masthead.tagline': {
-        en: 'Narrative intelligence — measured from coverage, not editorialized.',
-        es: 'Inteligencia narrativa — medida desde la cobertura, sin editorializar.',
+        en: 'We measure who covers the news, in each country and language. We do not write opinions. It is for readers who ask: who says this?',
+        es: 'Medimos quién cubre las noticias, en cada país y cada idioma. No escribimos opiniones. Es para lectores que preguntan: ¿quién dice esto?',
+    },
+    // ---------------- Today's Number hero + first-15-seconds sequence ----------
+    'brief.hero.kicker': { en: 'TODAY’S NUMBER', es: 'EL NÚMERO DE HOY' },
+    'brief.voices.caption.sealed': {
+        en: 'TODAY’S VOICES — {n} frozen receipts',
+        es: 'LAS VOCES DE HOY — {n} recibos congelados',
+    },
+    'brief.voices.caption.live': {
+        en: 'TODAY’S VOICES — {n} live receipts',
+        es: 'LAS VOCES DE HOY — {n} recibos en vivo',
+    },
+    'brief.explainer.title': { en: 'WHAT IS ATLAS?', es: '¿QUÉ ES ATLAS?' },
+    'brief.explainer.body': {
+        en: 'Atlas measures world news coverage each day. It marks state media. It shows the questions the press did not answer. It is for people who want to know who tells them the news. One new edition seals each day. Free to read.',
+        es: 'Atlas mide la cobertura mundial de noticias cada día. Marca la prensa estatal. Muestra las preguntas que la prensa no respondió. Es para quienes quieren saber quién les cuenta las noticias. Cada día se sella una nueva edición. Gratis para leer.',
+    },
+    'brief.explainer.close': { en: 'CLOSE', es: 'CERRAR' },
+    'brief.lead.kicker': { en: 'TODAY’S LEAD', es: 'LA NOTA DEL DÍA' },
+    'brief.return.hook': {
+        en: 'The next edition seals in {n} hours. Come back for tomorrow’s number.',
+        es: 'La próxima edición se sella en {n} horas. Vuelve por el número de mañana.',
+    },
+    'brief.return.hook1': {
+        en: 'The next edition seals in 1 hour. Come back for tomorrow’s number.',
+        es: 'La próxima edición se sella en 1 hora. Vuelve por el número de mañana.',
+    },
+    'brief.stories.kicker': {
+        en: 'No editor chose these stories. The count of world coverage chose them.',
+        es: 'Ningún editor eligió estas historias. Las eligió el conteo de la cobertura mundial.',
+    },
+    'brief.signal.def': {
+        en: 'A signal is one measured news item.',
+        es: 'Una señal es una noticia medida.',
     },
     'brief.masthead.window': {
         en: 'Measured · Last 24 hours',

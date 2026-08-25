@@ -33,7 +33,10 @@ import { resolveThreadThemeTarget } from '../lib/threadThemeTarget'
 import { isLeadEligible, leadBlockReason, selectLiveLead, LEAD_CONFIDENCE_FLOOR } from '../lib/leadConfidence'
 import { confidenceBucketLabel, confidenceBucketTip, resolveConfidenceBucket } from '../lib/threadConfidence'
 import { splitEditionThreads, buildShareCaption, buildEditionFirstComment } from '../lib/briefEdition'
-import { composeEditionStandfirst, standfirstChrome } from '../lib/briefStandfirst'
+import { composeEditionStandfirst, composeTodaysLimits, standfirstChrome, QUESTION_KEYS } from '../lib/briefStandfirst'
+// Today's Number — the first-15-seconds hero (2026-08-24 championship winner).
+import { buildTodaysNumber, hoursUntilNextSeal, todaysNumberMixFrom } from '../lib/briefTodaysNumber'
+import { coarseTierLabel } from '../lib/sourceTiers'
 import {
     frontPageScope,
     deskCensusNote,
@@ -510,6 +513,11 @@ const SECTIONS = [
     { id: 'culture', label: 'Culture, Sport & Life', kicker: 'Where the rest of us live' },
 ] as const
 
+// First-visit explainer (2026-08-24 championship, sequence step 5): shown
+// once, dismissed forever. The key IS the contract — bump v1 only to re-show
+// deliberately.
+const EXPLAINER_DISMISS_KEY = 'atlas.brief.explainer.v1'
+
 export function BriefNewspaper() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
@@ -568,6 +576,15 @@ export function BriefNewspaper() {
     // it translated something. Declared up here with the other hooks because
     // the dateline below needs the locale.
     const { t: tr, lang: uiLangCode } = useUiCopy()
+    // First-visit explainer: read once at mount; a storage failure means the
+    // dismissal cannot persist, so the honest default is to show the card.
+    const [explainerDismissed, setExplainerDismissed] = useState<boolean>(() => {
+        try { return localStorage.getItem(EXPLAINER_DISMISS_KEY) === 'closed' } catch { return false }
+    })
+    const dismissExplainer = () => {
+        setExplainerDismissed(true)
+        try { localStorage.setItem(EXPLAINER_DISMISS_KEY, 'closed') } catch { /* private mode: session-only */ }
+    }
     const [userExpandedBands, setUserExpandedBands] = useState<Record<BriefBand, boolean>>({
         freshness: false,
         markets: false,
@@ -1093,12 +1110,13 @@ export function BriefNewspaper() {
             nextSeal: staleBanner?.nextAttempt ?? null,
         })
         : null
-    const voiceMix = !marksOff
-        ? buildVoiceMix(
-            (allThreads as Array<{ evidence_samples?: MixableReceipt[] }>).flatMap(t => t.evidence_samples ?? []),
-            servedFromSeal ? 'sealed' : 'live',
-        )
-        : null
+    // Always computed (2026-08-24 Today's Number): the hero decides its rule
+    // over these integers, so the ?marks=off kill switch must not silently
+    // flip the hero onto a different rule — it only hides the STRIP render.
+    const voiceMix = buildVoiceMix(
+        (allThreads as Array<{ evidence_samples?: MixableReceipt[] }>).flatMap(t => t.evidence_samples ?? []),
+        servedFromSeal ? 'sealed' : 'live',
+    )
 
     // Council Phase 1 (+ R2 N2, lead-eligibility v2): on the LIVE brief the front
     // page may only present a thread as an assembled story (label-as-fact: lead
@@ -1432,6 +1450,50 @@ export function BriefNewspaper() {
             tension: coverageCheck?.findings?.find(f => f.kind === 'tension') ?? null,
         })
         : null
+
+    // ---- TODAY'S NUMBER hero (2026-08-24 championship winner) -----------------
+    // One measured number, chosen by lib/briefTodaysNumber's fixed rule chain
+    // over the SAME integers the INK strip serves + the lead's measured outlet
+    // count. Sealed edition only: the hero states frozen receipts, so the live
+    // fallback (and the country door) has NO hero — honest absence.
+    const heroNumber = !countryFilter && servedFromSeal
+        ? buildTodaysNumber({
+            mix: voiceMix && voiceMix.basis === 'sealed'
+                ? todaysNumberMixFrom(voiceMix.patches, voiceMix.totalReceipts)
+                : null,
+            lead: leadThread
+                ? {
+                    outlets: leadSourceBasis?.kind === 'measured' ? leadSourceBasis.count : null,
+                    label: decodeEntities(leadThread.label),
+                }
+                : null,
+        }, uiLangCode)
+        : null
+
+    // ---- TODAY'S LIMITS (sequence step 7) -------------------------------------
+    // The seal chips as prose, from the same served derivation as the reg mark —
+    // but NOT subject to the ?marks=off kill switch (marks are furniture; the
+    // limits are honesty and stay visible whenever the seal is partial).
+    const limitsMark = regMark ?? buildRegMarkData(dailyEdition, serving, {
+        ageLabel: staleBanner?.age ?? null,
+        liveReason: staleBanner?.why ?? null,
+        nextSeal: staleBanner?.nextAttempt ?? null,
+    })
+    const todaysLimits = !countryFilter && servedFromSeal && dailyEdition
+        ? composeTodaysLimits({
+            partial: limitsMark.state === 'partial',
+            answered: limitsMark.answered,
+            total: limitsMark.total,
+            belowBar: QUESTION_KEYS.filter(k => dailyEdition.package?.readiness?.[k]?.status === 'partial'),
+            sealTime: limitsMark.sealTime,
+            fullTextOk: editionYield?.ok ?? null,
+            fullTextTotal: editionYield?.attempted ?? null,
+        }, uiLangCode)
+        : null
+
+    // ---- Return hook (sequence step 9): the served next-seal moment as hours.
+    // Schedule absent or already past → null → the hook does not render.
+    const nextSealHours = hoursUntilNextSeal(dailyEdition?.seal_schedule?.next_attempt_at ?? null, now)
 
     // Collapsed-band summary for the freshness box (Task 5, mobile IA #236).
     // Derived from data the full markup already renders (staleBanner/editionYield
@@ -2127,7 +2189,67 @@ export function BriefNewspaper() {
                 ) : data ? (
                     <main className="brief-content">
 
-                        {voiceMix && <VoiceMixStrip mix={voiceMix} />}
+                        {/* ============ TODAY'S NUMBER (championship winner, step 3) ====
+                            One measured number in big type, base in the copy, chosen
+                            by lib/briefTodaysNumber's fixed rule chain (R1→R5). No
+                            served data → no hero (honest absence). */}
+                        {heroNumber && (
+                            <section
+                                className="brief-hero-number"
+                                aria-label={tr('brief.hero.kicker')}
+                                data-hero-rule={heroNumber.rule}
+                            >
+                                <span className="reader-section-kicker brief-hero-kicker">{tr('brief.hero.kicker')}</span>
+                                <p className="brief-hero-headline">{heroNumber.headline}</p>
+                                <p className="brief-hero-body">{heroNumber.body}</p>
+                            </section>
+                        )}
+
+                        {/* The INK voice-mix strip, PROMOTED under the hero as its
+                            proof (step 4) — the same strip, moved not duplicated,
+                            with a caption naming the base. When R3 won the hero,
+                            the caption repeats the local comparative sentence.
+                            ?marks=off still hides the strip (its kill switch);
+                            the hero above stays — its data is served either way. */}
+                        {!marksOff && voiceMix && (
+                            <div className="brief-voices-block">
+                                <p className="brief-voices-caption">
+                                    {tr(
+                                        voiceMix.basis === 'sealed'
+                                            ? 'brief.voices.caption.sealed'
+                                            : 'brief.voices.caption.live',
+                                        { n: voiceMix.totalReceipts },
+                                    )}
+                                    {': '}
+                                    {voiceMix.patches.map(p => {
+                                        const pct = Math.round(p.share * 100)
+                                        return `${coarseTierLabel(p.tier).toLowerCase()} ${pct === 0 ? '<1' : pct}%`
+                                    }).join(' · ')}
+                                    {'.'}
+                                    {heroNumber?.voicesNote && (
+                                        <span className="brief-voices-note"> {heroNumber.voicesNote}</span>
+                                    )}
+                                </p>
+                                <VoiceMixStrip mix={voiceMix} />
+                            </div>
+                        )}
+
+                        {/* ============ FIRST-VISIT EXPLAINER (step 5) ============
+                            Between the hero and the lead. Dismissable exactly once
+                            (localStorage atlas.brief.explainer.v1); CLOSE never
+                            comes back. */}
+                        {!countryFilter && !explainerDismissed && (
+                            <aside className="brief-explainer" role="note" aria-label={tr('brief.explainer.title')}>
+                                <p className="brief-explainer-text">
+                                    <span className="brief-explainer-title">{tr('brief.explainer.title')}</span>
+                                    {' — '}
+                                    {tr('brief.explainer.body')}
+                                </p>
+                                <button className="brief-explainer-close" onClick={dismissExplainer}>
+                                    {tr('brief.explainer.close')}
+                                </button>
+                            </aside>
+                        )}
 
                         {(showingStale || briefError) && (
                             <div className="brief-cache-note" role="status">
@@ -2189,8 +2311,15 @@ export function BriefNewspaper() {
                                         even when it graded degraded, so every way
                                         it is incomplete is stated ON it — the
                                         degradation is a label, never a silent
-                                        fallback to a different newspaper. */}
-                                    {serving.degradation.length > 0 && (
+                                        fallback to a different newspaper.
+                                        2026-08-24 championship (step 7): when the
+                                        standfirst's six-questions fold renders, the
+                                        raw chips live THERE and the TODAY'S LIMITS
+                                        prose box below states the same facts in
+                                        sentences — the chips only stay on this band
+                                        when no fold exists to hold them. */}
+                                    {serving.degradation.length > 0
+                                        && !(servedFromSeal && dailyEdition?.package?.readiness) && (
                                         <span
                                             className="brief-publication-degraded"
                                             data-tip={tr('brief.freshness.degradedTip')}
@@ -2219,6 +2348,8 @@ export function BriefNewspaper() {
                             const sfChrome = standfirstChrome(uiLangCode)
                             return (
                                 <section className="brief-edition-standfirst" aria-label={sfChrome.aria}>
+                                    {/* Step 6: the lead announces itself. */}
+                                    <span className="reader-section-kicker brief-lead-kicker">{tr('brief.lead.kicker')}</span>
                                     {standfirst.hasProse && (
                                         <p className="brief-edition-standfirst-prose">
                                             {standfirst.parts.map((part, i) =>
@@ -2237,6 +2368,14 @@ export function BriefNewspaper() {
                                                         )}
                                                     </span>
                                                 )
+                                            )}
+                                            {/* The STATE mark as a news sentence (jury graft):
+                                                only when a woven outlet measured `state` —
+                                                absent fact, absent sentence. */}
+                                            {standfirst.stateLine && (
+                                                <span className="brief-standfirst-stateline" data-tip={sfChrome.stateTip}>
+                                                    {' '}{standfirst.stateLine}
+                                                </span>
                                             )}
                                         </p>
                                     )}
@@ -2258,10 +2397,42 @@ export function BriefNewspaper() {
                                                 )
                                             })}
                                         </section>
+                                        {/* The raw seal chips, verbatim — folded here with the
+                                            tiles they grade (the TODAY'S LIMITS box above the
+                                            fold states the same facts as prose). */}
+                                        {serving.degradation.length > 0 && (
+                                            <p className="brief-readiness-chips">
+                                                {serving.degradation.map(label => (
+                                                    <span key={label} className="brief-degrade-chip">{label}</span>
+                                                ))}
+                                            </p>
+                                        )}
                                     </details>
                                 </section>
                             )
                         })()}
+
+                        {/* ============ TODAY'S LIMITS (step 7) ============
+                            The seal's incompleteness as sentences — same served
+                            numbers as the chips, always visible when the seal is
+                            partial (composeTodaysLimits returns null otherwise). */}
+                        {todaysLimits && (
+                            <section className="brief-limits" aria-label={todaysLimits.title}>
+                                <span className="brief-limits-title">{todaysLimits.title}</span>
+                                <p className="brief-limits-prose">{todaysLimits.sentences.join(' ')}</p>
+                            </section>
+                        )}
+
+                        {/* ============ Return hook (step 9) ============
+                            The served next-seal moment as a promise the reader can
+                            hold. No schedule served → no sentence. */}
+                        {!countryFilter && nextSealHours != null && (
+                            <p className="brief-return-hook">
+                                {nextSealHours === 1
+                                    ? tr('brief.return.hook1')
+                                    : tr('brief.return.hook', { n: nextSealHours })}
+                            </p>
+                        )}
 
 
                         {/* ============ TU INVESTIGACIÓN (P1.5 — solo CONSTRUIR) ====
@@ -2319,6 +2490,9 @@ export function BriefNewspaper() {
                                                 {tr('anatomy.kicker.near', {
                                                     place: resolveCountryName(placeCountry, nearEdition?.country_name),
                                                 })}
+                                                {/* Micro-definition (step 8): the word "signal"
+                                                    defined where the reader first meets it. */}
+                                                <span className="brief-signal-def">{tr('brief.signal.def')}</span>
                                             </span>
                                             <div className="brief-cards">
                                                 {nearThreads.map(t => renderThreadCard(t, { country: placeCountry }))}
@@ -2419,6 +2593,9 @@ export function BriefNewspaper() {
                                 reason={regMark?.reason ?? null}
                                 nextSeal={regMark?.nextSeal ?? null}
                             >
+                                {/* Jury graft (step 9): how the stories were chosen,
+                                    stated where the stories begin. */}
+                                <p className="brief-stories-kicker">{tr('brief.stories.kicker')}</p>
                                 <div className="brief-tablist" role="tablist" aria-label={tr('brief.sections.aria')}>
                                     {SECTIONS.map((s, i) => (
                                         <button

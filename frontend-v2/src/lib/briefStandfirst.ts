@@ -51,6 +51,12 @@ export interface EditionStandfirst {
   belowBarLine: string | null
   /** true when at least one ready field produced prose. */
   hasProse: boolean
+  /**
+   * The STATE mark as a news sentence (2026-08-24 championship graft): when a
+   * woven outlet is classified `state` by sourceTiers, the fact is also STATED
+   * — "Atlas marks arabic.rt.com as STATE media." No state outlet → null.
+   */
+  stateLine: string | null
 }
 
 // ── localized connectors (chrome copy lives here so the lib stays the single
@@ -69,6 +75,7 @@ const COPY = {
     moreStories: (n: number) =>
       n === 1 ? '1 more story met today’s measured bar.' : `${n} more stories met today’s measured bar.`,
     belowBar: 'Below the full bar today: ',
+    stateLine: (names: string) => `Atlas marks ${names} as STATE media.`,
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     monthFirst: true,
   },
@@ -85,6 +92,7 @@ const COPY = {
     moreStories: (n: number) =>
       n === 1 ? '1 historia más pasó la barra medida de hoy.' : `${n} historias más pasaron la barra medida de hoy.`,
     belowBar: 'Hoy bajo la barra completa: ',
+    stateLine: (names: string) => `Atlas marca ${names} como prensa ESTATAL.`,
     months: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
     monthFirst: false,
   },
@@ -202,7 +210,7 @@ export function composeEditionStandfirst(
   lang: StandfirstLang = 'en',
 ): EditionStandfirst {
   const c = COPY[lang]
-  const empty: EditionStandfirst = { parts: [], belowBar: [], belowBarLine: null, hasProse: false }
+  const empty: EditionStandfirst = { parts: [], belowBar: [], belowBarLine: null, hasProse: false, stateLine: null }
   if (!readiness || typeof readiness !== 'object') return empty
 
   const belowBar = QUESTION_KEYS.filter(k => readiness[k]?.status === 'partial')
@@ -267,10 +275,107 @@ export function composeEditionStandfirst(
   }
 
   const merged = mergeParts(parts)
+
+  // The STATE fact as a sentence: only outlets actually WOVEN above (the same
+  // parts the reader sees), never the full HOW list — the sentence and the
+  // inline chip can never disagree.
+  const stateNames = merged
+    .filter((p): p is Extract<StandfirstPart, { kind: 'outlet' }> => p.kind === 'outlet' && p.state)
+    .map(p => p.name)
+  const stateLine = stateNames.length > 0 ? c.stateLine(joinList(stateNames, lang)) : null
+
   return {
     parts: merged,
     belowBar,
     belowBarLine,
     hasProse: merged.length > 0,
+    stateLine,
   }
+}
+
+// ── TODAY'S LIMITS (2026-08-24 championship, sequence step 7) ───────────────
+//
+// The seal banner's cryptic chips ("PARTIAL EDITION", "WHO_BELOW_FULL_BAR")
+// re-rendered as PROSE, from the SAME served numbers. Rules:
+//   - The box exists only when the seal is PARTIAL — a full seal has no
+//     limits box, a live fallback has no seal to describe.
+//   - Absent field → absent sentence, never a placeholder.
+//   - The closer ("When we cannot verify, we tell you.") is the jury's
+//     fe-de-erratas graft and rides with every rendered box.
+// All copy ASD-STE100.
+
+export interface TodaysLimitsInput {
+  /** True only when a sealed edition is served AND graded partial. */
+  partial: boolean
+  /** Readiness cells answered / total (5W+H), as the reg mark serves them. */
+  answered?: number | null
+  total?: number | null
+  /** Question keys graded `partial` — the standfirst's belowBar, verbatim. */
+  belowBar?: readonly QuestionKey[] | null
+  /** Local seal moment, e.g. "02:31" (the reg mark's own string). */
+  sealTime?: string | null
+  /** Full-text enrichment yield over the frozen receipts. */
+  fullTextOk?: number | null
+  fullTextTotal?: number | null
+}
+
+export interface TodaysLimits {
+  title: string
+  sentences: string[]
+}
+
+const LIMITS_COPY = {
+  en: {
+    title: 'TODAY’S LIMITS',
+    partial: 'This edition is partial.',
+    answered: (a: number, t: number) => `The data answered ${a} of ${t} measured questions.`,
+    belowBar: (keys: string, plural: boolean) =>
+      `${keys} ${plural ? 'are' : 'is'} below today’s bar.`,
+    sealedAt: (time: string) => `Sealed at ${time}.`,
+    fullText: (ok: number, total: number) => `Full text is ready for ${ok} of ${total} receipts.`,
+    closer: 'When we cannot verify, we tell you.',
+  },
+  es: {
+    title: 'LÍMITES DE HOY',
+    partial: 'Esta edición es parcial.',
+    answered: (a: number, t: number) => `Los datos respondieron ${a} de ${t} preguntas medidas.`,
+    belowBar: (keys: string, plural: boolean) =>
+      `${keys} ${plural ? 'están' : 'está'} bajo la barra de hoy.`,
+    sealedAt: (time: string) => `Sellada a las ${time}.`,
+    fullText: (ok: number, total: number) =>
+      `El texto completo está listo para ${ok} de ${total} recibos.`,
+    closer: 'Cuando no podemos verificar, te lo decimos.',
+  },
+} as const
+
+const isCount = (n: unknown): n is number =>
+  typeof n === 'number' && Number.isFinite(n) && n >= 0
+
+/** Compose the limits box, or `null` when the edition is not partial. */
+export function composeTodaysLimits(
+  input: TodaysLimitsInput,
+  lang: StandfirstLang = 'en',
+): TodaysLimits | null {
+  if (!input.partial) return null
+  const c = LIMITS_COPY[lang]
+  const sentences: string[] = [c.partial]
+
+  if (isCount(input.answered) && isCount(input.total) && input.total > 0) {
+    sentences.push(c.answered(input.answered, input.total))
+  }
+
+  const keys = (input.belowBar ?? []).map(k => k.toUpperCase()).filter(k => k.length > 0)
+  if (keys.length > 0) {
+    sentences.push(c.belowBar(joinList(keys, lang), keys.length > 1))
+  }
+
+  const sealTime = (input.sealTime ?? '').trim()
+  if (sealTime) sentences.push(c.sealedAt(sealTime))
+
+  if (isCount(input.fullTextOk) && isCount(input.fullTextTotal) && input.fullTextTotal > 0) {
+    sentences.push(c.fullText(input.fullTextOk, input.fullTextTotal))
+  }
+
+  sentences.push(c.closer)
+  return { title: c.title, sentences }
 }

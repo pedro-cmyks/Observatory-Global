@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   cleanSubjectValue,
   composeEditionStandfirst,
+  composeTodaysLimits,
   formatDateRange,
   standfirstChrome,
   type StandfirstReadiness,
@@ -192,5 +193,109 @@ describe('standfirstChrome', () => {
     expect(standfirstChrome('en').seeQuestions).toBe('See the six measured questions')
     expect(standfirstChrome('es').seeQuestions).toBe('Ver las seis preguntas medidas')
     expect(standfirstChrome('en').stateTip.length).toBeGreaterThan(0)
+  })
+})
+
+describe('stateLine — the STATE mark as a news sentence', () => {
+  it('states a woven STATE outlet by name', () => {
+    const sf = composeEditionStandfirst({
+      what: ready(['Drone Attacks Kill Women']),
+      how: ready(['abc15.com', 'arabic.rt.com']),
+    }, 'en')
+    expect(sf.stateLine).toBe('Atlas marks arabic.rt.com as STATE media.')
+  })
+
+  it('joins several woven STATE outlets in one sentence', () => {
+    const sf = composeEditionStandfirst({
+      what: ready(['X']),
+      how: ready(['arabic.rt.com', 'irna.ir']),
+    }, 'en')
+    expect(sf.stateLine).toBe('Atlas marks arabic.rt.com and irna.ir as STATE media.')
+  })
+
+  it('is null when no woven outlet is STATE — absent fact, absent sentence', () => {
+    const sf = composeEditionStandfirst({
+      what: ready(['X']),
+      how: ready(['abc15.com']),
+    }, 'en')
+    expect(sf.stateLine).toBeNull()
+  })
+
+  it('never names an outlet beyond the woven cap', () => {
+    // OUTLET_CAP = 2: the third outlet is "and 1 more outlet", so a state
+    // outlet in position 3 must not be named by the sentence either.
+    const sf = composeEditionStandfirst({
+      what: ready(['X']),
+      how: ready(['abc15.com', 'bbc.co.uk', 'arabic.rt.com']),
+    }, 'en')
+    expect(sf.stateLine).toBeNull()
+  })
+
+  it('speaks Spanish', () => {
+    const sf = composeEditionStandfirst({
+      what: ready(['X']),
+      how: ready(['arabic.rt.com']),
+    }, 'es')
+    expect(sf.stateLine).toBe('Atlas marca arabic.rt.com como prensa ESTATAL.')
+  })
+})
+
+describe('composeTodaysLimits — the seal chips as prose', () => {
+  it('composes the full box from every served field', () => {
+    const box = composeTodaysLimits({
+      partial: true,
+      answered: 3,
+      total: 6,
+      belowBar: ['who', 'where', 'why'],
+      sealTime: '02:31',
+      fullTextOk: 9,
+      fullTextTotal: 48,
+    }, 'en')
+    expect(box).not.toBeNull()
+    expect(box!.title).toBe('TODAY’S LIMITS')
+    expect(box!.sentences).toEqual([
+      'This edition is partial.',
+      'The data answered 3 of 6 measured questions.',
+      'WHO, WHERE and WHY are below today’s bar.',
+      'Sealed at 02:31.',
+      'Full text is ready for 9 of 48 receipts.',
+      'When we cannot verify, we tell you.',
+    ])
+  })
+
+  it('is null when the edition is not partial — no limits, no box', () => {
+    expect(composeTodaysLimits({ partial: false, answered: 6, total: 6 }, 'en')).toBeNull()
+  })
+
+  it('drops every sentence whose field is absent, keeps the closer', () => {
+    const box = composeTodaysLimits({ partial: true }, 'en')
+    expect(box!.sentences).toEqual([
+      'This edition is partial.',
+      'When we cannot verify, we tell you.',
+    ])
+  })
+
+  it('uses the singular verb for one below-bar question', () => {
+    const box = composeTodaysLimits({ partial: true, belowBar: ['who'] }, 'en')
+    expect(box!.sentences).toContain('WHO is below today’s bar.')
+  })
+
+  it('never invents a yield sentence from a zero denominator', () => {
+    const box = composeTodaysLimits({ partial: true, fullTextOk: 0, fullTextTotal: 0 }, 'en')
+    expect(box!.sentences.join(' ')).not.toContain('Full text')
+  })
+
+  it('speaks Spanish', () => {
+    const box = composeTodaysLimits({
+      partial: true, answered: 3, total: 6, belowBar: ['who', 'why'], sealTime: '02:31',
+    }, 'es')
+    expect(box!.title).toBe('LÍMITES DE HOY')
+    expect(box!.sentences).toEqual([
+      'Esta edición es parcial.',
+      'Los datos respondieron 3 de 6 preguntas medidas.',
+      'WHO y WHY están bajo la barra de hoy.',
+      'Sellada a las 02:31.',
+      'Cuando no podemos verificar, te lo decimos.',
+    ])
   })
 })
