@@ -44,12 +44,30 @@ DIM = 1536
 
 
 def repartition() -> int:
+    """INCREMENTAL desde 2026-08-25 (R1 del plan archivo-al-frente): el
+    todo-o-nada con marcador congeló Stage-B en jul-03 — con el marcador
+    presente los shards NUEVOS jamás se particionaban, y sin él se
+    re-streameaba todo DUPLICANDO días. Ahora un manifest por-shard
+    (.repartition-shards.json) procesa solo shards no vistos; el marcador
+    viejo se honra una vez sembrando el manifest con los shards existentes
+    a esa fecha (ya particionados)."""
     DAY_ROOT.mkdir(parents=True, exist_ok=True)
     done_marker = DAY_ROOT / ".repartition-done"
-    if done_marker.exists():
-        print("repartition already done (marker present)", file=sys.stderr)
+    manifest_path = DAY_ROOT / ".repartition-shards.json"
+    all_shards = sorted(EMB_ROOT.glob("shard-*.npz"))
+    if manifest_path.exists():
+        done = set(json.loads(manifest_path.read_text()))
+    elif done_marker.exists():
+        done = {p.name for p in all_shards}
+        manifest_path.write_text(json.dumps(sorted(done)))
+        print(f"repartition: marcador legacy → manifest sembrado con "
+              f"{len(done)} shards existentes", file=sys.stderr)
+    else:
+        done = set()
+    shards = [p for p in all_shards if p.name not in done]
+    if not shards:
+        print("repartition: no new shards", file=sys.stderr)
         return 0
-    shards = sorted(EMB_ROOT.glob("shard-*.npz"))
     handles: dict[str, tuple] = {}
 
     def get(day: str):
@@ -74,8 +92,10 @@ def repartition() -> int:
                   f"{len(handles)} days", file=sys.stderr)
     for fb, fm in handles.values():
         fb.close(); fm.close()
-    done_marker.write_text(f"{n}\n")
-    print(f"repartitioned {n} vectors into {len(handles)} day files")
+    done |= {p.name for p in shards}
+    manifest_path.write_text(json.dumps(sorted(done)))
+    print(f"repartitioned {n} vectors into {len(handles)} day files "
+          f"({len(shards)} new shards; manifest {len(done)} total)")
     return 0
 
 
