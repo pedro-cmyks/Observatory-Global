@@ -41,7 +41,13 @@ from scripts.measure_court_with_bodies import (  # noqa: E402
 
 CAP_DEFAULT = 120
 MODEL_MARK = "court-bodies-mono-v1"
-LEDGER_DIR = os.path.join(_BACKEND, "..", "docs", "research", "label-court",
+# El ledger vive en el REPO canónico aunque el código corra desde la copia
+# ALW (la primera noche escribió en ALW/docs por el path relativo — quirk
+# corregido 2026-08-25; ese ledger fue copiado a mano al repo).
+_REPO = os.environ.get("ATLAS_REPO_DIR", "/Users/pedro/ObservatorioGlobal")
+_DOCS_ROOT = _REPO if os.path.isdir(os.path.join(_REPO, "docs")) \
+    else os.path.join(_BACKEND, "..")
+LEDGER_DIR = os.path.join(_DOCS_ROOT, "docs", "research", "label-court",
                           "bodies-monotone-ledger")
 
 _POP_SQL = """

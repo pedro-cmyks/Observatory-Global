@@ -62,6 +62,14 @@ from typing import Any
 
 import numpy as np
 
+# Shim de invocación (2026-08-25): el runner nocturno llama
+# `-m backend.scripts.measure_condemnation_rate` desde el ROOT de ALW, donde
+# el paquete `scripts` no existe — la primera cadencia automática murió con
+# ModuleNotFoundError. El shim hace ambas invocaciones equivalentes.
+import os as _os
+import sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+
 from scripts.project_dynamic_topics import MATCH_THRESHOLD  # noqa: E402
 from scripts.simulate_used_t_removal import _unit_rows  # noqa: E402
 from scripts.measure_consolidation_landing import (  # noqa: E402
