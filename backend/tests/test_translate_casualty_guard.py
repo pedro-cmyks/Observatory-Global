@@ -267,9 +267,11 @@ def test_batch_refuses_a_poisoned_cache_hit(wire):
     assert calls == []
 
 
-def test_batch_still_reads_the_cache_in_a_single_query(wire):
-    """Guarding cache hits must not cost a query per row: the cache read joins
-    signals_v2 so the original arrives with the translation."""
+def test_batch_still_reads_the_cache_set_based(wire):
+    """Guarding cache hits must not cost a query per row: the cache read is
+    two SET-BASED selects (translations, then their headlines by PK) — never
+    one per row, and never the joined form that made prod's planner walk
+    signals_v2's index for 60s (2026-09-11)."""
     signals = {i: (f"Titular {i}", "es") for i in range(1, 21)}
     cached = {(i, "en"): (f"Headline {i}", "deepseek-chat", "es") for i in range(1, 21)}
     conn, calls = wire(signals, cached)
@@ -278,7 +280,7 @@ def test_batch_still_reads_the_cache_in_a_single_query(wire):
 
     assert r.status_code == 200
     assert calls == []
-    assert conn.fetch_calls == 1
+    assert conn.fetch_calls == 2
 
 
 # --------------------------------------------------------------------------

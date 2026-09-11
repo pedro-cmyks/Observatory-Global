@@ -168,9 +168,12 @@ def test_batch_reads_the_cache_in_one_query_not_one_per_row(wire):
 
     assert r.status_code == 200
     assert calls == []  # every row served from signal_translations
-    # ONE cache SELECT for 20 ids (a second SELECT for misses is not needed
-    # when there are none) — the old code did 20 round trips minimum.
-    assert conn.fetch_calls == 1
+    # TWO set-based SELECTs for 20 ids — the cache rows, then their headlines
+    # by PK for the casualty guard (a miss SELECT is not needed when there are
+    # none). The old code did 20 round trips minimum; the joined single query
+    # that replaced it was measured at 60.9s in prod (merge join walking
+    # signals_v2's index — see _cached_many). Set-based, never per-row.
+    assert conn.fetch_calls == 2
     assert all(t["cached"] for t in r.json()["translations"])
 
 
@@ -298,3 +301,26 @@ def test_all_cached_batch_never_reacquires_for_a_write(wire):
     client.post(URL, json={"signal_ids": [1], "to": "en"})
 
     assert conn.pool.timeline == ["acquire", "release"]
+
+
+def test_cache_read_never_joins_signals_v2(wire, monkeypatch):
+    # 2026-09-11: the joined form made the planner walk signals_v2's id index
+    # from the start (60.9s for ONE cached id in prod). Capture the SQL the
+    # handler actually sends: two PK lookups, no JOIN anywhere.
+    signals = {1: ("Titular 1", "es")}
+    cached = {(1, "en"): ("cached 1", "deepseek-chat", "es")}
+    conn, _calls = wire(signals, cached)
+    seen: list[str] = []
+    orig = conn.fetch
+
+    async def spy(query, *args):
+        seen.append(" ".join(query.split()).lower())
+        return await orig(query, *args)
+
+    monkeypatch.setattr(conn, "fetch", spy)
+    r = client.post(URL, json={"signal_ids": [1], "to": "en"})
+    assert r.status_code == 200
+    assert len(seen) == 2
+    assert all("join" not in q for q in seen)
+    assert "from signal_translations" in seen[0] and "signal_id = any($1::bigint[])" in seen[0]
+    assert "from signals_v2 where id = any($1::bigint[])" in seen[1]

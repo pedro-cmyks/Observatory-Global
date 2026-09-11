@@ -313,16 +313,30 @@ async def get_translate(
 
 
 async def _cached_many(conn, signal_ids: list[int], target_lang: str) -> dict[int, dict]:
-    # Joined to signals_v2 so the casualty guard can check cache hits without
-    # costing a second query (a 20-id all-cached batch stays at ONE round trip).
+    # TWO primary-key lookups, deliberately NOT one join. The joined form
+    # ("LEFT JOIN signals_v2 s ON s.id = t.signal_id") was measured in prod on
+    # 2026-09-11 at 60.9s for ONE cached id: signal_translations holds ~12 rows
+    # (the 7-day prune cascades into it), so the planner estimates 1 row,
+    # picks a Merge Left Join and walks signals_v2's id index from the start
+    # (515k buffers) to reach the key. Every /translate/batch call paid it —
+    # the kit's receipt translations and "Translate all" looked dead. Both
+    # lookups here are index conditions on their own PKs (0.06ms measured).
     rows = await conn.fetch(
-        "SELECT t.signal_id, t.translated, t.model, t.source_lang, s.headline "
-        "FROM signal_translations t "
-        "LEFT JOIN signals_v2 s ON s.id = t.signal_id "
-        "WHERE t.signal_id = ANY($1::bigint[]) AND t.target_lang = $2",
+        "SELECT signal_id, translated, model, source_lang "
+        "FROM signal_translations "
+        "WHERE signal_id = ANY($1::bigint[]) AND target_lang = $2",
         signal_ids, target_lang,
     )
-    return {int(r["signal_id"]): dict(r) for r in rows}
+    out = {int(r["signal_id"]): dict(r) for r in rows}
+    if out:
+        heads = await conn.fetch(
+            "SELECT id, headline FROM signals_v2 WHERE id = ANY($1::bigint[])",
+            list(out.keys()),
+        )
+        by_id = {int(h["id"]): h["headline"] for h in heads}
+        for sid, row in out.items():
+            row["headline"] = by_id.get(sid)
+    return out
 
 
 async def _signal_meta_many(conn, signal_ids: list[int]) -> dict[int, dict]:
