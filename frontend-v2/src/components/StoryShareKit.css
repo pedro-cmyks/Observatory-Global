@@ -379,7 +379,7 @@
   line-height: 1.3;
   margin: 0 0 0.9cqw;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -408,7 +408,13 @@
   -webkit-line-clamp: 1;
 }
 .story-kit-card:has(.skc-lede) .skc-receipts { gap: 0.55cqw; padding-top: 0.9cqw; }
-.story-kit-card:has(.skc-lede) .skc-headline { margin-bottom: 1cqw; }
+.story-kit-card:has(.skc-lede) .skc-headline { margin-bottom: 0.8cqw; }
+/* landscape is the tightest frame: a 3-sentence lede + 3 receipts with meta
+   only close when the masthead gives back ~1cqw (measured 331.6 vs 331px). */
+.story-kit-card:has(.skc-lede) .skc-head { margin-bottom: 0.6cqw; }
+.story-kit-card:has(.skc-lede) .skc-kicker { margin-bottom: 0.5cqw; }
+.story-kit-card:has(.skc-lede) .skc-lede { margin-bottom: 0.7cqw; }
+.story-kit-card:has(.skc-lede) .skc-finding { margin-bottom: 0.7cqw; }
 
 /* ── kit v2: curation checklist + generate row (dialog chrome, not card) ── */
 
@@ -503,7 +509,141 @@
   min-width: 200px;
 }
 
+/* ── campaign §2.2: card FORMATS ───────────────────────────────────────────
+   LinkedIn 2026 (91% mobile): 1080×1350 portrait fills the most feed height
+   (dwell), 1080×1080 is the safe square, 1200×627 is the link-preview size.
+   The card is sized in cqw (container width), so a taller frame gains room;
+   per-format scale factors keep the type proportional to the frame. */
+
+.story-kit-cardwrap[data-format="portrait"] {
+  width: min(100%, 440px, max(240px, calc((100dvh - 300px) * 0.8)));
+}
+.story-kit-cardwrap[data-format="square"] {
+  width: min(100%, 520px, max(260px, calc(100dvh - 300px)));
+}
+
+.story-kit-card[data-format="portrait"] { aspect-ratio: 1080 / 1350; padding: 6cqw; }
+.story-kit-card[data-format="square"]   { aspect-ratio: 1 / 1; padding: 5.2cqw; }
+
+/* portrait: narrower container → scale type up ~1.55× so the frame reads at
+   feed size; square ~1.3×. Line clamps loosen: the taller frames have room. */
+.story-kit-card[data-format="portrait"] .skc-mark      { font-size: 5cqw; }
+.story-kit-card[data-format="portrait"] .skc-date      { font-size: 2.1cqw; }
+.story-kit-card[data-format="portrait"] .skc-kicker    { font-size: 1.7cqw; margin-bottom: 1.4cqw; }
+.story-kit-card[data-format="portrait"] .skc-headline  { font-size: 6cqw; -webkit-line-clamp: 3; margin-bottom: 2.2cqw; }
+.story-kit-card[data-format="portrait"] .skc-headline--with-lede { font-size: 5.2cqw; -webkit-line-clamp: 3; }
+.story-kit-card[data-format="portrait"] .skc-lede      { font-size: 3cqw; -webkit-line-clamp: 7; margin-bottom: 2cqw; }
+.story-kit-card[data-format="portrait"] .skc-finding   { font-size: 2.1cqw; margin-bottom: 2cqw; }
+.story-kit-card[data-format="portrait"] .skc-finding-lab { font-size: 1.8cqw; }
+.story-kit-card[data-format="portrait"] .skc-receipts  { gap: 1.8cqw; padding-top: 2.2cqw; }
+.story-kit-card[data-format="portrait"] .skc-lab       { font-size: 1.8cqw; }
+.story-kit-card[data-format="portrait"] .skc-receipt-head { font-size: 3.05cqw; -webkit-line-clamp: 2; }
+.story-kit-card[data-format="portrait"]:has(.skc-lede) .skc-receipt-head { -webkit-line-clamp: 2; }
+.story-kit-card[data-format="portrait"] .skc-receipt-meta { font-size: 2.1cqw; }
+.story-kit-card[data-format="portrait"] .skc-receipt-meta .l2-tier-chip { font-size: 1.6cqw; padding: 0.15cqw 1.1cqw; }
+.story-kit-card[data-format="portrait"] .skc-vitals    { font-size: 2.4cqw; padding-top: 2cqw; gap: 0.9cqw 2.6cqw; }
+.story-kit-card[data-format="portrait"] .skc-foot      { font-size: 2.4cqw; margin-top: 1.6cqw; }
+.story-kit-card[data-format="portrait"]::before        { height: 1.4cqw; }
+
+.story-kit-card[data-format="square"] .skc-mark      { font-size: 4.2cqw; }
+.story-kit-card[data-format="square"] .skc-date      { font-size: 1.75cqw; }
+.story-kit-card[data-format="square"] .skc-kicker    { font-size: 1.45cqw; margin-bottom: 1.2cqw; }
+.story-kit-card[data-format="square"] .skc-headline  { font-size: 4.9cqw; -webkit-line-clamp: 3; margin-bottom: 2cqw; }
+.story-kit-card[data-format="square"] .skc-headline--with-lede { font-size: 4.2cqw; -webkit-line-clamp: 2; }
+.story-kit-card[data-format="square"] .skc-lede      { font-size: 2.4cqw; -webkit-line-clamp: 6; margin-bottom: 1.5cqw; }
+.story-kit-card[data-format="square"] .skc-finding   { font-size: 1.7cqw; margin-bottom: 1.5cqw; }
+.story-kit-card[data-format="square"] .skc-finding-lab { font-size: 1.35cqw; }
+.story-kit-card[data-format="square"] .skc-receipts  { gap: 1.4cqw; padding-top: 1.7cqw; }
+.story-kit-card[data-format="square"] .skc-lab       { font-size: 1.35cqw; }
+.story-kit-card[data-format="square"] .skc-receipt-head { font-size: 2.5cqw; -webkit-line-clamp: 2; }
+.story-kit-card[data-format="square"]:has(.skc-lede) .skc-receipt-head { -webkit-line-clamp: 2; }
+.story-kit-card[data-format="square"] .skc-receipt-meta { font-size: 1.75cqw; }
+.story-kit-card[data-format="square"] .skc-receipt-meta .l2-tier-chip { font-size: 1.35cqw; padding: 0.12cqw 0.9cqw; }
+.story-kit-card[data-format="square"] .skc-vitals    { font-size: 2cqw; padding-top: 1.6cqw; gap: 0.8cqw 2.2cqw; }
+.story-kit-card[data-format="square"] .skc-foot      { font-size: 2cqw; margin-top: 1.3cqw; }
+.story-kit-card[data-format="square"]::before        { height: 1.2cqw; }
+
+.story-kit-format {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 auto 10px;
+}
+
+.story-kit-format-btn {
+  appearance: none;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--color-ink-rgb), 0.18);
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+
+.story-kit-format-btn:hover { color: var(--color-text-primary); }
+
+.story-kit-format-btn.is-on {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  background: rgba(var(--color-ink-rgb), 0.05);
+}
+
+/* ── campaign §2.2: the author's closing question ─────────────────────────── */
+
+.story-kit-question {
+  display: block;
+  margin-top: 12px;
+}
+
+.story-kit-question-lab {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 6px;
+}
+
+.story-kit-question-text {
+  display: block;
+  width: 100%;
+  font-family: var(--font-sans, sans-serif);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border: 1px solid rgba(var(--color-ink-rgb), 0.14);
+  border-radius: 4px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
 @media (max-width: 540px) {
   .story-kit-shell { padding: 12px; }
   .story-kit-card { border-radius: 4px; }
 }
+
+.story-kit-copy--secondary {
+  background: transparent;
+  color: var(--color-accent-primary);
+}
+.story-kit-copy--secondary:disabled { opacity: 0.55; cursor: default; }
+
+/* Portrait/square WITHOUT a lede: the frame was budgeted for one, so the
+   headline and receipts grow into the room instead of leaving a hole. */
+.story-kit-card[data-format="portrait"]:not(:has(.skc-lede)) .skc-headline { font-size: 7.4cqw; -webkit-line-clamp: 4; margin-bottom: 3cqw; }
+.story-kit-card[data-format="portrait"]:not(:has(.skc-lede)) .skc-finding { font-size: 2.4cqw; margin-bottom: 3cqw; }
+.story-kit-card[data-format="portrait"]:not(:has(.skc-lede)) .skc-receipts { gap: 2.6cqw; padding-top: 2.8cqw; }
+.story-kit-card[data-format="portrait"]:not(:has(.skc-lede)) .skc-receipt-head { font-size: 3.5cqw; -webkit-line-clamp: 3; }
+.story-kit-card[data-format="portrait"]:not(:has(.skc-lede)) .skc-receipt-meta { font-size: 2.3cqw; }
+.story-kit-card[data-format="square"]:not(:has(.skc-lede)) .skc-headline { font-size: 5.8cqw; -webkit-line-clamp: 3; margin-bottom: 2.4cqw; }
+.story-kit-card[data-format="square"]:not(:has(.skc-lede)) .skc-finding { font-size: 1.95cqw; margin-bottom: 2.2cqw; }
+.story-kit-card[data-format="square"]:not(:has(.skc-lede)) .skc-receipts { gap: 1.9cqw; padding-top: 2.1cqw; }
+.story-kit-card[data-format="square"]:not(:has(.skc-lede)) .skc-receipt-head { font-size: 2.8cqw; -webkit-line-clamp: 2; }

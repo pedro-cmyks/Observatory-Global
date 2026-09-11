@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { buildStoryShareCaption, buildStoryFirstComment, computeShareFinding } from './storyShare'
+import {
+  buildStoryShareCaption, buildStoryFirstComment, computeShareFinding,
+  buildCampaignDeepLink, campaignTagForDate,
+} from './storyShare'
 
 const DEEP_LINK = 'https://atlas.example/app?theme=dynamic-topic-42'
 
@@ -83,16 +86,18 @@ describe('buildStoryShareCaption', () => {
       receipts: [{ headline: 'Terremoto de 7.4 sacude Colombia', outlet: 'El Tiempo', lang: 'es' }],
       deepLink: DEEP_LINK,
     })
-    // label opens alone; the v1 tagline would be false over an editorial lede
-    expect(caption.startsWith('Colombia Earthquake\n\n')).toBe(true)
-    expect(caption).not.toContain('measurement, not opinion')
-    expect(caption).toContain('A 7.4 quake killed 25 in Colombia.')
+    // HOOK-FIRST: the lede opens the post (the ~140 mobile chars before "see
+    // more" carry the measured claim, not the label); the label closes it.
+    expect(caption.startsWith('A 7.4 quake killed 25 in Colombia.')).toBe(true)
     expect(caption).toContain('Receipts — the lede above is synthesized only from these, quote-checked:')
+    expect(caption).toContain('Story on Atlas: Colombia Earthquake — measurement, not opinion.')
+    expect(caption.indexOf('Receipts')).toBeLessThan(caption.indexOf('Story on Atlas'))
     // the LinkedIn split holds with a lede too — still no link in the body
     expect(caption).not.toContain(DEEP_LINK)
-    // absent/blank lede → v1 template untouched
+    // absent/blank lede → the tagline template opens as before
     const noLede = buildStoryShareCaption({ label: 'Story', lede: '  ', deepLink: DEEP_LINK })
-    expect(noLede).toContain('Story — measurement, not opinion.')
+    expect(noLede.startsWith('Story — measurement, not opinion.')).toBe(true)
+    expect(noLede).not.toContain('Story on Atlas')
   })
 
   it('v2: the measured finding prints with its Measured: prefix, absent when null', () => {
@@ -101,8 +106,19 @@ describe('buildStoryShareCaption', () => {
       finding: 'The sampled receipts span 5 languages.',
       deepLink: DEEP_LINK,
     })
-    expect(caption).toContain('Measured: The sampled receipts span 5 languages.')
+    // No lede: the finding is the hook and the label closes.
+    expect(caption.startsWith('Measured: The sampled receipts span 5 languages.')).toBe(true)
+    expect(caption).toContain('Story on Atlas: Story — measurement, not opinion.')
     expect(buildStoryShareCaption({ label: 'Story', deepLink: DEEP_LINK })).not.toContain('Measured:')
+  })
+
+  it('v2: the author\'s question closes the caption; blank adds nothing', () => {
+    const withQ = buildStoryShareCaption({
+      label: 'Story', finding: 'F.', question: '  Which outlet would you weigh most here?  ', deepLink: DEEP_LINK,
+    })
+    expect(withQ.endsWith('Which outlet would you weigh most here?')).toBe(true)
+    const blank = buildStoryShareCaption({ label: 'Story', question: '   ', deepLink: DEEP_LINK })
+    expect(blank.endsWith('measurement, not opinion.')).toBe(true)
   })
 
   it('v2: a translated receipt shows the translation and says what it came from', () => {
@@ -158,6 +174,30 @@ describe('buildStoryFirstComment', () => {
     const comment = buildStoryFirstComment(DEEP_LINK)
     expect(comment).toBe(`Read the full measured story on Atlas (free): ${DEEP_LINK}`)
     expect(comment).toContain(DEEP_LINK)
+  })
+})
+
+describe('campaign link', () => {
+  it('campaignTagForDate is the ISO week (Monday start, first-Thursday rule)', () => {
+    expect(campaignTagForDate(new Date(Date.UTC(2026, 8, 11)))).toBe('sow-2026-w37')   // Fri Sep 11 2026
+    expect(campaignTagForDate(new Date(Date.UTC(2026, 0, 1)))).toBe('sow-2026-w01')    // Thu Jan 1 2026
+    expect(campaignTagForDate(new Date(Date.UTC(2027, 0, 1)))).toBe('sow-2026-w53')    // Fri Jan 1 2027 → ISO week 53 of 2026
+    expect(campaignTagForDate(new Date(Date.UTC(2026, 11, 28)))).toBe('sow-2026-w53')  // Mon Dec 28 2026
+  })
+
+  it('buildCampaignDeepLink tags the arrival — theme, entry, UTMs — and nothing else', () => {
+    const url = buildCampaignDeepLink({ origin: 'https://atlas.example', theme: 'dynamic-topic-42', campaign: 'sow-2026-w37' })
+    const u = new URL(url)
+    expect(u.pathname).toBe('/app')
+    expect(u.searchParams.get('theme')).toBe('dynamic-topic-42')
+    expect(u.searchParams.get('entry')).toBe('linkedin')
+    expect(u.searchParams.get('utm_source')).toBe('linkedin')
+    expect(u.searchParams.get('utm_medium')).toBe('organic')
+    expect(u.searchParams.get('utm_campaign')).toBe('sow-2026-w37')
+    expect(u.searchParams.get('utm_content')).toBe('dynamic-topic-42')
+    expect([...u.searchParams.keys()].length).toBe(6)
+    // the caption still never carries it; the first comment does
+    expect(buildStoryFirstComment(url)).toContain('utm_campaign=sow-2026-w37')
   })
 })
 

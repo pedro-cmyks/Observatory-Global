@@ -17,7 +17,7 @@ import PinReceiptButton from './PinReceiptButton'
 import CopyCitationButton, { CopySourceListButton } from './CopyCitationButton'
 import { ShareThreadButton } from './ShareCard'
 import { withTimeout } from '../lib/shareCard'
-import { buildStoryShareCaption, buildStoryFirstComment, computeShareFinding } from '../lib/storyShare'
+import { buildStoryShareCaption, buildStoryFirstComment, buildCampaignDeepLink, campaignTagForDate, computeShareFinding } from '../lib/storyShare'
 import { resolveTierChip } from '../lib/sourceProvenance'
 import { translateSignal } from '../lib/translateQueue'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -25,6 +25,7 @@ import { useScrollLock } from '../hooks/useScrollLock'
 import { ExportMenu } from './ExportMenu'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Pin, PinOff, X } from '../lib/icons'
+import * as htmlToImage from 'html-to-image'
 import { getSourceFamilyMeta, type SourceFamily } from '../lib/sourceFamily'
 import { TierChip } from './TierChip'
 import { RelationshipChip } from './RelationshipChip'
@@ -411,6 +412,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         | { status: 'ok'; lede: string }
         | { status: 'error'; message: string }
     >({ status: 'idle' })
+    // Campaign §2.2: the author's own closing question (human CTA — never
+    // generated) + the card's aspect (LinkedIn 2026 rewards portrait/square;
+    // 1200×627 is the link-preview size, kept as an option).
+    const [kitQuestion, setKitQuestion] = useState('')
+    const [kitFormat, setKitFormat] = useState<'portrait' | 'square' | 'landscape'>('portrait')
+    const kitCardRef = useRef<HTMLDivElement>(null)
+    const [kitPngState, setKitPngState] = useState<'idle' | 'busy' | 'error'>('idle')
     const { pinItem, unpinItem, isPinned } = useWorkspace()
     // #232 UX slice: when this thread is country-scoped, surface how many
     // conflict events sit in that country this window. GEOGRAPHY-JOIN ONLY —
@@ -782,7 +790,13 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // ---- LinkedIn story kit ----
     // The caption and card share exactly the vitals the header prints — same
     // bases, resolved once here, never re-derived. Absent field = absent line.
-    const kitDeepLink = `${window.location.origin}/app?theme=${encodeURIComponent(theme)}`
+    // Tagged for attribution (lib/acquisition.ts reads it on arrival): the
+    // ISO-week campaign tag makes every post's sessions separable in telemetry.
+    const kitDeepLink = buildCampaignDeepLink({
+        origin: window.location.origin,
+        theme,
+        campaign: campaignTagForDate(new Date()),
+    })
     // The signal count follows the header's basis: lifetime-cumulative payloads
     // print the latest pass's own number with its real clustering window;
     // plain payloads print `total` over the requested window; an unmeasured
@@ -875,6 +889,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             sourcesBasis: data.sourceCountBasis ?? null,
             receipts: kitReceipts,
             deepLink: kitDeepLink,
+            question: kitQuestion,
         })
         : ''
     // The link lives ONLY here — LinkedIn shows posts with a body link to
@@ -931,6 +946,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         // a stale lede from a previous open never survives a re-open.
         setKitSelected([0, 1, 2].filter(i => i < kitPool.length))
         setKitLede({ status: 'idle' })
+        setKitQuestion('')
         setKitOpen(true)
         const dlg = kitDialogRef.current
         if (!dlg) return
@@ -992,6 +1008,46 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         )
         if (ok) setKitCommentCopied('First comment copied ✓')
         else showKitCommentFallback()
+    }
+
+    // Exact-pixel export of the card at LinkedIn's native size for the chosen
+    // format (the container is sized in cqw, so pixelRatio = target / rendered
+    // width yields 1080×1350 / 1080×1080 / 1200×627 exactly). Replaces the
+    // hand screenshot — no chrome, no scaling blur.
+    const KIT_FORMAT_PX: Record<typeof kitFormat, { w: number; h: number }> = {
+        portrait: { w: 1080, h: 1350 },
+        square: { w: 1080, h: 1080 },
+        landscape: { w: 1200, h: 627 },
+    }
+    const downloadKitCard = async () => {
+        const el = kitCardRef.current
+        if (!el || kitPngState === 'busy') return
+        setKitPngState('busy')
+        try {
+            const rendered = el.getBoundingClientRect().width || 1
+            const target = KIT_FORMAT_PX[kitFormat]
+            const bg = getComputedStyle(el).backgroundColor || '#ffffff'
+            // canvas = canvasWidth × pixelRatio, so with pixelRatio 1 the
+            // canvas is EXACTLY the target and the DOM render is scaled into
+            // it; the SVG snapshot itself is vector, so no raster blur.
+            const dataUrl = await htmlToImage.toPng(el, {
+                pixelRatio: 1,
+                canvasWidth: target.w,
+                canvasHeight: target.h,
+                width: rendered,
+                height: rendered * (target.h / target.w),
+                backgroundColor: bg,
+                style: { borderRadius: '0', boxShadow: 'none' },
+            })
+            const a = document.createElement('a')
+            const slug = displayLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
+            a.download = `atlas-${slug || 'story'}-${kitFormat}-${target.w}x${target.h}.png`
+            a.href = dataUrl
+            a.click()
+            setKitPngState('idle')
+        } catch {
+            setKitPngState('error')
+        }
     }
 
     const handlePin = () => {
@@ -2191,9 +2247,29 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                 </button>
                             </div>
 
-                            <div className="story-kit-cardwrap">
+                            <div className="story-kit-format" role="radiogroup" aria-label="Card format">
+                                {([
+                                    ['portrait', '1080×1350 · portrait'],
+                                    ['square', '1080×1080 · square'],
+                                    ['landscape', '1200×627 · link preview'],
+                                ] as const).map(([f, label]) => (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={kitFormat === f}
+                                        className={`story-kit-format-btn${kitFormat === f ? ' is-on' : ''}`}
+                                        onClick={() => setKitFormat(f)}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="story-kit-cardwrap" data-format={kitFormat}>
                                 <div
+                                    ref={kitCardRef}
                                     className="story-kit-card"
+                                    data-format={kitFormat}
                                     role="img"
                                     aria-label={`Shareable preview card: ATLAS story — ${displayLabel}. Atlas — the news of the world, measured.`}
                                 >
@@ -2310,17 +2386,41 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                         : 'Optional: a 2-3 sentence English lede synthesized ONLY from the picked receipts (quote-gated — nothing invented).'}
                                         </span>
                                     </div>
+                                    <label className="story-kit-question">
+                                        <span className="story-kit-question-lab">
+                                            Your closing question (optional) — in your words. It ends the caption.
+                                        </span>
+                                        <textarea
+                                            className="story-kit-question-text"
+                                            rows={2}
+                                            maxLength={240}
+                                            value={kitQuestion}
+                                            placeholder="e.g. Which of these three outlets would you weigh most on this story — and why?"
+                                            onChange={e => setKitQuestion(e.target.value)}
+                                        />
+                                    </label>
                                 </div>
                             )}
                             <p className="story-kit-hint">
-                                <b>Screenshot the card.</b> Copy the caption. Publish the post. Do not put the link
-                                in the post. Then copy the first comment. Post it as your first comment.
+                                <b>Download the card.</b> Copy the caption. Publish the post with the card as the
+                                image. Do not put the link in the post. Then copy the first comment. Post it as
+                                your first comment.
                             </p>
                             <div className="story-kit-actions">
+                                <button
+                                    className="story-kit-copy story-kit-copy--secondary"
+                                    type="button"
+                                    onClick={downloadKitCard}
+                                    disabled={kitPngState === 'busy'}
+                                >
+                                    ↓ {kitPngState === 'busy' ? 'Rendering…' : `Download card PNG · ${KIT_FORMAT_PX[kitFormat].w}×${KIT_FORMAT_PX[kitFormat].h}`}
+                                </button>
                                 <button className="story-kit-copy" type="button" onClick={copyKitCaption}>
                                     ⧉ Copy caption
                                 </button>
-                                <span className="story-kit-copied" role="status" aria-live="polite">{kitCopied}</span>
+                                <span className="story-kit-copied" role="status" aria-live="polite">
+                                    {kitPngState === 'error' ? 'PNG export failed — screenshot the card instead.' : kitCopied}
+                                </span>
                             </div>
                             {kitFallbackOpen && (
                                 <p className="story-kit-fallback-lab">Clipboard blocked — select and copy the caption below</p>

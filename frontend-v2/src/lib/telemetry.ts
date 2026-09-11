@@ -5,6 +5,8 @@
 // measure whether a session reaches a VALUE MOMENT (thread opened, evidence
 // seen, dossier generated) and how long it takes.
 
+import { acquisitionProps, currentAcquisition } from './acquisition'
+
 const SID_KEY = 'atlas.sid.v1'
 
 function sessionId(): string {
@@ -28,11 +30,18 @@ export function setTelemetryUser(id: string | null): void { telemetryUserId = id
 
 export function track(event: string, props?: Record<string, unknown>): void {
   try {
+    // Campaign attribution (spec §2.2): every event carries where this client
+    // first came from and what brought it today — UTM tags we authored plus
+    // the referrer host. Empty touches add no keys.
+    const acq = acquisitionProps(currentAcquisition())
+    const merged: Record<string, unknown> | undefined =
+      Object.keys(acq).length > 0 || telemetryUserId
+        ? { ...acq, ...props, ...(telemetryUserId ? { user_id: telemetryUserId } : {}) }
+        : props
     fetch('/api/v2/telemetry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events: [{ event, session_id: sessionId(),
-        props: telemetryUserId ? { ...props, user_id: telemetryUserId } : props }] }),
+      body: JSON.stringify({ events: [{ event, session_id: sessionId(), props: merged }] }),
       keepalive: true,
     }).catch(() => { /* best-effort */ })
   } catch {

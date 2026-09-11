@@ -74,6 +74,10 @@ export interface StoryShareInput {
   /** Pre-built absolute link (window.location.origin + /app?theme=<id>).
    *  NOT printed in the caption — feed it to buildStoryFirstComment. */
   deepLink: string
+  /** The author's own closing question to readers (campaign §2.2: a human
+   *  CTA beats a templated one — LinkedIn 2026 downranks generic copy). Typed
+   *  in the kit, never generated. Blank = no closing line. */
+  question?: string | null
 }
 
 const MAX_RECEIPTS = 3
@@ -108,24 +112,28 @@ function receiptLine(r: StoryShareReceipt): string {
   return line
 }
 
-/** The LinkedIn caption for one story: label, (quote-gated lede), measured
- *  finding, measured vitals, curated receipts. No link — the link goes in the
- *  first comment (buildStoryFirstComment). */
+/** The LinkedIn caption for one story, HOOK-FIRST for the feed (campaign
+ *  §2.2: ~140 mobile chars show before "see more", so the first line must
+ *  carry the measured claim, not the label):
+ *    lede (quote-gated) or the label tagline → Measured: <finding> → vitals →
+ *    curated receipts → "Story on Atlas: <label>" → the author's question.
+ *  No link — the link goes in the first comment (buildStoryFirstComment). */
 export function buildStoryShareCaption(input: StoryShareInput): string {
   const lede = (input.lede ?? '').trim()
+  const finding = (input.finding ?? '').trim()
   const blocks: string[] = []
   if (lede) {
-    // The lede IS editorial treatment — the v1 tagline would be false over it.
+    // The lede IS editorial treatment — the tagline would be false over it.
     // Its license: every sentence was quote-gated server-side against the
     // receipts printed below, so the receipts header names that relation.
-    blocks.push(input.label)
     blocks.push(lede)
+    if (finding) blocks.push(`Measured: ${finding}`)
+  } else if (finding) {
+    // No lede: the measured finding is the strongest honest hook we have.
+    blocks.push(`Measured: ${finding}`)
   } else {
     blocks.push(`${input.label} — measurement, not opinion.`)
   }
-
-  const finding = (input.finding ?? '').trim()
-  if (finding) blocks.push(`Measured: ${finding}`)
 
   const stats = statsLine(input)
   if (stats) blocks.push(stats)
@@ -138,12 +146,62 @@ export function buildStoryShareCaption(input: StoryShareInput): string {
     blocks.push([header, ...receipts.map(receiptLine)].join('\n'))
   }
 
+  // The label closes when it did not open — the story stays nameable.
+  if (lede || finding) blocks.push(`Story on Atlas: ${input.label} — measurement, not opinion.`)
+
+  const question = (input.question ?? '').trim()
+  if (question) blocks.push(question)
+
   return blocks.join('\n\n')
 }
 
 /** The post's first comment — the only place the deep link appears (STE). */
 export function buildStoryFirstComment(deepLink: string): string {
   return `Read the full measured story on Atlas (free): ${deepLink}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaign link — the deep link the first comment carries, tagged so the
+// arriving session is attributable (lib/acquisition.ts reads these). LinkedIn's
+// lnkd.in wrapper and the iOS in-app browser often strip the referrer, so the
+// URL itself must say where it came from.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** ISO-week campaign tag, e.g. "sow-2026-w37" (story of the week). Pure — the
+ *  date is injected so the tag is testable and a post scheduled ahead can be
+ *  tagged for its publication week. */
+export function campaignTagForDate(d: Date): string {
+  // ISO 8601 week number (weeks start Monday; week 1 holds the year's first Thursday).
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  const day = t.getUTCDay() || 7
+  t.setUTCDate(t.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
+  const week = Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+  return `sow-${t.getUTCFullYear()}-w${String(week).padStart(2, '0')}`
+}
+
+export interface CampaignLinkInput {
+  origin: string
+  /** The story's theme id (dynamic-topic-N). */
+  theme: string
+  /** utm_campaign — campaignTagForDate(now) by default. */
+  campaign: string
+  /** utm_source / utm_medium — organic LinkedIn unless told otherwise. */
+  source?: string
+  medium?: string
+}
+
+/** `/app?theme=…&entry=linkedin&utm_source=…` — every arrival from the post
+ *  is measurable by construction; nothing else about the link changes. */
+export function buildCampaignDeepLink(input: CampaignLinkInput): string {
+  const p = new URLSearchParams()
+  p.set('theme', input.theme)
+  p.set('entry', input.source ?? 'linkedin')
+  p.set('utm_source', input.source ?? 'linkedin')
+  p.set('utm_medium', input.medium ?? 'organic')
+  p.set('utm_campaign', input.campaign)
+  p.set('utm_content', input.theme)
+  return `${input.origin}/app?${p.toString()}`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

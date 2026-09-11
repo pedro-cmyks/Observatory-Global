@@ -102,6 +102,53 @@ Tests: `backend/tests/test_story_editorial.py` (18 — gate/guards/contract/
 handler) + `storyShare.test.ts` (13 — caption v2 + hallazgos + primer
 comentario).
 
+### 2.2 · Kit v2.1 + campaña medida (2026-09-11) — el ritual se vuelve calendario
+
+**Diagnóstico del 09-11**: tres semanas sin publicar; el v2 nunca llegó a
+prod; **telemetría prod = 0 eventos del 08-26 al 09-10** (endpoint vivo,
+202) — dieciséis días sin una visita medida. El circuito público de §1 no
+existe hasta que se publique.
+
+**Investigación LinkedIn 2025-2026** (fuentes en el calendario §7) y lo
+que cambió en el kit por ella:
+
+1. **Formato**: 1200×627 es el tamaño de link-preview; el feed móvil (91%)
+   premia **1080×1350 portrait** (más dwell) y 1080×1080. El kit ofrece
+   los tres (toggle), portrait por default, con tipografía escalada por
+   formato y **Download card PNG** a píxeles exactos (html-to-image,
+   `canvasWidth/Height`) — muere el screenshot manual.
+2. **Hook-first**: ~140 chars visibles antes del "see more" en móvil. El
+   caption abre con el LEDE (o el hallazgo medido si no hay lede), no con
+   el label; el label cierra ("Story on Atlas: …"). Tests congelan el orden.
+3. **CTA humano**: LinkedIn 2026 baja la distribución al copy genérico/IA.
+   Campo "Your closing question" en el kit — la escribe Pedro, nunca se
+   genera; blanco = nada.
+4. **Atribución**: lnkd.in + el navegador in-app de iOS borran el
+   referrer → el link del primer comentario lleva UTM
+   (`buildCampaignDeepLink`: `entry=linkedin&utm_source=linkedin&
+   utm_medium=organic&utm_campaign=sow-YYYY-wNN&utm_content=<historia>`,
+   tag ISO-week puro `campaignTagForDate`). El app captura **first touch**
+   por cliente (`lib/acquisition.ts`, localStorage `atlas.acq.v1`, misma
+   vida que el session id) y TODO evento de telemetría lleva `acq` +
+   `acq_first`. Verificado E2E contra la DB de prod (app_open → thread_open
+   → first_value_moment con `campaign=sow-2026-w37`).
+5. **Lectura semanal**: `backend/scripts/campaign_acquisition_report.py`
+   (read-only): por tag, sesiones arrived → story → value → signed_up, con
+   la baseline sin-tag al lado (nunca se asume LinkedIn sin UTM) y la
+   curva por día.
+6. **Link en primer comentario: DISPUTADO en 2026** (una fuente: sigue
+   funcionando; otra: −80% + castigo al "bridge post"). Sin datos
+   controlados → A/B nuestro en los 6 primeros posts (comentario vs solo
+   *Featured*), se decide con la bitácora.
+
+**Calendario, arco de 8 posts, bitácora y anti-patrones**:
+`docs/campaign/2026-09-linkedin-calendar.md`. Resumen: **martes historia
+(kit) + jueves pieza ligera; quincenal NO** (bajo el piso de todos los
+datasets); 08:30-09:30 COT; perfil de Pedro publica, la página repostea
++24 h; poll como encuesta ligera en el post 6; primer pedido de registro en
+el post 7. Primer post: **Ceuta Migrant Crisis** (dt-18062), martes
+2026-09-15, `sow-2026-w38`.
+
 ## 3 · Pieza B — la puerta: registro con correo+clave (CONSTRUIDA — `d214e2ba`; E2E real: el correo llegó y el link verificó)
 
 Verificado contra el Supabase vivo (2026-08-24): `POST /auth/v1/signup`
@@ -205,7 +252,7 @@ procesado".
 | Catchup backlog 502K (archivo+poda) | agarró lock 07:53, archivando (69K filas del d17 ya en Ext) | auditoría §3 |
 | Ingesta GDELT al 30% | causa = INSERTs lentos por base gorda; re-medir 24-48h post-poda | `docs/state/2026-08-24-health-audit.md` |
 | M1 familia ① calibrada (3 sondas) | HECHO — sigue: fix en sombra vs 6 barras | `b649d30c` · prereg addendum |
-| Kit LinkedIn (pieza A) | construido; bugs §4 arreglados — verificar ritual en prod post-deploy | `44805443` + `dd706612` |
+| Kit LinkedIn (pieza A) | **v2.1 mergeado a v3 el 09-11** (editorial quote-gated + curación + formatos + UTM); primer post mar 09-15 (Ceuta) — calendario `docs/campaign/2026-09-linkedin-calendar.md` | `44805443` · `dd706612` · `f235850c` · v2.1 |
 | Registro+clave+CTA (pieza B) | HECHO — pendiente dashboard Supabase (Pedro, §3) | `d214e2ba` |
 | Bugs consola/diálogo/dock (pieza C) | HECHO — chunk auto-reload + kit portal + dock wrap | `dd706612` |
 | Brief tejido + noticia-primero (pieza D) | HECHO — eyeball de Pedro en prod pendiente | `ba1b2592` |
