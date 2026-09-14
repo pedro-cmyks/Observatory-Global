@@ -1,0 +1,53 @@
+{
+ "tag": "A-kitpool",
+ "theme": "20497",
+ "label": "Trump Halts Iran Strikes",
+ "picked": [
+  {
+   "i": 0,
+   "ts": "2026-09-13T15:17",
+   "lang": "en",
+   "outlet": "middleeasteye.net",
+   "headline": "Trump reiterates that he sees Iran war ending after US midterm elections",
+   "translated": "Trump reiterates that he sees Iran war ending after US midterm elections"
+  },
+  {
+   "i": 7,
+   "ts": "2026-09-12T17:45",
+   "lang": "ar",
+   "outlet": "arabic.rt.com",
+   "headline": "مصدر إيراني يكشف تفاصيل التفاهم مع عُمان.. 7 شروط مقابل فتح مضيق هرمز",
+   "translated": "Iranian source reveals details of the understanding with Oman.. 7 conditions in exchange for opening the Strait of Hormuz"
+  },
+  {
+   "i": 4,
+   "ts": "2026-09-12T20:45",
+   "lang": "en",
+   "outlet": "aljazeera.com",
+   "headline": "Bahrain says it will not participate in Iran's proposed Hormuz meeting | US-Israel war on Iran News",
+   "translated": "Bahrain says it will not participate in Iran's proposed Hormuz meeting | US-Israel war on Iran News"
+  }
+ ],
+ "editorial": {
+  "lede": "Trump reiterated that he sees the Iran war ending after US midterm elections, according to Middle East Eye. An Iranian source disclosed details of an understanding with Oman involving 7 conditions in exchange for opening the Strait of Hormuz, according to RT.",
+  "sentences": [
+   {
+    "text": "Trump reiterated that he sees the Iran war ending after US midterm elections, according to Middle East Eye.",
+    "quote": "Trump reiterates that he sees Iran war ending after US midterm elections",
+    "receipt": 1
+   },
+   {
+    "text": "An Iranian source disclosed details of an understanding with Oman involving 7 conditions in exchange for opening the Strait of Hormuz, according to RT.",
+    "quote": "مصدر إيراني يكشف تفاصيل التفاهم مع عُمان.. 7 شروط مقابل فتح مضيق هرمز",
+    "receipt": 2
+   }
+  ],
+  "dropped": 0,
+  "provider": "deepseek",
+  "error": null,
+  "cached": false
+ },
+ "finding": "The sampled receipts span 8 languages; 30 of 200 sampled receipts are from state-media outlets.",
+ "caption": "Trump reiterated that he sees the Iran war ending after US midterm elections, according to Middle East Eye. An Iranian source disclosed details of an understanding with Oman involving 7 conditions in exchange for opening the Strait of Hormuz, according to RT.\n\nMeasured: The sampled receipts span 8 languages; 30 of 200 sampled receipts are from state-media outlets.\n\nMeasured coverage: 33 signals (latest clustering pass 09-14, 7d window) · 10 countries · 109 sources (distinct outlets in the sampled receipts).\n\nReceipts — the lede above is synthesized only from these, quote-checked:\n• “Trump reiterates that he sees Iran war ending after US midterm elections” — middleeasteye.net (en)\n• “Iranian source reveals details of the understanding with Oman.. 7 conditions in exchange for opening the Strait of Hormuz” — arabic.rt.com (translated from ar) — STATE MEDIA\n• “Bahrain says it will not participate in Iran's proposed Hormuz meeting | US-Israel war on Iran News” — aljazeera.com (en)\n\nStory on Atlas: Trump Halts Iran Strikes — measurement, not opinion.",
+ "caption_chars": 1060
+}

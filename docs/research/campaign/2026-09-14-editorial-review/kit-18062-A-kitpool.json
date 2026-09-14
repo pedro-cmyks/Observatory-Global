@@ -1,0 +1,53 @@
+{
+ "tag": "A-kitpool",
+ "theme": "18062",
+ "label": "Ceuta Migrant Crisis",
+ "picked": [
+  {
+   "i": 19,
+   "ts": "2026-09-12T20:15",
+   "lang": "en",
+   "outlet": "moroccoworldnews.com",
+   "headline": "Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry",
+   "translated": "Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry"
+  },
+  {
+   "i": 28,
+   "ts": "2026-09-12T10:26",
+   "lang": "en",
+   "outlet": "myjoyonline.com",
+   "headline": "Morocco rejects Spain blame game, warns against using kingdom as political pawn",
+   "translated": "Morocco rejects Spain blame game, warns against using kingdom as political pawn"
+  },
+  {
+   "i": 16,
+   "ts": "2026-09-13T06:30",
+   "lang": "xx",
+   "outlet": "20minutos.es",
+   "headline": "Marruecos vota el 23-S: estos son los principales candidatos y su posición sobre Ceuta y su reclamación territorial",
+   "translated": "Morocco votes on 23-S: these are the main candidates and their position on Ceuta and its territorial claim"
+  }
+ ],
+ "editorial": {
+  "lede": "Spain failed to secure EU sanctions against Morocco over the Ceuta border entry, according to Morocco World News. Morocco rejected Spain's blame game and warned against using the kingdom as a political pawn, according to Myjoyonline.",
+  "sentences": [
+   {
+    "text": "Spain failed to secure EU sanctions against Morocco over the Ceuta border entry, according to Morocco World News.",
+    "quote": "Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry",
+    "receipt": 1
+   },
+   {
+    "text": "Morocco rejected Spain's blame game and warned against using the kingdom as a political pawn, according to Myjoyonline.",
+    "quote": "Morocco rejects Spain blame game, warns against using kingdom as political pawn",
+    "receipt": 2
+   }
+  ],
+  "dropped": 1,
+  "provider": "deepseek",
+  "error": null,
+  "cached": false
+ },
+ "finding": "The sampled receipts span 7 languages; 2 of 200 sampled receipts are from state-media outlets.",
+ "caption": "Spain failed to secure EU sanctions against Morocco over the Ceuta border entry, according to Morocco World News. Morocco rejected Spain's blame game and warned against using the kingdom as a political pawn, according to Myjoyonline.\n\nMeasured: The sampled receipts span 7 languages; 2 of 200 sampled receipts are from state-media outlets.\n\nMeasured coverage: 114 signals (latest clustering pass 09-14, 7d window) · 13 countries · 71 sources (distinct outlets in the sampled receipts).\n\nReceipts — the lede above is synthesized only from these, quote-checked:\n• “Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry” — moroccoworldnews.com (en)\n• “Morocco rejects Spain blame game, warns against using kingdom as political pawn” — myjoyonline.com (en)\n• “Morocco votes on 23-S: these are the main candidates and their position on Ceuta and its territorial claim” — 20minutos.es (translated from xx)\n\nStory on Atlas: Ceuta Migrant Crisis — measurement, not opinion.",
+ "caption_chars": 986
+}

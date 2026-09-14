@@ -1,0 +1,58 @@
+{
+ "tag": "B-fullpool",
+ "theme": "18062",
+ "label": "Ceuta Migrant Crisis",
+ "picked": [
+  {
+   "i": 39,
+   "ts": "2026-09-11T03:30",
+   "lang": "es",
+   "outlet": "elpais.com",
+   "headline": "Desconcierto en las filas del PSOE tras la gestión política de la crisis de Ceuta: “Si intentábamos salir de esta, nos hemos embarrado más”",
+   "translated": "Confusion in the ranks of the PSOE after the political management of the Ceuta crisis: \"If we tried to get out of this, we have gotten muddier\""
+  },
+  {
+   "i": 19,
+   "ts": "2026-09-12T20:15",
+   "lang": "en",
+   "outlet": "moroccoworldnews.com",
+   "headline": "Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry",
+   "translated": "Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry"
+  },
+  {
+   "i": 90,
+   "ts": "2026-09-10T01:45",
+   "lang": "en",
+   "outlet": "aljazeera.com",
+   "headline": "Spain's spy agency warned of mass crossings into Ceuta before border crisis | Humanitarian Crises News",
+   "translated": "Spain's spy agency warned of mass crossings into Ceuta before border crisis | Humanitarian Crises News"
+  }
+ ],
+ "editorial": {
+  "lede": "Spain's spy agency warned of mass crossings into Ceuta before the border crisis, according to Al Jazeera. Spain failed to secure EU sanctions against Morocco over the Ceuta border entry, Morocco World News reported. Within the PSOE, the political handling of the Ceuta crisis has produced disarray, El Pais reported: \"Si intentábamos salir de esta, nos hemos embarrado más\".",
+  "sentences": [
+   {
+    "text": "Spain's spy agency warned of mass crossings into Ceuta before the border crisis, according to Al Jazeera.",
+    "quote": "Spain's spy agency warned of mass crossings into Ceuta before border crisis",
+    "receipt": 3
+   },
+   {
+    "text": "Spain failed to secure EU sanctions against Morocco over the Ceuta border entry, Morocco World News reported.",
+    "quote": "Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry",
+    "receipt": 2
+   },
+   {
+    "text": "Within the PSOE, the political handling of the Ceuta crisis has produced disarray, El Pais reported: \"Si intentábamos salir de esta, nos hemos embarrado más\".",
+    "quote": "Desconcierto en las filas del PSOE tras la gestión política de la crisis de Ceuta",
+    "receipt": 1
+   }
+  ],
+  "dropped": 0,
+  "provider": "deepseek",
+  "error": null,
+  "cached": false
+ },
+ "finding": "The sampled receipts span 7 languages; 2 of 200 sampled receipts are from state-media outlets.",
+ "caption": "Spain's spy agency warned of mass crossings into Ceuta before the border crisis, according to Al Jazeera. Spain failed to secure EU sanctions against Morocco over the Ceuta border entry, Morocco World News reported. Within the PSOE, the political handling of the Ceuta crisis has produced disarray, El Pais reported: \"Si intentábamos salir de esta, nos hemos embarrado más\".\n\nMeasured: The sampled receipts span 7 languages; 2 of 200 sampled receipts are from state-media outlets.\n\nMeasured coverage: 114 signals (latest clustering pass 09-14, 7d window) · 13 countries · 71 sources (distinct outlets in the sampled receipts).\n\nReceipts — the lede above is synthesized only from these, quote-checked:\n• “Confusion in the ranks of the PSOE after the political management of the Ceuta crisis: \"If we tried to get out of this, we have gotten muddier\"” — elpais.com (translated from es)\n• “Spain Fails to Secure EU Sanctions Against Morocco Over Ceuta Border Entry” — moroccoworldnews.com (en)\n• “Spain's spy agency warned of mass crossings into Ceuta before border crisis | Humanitarian Crises News” — aljazeera.com (en)\n\nStory on Atlas: Ceuta Migrant Crisis — measurement, not opinion.",
+ "caption_chars": 1183
+}

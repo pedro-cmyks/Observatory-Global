@@ -1,0 +1,53 @@
+{
+ "tag": "A-kitpool",
+ "theme": "277",
+ "label": "Netanyahu Rejects Trump Gaza Plan",
+ "picked": [
+  {
+   "i": 19,
+   "ts": "2026-09-10T13:31",
+   "lang": "fr",
+   "outlet": "rfi.fr",
+   "headline": "7-Octobre: après les révélations de «Haaretz», le parti de Benyamin Netanyahu accuse un Palestinien d'ingérence",
+   "translated": "October 7: After 'Haaretz' revelations, Benyamin Netanyahu's party accuses a Palestinian of interference"
+  },
+  {
+   "i": 28,
+   "ts": "2026-09-08T23:00",
+   "lang": "it",
+   "outlet": "repubblica.it",
+   "headline": "La rivelazione che scuote Israele: “Netanyahu sapeva del 7 ottobre, venne avvisato dagli Emirati”",
+   "translated": "The revelation that shakes Israel: \"Netanyahu knew about October 7, was warned by the Emirates\""
+  },
+  {
+   "i": 20,
+   "ts": "2026-09-10T05:01",
+   "lang": "es",
+   "outlet": "france24.com",
+   "headline": "Netanyahu niega haber sido advertido de los ataques de Hamás del 7-O",
+   "translated": "Netanyahu denies having been warned of the Hamas attacks of 7-O"
+  }
+ ],
+ "editorial": {
+  "lede": "The denial follows a Haaretz revelation that Netanyahu knew about 7 October and was warned by the Emirates, according to Repubblica. After the Haaretz revelations, Netanyahu's party accused a Palestinian of interference, according to RFI.",
+  "sentences": [
+   {
+    "text": "The denial follows a Haaretz revelation that Netanyahu knew about 7 October and was warned by the Emirates, according to Repubblica.",
+    "quote": "Netanyahu sapeva del 7 ottobre, venne avvisato dagli Emirati",
+    "receipt": 2
+   },
+   {
+    "text": "After the Haaretz revelations, Netanyahu's party accused a Palestinian of interference, according to RFI.",
+    "quote": "après les révélations de «Haaretz», le parti de Benyamin Netanyahu accuse un Palestinien d'ingérence",
+    "receipt": 1
+   }
+  ],
+  "dropped": 1,
+  "provider": "deepseek",
+  "error": null,
+  "cached": false
+ },
+ "finding": "The sampled receipts span 6 languages; 2 of 200 sampled receipts are from state-media outlets.",
+ "caption": "The denial follows a Haaretz revelation that Netanyahu knew about 7 October and was warned by the Emirates, according to Repubblica. After the Haaretz revelations, Netanyahu's party accused a Palestinian of interference, according to RFI.\n\nMeasured: The sampled receipts span 6 languages; 2 of 200 sampled receipts are from state-media outlets.\n\nMeasured coverage: 10 signals (latest clustering pass 09-14, 7d window) · 12 countries · 85 sources (distinct outlets in the sampled receipts).\n\nReceipts — the lede above is synthesized only from these, quote-checked:\n• “October 7: After 'Haaretz' revelations, Benyamin Netanyahu's party accuses a Palestinian of interference” — rfi.fr (translated from fr)\n• “The revelation that shakes Israel: \"Netanyahu knew about October 7, was warned by the Emirates\"” — repubblica.it (translated from it)\n• “Netanyahu denies having been warned of the Hamas attacks of 7-O” — france24.com (translated from es)\n\nStory on Atlas: Netanyahu Rejects Trump Gaza Plan — measurement, not opinion.",
+ "caption_chars": 1022
+}
