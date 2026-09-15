@@ -20,7 +20,7 @@ import { withTimeout } from '../lib/shareCard'
 import { buildStoryShareCaption, buildStoryFirstComment, buildCampaignDeepLink, campaignTagForDate, computeShareFinding } from '../lib/storyShare'
 import { resolveTierChip } from '../lib/sourceProvenance'
 import { translateSignal } from '../lib/translateQueue'
-import { rankReceiptPool, filterPool, poolLabelCoverage } from '../lib/storyReceiptPool'
+import { rankReceiptPool, filterPool, poolLabelCoverage, latinShare } from '../lib/storyReceiptPool'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { ExportMenu } from './ExportMenu'
@@ -867,9 +867,12 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             // the server answers `none` for an already-English headline, and a
             // real translation without a known source lang is marked plain
             // "(translated)" rather than inventing a language code.
-            if (lang === 'en') continue
+            // The lang tag is not trusted over the text: royanews.tv arrives
+            // tagged `en` with Arabic headlines (campaign review 2026-09-14),
+            // so a non-Latin headline is always sent to the lane.
+            if (lang === 'en' && latinShare(s.headline) >= 0.4) continue
             if (kitTranslations[sid] !== undefined) continue
-            const from = lang && lang !== 'xx' ? lang : null
+            const from = lang && lang !== 'xx' && !(lang === 'en' && latinShare(s.headline) < 0.4) ? lang : null
             // The story label rides along as context so ambiguous words
             // resolve inside the story ("tiendas" = tents in a migrant camp).
             translateSignal(sid, 'en', displayLabel).then(out => {
