@@ -394,3 +394,12 @@ def test_identity_short_circuit_does_not_trust_a_lying_lang_tag(wire):
     assert rows[2]["model"] == "identity"
     assert mod._script_disagrees("Иран", "en") and not mod._script_disagrees("Iran", "en")
     assert not mod._script_disagrees("إيران", "ar")
+
+
+def test_stale_identity_row_in_wrong_script_is_a_miss(wire):
+    signals = {1: ("اليوم الـ200 للحرب", "en")}
+    cached = {(1, "en"): ("اليوم الـ200 للحرب", "identity", "en")}
+    conn, calls = wire(signals, cached)
+    r = client.post(URL, json={"signal_ids": [1], "to": "en"})
+    row = r.json()["translations"][0]
+    assert calls == ["اليوم الـ200 للحرب"] and row["cached"] is False

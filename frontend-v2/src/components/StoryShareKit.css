@@ -532,12 +532,12 @@
 .story-kit-card[data-format="portrait"] .skc-kicker    { font-size: 1.7cqw; margin-bottom: 1.4cqw; }
 .story-kit-card[data-format="portrait"] .skc-headline  { font-size: 6cqw; -webkit-line-clamp: 3; margin-bottom: 2.2cqw; }
 .story-kit-card[data-format="portrait"] .skc-headline--with-lede { font-size: 5.2cqw; -webkit-line-clamp: 3; }
-.story-kit-card[data-format="portrait"] .skc-lede      { font-size: 3cqw; -webkit-line-clamp: 7; margin-bottom: 2cqw; }
+.story-kit-card[data-format="portrait"] .skc-lede      { font-size: 2.8cqw; -webkit-line-clamp: 8; margin-bottom: 1.6cqw; }
 .story-kit-card[data-format="portrait"] .skc-finding   { font-size: 2.1cqw; margin-bottom: 2cqw; }
 .story-kit-card[data-format="portrait"] .skc-finding-lab { font-size: 1.8cqw; }
-.story-kit-card[data-format="portrait"] .skc-receipts  { gap: 1.8cqw; padding-top: 2.2cqw; }
+.story-kit-card[data-format="portrait"] .skc-receipts  { gap: 1.4cqw; padding-top: 1.8cqw; }
 .story-kit-card[data-format="portrait"] .skc-lab       { font-size: 1.8cqw; }
-.story-kit-card[data-format="portrait"] .skc-receipt-head { font-size: 3.05cqw; -webkit-line-clamp: 2; }
+.story-kit-card[data-format="portrait"] .skc-receipt-head { font-size: 2.85cqw; -webkit-line-clamp: 2; }
 .story-kit-card[data-format="portrait"]:has(.skc-lede) .skc-receipt-head { -webkit-line-clamp: 2; }
 .story-kit-card[data-format="portrait"] .skc-receipt-meta { font-size: 2.1cqw; }
 .story-kit-card[data-format="portrait"] .skc-receipt-meta .l2-tier-chip { font-size: 1.6cqw; padding: 0.15cqw 1.1cqw; }
@@ -718,7 +718,7 @@
   border-left: 0.5cqw solid var(--color-accent-primary);
   padding-left: 1.6cqw;
 }
-.story-kit-card[data-format="portrait"] .skc-finding { font-size: 2.6cqw; line-height: 1.3; margin: 0.6cqw 0 2.4cqw; }
+.story-kit-card[data-format="portrait"] .skc-finding { font-size: 2.3cqw; line-height: 1.3; margin: 0.4cqw 0 1.8cqw; }
 .story-kit-card[data-format="square"] .skc-finding   { font-size: 2.1cqw; line-height: 1.3; margin: 0.5cqw 0 1.9cqw; }
 .story-kit-card[data-format="portrait"] .skc-finding-lab,
 .story-kit-card[data-format="square"] .skc-finding-lab {

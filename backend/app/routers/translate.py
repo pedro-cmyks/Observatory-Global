@@ -431,6 +431,10 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
             # with the story in view and overwrite.
             if context and row.get("model") not in ("identity", CTX_MODEL):
                 continue
+            # A stale identity row whose TEXT is visibly not in the target
+            # script (written before the lang-tag guard) is a miss too.
+            if row.get("model") == "identity" and _script_disagrees(row.get("translated") or "", target_lang):
+                continue
             original = html.unescape(row.get("headline") or "")
             guard = (
                 None
