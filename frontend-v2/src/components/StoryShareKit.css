@@ -556,7 +556,10 @@
 .story-kit-card[data-format="square"] .skc-receipts  { gap: 1.4cqw; padding-top: 1.7cqw; }
 .story-kit-card[data-format="square"] .skc-lab       { font-size: 1.35cqw; }
 .story-kit-card[data-format="square"] .skc-receipt-head { font-size: 2.5cqw; -webkit-line-clamp: 2; }
-.story-kit-card[data-format="square"]:has(.skc-lede) .skc-receipt-head { -webkit-line-clamp: 2; }
+.story-kit-card[data-format="square"]:has(.skc-lede) .skc-receipt-head { -webkit-line-clamp: 1; }
+.story-kit-card[data-format="square"]:has(.skc-lede) .skc-lede { font-size: 2.2cqw; -webkit-line-clamp: 6; }
+.story-kit-card[data-format="square"]:has(.skc-lede) .skc-vitals { padding-top: 1.2cqw; }
+.story-kit-card[data-format="square"]:has(.skc-lede) .skc-foot { margin-top: 1.1cqw; }
 .story-kit-card[data-format="square"] .skc-receipt-meta { font-size: 1.75cqw; }
 .story-kit-card[data-format="square"] .skc-receipt-meta .l2-tier-chip { font-size: 1.35cqw; padding: 0.12cqw 0.9cqw; }
 .story-kit-card[data-format="square"] .skc-vitals    { font-size: 2cqw; padding-top: 1.6cqw; gap: 0.8cqw 2.2cqw; }
