@@ -379,3 +379,18 @@ def test_prompt_carries_context_only_when_given():
     assert "Story: Ceuta Migrant Crisis" in ctx
     assert "Never add facts from it" in ctx
     assert ctx.endswith("Headline:\nTitular")
+
+
+def test_identity_short_circuit_does_not_trust_a_lying_lang_tag(wire):
+    # royanews.tv: tagged `en`, Arabic text — must go to the provider, not
+    # come back as "already English".
+    from app.routers import translate as mod
+    signals = {1: ("اليوم الـ200 للحرب الأمريكية الإيرانية", "en"), 2: ("Plain English", "en")}
+    conn, calls = wire(signals, {})
+    r = client.post(URL, json={"signal_ids": [1, 2], "to": "en"})
+    rows = {t["signal_id"]: t for t in r.json()["translations"]}
+    assert calls == ["اليوم الـ200 للحرب الأمريكية الإيرانية"]
+    assert rows[1]["model"] == mod.DEEPSEEK_MODEL and rows[1]["translated"].startswith("EN::")
+    assert rows[2]["model"] == "identity"
+    assert mod._script_disagrees("Иран", "en") and not mod._script_disagrees("Iran", "en")
+    assert not mod._script_disagrees("إيران", "ar")

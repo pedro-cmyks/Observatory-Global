@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 import html
 import json as _json
 import logging
@@ -98,6 +99,23 @@ DEFAULT_TARGET_LANG = "en"
 # row overwrites the old one.
 CTX_MODEL = f"{DEEPSEEK_MODEL}+ctx1"
 CONTEXT_MAX_CHARS = 160
+
+
+_NON_LATIN = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u0400-\u04FF\u0590-\u05FF\u0900-\u097F\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]")
+_LATIN_TARGETS = {"en", "es", "fr", "pt", "it", "de", "nl", "tr", "id", "ro", "pl", "sv", "no", "da", "fi", "cs", "sk", "hu"}
+
+
+def _script_disagrees(text: str, target_lang: str) -> bool:
+    """True when the text is visibly written in a non-Latin script while the
+    target is a Latin-script language — the tag saying they already match
+    cannot be right, so the identity path must not fire."""
+    if target_lang.lower() not in _LATIN_TARGETS:
+        return False
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return False
+    non_latin = sum(1 for c in letters if _NON_LATIN.match(c))
+    return non_latin / len(letters) >= 0.6
 
 
 def _build_prompt(headline: str, target_lang: str, context: Optional[str] = None) -> str:
@@ -460,7 +478,10 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
             continue
         source_lang = sig["source_lang"]
         cleaned = html.unescape(raw)
-        if source_lang and source_lang.lower() == target_lang:
+        # The lang tag is not trusted over the text: royanews.tv arrives tagged
+        # `en` with Arabic headlines (campaign review 2026-09-14), and the
+        # identity short-circuit was returning the Arabic as "already English".
+        if source_lang and source_lang.lower() == target_lang and not _script_disagrees(cleaned, target_lang):
             results[sid] = {
                 "signal_id": sid, "target_lang": target_lang, "translated": cleaned,
                 "source_lang": source_lang, "cached": False, "model": "identity",
