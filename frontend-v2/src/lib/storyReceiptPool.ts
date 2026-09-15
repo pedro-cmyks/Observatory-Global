@@ -28,6 +28,20 @@ export interface RankedReceipt<T extends PoolSignal = PoolSignal> {
   score: number
   /** The label tokens that matched — shown in the row so the order is legible. */
   matched: string[]
+  /** True when the headline's script cannot be compared with the label's
+   *  (Arabic/Cyrillic/CJK/Hebrew vs a Latin label): NOT off-label — unknown.
+   *  Ranked between matched and unmatched rows so a Latin label never pushes
+   *  the non-Latin voices out of the pool (the exact voices Atlas exists for). */
+  uncomparable: boolean
+}
+
+/** Share of letters in the headline that are Latin — under 0.4 the label's
+ *  Latin tokens cannot be expected to appear even when the story is the same. */
+export function latinShare(text: string | null | undefined): number {
+  const letters = (text ?? '').match(/\p{L}/gu) ?? []
+  if (letters.length === 0) return 1
+  const latin = letters.filter(ch => /\p{Script=Latin}/u.test(ch)).length
+  return latin / letters.length
 }
 
 const STOP = new Set([
@@ -87,18 +101,33 @@ export function rankReceiptPool<T extends PoolSignal>(
   limit = 60,
 ): RankedReceipt<T>[] {
   const tokens = labelTokens(label)
+  const labelLatin = latinShare(label) >= 0.4
   const ranked = signals
     .filter(s => !!s.headline)
     .map(s => {
       const matched = scoreHeadline(s.headline, tokens)
-      return { signal: s, score: matched.length, matched }
+      const uncomparable = matched.length === 0 && labelLatin && latinShare(s.headline) < 0.4
+      return { signal: s, score: matched.length, matched, uncomparable }
     })
+  // tier: matched (2) > uncomparable script (1) > unmatched Latin (0)
+  const tier = (r: { score: number; uncomparable: boolean }) => (r.score > 0 ? 2 : r.uncomparable ? 1 : 0)
   ranked.sort((a, b) =>
-    b.score - a.score
+    tier(b) - tier(a)
+    || b.score - a.score
     || (b.signal.timestamp ?? '').localeCompare(a.signal.timestamp ?? ''),
   )
-  return ranked.slice(0, limit)
+  if (ranked.length <= limit) return ranked
+  // Reserved seats: when the matched tier alone overflows the limit (an
+  // English-heavy story), the non-Latin voices would still be cut. Keep up
+  // to UNCOMPARABLE_RESERVE of them by giving back the matched tail.
+  const head = ranked.slice(0, limit)
+  const reserve = ranked.slice(limit).filter(r => r.uncomparable).slice(0, UNCOMPARABLE_RESERVE)
+  if (reserve.length === 0) return head
+  const kept = head.slice(0, limit - reserve.length)
+  return [...kept, ...reserve]
 }
+
+const UNCOMPARABLE_RESERVE = 10
 
 /** Free-text filter over headline + outlet (folded). Empty query = all. */
 export function filterPool<T extends PoolSignal>(pool: RankedReceipt<T>[], query: string): RankedReceipt<T>[] {

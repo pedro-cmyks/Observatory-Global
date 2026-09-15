@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { labelTokens, scoreHeadline, rankReceiptPool, filterPool, poolLabelCoverage, foldText } from './storyReceiptPool'
+import { labelTokens, scoreHeadline, rankReceiptPool, filterPool, poolLabelCoverage, foldText, latinShare } from './storyReceiptPool'
 
 const S = (headline: string, ts: string, source = 'x', extra: Record<string, unknown> = {}) =>
   ({ headline, timestamp: ts, source, ...extra })
@@ -49,6 +49,32 @@ describe('rankReceiptPool', () => {
     const pool = rankReceiptPool(many, 'Ceuta Migrant Crisis', 60)
     expect(pool).toHaveLength(60)
     expect(pool[0].signal.headline).toBe('Ceuta migrant camp fire')
+  })
+})
+
+describe('non-Latin receipts', () => {
+  it('rank between matched and unmatched-Latin rows instead of falling off the pool', () => {
+    const pool = rankReceiptPool([
+      S('Basketball-WM: Deutschland verliert', '2026-09-13T21:00'),
+      S('مصدر إيراني يكشف تفاصيل التفاهم مع عُمان', '2026-09-12T17:45', 'arabic.rt.com'),
+      S('Bahrain says it will not participate in Iran meeting', '2026-09-12T20:45', 'aljazeera.com'),
+    ], 'US Iran Tensions')
+    expect(pool.map(r => r.signal.source)).toEqual(['aljazeera.com', 'arabic.rt.com', 'x'])
+    expect(pool[1].uncomparable).toBe(true)
+    expect(pool[2].uncomparable).toBe(false)
+    expect(latinShare('İran ile görüşme')).toBeGreaterThan(0.4)
+    expect(latinShare('اليوم الـ198 للحرب')).toBeLessThan(0.4)
+  })
+})
+
+describe('reserved seats for other scripts', () => {
+  it('keeps up to 10 non-Latin receipts when the matched tier overflows the limit', () => {
+    const many = Array.from({ length: 80 }, (_, i) => S(`Iran headline ${i}`, `2026-09-1${i % 5}T00:00`))
+    const arabic = Array.from({ length: 12 }, (_, i) => S(`إيران ${i} خبر`, '2026-09-12T00:00', `ar${i}`))
+    const pool = rankReceiptPool([...many, ...arabic], 'US Iran Tensions', 60)
+    expect(pool).toHaveLength(60)
+    expect(pool.filter(r => r.uncomparable)).toHaveLength(10)
+    expect(pool.slice(0, 50).every(r => r.score > 0)).toBe(true)
   })
 })
 

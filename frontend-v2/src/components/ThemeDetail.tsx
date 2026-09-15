@@ -2414,7 +2414,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                             const disabled = !checked && kitSelected.length >= 3
                                             const isState = resolveTierChip(s.source, undefined).tier === 'state'
                                             return (
-                                                <label key={i} className={`story-kit-curate-row${disabled ? ' is-disabled' : ''}${r.score === 0 ? ' is-offlabel' : ''}`}>
+                                                <label key={i} className={`story-kit-curate-row${disabled ? ' is-disabled' : ''}${r.score === 0 && !r.uncomparable ? ' is-offlabel' : ''}`}>
                                                     <input
                                                         type="checkbox"
                                                         checked={checked}
@@ -2430,7 +2430,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                             {s.archived ? ' · from the archive' : ''}
                                                             {r.matched.length > 0
                                                                 ? <span className="skcu-match" data-tip="Label words this headline contains — the reason it ranks here">{' · ↔ '}{r.matched.join(' ')}</span>
-                                                                : <span className="skcu-match skcu-match--none" data-tip="No label word in this headline — check it is the story before picking it">{' · no label overlap'}</span>}
+                                                                : r.uncomparable
+                                                                    ? <span className="skcu-match skcu-match--script" data-tip="Different script from the label — overlap cannot be measured; translate and judge">{' · script ≠ label'}</span>
+                                                                    : <span className="skcu-match skcu-match--none" data-tip="No label word in this headline — check it is the story before picking it">{' · no label overlap'}</span>}
                                                         </span>
                                                     </span>
                                                 </label>

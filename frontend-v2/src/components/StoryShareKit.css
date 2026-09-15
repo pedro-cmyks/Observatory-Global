@@ -700,3 +700,4 @@
   color: var(--color-text-muted);
   margin: 6px;
 }
+.skcu-match--script { color: var(--color-text-secondary); }
