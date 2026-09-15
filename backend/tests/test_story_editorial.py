@@ -252,3 +252,39 @@ def test_numeric_outlet_token_never_satisfies_attribution():
         "text": "Warehouses were attacked overnight, the kg outlet reported.",
         "quote": "Три склада атакованы ночью дронами", "receipt": 1}]}, r)
     assert len(ok["sentences"]) == 1
+
+
+def test_orphan_sentence_after_a_drop_is_dropped_too():
+    # dt-277 live case (2026-09-14): France24 sentence failed the gate, the
+    # next one opened "The denial follows…" — an antecedent-less sentence.
+    r = [EditorialReceipt(headline="Netanyahu niega haber sido advertido de los ataques de Hamás"),
+         EditorialReceipt(headline="Netanyahu sapeva del 7 ottobre, venne avvisato dagli Emirati")]
+    out = se.validate_editorial({"sentences": [
+        {"text": "Netanyahu denied being warned.", "quote": "not in the headline at all", "receipt": 1},
+        {"text": "The denial follows a Haaretz revelation that Netanyahu knew about 7 October.",
+         "quote": "Netanyahu sapeva del 7 ottobre", "receipt": 2},
+        {"text": "Netanyahu was warned by the Emirates, according to Repubblica.",
+         "quote": "venne avvisato dagli Emirati", "receipt": 2},
+    ]}, r)
+    assert [s["text"][:12] for s in out["sentences"]] == ["Netanyahu wa"]
+    assert out["dropped"] == 2
+
+
+def test_definite_opener_is_fine_when_nothing_was_dropped_before_it():
+    r = [EditorialReceipt(headline="Strike on Tel al-Hawa vehicle kills two Hamas engineers")]
+    out = se.validate_editorial({"sentences": [
+        {"text": "The strike on a Tel al-Hawa vehicle killed two Hamas engineers.",
+         "quote": "Strike on Tel al-Hawa vehicle kills two Hamas engineers", "receipt": 1},
+    ]}, r)
+    assert len(out["sentences"]) == 1
+
+
+def test_pronoun_opener_is_always_an_orphan():
+    r = [EditorialReceipt(headline="Morocco denies involvement in migrant surge into Ceuta")]
+    out = se.validate_editorial({"sentences": [
+        {"text": "It denied involvement in the surge into Ceuta.",
+         "quote": "Morocco denies involvement in migrant surge", "receipt": 1},
+        {"text": "Morocco denied involvement in the migrant surge into Ceuta.",
+         "quote": "Morocco denies involvement in migrant surge", "receipt": 1},
+    ]}, r)
+    assert [s["text"][:7] for s in out["sentences"]] == ["Morocco"]

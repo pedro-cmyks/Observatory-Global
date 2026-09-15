@@ -969,6 +969,12 @@ async def _dynamic_topic_detail(
         # SELECT doesn't carry the columns serving NULL honestly.
         "label_status": _rec.get("label_status"),
         "label_proposed": _rec.get("label_proposed"),
+        # When the verdict above was rendered (mig 080) — NULL until judged.
+        # An umbrella (R2) carries no verdict of its own; the kit says so
+        # instead of printing a child's.
+        "labelCheckedAt": _rec["label_checked_at"].isoformat()
+            if _rec.get("label_checked_at") else None,
+        "isUmbrella": bool(_rec.get("is_umbrella")) if _rec.get("is_umbrella") is not None else None,
         "velocity": None,
         "cohesion": float(topic_row["mean_cohesion"])
             if topic_row["mean_cohesion"] is not None else None,
@@ -1688,6 +1694,12 @@ async def get_theme_details(
                             dt.signature_meta,
                             dt.label_status,
                             dt.label_proposed,
+                            -- Campaign review 2026-09-14: WHEN the court last
+                            -- judged this label + whether the row is an R2
+                            -- umbrella (no verdict of its own). The share kit
+                            -- prints the age so a stale label is visible.
+                            dt.label_checked_at,
+                            dt.is_umbrella,
                             -- Council R4 N19: the number the THREAD ROW shows,
                             -- served here so row and detail cannot contradict.
                             -- Mirrors thread_intelligence._DYNAMIC_TOPICS_SELECT's

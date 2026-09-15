@@ -324,3 +324,58 @@ def test_cache_read_never_joins_signals_v2(wire, monkeypatch):
     assert all("join" not in q for q in seen)
     assert "from signal_translations" in seen[0] and "signal_id = any($1::bigint[])" in seen[0]
     assert "from signals_v2 where id = any($1::bigint[])" in seen[1]
+
+
+def test_context_request_refuses_a_context_free_cache_row_and_restamps(wire, monkeypatch):
+    # 2026-09-14: "40 tiendas de migrantes" cached as "40 migrant shops". A
+    # request that carries the story label must NOT accept the plain row —
+    # it re-translates with context and the new row overwrites the old one
+    # under the CTX_MODEL stamp. Identity rows stay accepted.
+    from app.routers import translate as mod
+    signals = {1: ("Al menos 40 tiendas de migrantes incendiadas", "es"),
+               2: ("Already English", "en")}
+    cached = {(1, "en"): ("At least 40 migrant shops burned", "deepseek-chat", "es"),
+              (2, "en"): ("Already English", "identity", "en")}
+    seen_ctx: list = []
+
+    async def _fake(client_, headline, target_lang, key, context=None):
+        seen_ctx.append(context)
+        return "At least 40 migrant tents burned"
+
+    conn, _ = wire(signals, cached)
+    monkeypatch.setattr(mod, "_deepseek_translate", _fake)
+
+    r = client.post(URL, json={"signal_ids": [1, 2], "to": "en", "context": "Ceuta Migrant Crisis"})
+    assert r.status_code == 200
+    rows = {t["signal_id"]: t for t in r.json()["translations"]}
+    assert rows[1]["translated"] == "At least 40 migrant tents burned"
+    assert rows[1]["cached"] is False and rows[1]["model"] == mod.CTX_MODEL
+    assert rows[2]["cached"] is True  # identity never re-pays
+    assert seen_ctx == ["Ceuta Migrant Crisis"]
+    # the overwrite carries the context stamp
+    assert any(w[0] == 1 and w[3] == mod.CTX_MODEL for w in conn.writes)
+
+    # and a later context request is served from that stamped row
+    cached2 = {(1, "en"): ("At least 40 migrant tents burned", mod.CTX_MODEL, "es")}
+    conn2, _ = wire(signals, cached2)
+    monkeypatch.setattr(mod, "_deepseek_translate", _fake)
+    r2 = client.post(URL, json={"signal_ids": [1], "to": "en", "context": "Ceuta Migrant Crisis"})
+    assert r2.json()["translations"][0]["cached"] is True
+
+
+def test_context_free_request_keeps_using_the_plain_cache(wire):
+    signals = {1: ("Titular", "es")}
+    cached = {(1, "en"): ("Headline", "deepseek-chat", "es")}
+    conn, calls = wire(signals, cached)
+    r = client.post(URL, json={"signal_ids": [1], "to": "en"})
+    assert r.json()["translations"][0]["cached"] is True and calls == []
+
+
+def test_prompt_carries_context_only_when_given():
+    from app.routers.translate import _build_prompt
+    plain = _build_prompt("Titular", "en")
+    ctx = _build_prompt("Titular", "en", "Ceuta Migrant Crisis")
+    assert "Story:" not in plain
+    assert "Story: Ceuta Migrant Crisis" in ctx
+    assert "Never add facts from it" in ctx
+    assert ctx.endswith("Headline:\nTitular")

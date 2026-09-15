@@ -647,3 +647,56 @@
 .story-kit-card[data-format="square"]:not(:has(.skc-lede)) .skc-finding { font-size: 1.95cqw; margin-bottom: 2.2cqw; }
 .story-kit-card[data-format="square"]:not(:has(.skc-lede)) .skc-receipts { gap: 1.9cqw; padding-top: 2.1cqw; }
 .story-kit-card[data-format="square"]:not(:has(.skc-lede)) .skc-receipt-head { font-size: 2.8cqw; -webkit-line-clamp: 2; }
+
+/* ── kit v2.2 (campaign review 2026-09-14): ranked pool, search, label age ── */
+
+.story-kit-label-age {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.64rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  margin: 0 0 8px;
+}
+.story-kit-label-age.is-warn { color: var(--color-sentiment-negative, #c2410c); }
+
+.story-kit-curate-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.story-kit-curate-search {
+  flex: 1;
+  min-width: 200px;
+  font-family: var(--font-sans, sans-serif);
+  font-size: 0.78rem;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border: 1px solid rgba(var(--color-ink-rgb), 0.14);
+  border-radius: 4px;
+  padding: 6px 9px;
+}
+
+.story-kit-curate-cov {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.story-kit-curate-list { max-height: 260px; }
+
+.story-kit-curate-row.is-offlabel .skcu-head { color: var(--color-text-secondary); }
+
+.skcu-match { color: var(--color-accent-primary); }
+.skcu-match--none { color: var(--color-text-muted); font-style: italic; }
+
+.story-kit-curate-empty {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.66rem;
+  color: var(--color-text-muted);
+  margin: 6px;
+}

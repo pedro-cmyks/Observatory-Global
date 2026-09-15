@@ -32,7 +32,7 @@ from app.services.insight_llm import generate_insight
 
 logger = logging.getLogger("atlas.story_editorial")
 
-PROMPT_VERSION = "share-editorial-v1"
+PROMPT_VERSION = "share-editorial-v2"  # v2: standalone-sentence rule + orphan gate
 MAX_RECEIPTS = 4
 MAX_SENTENCES = 3
 # A quote shorter than this is too easy to satisfy by accident ("the", a bare
@@ -59,7 +59,10 @@ the numbered receipt headlines provided — and from nothing else.
 
 HARD RULES:
 1. 2-3 sentences of tight news prose. No hashtags, no emoji, no hype, no \
-first person.
+first person. EVERY sentence must stand on its own: no pronouns or \
+definite references ("The denial", "This", "He", "It") that depend on \
+another sentence — a sentence may be removed by the fact-check and the \
+rest must still read.
 2. EVERY sentence must be supported by one receipt: put a VERBATIM quote \
 (exact characters, in the receipt's original language) from that receipt's \
 headline in the "quote" field, with the receipt number. A sentence you cannot \
@@ -113,25 +116,61 @@ def _attribution_ok(text: str, outlet: str | None) -> bool:
     return any(re.search(rf"\b{re.escape(t)}\b", low) for t in toks)
 
 
+# A sentence that opens by pointing back ("The denial follows…", "This…",
+# "He…") reads as nonsense once the sentence it points to is dropped by the
+# gate (measured 2026-09-14 on dt-277: France24 sentence dropped, Repubblica
+# sentence left opening with "The denial follows a Haaretz revelation…").
+_DEFINITE_OPENER = re.compile(
+    r"^the\s+(?:denial|claim|move|decision|report|response|statement|remark|"
+    r"announcement|accusation|warning|deal|meeting|talks|vote|ban|lawsuit|suit|"
+    r"revelation|figure|number|incident|plan|ruling|order|comments?|remarks)\b",
+    re.IGNORECASE,
+)
+_PRONOUN_OPENER = re.compile(
+    r"^(?:this|that|these|those|he|she|it|they|his|her|its|their|such|both|"
+    r"neither|meanwhile|however|in\s+response|in\s+turn|as\s+a\s+result|"
+    r"the\s+(?:former|latter))\b",
+    re.IGNORECASE,
+)
+
+
+def _opens_with_anaphora(text: str, *, after_drop: bool) -> bool:
+    """A pronoun/connector opener always depends on a prior sentence. A
+    definite "The <event-noun>…" opener is fine as a lede's first line ("The
+    strike killed two…") but reads as orphaned right after a drop."""
+    t = text.strip()
+    if _PRONOUN_OPENER.match(t):
+        return True
+    return after_drop and bool(_DEFINITE_OPENER.match(t))
+
+
 def validate_editorial(parsed: dict | None, receipts: list[EditorialReceipt]) -> dict:
     """The gate. Returns {"sentences": [...], "dropped": n} — kept sentences
-    carry {text, quote, receipt(1-based)}. Zero kept is legal."""
+    carry {text, quote, receipt(1-based)}. Zero kept is legal.
+
+    Orphan rule: a sentence opening with a pronoun/connector ("This…",
+    "He…", "Meanwhile…") always depends on another one and is dropped; a
+    definite "The <event-noun>…" opener is dropped only when the sentence
+    right before it fell — it depended on the one that fell."""
     kept: list[dict] = []
     dropped = 0
     raw = parsed.get("sentences") if isinstance(parsed, dict) else None
     if not isinstance(raw, list):
         return {"sentences": [], "dropped": 0}
+    previous_dropped = False
     for item in raw:
         if len(kept) >= MAX_SENTENCES:
             break
         if not isinstance(item, dict):
             dropped += 1
+            previous_dropped = True
             continue
         text = str(item.get("text") or "").strip()
         quote = str(item.get("quote") or "").strip()
         ref = item.get("receipt")
         if not text or not quote or not isinstance(ref, int) or not (1 <= ref <= len(receipts)):
             dropped += 1
+            previous_dropped = True
             continue
         receipt = receipts[ref - 1]
         head_norm = _norm(receipt.headline)
@@ -139,20 +178,29 @@ def validate_editorial(parsed: dict | None, receipts: list[EditorialReceipt]) ->
         # Quote gate: verbatim substring; substantial, or the whole headline.
         if not quote_norm or quote_norm not in head_norm:
             dropped += 1
+            previous_dropped = True
             continue
         if len(quote_norm) < MIN_QUOTE_CHARS and quote_norm != head_norm:
             dropped += 1
+            previous_dropped = True
             continue
         # Number guard: every digit run in the sentence must exist in the
         # cited headline — a count the coverage does not carry cannot print.
         if not _digit_runs(text) <= _digit_runs(receipt.headline):
             dropped += 1
+            previous_dropped = True
             continue
         # State media never neutral — attribution enforced, not hoped.
         if receipt.state_media and not _attribution_ok(text, receipt.outlet):
             dropped += 1
+            previous_dropped = True
+            continue
+        if _opens_with_anaphora(text, after_drop=previous_dropped):
+            dropped += 1
+            previous_dropped = True
             continue
         kept.append({"text": text, "quote": quote, "receipt": ref})
+        previous_dropped = False
     return {"sentences": kept, "dropped": dropped}
 
 

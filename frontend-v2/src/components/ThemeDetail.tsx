@@ -20,6 +20,7 @@ import { withTimeout } from '../lib/shareCard'
 import { buildStoryShareCaption, buildStoryFirstComment, buildCampaignDeepLink, campaignTagForDate, computeShareFinding } from '../lib/storyShare'
 import { resolveTierChip } from '../lib/sourceProvenance'
 import { translateSignal } from '../lib/translateQueue'
+import { rankReceiptPool, filterPool, poolLabelCoverage } from '../lib/storyReceiptPool'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { ExportMenu } from './ExportMenu'
@@ -187,6 +188,13 @@ interface ThemeData {
     relatedConcepts?: Array<{ slug: string; label: string; description: string }>
     /** R3 spine: the specific living stories under this atlas topic/category */
     memberStories?: Array<{ id: string; label: string; n: number; last_seen: string | null; crisis_relevant: boolean | null }>
+    /** Label Court verdict + when it was rendered (mig 080); null until judged.
+     *  An R2 umbrella carries no verdict of its own (`isUmbrella`). The share
+     *  kit prints the age so a stale label is visible before it is published. */
+    label_status?: string | null
+    label_proposed?: string | null
+    labelCheckedAt?: string | null
+    isUmbrella?: boolean | null
 }
 
 interface ThemeDetailProps {
@@ -416,6 +424,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // generated) + the card's aspect (LinkedIn 2026 rewards portrait/square;
     // 1200×627 is the link-preview size, kept as an option).
     const [kitQuestion, setKitQuestion] = useState('')
+    const [kitQuery, setKitQuery] = useState('')
     const [kitFormat, setKitFormat] = useState<'portrait' | 'square' | 'landscape'>('portrait')
     const kitCardRef = useRef<HTMLDivElement>(null)
     const [kitPngState, setKitPngState] = useState<'idle' | 'busy' | 'error'>('idle')
@@ -816,7 +825,30 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
     // among REAL receipts is honest; the card carries only the picked ones.
     // 30 deep because on an M1-diseased story the on-story receipts can sit
     // well below the first rows (the exact disease the curation exists for).
-    const kitPool = (data?.signals ?? []).filter(s => !!s.headline).slice(0, 30)
+    // Ranked by relevance to the story's LABEL, recency as tiebreak (campaign
+    // review 2026-09-14: the 30-most-recent slice was 6/30 on-story on an
+    // umbrella). Indexes into kitRanked are the selection keys — stable for
+    // the life of the dialog; the search box only filters the VIEW.
+    const kitRanked = rankReceiptPool(data?.signals ?? [], displayLabel, 60)
+    const kitPool = kitRanked.map(r => r.signal)
+    const kitCoverage = poolLabelCoverage(kitRanked)
+    const kitVisible = filterPool(kitRanked, kitQuery)
+    const kitLabelAge = (() => {
+        if (!data) return { text: '', warn: false }
+        if (data.isUmbrella) {
+            return { text: 'Label: this is a FAMILY of stories (umbrella) — it carries no court verdict of its own. Check the picked receipts name the story you mean.', warn: true }
+        }
+        const at = data.labelCheckedAt ? new Date(data.labelCheckedAt) : null
+        if (!at || Number.isNaN(at.getTime())) {
+            return { text: `Label: not yet judged by the court${data.label_status ? ` (${data.label_status})` : ''} — verify it describes the receipts.`, warn: true }
+        }
+        const days = Math.floor((Date.now() - at.getTime()) / 86400000)
+        const verdict = data.label_status ? ` · ${data.label_status}` : ''
+        if (days > 7) {
+            return { text: `Label judged ${days} days ago${verdict} — a label this old may describe last month's story. Check it against the receipts.`, warn: true }
+        }
+        return { text: `Label judged ${days === 0 ? 'today' : `${days}d ago`}${verdict}.`, warn: false }
+    })()
     const kitSelectedRows = kitSelected
         .map(i => kitPool[i])
         .filter((s): s is (typeof kitPool)[number] => !!s)
@@ -838,7 +870,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             if (lang === 'en') continue
             if (kitTranslations[sid] !== undefined) continue
             const from = lang && lang !== 'xx' ? lang : null
-            translateSignal(sid, 'en').then(out => {
+            // The story label rides along as context so ambiguous words
+            // resolve inside the story ("tiendas" = tents in a migrant camp).
+            translateSignal(sid, 'en', displayLabel).then(out => {
                 setKitTranslations(prev => ({
                     ...prev,
                     [sid]: out.status === 'ok' ? { text: out.text, from: from ?? '' } : null,
@@ -859,13 +893,17 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         )
     }
 
+    // Outlet section suffixes ("… | Humanitarian Crises News") are site chrome,
+    // not headline — stripped for the card/caption only (the receipt row and
+    // the quote gate keep the served string).
+    const stripSectionSuffix = (h: string) => h.replace(/\s+\|\s+[^|]{3,60}$/, '').trim()
     const kitReceipts = kitSelectedRows.map(s => {
         const t = s.id != null ? kitTranslations[s.id] : undefined
         return {
-            headline: decodeEntities(s.headline as string),
+            headline: stripSectionSuffix(decodeEntities(s.headline as string)),
             outlet: s.source || null,
             lang: s.source_lang || null,
-            translated: t ? decodeEntities(t.text) : null,
+            translated: t ? stripSectionSuffix(decodeEntities(t.text)) : null,
             translatedFrom: t && t.from ? t.from : null,
         }
     })
@@ -877,13 +915,18 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
             countries: data.countryBreakdown,
         })
         : null
+    // "10 signals · 85 sources" cannot share a line (campaign review 2026-09-14,
+    // dt-277): the latest-pass count and the receipt-sample source count are
+    // different bases. When the pass count is smaller than the outlets in the
+    // sample, the signals figure is omitted — absence over contradiction.
+    const kitSignalsCoherent = kitSignals && !(data?.sourceCount != null && kitSignals.count < data.sourceCount)
     const kitCaption = data
         ? buildStoryShareCaption({
             label: displayLabel,
             lede: kitLede.status === 'ok' ? kitLede.lede : null,
             finding: kitFinding,
-            signals: kitSignals?.count ?? null,
-            signalsWindow: kitSignals?.window ?? null,
+            signals: kitSignalsCoherent ? kitSignals!.count : null,
+            signalsWindow: kitSignalsCoherent ? kitSignals!.window : null,
             countries: data.countryBreakdown.length > 0 ? data.countryBreakdown.length : null,
             sources: data.sourceCount ?? null,
             sourcesBasis: data.sourceCountBasis ?? null,
@@ -947,6 +990,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
         setKitSelected([0, 1, 2].filter(i => i < kitPool.length))
         setKitLede({ status: 'idle' })
         setKitQuestion('')
+        setKitQuery('')
         setKitOpen(true)
         const dlg = kitDialogRef.current
         if (!dlg) return
@@ -2313,7 +2357,7 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                     <div className="skc-bottom">
                                         {(kitSignals || data.countryBreakdown.length > 0 || data.sourceCount != null) && (
                                             <div className="skc-vitals">
-                                                {kitSignals && (
+                                                {kitSignalsCoherent && kitSignals && (
                                                     <span><b>{kitSignals.count.toLocaleString('en-US')}</b> signals · {kitSignals.window}</span>
                                                 )}
                                                 {data.countryBreakdown.length > 0 && (
@@ -2341,13 +2385,36 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                         Receipts on the card — pick up to 3. Real, served receipts only; non-English
                                         ones translate to English and say so.
                                     </p>
+                                    {/* Label freshness (campaign review 2026-09-14: two of three
+                                        labels were a month stale). Umbrellas carry no verdict. */}
+                                    <p className={`story-kit-label-age${kitLabelAge.warn ? ' is-warn' : ''}`} role="status">
+                                        {kitLabelAge.text}
+                                    </p>
+                                    <div className="story-kit-curate-tools">
+                                        <input
+                                            type="search"
+                                            className="story-kit-curate-search"
+                                            placeholder="Filter receipts — headline or outlet"
+                                            value={kitQuery}
+                                            onChange={e => setKitQuery(e.target.value)}
+                                            aria-label="Filter receipts"
+                                        />
+                                        <span className="story-kit-curate-cov">
+                                            {kitCoverage.onLabel}/{kitCoverage.total} overlap the label · ranked by that, newest first
+                                        </span>
+                                    </div>
                                     <div className="story-kit-curate-list">
-                                        {kitPool.map((s, i) => {
+                                        {kitVisible.length === 0 && (
+                                            <p className="story-kit-curate-empty">No receipt matches “{kitQuery}”.</p>
+                                        )}
+                                        {kitVisible.map(r => {
+                                            const s = r.signal
+                                            const i = kitPool.indexOf(s)
                                             const checked = kitSelected.includes(i)
                                             const disabled = !checked && kitSelected.length >= 3
                                             const isState = resolveTierChip(s.source, undefined).tier === 'state'
                                             return (
-                                                <label key={i} className={`story-kit-curate-row${disabled ? ' is-disabled' : ''}`}>
+                                                <label key={i} className={`story-kit-curate-row${disabled ? ' is-disabled' : ''}${r.score === 0 ? ' is-offlabel' : ''}`}>
                                                     <input
                                                         type="checkbox"
                                                         checked={checked}
@@ -2361,6 +2428,9 @@ export function ThemeDetail({ theme, originCountry, originCountryName, originAtt
                                                             {s.source_lang ? ` · ${s.source_lang}` : ''}
                                                             {isState ? ' · STATE MEDIA' : ''}
                                                             {s.archived ? ' · from the archive' : ''}
+                                                            {r.matched.length > 0
+                                                                ? <span className="skcu-match" data-tip="Label words this headline contains — the reason it ranks here">{' · ↔ '}{r.matched.join(' ')}</span>
+                                                                : <span className="skcu-match skcu-match--none" data-tip="No label word in this headline — check it is the story before picking it">{' · no label overlap'}</span>}
                                                         </span>
                                                     </span>
                                                 </label>

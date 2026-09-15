@@ -86,11 +86,34 @@ async def main() -> int:
             skipped.append("dynamic_topics.is_junk (junk filter skipped)")
         court_col = "label_status" if "label_status" in dt else None
         if court_col:
-            filters.append(f"{court_col} = 'entailed'")
+            # Campaign review 2026-09-14: an R2 umbrella carries NO verdict of
+            # its own (label_status NULL) and so vanished from this ranking the
+            # night it formed — Ceuta (dt-18062, 114 members, 13 countries)
+            # dropped out while its entailed children stayed hidden under it.
+            # Admit an umbrella when at least THREE active children are
+            # entailed (1-2 let "Health and Wellness Tips" in — measured
+            # 2026-09-15); report the verdict as 'umbrella(<n entailed>)' so
+            # the row is legible as a family, not as a judged story.
+            if "is_umbrella" in dt and "parent_id" in dt:
+                filters.append(
+                    f"({court_col} = 'entailed' OR (is_umbrella IS TRUE AND ("
+                    f"SELECT count(*) FROM dynamic_topics k WHERE k.parent_id = c.id "
+                    f"AND k.state = 'active' AND k.{court_col} = 'entailed') >= 3))"
+                )
+            else:
+                filters.append(f"{court_col} = 'entailed'")
         else:
             skipped.append("dynamic_topics.label_status (court filter skipped — no court verdict measurable)")
 
-        court_select = f"c.{court_col}" if court_col else "NULL::text"
+        if court_col and "is_umbrella" in dt and "parent_id" in dt:
+            court_select = (
+                f"CASE WHEN c.is_umbrella IS TRUE THEN 'umbrella(' || ("
+                f"SELECT count(*) FROM dynamic_topics k WHERE k.parent_id = c.id "
+                f"AND k.state = 'active' AND k.{court_col} = 'entailed')::text || ')' "
+                f"ELSE c.{court_col} END"
+            )
+        else:
+            court_select = f"c.{court_col}" if court_col else "NULL::text"
 
         # ---- member aggregation, only over what topic_members really has ----
         if not tm or "topic_id" not in tm:
@@ -151,7 +174,7 @@ async def main() -> int:
         )
         sql = f"""
             WITH c AS (
-                SELECT id, label, {court_select.replace('c.', '')} AS court
+                SELECT c.id, c.label, {court_select} AS court
                 FROM dynamic_topics c
                 WHERE {' AND '.join(filters)}
             )

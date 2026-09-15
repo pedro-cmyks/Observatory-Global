@@ -67,6 +67,23 @@ describe('signal lane — coalescing (the fix for the 20/300s paid bucket)', () 
         ])
     })
 
+    it('a story context rides along and batches separately from context-free requests', async () => {
+        // Campaign review 2026-09-14: "tiendas" = tents in a migrant-camp
+        // story. The kit passes the story label; plain lanes stay plain.
+        fetchMock.mockResolvedValue(jsonResponse(batchRows([1, 2])))
+        const p = Promise.all([
+            translateSignal(1, 'en', 'Ceuta Migrant Crisis'),
+            translateSignal(2, 'en', 'Ceuta Migrant Crisis'),
+            translateSignal(3, 'en'),
+        ])
+        await flushTranslateQueue()
+        await p
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+        const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body))
+        expect(bodies).toContainEqual({ signal_ids: [1, 2], to: 'en', context: 'Ceuta Migrant Crisis' })
+        expect(bodies).toContainEqual({ signal_ids: [3], to: 'en' })
+    })
+
     it('de-dupes the same signal id requested twice in one window', async () => {
         fetchMock.mockResolvedValue(jsonResponse(batchRows([7])))
         const p = Promise.all([translateSignal(7, 'en'), translateSignal(7, 'en')])

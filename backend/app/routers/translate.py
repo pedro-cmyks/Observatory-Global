@@ -89,12 +89,32 @@ DEEPSEEK_MODEL = "deepseek-chat"
 DEFAULT_TARGET_LANG = "en"
 
 
-def _build_prompt(headline: str, target_lang: str) -> str:
+# Context-aware translations carry their own model stamp so a cached
+# context-free row is never mistaken for one (campaign review 2026-09-14: El
+# País "40 tiendas de migrantes incendiadas" was cached as "40 migrant SHOPS
+# burned" — the tents of a migrant camp; the story label "Ceuta Migrant
+# Crisis" is what disambiguates `tiendas`). A caller that supplies context
+# gets a context translation even when a plain one is cached, and the new
+# row overwrites the old one.
+CTX_MODEL = f"{DEEPSEEK_MODEL}+ctx1"
+CONTEXT_MAX_CHARS = 160
+
+
+def _build_prompt(headline: str, target_lang: str, context: Optional[str] = None) -> str:
+    ctx = (context or "").strip()
+    ctx_block = (
+        "Context — the news story this headline belongs to; use it ONLY to "
+        "resolve ambiguous words (e.g. in a migrant-camp story, Spanish "
+        "'tiendas' means tents, not shops). Never add facts from it.\n"
+        f"Story: {ctx}\n\n"
+        if ctx else ""
+    )
     return (
         f"Translate this news headline to {target_lang} (ISO 639-1). "
         "Preserve named entities, dates, and numbers verbatim. Do not "
         "add commentary or quotation marks. If the headline is already "
         f"in {target_lang}, return it unchanged.\n\n"
+        f"{ctx_block}"
         'Return JSON only: {"translated": "..."}\n\n'
         f"Headline:\n{headline}"
     )
@@ -105,10 +125,11 @@ async def _deepseek_translate(
     headline: str,
     target_lang: str,
     api_key: str,
+    context: Optional[str] = None,
 ) -> Optional[str]:
     body = {
         "model": DEEPSEEK_MODEL,
-        "messages": [{"role": "user", "content": _build_prompt(headline, target_lang)}],
+        "messages": [{"role": "user", "content": _build_prompt(headline, target_lang, context)}],
         "response_format": {"type": "json_object"},
         "temperature": 0.1,
         "max_tokens": 200,
@@ -299,6 +320,8 @@ async def _translate_one(
 class TranslateBatchRequest(BaseModel):
     signal_ids: list[int] = Field(..., min_length=1, max_length=64)
     to: str = DEFAULT_TARGET_LANG
+    # Optional story context (the story's own label) — see CTX_MODEL.
+    context: Optional[str] = Field(default=None, max_length=CONTEXT_MAX_CHARS)
 
 
 @router.get("/api/v2/translate")
@@ -373,6 +396,8 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
     """
     target_lang = req.to.lower()
     api_key = os.environ.get("DEEPSEEK_API_KEY")
+    context = (req.context or "").strip() or None
+    provider_model = CTX_MODEL if context else DEEPSEEK_MODEL
     # Preserve request order, drop repeats: every id gets exactly one verdict.
     ids = list(dict.fromkeys(req.signal_ids))
     results: dict[int, dict] = {}
@@ -383,6 +408,11 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
     async with db.pool.acquire() as conn:
         cached = await _cached_many(conn, ids, target_lang)
         for sid, row in cached.items():
+            # A context request does not accept a context-FREE machine
+            # translation from cache (identity rows are fine): re-translate
+            # with the story in view and overwrite.
+            if context and row.get("model") not in ("identity", CTX_MODEL):
+                continue
             original = html.unescape(row.get("headline") or "")
             guard = (
                 None
@@ -449,6 +479,9 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
         async with httpx.AsyncClient() as client:
             async def _task(headline: str) -> Optional[str]:
                 async with sem:
+                    if context:
+                        return await _deepseek_translate(
+                            client, headline, target_lang, api_key, context=context)
                     return await _deepseek_translate(client, headline, target_lang, api_key)
 
             translated_list = await asyncio.gather(
@@ -473,9 +506,9 @@ async def post_translate_batch(req: TranslateBatchRequest) -> dict:
                 continue
             results[sid] = {
                 "signal_id": sid, "target_lang": target_lang, "translated": translated,
-                "source_lang": source_lang, "cached": False, "model": DEEPSEEK_MODEL,
+                "source_lang": source_lang, "cached": False, "model": provider_model,
             }
-            writes.append((sid, target_lang, translated, DEEPSEEK_MODEL, source_lang))
+            writes.append((sid, target_lang, translated, provider_model, source_lang))
 
     # --- Phase 3: one write pass ---
     if writes:
@@ -506,11 +539,14 @@ def _redis():
         return None
 
 
-def _text_cache_key(text: str, target_lang: str) -> str:
+def _text_cache_key(text: str, target_lang: str, context: Optional[str] = None) -> str:
+    ctx = (context or "").strip()
     digest = hashlib.sha1(
-        f"{html.unescape(text).strip()}|{target_lang.lower()}".encode("utf-8")
+        f"{html.unescape(text).strip()}|{target_lang.lower()}|{ctx}".encode("utf-8")
     ).hexdigest()
-    return f"ttext:v1:{digest}"
+    # v2 namespace when context rides along — a context-free cache row must
+    # never answer a context request (see CTX_MODEL).
+    return f"ttext:{'v2ctx' if ctx else 'v1'}:{digest}"
 
 
 class TranslateTextRequest(BaseModel):
@@ -522,6 +558,8 @@ class TranslateTextRequest(BaseModel):
     # still refusing article-length payloads.
     text: str = Field(..., min_length=1, max_length=600)
     target_lang: str = Field(..., min_length=2, max_length=2)
+    # Optional story context — see CTX_MODEL / _build_prompt.
+    context: Optional[str] = Field(default=None, max_length=CONTEXT_MAX_CHARS)
 
 
 def _text_unverified(original: str, guard: dict) -> dict:
@@ -545,7 +583,8 @@ def _text_unverified(original: str, guard: dict) -> dict:
 async def post_translate_text(req: TranslateTextRequest) -> dict:
     target_lang = req.target_lang.lower()
     cleaned = html.unescape(req.text).strip()
-    key = _text_cache_key(req.text, target_lang)
+    context = (req.context or "").strip() or None
+    key = _text_cache_key(req.text, target_lang, context)
 
     redis = _redis()
     if redis:
@@ -572,7 +611,11 @@ async def post_translate_text(req: TranslateTextRequest) -> dict:
     if api_key and cleaned:
         try:
             async with httpx.AsyncClient() as client:
-                translated = await _deepseek_translate(client, cleaned, target_lang, api_key)
+                translated = (
+                    await _deepseek_translate(client, cleaned, target_lang, api_key, context=context)
+                    if context else
+                    await _deepseek_translate(client, cleaned, target_lang, api_key)
+                )
         except Exception as exc:  # never 500 — degrade to the original text
             logger.warning("translate/text provider error: %s", exc)
             translated = None

@@ -121,8 +121,20 @@ type Resolver = (outcome: TranslateOutcome) => void
 let flushMs = DEFAULT_FLUSH_MS
 let nowMs: () => number = () => Date.now()
 
-/** lang -> signal_id -> waiting resolvers */
+/** batch key (lang + optional story context) -> signal_id -> waiting resolvers.
+ *  Context (campaign review 2026-09-14: "tiendas" = tents in a migrant-camp
+ *  story, not shops) rides to the server as-is; batches never mix contexts. */
 let pending = new Map<string, Map<number, Resolver[]>>()
+
+const KEY_SEP = '\u0000'
+function batchKey(lang: string, context?: string | null): string {
+  const ctx = (context ?? '').trim().slice(0, 160)
+  return ctx ? `${lang}${KEY_SEP}${ctx}` : lang
+}
+function splitKey(key: string): { lang: string; context: string | null } {
+  const i = key.indexOf(KEY_SEP)
+  return i < 0 ? { lang: key, context: null } : { lang: key.slice(0, i), context: key.slice(i + 1) }
+}
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 let flushInFlight: Promise<void> | null = null
 
@@ -166,7 +178,8 @@ function scheduleFlush(): void {
     flushTimer = setTimeout(() => { flushTimer = null; void runFlush() }, flushMs)
 }
 
-async function postBatch(lang: string, ids: number[], waiters: Map<number, Resolver[]>): Promise<void> {
+async function postBatch(key: string, ids: number[], waiters: Map<number, Resolver[]>): Promise<void> {
+    const { lang, context } = splitKey(key)
     const settle = (id: number, outcome: TranslateOutcome) => {
         for (const r of waiters.get(id) ?? []) r(outcome)
     }
@@ -174,7 +187,7 @@ async function postBatch(lang: string, ids: number[], waiters: Map<number, Resol
         const res = await fetch('/api/v2/translate/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ signal_ids: ids, to: lang }),
+            body: JSON.stringify(context ? { signal_ids: ids, to: lang, context } : { signal_ids: ids, to: lang }),
         })
         if (!res.ok) {
             const reason = failureFromStatus(res.status)
@@ -196,10 +209,10 @@ async function postBatch(lang: string, ids: number[], waiters: Map<number, Resol
 async function runFlush(): Promise<void> {
     const snapshot = pending
     pending = new Map()
-    for (const [lang, waiters] of snapshot) {
+    for (const [key, waiters] of snapshot) {
         const ids = [...waiters.keys()]
         for (let i = 0; i < ids.length; i += BATCH_MAX) {
-            await postBatch(lang, ids.slice(i, i + BATCH_MAX), waiters)
+            await postBatch(key, ids.slice(i, i + BATCH_MAX), waiters)
         }
     }
 }
@@ -218,11 +231,16 @@ export async function flushTranslateQueue(): Promise<void> {
  * instantly (no request) while the shared circuit is open. Target defaults to
  * the reader's translation target (picker choice → browser language).
  */
-export function translateSignal(signalId: number, targetLang: string = translationTarget()): Promise<TranslateOutcome> {
+export function translateSignal(
+    signalId: number,
+    targetLang: string = translationTarget(),
+    context?: string | null,
+): Promise<TranslateOutcome> {
     if (isTranslateCircuitOpen()) return Promise.resolve(UNAVAILABLE(circuitReason))
     const lang = targetLang.toLowerCase()
-    let waiters = pending.get(lang)
-    if (!waiters) { waiters = new Map(); pending.set(lang, waiters) }
+    const key = batchKey(lang, context)
+    let waiters = pending.get(key)
+    if (!waiters) { waiters = new Map(); pending.set(key, waiters) }
     const existing = waiters.get(signalId)
     return new Promise<TranslateOutcome>(resolve => {
         if (existing) existing.push(resolve)
