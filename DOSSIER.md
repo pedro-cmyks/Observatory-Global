@@ -24,27 +24,29 @@ declarar NULL cuando no lo sabe.
 
 ## Estado
 
-Pausado, no abandonado. Ultimo commit `48cfc111`, 2026-08-20 17:30 (un fix de
-test: una fecha congelada en un fixture que expiro sola). El arbol de trabajo
-esta limpio, sin nada sin commitear.
+Pausado, no abandonado. Ultimo commit de trabajo `48cfc111`, 2026-08-20 17:30
+(un fix de test: una fecha congelada en un fixture que expiro sola). El arbol
+de trabajo esta limpio, sin nada sin commitear.
 
 El trabajo vivo NO esta en `main`. La rama por defecto en el remoto es
 `v3-intel-layer` (`origin/HEAD` apunta ahi) y es donde esta el checkout local.
 Verificado: **`main` esta 2.113 commits atras de `v3-intel-layer` y 0 commits
-adelante** (`git rev-list --left-right --count origin/main...v3-intel-layer` da
-`0 2113`); el ultimo commit de `main` es del 2026-04-29. Quien clone y se quede
-en `main` por costumbre va a ver un proyecto de abril.
+adelante** (`git rev-list --left-right --count origin/main...origin/v3-intel-layer`
+da `0 2113`); el ultimo commit de `main` es del 2026-04-29. Quien clone y se
+quede en `main` por costumbre va a ver un proyecto de abril.
 
 Hay 37 ramas remotas. `eclipse-dramatic-moment` apunta exactamente al mismo
-commit que `v3-intel-layer` (es un duplicado). El resto son cascara: 26
-`claude/*` de julio, una `codex/*`, cuatro `feat/radar-*` y `feat/gdelt-*` de
-2025, y `v2-clean-architecture`.
+commit que `v3-intel-layer` (es un duplicado). Las otras 34 son cascara: 26
+`claude/*` (22 de julio, tres de mayo, una de agosto), una `codex/*`, seis
+`feat/*` de noviembre 2025 (cuatro `radar-*`, `gdelt-live-integration` y
+`iter2-backendflow/hexmap-api`), y `v2-clean-architecture`.
 
-2.327 commits en la rama viva (2.341 contando todas las ramas), primero el
-2025-11-11. Los tres ultimos commits son un plan abierto, no un cierre:
-`docs/superpowers/plans/2026-08-20-plan-motor.md` (M1/M2/M3, autoevaluacion
-52/100) y el pre-registro de las barras del gate M1 ANTES de elegir el fix.
-Produccion quedo desplegada y sigue en pie.
+2.327 commits en la rama viva publicada (2.341 en todas las ramas del remoto),
+primero el 2025-11-11. El trabajo se corto con un plan abierto, no con un
+cierre: `docs/superpowers/plans/2026-08-20-plan-motor.md` (`c54dc3c9`, M1-M4,
+autoevaluacion 52/100) y el pre-registro de las barras del gate M1 ANTES de
+elegir el fix (`686f9d28`); encima de esos dos solo quedaron un fix de test y
+la mudanza del repo fuera de iCloud. Produccion quedo desplegada y sigue en pie.
 
 ## Por donde entrar
 
@@ -67,8 +69,10 @@ ultimo commit y en contradiccion con CLAUDE.md).
 
 ## Como se corre
 
-El README y el `Makefile` coinciden. No verificado en esta maquina: no se
-levanto nada para escribir este dossier.
+El README y el `Makefile` no dicen lo mismo: el README instala con `pip` y el
+`Makefile` corre todo con `poetry` (y no hay `poetry.lock` ni seccion
+`[tool.poetry]` en el pyproject). No verificado en esta maquina: no se levanto
+nada para escribir este dossier.
 
 ```
 # a mano, como dice el README
@@ -78,27 +82,31 @@ cd frontend-v2 && npm install && npm run dev
 # o con make (58 targets documentados; `make help` los lista)
 make up        # cd infra && docker compose up --build -d  (postgres + redis + api + front)
 make test      # backend (251 archivos de test) + frontend (162)
-make migrate   # las 108 migraciones .sql de backend/migrations
+make migrate   # NO sirve: corre `alembic upgrade head` y el repo no tiene
+               # alembic; las 108 migraciones .sql de backend/migrations
+               # se aplican a mano
 make health
 
 # o el panel de consola, que sigue el orden del README
 python atlas.py   # docker -> backend -> frontend -> ingesta
 ```
 
-Hace falta `backend/.env` (hay `.env.example`). Lo que NO se puede correr aca:
+Hace falta `backend/.env` (hay `backend/.env.example`; el `.env.example` de la
+raiz es otro archivo, con otras claves). Lo que NO se puede correr aca:
 los crons de produccion, que son plists de launchd (macOS).
 
 ## Lo que le falta
 
 - Un solo documento de estado que diga la verdad de hoy, y archivar los otros
-  cuatro registros (CLAUDE.md, STATUS.md, SESSION_LOG.md, AGENTS.md, GEMINI.md
+  cinco registros (CLAUDE.md, STATUS.md, SESSION_LOG.md, AGENTS.md, GEMINI.md
   se contradicen entre si) (horas).
 - Verificar si produccion sigue viva y que esta costando: Fly (api +
-  nlp_worker), Supabase, Upstash y cuatro APIs de noticias con cuota, un mes
-  sin mirar (horas).
+  nlp_worker), Supabase, Upstash y tres APIs de noticias con cuota (NewsData,
+  MediaStack, NewsAPI), un mes sin mirar (horas).
 - Pinear las dependencias del backend: `backend/requirements.freeze.txt` esta
-  VACIO (0 bytes) pese al commit que dice que congelo el venv, y
-  `backend/pyproject.toml` solo declara rangos `>=` sobre torch y transformers
+  VACIO (0 bytes) pese al commit que dice que congelo el venv, y lo unico que
+  queda son rangos `>=`: `backend/pyproject.toml` (fastapi, pydantic, asyncpg)
+  y `backend/requirements-nlp.txt` (`torch>=2.2.0`, `transformers>=4.40.0`)
   (minutos).
 - Decir en el README que la capa de operacion es macOS-only, o portarla (horas).
 - Sacar los 155 MB de corpus de `docs/research` de git, dejando los informes
