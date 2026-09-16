@@ -77,9 +77,9 @@ mayo, una de agosto), una `codex/*` de mayo, seis `feat/*` de noviembre 2025
 (cuatro `radar-*`, `gdelt-live-integration`, `iter2-backendflow/hexmap-api`),
 `v2-clean-architecture` de noviembre 2025 y `main`.
 
-2.366 commits en la rama viva publicada (2.382 en todas las ramas del remoto),
-el primero el 2025-11-11. Los tres commits de este DOSSIER.md viven solo en el
-disco: la rama local esta tres commits adelante del remoto, sin push.
+2.366 commits en la rama viva publicada (2.380 en todas las ramas del remoto),
+el primero el 2025-11-11. Los cuatro commits de este DOSSIER.md viven solo en el
+disco: la rama local esta cuatro commits adelante del remoto, sin push.
 
 El frente de motor sigue abierto y **cambio de orden por evidencia**. El plan
 del 2026-08-20 (`docs/superpowers/plans/2026-08-20-plan-motor.md`, M1-M4,
@@ -216,8 +216,9 @@ crons de produccion, que son 17 plists de launchd (`infra/launchd/`, 16, y
   estructura `docs/superpowers/{specs,plans}` con documentos fechados, los
   mismos gates pre-registrados antes de medir, la misma insistencia en no tocar
   sin medir primero. Atlas es donde se invento; Calipso es donde se aplica hoy.
-  **Los dos estan vivos al mismo tiempo**: el ultimo commit de Atlas (09-15) es
-  del mismo dia que el ultimo commit de Calipso. No comparten codigo.
+  **Los dos estan vivos al mismo tiempo**: el ultimo commit de trabajo de Atlas
+  (09-15) es del mismo dia que el ultimo commit de trabajo de Calipso (los dos
+  repos recibieron ademas su DOSSIER.md hoy). No comparten codigo.
 - [[research-court]] es el intento de convertir en negocio lo que aca es
   metodo: la corte adversarial de roles, la procedencia auditable y el ledger
   de fuentes son el label-court y los recibos de Atlas empaquetados como
