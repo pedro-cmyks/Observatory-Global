@@ -1332,22 +1332,37 @@ async def insert_rss_signals(pool: asyncpg.Pool, signals: list[dict]) -> int:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-async def run_rss_ingestion() -> None:
-    """Fetch all curated RSS feeds and insert new signals. Called by ingest_loop.py."""
-    since = datetime.now(timezone.utc) - timedelta(hours=2)  # overlap window
+async def run_rss_ingestion(since_hours: float = 2, concurrency: int = 1) -> None:
+    """Fetch all curated RSS feeds and insert new signals. Called by ingest_loop.py.
+
+    The 30-minute loop only needed a 2h overlap window, one feed at a time. The
+    on-demand local refresh passes the size of the gap it is catching up (a feed
+    carries a day or more of items) and fetches feeds concurrently — sequential,
+    one dead feed costs its full 30s timeout before the next one starts.
+    """
+    since = datetime.now(timezone.utc) - timedelta(hours=since_hours)  # overlap window
 
     pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
     total_inserted = 0
     total_fetched = 0
+    sem = asyncio.Semaphore(max(1, concurrency))
 
     try:
         async with aiohttp.ClientSession() as session:
-            for feed_name, (url, source_family, source_country, source_lang, is_state) in CURATED_FEEDS.items():
-                signals = await fetch_feed(
-                    session, feed_name, url,
-                    source_family, source_country, source_lang, is_state,
-                    since,
-                )
+            async def one(feed_name, url, source_family, source_country, source_lang, is_state):
+                async with sem:
+                    return feed_name, await fetch_feed(
+                        session, feed_name, url,
+                        source_family, source_country, source_lang, is_state,
+                        since,
+                    )
+
+            tasks = [
+                one(feed_name, url, source_family, source_country, source_lang, is_state)
+                for feed_name, (url, source_family, source_country, source_lang, is_state) in CURATED_FEEDS.items()
+            ]
+            for done in asyncio.as_completed(tasks):
+                feed_name, signals = await done
                 total_fetched += len(signals)
                 if signals:
                     n = await insert_rss_signals(pool, signals)

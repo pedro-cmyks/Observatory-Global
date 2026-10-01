@@ -43,6 +43,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from app.services.ingest_v2 import (  # noqa: E402
     GDELT_LAST_UPDATE_URL,
+    GDELT_TRANS_UPDATE_URL,
     download_and_parse_gkg,
     fetch_latest_gdelt_url,
     insert_signals,
@@ -55,6 +56,7 @@ SLOT = timedelta(minutes=15)
 SLOTS_PER_BATCH = 6        # 12 files in memory at a time
 DOWNLOAD_CONCURRENCY = 4
 SOURCE_TIMEOUT_S = 180
+RSS_CONCURRENCY = 16
 
 
 def log(msg: str) -> None:
@@ -135,6 +137,12 @@ async def run_sources(gap_hours: int) -> list[tuple[str, str, float]]:
         from app.services.ingest_disasters import ingest_disasters
         return await ingest_disasters(hours=max(24, gap_hours))
 
+    async def rss():
+        # Feeds are not replayable: take everything still in them since the
+        # last refresh, not the loop's 2h window.
+        from app.services.ingest_rss import run_rss_ingestion
+        return await run_rss_ingestion(since_hours=gap_hours + 2, concurrency=RSS_CONCURRENCY)
+
     def lazy(module: str, fn: str):
         async def run():
             mod = __import__(f"app.services.{module}", fromlist=[fn])
@@ -142,7 +150,7 @@ async def run_sources(gap_hours: int) -> list[tuple[str, str, float]]:
         return run
 
     sources = [
-        ("rss", lazy("ingest_rss", "run_rss_ingestion")),
+        ("rss", rss),
         ("newsdata", lazy("ingest_newsdata", "run_newsdata_ingestion")),
         ("reliefweb", lazy("ingest_reliefweb", "run_reliefweb_ingestion")),
         ("lemmy", lazy("ingest_lemmy", "run_lemmy_ingestion")),
@@ -170,20 +178,43 @@ async def run_sources(gap_hours: int) -> list[tuple[str, str, float]]:
     return list(await asyncio.gather(*[one(n, f) for n, f in sources]))
 
 
-async def refresh_matviews(db_url: str) -> list[tuple[str, str]]:
+async def prewarm_signals(db_url: str) -> tuple[str, float]:
+    """Read signals_v2 and its indexes once, sequentially, into the OS cache.
+
+    The database sits on a spinning USB disk: ~100 MB/s sequential but only
+    ~130 random reads/s. Every insert touches a page in each of the table's
+    ~30 indexes; cold, that is a seek per index per row. Read front to back
+    first and the inserts that follow run from memory.
+    """
+    t0 = time.monotonic()
+    conn = await asyncpg.connect(db_url)
+    try:
+        if not await conn.fetchval("SELECT 1 FROM pg_extension WHERE extname = 'pg_prewarm'"):
+            return "skipped (pg_prewarm extension not installed)", 0.0
+        blocks = await conn.fetchval(
+            "SELECT pg_prewarm('signals_v2'::regclass, 'read') + "
+            "       (SELECT coalesce(sum(pg_prewarm(indexrelid::regclass, 'read')), 0) "
+            "        FROM pg_index WHERE indrelid = 'signals_v2'::regclass)")
+        return f"{blocks * 8 // 1024:,} MB read", time.monotonic() - t0
+    finally:
+        await conn.close()
+
+
+async def refresh_matviews(db_url: str) -> list[tuple[str, str, float]]:
+    """Plain REFRESH, not CONCURRENTLY: with one user there are no readers to
+    protect, and the concurrent form builds a second copy and diffs it row by
+    row — the random-I/O pattern this disk is worst at."""
     out = []
     conn = await asyncpg.connect(db_url)
     try:
         await conn.execute("SET statement_timeout = 0")
         for view in ("country_hourly_v2", "country_heat_v2"):
+            t0 = time.monotonic()
             try:
-                try:
-                    await conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}")
-                except Exception:
-                    await conn.execute(f"REFRESH MATERIALIZED VIEW {view}")
-                out.append((view, "ok"))
+                await conn.execute(f"REFRESH MATERIALIZED VIEW {view}")
+                out.append((view, "ok", time.monotonic() - t0))
             except Exception as exc:
-                out.append((view, f"failed: {exc}"))
+                out.append((view, f"failed: {exc}", time.monotonic() - t0))
     finally:
         await conn.close()
     return out
@@ -220,8 +251,9 @@ async def main() -> int:
                     help="Report the gap and the plan; change nothing.")
     args = ap.parse_args()
 
-    # The ingest modules log every feed; keep the terminal to the step summary.
-    logging.disable(logging.WARNING)
+    # The ingest modules log every feed and every dead one; keep the terminal
+    # to the step summary.
+    logging.disable(logging.ERROR)
 
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
@@ -235,11 +267,16 @@ async def main() -> int:
         async with pool.acquire() as conn:
             last = await conn.fetchval(
                 "SELECT max(timestamp) FROM signals_v2 WHERE source_family = 'gdelt'")
-        latest_url = await fetch_latest_gdelt_url(GDELT_LAST_UPDATE_URL)
-        if not latest_url:
+        # The translingual lane publishes a file or two behind the English one.
+        # Stop at the older of the two, or the newest translation file would
+        # 404 now and be skipped for good once the bucket marker moves past it.
+        latest_urls = await asyncio.gather(
+            fetch_latest_gdelt_url(GDELT_LAST_UPDATE_URL),
+            fetch_latest_gdelt_url(GDELT_TRANS_UPDATE_URL))
+        if not all(latest_urls):
             log("local_refresh: GDELT is unreachable — nothing refreshed")
             return 1
-        latest = slot_from_url(latest_url)
+        latest = min(slot_from_url(u) for u in latest_urls)
         last = last or (latest - timedelta(hours=args.max_hours))
         gap_h = max(0.0, (latest - floor_slot(last)).total_seconds() / 3600)
         slots, hole_h = plan_slots(last, latest, args.max_hours, max(1, args.gdelt_step))
@@ -254,25 +291,30 @@ async def main() -> int:
             log("  dry run — nothing changed")
             return 0
 
-        # 1. GDELT
+        status, secs = await prewarm_signals(db_url)
+        log(f"  prewarm    {status} · {secs:.0f}s")
+
+        # 1+2. GDELT replay and one cycle of everything else, side by side:
+        # the other sources are network-bound and write little.
         t0 = time.monotonic()
+        sources_task = None
+        if not args.skip_sources:
+            sources_task = asyncio.create_task(run_sources(math.ceil(gap_h)))
         if slots:
             parsed, inserted, empty = await gdelt_catch_up(pool, slots)
             log(f"  gdelt      {inserted:,} new / {parsed:,} parsed · "
                 f"{empty} empty or missing files · {time.monotonic() - t0:.0f}s")
+            if inserted == 0 and empty == 2 * len(slots):
+                if sources_task:
+                    sources_task.cancel()
+                log("local_refresh: every GDELT file failed — stopping before aggregates")
+                return 1
         else:
-            inserted = 0
             log("  gdelt      already current")
-        if slots and inserted == 0 and empty == 2 * len(slots):
-            log("local_refresh: every GDELT file failed — stopping before aggregates")
-            return 1
-
-        # 2. Everything else, one cycle
-        if not args.skip_sources:
-            t0 = time.monotonic()
-            for name, status, secs in await run_sources(math.ceil(gap_h)):
+        if sources_task:
+            for name, status, secs in await sources_task:
                 log(f"  {name:<10} {status} · {secs:.0f}s")
-            log(f"  sources    done · {time.monotonic() - t0:.0f}s wall")
+        log(f"  ingest     done · {time.monotonic() - t0:.0f}s wall")
 
         # 3. Aggregates over the whole gap (+2h of overlap, as the loop always had)
         t0 = time.monotonic()
@@ -281,18 +323,20 @@ async def main() -> int:
             await update_countries(pool)
         except Exception as exc:
             log(f"  countries  failed (non-fatal): {exc}")
+        t1 = time.monotonic()
         await refresh_theme_aggregates(pool, window_hours=window)
-        for view, status in await refresh_matviews(db_url):
-            log(f"  matview    {view}: {status}")
-        log(f"  aggregates {window}h window · {time.monotonic() - t0:.0f}s")
+        log(f"  hourly     theme aggregates, {window}h window · {time.monotonic() - t1:.0f}s")
+        for view, status, secs in await refresh_matviews(db_url):
+            log(f"  matview    {view}: {status} · {secs:.0f}s")
+        log(f"  aggregates total · {time.monotonic() - t0:.0f}s")
 
         # 4. Lexicon assignments + briefing artifact
         t0 = time.monotonic()
         ok, tail = run_module("scripts.backfill_lexicon_topics", "--window-hours", str(window))
-        log(f"  lexicon    {'ok' if ok else 'FAILED'} · {tail} · {time.monotonic() - t0:.0f}s")
+        log(f"  lexicon    {'ok' if ok else 'FAILED · ' + tail} · {time.monotonic() - t0:.0f}s")
         t0 = time.monotonic()
         ok, tail = run_module("scripts.build_briefing_artifact", "--execute")
-        log(f"  briefing   {'ok' if ok else 'FAILED'} · {tail} · {time.monotonic() - t0:.0f}s")
+        log(f"  briefing   {'ok' if ok else 'FAILED · ' + tail} · {time.monotonic() - t0:.0f}s")
 
         counts = await source_counts(pool, started)
         total = sum(r["n"] for r in counts)

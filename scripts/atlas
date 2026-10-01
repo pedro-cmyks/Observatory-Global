@@ -62,6 +62,7 @@ start_pg() {
   pg_ctl -D "$PGDATA_DIR" -l "$PGDATA_DIR/server.log" -w start >/dev/null 2>&1 \
     || fail "postgres did not start — see $PGDATA_DIR/server.log"
   say "  postgres   started"
+  PG_JUST_STARTED=1
 }
 
 # Redis is only a response cache (the API degrades without it, but the heavy
@@ -107,6 +108,17 @@ start_web() {
   say "  frontend   started   http://localhost:$WEB_PORT"
 }
 
+# The database is on a spinning USB disk: fast front to back, ~130 random
+# reads a second. Read the hot table and its indexes once, sequentially
+# (~1 GB, ~15s), so the queries that follow run from memory instead of seeking.
+prewarm_db() {
+  say "  prewarm    reading the hot table into memory (~15s)…"
+  psql "$DATABASE_URL" -qAt -c "CREATE EXTENSION IF NOT EXISTS pg_prewarm" \
+    -c "SELECT pg_prewarm('signals_v2'::regclass, 'read')" \
+    -c "SELECT sum(pg_prewarm(indexrelid::regclass, 'read')) FROM pg_index WHERE indrelid = 'signals_v2'::regclass" \
+    >/dev/null 2>&1 || say "  prewarm    skipped (non-fatal)"
+}
+
 # The Brief's two heavy reads take ~30-40s uncached on this machine. Pay that
 # once here, in parallel, so the first page open is instant.
 warm_cache() {
@@ -142,6 +154,7 @@ cmd_up() {
   load_env
   say "atlas up"
   start_pg
+  [ -n "${PG_JUST_STARTED:-}" ] && prewarm_db
   start_redis
   start_api
   start_web
