@@ -1,0 +1,187 @@
+#!/bin/bash
+# atlas — run Atlas locally, on demand, for a single user.
+#
+#   scripts/atlas up       start Postgres (external disk) + Redis cache + API + frontend, open the browser
+#   scripts/atlas down     stop all three
+#   scripts/atlas status   show what is running and how fresh the data is
+#   scripts/atlas logs     tail API + frontend logs
+#
+# Nothing here runs on a schedule. The database lives on the external disk;
+# if the disk is not mounted, `up` refuses to start rather than fail halfway.
+#
+# Overrides (env): ATLAS_PGDATA, ATLAS_ENV_FILE, ATLAS_VENV, ATLAS_RUN_DIR,
+#                  ATLAS_API_PORT, ATLAS_WEB_PORT, ATLAS_REDIS_PORT, ATLAS_NO_OPEN=1
+
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(dirname "$SCRIPT_DIR")"
+
+PGDATA_DIR="${ATLAS_PGDATA:-/Volumes/Ext/Atlas/pg18}"
+ENV_FILE="${ATLAS_ENV_FILE:-$HOME/AtlasLocalWorker/atlas-local.env}"
+RUN_DIR="${ATLAS_RUN_DIR:-$HOME/AtlasLocalWorker/run}"
+API_PORT="${ATLAS_API_PORT:-8000}"
+WEB_PORT="${ATLAS_WEB_PORT:-3000}"
+REDIS_PORT="${ATLAS_REDIS_PORT:-6379}"
+export REDIS_URL="redis://127.0.0.1:$REDIS_PORT/0"
+
+# The API venv (fastapi/uvicorn/asyncpg). Worktrees don't carry one, so fall
+# back to the main checkout's.
+VENV="${ATLAS_VENV:-$ROOT/backend/.venv}"
+[ -x "$VENV/bin/python" ] || VENV="$HOME/ObservatorioGlobal/backend/.venv"
+
+# Postgres refuses to start without a valid locale ("postmaster became
+# multithreaded during startup").
+export LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+
+say()  { printf '%s\n' "$*"; }
+fail() { printf 'atlas: %s\n' "$*" >&2; exit 1; }
+
+pg_running()  { pg_ctl -D "$PGDATA_DIR" status >/dev/null 2>&1; }
+pid_alive()   { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
+port_listen() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
+
+wait_for() {  # wait_for <seconds> <command...>
+  local limit=$1; shift
+  local i=0
+  until "$@" >/dev/null 2>&1; do
+    i=$((i + 1)); [ "$i" -ge "$limit" ] && return 1
+    sleep 1
+  done
+}
+
+load_env() {
+  [ -f "$ENV_FILE" ] || fail "env file not found: $ENV_FILE"
+  set -a; . "$ENV_FILE"; set +a
+}
+
+start_pg() {
+  [ -d "$PGDATA_DIR" ] || fail "database not found at $PGDATA_DIR — is the external disk mounted?"
+  if pg_running; then say "  postgres   already running"; return; fi
+  pg_ctl -D "$PGDATA_DIR" -l "$PGDATA_DIR/server.log" -w start >/dev/null 2>&1 \
+    || fail "postgres did not start — see $PGDATA_DIR/server.log"
+  say "  postgres   started"
+}
+
+# Redis is only a response cache (the API degrades without it, but the heavy
+# endpoints then recompute on every request). In-memory only, no persistence.
+start_redis() {
+  command -v redis-server >/dev/null 2>&1 || { say "  redis      not installed (caching off)"; return; }
+  if redis-cli -p "$REDIS_PORT" ping >/dev/null 2>&1; then say "  redis      already running"; return; fi
+  redis-server --port "$REDIS_PORT" --bind 127.0.0.1 --save "" --appendonly no \
+    --maxmemory 128mb --maxmemory-policy allkeys-lru \
+    --daemonize yes --pidfile "$RUN_DIR/redis.pid" --logfile "$RUN_DIR/redis.log" >/dev/null 2>&1
+  wait_for 10 redis-cli -p "$REDIS_PORT" ping || { say "  redis      failed to start (caching off)"; return; }
+  say "  redis      started"
+}
+
+start_api() {
+  if pid_alive "$RUN_DIR/api.pid"; then say "  api        already running"; return; fi
+  port_listen "$API_PORT" && fail "port $API_PORT is taken by another process"
+  [ -x "$VENV/bin/python" ] || fail "no Python venv with the API deps (looked in $VENV)"
+  # cd as its own statement: `cd X && cmd &` backgrounds a wrapper subshell,
+  # and $! would be the wrapper's pid, not the server's.
+  ( cd "$ROOT/backend" || exit 1
+    nohup "$VENV/bin/python" -m uvicorn app.main_v2:app \
+      --host 127.0.0.1 --port "$API_PORT" --workers 1 \
+      > "$RUN_DIR/api.log" 2>&1 &
+    echo $! > "$RUN_DIR/api.pid" )
+  wait_for 60 curl -fsS "http://127.0.0.1:$API_PORT/health" \
+    || fail "api did not become healthy — see $RUN_DIR/api.log"
+  say "  api        started   http://127.0.0.1:$API_PORT"
+}
+
+start_web() {
+  if pid_alive "$RUN_DIR/web.pid"; then say "  frontend   already running"; return; fi
+  port_listen "$WEB_PORT" && fail "port $WEB_PORT is taken by another process"
+  [ -x "$ROOT/frontend-v2/node_modules/.bin/vite" ] \
+    || fail "frontend deps missing — run: (cd $ROOT/frontend-v2 && npm ci)"
+  ( cd "$ROOT/frontend-v2" || exit 1
+    export VITE_LOCAL_API="http://127.0.0.1:$API_PORT"
+    nohup node_modules/.bin/vite --host 127.0.0.1 --port "$WEB_PORT" --strictPort \
+      > "$RUN_DIR/web.log" 2>&1 &
+    echo $! > "$RUN_DIR/web.pid" )
+  wait_for 60 curl -fsS -o /dev/null "http://127.0.0.1:$WEB_PORT/" \
+    || fail "frontend did not come up — see $RUN_DIR/web.log"
+  say "  frontend   started   http://localhost:$WEB_PORT"
+}
+
+# The Brief's two heavy reads take ~30-40s uncached on this machine. Pay that
+# once here, in parallel, so the first page open is instant.
+warm_cache() {
+  redis-cli -p "$REDIS_PORT" ping >/dev/null 2>&1 || return 0
+  say "  warming    front-page caches (~40s)…"
+  local p
+  for p in "/api/v2/briefing?hours=24" "/api/v2/attention/eclipse" \
+           "/api/v2/threads?hours=24&limit=10" "/api/v2/stats"; do
+    curl -s -o /dev/null --max-time 120 "http://127.0.0.1:$API_PORT$p" &
+  done
+  wait
+}
+
+stop_pidfile() {  # stop_pidfile <name> <pidfile>
+  if pid_alive "$2"; then
+    local pid; pid="$(cat "$2")"
+    kill "$pid" 2>/dev/null
+    wait_for 10 sh -c "! kill -0 $pid 2>/dev/null" || kill -9 "$pid" 2>/dev/null
+    say "  $1 stopped"
+  else
+    say "  $1 not running"
+  fi
+  rm -f "$2"
+}
+
+data_freshness() {
+  psql "$DATABASE_URL" -At -c \
+    "select to_char(max(created_at) at time zone 'America/Bogota', 'YYYY-MM-DD HH24:MI') from signals_v2" 2>/dev/null
+}
+
+cmd_up() {
+  mkdir -p "$RUN_DIR"
+  load_env
+  say "atlas up"
+  start_pg
+  start_redis
+  start_api
+  start_web
+  warm_cache
+  say ""
+  say "  data through: $(data_freshness) (Bogotá) — nothing ingests on its own"
+  say "  open:         http://localhost:$WEB_PORT/brief   ·   http://localhost:$WEB_PORT/app"
+  if [ -z "${ATLAS_NO_OPEN:-}" ]; then open "http://localhost:$WEB_PORT/brief" 2>/dev/null || true; fi
+}
+
+cmd_down() {
+  say "atlas down"
+  stop_pidfile "frontend  " "$RUN_DIR/web.pid"
+  stop_pidfile "api       " "$RUN_DIR/api.pid"
+  if redis-cli -p "$REDIS_PORT" ping >/dev/null 2>&1; then
+    redis-cli -p "$REDIS_PORT" shutdown nosave >/dev/null 2>&1; say "  redis      stopped"
+  fi
+  if [ -d "$PGDATA_DIR" ] && pg_running; then
+    pg_ctl -D "$PGDATA_DIR" -m fast -w stop >/dev/null 2>&1 && say "  postgres   stopped"
+  else
+    say "  postgres   not running"
+  fi
+}
+
+cmd_status() {
+  load_env
+  if [ ! -d "$PGDATA_DIR" ]; then say "  postgres   UNAVAILABLE (external disk not mounted)"
+  elif pg_running; then say "  postgres   up     $PGDATA_DIR"
+  else say "  postgres   down"; fi
+  if redis-cli -p "$REDIS_PORT" ping >/dev/null 2>&1; then say "  redis      up"; else say "  redis      down (caching off)"; fi
+  if pid_alive "$RUN_DIR/api.pid"; then say "  api        up     http://127.0.0.1:$API_PORT"; else say "  api        down"; fi
+  if pid_alive "$RUN_DIR/web.pid"; then say "  frontend   up     http://localhost:$WEB_PORT"; else say "  frontend   down"; fi
+  if [ -d "$PGDATA_DIR" ] && pg_running; then say "  data through: $(data_freshness) (Bogotá)"; fi
+}
+
+cmd_logs() { tail -n 40 -f "$RUN_DIR/api.log" "$RUN_DIR/web.log"; }
+
+case "${1:-}" in
+  up)     cmd_up ;;
+  down)   cmd_down ;;
+  status) cmd_status ;;
+  logs)   cmd_logs ;;
+  *)      say "usage: atlas {up|down|status|logs}"; exit 2 ;;
+esac
