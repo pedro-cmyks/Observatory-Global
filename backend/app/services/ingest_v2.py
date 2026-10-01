@@ -669,6 +669,99 @@ async def refresh_aggregates(pool: asyncpg.Pool):
     8m+ each, IO-starving /api/v2/signals into intermittent 500s)."""
     return
 
+async def refresh_theme_aggregates(pool: asyncpg.Pool, window_hours: int = 2):
+    """Recompute the theme_hourly_v2 / theme_country_hourly_v2 buckets that
+    overlap the last `window_hours`. The 15-minute loop only ever needed 2h;
+    the on-demand local refresh (scripts/local_refresh.py) passes the size of
+    the gap it just caught up, so no hour in between is left un-aggregated."""
+    # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window).
+    # nlp_signal_count + avg_nlp_sentiment let downstream readers pick transformer
+    # sentiment when bucket coverage clears the threshold (migration 025).
+    # nlp_sentiment_weight_sum + nlp_confidence_sum carry confidence-weighted
+    # sums so readers can compute SUM(s*c)/SUM(c) instead of the flat AVG
+    # that diluted high-confidence transformer rows with low-confidence
+    # lexicon/fast_neutral rows (migration 033).
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO theme_hourly_v2
+                    (hour, theme, signal_count, country_count, source_count, avg_sentiment,
+                     nlp_signal_count, avg_nlp_sentiment,
+                     nlp_sentiment_weight_sum, nlp_confidence_sum)
+                SELECT
+                    date_trunc('hour', timestamp) AS hour,
+                    unnest(themes)                AS theme,
+                    COUNT(*)                      AS signal_count,
+                    COUNT(DISTINCT country_code)  AS country_count,
+                    COUNT(DISTINCT source_name)   AS source_count,
+                    AVG(sentiment)                AS avg_sentiment,
+                    COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
+                    AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment,
+                    COALESCE(SUM(nlp_sentiment * nlp_confidence) FILTER (
+                        WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
+                    ), 0) AS nlp_sentiment_weight_sum,
+                    COALESCE(SUM(nlp_confidence) FILTER (
+                        WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
+                    ), 0) AS nlp_confidence_sum
+                FROM signals_v2
+                WHERE timestamp > NOW() - make_interval(hours => $1)
+                  AND themes IS NOT NULL
+                GROUP BY 1, 2
+                ON CONFLICT (hour, theme) DO UPDATE SET
+                    signal_count             = EXCLUDED.signal_count,
+                    country_count            = EXCLUDED.country_count,
+                    source_count             = EXCLUDED.source_count,
+                    avg_sentiment            = EXCLUDED.avg_sentiment,
+                    nlp_signal_count         = EXCLUDED.nlp_signal_count,
+                    avg_nlp_sentiment        = EXCLUDED.avg_nlp_sentiment,
+                    nlp_sentiment_weight_sum = EXCLUDED.nlp_sentiment_weight_sum,
+                    nlp_confidence_sum       = EXCLUDED.nlp_confidence_sum
+            """, window_hours)
+        print("Updated theme_hourly_v2")
+    except Exception as e:
+        print(f"theme_hourly_v2 update failed (non-fatal): {e}")
+
+    # Update theme_country_hourly_v2 pre-aggregation (enables fast 168h concept queries).
+    # Same NLP coverage + confidence-weighted columns as theme_hourly_v2.
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO theme_country_hourly_v2
+                    (hour, theme, country_code, signal_count, avg_sentiment,
+                     nlp_signal_count, avg_nlp_sentiment,
+                     nlp_sentiment_weight_sum, nlp_confidence_sum)
+                SELECT
+                    date_trunc('hour', timestamp) AS hour,
+                    unnest(themes)                AS theme,
+                    country_code,
+                    COUNT(*)                      AS signal_count,
+                    AVG(sentiment)                AS avg_sentiment,
+                    COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
+                    AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment,
+                    COALESCE(SUM(nlp_sentiment * nlp_confidence) FILTER (
+                        WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
+                    ), 0) AS nlp_sentiment_weight_sum,
+                    COALESCE(SUM(nlp_confidence) FILTER (
+                        WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
+                    ), 0) AS nlp_confidence_sum
+                FROM signals_v2
+                WHERE timestamp > NOW() - make_interval(hours => $1)
+                  AND themes IS NOT NULL
+                  AND country_code IS NOT NULL
+                GROUP BY 1, 2, 3
+                ON CONFLICT (hour, theme, country_code) DO UPDATE SET
+                    signal_count             = EXCLUDED.signal_count,
+                    avg_sentiment            = EXCLUDED.avg_sentiment,
+                    nlp_signal_count         = EXCLUDED.nlp_signal_count,
+                    avg_nlp_sentiment        = EXCLUDED.avg_nlp_sentiment,
+                    nlp_sentiment_weight_sum = EXCLUDED.nlp_sentiment_weight_sum,
+                    nlp_confidence_sum       = EXCLUDED.nlp_confidence_sum
+            """, window_hours)
+        print("Updated theme_country_hourly_v2")
+    except Exception as e:
+        print(f"theme_country_hourly_v2 update failed (non-fatal): {e}")
+
+
 async def run_ingestion():
     """Main ingestion function."""
     logger.info("GDELT ingestion cycle starting")
@@ -711,92 +804,7 @@ async def run_ingestion():
             # detail / anomaly baselines for hours (2026-07-01 incident).
             logger.error("refresh_aggregates FAILED — country_hourly_v2 going stale: %s", e)
 
-        # Update theme_hourly_v2 pre-aggregation (enables fast narratives for any window).
-        # nlp_signal_count + avg_nlp_sentiment let downstream readers pick transformer
-        # sentiment when bucket coverage clears the threshold (migration 025).
-        # nlp_sentiment_weight_sum + nlp_confidence_sum carry confidence-weighted
-        # sums so readers can compute SUM(s*c)/SUM(c) instead of the flat AVG
-        # that diluted high-confidence transformer rows with low-confidence
-        # lexicon/fast_neutral rows (migration 033).
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute("""
-                    INSERT INTO theme_hourly_v2
-                        (hour, theme, signal_count, country_count, source_count, avg_sentiment,
-                         nlp_signal_count, avg_nlp_sentiment,
-                         nlp_sentiment_weight_sum, nlp_confidence_sum)
-                    SELECT
-                        date_trunc('hour', timestamp) AS hour,
-                        unnest(themes)                AS theme,
-                        COUNT(*)                      AS signal_count,
-                        COUNT(DISTINCT country_code)  AS country_count,
-                        COUNT(DISTINCT source_name)   AS source_count,
-                        AVG(sentiment)                AS avg_sentiment,
-                        COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
-                        AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment,
-                        COALESCE(SUM(nlp_sentiment * nlp_confidence) FILTER (
-                            WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
-                        ), 0) AS nlp_sentiment_weight_sum,
-                        COALESCE(SUM(nlp_confidence) FILTER (
-                            WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
-                        ), 0) AS nlp_confidence_sum
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '2 hours'
-                      AND themes IS NOT NULL
-                    GROUP BY 1, 2
-                    ON CONFLICT (hour, theme) DO UPDATE SET
-                        signal_count             = EXCLUDED.signal_count,
-                        country_count            = EXCLUDED.country_count,
-                        source_count             = EXCLUDED.source_count,
-                        avg_sentiment            = EXCLUDED.avg_sentiment,
-                        nlp_signal_count         = EXCLUDED.nlp_signal_count,
-                        avg_nlp_sentiment        = EXCLUDED.avg_nlp_sentiment,
-                        nlp_sentiment_weight_sum = EXCLUDED.nlp_sentiment_weight_sum,
-                        nlp_confidence_sum       = EXCLUDED.nlp_confidence_sum
-                """)
-            print("Updated theme_hourly_v2")
-        except Exception as e:
-            print(f"theme_hourly_v2 update failed (non-fatal): {e}")
-
-        # Update theme_country_hourly_v2 pre-aggregation (enables fast 168h concept queries).
-        # Same NLP coverage + confidence-weighted columns as theme_hourly_v2.
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute("""
-                    INSERT INTO theme_country_hourly_v2
-                        (hour, theme, country_code, signal_count, avg_sentiment,
-                         nlp_signal_count, avg_nlp_sentiment,
-                         nlp_sentiment_weight_sum, nlp_confidence_sum)
-                    SELECT
-                        date_trunc('hour', timestamp) AS hour,
-                        unnest(themes)                AS theme,
-                        country_code,
-                        COUNT(*)                      AS signal_count,
-                        AVG(sentiment)                AS avg_sentiment,
-                        COUNT(*) FILTER (WHERE nlp_sentiment IS NOT NULL) AS nlp_signal_count,
-                        AVG(nlp_sentiment) FILTER (WHERE nlp_sentiment IS NOT NULL) AS avg_nlp_sentiment,
-                        COALESCE(SUM(nlp_sentiment * nlp_confidence) FILTER (
-                            WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
-                        ), 0) AS nlp_sentiment_weight_sum,
-                        COALESCE(SUM(nlp_confidence) FILTER (
-                            WHERE nlp_sentiment IS NOT NULL AND nlp_confidence > 0
-                        ), 0) AS nlp_confidence_sum
-                    FROM signals_v2
-                    WHERE timestamp > NOW() - INTERVAL '2 hours'
-                      AND themes IS NOT NULL
-                      AND country_code IS NOT NULL
-                    GROUP BY 1, 2, 3
-                    ON CONFLICT (hour, theme, country_code) DO UPDATE SET
-                        signal_count             = EXCLUDED.signal_count,
-                        avg_sentiment            = EXCLUDED.avg_sentiment,
-                        nlp_signal_count         = EXCLUDED.nlp_signal_count,
-                        avg_nlp_sentiment        = EXCLUDED.avg_nlp_sentiment,
-                        nlp_sentiment_weight_sum = EXCLUDED.nlp_sentiment_weight_sum,
-                        nlp_confidence_sum       = EXCLUDED.nlp_confidence_sum
-                """)
-            print("Updated theme_country_hourly_v2")
-        except Exception as e:
-            print(f"theme_country_hourly_v2 update failed (non-fatal): {e}")
+        await refresh_theme_aggregates(pool)
 
         # Stats
         async with pool.acquire() as conn:

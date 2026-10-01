@@ -4,6 +4,7 @@
 #   scripts/atlas up       start Postgres (external disk) + Redis cache + API + frontend, open the browser
 #   scripts/atlas down     stop all three
 #   scripts/atlas status   show what is running and how fresh the data is
+#   scripts/atlas refresh  ingest everything since the last refresh, recompute aggregates
 #   scripts/atlas logs     tail API + frontend logs
 #
 # Nothing here runs on a schedule. The database lives on the external disk;
@@ -176,12 +177,31 @@ cmd_status() {
   if [ -d "$PGDATA_DIR" ] && pg_running; then say "  data through: $(data_freshness) (Bogotá)"; fi
 }
 
+# Bring the data up to now (see backend/scripts/local_refresh.py). Works with
+# or without the app running; only Postgres is required, and is started here.
+cmd_refresh() {
+  mkdir -p "$RUN_DIR"
+  load_env
+  [ -x "$VENV/bin/python" ] || fail "no Python venv with the API deps (looked in $VENV)"
+  say "atlas refresh"
+  start_pg
+  ( cd "$ROOT/backend" && "$VENV/bin/python" -m scripts.local_refresh "$@" ) || fail "refresh failed"
+  case " $* " in *" --dry-run "*) return ;; esac
+  # Cached responses describe the pre-refresh data.
+  if redis-cli -p "$REDIS_PORT" ping >/dev/null 2>&1; then
+    redis-cli -p "$REDIS_PORT" flushdb >/dev/null 2>&1
+    pid_alive "$RUN_DIR/api.pid" && warm_cache
+  fi
+  say "  data through: $(data_freshness) (Bogotá)"
+}
+
 cmd_logs() { tail -n 40 -f "$RUN_DIR/api.log" "$RUN_DIR/web.log"; }
 
 case "${1:-}" in
   up)     cmd_up ;;
   down)   cmd_down ;;
-  status) cmd_status ;;
-  logs)   cmd_logs ;;
-  *)      say "usage: atlas {up|down|status|logs}"; exit 2 ;;
+  status)  cmd_status ;;
+  refresh) shift; cmd_refresh "$@" ;;
+  logs)    cmd_logs ;;
+  *)       say "usage: atlas {up|down|status|refresh [--max-hours N] [--skip-sources] [--dry-run]|logs}"; exit 2 ;;
 esac
