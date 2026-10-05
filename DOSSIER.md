@@ -289,9 +289,8 @@ de Atlas) y `legacy/` (el backend v1 y el frontend v1, muertos pero versionados)
 - Correo personal de Pedro en archivos versionados (entre ellos
   `.env.example` en la raiz, donde ni siquiera hacia falta que fuera real). No se
   transcribe.
-- Licencia PolyForm Noncommercial 1.0.0, no aprobada por la OSI: leer y usar sin
-  fines comerciales es libre, cualquier uso comercial necesita licencia aparte.
-  Ninguna herramienta estandar la entiende como licencia libre.
+- Licencia MIT desde 2026-10-05 (antes PolyForm Noncommercial 1.0.0, que no era
+  open source segun la OSI). El repositorio es publico.
 - El checkout local pesa ~1,3 GB, casi todo `backend/.venv` y `node_modules`.
   Una copia de seguridad ingenua de la carpeta es cara. Antecedente: el commit
   `ccda8161` documenta que una tormenta de iCloud dejo el repo danado, y ese fue

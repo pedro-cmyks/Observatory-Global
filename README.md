@@ -96,9 +96,4 @@ Built with open data and public infrastructure: GDELT, Wikimedia, Google Trends,
 
 ## License
 
-Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE). The
-source is public to read, study, and use for noncommercial purposes (personal,
-research, education, nonprofits, government). Commercial use, resale, or running
-a competing service requires a separate commercial license from the copyright
-holder, Pedro Villegas. Access to the hosted service is free; the underlying IP,
-research, and curated data remain proprietary.
+[MIT](LICENSE). Use it, fork it, build on it. Copyright (c) 2025-2026 Pedro Villegas.
