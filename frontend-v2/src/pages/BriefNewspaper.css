@@ -3167,3 +3167,9 @@ a.brief-receipt:hover .brief-receipt-head { color: var(--r-sec); }
   .brief-explainer { flex-direction: column; gap: 8px; }
   .brief-explainer-close { align-self: flex-end; }
 }
+
+/* Static edition notice (2026-10-05): the snapshot's own dateline. */
+.brief-static-notice {
+  border-left: 2px solid var(--r-muted);
+  padding-left: 10px;
+}

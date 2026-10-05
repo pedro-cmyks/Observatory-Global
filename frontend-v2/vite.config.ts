@@ -33,7 +33,7 @@ export default defineConfig({
         // download all flags. They (and app icon SVGs) are runtime-cached on
         // demand instead — see the /assets .svg CacheFirst rule below.
         globPatterns: ['**/*.{js,css,html,woff2,png}'],
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/edition\//],
         // The brief/threads read offline (network-first → last good response);
         // theme detail likewise. Never precache the live API.
         runtimeCaching: [

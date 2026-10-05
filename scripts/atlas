@@ -5,6 +5,7 @@
 #   scripts/atlas down     stop all three
 #   scripts/atlas status   show what is running and how fresh the data is
 #   scripts/atlas refresh  ingest everything since the last refresh, recompute aggregates
+#   scripts/atlas publish  build the public page + its data snapshot, deploy to Vercel
 #   scripts/atlas logs     tail API + frontend logs
 #
 # Nothing here runs on a schedule. The database lives on the external disk;
@@ -208,6 +209,37 @@ cmd_refresh() {
   say "  data through: $(data_freshness) (Bogotá)"
 }
 
+# The public page is a snapshot: the frontend built in static mode plus the
+# JSON the Brief needs, written by backend/scripts/build_static_edition.py from
+# the LOCAL API, then uploaded with the Vercel CLI. No server runs anywhere.
+cmd_publish() {
+  mkdir -p "$RUN_DIR"
+  load_env
+  local site="${ATLAS_SITE_DIR:-$HOME/AtlasLocalWorker/static-edition/site}"
+  say "atlas publish"
+  start_pg
+  start_redis
+  start_api
+  say "  building   frontend in static mode…"
+  rm -rf "$site"; mkdir -p "$site"
+  ( cd "$ROOT/frontend-v2" && VITE_STATIC_EDITION=1 npm run build -- --outDir "$site" --emptyOutDir > "$RUN_DIR/publish-build.log" 2>&1 ) \
+    || fail "frontend build failed — see $RUN_DIR/publish-build.log"
+  local through; through="$(psql "$DATABASE_URL" -At -c "select to_char(max(created_at) at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') from signals_v2" 2>/dev/null)"
+  ( cd "$ROOT/backend" && "$VENV/bin/python" -m scripts.build_static_edition --out "$site" --api "http://127.0.0.1:$API_PORT" --data-through "$through" ) \
+    || fail "edition snapshot failed"
+  cp "$ROOT/deploy/vercel.static.json" "$site/vercel.json"
+  say "  site       $site ($(du -sh "$site" | cut -f1))"
+  if command -v vercel >/dev/null 2>&1; then
+    say "  deploying  to Vercel…"
+    ( cd "$site" && vercel deploy --prod --yes > "$RUN_DIR/publish-deploy.log" 2>&1 ) \
+      || fail "vercel deploy failed — see $RUN_DIR/publish-deploy.log"
+    say "  published  $(tail -1 "$RUN_DIR/publish-deploy.log")"
+  else
+    say "  vercel CLI not installed — the site is ready in $site;"
+    say "  install with: npm i -g vercel && vercel login   (then re-run atlas publish)"
+  fi
+}
+
 cmd_logs() { tail -n 40 -f "$RUN_DIR/api.log" "$RUN_DIR/web.log"; }
 
 case "${1:-}" in
@@ -215,6 +247,7 @@ case "${1:-}" in
   down)   cmd_down ;;
   status)  cmd_status ;;
   refresh) shift; cmd_refresh "$@" ;;
+  publish) cmd_publish ;;
   logs)    cmd_logs ;;
-  *)       say "usage: atlas {up|down|status|refresh [--max-hours N] [--skip-sources] [--dry-run]|logs}"; exit 2 ;;
+  *)       say "usage: atlas {up|down|status|refresh [--max-hours N] [--skip-sources] [--dry-run]|publish|logs}"; exit 2 ;;
 esac

@@ -1,0 +1,23 @@
+{
+  "rewrites": [
+    { "source": "/((?!api/|edition/|assets/|data/|favicon|icon-|manifest|sw\\.js|workbox-|registerSW|vite\\.svg).*)", "destination": "/index.html" }
+  ],
+  "redirects": [
+    { "source": "/app", "destination": "/brief", "permanent": false }
+  ],
+  "headers": [
+    {
+      "source": "/edition/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=()" }
+      ]
+    }
+  ]
+}

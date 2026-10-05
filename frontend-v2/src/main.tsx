@@ -2,6 +2,7 @@ import { Component, StrictMode, Suspense, lazy, useEffect, useState, type ReactN
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { installWarmCache, bumpWarmCacheGeneration } from './lib/fetchWarmCache'
+import { installStaticEdition } from './lib/staticEdition'
 import { refreshDelightFeed } from './lib/delight'
 import { installTooltips } from './lib/tooltips'
 
@@ -13,6 +14,10 @@ installTooltips()
 // #239 slice 1: route switches remount the whole tree (Brief↔App) and refire
 // every fetch — the warm cache paints the first request per URL instantly
 // from the last known response and revalidates in the background.
+// Static edition (2026-10-05): when built with VITE_STATIC_EDITION=1 every
+// API call reads a snapshot file under /edition/. Before the warm cache, so
+// the cache's "real" fetch is the snapshot one.
+installStaticEdition()
 installWarmCache()
 
 // Loading-delight feed: refresh the localStorage fact cache off the critical

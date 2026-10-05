@@ -61,6 +61,7 @@ import { TranslatedSection } from '../components/TranslatedSection'
 import { shouldTranslate as shouldTranslateFree } from '../lib/translatableText'
 import { usePageLanguage } from '../lib/pageLanguage'
 import { useUiCopy, type UiCopyKey } from '../lib/uiCopy'
+import { META_PATH, isStaticEdition, type EditionMeta } from '../lib/staticEdition'
 import { ReaderLanguagePicker } from '../components/ReaderLanguagePicker'
 import { DepthDial } from '../components/DepthDial'
 import { dialFromUrl, loadDialPosition, saveDialPosition, type DialPosition } from '../lib/depthDial'
@@ -543,6 +544,19 @@ export function BriefNewspaper() {
     const countryInputRef = useRef<HTMLInputElement>(null)
     const [now] = useState(new Date())
     const [dailyEdition, setDailyEdition] = useState<DailyPublicationArtifact | null>(null)
+    // Static edition: the published page carries a snapshot, and the reader
+    // must see WHEN it was taken — the sealed-edition banner alone would still
+    // promise a "next seal" that no server is going to make.
+    const [staticMeta, setStaticMeta] = useState<EditionMeta | null>(null)
+    useEffect(() => {
+        if (!isStaticEdition()) return
+        const ctrl = new AbortController()
+        fetch(META_PATH, { signal: ctrl.signal })
+            .then(r => (r.ok ? r.json() : null))
+            .then(m => { if (m && typeof m.generated_at === 'string') setStaticMeta(m as EditionMeta) })
+            .catch(() => { /* no meta → no notice, the stale banner still tells the truth about the seal */ })
+        return () => ctrl.abort()
+    }, [])
     const [eclipse, setEclipse] = useState<EclipseData | null>(null)
 
     // P1.5 (dial en sitio — spec 2026-08-18-depth-dial §6, corrección de
@@ -576,6 +590,17 @@ export function BriefNewspaper() {
     // it translated something. Declared up here with the other hooks because
     // the dateline below needs the locale.
     const { t: tr, lang: uiLangCode } = useUiCopy()
+    const staticNotice = (() => {
+        if (!staticMeta) return null
+        const fmt = (iso: string | null) => {
+            if (!iso) return null
+            const d = new Date(iso)
+            return Number.isNaN(d.getTime()) ? null : d.toLocaleString(uiLangCode === 'es' ? 'es' : 'en', { dateStyle: 'medium', timeStyle: 'short' })
+        }
+        const date = fmt(staticMeta.generated_at) ?? staticMeta.generated_at
+        const through = fmt(staticMeta.data_through)
+        return through ? tr('brief.static.notice', { date, through }) : tr('brief.static.noticeShort', { date })
+    })()
     // First-visit explainer: read once at mount; a storage failure means the
     // dismissal cannot persist, so the honest default is to show the card.
     const [explainerDismissed, setExplainerDismissed] = useState<boolean>(() => {
@@ -1107,7 +1132,7 @@ export function BriefNewspaper() {
         ? buildRegMarkData(dailyEdition, serving, {
             ageLabel: staleBanner?.age ?? null,
             liveReason: staleBanner?.why ?? null,
-            nextSeal: staleBanner?.nextAttempt ?? null,
+            nextSeal: staticMeta ? null : (staleBanner?.nextAttempt ?? null),
         })
         : null
     // Always computed (2026-08-24 Today's Number): the hero decides its rule
@@ -1477,7 +1502,7 @@ export function BriefNewspaper() {
     const limitsMark = regMark ?? buildRegMarkData(dailyEdition, serving, {
         ageLabel: staleBanner?.age ?? null,
         liveReason: staleBanner?.why ?? null,
-        nextSeal: staleBanner?.nextAttempt ?? null,
+        nextSeal: staticMeta ? null : (staleBanner?.nextAttempt ?? null),
     })
     const todaysLimits = !countryFilter && servedFromSeal && dailyEdition
         ? composeTodaysLimits({
@@ -1528,7 +1553,7 @@ export function BriefNewspaper() {
         // to travel with it — including into the collapsed phone line, which is
         // all a mobile reader sees until they tap.
         ...serving.degradation,
-        staleBanner?.nextAttempt ?? null,
+        staticMeta ? null : (staleBanner?.nextAttempt ?? null),
     ].filter(Boolean).join(' · ')
 
     // LIVE-view enrichment: when the sealed edition is degraded the Brief
@@ -2175,6 +2200,9 @@ export function BriefNewspaper() {
                         </div>
                     </div>
                 </header>
+                {staticNotice && (
+                    <p className="brief-return-hook brief-static-notice" role="note">{staticNotice}</p>
+                )}
 
                 {loading ? (
                     <div className="brief-loading">
@@ -2297,8 +2325,11 @@ export function BriefNewspaper() {
                                         {[
                                             staleBanner.age,
                                             staleBanner.tone === 'stale' ? staleBanner.why : null,
-                                            staleBanner.served === 'live' ? staleBanner.liveNote : null,
-                                            staleBanner.nextAttempt,
+                                            // A published snapshot is neither live nor
+                                            // going to seal again on its own; its own
+                                            // dateline (the static notice) says what it is.
+                                            staleBanner.served === 'live' && !staticMeta ? staleBanner.liveNote : null,
+                                            staticMeta ? null : staleBanner.nextAttempt,
                                             editionYield && editionYield.attempted > 0
                                                 ? tr('brief.freshness.receipts', {
                                                     ok: editionYield.ok,
@@ -2426,7 +2457,7 @@ export function BriefNewspaper() {
                         {/* ============ Return hook (step 9) ============
                             The served next-seal moment as a promise the reader can
                             hold. No schedule served → no sentence. */}
-                        {!countryFilter && nextSealHours != null && (
+                        {!countryFilter && !staticMeta && nextSealHours != null && (
                             <p className="brief-return-hook">
                                 {nextSealHours === 1
                                     ? tr('brief.return.hook1')

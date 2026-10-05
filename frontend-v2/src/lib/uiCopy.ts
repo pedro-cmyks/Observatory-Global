@@ -89,6 +89,16 @@ export const UI_COPY = {
         en: 'A signal is one measured news item.',
         es: 'Una señal es una noticia medida.',
     },
+    // Static edition (2026-10-05): the public page is a snapshot published
+    // from the author's machine, not a live server. Say so, with the dates.
+    'brief.static.notice': {
+        en: 'Published edition · snapshot taken {date}, data through {through}. It updates when its author publishes again; nothing here is live.',
+        es: 'Edición publicada · instantánea del {date}, datos hasta {through}. Se actualiza cuando su autor vuelve a publicar; nada aquí es en vivo.',
+    },
+    'brief.static.noticeShort': {
+        en: 'Published edition · snapshot taken {date}. Nothing here is live.',
+        es: 'Edición publicada · instantánea del {date}. Nada aquí es en vivo.',
+    },
     'brief.masthead.window': {
         en: 'Measured · Last 24 hours',
         es: 'Medido · Últimas 24 horas',
